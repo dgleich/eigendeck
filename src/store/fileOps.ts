@@ -189,6 +189,7 @@ ${sections.map((s) => '      ' + s).join('\n')}
     </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
   <script>
     Reveal.initialize({
       hash: true,
@@ -196,6 +197,8 @@ ${sections.map((s) => '      ' + s).join('\n')}
       backgroundTransition: '${presentation.config.backgroundTransition}',
       width: ${presentation.config.width},
       height: ${presentation.config.height},
+      center: false,
+      plugins: [RevealNotes],
     });
   </script>
 </body>

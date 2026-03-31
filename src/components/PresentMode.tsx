@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import Reveal from 'reveal.js';
+import RevealNotes from 'reveal.js/plugin/notes/notes.esm.js';
 import 'reveal.js/dist/reveal.css';
 import 'reveal.js/dist/theme/white.css';
 import { convertFileSrc } from '@tauri-apps/api/core';
@@ -84,6 +85,7 @@ export function PresentMode() {
       height: presentation.config.height,
       embedded: false,
       center: false,
+      plugins: [RevealNotes],
     });
 
     deck.initialize().then(() => {
