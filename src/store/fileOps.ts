@@ -150,18 +150,17 @@ export async function exportPresentation(): Promise<void> {
         }
       }
 
-      if (slide.content.image && projectPath) {
-        try {
-          const pos = slide.content.imagePosition || {
-            x: 100,
-            y: 150,
-            width: 700,
-            height: 450,
-          };
-          sectionContent += `\n<img src="${slide.content.image}" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;" />`;
-        } catch {
-          sectionContent += '\n<!-- image not found -->';
-        }
+      if (slide.content.image) {
+        const pos = slide.content.imagePosition || {
+          x: 360,
+          y: 200,
+          width: 1200,
+          height: 680,
+        };
+        const imgSrcAttr = slide.content.image.startsWith('data:')
+          ? slide.content.image
+          : slide.content.image;
+        sectionContent += `\n<img class="slide-image" src="${imgSrcAttr}" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;object-fit:contain;" />`;
       }
 
       const notesHtml = slide.notes
@@ -194,7 +193,8 @@ export async function exportPresentation(): Promise<void> {
     .reveal p { margin-bottom: 16px; }
     .reveal ul, .reveal ol { padding-left: 1.2em; margin-bottom: 16px; }
     .reveal li { margin-bottom: 8px; }
-    .reveal section { text-align: left; padding: 60px 80px; }
+    .reveal section { text-align: left; padding: 60px 80px; position: relative; box-sizing: border-box; }
+    .reveal section img.slide-image { position: absolute; object-fit: contain; }
     .reveal section[data-layout="centered"] { display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; }
     .reveal section[data-layout="two-column"] { column-count:2; column-gap:80px; }
     .reveal .slide-number { font-family:'PT Sans',sans-serif; font-size:24px; color:#999; }

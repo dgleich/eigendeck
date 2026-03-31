@@ -61,6 +61,12 @@ const SLIDE_OVERRIDE_CSS = `
   .reveal section {
     text-align: left;
     padding: 60px 80px;
+    position: relative;
+    box-sizing: border-box;
+  }
+  .reveal section img.slide-image {
+    position: absolute;
+    object-fit: contain;
   }
   .reveal section[data-layout="centered"] {
     display: flex;
@@ -174,15 +180,22 @@ export function PresentMode() {
       html += `<iframe src="${demoSrc}" sandbox="allow-scripts allow-same-origin" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;border:none;"></iframe>`;
     }
 
-    if (slide.content.image && projectPath) {
+    if (slide.content.image) {
       const pos = slide.content.imagePosition || {
-        x: 100,
-        y: 150,
-        width: 700,
-        height: 450,
+        x: 360,
+        y: 200,
+        width: 1200,
+        height: 680,
       };
-      const imgSrc = convertFileSrc(`${projectPath}/${slide.content.image}`);
-      html += `<img src="${imgSrc}" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;object-fit:contain;" />`;
+      let imgSrc: string;
+      if (slide.content.image.startsWith('data:')) {
+        imgSrc = slide.content.image;
+      } else if (projectPath) {
+        imgSrc = convertFileSrc(`${projectPath}/${slide.content.image}`);
+      } else {
+        imgSrc = slide.content.image;
+      }
+      html += `<img class="slide-image" src="${imgSrc}" style="left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;" />`;
     }
 
     if (slide.notes) {
