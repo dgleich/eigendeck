@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(source \"$HOME/.cargo/env\")",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(/Users/dgleich/Dropbox/dev/eigendeck/mac-build.sh 2>&1)"
     ]
   }
 }

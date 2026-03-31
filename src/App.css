@@ -153,6 +153,15 @@
   border-color: #999;
 }
 
+.theme-picker {
+  padding: 3px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
 .btn-present {
   background: #2563eb !important;
   color: #fff !important;
@@ -513,6 +522,13 @@
 
 .notes-textarea:focus {
   background: #fefefe;
+}
+
+/* Image element */
+.image-element {
+  border: 2px dashed #86efac;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 /* Present mode */

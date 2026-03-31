@@ -6,8 +6,22 @@ import {
   exportPresentation,
 } from '../store/fileOps';
 
+const THEMES = [
+  { id: 'white', label: 'White' },
+  { id: 'black', label: 'Black' },
+  { id: 'league', label: 'League' },
+  { id: 'beige', label: 'Beige' },
+  { id: 'moon', label: 'Moon' },
+  { id: 'solarized', label: 'Solarized' },
+  { id: 'night', label: 'Night' },
+  { id: 'serif', label: 'Serif' },
+  { id: 'simple', label: 'Simple' },
+  { id: 'sky', label: 'Sky' },
+  { id: 'blood', label: 'Blood' },
+];
+
 export function Toolbar() {
-  const { presentation, isDirty, setPresenting, projectPath } =
+  const { presentation, isDirty, setPresenting, setTheme, projectPath } =
     usePresentationStore();
 
   const handleSave = async () => {
@@ -51,6 +65,18 @@ export function Toolbar() {
         </span>
       </div>
       <div className="toolbar-right">
+        <select
+          className="theme-picker"
+          value={presentation.theme}
+          onChange={(e) => setTheme(e.target.value)}
+          title="Presentation theme"
+        >
+          {THEMES.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.label}
+            </option>
+          ))}
+        </select>
         <button onClick={handleExport} title="Export to HTML">
           Export
         </button>

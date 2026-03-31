@@ -26,6 +26,7 @@ interface PresentationState {
   setPresenting: (presenting: boolean) => void;
   markClean: () => void;
   setTitle: (title: string) => void;
+  setTheme: (theme: string) => void;
 }
 
 export const usePresentationStore = create<PresentationState>((set) => ({
@@ -124,6 +125,12 @@ export const usePresentationStore = create<PresentationState>((set) => ({
   setTitle: (title) =>
     set((state) => ({
       presentation: { ...state.presentation, title },
+      isDirty: true,
+    })),
+
+  setTheme: (theme) =>
+    set((state) => ({
+      presentation: { ...state.presentation, theme },
       isDirty: true,
     })),
 }));
