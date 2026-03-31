@@ -57,7 +57,9 @@ git tag v0.1.0
 git push --tags
 ```
 
-This builds for Linux x64, macOS x64, and macOS ARM64 and creates a draft GitHub Release.
+This builds for Linux x64, macOS x64, macOS ARM64, and Windows x64, then creates a draft GitHub Release.
+
+See [SETUP.md](SETUP.md) for detailed environment setup instructions.
 
 ## Project format
 
