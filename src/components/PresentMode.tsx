@@ -5,14 +5,76 @@ import 'reveal.js/dist/theme/white.css';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 
+// Override reveal.js theme styles to match our editor exactly
+const SLIDE_OVERRIDE_CSS = `
+  .reveal {
+    font-family: 'PT Sans', sans-serif;
+    font-size: 42px;
+    font-weight: normal;
+    line-height: 1.3;
+    color: #222;
+  }
+  .reveal h1 {
+    font-family: 'PT Sans', sans-serif;
+    font-size: 72px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 24px;
+    color: #222;
+    text-transform: none;
+    text-shadow: none;
+  }
+  .reveal h2 {
+    font-family: 'PT Sans', sans-serif;
+    font-size: 56px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 20px;
+    color: #222;
+    text-transform: none;
+    text-shadow: none;
+  }
+  .reveal h3 {
+    font-family: 'PT Sans', sans-serif;
+    font-size: 44px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 16px;
+    color: #222;
+    text-transform: none;
+    text-shadow: none;
+  }
+  .reveal p {
+    margin-bottom: 16px;
+  }
+  .reveal ul, .reveal ol {
+    padding-left: 1.2em;
+    margin-bottom: 16px;
+  }
+  .reveal li {
+    margin-bottom: 8px;
+  }
+  .reveal section {
+    text-align: left;
+    padding: 40px 60px;
+  }
+`;
+
 export function PresentMode() {
   const { presentation, setPresenting, projectPath } = usePresentationStore();
   const deckRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const revealRef = useRef<any>(null);
+  const styleRef = useRef<HTMLStyleElement | null>(null);
 
   useEffect(() => {
     if (!deckRef.current) return;
+
+    // Inject override styles
+    const style = document.createElement('style');
+    style.textContent = SLIDE_OVERRIDE_CSS;
+    document.head.appendChild(style);
+    styleRef.current = style;
 
     const deck = new Reveal(deckRef.current, {
       hash: false,
@@ -21,6 +83,7 @@ export function PresentMode() {
       width: presentation.config.width,
       height: presentation.config.height,
       embedded: false,
+      center: false,
     });
 
     deck.initialize().then(() => {
@@ -39,6 +102,10 @@ export function PresentMode() {
       if (revealRef.current) {
         revealRef.current.destroy();
         revealRef.current = null;
+      }
+      if (styleRef.current) {
+        document.head.removeChild(styleRef.current);
+        styleRef.current = null;
       }
     };
   }, []);
@@ -67,7 +134,7 @@ export function PresentMode() {
   return (
     <div className="present-mode">
       <div className="reveal" ref={deckRef}>
-        <div className="slides" style={{ fontFamily: "'PT Sans', sans-serif" }}>
+        <div className="slides">
           {presentation.slides.map((slide) => (
             <section
               key={slide.id}

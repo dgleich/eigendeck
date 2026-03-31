@@ -167,7 +167,19 @@ export async function exportPresentation(): Promise<void> {
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/${presentation.theme}.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&display=swap');
-    .reveal { font-family: 'PT Sans', sans-serif; }
+    .reveal {
+      font-family: 'PT Sans', sans-serif;
+      font-size: 42px;
+      line-height: 1.3;
+      color: #222;
+    }
+    .reveal h1 { font-size: 72px; font-weight: 700; line-height: 1.2; margin-bottom: 24px; color: #222; text-transform: none; text-shadow: none; }
+    .reveal h2 { font-size: 56px; font-weight: 700; line-height: 1.2; margin-bottom: 20px; color: #222; text-transform: none; text-shadow: none; }
+    .reveal h3 { font-size: 44px; font-weight: 700; line-height: 1.2; margin-bottom: 16px; color: #222; text-transform: none; text-shadow: none; }
+    .reveal p { margin-bottom: 16px; }
+    .reveal ul, .reveal ol { padding-left: 1.2em; margin-bottom: 16px; }
+    .reveal li { margin-bottom: 8px; }
+    .reveal section { text-align: left; padding: 40px 60px; }
   </style>
 </head>
 <body>

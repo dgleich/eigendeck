@@ -4,6 +4,7 @@ import { SlideSidebar } from './components/SlideSidebar';
 import { SlideEditor } from './components/SlideEditor';
 import { PresentMode } from './components/PresentMode';
 import { AddDemoButton, RemoveDemoButton } from './components/DemoFrame';
+import { NotesPanel } from './components/NotesPanel';
 import { usePresentationStore } from './store/presentation';
 import { saveProject } from './store/fileOps';
 import './App.css';
@@ -47,6 +48,7 @@ function App() {
             )}
           </div>
           <SlideEditor />
+          <NotesPanel />
         </div>
       </div>
     </div>
