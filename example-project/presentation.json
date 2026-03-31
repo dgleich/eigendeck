@@ -1,0 +1,38 @@
+{
+  "title": "Graph Algorithms for HPC",
+  "theme": "white",
+  "slides": [
+    {
+      "id": "slide-001",
+      "type": "text",
+      "content": {
+        "html": "<h1>Graph Algorithms for HPC</h1><p>David F. Gleich — Purdue University</p>"
+      },
+      "notes": "Welcome, introduce the talk outline"
+    },
+    {
+      "id": "slide-002",
+      "type": "mixed",
+      "content": {
+        "html": "<h2>BFS Traversal</h2><p>Interactive demo — click Step to advance</p>",
+        "demo": "demos/bfs-demo.html",
+        "demoPosition": { "x": 80, "y": 200, "width": 800, "height": 400 }
+      },
+      "notes": "Show BFS level-by-level, discuss queue-based implementation"
+    },
+    {
+      "id": "slide-003",
+      "type": "text",
+      "content": {
+        "html": "<h2>Complexity Analysis</h2><p>BFS runs in $O(V + E)$ time and $O(V)$ space.</p><p>For sparse graphs where $E = O(V)$, this is linear.</p>"
+      },
+      "notes": "Emphasize the linear-time property for sparse graphs"
+    }
+  ],
+  "config": {
+    "transition": "slide",
+    "backgroundTransition": "fade",
+    "width": 960,
+    "height": 700
+  }
+}
