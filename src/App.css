@@ -131,6 +131,19 @@
 .project-title {
   font-weight: 600;
   font-size: 14px;
+  cursor: default;
+}
+
+.title-input {
+  font-weight: 600;
+  font-size: 14px;
+  text-align: center;
+  border: 1px solid #93c5fd;
+  border-radius: 4px;
+  padding: 2px 8px;
+  outline: none;
+  width: 300px;
+  background: #fff;
 }
 
 .project-path {

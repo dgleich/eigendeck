@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import {
   openProject,
@@ -21,8 +22,31 @@ const THEMES = [
 ];
 
 export function Toolbar() {
-  const { presentation, isDirty, setPresenting, setTheme, projectPath } =
+  const { presentation, isDirty, setPresenting, setTheme, setTitle, projectPath } =
     usePresentationStore();
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Update window title
+  useEffect(() => {
+    const dirty = isDirty ? ' *' : '';
+    document.title = `${presentation.title}${dirty} — Eigendeck`;
+  }, [presentation.title, isDirty]);
+
+  const startEditingTitle = () => {
+    setTitleDraft(presentation.title);
+    setEditingTitle(true);
+    setTimeout(() => titleInputRef.current?.select(), 0);
+  };
+
+  const finishEditingTitle = () => {
+    const trimmed = titleDraft.trim();
+    if (trimmed && trimmed !== presentation.title) {
+      setTitle(trimmed);
+    }
+    setEditingTitle(false);
+  };
 
   const handleSave = async () => {
     try {
@@ -54,15 +78,34 @@ export function Toolbar() {
         </button>
       </div>
       <div className="toolbar-center">
-        <span className="project-title">
-          {presentation.title}
-          {projectPath && (
-            <span className="project-path" title={projectPath}>
-              {' '}
-              — {projectPath.split('/').pop()}
-            </span>
-          )}
-        </span>
+        {editingTitle ? (
+          <input
+            ref={titleInputRef}
+            className="title-input"
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={finishEditingTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') finishEditingTitle();
+              if (e.key === 'Escape') setEditingTitle(false);
+            }}
+            autoFocus
+          />
+        ) : (
+          <span
+            className="project-title"
+            onDoubleClick={startEditingTitle}
+            title="Double-click to edit title"
+          >
+            {presentation.title}
+            {projectPath && (
+              <span className="project-path" title={projectPath}>
+                {' '}
+                — {projectPath.split('/').pop()}
+              </span>
+            )}
+          </span>
+        )}
       </div>
       <div className="toolbar-right">
         <select
