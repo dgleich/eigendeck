@@ -86,13 +86,16 @@ describe('file operations', () => {
       expect(usePresentationStore.getState().isDirty).toBe(false);
     });
 
-    it('prompts for path when no project is open', async () => {
-      mockSave.mockResolvedValue('/home/user/new/presentation.json');
+    it('prompts for directory when no project is open', async () => {
+      mockOpen.mockResolvedValue('/home/user/new');
+      mockExists.mockResolvedValue(true);
       mockWriteTextFile.mockResolvedValue(undefined);
 
       await saveProject();
 
-      expect(mockSave).toHaveBeenCalled();
+      expect(mockOpen).toHaveBeenCalledWith(
+        expect.objectContaining({ directory: true })
+      );
       expect(usePresentationStore.getState().projectPath).toBe('/home/user/new');
     });
   });

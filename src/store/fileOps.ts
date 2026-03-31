@@ -75,20 +75,33 @@ export async function saveProject(): Promise<void> {
   const store = usePresentationStore.getState();
 
   if (!store.projectPath) {
-    const selected = await save({
-      title: 'Save Presentation',
-      defaultPath: 'presentation.json',
-      filters: [{ name: 'JSON', extensions: ['json'] }],
+    // No project open — ask user to pick a directory
+    const selected = await open({
+      directory: true,
+      title: 'Choose a folder to save this presentation',
     });
     if (!selected) return;
 
-    const projectPath = selected.replace(/[/\\]presentation\.json$/, '') || selected;
+    const projectPath = selected as string;
     store.setProjectPath(projectPath);
+
+    // Create subdirectories if they don't exist
+    try {
+      const demosDir = `${projectPath}/demos`;
+      const imagesDir = `${projectPath}/images`;
+      if (!(await exists(demosDir))) await mkdir(demosDir);
+      if (!(await exists(imagesDir))) await mkdir(imagesDir);
+    } catch {
+      // dirs may already exist
+    }
   }
 
+  const projectPath = usePresentationStore.getState().projectPath;
+  if (!projectPath) return;
+
   try {
-    const jsonPath = `${store.projectPath}/presentation.json`;
-    const content = JSON.stringify(store.presentation, null, 2);
+    const jsonPath = `${projectPath}/presentation.json`;
+    const content = JSON.stringify(usePresentationStore.getState().presentation, null, 2);
     console.log(`Saving to: ${jsonPath}`);
     await writeTextFile(jsonPath, content);
     store.markClean();
