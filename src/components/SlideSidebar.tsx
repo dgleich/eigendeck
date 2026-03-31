@@ -1,9 +1,9 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { usePresentationStore } from '../store/presentation';
 
-const SLIDE_WIDTH = 960;
-const SLIDE_HEIGHT = 700;
-const THUMB_WIDTH = 156; // sidebar width minus padding
+const SLIDE_WIDTH = 1920;
+const SLIDE_HEIGHT = 1080;
+const THUMB_WIDTH = 156;
 const THUMB_SCALE = THUMB_WIDTH / SLIDE_WIDTH;
 const THUMB_HEIGHT = SLIDE_HEIGHT * THUMB_SCALE;
 
@@ -19,23 +19,41 @@ export function SlideSidebar() {
   } = usePresentationStore();
 
   const dragItem = useRef<number | null>(null);
-  const dragOverItem = useRef<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  const handleDragStart = (index: number) => {
+  const handleDragStart = (e: React.DragEvent, index: number) => {
     dragItem.current = index;
+    e.dataTransfer.effectAllowed = 'move';
+    // Make the drag image semi-transparent
+    const el = e.currentTarget as HTMLElement;
+    el.style.opacity = '0.5';
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    (e.currentTarget as HTMLElement).style.opacity = '1';
+    setDragOverIndex(null);
+    dragItem.current = null;
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    dragOverItem.current = index;
+    e.dataTransfer.dropEffect = 'move';
+    if (dragItem.current !== null && dragItem.current !== index) {
+      setDragOverIndex(index);
+    }
   };
 
-  const handleDrop = () => {
-    if (dragItem.current !== null && dragOverItem.current !== null) {
-      moveSlide(dragItem.current, dragOverItem.current);
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (dragItem.current !== null && dragItem.current !== dropIndex) {
+      moveSlide(dragItem.current, dropIndex);
     }
     dragItem.current = null;
-    dragOverItem.current = null;
+    setDragOverIndex(null);
   };
 
   return (
@@ -44,13 +62,14 @@ export function SlideSidebar() {
         {presentation.slides.map((slide, index) => (
           <div
             key={slide.id}
-            className={`slide-thumbnail ${index === currentSlideIndex ? 'active' : ''}`}
+            className={`slide-thumbnail${index === currentSlideIndex ? ' active' : ''}${dragOverIndex === index ? ' drag-over' : ''}`}
             onClick={() => selectSlide(index)}
             draggable
-            onDragStart={() => handleDragStart(index)}
+            onDragStart={(e) => handleDragStart(e, index)}
+            onDragEnd={handleDragEnd}
             onDragOver={(e) => handleDragOver(e, index)}
-            onDrop={handleDrop}
-            style={{ height: THUMB_HEIGHT + 24 }}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, index)}
           >
             <span className="slide-number">{index + 1}</span>
             <div

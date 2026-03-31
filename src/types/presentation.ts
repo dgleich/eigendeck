@@ -56,8 +56,8 @@ export function createDefaultPresentation(): Presentation {
     config: {
       transition: 'slide',
       backgroundTransition: 'fade',
-      width: 960,
-      height: 700,
+      width: 1920,
+      height: 1080,
     },
   };
 }

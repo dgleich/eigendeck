@@ -1,13 +1,17 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Heading from '@tiptap/extension-heading';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { FontSize } from './FontSizeExtension';
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { DemoFrame } from './DemoFrame';
 import { ImageElement } from './ImageElement';
 
-const SLIDE_WIDTH = 960;
-const SLIDE_HEIGHT = 700;
+export const SLIDE_WIDTH = 1920;
+export const SLIDE_HEIGHT = 1080;
+
+const FONT_SIZES = ['16px', '20px', '24px', '28px', '32px', '36px', '40px', '48px', '56px', '64px', '72px'];
 
 export function SlideEditor() {
   const { presentation, currentSlideIndex, updateSlideContent } =
@@ -21,6 +25,8 @@ export function SlideEditor() {
     extensions: [
       StarterKit.configure({ heading: false }),
       Heading.configure({ levels: [1, 2, 3] }),
+      TextStyle,
+      FontSize,
     ],
     content: slide?.content.html || '',
     onUpdate: ({ editor }) => {
@@ -28,7 +34,6 @@ export function SlideEditor() {
     },
   });
 
-  // Sync editor content when slide changes
   useEffect(() => {
     if (editor && slide) {
       const currentContent = editor.getHTML();
@@ -38,7 +43,6 @@ export function SlideEditor() {
     }
   }, [currentSlideIndex, editor]);
 
-  // Compute scale to fit the slide canvas in the available space
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -112,6 +116,25 @@ export function SlideEditor() {
         >
           List
         </button>
+        <span className="divider" />
+        <select
+          className="font-size-picker"
+          value=""
+          onChange={(e) => {
+            if (e.target.value) {
+              editor?.chain().focus().setFontSize(e.target.value).run();
+            }
+          }}
+        >
+          <option value="" disabled>
+            Size
+          </option>
+          {FONT_SIZES.map((s) => (
+            <option key={s} value={s}>
+              {parseInt(s)}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="slide-canvas-container" ref={containerRef}>
         <div

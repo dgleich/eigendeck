@@ -169,17 +169,18 @@ export async function exportPresentation(): Promise<void> {
     @import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&display=swap');
     .reveal {
       font-family: 'PT Sans', sans-serif;
-      font-size: 42px;
-      line-height: 1.3;
+      font-size: 32px;
+      line-height: 1.4;
       color: #222;
     }
-    .reveal h1 { font-size: 72px; font-weight: 700; line-height: 1.2; margin-bottom: 24px; color: #222; text-transform: none; text-shadow: none; }
-    .reveal h2 { font-size: 56px; font-weight: 700; line-height: 1.2; margin-bottom: 20px; color: #222; text-transform: none; text-shadow: none; }
-    .reveal h3 { font-size: 44px; font-weight: 700; line-height: 1.2; margin-bottom: 16px; color: #222; text-transform: none; text-shadow: none; }
+    .reveal .slides { text-align: left; }
+    .reveal h1 { font-size: 56px; font-weight: 700; line-height: 1.2; margin-bottom: 24px; color: #222; text-transform: none; text-shadow: none; }
+    .reveal h2 { font-size: 44px; font-weight: 700; line-height: 1.2; margin-bottom: 20px; color: #222; text-transform: none; text-shadow: none; }
+    .reveal h3 { font-size: 36px; font-weight: 700; line-height: 1.2; margin-bottom: 16px; color: #222; text-transform: none; text-shadow: none; }
     .reveal p { margin-bottom: 16px; }
     .reveal ul, .reveal ol { padding-left: 1.2em; margin-bottom: 16px; }
     .reveal li { margin-bottom: 8px; }
-    .reveal section { text-align: left; padding: 40px 60px; }
+    .reveal section { text-align: left; padding: 60px 80px; }
   </style>
 </head>
 <body>

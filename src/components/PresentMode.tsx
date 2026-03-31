@@ -2,22 +2,27 @@ import { useEffect, useRef } from 'react';
 import Reveal from 'reveal.js';
 import RevealNotes from 'reveal.js/plugin/notes/notes.esm.js';
 import 'reveal.js/dist/reveal.css';
-import 'reveal.js/dist/theme/white.css';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
+
+// We load the theme CSS dynamically based on the user's selection
+// instead of importing white.css statically (which bleeds into the app)
 
 // Override reveal.js theme styles to match our editor exactly
 const SLIDE_OVERRIDE_CSS = `
   .reveal {
     font-family: 'PT Sans', sans-serif;
-    font-size: 42px;
+    font-size: 32px;
     font-weight: normal;
-    line-height: 1.3;
+    line-height: 1.4;
     color: #222;
+  }
+  .reveal .slides {
+    text-align: left;
   }
   .reveal h1 {
     font-family: 'PT Sans', sans-serif;
-    font-size: 72px;
+    font-size: 56px;
     font-weight: 700;
     line-height: 1.2;
     margin-bottom: 24px;
@@ -27,7 +32,7 @@ const SLIDE_OVERRIDE_CSS = `
   }
   .reveal h2 {
     font-family: 'PT Sans', sans-serif;
-    font-size: 56px;
+    font-size: 44px;
     font-weight: 700;
     line-height: 1.2;
     margin-bottom: 20px;
@@ -37,7 +42,7 @@ const SLIDE_OVERRIDE_CSS = `
   }
   .reveal h3 {
     font-family: 'PT Sans', sans-serif;
-    font-size: 44px;
+    font-size: 36px;
     font-weight: 700;
     line-height: 1.2;
     margin-bottom: 16px;
@@ -57,7 +62,7 @@ const SLIDE_OVERRIDE_CSS = `
   }
   .reveal section {
     text-align: left;
-    padding: 40px 60px;
+    padding: 60px 80px;
   }
 `;
 
@@ -67,11 +72,22 @@ export function PresentMode() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const revealRef = useRef<any>(null);
   const styleRef = useRef<HTMLStyleElement | null>(null);
+  const themeRef = useRef<HTMLLinkElement | null>(null);
 
   useEffect(() => {
     if (!deckRef.current) return;
 
-    // Inject override styles
+    // Load reveal.js theme CSS dynamically
+    const themeLink = document.createElement('link');
+    themeLink.rel = 'stylesheet';
+    themeLink.href = new URL(
+      `../../node_modules/reveal.js/dist/theme/${presentation.theme}.css`,
+      import.meta.url
+    ).href;
+    document.head.appendChild(themeLink);
+    themeRef.current = themeLink;
+
+    // Inject override styles (after theme so they take precedence)
     const style = document.createElement('style');
     style.textContent = SLIDE_OVERRIDE_CSS;
     document.head.appendChild(style);
@@ -108,6 +124,10 @@ export function PresentMode() {
       if (styleRef.current) {
         document.head.removeChild(styleRef.current);
         styleRef.current = null;
+      }
+      if (themeRef.current) {
+        document.head.removeChild(themeRef.current);
+        themeRef.current = null;
       }
     };
   }, []);

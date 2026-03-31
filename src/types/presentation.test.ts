@@ -12,8 +12,8 @@ describe('presentation types', () => {
     expect(pres.slides).toHaveLength(1);
     expect(pres.slides[0].type).toBe('text');
     expect(pres.slides[0].id).toBeTruthy();
-    expect(pres.config.width).toBe(960);
-    expect(pres.config.height).toBe(700);
+    expect(pres.config.width).toBe(1920);
+    expect(pres.config.height).toBe(1080);
   });
 
   it('createBlankSlide generates unique ids', () => {
