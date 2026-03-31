@@ -259,6 +259,16 @@ body,
   opacity: 0.4;
 }
 
+/* Prevent text selection while dragging slides */
+.sidebar-slides.is-dragging {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sidebar-slides.is-dragging * {
+  cursor: grabbing !important;
+}
+
 .slide-number {
   display: block;
   font-size: 10px;

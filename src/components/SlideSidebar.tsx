@@ -54,7 +54,7 @@ export function SlideSidebar() {
   return (
     <div className="sidebar">
       <div
-        className="sidebar-slides"
+        className={`sidebar-slides${dragging !== null ? ' is-dragging' : ''}`}
         ref={containerRef}
         onPointerMove={handleContainerPointerMove}
         onPointerUp={handleContainerPointerUp}
