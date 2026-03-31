@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import Reveal from 'reveal.js';
 import 'reveal.js/dist/reveal.css';
 import 'reveal.js/dist/theme/white.css';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 
 export function PresentMode() {
@@ -52,7 +53,8 @@ export function PresentMode() {
         width: 800,
         height: 400,
       };
-      html += `<iframe src="${projectPath}/${slide.content.demo}" sandbox="allow-scripts allow-same-origin" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;border:none;"></iframe>`;
+      const demoSrc = convertFileSrc(`${projectPath}/${slide.content.demo}`);
+      html += `<iframe src="${demoSrc}" sandbox="allow-scripts allow-same-origin" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;border:none;"></iframe>`;
     }
 
     if (slide.notes) {

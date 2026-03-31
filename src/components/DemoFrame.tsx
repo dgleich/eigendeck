@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { open } from '@tauri-apps/plugin-dialog';
 import type { DemoPosition } from '../types/presentation';
@@ -19,11 +20,17 @@ export function DemoFrame({ demoPath, position }: DemoFrameProps) {
 
   const pos = position || { x: 0, y: 200, width: 800, height: 400 };
 
-  // Build the src URL for the iframe
-  // In Tauri, we can use convertFileSrc or just a file:// path
-  const src = projectPath
-    ? `${projectPath}/${demoPath}?r=${reloadKey}`
-    : undefined;
+  // Use Tauri's asset protocol to load local files in the webview
+  let src: string | undefined;
+  if (projectPath) {
+    const fullPath = `${projectPath}/${demoPath}`;
+    try {
+      src = convertFileSrc(fullPath) + `?r=${reloadKey}`;
+    } catch {
+      // Fallback for dev/non-Tauri environments
+      src = `${fullPath}?r=${reloadKey}`;
+    }
+  }
 
   return (
     <div
@@ -67,7 +74,6 @@ export function AddDemoButton() {
     });
     if (!selected) return;
 
-    // Make the path relative to the project
     const fullPath = selected as string;
     const relativePath = fullPath.startsWith(projectPath)
       ? fullPath.slice(projectPath.length + 1)
