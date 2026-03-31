@@ -1,7 +1,19 @@
 # Building Eigendeck on macOS
 
 Instructions for a Claude Code instance running on a Mac to build and test Eigendeck.
-This assumes you're working alongside a Linux container that does the main development.
+A Linux Colima container does the main development in this same directory.
+
+## Shared directory
+
+This directory is shared between the Mac and a Linux Colima container via virtiofs.
+The source files are the same on both sides. **You do not need to clone anything.**
+
+### Platform-specific files
+
+`node_modules/` contains platform-native binaries. Running `npm install` on Mac
+overwrites the Linux versions and vice versa. This is fine — whichever side needs
+to build just runs `npm install` again. The `src-tauri/target/` directory handles
+multiple platforms automatically (Cargo uses separate target directories).
 
 ## One-time setup
 
@@ -11,22 +23,21 @@ This assumes you're working alongside a Linux container that does the main devel
 # Xcode command line tools (if not already installed)
 xcode-select --install
 
-# Install Rust
+# Install Rust (if not already installed)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
 
 # Install Node.js via nvm (if not already installed)
+# Check first: node --version (need v20+)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 source ~/.zshrc
 nvm install --lts
 ```
 
-### 2. Clone the repo
+### 2. Install dependencies
 
 ```bash
-cd ~/Projects  # or wherever you keep repos
-git clone git@github.com:dgleich/eigendeck.git
-cd eigendeck
+cd /path/to/this/directory   # the same dir as this file
 npm install
 ```
 
@@ -42,31 +53,22 @@ npm run tauri build
 
 The app window should open automatically in dev mode.
 
-## Pulling changes from the Linux container
-
-The Linux container is the primary development environment. To get its changes:
-
-```bash
-git pull origin main
-npm install          # only needed if package.json changed
-```
-
-## IMPORTANT: Do not overwrite build artifacts or generated files
+## IMPORTANT: Do not overwrite source files
 
 The Linux container handles code changes. On the Mac, you should:
 
 ### DO:
-- Pull and build
+- Run `npm install` (this is expected and safe)
 - Run `npm run tauri dev` to test visually
 - Report bugs or visual issues back to the user
 - Test file dialogs, present mode, export
 - Build release binaries with `npm run tauri build`
+- Push to GitHub with `git push -u origin main` if the user asks
 
 ### DO NOT:
 - Edit source files in `src/` or `src-tauri/src/` (the Linux container owns these)
 - Run `npm update` or change `package-lock.json`
-- Commit changes (unless explicitly asked)
-- Delete or modify `node_modules/`, `dist/`, or `src-tauri/target/`
+- Commit changes (unless explicitly asked by the user)
 
 ### If you need to fix something to get it building:
 1. Note what's broken and tell the user — they'll fix it in the Linux container
@@ -107,7 +109,7 @@ lsof -i :1420   # find what's using it
 kill <PID>       # kill it
 ```
 
-### Cargo build errors after git pull
+### Cargo build errors
 ```bash
 cd src-tauri && cargo clean && cd ..
 npm run tauri dev
