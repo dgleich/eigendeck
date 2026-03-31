@@ -4,6 +4,7 @@ import { SlideSidebar } from './components/SlideSidebar';
 import { SlideEditor } from './components/SlideEditor';
 import { PresentMode } from './components/PresentMode';
 import { AddDemoButton, RemoveDemoButton } from './components/DemoFrame';
+import { AddImageButton, RemoveImageButton } from './components/ImageElement';
 import { NotesPanel } from './components/NotesPanel';
 import { usePresentationStore } from './store/presentation';
 import { saveProject } from './store/fileOps';
@@ -43,8 +44,13 @@ function App() {
           <div className="editor-actions">
             <AddDemoButton />
             <RemoveDemoButton />
+            <AddImageButton />
+            <RemoveImageButton />
             {slide?.content.demo && (
               <span className="demo-label">Demo: {slide.content.demo}</span>
+            )}
+            {slide?.content.image && (
+              <span className="demo-label">Image: {slide.content.image}</span>
             )}
           </div>
           <SlideEditor />

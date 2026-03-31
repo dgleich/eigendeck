@@ -4,6 +4,7 @@ import Heading from '@tiptap/extension-heading';
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { DemoFrame } from './DemoFrame';
+import { ImageElement } from './ImageElement';
 
 const SLIDE_WIDTH = 960;
 const SLIDE_HEIGHT = 700;
@@ -127,6 +128,12 @@ export function SlideEditor() {
             <DemoFrame
               demoPath={slide.content.demo}
               position={slide.content.demoPosition}
+            />
+          )}
+          {slide.content.image && (
+            <ImageElement
+              imagePath={slide.content.image}
+              position={slide.content.imagePosition}
             />
           )}
         </div>

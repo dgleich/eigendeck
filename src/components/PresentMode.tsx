@@ -126,6 +126,17 @@ export function PresentMode() {
       html += `<iframe src="${demoSrc}" sandbox="allow-scripts allow-same-origin" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;border:none;"></iframe>`;
     }
 
+    if (slide.content.image && projectPath) {
+      const pos = slide.content.imagePosition || {
+        x: 100,
+        y: 150,
+        width: 700,
+        height: 450,
+      };
+      const imgSrc = convertFileSrc(`${projectPath}/${slide.content.image}`);
+      html += `<img src="${imgSrc}" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;object-fit:contain;" />`;
+    }
+
     if (slide.notes) {
       html += `<aside class="notes">${slide.notes}</aside>`;
     }
