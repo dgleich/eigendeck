@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import { Toolbar } from './components/Toolbar';
 import { SlideSidebar } from './components/SlideSidebar';
 import { SlideEditor } from './components/SlideEditor';
@@ -7,7 +8,12 @@ import { AddDemoButton, RemoveDemoButton } from './components/DemoFrame';
 import { AddImageButton, RemoveImageButton } from './components/ImageElement';
 import { NotesPanel } from './components/NotesPanel';
 import { usePresentationStore } from './store/presentation';
-import { saveProject } from './store/fileOps';
+import {
+  saveProject,
+  openProject,
+  createProject,
+  exportPresentation,
+} from './store/fileOps';
 import './App.css';
 
 function App() {
@@ -25,6 +31,7 @@ function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
@@ -38,6 +45,32 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Native menu event handler
+  useEffect(() => {
+    const unlisten = listen<string>('menu-event', (event) => {
+      switch (event.payload) {
+        case 'new-project':
+          createProject();
+          break;
+        case 'open-project':
+          openProject();
+          break;
+        case 'save':
+          saveProject();
+          break;
+        case 'export':
+          exportPresentation();
+          break;
+        case 'present':
+          usePresentationStore.getState().setPresenting(true);
+          break;
+      }
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
   }, []);
 
   if (isPresenting) {

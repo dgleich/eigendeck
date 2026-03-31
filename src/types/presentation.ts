@@ -12,6 +12,8 @@ export interface ImagePosition {
   height: number;
 }
 
+export type SlideLayout = 'default' | 'centered' | 'two-column';
+
 export interface SlideContent {
   html: string;
   demo?: string;
@@ -23,6 +25,7 @@ export interface SlideContent {
 export interface Slide {
   id: string;
   type: 'text' | 'mixed' | 'image';
+  layout?: SlideLayout;
   content: SlideContent;
   notes: string;
 }
@@ -32,6 +35,7 @@ export interface PresentationConfig {
   backgroundTransition: string;
   width: number;
   height: number;
+  showSlideNumber?: boolean;
 }
 
 export interface Presentation {
@@ -49,6 +53,7 @@ export function createDefaultPresentation(): Presentation {
       {
         id: crypto.randomUUID(),
         type: 'text',
+        layout: 'centered',
         content: { html: '<h1>Untitled Presentation</h1>' },
         notes: '',
       },
@@ -58,6 +63,7 @@ export function createDefaultPresentation(): Presentation {
       backgroundTransition: 'fade',
       width: 1920,
       height: 1080,
+      showSlideNumber: true,
     },
   };
 }
@@ -66,6 +72,7 @@ export function createBlankSlide(): Slide {
   return {
     id: crypto.randomUUID(),
     type: 'text',
+    layout: 'default',
     content: { html: '<h2>New Slide</h2>' },
     notes: '',
   };

@@ -167,7 +167,8 @@ export async function exportPresentation(): Promise<void> {
       const notesHtml = slide.notes
         ? `\n<aside class="notes">${slide.notes}</aside>`
         : '';
-      sections.push(`<section>${sectionContent}${notesHtml}</section>`);
+      const layoutAttr = slide.layout ? ` data-layout="${slide.layout}"` : '';
+      sections.push(`<section${layoutAttr}>${sectionContent}${notesHtml}</section>`);
     }
 
     const html = `<!DOCTYPE html>
@@ -194,6 +195,9 @@ export async function exportPresentation(): Promise<void> {
     .reveal ul, .reveal ol { padding-left: 1.2em; margin-bottom: 16px; }
     .reveal li { margin-bottom: 8px; }
     .reveal section { text-align: left; padding: 60px 80px; }
+    .reveal section[data-layout="centered"] { display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; }
+    .reveal section[data-layout="two-column"] { column-count:2; column-gap:80px; }
+    .reveal .slide-number { font-family:'PT Sans',sans-serif; font-size:24px; color:#999; }
   </style>
 </head>
 <body>
@@ -212,6 +216,7 @@ ${sections.map((s) => '      ' + s).join('\n')}
       width: ${presentation.config.width},
       height: ${presentation.config.height},
       center: false,
+      slideNumber: ${presentation.config.showSlideNumber !== false},
       plugins: [RevealNotes],
     });
   </script>

@@ -6,15 +6,22 @@ import { FontSize } from './FontSizeExtension';
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { DemoFrame } from './DemoFrame';
-import { ImageElement } from './ImageElement';
+import { DraggableImage } from './ImageElement';
+import type { SlideLayout } from '../types/presentation';
 
 export const SLIDE_WIDTH = 1920;
 export const SLIDE_HEIGHT = 1080;
 
 const FONT_SIZES = ['16px', '20px', '24px', '28px', '32px', '36px', '40px', '48px', '56px', '64px', '72px'];
 
+const LAYOUTS: { id: SlideLayout; label: string }[] = [
+  { id: 'default', label: 'Default' },
+  { id: 'centered', label: 'Centered' },
+  { id: 'two-column', label: '2 Column' },
+];
+
 export function SlideEditor() {
-  const { presentation, currentSlideIndex, updateSlideContent } =
+  const { presentation, currentSlideIndex, updateSlideContent, updateSlide, projectPath } =
     usePresentationStore();
 
   const slide = presentation.slides[currentSlideIndex];
@@ -61,6 +68,50 @@ export function SlideEditor() {
     return () => observer.disconnect();
   }, []);
 
+  // Handle Cmd+V / Ctrl+V paste for images
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          if (!blob) continue;
+
+          // Convert to base64 data URL for now (works without a project path)
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result as string;
+            // If we have a project path, save to images/ folder
+            if (projectPath) {
+              saveImageFromBlob(blob, projectPath).then((relativePath) => {
+                if (relativePath) {
+                  updateSlideContent(currentSlideIndex, {
+                    image: relativePath,
+                    imagePosition: { x: 360, y: 200, width: 1200, height: 680 },
+                  });
+                }
+              });
+            } else {
+              // No project path — store as data URL temporarily
+              updateSlideContent(currentSlideIndex, {
+                image: dataUrl,
+                imagePosition: { x: 360, y: 200, width: 1200, height: 680 },
+              });
+            }
+          };
+          reader.readAsDataURL(blob);
+          break;
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [currentSlideIndex, projectPath, updateSlideContent]);
+
   const setHeading = useCallback(
     (level: 1 | 2 | 3) => {
       editor?.chain().focus().toggleHeading({ level }).run();
@@ -70,30 +121,40 @@ export function SlideEditor() {
 
   if (!slide) return null;
 
+  const layout = slide.layout || 'default';
+  const layoutClass = `slide-layout-${layout}`;
+
   return (
     <div className="slide-editor">
       <div className="editor-toolbar">
+        <select
+          className="layout-picker"
+          value={layout}
+          onChange={(e) => updateSlide(currentSlideIndex, { layout: e.target.value as SlideLayout })}
+          title="Slide layout"
+        >
+          {LAYOUTS.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+        <span className="divider" />
         <button
           onClick={() => setHeading(1)}
-          className={
-            editor?.isActive('heading', { level: 1 }) ? 'active' : ''
-          }
+          className={editor?.isActive('heading', { level: 1 }) ? 'active' : ''}
         >
           H1
         </button>
         <button
           onClick={() => setHeading(2)}
-          className={
-            editor?.isActive('heading', { level: 2 }) ? 'active' : ''
-          }
+          className={editor?.isActive('heading', { level: 2 }) ? 'active' : ''}
         >
           H2
         </button>
         <button
           onClick={() => setHeading(3)}
-          className={
-            editor?.isActive('heading', { level: 3 }) ? 'active' : ''
-          }
+          className={editor?.isActive('heading', { level: 3 }) ? 'active' : ''}
         >
           H3
         </button>
@@ -138,7 +199,7 @@ export function SlideEditor() {
       </div>
       <div className="slide-canvas-container" ref={containerRef}>
         <div
-          className="slide-canvas"
+          className={`slide-canvas ${layoutClass}`}
           style={{
             width: SLIDE_WIDTH,
             height: SLIDE_HEIGHT,
@@ -154,13 +215,39 @@ export function SlideEditor() {
             />
           )}
           {slide.content.image && (
-            <ImageElement
+            <DraggableImage
               imagePath={slide.content.image}
               position={slide.content.imagePosition}
+              scale={scale}
+              onPositionChange={(pos) =>
+                updateSlideContent(currentSlideIndex, { imagePosition: pos })
+              }
             />
           )}
+          <div className="slide-number-display">
+            {currentSlideIndex + 1}
+          </div>
         </div>
       </div>
     </div>
   );
+}
+
+async function saveImageFromBlob(blob: File, projectPath: string): Promise<string | null> {
+  try {
+    const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
+    const imagesDir = `${projectPath}/images`;
+    if (!(await exists(imagesDir))) await mkdir(imagesDir);
+
+    const ext = blob.type.split('/')[1] || 'png';
+    const fileName = `pasted-${Date.now()}.${ext}`;
+    const destPath = `${imagesDir}/${fileName}`;
+
+    const buffer = await blob.arrayBuffer();
+    await writeFile(destPath, new Uint8Array(buffer));
+    return `images/${fileName}`;
+  } catch (e) {
+    console.error('Failed to save pasted image:', e);
+    return null;
+  }
 }

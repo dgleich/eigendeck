@@ -4,6 +4,7 @@ import 'reveal.js/dist/reveal.css';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { SpeakerPanel } from './SpeakerView';
+import { THEME_CSS } from './revealThemes';
 
 // Override reveal.js theme styles to match our editor exactly
 const SLIDE_OVERRIDE_CSS = `
@@ -61,6 +62,22 @@ const SLIDE_OVERRIDE_CSS = `
     text-align: left;
     padding: 60px 80px;
   }
+  .reveal section[data-layout="centered"] {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .reveal section[data-layout="two-column"] {
+    column-count: 2;
+    column-gap: 80px;
+  }
+  .reveal .slide-number {
+    font-family: 'PT Sans', sans-serif;
+    font-size: 24px;
+    color: #999;
+  }
 `;
 
 export function PresentMode() {
@@ -70,21 +87,18 @@ export function PresentMode() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const revealRef = useRef<any>(null);
   const styleRef = useRef<HTMLStyleElement | null>(null);
-  const themeRef = useRef<HTMLLinkElement | null>(null);
+  const themeStyleRef = useRef<HTMLStyleElement | null>(null);
   const [showSpeaker, setShowSpeaker] = useState(false);
 
   useEffect(() => {
     if (!deckRef.current) return;
 
-    // Load reveal.js theme CSS dynamically
-    const themeLink = document.createElement('link');
-    themeLink.rel = 'stylesheet';
-    themeLink.href = new URL(
-      `../../node_modules/reveal.js/dist/theme/${presentation.theme}.css`,
-      import.meta.url
-    ).href;
-    document.head.appendChild(themeLink);
-    themeRef.current = themeLink;
+    // Inject theme CSS as a style tag (works in both dev and production)
+    const themeCss = THEME_CSS[presentation.theme] || THEME_CSS.white;
+    const themeStyle = document.createElement('style');
+    themeStyle.textContent = themeCss;
+    document.head.appendChild(themeStyle);
+    themeStyleRef.current = themeStyle;
 
     // Inject override styles (after theme so they take precedence)
     const style = document.createElement('style');
@@ -100,6 +114,7 @@ export function PresentMode() {
       height: presentation.config.height,
       embedded: false,
       center: false,
+      slideNumber: presentation.config.showSlideNumber !== false,
     });
 
     deck.initialize().then(() => {
@@ -138,9 +153,9 @@ export function PresentMode() {
         document.head.removeChild(styleRef.current);
         styleRef.current = null;
       }
-      if (themeRef.current) {
-        document.head.removeChild(themeRef.current);
-        themeRef.current = null;
+      if (themeStyleRef.current) {
+        document.head.removeChild(themeStyleRef.current);
+        themeStyleRef.current = null;
       }
     };
   }, []);
@@ -184,6 +199,7 @@ export function PresentMode() {
           {presentation.slides.map((slide) => (
             <section
               key={slide.id}
+              data-layout={slide.layout || 'default'}
               dangerouslySetInnerHTML={{ __html: buildSlideHtml(slide) }}
             />
           ))}
