@@ -23,6 +23,9 @@ jobs:
           - platform: 'ubuntu-22.04'
             args: ''
             label: 'Linux-x64'
+          - platform: 'windows-latest'
+            args: ''
+            label: 'Windows-x64'
 
     runs-on: ${{ matrix.platform }}
 
