@@ -1,4 +1,4 @@
-import { open, save } from '@tauri-apps/plugin-dialog';
+import { open, save, message } from '@tauri-apps/plugin-dialog';
 import {
   readTextFile,
   writeTextFile,
@@ -11,6 +11,10 @@ import {
 } from '../types/presentation';
 import { usePresentationStore } from './presentation';
 
+async function showError(msg: string) {
+  await message(msg, { title: 'Error', kind: 'error' });
+}
+
 export async function openProject(): Promise<void> {
   const selected = await open({
     directory: true,
@@ -21,16 +25,21 @@ export async function openProject(): Promise<void> {
   const projectPath = selected as string;
   const jsonPath = `${projectPath}/presentation.json`;
 
-  if (!(await exists(jsonPath))) {
-    throw new Error('No presentation.json found in selected directory');
+  try {
+    if (!(await exists(jsonPath))) {
+      await showError('No presentation.json found in selected directory.');
+      return;
+    }
+
+    const content = await readTextFile(jsonPath);
+    const presentation: Presentation = JSON.parse(content);
+
+    const store = usePresentationStore.getState();
+    store.setProjectPath(projectPath);
+    store.setPresentation(presentation);
+  } catch (e) {
+    await showError(`Failed to open project: ${e}`);
   }
-
-  const content = await readTextFile(jsonPath);
-  const presentation: Presentation = JSON.parse(content);
-
-  const store = usePresentationStore.getState();
-  store.setProjectPath(projectPath);
-  store.setPresentation(presentation);
 }
 
 export async function createProject(): Promise<void> {
@@ -43,27 +52,29 @@ export async function createProject(): Promise<void> {
   const projectPath = selected as string;
   const presentation = createDefaultPresentation();
 
-  // Create subdirectories
-  const demosDir = `${projectPath}/demos`;
-  const imagesDir = `${projectPath}/images`;
-  if (!(await exists(demosDir))) await mkdir(demosDir);
-  if (!(await exists(imagesDir))) await mkdir(imagesDir);
+  try {
+    const demosDir = `${projectPath}/demos`;
+    const imagesDir = `${projectPath}/images`;
+    if (!(await exists(demosDir))) await mkdir(demosDir);
+    if (!(await exists(imagesDir))) await mkdir(imagesDir);
 
-  // Write presentation.json
-  await writeTextFile(
-    `${projectPath}/presentation.json`,
-    JSON.stringify(presentation, null, 2)
-  );
+    await writeTextFile(
+      `${projectPath}/presentation.json`,
+      JSON.stringify(presentation, null, 2)
+    );
 
-  const store = usePresentationStore.getState();
-  store.setProjectPath(projectPath);
-  store.setPresentation(presentation);
+    const store = usePresentationStore.getState();
+    store.setProjectPath(projectPath);
+    store.setPresentation(presentation);
+  } catch (e) {
+    await showError(`Failed to create project: ${e}`);
+  }
 }
 
 export async function saveProject(): Promise<void> {
   const store = usePresentationStore.getState();
+
   if (!store.projectPath) {
-    // No project path — ask where to save
     const selected = await save({
       title: 'Save Presentation',
       defaultPath: 'presentation.json',
@@ -71,17 +82,21 @@ export async function saveProject(): Promise<void> {
     });
     if (!selected) return;
 
-    // Derive project path from selected file
-    const projectPath = selected.replace(/\/presentation\.json$/, '');
+    const projectPath = selected.replace(/[/\\]presentation\.json$/, '') || selected;
     store.setProjectPath(projectPath);
   }
 
-  const jsonPath = `${store.projectPath}/presentation.json`;
-  await writeTextFile(
-    jsonPath,
-    JSON.stringify(store.presentation, null, 2)
-  );
-  store.markClean();
+  try {
+    const jsonPath = `${store.projectPath}/presentation.json`;
+    const content = JSON.stringify(store.presentation, null, 2);
+    console.log(`Saving to: ${jsonPath}`);
+    await writeTextFile(jsonPath, content);
+    store.markClean();
+    console.log('Save successful');
+  } catch (e) {
+    console.error('Save failed:', e);
+    await showError(`Failed to save: ${e}`);
+  }
 }
 
 export async function exportPresentation(): Promise<void> {
@@ -95,55 +110,54 @@ export async function exportPresentation(): Promise<void> {
   });
   if (!selected) return;
 
-  const sections: string[] = [];
+  try {
+    const sections: string[] = [];
 
-  for (const slide of presentation.slides) {
-    let sectionContent = slide.content.html || '';
+    for (const slide of presentation.slides) {
+      let sectionContent = slide.content.html || '';
 
-    // Inline demo if present
-    if (slide.content.demo && projectPath) {
-      try {
-        const demoPath = `${projectPath}/${slide.content.demo}`;
-        const demoHtml = await readTextFile(demoPath);
-        const escaped = demoHtml
-          .replace(/&/g, '&amp;')
-          .replace(/"/g, '&quot;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
-        const pos = slide.content.demoPosition || {
-          x: 0,
-          y: 200,
-          width: 800,
-          height: 400,
-        };
-        sectionContent += `\n<iframe srcdoc="${escaped}" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;border:none;" sandbox="allow-scripts"></iframe>`;
-      } catch {
-        sectionContent += '\n<!-- demo file not found -->';
+      if (slide.content.demo && projectPath) {
+        try {
+          const demoPath = `${projectPath}/${slide.content.demo}`;
+          const demoHtml = await readTextFile(demoPath);
+          const escaped = demoHtml
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+          const pos = slide.content.demoPosition || {
+            x: 0,
+            y: 200,
+            width: 800,
+            height: 400,
+          };
+          sectionContent += `\n<iframe srcdoc="${escaped}" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;border:none;" sandbox="allow-scripts"></iframe>`;
+        } catch {
+          sectionContent += '\n<!-- demo file not found -->';
+        }
       }
+
+      if (slide.content.image && projectPath) {
+        try {
+          const pos = slide.content.imagePosition || {
+            x: 100,
+            y: 150,
+            width: 700,
+            height: 450,
+          };
+          sectionContent += `\n<img src="${slide.content.image}" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;" />`;
+        } catch {
+          sectionContent += '\n<!-- image not found -->';
+        }
+      }
+
+      const notesHtml = slide.notes
+        ? `\n<aside class="notes">${slide.notes}</aside>`
+        : '';
+      sections.push(`<section>${sectionContent}${notesHtml}</section>`);
     }
 
-    // Inline image if present
-    if (slide.content.image && projectPath) {
-      try {
-        const pos = slide.content.imagePosition || {
-          x: 100,
-          y: 150,
-          width: 700,
-          height: 450,
-        };
-        sectionContent += `\n<img src="${slide.content.image}" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;" />`;
-      } catch {
-        sectionContent += '\n<!-- image not found -->';
-      }
-    }
-
-    const notesHtml = slide.notes
-      ? `\n<aside class="notes">${slide.notes}</aside>`
-      : '';
-    sections.push(`<section>${sectionContent}${notesHtml}</section>`);
-  }
-
-  const html = `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -175,5 +189,8 @@ ${sections.map((s) => '      ' + s).join('\n')}
 </body>
 </html>`;
 
-  await writeTextFile(selected, html);
+    await writeTextFile(selected, html);
+  } catch (e) {
+    await showError(`Failed to export: ${e}`);
+  }
 }

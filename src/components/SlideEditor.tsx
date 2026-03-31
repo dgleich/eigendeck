@@ -1,15 +1,20 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Heading from '@tiptap/extension-heading';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { DemoFrame } from './DemoFrame';
+
+const SLIDE_WIDTH = 960;
+const SLIDE_HEIGHT = 700;
 
 export function SlideEditor() {
   const { presentation, currentSlideIndex, updateSlideContent } =
     usePresentationStore();
 
   const slide = presentation.slides[currentSlideIndex];
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
 
   const editor = useEditor({
     extensions: [
@@ -31,6 +36,25 @@ export function SlideEditor() {
       }
     }
   }, [currentSlideIndex, editor]);
+
+  // Compute scale to fit the slide canvas in the available space
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        const padding = 32;
+        const availW = width - padding;
+        const availH = height - padding;
+        const s = Math.min(availW / SLIDE_WIDTH, availH / SLIDE_HEIGHT, 1);
+        setScale(s);
+      }
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   const setHeading = useCallback(
     (level: 1 | 2 | 3) => {
@@ -88,14 +112,24 @@ export function SlideEditor() {
           List
         </button>
       </div>
-      <div className="slide-canvas" style={{ fontFamily: "'PT Sans', sans-serif" }}>
-        <EditorContent editor={editor} className="editor-content" />
-        {slide.content.demo && (
-          <DemoFrame
-            demoPath={slide.content.demo}
-            position={slide.content.demoPosition}
-          />
-        )}
+      <div className="slide-canvas-container" ref={containerRef}>
+        <div
+          className="slide-canvas"
+          style={{
+            width: SLIDE_WIDTH,
+            height: SLIDE_HEIGHT,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top center',
+          }}
+        >
+          <EditorContent editor={editor} className="editor-content" />
+          {slide.content.demo && (
+            <DemoFrame
+              demoPath={slide.content.demo}
+              position={slide.content.demoPosition}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

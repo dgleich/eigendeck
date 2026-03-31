@@ -35,7 +35,68 @@
   box-sizing: border-box;
 }
 
-/* App layout */
+/* ============================================
+   Slide content styles — shared between editor
+   canvas, thumbnails, and export. These match
+   reveal.js "white" theme defaults.
+   ============================================ */
+.slide-content-styles {
+  font-family: 'PT Sans', sans-serif;
+  font-size: 42px;
+  font-weight: normal;
+  line-height: 1.3;
+  color: #222;
+  padding: 40px 60px;
+}
+
+.slide-content-styles h1 {
+  font-family: 'PT Sans', sans-serif;
+  font-size: 72px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 24px;
+  color: #222;
+}
+
+.slide-content-styles h2 {
+  font-family: 'PT Sans', sans-serif;
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 20px;
+  color: #222;
+}
+
+.slide-content-styles h3 {
+  font-family: 'PT Sans', sans-serif;
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 16px;
+  color: #222;
+}
+
+.slide-content-styles p {
+  margin-bottom: 16px;
+}
+
+.slide-content-styles ul,
+.slide-content-styles ol {
+  padding-left: 1.2em;
+  margin-bottom: 16px;
+}
+
+.slide-content-styles li {
+  margin-bottom: 8px;
+}
+
+.slide-content-styles strong {
+  font-weight: 700;
+}
+
+/* ============================================
+   App layout
+   ============================================ */
 .app {
   display: flex;
   flex-direction: column;
@@ -53,6 +114,7 @@
   background: #fff;
   border-bottom: 1px solid #ddd;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .toolbar-left,
@@ -108,15 +170,16 @@
   overflow: hidden;
 }
 
-/* Sidebar */
+/* ============================================
+   Sidebar
+   ============================================ */
 .sidebar {
-  width: 180px;
-  min-width: 180px;
+  width: 190px;
+  min-width: 190px;
   background: #f8f8f8;
   border-right: 1px solid #ddd;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
 }
 
 .sidebar-slides {
@@ -130,10 +193,9 @@
   border: 2px solid transparent;
   border-radius: 4px;
   margin-bottom: 8px;
-  padding: 4px;
+  padding: 8px 8px 4px;
   cursor: pointer;
   background: #fff;
-  min-height: 60px;
   overflow: hidden;
 }
 
@@ -146,32 +208,24 @@
 }
 
 .slide-number {
-  position: absolute;
-  top: 2px;
-  left: 4px;
+  display: block;
   font-size: 10px;
   color: #888;
   font-weight: 600;
+  margin-bottom: 4px;
 }
 
-.slide-preview {
-  font-size: 8px;
-  line-height: 1.2;
-  padding: 12px 4px 4px;
-  pointer-events: none;
-  max-height: 70px;
+/* Thumbnail: clip container + scaled inner render */
+.slide-thumb-clip {
   overflow: hidden;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 2px;
+  pointer-events: none;
 }
 
-.slide-preview h1,
-.slide-preview h2,
-.slide-preview h3 {
-  font-size: 10px;
-  margin: 0;
-}
-
-.slide-preview p {
-  margin: 0;
+.slide-thumb-render {
+  overflow: hidden;
 }
 
 .slide-actions {
@@ -218,7 +272,9 @@
   border-color: #999;
 }
 
-/* Editor area */
+/* ============================================
+   Editor area
+   ============================================ */
 .editor-area {
   flex: 1;
   display: flex;
@@ -233,6 +289,7 @@
   padding: 6px 12px;
   background: #fff;
   border-bottom: 1px solid #eee;
+  flex-shrink: 0;
 }
 
 .editor-actions button {
@@ -274,6 +331,7 @@
   padding: 4px 12px;
   background: #fafafa;
   border-bottom: 1px solid #eee;
+  flex-shrink: 0;
 }
 
 .editor-toolbar button {
@@ -302,56 +360,84 @@
   margin: 0 4px;
 }
 
-/* Slide canvas */
-.slide-canvas {
+/* Slide canvas — fixed 960x700, CSS-scaled to fit */
+.slide-canvas-container {
   flex: 1;
-  position: relative;
-  margin: 16px;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: auto;
-  aspect-ratio: 960 / 700;
-  max-height: calc(100vh - 180px);
-  align-self: center;
-  width: 100%;
-  max-width: 960px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 16px;
+  overflow: hidden;
+  background: #e8e8e8;
 }
 
+.slide-canvas {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* TipTap editor inside the slide canvas */
 .editor-content {
-  padding: 40px;
-  min-height: 100%;
-  font-family: 'PT Sans', sans-serif;
+  width: 100%;
+  height: 100%;
 }
 
 .editor-content .tiptap {
   outline: none;
-  min-height: 200px;
+  width: 100%;
+  height: 100%;
+  /* Match .slide-content-styles */
+  font-family: 'PT Sans', sans-serif;
+  font-size: 42px;
+  font-weight: normal;
+  line-height: 1.3;
+  color: #222;
+  padding: 40px 60px;
 }
 
 .editor-content .tiptap h1 {
-  font-size: 2.2em;
-  margin-bottom: 0.5em;
+  font-family: 'PT Sans', sans-serif;
+  font-size: 72px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 24px;
+  color: #222;
 }
 
 .editor-content .tiptap h2 {
-  font-size: 1.6em;
-  margin-bottom: 0.4em;
+  font-family: 'PT Sans', sans-serif;
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 20px;
+  color: #222;
 }
 
 .editor-content .tiptap h3 {
-  font-size: 1.3em;
-  margin-bottom: 0.3em;
+  font-family: 'PT Sans', sans-serif;
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 16px;
+  color: #222;
 }
 
 .editor-content .tiptap p {
-  margin-bottom: 0.5em;
+  margin-bottom: 16px;
 }
 
-.editor-content .tiptap ul {
-  padding-left: 1.5em;
-  margin-bottom: 0.5em;
+.editor-content .tiptap ul,
+.editor-content .tiptap ol {
+  padding-left: 1.2em;
+  margin-bottom: 16px;
+}
+
+.editor-content .tiptap li {
+  margin-bottom: 8px;
 }
 
 /* Demo frame */

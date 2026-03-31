@@ -1,6 +1,12 @@
 import { useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
 
+const SLIDE_WIDTH = 960;
+const SLIDE_HEIGHT = 700;
+const THUMB_WIDTH = 156; // sidebar width minus padding
+const THUMB_SCALE = THUMB_WIDTH / SLIDE_WIDTH;
+const THUMB_HEIGHT = SLIDE_HEIGHT * THUMB_SCALE;
+
 export function SlideSidebar() {
   const {
     presentation,
@@ -44,14 +50,26 @@ export function SlideSidebar() {
             onDragStart={() => handleDragStart(index)}
             onDragOver={(e) => handleDragOver(e, index)}
             onDrop={handleDrop}
+            style={{ height: THUMB_HEIGHT + 24 }}
           >
             <span className="slide-number">{index + 1}</span>
             <div
-              className="slide-preview"
-              dangerouslySetInnerHTML={{
-                __html: slide.content.html || '<p>Empty</p>',
-              }}
-            />
+              className="slide-thumb-clip"
+              style={{ width: THUMB_WIDTH, height: THUMB_HEIGHT }}
+            >
+              <div
+                className="slide-thumb-render slide-content-styles"
+                style={{
+                  width: SLIDE_WIDTH,
+                  height: SLIDE_HEIGHT,
+                  transform: `scale(${THUMB_SCALE})`,
+                  transformOrigin: 'top left',
+                }}
+                dangerouslySetInnerHTML={{
+                  __html: slide.content.html || '<p>Empty</p>',
+                }}
+              />
+            </div>
             <div className="slide-actions">
               <button
                 onClick={(e) => {

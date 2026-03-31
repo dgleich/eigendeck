@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(source \"$HOME/.cargo/env\")",
+      "Bash(npm run:*)"
+    ]
+  }
+}
