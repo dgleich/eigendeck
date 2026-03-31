@@ -20,7 +20,7 @@
     "@tiptap/starter-kit": "^3.21.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "reveal.js": "^6.0.0",
+    "reveal.js": "^5.1.0",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

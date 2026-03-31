@@ -1,50 +1,55 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useEffect } from 'react';
+import { Toolbar } from './components/Toolbar';
+import { SlideSidebar } from './components/SlideSidebar';
+import { SlideEditor } from './components/SlideEditor';
+import { PresentMode } from './components/PresentMode';
+import { AddDemoButton, RemoveDemoButton } from './components/DemoFrame';
+import { usePresentationStore } from './store/presentation';
+import { saveProject } from './store/fileOps';
+import './App.css';
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const { isPresenting, presentation, currentSlideIndex } =
+    usePresentationStore();
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        saveProject();
+      }
+      if (e.key === 'F5') {
+        e.preventDefault();
+        usePresentationStore.getState().setPresenting(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  if (isPresenting) {
+    return <PresentMode />;
   }
 
+  const slide = presentation.slides[currentSlideIndex];
+
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="app">
+      <Toolbar />
+      <div className="main-area">
+        <SlideSidebar />
+        <div className="editor-area">
+          <div className="editor-actions">
+            <AddDemoButton />
+            <RemoveDemoButton />
+            {slide?.content.demo && (
+              <span className="demo-label">Demo: {slide.content.demo}</span>
+            )}
+          </div>
+          <SlideEditor />
+        </div>
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+    </div>
   );
 }
 
