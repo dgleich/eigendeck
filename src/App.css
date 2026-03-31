@@ -255,6 +255,10 @@ body,
   background: #fffbeb;
 }
 
+.slide-thumbnail.dragging {
+  opacity: 0.4;
+}
+
 .slide-number {
   display: block;
   font-size: 10px;
@@ -588,4 +592,121 @@ body,
   height: 100vh;
   z-index: 1000;
   background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.present-mode .reveal {
+  flex: 1;
+}
+
+.present-mode.with-speaker .reveal {
+  height: calc(100vh - 200px);
+}
+
+/* Speaker panel in present mode */
+.speaker-panel {
+  height: 200px;
+  background: #1a1a1a;
+  color: #eee;
+  border-top: 2px solid #333;
+  display: flex;
+  flex-direction: column;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  font-size: 14px;
+  z-index: 1001;
+}
+
+.speaker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #222;
+  border-bottom: 1px solid #333;
+}
+
+.speaker-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #aaa;
+}
+
+.speaker-timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timer-display {
+  font-family: monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: #4ade80;
+  min-width: 70px;
+  text-align: center;
+}
+
+.timer-btn {
+  padding: 2px 10px;
+  border: 1px solid #555;
+  border-radius: 3px;
+  background: #333;
+  color: #ddd;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.timer-btn:hover {
+  background: #444;
+}
+
+.speaker-slide-count {
+  font-size: 13px;
+  color: #aaa;
+}
+
+.speaker-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  padding: 12px 16px;
+  gap: 16px;
+}
+
+.speaker-notes-content {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #ddd;
+}
+
+.speaker-notes-content .no-notes {
+  color: #666;
+  font-style: italic;
+}
+
+.speaker-next {
+  width: 250px;
+  flex-shrink: 0;
+}
+
+.speaker-next-label {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.speaker-next-preview {
+  background: #fff;
+  color: #222;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 10px;
+  line-height: 1.3;
+  overflow: hidden;
+  max-height: 120px;
 }

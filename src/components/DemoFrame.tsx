@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
-import { open } from '@tauri-apps/plugin-dialog';
+import { open, message } from '@tauri-apps/plugin-dialog';
 import type { DemoPosition } from '../types/presentation';
 
 interface DemoFrameProps {
@@ -65,7 +65,13 @@ export function AddDemoButton() {
     usePresentationStore();
 
   const handleAddDemo = async () => {
-    if (!projectPath) return;
+    if (!projectPath) {
+      await message('Please save or open a project first (File > New or Open).', {
+        title: 'No Project Open',
+        kind: 'info',
+      });
+      return;
+    }
 
     const selected = await open({
       title: 'Select Demo HTML File',
@@ -86,7 +92,7 @@ export function AddDemoButton() {
   };
 
   return (
-    <button onClick={handleAddDemo} disabled={!projectPath} title="Add demo to slide">
+    <button onClick={handleAddDemo} title="Add demo to slide">
       + Demo
     </button>
   );

@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { usePresentationStore } from '../store/presentation';
 
 const SLIDE_WIDTH = 1920;
 const SLIDE_HEIGHT = 1080;
-const THUMB_WIDTH = 156;
+const THUMB_WIDTH = 166;
 const THUMB_SCALE = THUMB_WIDTH / SLIDE_WIDTH;
 const THUMB_HEIGHT = SLIDE_HEIGHT * THUMB_SCALE;
 
@@ -18,58 +18,78 @@ export function SlideSidebar() {
     moveSlide,
   } = usePresentationStore();
 
-  const dragItem = useRef<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [dragging, setDragging] = useState<number | null>(null);
+  const [dropTarget, setDropTarget] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const startY = useRef(0);
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    dragItem.current = index;
-    e.dataTransfer.effectAllowed = 'move';
-    // Make the drag image semi-transparent
-    const el = e.currentTarget as HTMLElement;
-    el.style.opacity = '0.5';
-  };
+  const handleContainerPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (dragging === null) return;
+      const thumbs = containerRef.current?.querySelectorAll('.slide-thumbnail');
+      if (!thumbs) return;
 
-  const handleDragEnd = (e: React.DragEvent) => {
-    (e.currentTarget as HTMLElement).style.opacity = '1';
-    setDragOverIndex(null);
-    dragItem.current = null;
-  };
+      let found = false;
+      for (let i = 0; i < thumbs.length; i++) {
+        const rect = thumbs[i].getBoundingClientRect();
+        if (e.clientY >= rect.top && e.clientY <= rect.bottom && i !== dragging) {
+          setDropTarget(i);
+          found = true;
+          break;
+        }
+      }
+      if (!found) setDropTarget(null);
+    },
+    [dragging]
+  );
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragItem.current !== null && dragItem.current !== index) {
-      setDragOverIndex(index);
+  const handleContainerPointerUp = useCallback(() => {
+    if (dragging !== null && dropTarget !== null && dragging !== dropTarget) {
+      moveSlide(dragging, dropTarget);
     }
-  };
-
-  const handleDragLeave = () => {
-    setDragOverIndex(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    if (dragItem.current !== null && dragItem.current !== dropIndex) {
-      moveSlide(dragItem.current, dropIndex);
-    }
-    dragItem.current = null;
-    setDragOverIndex(null);
-  };
+    setDragging(null);
+    setDropTarget(null);
+  }, [dragging, dropTarget, moveSlide]);
 
   return (
     <div className="sidebar">
-      <div className="sidebar-slides">
+      <div
+        className="sidebar-slides"
+        ref={containerRef}
+        onPointerMove={handleContainerPointerMove}
+        onPointerUp={handleContainerPointerUp}
+        onPointerLeave={() => {
+          if (dragging !== null) {
+            setDragging(null);
+            setDropTarget(null);
+          }
+        }}
+      >
         {presentation.slides.map((slide, index) => (
           <div
             key={slide.id}
-            className={`slide-thumbnail${index === currentSlideIndex ? ' active' : ''}${dragOverIndex === index ? ' drag-over' : ''}`}
-            onClick={() => selectSlide(index)}
-            draggable
-            onDragStart={(e) => handleDragStart(e, index)}
-            onDragEnd={handleDragEnd}
-            onDragOver={(e) => handleDragOver(e, index)}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, index)}
+            className={`slide-thumbnail${index === currentSlideIndex ? ' active' : ''}${dropTarget === index ? ' drag-over' : ''}${dragging === index ? ' dragging' : ''}`}
+            onClick={() => {
+              if (dragging === null) selectSlide(index);
+            }}
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              if ((e.target as HTMLElement).closest('.slide-actions')) return;
+              startY.current = e.clientY;
+
+              const idx = index;
+              const onMove = (me: PointerEvent) => {
+                if (Math.abs(me.clientY - startY.current) > 8) {
+                  setDragging(idx);
+                }
+              };
+              const onUp = () => {
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+              };
+              window.addEventListener('pointermove', onMove);
+              window.addEventListener('pointerup', onUp);
+            }}
           >
             <span className="slide-number">{index + 1}</span>
             <div

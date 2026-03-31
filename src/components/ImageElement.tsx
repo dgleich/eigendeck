@@ -1,6 +1,6 @@
 import { usePresentationStore } from '../store/presentation';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
+import { open, message } from '@tauri-apps/plugin-dialog';
 import { readFile, writeFile, exists, mkdir } from '@tauri-apps/plugin-fs';
 import type { ImagePosition } from '../types/presentation';
 
@@ -53,7 +53,13 @@ export function AddImageButton() {
     usePresentationStore();
 
   const handleAddImage = async () => {
-    if (!projectPath) return;
+    if (!projectPath) {
+      await message('Please save or open a project first (File > New or Open).', {
+        title: 'No Project Open',
+        kind: 'info',
+      });
+      return;
+    }
 
     const selected = await open({
       title: 'Select Image',
@@ -105,7 +111,6 @@ export function AddImageButton() {
   return (
     <button
       onClick={handleAddImage}
-      disabled={!projectPath}
       title="Add image to slide"
     >
       + Image

@@ -1,12 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Reveal from 'reveal.js';
-import RevealNotes from 'reveal.js/plugin/notes/notes.esm.js';
 import 'reveal.js/dist/reveal.css';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
-
-// We load the theme CSS dynamically based on the user's selection
-// instead of importing white.css statically (which bleeds into the app)
+import { SpeakerPanel } from './SpeakerView';
 
 // Override reveal.js theme styles to match our editor exactly
 const SLIDE_OVERRIDE_CSS = `
@@ -67,12 +64,14 @@ const SLIDE_OVERRIDE_CSS = `
 `;
 
 export function PresentMode() {
-  const { presentation, setPresenting, projectPath } = usePresentationStore();
+  const { presentation, setPresenting, selectSlide, projectPath } =
+    usePresentationStore();
   const deckRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const revealRef = useRef<any>(null);
   const styleRef = useRef<HTMLStyleElement | null>(null);
   const themeRef = useRef<HTMLLinkElement | null>(null);
+  const [showSpeaker, setShowSpeaker] = useState(false);
 
   useEffect(() => {
     if (!deckRef.current) return;
@@ -101,22 +100,36 @@ export function PresentMode() {
       height: presentation.config.height,
       embedded: false,
       center: false,
-      plugins: [RevealNotes],
     });
 
     deck.initialize().then(() => {
       revealRef.current = deck;
     });
 
+    // Sync reveal.js slide changes back to our store
+    const onSlideChanged = (event: any) => {
+      const idx = event.indexh ?? 0;
+      selectSlide(idx);
+    };
+
+    deck.on('slidechanged', onSlideChanged);
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setPresenting(false);
       }
+      if (e.key === 's' || e.key === 'S') {
+        // Don't let reveal.js handle S (it tries window.open)
+        e.stopPropagation();
+        setShowSpeaker((prev) => !prev);
+      }
     };
-    window.addEventListener('keydown', handleKeyDown);
+    // Use capture to intercept before reveal.js
+    window.addEventListener('keydown', handleKeyDown, true);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      deck.off('slidechanged', onSlideChanged);
       if (revealRef.current) {
         revealRef.current.destroy();
         revealRef.current = null;
@@ -165,7 +178,7 @@ export function PresentMode() {
   };
 
   return (
-    <div className="present-mode">
+    <div className={`present-mode ${showSpeaker ? 'with-speaker' : ''}`}>
       <div className="reveal" ref={deckRef}>
         <div className="slides">
           {presentation.slides.map((slide) => (
@@ -176,6 +189,7 @@ export function PresentMode() {
           ))}
         </div>
       </div>
+      {showSpeaker && <SpeakerPanel />}
     </div>
   );
 }
