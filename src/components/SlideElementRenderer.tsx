@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { pauseUndo, resumeUndo } from '../store/presentation';
 import type { SlideElement, ElementPosition } from '../types/presentation';
 
 interface Props {
@@ -157,6 +158,7 @@ function DraggableBox({
       e.stopPropagation();
       onSelect();
       setIsDragging(true);
+      pauseUndo();
       dragStart.current = { x: e.clientX, y: e.clientY, posX: pos.x, posY: pos.y };
 
       const handleMove = (me: PointerEvent) => {
@@ -168,6 +170,7 @@ function DraggableBox({
       };
       const handleUp = () => {
         setIsDragging(false);
+        resumeUndo();
         window.removeEventListener('pointermove', handleMove);
         window.removeEventListener('pointerup', handleUp);
       };
@@ -181,6 +184,7 @@ function DraggableBox({
     (e: React.PointerEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      pauseUndo();
       resizeStart.current = { x: e.clientX, y: e.clientY, w: pos.width, h: pos.height };
       const handleMove = (me: PointerEvent) => {
         onPositionChange({
@@ -190,6 +194,7 @@ function DraggableBox({
         });
       };
       const handleUp = () => {
+        resumeUndo();
         window.removeEventListener('pointermove', handleMove);
         window.removeEventListener('pointerup', handleUp);
       };
@@ -324,7 +329,7 @@ function ArrowRenderer({
 
   const handleEndpoint = useCallback(
     (e: React.PointerEvent, which: 'start' | 'end') => {
-      e.preventDefault(); e.stopPropagation(); onSelect();
+      e.preventDefault(); e.stopPropagation(); onSelect(); pauseUndo();
       dragStart.current = { mx: e.clientX, my: e.clientY, ox1: x1, oy1: y1, ox2: x2, oy2: y2 };
       const handleMove = (me: PointerEvent) => {
         const dx = (me.clientX - dragStart.current.mx) / scale;
@@ -332,7 +337,7 @@ function ArrowRenderer({
         if (which === 'start') onUpdate({ x1: Math.round(dragStart.current.ox1 + dx), y1: Math.round(dragStart.current.oy1 + dy) } as any);
         else onUpdate({ x2: Math.round(dragStart.current.ox2 + dx), y2: Math.round(dragStart.current.oy2 + dy) } as any);
       };
-      const handleUp = () => { window.removeEventListener('pointermove', handleMove); window.removeEventListener('pointerup', handleUp); };
+      const handleUp = () => { resumeUndo(); window.removeEventListener('pointermove', handleMove); window.removeEventListener('pointerup', handleUp); };
       window.addEventListener('pointermove', handleMove); window.addEventListener('pointerup', handleUp);
     },
     [x1, y1, x2, y2, scale, onUpdate, onSelect]
@@ -340,7 +345,7 @@ function ArrowRenderer({
 
   const handleBody = useCallback(
     (e: React.PointerEvent) => {
-      e.preventDefault(); e.stopPropagation(); onSelect();
+      e.preventDefault(); e.stopPropagation(); onSelect(); pauseUndo();
       dragStart.current = { mx: e.clientX, my: e.clientY, ox1: x1, oy1: y1, ox2: x2, oy2: y2 };
       const handleMove = (me: PointerEvent) => {
         const dx = (me.clientX - dragStart.current.mx) / scale;
@@ -350,7 +355,7 @@ function ArrowRenderer({
           x2: Math.round(dragStart.current.ox2 + dx), y2: Math.round(dragStart.current.oy2 + dy),
         } as any);
       };
-      const handleUp = () => { window.removeEventListener('pointermove', handleMove); window.removeEventListener('pointerup', handleUp); };
+      const handleUp = () => { resumeUndo(); window.removeEventListener('pointermove', handleMove); window.removeEventListener('pointerup', handleUp); };
       window.addEventListener('pointermove', handleMove); window.addEventListener('pointerup', handleUp);
     },
     [x1, y1, x2, y2, scale, onUpdate, onSelect]

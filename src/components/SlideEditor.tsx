@@ -4,7 +4,7 @@ import Heading from '@tiptap/extension-heading';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { FontSize } from './FontSizeExtension';
 import { useEffect, useCallback, useRef, useState } from 'react';
-import { usePresentationStore } from '../store/presentation';
+import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { SlideElementRenderer } from './SlideElementRenderer';
 import type { SlideLayout } from '../types/presentation';
 
@@ -46,6 +46,7 @@ export function SlideEditor() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [colorOpen, setColorOpen] = useState(false);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -56,6 +57,10 @@ export function SlideEditor() {
     ],
     content: slide?.bodyHtml || '',
     onUpdate: ({ editor }) => {
+      // Pause undo during continuous typing, resume after 1s idle
+      pauseUndo();
+      if (undoTimer.current) clearTimeout(undoTimer.current);
+      undoTimer.current = setTimeout(() => resumeUndo(), 1000);
       updateSlide(currentSlideIndex, { bodyHtml: editor.getHTML() });
     },
   });

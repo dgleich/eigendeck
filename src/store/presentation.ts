@@ -236,7 +236,19 @@ export const usePresentationStore = create<PresentationState>()(
         presentation: state.presentation,
         currentSlideIndex: state.currentSlideIndex,
       }),
-      limit: 50,
+      limit: 100,
+      equality: (past, current) =>
+        JSON.stringify(past) === JSON.stringify(current),
     }
   )
 );
+
+// Helper: pause undo tracking (call before continuous operations like drags)
+export function pauseUndo() {
+  usePresentationStore.temporal.getState().pause();
+}
+
+// Helper: resume undo tracking (call when operation completes)
+export function resumeUndo() {
+  usePresentationStore.temporal.getState().resume();
+}

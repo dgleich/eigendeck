@@ -13,6 +13,7 @@ import {
   createProject,
   exportPresentation,
 } from './store/fileOps';
+import { initAutoSave, forceSave } from './store/autoSave';
 import './App.css';
 
 function App() {
@@ -41,6 +42,9 @@ function App() {
     document.body.style.userSelect = 'none';
   }, [sidebarWidth]);
 
+  // Initialize auto-save
+  useEffect(() => { initAutoSave(); }, []);
+
   // Warn before closing
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -53,11 +57,11 @@ function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 's' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveProject(); }
+      if (e.key === 's' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); forceSave().catch(() => saveProject()); }
       if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); usePresentationStore.temporal.getState().undo(); }
       if ((e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) || (e.key === 'y' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); usePresentationStore.temporal.getState().redo(); }
       if (e.key === 'i' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); usePresentationStore.getState().toggleProperties(); }
-      if (e.key === 'F5') { e.preventDefault(); usePresentationStore.getState().setPresenting(true); }
+      if (e.key === 'F5') { e.preventDefault(); forceSave().then(() => usePresentationStore.getState().setPresenting(true)); }
       // Delete selected element
       if ((e.key === 'Delete' || e.key === 'Backspace') && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
         const sel = usePresentationStore.getState().selectedObject;
