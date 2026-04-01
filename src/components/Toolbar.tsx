@@ -67,13 +67,13 @@ export function Toolbar() {
   return (
     <div className="toolbar">
       <div className="toolbar-left">
-        <button onClick={createProject} title="New Project">
+        <button onClick={createProject} title="New Project (Cmd+N)">
           New
         </button>
-        <button onClick={openProject} title="Open Project">
+        <button onClick={openProject} title="Open Project (Cmd+O)">
           Open
         </button>
-        <button onClick={handleSave} title="Save (Ctrl+S)">
+        <button onClick={handleSave} title="Save (Cmd+S)">
           Save{isDirty ? ' *' : ''}
         </button>
       </div>
@@ -120,7 +120,7 @@ export function Toolbar() {
             </option>
           ))}
         </select>
-        <button onClick={handleExport} title="Export to HTML">
+        <button onClick={handleExport} title="Export to HTML (Cmd+E)">
           Export
         </button>
         <button

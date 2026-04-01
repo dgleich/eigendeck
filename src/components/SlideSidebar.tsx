@@ -137,7 +137,7 @@ export function SlideSidebar() {
           </div>
         ))}
       </div>
-      <button className="btn-add-slide" onClick={addSlide}>
+      <button className="btn-add-slide" onClick={addSlide} title="Add a new slide after the current one">
         + Add Slide
       </button>
     </div>

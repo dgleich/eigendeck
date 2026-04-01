@@ -143,18 +143,21 @@ export function SlideEditor() {
         <button
           onClick={() => setHeading(1)}
           className={editor?.isActive('heading', { level: 1 }) ? 'active' : ''}
+          title="Heading 1"
         >
           H1
         </button>
         <button
           onClick={() => setHeading(2)}
           className={editor?.isActive('heading', { level: 2 }) ? 'active' : ''}
+          title="Heading 2"
         >
           H2
         </button>
         <button
           onClick={() => setHeading(3)}
           className={editor?.isActive('heading', { level: 3 }) ? 'active' : ''}
+          title="Heading 3"
         >
           H3
         </button>
@@ -162,18 +165,21 @@ export function SlideEditor() {
         <button
           onClick={() => editor?.chain().focus().toggleBold().run()}
           className={editor?.isActive('bold') ? 'active' : ''}
+          title="Bold (Cmd+B)"
         >
           B
         </button>
         <button
           onClick={() => editor?.chain().focus().toggleItalic().run()}
           className={editor?.isActive('italic') ? 'active' : ''}
+          title="Italic (Cmd+I)"
         >
           I
         </button>
         <button
           onClick={() => editor?.chain().focus().toggleBulletList().run()}
           className={editor?.isActive('bulletList') ? 'active' : ''}
+          title="Bullet List"
         >
           List
         </button>
@@ -181,6 +187,7 @@ export function SlideEditor() {
         <select
           className="font-size-picker"
           value=""
+          title="Font size"
           onChange={(e) => {
             if (e.target.value) {
               editor?.chain().focus().setFontSize(e.target.value).run();

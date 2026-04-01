@@ -212,7 +212,8 @@ body,
    ============================================ */
 .sidebar {
   width: 200px;
-  min-width: 200px;
+  min-width: 180px;
+  max-width: 350px;
   background: #f8f8f8;
   border-right: 1px solid #ddd;
   display: flex;
