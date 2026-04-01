@@ -74,8 +74,11 @@ export const usePresentationStore = create<PresentationState>()(
       selectedObject: { type: 'slide' },
       showProperties: false,
 
-      setPresentation: (presentation) =>
-        set({ presentation, currentSlideIndex: 0, isDirty: false, selectedObject: { type: 'slide' } }),
+      setPresentation: (presentation) => {
+        set({ presentation, currentSlideIndex: 0, isDirty: false, selectedObject: { type: 'slide' } });
+        // Clear undo history — the loaded file is the new baseline
+        usePresentationStore.temporal.getState().clear();
+      },
 
       setProjectPath: (projectPath) => set({ projectPath }),
 

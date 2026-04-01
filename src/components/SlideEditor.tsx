@@ -57,10 +57,10 @@ export function SlideEditor() {
     ],
     content: slide?.bodyHtml || '',
     onUpdate: ({ editor }) => {
-      // Pause undo during continuous typing, resume after 1s idle
+      // Brief pause during typing so each keystroke isn't a separate undo entry
       pauseUndo();
       if (undoTimer.current) clearTimeout(undoTimer.current);
-      undoTimer.current = setTimeout(() => resumeUndo(), 1000);
+      undoTimer.current = setTimeout(() => resumeUndo(), 300);
       updateSlide(currentSlideIndex, { bodyHtml: editor.getHTML() });
     },
   });
