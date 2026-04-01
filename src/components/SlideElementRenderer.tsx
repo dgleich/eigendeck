@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { pauseUndo, resumeUndo } from '../store/presentation';
 import { TEXT_PRESET_STYLES } from '../types/presentation';
@@ -90,6 +91,8 @@ function TextContent({
 }) {
   const [editing, setEditing] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0, width: 0 });
 
   const presetStyle = TEXT_PRESET_STYLES[element.preset];
   const style: React.CSSProperties = {
@@ -113,11 +116,18 @@ function TextContent({
     }
   }, [element.html, editing]);
 
+  // Position the toolbar above the element in screen coordinates
+  useEffect(() => {
+    if (editing && wrapperRef.current) {
+      const rect = wrapperRef.current.getBoundingClientRect();
+      setToolbarPos({ top: rect.top - 46, left: rect.left, width: rect.width });
+    }
+  }, [editing]);
+
   const handleDoubleClick = () => {
     setEditing(true);
     setTimeout(() => {
       contentRef.current?.focus();
-      // Place cursor at end
       const sel = window.getSelection();
       if (sel && contentRef.current) {
         sel.selectAllChildren(contentRef.current);
@@ -126,7 +136,7 @@ function TextContent({
     }, 0);
   };
 
-  const handleBlur = () => {
+  const commitAndClose = () => {
     if (contentRef.current) {
       onCommit(contentRef.current.innerHTML);
     }
@@ -134,8 +144,19 @@ function TextContent({
   };
 
   return (
-    <>
-      {editing && <TextFormatToolbar />}
+    <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>
+      {editing && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: toolbarPos.top,
+          left: toolbarPos.left,
+          width: Math.max(toolbarPos.width, 500),
+          zIndex: 9999,
+        }}>
+          <TextFormatToolbar onClose={commitAndClose} />
+        </div>,
+        document.body
+      )}
       <div
         ref={contentRef}
         style={style}
@@ -143,16 +164,22 @@ function TextContent({
         suppressContentEditableWarning
         onDoubleClick={handleDoubleClick}
         onBlur={(e) => {
-          // Don't blur if clicking into the toolbar
-          if (e.relatedTarget && (e.relatedTarget as HTMLElement).closest('.text-format-toolbar')) return;
-          handleBlur();
+          // Don't blur if clicking into the toolbar (portaled to body)
+          const related = e.relatedTarget as HTMLElement | null;
+          if (related?.closest('.text-format-toolbar')) return;
+          // Small delay to allow toolbar clicks to register
+          setTimeout(() => {
+            if (!document.activeElement?.closest('.text-format-toolbar')) {
+              commitAndClose();
+            }
+          }, 100);
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Escape') { handleBlur(); }
+          if (e.key === 'Escape') { commitAndClose(); }
           e.stopPropagation();
         }}
       />
-    </>
+    </div>
   );
 }
 

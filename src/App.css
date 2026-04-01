@@ -904,22 +904,18 @@
    Floating text format toolbar
    ============================================ */
 .text-format-toolbar {
-  position: absolute;
-  top: -44px;
-  left: 0;
-  right: 0;
   height: 38px;
   background: #fff;
   border: 1px solid #ccc;
   border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 0 6px;
-  z-index: 1000;
+  padding: 0 8px;
   font-family: system-ui, -apple-system, sans-serif;
-  font-size: 12px;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .text-format-toolbar button {

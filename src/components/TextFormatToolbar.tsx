@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 const FONT_SIZES = [16, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 96];
 
@@ -19,36 +19,52 @@ const COLORS = [
   { color: '#ffffff', label: 'White' },
 ];
 
-/**
- * Floating toolbar for formatting text inside contentEditable elements.
- * Uses document.execCommand which works directly on the browser selection.
- *
- * Must be rendered OUTSIDE the contentEditable element to avoid
- * stealing focus. The toolbar uses onMouseDown + preventDefault
- * to keep focus in the editor.
- */
-export function TextFormatToolbar() {
+interface Props {
+  onClose: () => void;
+}
+
+export function TextFormatToolbar(_props: Props) {
   const [colorOpen, setColorOpen] = useState(false);
 
-  // Prevent toolbar clicks from stealing focus from the contentEditable
-  const keepFocus = (e: React.MouseEvent) => {
+  // Save and restore selection across toolbar interactions
+  const restoreFocusAndExec = useCallback((cmd: string, value?: string) => {
+    // execCommand works on the current selection, which should still be
+    // in the contentEditable since we use preventDefault on button mousedown
+    document.execCommand(cmd, false, value);
+  }, []);
+
+  // For buttons: prevent default to keep focus in contentEditable
+  const btnDown = (e: React.MouseEvent) => {
     e.preventDefault();
-    e.stopPropagation();
   };
 
-  const exec = (cmd: string, value?: string) => {
-    document.execCommand(cmd, false, value);
+  // For selects: let them work normally (they need focus), but
+  // save selection first, then restore after change
+  const wrapSelection = (fn: () => void) => {
+    const sel = window.getSelection();
+    const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
+    fn();
+    // Restore selection after a tick
+    if (range) {
+      setTimeout(() => {
+        const s = window.getSelection();
+        if (s) {
+          s.removeAllRanges();
+          s.addRange(range);
+        }
+      }, 0);
+    }
   };
 
   return (
-    <div className="text-format-toolbar" onMouseDown={keepFocus}>
-      <button onClick={() => exec('bold')} title="Bold (Cmd+B)">
+    <div className="text-format-toolbar" tabIndex={-1}>
+      <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('bold')} title="Bold (Cmd+B)">
         <b>B</b>
       </button>
-      <button onClick={() => exec('italic')} title="Italic (Cmd+I)">
+      <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('italic')} title="Italic (Cmd+I)">
         <i>I</i>
       </button>
-      <button onClick={() => exec('underline')} title="Underline (Cmd+U)">
+      <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('underline')} title="Underline (Cmd+U)">
         <u>U</u>
       </button>
       <span className="tf-divider" />
@@ -59,7 +75,7 @@ export function TextFormatToolbar() {
         defaultValue=""
         onChange={(e) => {
           if (e.target.value) {
-            exec('fontName', e.target.value);
+            wrapSelection(() => restoreFocusAndExec('fontName', e.target.value));
             e.target.value = '';
           }
         }}
@@ -67,27 +83,30 @@ export function TextFormatToolbar() {
       >
         <option value="" disabled>Font</option>
         <option value="PT Sans">PT Sans</option>
-        <option value="PT Sans Narrow">PT Sans Narrow</option>
-        <option value="monospace">Monospace</option>
+        <option value="PT Sans Narrow">Narrow</option>
+        <option value="monospace">Mono</option>
       </select>
 
-      {/* Font size — execCommand fontSize uses 1-7 scale, so we use a span trick */}
+      {/* Font size */}
       <select
         className="tf-select"
         defaultValue=""
         onChange={(e) => {
           if (e.target.value) {
-            // execCommand fontSize only supports 1-7, so we use a different approach:
-            // wrap selection in a span with explicit font-size
             const size = e.target.value;
+            // execCommand fontSize only supports 1-7, use span wrapping
             const sel = window.getSelection();
             if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
               const range = sel.getRangeAt(0);
               const span = document.createElement('span');
               span.style.fontSize = size + 'px';
-              range.surroundContents(span);
-              sel.removeAllRanges();
-              sel.addRange(range);
+              try {
+                range.surroundContents(span);
+              } catch {
+                // surroundContents fails on partial selections, fallback
+                span.appendChild(range.extractContents());
+                range.insertNode(span);
+              }
             }
             e.target.value = '';
           }
@@ -103,8 +122,8 @@ export function TextFormatToolbar() {
 
       {/* Text color */}
       <div className="tf-color-wrapper">
-        <button onClick={() => setColorOpen(!colorOpen)} title="Text color">
-          A<span className="tf-color-indicator" />
+        <button onMouseDown={btnDown} onClick={() => setColorOpen(!colorOpen)} title="Text color">
+          A
         </button>
         {colorOpen && (
           <div className="tf-color-dropdown">
@@ -114,8 +133,9 @@ export function TextFormatToolbar() {
                 className="tf-color-swatch"
                 style={{ background: c.color, border: c.color === '#ffffff' ? '1px solid #ccc' : '1px solid transparent' }}
                 title={c.label}
+                onMouseDown={btnDown}
                 onClick={() => {
-                  exec('foreColor', c.color);
+                  restoreFocusAndExec('foreColor', c.color);
                   setColorOpen(false);
                 }}
               />
@@ -125,32 +145,19 @@ export function TextFormatToolbar() {
       </div>
       <span className="tf-divider" />
 
-      {/* Uppercase + letter spacing */}
-      <button
-        onClick={() => {
-          const sel = window.getSelection();
-          if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
-            const range = sel.getRangeAt(0);
-            const span = document.createElement('span');
-            span.style.textTransform = 'uppercase';
-            span.style.letterSpacing = '0.08em';
-            range.surroundContents(span);
-          }
-        }}
-        title="Uppercase + letter spacing"
-      >
-        AA
-      </button>
+      <button onMouseDown={btnDown} onClick={() => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+          const range = sel.getRangeAt(0);
+          const span = document.createElement('span');
+          span.style.textTransform = 'uppercase';
+          span.style.letterSpacing = '0.08em';
+          try { range.surroundContents(span); } catch { span.appendChild(range.extractContents()); range.insertNode(span); }
+        }
+      }} title="Uppercase + letter spacing">AA</button>
 
-      {/* Bullet list */}
-      <button onClick={() => exec('insertUnorderedList')} title="Bullet list">
-        List
-      </button>
-
-      {/* Clear formatting */}
-      <button onClick={() => exec('removeFormat')} title="Clear formatting">
-        ×
-      </button>
+      <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('insertUnorderedList')} title="Bullet list">List</button>
+      <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('removeFormat')} title="Clear formatting">×</button>
     </div>
   );
 }
