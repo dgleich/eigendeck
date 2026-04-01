@@ -137,53 +137,44 @@ export async function exportPresentation(): Promise<void> {
       const layout = slide.layout || 'default';
       let inner = '';
 
-      // Title
-      if (slide.content.title) {
-        const t = slide.content.title;
-        const p = t.position;
-        inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:'PT Sans',sans-serif;font-weight:700;font-size:${t.fontSize || 56}px;color:#222;line-height:1.2;padding:8px 12px;">${t.text}</div>`;
-      }
-
       // Body
-      if (slide.content.html) {
-        inner += `<div class="slide-body ${layout === 'centered' ? 'layout-centered' : ''} ${layout === 'two-column' ? 'layout-twocol' : ''}">${slide.content.html}</div>`;
+      if (slide.bodyHtml) {
+        inner += `<div class="slide-body ${layout === 'centered' ? 'layout-centered' : ''} ${layout === 'two-column' ? 'layout-twocol' : ''}">${slide.bodyHtml}</div>`;
       }
 
-      // Demo
-      if (slide.content.demo && projectPath) {
-        try {
-          const demoHtml = await readTextFile(`${projectPath}/${slide.content.demo}`);
-          const escaped = demoHtml.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-          const p = slide.content.demoPosition || { x: 0, y: 200, width: 800, height: 400 };
-          inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts"></iframe>`;
-        } catch { /* skip */ }
-      }
-
-      // Image
-      if (slide.content.image) {
-        const p = slide.content.imagePosition || { x: 360, y: 200, width: 1200, height: 680 };
-        inner += `<img src="${slide.content.image}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;" />`;
-      }
-
-      // Text boxes
-      for (const box of slide.content.textBoxes || []) {
-        const p = box.position;
-        inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:'PT Sans',sans-serif;font-size:32px;line-height:1.4;color:#222;padding:12px 16px;overflow:hidden;">${box.html}</div>`;
-      }
-
-      // Arrows
-      if (slide.content.arrows && slide.content.arrows.length > 0) {
-        inner += '<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">';
-        for (const a of slide.content.arrows) {
-          const color = a.color || '#e53e3e';
-          const sw = a.strokeWidth || 4;
-          const hs = a.headSize || 16;
-          const angle = Math.atan2(a.y2 - a.y1, a.x2 - a.x1);
-          const ha = Math.PI / 6;
-          inner += `<line x1="${a.x1}" y1="${a.y1}" x2="${a.x2}" y2="${a.y2}" stroke="${color}" stroke-width="${sw}"/>`;
-          inner += `<polygon points="${a.x2},${a.y2} ${a.x2 - hs * Math.cos(angle - ha)},${a.y2 - hs * Math.sin(angle - ha)} ${a.x2 - hs * Math.cos(angle + ha)},${a.y2 - hs * Math.sin(angle + ha)}" fill="${color}"/>`;
+      // Elements in z-order
+      for (const el of slide.elements) {
+        const p = el.position;
+        switch (el.type) {
+          case 'title':
+            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:'PT Sans',sans-serif;font-weight:700;font-size:${el.fontSize || 56}px;color:#222;line-height:1.2;padding:8px 12px;">${el.text}</div>`;
+            break;
+          case 'textBox':
+            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:'PT Sans',sans-serif;font-size:32px;line-height:1.4;color:#222;padding:12px 16px;overflow:hidden;">${el.html}</div>`;
+            break;
+          case 'image':
+            inner += `<img src="${el.src}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;" />`;
+            break;
+          case 'demo':
+            if (projectPath) {
+              try {
+                const demoHtml = await readTextFile(`${projectPath}/${el.src}`);
+                const escaped = demoHtml.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts"></iframe>`;
+              } catch { /* skip */ }
+            }
+            break;
+          case 'arrow': {
+            const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            const ha = Math.PI / 6;
+            inner += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">`;
+            inner += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${strokeWidth}"/>`;
+            inner += `<polygon points="${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}" fill="${color}"/>`;
+            inner += `</svg>`;
+            break;
+          }
         }
-        inner += '</svg>';
       }
 
       // Footer

@@ -75,7 +75,7 @@ export function SpeakerPanel() {
             <div
               className="speaker-next-preview"
               dangerouslySetInnerHTML={{
-                __html: nextSlide.content.html || '<p>Empty</p>',
+                __html: nextSlide.bodyHtml || '<p>Empty</p>',
               }}
             />
           </div>

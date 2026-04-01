@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  createDefaultPresentation,
-  createBlankSlide,
-} from './presentation';
+import { createDefaultPresentation, createBlankSlide } from './presentation';
 
 describe('presentation types', () => {
   it('createDefaultPresentation returns valid structure', () => {
@@ -10,8 +7,8 @@ describe('presentation types', () => {
     expect(pres.title).toBe('Untitled Presentation');
     expect(pres.theme).toBe('white');
     expect(pres.slides).toHaveLength(1);
-    expect(pres.slides[0].type).toBe('text');
-    expect(pres.slides[0].id).toBeTruthy();
+    expect(pres.slides[0].elements.length).toBeGreaterThan(0);
+    expect(pres.slides[0].elements[0].type).toBe('title');
     expect(pres.config.width).toBe(1920);
     expect(pres.config.height).toBe(1080);
   });
@@ -20,7 +17,6 @@ describe('presentation types', () => {
     const a = createBlankSlide();
     const b = createBlankSlide();
     expect(a.id).not.toBe(b.id);
-    expect(a.type).toBe('text');
     expect(a.notes).toBe('');
   });
 

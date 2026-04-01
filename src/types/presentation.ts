@@ -5,25 +5,36 @@ export interface ElementPosition {
   height: number;
 }
 
-export type DemoPosition = ElementPosition;
-export type ImagePosition = ElementPosition;
-
 export type SlideLayout = 'default' | 'centered' | 'two-column';
 
-export interface SlideTitle {
-  text: string;
+// ============================================
+// Unified element types
+// ============================================
+
+interface BaseElement {
+  id: string;
   position: ElementPosition;
+  linkId?: string; // for cross-slide linked objects (future)
+}
+
+export interface TitleElement extends BaseElement {
+  type: 'title';
+  text: string;
   fontSize?: number;
 }
 
-export interface TextBox {
-  id: string;
+export interface TextBoxElement extends BaseElement {
+  type: 'textBox';
   html: string;
-  position: ElementPosition;
 }
 
-export interface Arrow {
-  id: string;
+export interface ImageElement extends BaseElement {
+  type: 'image';
+  src: string; // relative path or data: URL
+}
+
+export interface ArrowElement extends BaseElement {
+  type: 'arrow';
   x1: number;
   y1: number;
   x2: number;
@@ -33,22 +44,27 @@ export interface Arrow {
   headSize?: number;
 }
 
-export interface SlideContent {
-  html: string;
-  title?: SlideTitle;
-  demo?: string;
-  demoPosition?: DemoPosition;
-  image?: string;
-  imagePosition?: ImagePosition;
-  textBoxes?: TextBox[];
-  arrows?: Arrow[];
+export interface DemoElement extends BaseElement {
+  type: 'demo';
+  src: string; // relative path to .html file
 }
+
+export type SlideElement =
+  | TitleElement
+  | TextBoxElement
+  | ImageElement
+  | ArrowElement
+  | DemoElement;
+
+// ============================================
+// Slide and Presentation
+// ============================================
 
 export interface Slide {
   id: string;
-  type: 'text' | 'mixed' | 'image';
   layout?: SlideLayout;
-  content: SlideContent;
+  bodyHtml: string; // main TipTap content
+  elements: SlideElement[]; // array order = z-order (first = bottom)
   notes: string;
 }
 
@@ -69,6 +85,10 @@ export interface Presentation {
   config: PresentationConfig;
 }
 
+// ============================================
+// Factories
+// ============================================
+
 export function createDefaultPresentation(): Presentation {
   return {
     title: 'Untitled Presentation',
@@ -76,16 +96,17 @@ export function createDefaultPresentation(): Presentation {
     slides: [
       {
         id: crypto.randomUUID(),
-        type: 'text',
         layout: 'centered',
-        content: {
-          html: '',
-          title: {
+        bodyHtml: '',
+        elements: [
+          {
+            id: crypto.randomUUID(),
+            type: 'title',
             text: 'Untitled Presentation',
             position: { x: 160, y: 360, width: 1600, height: 120 },
             fontSize: 72,
           },
-        },
+        ],
         notes: '',
       },
     ],
@@ -104,16 +125,17 @@ export function createDefaultPresentation(): Presentation {
 export function createBlankSlide(): Slide {
   return {
     id: crypto.randomUUID(),
-    type: 'text',
     layout: 'default',
-    content: {
-      html: '',
-      title: {
+    bodyHtml: '',
+    elements: [
+      {
+        id: crypto.randomUUID(),
+        type: 'title',
         text: 'New Slide',
         position: { x: 80, y: 40, width: 1760, height: 100 },
         fontSize: 56,
       },
-    },
+    ],
     notes: '',
   };
 }
