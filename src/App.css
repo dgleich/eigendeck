@@ -900,6 +900,106 @@
 
 .el-textbox-content p { margin: 0 0 8px; }
 
+/* ============================================
+   Floating text format toolbar
+   ============================================ */
+.text-format-toolbar {
+  position: absolute;
+  top: -44px;
+  left: 0;
+  right: 0;
+  height: 38px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+  z-index: 1000;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+}
+
+.text-format-toolbar button {
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  min-width: 28px;
+  text-align: center;
+}
+
+.text-format-toolbar button:hover {
+  background: #e8e8e8;
+}
+
+.tf-divider {
+  width: 1px;
+  height: 20px;
+  background: #ddd;
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.tf-select {
+  padding: 2px 4px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 11px;
+  background: #fff;
+  cursor: pointer;
+  color: #333;
+  max-width: 80px;
+}
+
+.tf-color-wrapper {
+  position: relative;
+}
+
+.tf-color-indicator {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  background: #222;
+  border-radius: 1px;
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tf-color-dropdown {
+  position: absolute;
+  top: 100%;
+  left: -40px;
+  z-index: 1001;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 6px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.tf-color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.tf-color-swatch:hover {
+  transform: scale(1.15);
+}
+
 /* Image element */
 .el-image { overflow: hidden; }
 

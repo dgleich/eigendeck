@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { pauseUndo, resumeUndo } from '../store/presentation';
 import { TEXT_PRESET_STYLES } from '../types/presentation';
+import { TextFormatToolbar } from './TextFormatToolbar';
 import type { SlideElement, ElementPosition, TextElement } from '../types/presentation';
 
 interface Props {
@@ -133,18 +134,25 @@ function TextContent({
   };
 
   return (
-    <div
-      ref={contentRef}
-      style={style}
-      contentEditable={editing}
-      suppressContentEditableWarning
-      onDoubleClick={handleDoubleClick}
-      onBlur={handleBlur}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') { handleBlur(); }
-        e.stopPropagation(); // Don't trigger keyboard shortcuts while editing
-      }}
-    />
+    <>
+      {editing && <TextFormatToolbar />}
+      <div
+        ref={contentRef}
+        style={style}
+        contentEditable={editing}
+        suppressContentEditableWarning
+        onDoubleClick={handleDoubleClick}
+        onBlur={(e) => {
+          // Don't blur if clicking into the toolbar
+          if (e.relatedTarget && (e.relatedTarget as HTMLElement).closest('.text-format-toolbar')) return;
+          handleBlur();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') { handleBlur(); }
+          e.stopPropagation();
+        }}
+      />
+    </>
   );
 }
 
