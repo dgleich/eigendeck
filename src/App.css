@@ -1113,12 +1113,15 @@
   background: #000;
 }
 
+.present-slide-wrapper {
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
 .present-slide {
   background: #fff;
   position: relative;
   overflow: hidden;
-  transform-origin: top left;
-  flex-shrink: 0;
 }
 
 .present-transition-left {

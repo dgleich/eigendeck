@@ -24,8 +24,6 @@ export function PresentMode() {
   const slideW = presentation.config.width;
   const slideH = presentation.config.height;
 
-  const [viewportSize, setViewportSize] = useState({ w: 0, h: 0 });
-
   // Scale slide to fit viewport, preserving aspect ratio
   useEffect(() => {
     const el = viewportRef.current;
@@ -34,7 +32,6 @@ export function PresentMode() {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
         setScale(Math.min(width / slideW, height / slideH));
-        setViewportSize({ w: width, h: height });
       }
     });
     observer.observe(el);
@@ -105,20 +102,27 @@ export function PresentMode() {
     <div className={`present-mode ${showSpeaker ? 'with-speaker' : ''}`}>
       <div className="present-viewport" ref={viewportRef}>
         <div
-          className={`present-slide slide-layout-${slide.layout || 'default'} present-transition-${transition}`}
+          className="present-slide-wrapper"
           style={{
-            width: slideW,
-            height: slideH,
-            transform: `scale(${scale})`,
-            marginLeft: (viewportSize.w - slideW * scale) / 2,
-            marginTop: (viewportSize.h - slideH * scale) / 2,
+            width: slideW * scale,
+            height: slideH * scale,
           }}
         >
+          <div
+            className={`present-slide slide-layout-${slide.layout || 'default'} present-transition-${transition}`}
+            style={{
+              width: slideW,
+              height: slideH,
+              transform: `scale(${scale})`,
+              transformOrigin: 'top left',
+            }}
+          >
           <SlideRenderer slide={slide} projectPath={projectPath} />
           <div className="slide-footer">
             <span className="slide-footer-meta">{meta}</span>
             <span className="slide-footer-number">{currentIndex + 1}</span>
           </div>
+        </div>
         </div>
       </div>
       {showSpeaker && <SpeakerPanel />}
