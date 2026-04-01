@@ -973,6 +973,128 @@ body,
   display: flex;
 }
 
+/* ============================================
+   Right properties panel
+   ============================================ */
+.properties-panel {
+  width: 240px;
+  min-width: 240px;
+  background: #f8f8f8;
+  border-left: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  font-size: 12px;
+  color: #1a1a1a;
+}
+
+.properties-header {
+  padding: 10px 12px;
+  font-weight: 600;
+  font-size: 13px;
+  border-bottom: 1px solid #ddd;
+  background: #f0f0f0;
+}
+
+.properties-body {
+  padding: 8px;
+}
+
+.prop-section {
+  margin-bottom: 12px;
+}
+
+.prop-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.prop-select {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  background: #fff;
+  color: #1a1a1a;
+}
+
+.prop-input {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  background: #fff;
+  color: #1a1a1a;
+}
+
+.prop-input-sm {
+  width: 60px;
+  padding: 3px 4px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 11px;
+  background: #fff;
+  color: #1a1a1a;
+  text-align: right;
+}
+
+.prop-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.prop-grid label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #888;
+}
+
+.prop-grid .prop-input-sm {
+  flex: 1;
+}
+
+.prop-color {
+  width: 32px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.prop-color-row {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.prop-color-swatch {
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.prop-color-swatch.active {
+  border-color: #222;
+}
+
+.prop-color-swatch:hover {
+  transform: scale(1.15);
+}
+
 /* Present mode — fully isolated from app styles */
 .present-mode {
   position: fixed;

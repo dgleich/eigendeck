@@ -71,9 +71,15 @@ pub fn run() {
                 .accelerator("CmdOrCtrl+Shift+S")
                 .build(app)?;
 
+            let inspector_item = MenuItemBuilder::new("Toggle Inspector")
+                .id("inspector")
+                .accelerator("CmdOrCtrl+I")
+                .build(app)?;
+
             let view_menu = SubmenuBuilder::new(app, "View")
                 .item(&present_item)
                 .item(&speaker_item)
+                .item(&inspector_item)
                 .separator()
                 .fullscreen()
                 .build()?;

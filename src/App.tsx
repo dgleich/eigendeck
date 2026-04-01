@@ -7,6 +7,7 @@ import { PresentMode } from './components/PresentMode';
 import { AddDemoButton, RemoveDemoButton } from './components/DemoFrame';
 import { AddImageButton, RemoveImageButton } from './components/ImageElement';
 import { NotesPanel } from './components/NotesPanel';
+import { PropertiesPanel } from './components/PropertiesPanel';
 import { usePresentationStore } from './store/presentation';
 import {
   saveProject,
@@ -17,7 +18,7 @@ import {
 import './App.css';
 
 function App() {
-  const { isPresenting, presentation, currentSlideIndex } =
+  const { isPresenting, presentation, currentSlideIndex, showProperties } =
     usePresentationStore();
   const [sidebarWidth, setSidebarWidth] = useState(200);
   const resizing = useRef(false);
@@ -77,6 +78,10 @@ function App() {
         e.preventDefault();
         usePresentationStore.temporal.getState().redo();
       }
+      if (e.key === 'i' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        usePresentationStore.getState().toggleProperties();
+      }
       if (e.key === 'F5') {
         e.preventDefault();
         usePresentationStore.getState().setPresenting(true);
@@ -104,6 +109,9 @@ function App() {
           break;
         case 'present':
           usePresentationStore.getState().setPresenting(true);
+          break;
+        case 'inspector':
+          usePresentationStore.getState().toggleProperties();
           break;
       }
     });
@@ -181,6 +189,7 @@ function App() {
           <SlideEditor />
           <NotesPanel />
         </div>
+        {showProperties && <PropertiesPanel />}
       </div>
     </div>
   );

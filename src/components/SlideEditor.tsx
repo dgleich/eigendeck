@@ -24,7 +24,7 @@ const LAYOUTS: { id: SlideLayout; label: string }[] = [
 ];
 
 export function SlideEditor() {
-  const { presentation, currentSlideIndex, updateSlideContent, updateSlide, projectPath } =
+  const { presentation, currentSlideIndex, updateSlideContent, updateSlide, projectPath, selectObject } =
     usePresentationStore();
 
   const slide = presentation.slides[currentSlideIndex];
@@ -302,13 +302,21 @@ export function SlideEditor() {
             transform: `scale(${scale})`,
             transformOrigin: 'top center',
           }}
+          onClick={(e) => {
+            // Click on canvas background = select slide
+            if (e.target === e.currentTarget) {
+              selectObject({ type: 'slide' });
+            }
+          }}
         >
           {slide.content.title && (
-            <TitleElement
-              title={slide.content.title}
-              scale={scale}
-              onUpdate={handleUpdateTitle}
-            />
+            <div onClick={(e) => { e.stopPropagation(); selectObject({ type: 'title' }); }}>
+              <TitleElement
+                title={slide.content.title}
+                scale={scale}
+                onUpdate={handleUpdateTitle}
+              />
+            </div>
           )}
           <EditorContent editor={editor} className="editor-content" />
           {slide.content.demo && (
@@ -318,32 +326,36 @@ export function SlideEditor() {
             />
           )}
           {slide.content.image && (
-            <DraggableImage
-              imagePath={slide.content.image}
-              position={slide.content.imagePosition}
-              scale={scale}
-              onPositionChange={(pos) =>
-                updateSlideContent(currentSlideIndex, { imagePosition: pos })
-              }
-            />
+            <div onClick={(e) => { e.stopPropagation(); selectObject({ type: 'image' }); }}>
+              <DraggableImage
+                imagePath={slide.content.image}
+                position={slide.content.imagePosition}
+                scale={scale}
+                onPositionChange={(pos) =>
+                  updateSlideContent(currentSlideIndex, { imagePosition: pos })
+                }
+              />
+            </div>
           )}
           {(slide.content.textBoxes || []).map((box) => (
-            <TextBoxElement
-              key={box.id}
-              textBox={box}
-              scale={scale}
-              onUpdate={handleUpdateTextBox}
-              onDelete={handleDeleteTextBox}
-            />
+            <div key={box.id} onClick={(e) => { e.stopPropagation(); selectObject({ type: 'textBox', id: box.id }); }}>
+              <TextBoxElement
+                textBox={box}
+                scale={scale}
+                onUpdate={handleUpdateTextBox}
+                onDelete={handleDeleteTextBox}
+              />
+            </div>
           ))}
           {(slide.content.arrows || []).map((arrow) => (
-            <ArrowElement
-              key={arrow.id}
-              arrow={arrow}
-              scale={scale}
-              onUpdate={handleUpdateArrow}
-              onDelete={handleDeleteArrow}
-            />
+            <div key={arrow.id} onClick={(e) => { e.stopPropagation(); selectObject({ type: 'arrow', id: arrow.id }); }}>
+              <ArrowElement
+                arrow={arrow}
+                scale={scale}
+                onUpdate={handleUpdateArrow}
+                onDelete={handleDeleteArrow}
+              />
+            </div>
           ))}
           <div className="slide-footer">
             <span className="slide-footer-meta">

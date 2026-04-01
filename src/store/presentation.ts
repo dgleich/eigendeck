@@ -7,16 +7,29 @@ import {
   createBlankSlide,
 } from '../types/presentation';
 
+export type SelectedObject =
+  | { type: 'slide' }
+  | { type: 'title' }
+  | { type: 'textBox'; id: string }
+  | { type: 'image' }
+  | { type: 'arrow'; id: string }
+  | { type: 'demo' }
+  | null;
+
 interface PresentationState {
   presentation: Presentation;
   currentSlideIndex: number;
   isPresenting: boolean;
   isDirty: boolean;
   projectPath: string | null;
+  selectedObject: SelectedObject;
+  showProperties: boolean;
 
   // Actions
   setPresentation: (p: Presentation) => void;
   setProjectPath: (path: string | null) => void;
+  selectObject: (obj: SelectedObject) => void;
+  toggleProperties: () => void;
   selectSlide: (index: number) => void;
   addSlide: () => void;
   deleteSlide: (index: number) => void;
@@ -39,11 +52,18 @@ export const usePresentationStore = create<PresentationState>()(
       isPresenting: false,
       isDirty: false,
       projectPath: null,
+      selectedObject: { type: 'slide' },
+      showProperties: false,
 
       setPresentation: (presentation) =>
-        set({ presentation, currentSlideIndex: 0, isDirty: false }),
+        set({ presentation, currentSlideIndex: 0, isDirty: false, selectedObject: { type: 'slide' } }),
 
       setProjectPath: (projectPath) => set({ projectPath }),
+
+      selectObject: (selectedObject) => set({ selectedObject }),
+
+      toggleProperties: () =>
+        set((state) => ({ showProperties: !state.showProperties })),
 
       selectSlide: (index) => set({ currentSlideIndex: index }),
 
