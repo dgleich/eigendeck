@@ -22,7 +22,7 @@ const THEMES = [
 ];
 
 export function Toolbar() {
-  const { presentation, isDirty, setPresenting, setTheme, setTitle, projectPath } =
+  const { presentation, isDirty, setPresenting, setTheme, setTitle, updateConfig, projectPath } =
     usePresentationStore();
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -108,6 +108,20 @@ export function Toolbar() {
         )}
       </div>
       <div className="toolbar-right">
+        <input
+          className="meta-input"
+          value={presentation.config.author || ''}
+          onChange={(e) => updateConfig({ author: e.target.value })}
+          placeholder="Author"
+          title="Author name (shown in slide footer)"
+        />
+        <input
+          className="meta-input"
+          value={presentation.config.venue || ''}
+          onChange={(e) => updateConfig({ venue: e.target.value })}
+          placeholder="Venue"
+          title="Venue/conference (shown in slide footer)"
+        />
         <select
           className="theme-picker"
           value={presentation.theme}

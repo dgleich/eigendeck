@@ -9,7 +9,8 @@ import { DemoFrame } from './DemoFrame';
 import { DraggableImage } from './ImageElement';
 import { TextBoxElement } from './TextBoxElement';
 import { ArrowElement } from './ArrowElement';
-import type { SlideLayout, TextBox, Arrow } from '../types/presentation';
+import { TitleElement } from './TitleElement';
+import type { SlideLayout, SlideTitle, TextBox, Arrow } from '../types/presentation';
 
 export const SLIDE_WIDTH = 1920;
 export const SLIDE_HEIGHT = 1080;
@@ -161,10 +162,25 @@ export function SlideEditor() {
     [slide, currentSlideIndex, updateSlideContent]
   );
 
+  const handleUpdateTitle = useCallback(
+    (changes: Partial<SlideTitle>) => {
+      const current = slide?.content.title || {
+        text: '',
+        position: { x: 80, y: 40, width: 1760, height: 100 },
+        fontSize: 56,
+      };
+      updateSlideContent(currentSlideIndex, {
+        title: { ...current, ...changes, position: { ...current.position, ...(changes.position || {}) } },
+      });
+    },
+    [slide, currentSlideIndex, updateSlideContent]
+  );
+
   if (!slide) return null;
 
   const layout = slide.layout || 'default';
   const layoutClass = `slide-layout-${layout}`;
+  const { author, venue } = presentation.config;
 
   return (
     <div className="slide-editor">
@@ -287,6 +303,13 @@ export function SlideEditor() {
             transformOrigin: 'top center',
           }}
         >
+          {slide.content.title && (
+            <TitleElement
+              title={slide.content.title}
+              scale={scale}
+              onUpdate={handleUpdateTitle}
+            />
+          )}
           <EditorContent editor={editor} className="editor-content" />
           {slide.content.demo && (
             <DemoFrame
@@ -322,8 +345,13 @@ export function SlideEditor() {
               onDelete={handleDeleteArrow}
             />
           ))}
-          <div className="slide-number-display">
-            {currentSlideIndex + 1}
+          <div className="slide-footer">
+            <span className="slide-footer-meta">
+              {[author, venue].filter(Boolean).join(' \u00B7 ')}
+            </span>
+            <span className="slide-footer-number">
+              {currentSlideIndex + 1}
+            </span>
           </div>
         </div>
       </div>

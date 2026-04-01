@@ -75,10 +75,37 @@ const SLIDE_OVERRIDE_CSS = `
     align-items: center;
     text-align: center;
   }
+  .reveal section[data-layout="centered"] ul,
+  .reveal section[data-layout="centered"] ol {
+    display: inline-block;
+    text-align: left;
+    padding-left: 1em;
+    list-style-position: inside;
+  }
   .reveal section[data-layout="two-column"] {
     column-count: 2;
     column-gap: 80px;
   }
+  .reveal .slide-title {
+    position: absolute;
+    font-family: 'PT Sans', sans-serif;
+    font-weight: 700;
+    color: #222;
+    line-height: 1.2;
+  }
+  .reveal .slide-footer-bar {
+    position: absolute;
+    bottom: 20px;
+    left: 80px;
+    right: 40px;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'PT Sans', sans-serif;
+    color: #999;
+    pointer-events: none;
+  }
+  .reveal .slide-footer-bar .meta { font-size: 18px; }
+  .reveal .slide-footer-bar .num { font-size: 24px; }
   .reveal .slide-number {
     font-family: 'PT Sans', sans-serif;
     font-size: 24px;
@@ -166,8 +193,17 @@ export function PresentMode() {
     };
   }, []);
 
-  const buildSlideHtml = (slide: (typeof presentation.slides)[0]) => {
-    let html = slide.content.html || '';
+  const buildSlideHtml = (slide: (typeof presentation.slides)[0], index: number) => {
+    let html = '';
+
+    // Title element
+    if (slide.content.title) {
+      const t = slide.content.title;
+      const p = t.position;
+      html += `<div class="slide-title" style="left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-size:${t.fontSize || 56}px;">${t.text}</div>`;
+    }
+
+    html += slide.content.html || '';
 
     if (slide.content.demo && projectPath) {
       const pos = slide.content.demoPosition || {
@@ -225,6 +261,11 @@ export function PresentMode() {
       html += '</svg>';
     }
 
+    // Footer with author/venue and slide number
+    const { author, venue } = presentation.config;
+    const meta = [author, venue].filter(Boolean).join(' \u00B7 ');
+    html += `<div class="slide-footer-bar"><span class="meta">${meta}</span><span class="num">${index + 1}</span></div>`;
+
     if (slide.notes) {
       html += `<aside class="notes">${slide.notes}</aside>`;
     }
@@ -236,11 +277,11 @@ export function PresentMode() {
     <div className={`present-mode ${showSpeaker ? 'with-speaker' : ''}`}>
       <div className="reveal" ref={deckRef}>
         <div className="slides">
-          {presentation.slides.map((slide) => (
+          {presentation.slides.map((slide, index) => (
             <section
               key={slide.id}
               data-layout={slide.layout || 'default'}
-              dangerouslySetInnerHTML={{ __html: buildSlideHtml(slide) }}
+              dangerouslySetInnerHTML={{ __html: buildSlideHtml(slide, index) }}
             />
           ))}
         </div>

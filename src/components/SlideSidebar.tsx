@@ -97,17 +97,64 @@ export function SlideSidebar() {
               style={{ width: THUMB_WIDTH, height: THUMB_HEIGHT }}
             >
               <div
-                className="slide-thumb-render slide-content-styles"
+                className="slide-thumb-render"
                 style={{
                   width: SLIDE_WIDTH,
                   height: SLIDE_HEIGHT,
                   transform: `scale(${THUMB_SCALE})`,
                   transformOrigin: 'top left',
+                  position: 'relative',
+                  background: '#fff',
                 }}
-                dangerouslySetInnerHTML={{
-                  __html: slide.content.html || '<p>Empty</p>',
-                }}
-              />
+              >
+                {slide.content.title && (
+                  <div style={{
+                    position: 'absolute',
+                    left: slide.content.title.position.x,
+                    top: slide.content.title.position.y,
+                    width: slide.content.title.position.width,
+                    fontFamily: "'PT Sans', sans-serif",
+                    fontWeight: 700,
+                    fontSize: slide.content.title.fontSize || 56,
+                    color: '#222',
+                    lineHeight: 1.2,
+                    overflow: 'hidden',
+                  }}>
+                    {slide.content.title.text}
+                  </div>
+                )}
+                <div
+                  className="slide-content-styles"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                  }}
+                  dangerouslySetInnerHTML={{
+                    __html: slide.content.html || '',
+                  }}
+                />
+                {(slide.content.textBoxes || []).map((box) => (
+                  <div
+                    key={box.id}
+                    style={{
+                      position: 'absolute',
+                      left: box.position.x,
+                      top: box.position.y,
+                      width: box.position.width,
+                      height: box.position.height,
+                      fontFamily: "'PT Sans', sans-serif",
+                      fontSize: 32,
+                      color: '#222',
+                      overflow: 'hidden',
+                      padding: '12px 16px',
+                    }}
+                    dangerouslySetInnerHTML={{ __html: box.html }}
+                  />
+                ))}
+              </div>
             </div>
             <div className="slide-actions">
               <button

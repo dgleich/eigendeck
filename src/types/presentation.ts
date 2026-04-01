@@ -10,6 +10,12 @@ export type ImagePosition = ElementPosition;
 
 export type SlideLayout = 'default' | 'centered' | 'two-column';
 
+export interface SlideTitle {
+  text: string;
+  position: ElementPosition;
+  fontSize?: number;
+}
+
 export interface TextBox {
   id: string;
   html: string;
@@ -29,6 +35,7 @@ export interface Arrow {
 
 export interface SlideContent {
   html: string;
+  title?: SlideTitle;
   demo?: string;
   demoPosition?: DemoPosition;
   image?: string;
@@ -51,6 +58,8 @@ export interface PresentationConfig {
   width: number;
   height: number;
   showSlideNumber?: boolean;
+  author?: string;
+  venue?: string;
 }
 
 export interface Presentation {
@@ -69,7 +78,14 @@ export function createDefaultPresentation(): Presentation {
         id: crypto.randomUUID(),
         type: 'text',
         layout: 'centered',
-        content: { html: '<h1>Untitled Presentation</h1>' },
+        content: {
+          html: '',
+          title: {
+            text: 'Untitled Presentation',
+            position: { x: 160, y: 360, width: 1600, height: 120 },
+            fontSize: 72,
+          },
+        },
         notes: '',
       },
     ],
@@ -79,6 +95,8 @@ export function createDefaultPresentation(): Presentation {
       width: 1920,
       height: 1080,
       showSlideNumber: true,
+      author: '',
+      venue: '',
     },
   };
 }
@@ -88,7 +106,14 @@ export function createBlankSlide(): Slide {
     id: crypto.randomUUID(),
     type: 'text',
     layout: 'default',
-    content: { html: '<h2>New Slide</h2>' },
+    content: {
+      html: '',
+      title: {
+        text: 'New Slide',
+        position: { x: 80, y: 40, width: 1760, height: 100 },
+        fontSize: 56,
+      },
+    },
     notes: '',
   };
 }

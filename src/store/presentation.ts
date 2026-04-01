@@ -28,6 +28,7 @@ interface PresentationState {
   markClean: () => void;
   setTitle: (title: string) => void;
   setTheme: (theme: string) => void;
+  updateConfig: (config: Partial<Presentation['config']>) => void;
 }
 
 export const usePresentationStore = create<PresentationState>()(
@@ -134,6 +135,15 @@ export const usePresentationStore = create<PresentationState>()(
       setTheme: (theme) =>
         set((state) => ({
           presentation: { ...state.presentation, theme },
+          isDirty: true,
+        })),
+
+      updateConfig: (configPartial) =>
+        set((state) => ({
+          presentation: {
+            ...state.presentation,
+            config: { ...state.presentation.config, ...configPartial },
+          },
           isDirty: true,
         })),
     }),

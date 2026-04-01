@@ -126,8 +126,18 @@ export async function exportPresentation(): Promise<void> {
   try {
     const sections: string[] = [];
 
-    for (const slide of presentation.slides) {
-      let sectionContent = slide.content.html || '';
+    for (let i = 0; i < presentation.slides.length; i++) {
+      const slide = presentation.slides[i];
+      let sectionContent = '';
+
+      // Title element
+      if (slide.content.title) {
+        const t = slide.content.title;
+        const p = t.position;
+        sectionContent += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:'PT Sans',sans-serif;font-weight:700;font-size:${t.fontSize || 56}px;color:#222;line-height:1.2;">${t.text}</div>`;
+      }
+
+      sectionContent += slide.content.html || '';
 
       if (slide.content.demo && projectPath) {
         try {
@@ -193,6 +203,10 @@ export async function exportPresentation(): Promise<void> {
       const notesHtml = slide.notes
         ? `\n<aside class="notes">${slide.notes}</aside>`
         : '';
+      // Footer
+      const meta = [presentation.config.author, presentation.config.venue].filter(Boolean).join(' \u00B7 ');
+      sectionContent += `<div style="position:absolute;bottom:20px;left:80px;right:40px;display:flex;justify-content:space-between;font-family:'PT Sans',sans-serif;color:#999;pointer-events:none;"><span style="font-size:18px;">${meta}</span><span style="font-size:24px;">${i + 1}</span></div>`;
+
       const layoutAttr = slide.layout ? ` data-layout="${slide.layout}"` : '';
       sections.push(`<section${layoutAttr}>${sectionContent}${notesHtml}</section>`);
     }
@@ -223,6 +237,7 @@ export async function exportPresentation(): Promise<void> {
     .reveal section { text-align: left; padding: 60px 80px; position: relative; box-sizing: border-box; }
     .reveal section img.slide-image { position: absolute; object-fit: contain; }
     .reveal section[data-layout="centered"] { display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; }
+    .reveal section[data-layout="centered"] ul, .reveal section[data-layout="centered"] ol { display:inline-block; text-align:left; padding-left:1em; list-style-position:inside; }
     .reveal section[data-layout="two-column"] { column-count:2; column-gap:80px; }
     .reveal .slide-number { font-family:'PT Sans',sans-serif; font-size:24px; color:#999; }
   </style>
