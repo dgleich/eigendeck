@@ -5,5 +5,20 @@
       "Bash(npm run:*)",
       "Bash(/Users/dgleich/Dropbox/dev/eigendeck/mac-build.sh 2>&1)"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // \"\"' | { read -r f; case \"$f\" in */types/presentation.ts) echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"IMPORTANT: src/types/presentation.ts was just modified. Check if LLM-EDITING.md needs to be updated to match the new types. Update it if any element types, fields, presets, or the Slide/Presentation structure changed.\"}}' ;; esac; }",
+            "timeout": 5,
+            "statusMessage": "Checking if LLM editing guide needs update..."
+          }
+        ]
+      }
+    ]
   }
 }
