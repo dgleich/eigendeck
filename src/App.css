@@ -1117,9 +1117,8 @@
   background: #fff;
   position: relative;
   overflow: hidden;
-  /* Scale to fit viewport — set by JS or use object-fit approach */
-  transform-origin: center center;
-  transition: opacity 0.2s ease;
+  transform-origin: top left;
+  flex-shrink: 0;
 }
 
 .present-transition-left {
@@ -1147,10 +1146,12 @@
   color: #222;
   line-height: 1.2;
   padding: 8px 12px;
+  z-index: 2;
 }
 
 .present-body {
   position: absolute;
+  z-index: 1;
   top: 0;
   left: 0;
   width: 100%;

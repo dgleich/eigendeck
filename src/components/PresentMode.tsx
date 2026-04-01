@@ -24,7 +24,9 @@ export function PresentMode() {
   const slideW = presentation.config.width;
   const slideH = presentation.config.height;
 
-  // Scale slide to fit viewport
+  const [viewportSize, setViewportSize] = useState({ w: 0, h: 0 });
+
+  // Scale slide to fit viewport, preserving aspect ratio
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
@@ -32,6 +34,7 @@ export function PresentMode() {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
         setScale(Math.min(width / slideW, height / slideH));
+        setViewportSize({ w: width, h: height });
       }
     });
     observer.observe(el);
@@ -107,6 +110,8 @@ export function PresentMode() {
             width: slideW,
             height: slideH,
             transform: `scale(${scale})`,
+            marginLeft: (viewportSize.w - slideW * scale) / 2,
+            marginTop: (viewportSize.h - slideH * scale) / 2,
           }}
         >
           <SlideRenderer slide={slide} projectPath={projectPath} />
