@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { Toolbar } from './components/Toolbar';
 import { SlideSidebar } from './components/SlideSidebar';
@@ -19,6 +19,34 @@ import './App.css';
 function App() {
   const { isPresenting, presentation, currentSlideIndex } =
     usePresentationStore();
+  const [sidebarWidth, setSidebarWidth] = useState(200);
+  const resizing = useRef(false);
+  const resizeStartX = useRef(0);
+  const resizeStartW = useRef(0);
+
+  const handleResizeStart = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    resizing.current = true;
+    resizeStartX.current = e.clientX;
+    resizeStartW.current = sidebarWidth;
+
+    const handleMove = (me: PointerEvent) => {
+      const dx = me.clientX - resizeStartX.current;
+      const newW = Math.min(400, Math.max(150, resizeStartW.current + dx));
+      setSidebarWidth(newW);
+    };
+    const handleUp = () => {
+      resizing.current = false;
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, [sidebarWidth]);
 
   // Warn before closing with unsaved changes
   useEffect(() => {
@@ -37,6 +65,17 @@ function App() {
       if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         saveProject();
+      }
+      if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+        e.preventDefault();
+        usePresentationStore.temporal.getState().undo();
+      }
+      if (
+        (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) ||
+        (e.key === 'y' && (e.ctrlKey || e.metaKey))
+      ) {
+        e.preventDefault();
+        usePresentationStore.temporal.getState().redo();
       }
       if (e.key === 'F5') {
         e.preventDefault();
@@ -83,7 +122,10 @@ function App() {
     <div className="app">
       <Toolbar />
       <div className="main-area">
-        <SlideSidebar />
+        <div style={{ width: sidebarWidth, minWidth: 150, maxWidth: 400, flexShrink: 0 }}>
+          <SlideSidebar />
+        </div>
+        <div className="sidebar-resize-handle" onPointerDown={handleResizeStart} />
         <div className="editor-area">
           <div className="editor-actions">
             <AddDemoButton />

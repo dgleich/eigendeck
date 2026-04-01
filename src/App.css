@@ -211,13 +211,25 @@ body,
    Sidebar
    ============================================ */
 .sidebar {
-  width: 200px;
-  min-width: 180px;
-  max-width: 350px;
+  width: 100%;
+  height: 100%;
   background: #f8f8f8;
   border-right: 1px solid #ddd;
   display: flex;
   flex-direction: column;
+}
+
+.sidebar-resize-handle {
+  width: 5px;
+  cursor: col-resize;
+  background: transparent;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle:active {
+  background: #93c5fd;
 }
 
 .sidebar-slides {
