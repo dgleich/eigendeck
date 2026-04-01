@@ -124,144 +124,141 @@ export async function exportPresentation(): Promise<void> {
   if (!selected) return;
 
   try {
-    const sections: string[] = [];
+    const W = presentation.config.width;
+    const H = presentation.config.height;
+    const meta = [presentation.config.author, presentation.config.venue]
+      .filter(Boolean)
+      .join(' \u00B7 ');
+
+    const slides: string[] = [];
 
     for (let i = 0; i < presentation.slides.length; i++) {
       const slide = presentation.slides[i];
-      let sectionContent = '';
+      const layout = slide.layout || 'default';
+      let inner = '';
 
-      // Title element
+      // Title
       if (slide.content.title) {
         const t = slide.content.title;
         const p = t.position;
-        sectionContent += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:'PT Sans',sans-serif;font-weight:700;font-size:${t.fontSize || 56}px;color:#222;line-height:1.2;">${t.text}</div>`;
+        inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:'PT Sans',sans-serif;font-weight:700;font-size:${t.fontSize || 56}px;color:#222;line-height:1.2;padding:8px 12px;">${t.text}</div>`;
       }
 
-      sectionContent += slide.content.html || '';
+      // Body
+      if (slide.content.html) {
+        inner += `<div class="slide-body ${layout === 'centered' ? 'layout-centered' : ''} ${layout === 'two-column' ? 'layout-twocol' : ''}">${slide.content.html}</div>`;
+      }
 
+      // Demo
       if (slide.content.demo && projectPath) {
         try {
-          const demoPath = `${projectPath}/${slide.content.demo}`;
-          const demoHtml = await readTextFile(demoPath);
-          const escaped = demoHtml
-            .replace(/&/g, '&amp;')
-            .replace(/"/g, '&quot;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-          const pos = slide.content.demoPosition || {
-            x: 0,
-            y: 200,
-            width: 800,
-            height: 400,
-          };
-          sectionContent += `\n<iframe srcdoc="${escaped}" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;border:none;" sandbox="allow-scripts"></iframe>`;
-        } catch {
-          sectionContent += '\n<!-- demo file not found -->';
-        }
+          const demoHtml = await readTextFile(`${projectPath}/${slide.content.demo}`);
+          const escaped = demoHtml.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          const p = slide.content.demoPosition || { x: 0, y: 200, width: 800, height: 400 };
+          inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts"></iframe>`;
+        } catch { /* skip */ }
       }
 
+      // Image
       if (slide.content.image) {
-        const pos = slide.content.imagePosition || {
-          x: 360,
-          y: 200,
-          width: 1200,
-          height: 680,
-        };
-        const imgSrcAttr = slide.content.image.startsWith('data:')
-          ? slide.content.image
-          : slide.content.image;
-        sectionContent += `\n<img class="slide-image" src="${imgSrcAttr}" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;object-fit:contain;" />`;
+        const p = slide.content.imagePosition || { x: 360, y: 200, width: 1200, height: 680 };
+        inner += `<img src="${slide.content.image}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;" />`;
       }
 
       // Text boxes
-      if (slide.content.textBoxes) {
-        for (const box of slide.content.textBoxes) {
-          const p = box.position;
-          sectionContent += `\n<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:'PT Sans',sans-serif;font-size:32px;line-height:1.4;color:#222;padding:12px 16px;overflow:hidden;">${box.html}</div>`;
-        }
+      for (const box of slide.content.textBoxes || []) {
+        const p = box.position;
+        inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:'PT Sans',sans-serif;font-size:32px;line-height:1.4;color:#222;padding:12px 16px;overflow:hidden;">${box.html}</div>`;
       }
 
       // Arrows
       if (slide.content.arrows && slide.content.arrows.length > 0) {
-        sectionContent += '\n<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">';
+        inner += '<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">';
         for (const a of slide.content.arrows) {
           const color = a.color || '#e53e3e';
           const sw = a.strokeWidth || 4;
           const hs = a.headSize || 16;
           const angle = Math.atan2(a.y2 - a.y1, a.x2 - a.x1);
           const ha = Math.PI / 6;
-          const hx1 = a.x2 - hs * Math.cos(angle - ha);
-          const hy1 = a.y2 - hs * Math.sin(angle - ha);
-          const hx2 = a.x2 - hs * Math.cos(angle + ha);
-          const hy2 = a.y2 - hs * Math.sin(angle + ha);
-          sectionContent += `<line x1="${a.x1}" y1="${a.y1}" x2="${a.x2}" y2="${a.y2}" stroke="${color}" stroke-width="${sw}"/>`;
-          sectionContent += `<polygon points="${a.x2},${a.y2} ${hx1},${hy1} ${hx2},${hy2}" fill="${color}"/>`;
+          inner += `<line x1="${a.x1}" y1="${a.y1}" x2="${a.x2}" y2="${a.y2}" stroke="${color}" stroke-width="${sw}"/>`;
+          inner += `<polygon points="${a.x2},${a.y2} ${a.x2 - hs * Math.cos(angle - ha)},${a.y2 - hs * Math.sin(angle - ha)} ${a.x2 - hs * Math.cos(angle + ha)},${a.y2 - hs * Math.sin(angle + ha)}" fill="${color}"/>`;
         }
-        sectionContent += '</svg>';
+        inner += '</svg>';
       }
 
-      const notesHtml = slide.notes
-        ? `\n<aside class="notes">${slide.notes}</aside>`
-        : '';
       // Footer
-      const meta = [presentation.config.author, presentation.config.venue].filter(Boolean).join(' \u00B7 ');
-      sectionContent += `<div style="position:absolute;bottom:20px;left:80px;right:40px;display:flex;justify-content:space-between;font-family:'PT Sans',sans-serif;color:#999;pointer-events:none;"><span style="font-size:18px;">${meta}</span><span style="font-size:24px;">${i + 1}</span></div>`;
+      inner += `<div class="slide-footer"><span>${meta}</span><span>${i + 1}</span></div>`;
 
-      const layoutAttr = slide.layout ? ` data-layout="${slide.layout}"` : '';
-      sections.push(`<section${layoutAttr}>${sectionContent}${notesHtml}</section>`);
+      slides.push(`<div class="slide" data-index="${i}">${inner}</div>`);
     }
 
     const html = `<!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${presentation.title}</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/${presentation.theme}.css">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&display=swap');
-    .reveal {
-      font-family: 'PT Sans', sans-serif;
-      font-size: 32px;
-      line-height: 1.4;
-      color: #222;
-    }
-    .reveal .slides { text-align: left; }
-    .reveal h1 { font-size: 56px; font-weight: 700; line-height: 1.2; margin-bottom: 24px; color: #222; text-transform: none; text-shadow: none; }
-    .reveal h2 { font-size: 44px; font-weight: 700; line-height: 1.2; margin-bottom: 20px; color: #222; text-transform: none; text-shadow: none; }
-    .reveal h3 { font-size: 36px; font-weight: 700; line-height: 1.2; margin-bottom: 16px; color: #222; text-transform: none; text-shadow: none; }
-    .reveal p { margin-bottom: 16px; }
-    .reveal ul, .reveal ol { padding-left: 1.2em; margin-bottom: 16px; }
-    .reveal li { margin-bottom: 8px; }
-    .reveal section { text-align: left; padding: 60px 80px; position: relative; box-sizing: border-box; }
-    .reveal section img.slide-image { position: absolute; object-fit: contain; }
-    .reveal section[data-layout="centered"] { display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; }
-    .reveal section[data-layout="centered"] ul, .reveal section[data-layout="centered"] ol { display:inline-block; text-align:left; padding-left:1em; list-style-position:inside; }
-    .reveal section[data-layout="two-column"] { column-count:2; column-gap:80px; }
-    .reveal .slide-number { font-family:'PT Sans',sans-serif; font-size:24px; color:#999; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${presentation.title}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; overflow: hidden; font-family: 'PT Sans', sans-serif; }
+#viewport { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+.slide {
+  width: ${W}px; height: ${H}px; background: #fff; position: relative; overflow: hidden;
+  transform-origin: center center; display: none;
+}
+.slide.active { display: block; }
+.slide-body {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  font-family: 'PT Sans', sans-serif; font-size: 32px; line-height: 1.4; color: #222;
+  padding: 60px 80px;
+}
+.slide-body h1 { font-size: 56px; font-weight: 700; margin-bottom: 24px; }
+.slide-body h2 { font-size: 44px; font-weight: 700; margin-bottom: 20px; }
+.slide-body h3 { font-size: 36px; font-weight: 700; margin-bottom: 16px; }
+.slide-body p { margin-bottom: 16px; }
+.slide-body ul, .slide-body ol { padding-left: 1.2em; margin-bottom: 16px; }
+.slide-body li { margin-bottom: 8px; }
+.layout-centered { display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; }
+.layout-centered ul, .layout-centered ol { display:inline-block; text-align:left; padding-left:1em; list-style-position:inside; }
+.layout-twocol { column-count: 2; column-gap: 80px; }
+.slide-footer {
+  position: absolute; bottom: 20px; left: 80px; right: 40px;
+  display: flex; justify-content: space-between;
+  font-family: 'PT Sans', sans-serif; color: #999; font-size: 18px;
+}
+.slide-footer span:last-child { font-size: 24px; }
+</style>
 </head>
 <body>
-  <div class="reveal">
-    <div class="slides">
-${sections.map((s) => '      ' + s).join('\n')}
-    </div>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
-  <script>
-    Reveal.initialize({
-      hash: true,
-      transition: '${presentation.config.transition}',
-      backgroundTransition: '${presentation.config.backgroundTransition}',
-      width: ${presentation.config.width},
-      height: ${presentation.config.height},
-      center: false,
-      slideNumber: ${presentation.config.showSlideNumber !== false},
-      plugins: [RevealNotes],
-    });
-  </script>
+<div id="viewport">
+${slides.join('\n')}
+</div>
+<script>
+const slides = document.querySelectorAll('.slide');
+let current = 0;
+function show(i) {
+  slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
+  // Scale to fit
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const s = slides[i];
+  const scale = Math.min(vw / ${W}, vh / ${H});
+  s.style.transform = 'scale(' + scale + ')';
+  current = i;
+}
+show(0);
+window.addEventListener('resize', () => show(current));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'PageDown') {
+    e.preventDefault(); if (current < slides.length - 1) show(current + 1);
+  }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+    e.preventDefault(); if (current > 0) show(current - 1);
+  }
+  if (e.key === 'Home') { e.preventDefault(); show(0); }
+  if (e.key === 'End') { e.preventDefault(); show(slides.length - 1); }
+});
+</script>
 </body>
 </html>`;
 

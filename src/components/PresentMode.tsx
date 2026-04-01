@@ -1,292 +1,275 @@
-import { useEffect, useRef, useState } from 'react';
-import Reveal from 'reveal.js';
-import 'reveal.js/dist/reveal.css';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { SpeakerPanel } from './SpeakerView';
-import { THEME_CSS } from './revealThemes';
+import type { Slide } from '../types/presentation';
 
-// Override reveal.js theme styles to match our editor exactly
-const SLIDE_OVERRIDE_CSS = `
-  .reveal {
-    font-family: 'PT Sans', sans-serif;
-    font-size: 32px;
-    font-weight: normal;
-    line-height: 1.4;
-    color: #222;
-  }
-  .reveal .slides {
-    text-align: left;
-  }
-  .reveal h1 {
-    font-family: 'PT Sans', sans-serif;
-    font-size: 56px;
-    font-weight: 700;
-    line-height: 1.2;
-    margin-bottom: 24px;
-    color: #222;
-    text-transform: none;
-    text-shadow: none;
-  }
-  .reveal h2 {
-    font-family: 'PT Sans', sans-serif;
-    font-size: 44px;
-    font-weight: 700;
-    line-height: 1.2;
-    margin-bottom: 20px;
-    color: #222;
-    text-transform: none;
-    text-shadow: none;
-  }
-  .reveal h3 {
-    font-family: 'PT Sans', sans-serif;
-    font-size: 36px;
-    font-weight: 700;
-    line-height: 1.2;
-    margin-bottom: 16px;
-    color: #222;
-    text-transform: none;
-    text-shadow: none;
-  }
-  .reveal p {
-    margin-bottom: 16px;
-  }
-  .reveal ul, .reveal ol {
-    padding-left: 1.2em;
-    margin-bottom: 16px;
-  }
-  .reveal li {
-    margin-bottom: 8px;
-  }
-  .reveal section {
-    text-align: left;
-    padding: 60px 80px;
-    position: relative;
-    box-sizing: border-box;
-  }
-  .reveal section img.slide-image {
-    position: absolute;
-    object-fit: contain;
-  }
-  .reveal section[data-layout="centered"] {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-  }
-  .reveal section[data-layout="centered"] ul,
-  .reveal section[data-layout="centered"] ol {
-    display: inline-block;
-    text-align: left;
-    padding-left: 1em;
-    list-style-position: inside;
-  }
-  .reveal section[data-layout="two-column"] {
-    column-count: 2;
-    column-gap: 80px;
-  }
-  .reveal .slide-title {
-    position: absolute;
-    font-family: 'PT Sans', sans-serif;
-    font-weight: 700;
-    color: #222;
-    line-height: 1.2;
-  }
-  .reveal .slide-footer-bar {
-    position: absolute;
-    bottom: 20px;
-    left: 80px;
-    right: 40px;
-    display: flex;
-    justify-content: space-between;
-    font-family: 'PT Sans', sans-serif;
-    color: #999;
-    pointer-events: none;
-  }
-  .reveal .slide-footer-bar .meta { font-size: 18px; }
-  .reveal .slide-footer-bar .num { font-size: 24px; }
-  .reveal .slide-number {
-    font-family: 'PT Sans', sans-serif;
-    font-size: 24px;
-    color: #999;
-  }
-`;
-
+/**
+ * Custom presenter — renders slides identically to the editor.
+ * No reveal.js. Uses CSS transitions between slides.
+ * Arrow keys / spacebar to navigate, Escape to exit, S for speaker panel.
+ */
 export function PresentMode() {
   const { presentation, setPresenting, selectSlide, projectPath } =
     usePresentationStore();
-  const deckRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const revealRef = useRef<any>(null);
-  const styleRef = useRef<HTMLStyleElement | null>(null);
-  const themeStyleRef = useRef<HTMLStyleElement | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(
+    usePresentationStore.getState().currentSlideIndex
+  );
   const [showSpeaker, setShowSpeaker] = useState(false);
+  const [transition, setTransition] = useState<'none' | 'left' | 'right'>('none');
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  const totalSlides = presentation.slides.length;
+  const slideW = presentation.config.width;
+  const slideH = presentation.config.height;
+
+  // Scale slide to fit viewport
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        setScale(Math.min(width / slideW, height / slideH));
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [slideW, slideH]);
+
+  const goTo = useCallback(
+    (index: number, direction: 'left' | 'right') => {
+      if (index < 0 || index >= totalSlides) return;
+      setTransition(direction);
+      setTimeout(() => {
+        setCurrentIndex(index);
+        selectSlide(index);
+        setTransition('none');
+      }, 200);
+    },
+    [totalSlides, selectSlide]
+  );
+
+  const goNext = useCallback(() => goTo(currentIndex + 1, 'left'), [currentIndex, goTo]);
+  const goPrev = useCallback(() => goTo(currentIndex - 1, 'right'), [currentIndex, goTo]);
 
   useEffect(() => {
-    if (!deckRef.current) return;
-
-    // Inject theme CSS as a style tag (works in both dev and production)
-    const themeCss = THEME_CSS[presentation.theme] || THEME_CSS.white;
-    const themeStyle = document.createElement('style');
-    themeStyle.textContent = themeCss;
-    document.head.appendChild(themeStyle);
-    themeStyleRef.current = themeStyle;
-
-    // Inject override styles (after theme so they take precedence)
-    const style = document.createElement('style');
-    style.textContent = SLIDE_OVERRIDE_CSS;
-    document.head.appendChild(style);
-    styleRef.current = style;
-
-    const deck = new Reveal(deckRef.current, {
-      hash: false,
-      transition: presentation.config.transition as any,
-      backgroundTransition: presentation.config.backgroundTransition as any,
-      width: presentation.config.width,
-      height: presentation.config.height,
-      embedded: false,
-      center: false,
-      slideNumber: presentation.config.showSlideNumber !== false,
-    });
-
-    deck.initialize().then(() => {
-      revealRef.current = deck;
-    });
-
-    // Sync reveal.js slide changes back to our store
-    const onSlideChanged = (event: any) => {
-      const idx = event.indexh ?? 0;
-      selectSlide(idx);
-    };
-
-    deck.on('slidechanged', onSlideChanged);
-
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setPresenting(false);
-      }
-      if (e.key === 's' || e.key === 'S') {
-        // Don't let reveal.js handle S (it tries window.open)
-        e.stopPropagation();
-        setShowSpeaker((prev) => !prev);
+      switch (e.key) {
+        case 'Escape':
+          setPresenting(false);
+          break;
+        case 'ArrowRight':
+        case 'ArrowDown':
+        case ' ':
+        case 'PageDown':
+          e.preventDefault();
+          goNext();
+          break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+        case 'PageUp':
+          e.preventDefault();
+          goPrev();
+          break;
+        case 's':
+        case 'S':
+          e.preventDefault();
+          setShowSpeaker((prev) => !prev);
+          break;
+        case 'Home':
+          e.preventDefault();
+          goTo(0, 'right');
+          break;
+        case 'End':
+          e.preventDefault();
+          goTo(totalSlides - 1, 'left');
+          break;
       }
     };
-    // Use capture to intercept before reveal.js
-    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [goNext, goPrev, goTo, totalSlides, setPresenting]);
 
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown, true);
-      deck.off('slidechanged', onSlideChanged);
-      if (revealRef.current) {
-        revealRef.current.destroy();
-        revealRef.current = null;
-      }
-      if (styleRef.current) {
-        document.head.removeChild(styleRef.current);
-        styleRef.current = null;
-      }
-      if (themeStyleRef.current) {
-        document.head.removeChild(themeStyleRef.current);
-        themeStyleRef.current = null;
-      }
-    };
-  }, []);
+  const slide = presentation.slides[currentIndex];
+  if (!slide) return null;
 
-  const buildSlideHtml = (slide: (typeof presentation.slides)[0], index: number) => {
-    let html = '';
-
-    // Title element
-    if (slide.content.title) {
-      const t = slide.content.title;
-      const p = t.position;
-      html += `<div class="slide-title" style="left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-size:${t.fontSize || 56}px;">${t.text}</div>`;
-    }
-
-    html += slide.content.html || '';
-
-    if (slide.content.demo && projectPath) {
-      const pos = slide.content.demoPosition || {
-        x: 0,
-        y: 200,
-        width: 800,
-        height: 400,
-      };
-      const demoSrc = convertFileSrc(`${projectPath}/${slide.content.demo}`);
-      html += `<iframe src="${demoSrc}" sandbox="allow-scripts allow-same-origin" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;border:none;"></iframe>`;
-    }
-
-    if (slide.content.image) {
-      const pos = slide.content.imagePosition || {
-        x: 360,
-        y: 200,
-        width: 1200,
-        height: 680,
-      };
-      let imgSrc: string;
-      if (slide.content.image.startsWith('data:')) {
-        imgSrc = slide.content.image;
-      } else if (projectPath) {
-        imgSrc = convertFileSrc(`${projectPath}/${slide.content.image}`);
-      } else {
-        imgSrc = slide.content.image;
-      }
-      html += `<img class="slide-image" src="${imgSrc}" style="left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;" />`;
-    }
-
-    // Text boxes
-    if (slide.content.textBoxes) {
-      for (const box of slide.content.textBoxes) {
-        const p = box.position;
-        html += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:'PT Sans',sans-serif;font-size:32px;line-height:1.4;color:#222;padding:12px 16px;overflow:hidden;">${box.html}</div>`;
-      }
-    }
-
-    // Arrows
-    if (slide.content.arrows) {
-      html += '<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">';
-      for (const a of slide.content.arrows) {
-        const color = a.color || '#e53e3e';
-        const sw = a.strokeWidth || 4;
-        const hs = a.headSize || 16;
-        const angle = Math.atan2(a.y2 - a.y1, a.x2 - a.x1);
-        const ha = Math.PI / 6;
-        const hx1 = a.x2 - hs * Math.cos(angle - ha);
-        const hy1 = a.y2 - hs * Math.sin(angle - ha);
-        const hx2 = a.x2 - hs * Math.cos(angle + ha);
-        const hy2 = a.y2 - hs * Math.sin(angle + ha);
-        html += `<line x1="${a.x1}" y1="${a.y1}" x2="${a.x2}" y2="${a.y2}" stroke="${color}" stroke-width="${sw}"/>`;
-        html += `<polygon points="${a.x2},${a.y2} ${hx1},${hy1} ${hx2},${hy2}" fill="${color}"/>`;
-      }
-      html += '</svg>';
-    }
-
-    // Footer with author/venue and slide number
-    const { author, venue } = presentation.config;
-    const meta = [author, venue].filter(Boolean).join(' \u00B7 ');
-    html += `<div class="slide-footer-bar"><span class="meta">${meta}</span><span class="num">${index + 1}</span></div>`;
-
-    if (slide.notes) {
-      html += `<aside class="notes">${slide.notes}</aside>`;
-    }
-
-    return html;
-  };
+  const { author, venue } = presentation.config;
+  const meta = [author, venue].filter(Boolean).join(' \u00B7 ');
 
   return (
     <div className={`present-mode ${showSpeaker ? 'with-speaker' : ''}`}>
-      <div className="reveal" ref={deckRef}>
-        <div className="slides">
-          {presentation.slides.map((slide, index) => (
-            <section
-              key={slide.id}
-              data-layout={slide.layout || 'default'}
-              dangerouslySetInnerHTML={{ __html: buildSlideHtml(slide, index) }}
-            />
-          ))}
+      <div className="present-viewport" ref={viewportRef}>
+        <div
+          className={`present-slide slide-layout-${slide.layout || 'default'} present-transition-${transition}`}
+          style={{
+            width: slideW,
+            height: slideH,
+            transform: `scale(${scale})`,
+          }}
+        >
+          <SlideRenderer slide={slide} projectPath={projectPath} />
+          <div className="slide-footer">
+            <span className="slide-footer-meta">{meta}</span>
+            <span className="slide-footer-number">{currentIndex + 1}</span>
+          </div>
         </div>
       </div>
       {showSpeaker && <SpeakerPanel />}
     </div>
+  );
+}
+
+/** Renders a single slide's content — used by both present mode and (later) thumbnails */
+function SlideRenderer({
+  slide,
+  projectPath,
+}: {
+  slide: Slide;
+  projectPath: string | null;
+}) {
+  // Title
+  const title = slide.content.title;
+
+  // Image src
+  let imgSrc: string | undefined;
+  if (slide.content.image) {
+    if (slide.content.image.startsWith('data:')) {
+      imgSrc = slide.content.image;
+    } else if (projectPath) {
+      try {
+        imgSrc = convertFileSrc(`${projectPath}/${slide.content.image}`);
+      } catch {
+        imgSrc = undefined;
+      }
+    }
+  }
+  const imgPos = slide.content.imagePosition || { x: 360, y: 200, width: 1200, height: 680 };
+
+  // Demo src
+  let demoSrc: string | undefined;
+  if (slide.content.demo && projectPath) {
+    try {
+      demoSrc = convertFileSrc(`${projectPath}/${slide.content.demo}`);
+    } catch {
+      demoSrc = undefined;
+    }
+  }
+  const demoPos = slide.content.demoPosition || { x: 0, y: 200, width: 800, height: 400 };
+
+  return (
+    <>
+      {/* Title */}
+      {title && (
+        <div
+          className="present-title"
+          style={{
+            position: 'absolute',
+            left: title.position.x,
+            top: title.position.y,
+            width: title.position.width,
+            height: title.position.height,
+            fontSize: title.fontSize || 56,
+          }}
+        >
+          {title.text}
+        </div>
+      )}
+
+      {/* Main body content */}
+      <div
+        className="present-body slide-content-styles"
+        dangerouslySetInnerHTML={{ __html: slide.content.html || '' }}
+      />
+
+      {/* Image */}
+      {imgSrc && (
+        <img
+          src={imgSrc}
+          alt=""
+          style={{
+            position: 'absolute',
+            left: imgPos.x,
+            top: imgPos.y,
+            width: imgPos.width,
+            height: imgPos.height,
+            objectFit: 'contain',
+          }}
+        />
+      )}
+
+      {/* Demo iframe */}
+      {demoSrc && (
+        <iframe
+          src={demoSrc}
+          sandbox="allow-scripts allow-same-origin"
+          title="demo"
+          style={{
+            position: 'absolute',
+            left: demoPos.x,
+            top: demoPos.y,
+            width: demoPos.width,
+            height: demoPos.height,
+            border: 'none',
+          }}
+        />
+      )}
+
+      {/* Text boxes */}
+      {(slide.content.textBoxes || []).map((box) => (
+        <div
+          key={box.id}
+          style={{
+            position: 'absolute',
+            left: box.position.x,
+            top: box.position.y,
+            width: box.position.width,
+            height: box.position.height,
+          }}
+          className="present-textbox"
+          dangerouslySetInnerHTML={{ __html: box.html }}
+        />
+      ))}
+
+      {/* Arrows */}
+      {(slide.content.arrows || []).length > 0 && (
+        <svg
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            overflow: 'visible',
+          }}
+        >
+          {(slide.content.arrows || []).map((a) => {
+            const color = a.color || '#e53e3e';
+            const sw = a.strokeWidth || 4;
+            const hs = a.headSize || 16;
+            const angle = Math.atan2(a.y2 - a.y1, a.x2 - a.x1);
+            const ha = Math.PI / 6;
+            const hx1 = a.x2 - hs * Math.cos(angle - ha);
+            const hy1 = a.y2 - hs * Math.sin(angle - ha);
+            const hx2 = a.x2 - hs * Math.cos(angle + ha);
+            const hy2 = a.y2 - hs * Math.sin(angle + ha);
+            return (
+              <g key={a.id}>
+                <line
+                  x1={a.x1} y1={a.y1} x2={a.x2} y2={a.y2}
+                  stroke={color} strokeWidth={sw}
+                />
+                <polygon
+                  points={`${a.x2},${a.y2} ${hx1},${hy1} ${hx2},${hy2}`}
+                  fill={color}
+                />
+              </g>
+            );
+          })}
+        </svg>
+      )}
+    </>
   );
 }

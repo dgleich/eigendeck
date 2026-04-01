@@ -23,7 +23,6 @@
     "@tiptap/starter-kit": "^3.21.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "reveal.js": "^5.1.0",
     "zundo": "^2.3.0",
     "zustand": "^5.0.12"
   },
@@ -34,7 +33,6 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
-    "@types/reveal.js": "^5.2.2",
     "@vitejs/plugin-react": "^4.6.0",
     "jsdom": "^29.0.1",
     "typescript": "~5.8.3",
