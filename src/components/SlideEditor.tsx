@@ -245,6 +245,37 @@ export function SlideEditor() {
             </option>
           ))}
         </select>
+        <span className="divider" />
+        <button
+          onClick={() => {
+            const isNarrow = editor?.isActive('textStyle', { fontFamily: "'PT Sans Narrow', sans-serif" });
+            if (isNarrow) {
+              editor?.chain().focus().unsetFontFamily().run();
+            } else {
+              editor?.chain().focus().setFontFamily("'PT Sans Narrow', sans-serif").run();
+            }
+          }}
+          className={editor?.isActive('textStyle', { fontFamily: "'PT Sans Narrow', sans-serif" }) ? 'active' : ''}
+          title="PT Sans Narrow"
+        >
+          Narrow
+        </button>
+        <button
+          onClick={() => {
+            const isUpper = editor?.isActive('textStyle', { textTransform: 'uppercase' });
+            if (isUpper) {
+              editor?.chain().focus().unsetUppercase().run();
+            } else {
+              editor?.chain().focus().setUppercase().run();
+            }
+          }}
+          className={editor?.isActive('textStyle', { textTransform: 'uppercase' }) ? 'active' : ''}
+          title="Uppercase with letter spacing"
+        >
+          AA
+        </button>
+        <span className="divider" />
+        <ColorPalette editor={editor} />
       </div>
       <div className="slide-canvas-container" ref={containerRef}>
         <div
@@ -296,6 +327,67 @@ export function SlideEditor() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+const COLORS = [
+  { color: '#222222', label: 'Black' },
+  { color: '#6b7280', label: 'Grey' },
+  { color: '#d1d5db', label: 'Light Grey' },
+  { color: '#16a34a', label: 'Green' },
+  { color: '#86efac', label: 'Light Green' },
+  { color: '#2563eb', label: 'Blue' },
+  { color: '#93c5fd', label: 'Light Blue' },
+  { color: '#dc2626', label: 'Red' },
+  { color: '#fca5a5', label: 'Light Red' },
+  { color: '#ea580c', label: 'Orange' },
+  { color: '#fdba74', label: 'Light Orange' },
+  { color: '#9333ea', label: 'Purple' },
+  { color: '#c4b5fd', label: 'Light Purple' },
+];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ColorPalette({ editor }: { editor: any }) {
+  const [open, setOpen] = useState(false);
+
+  if (!editor) return null;
+
+  return (
+    <div className="color-palette-wrapper">
+      <button
+        onClick={() => setOpen(!open)}
+        title="Text color"
+        className="color-palette-btn"
+      >
+        A<span className="color-indicator" style={{ background: editor.getAttributes('textStyle')?.color || '#222' }} />
+      </button>
+      {open && (
+        <div className="color-palette-dropdown">
+          {COLORS.map((c) => (
+            <button
+              key={c.color}
+              className="color-swatch"
+              style={{ background: c.color }}
+              title={c.label}
+              onClick={() => {
+                editor.chain().focus().setTextColor(c.color).run();
+                setOpen(false);
+              }}
+            />
+          ))}
+          <button
+            className="color-swatch color-reset"
+            title="Reset color"
+            onClick={() => {
+              editor.chain().focus().unsetTextColor().run();
+              setOpen(false);
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }

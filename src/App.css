@@ -18,6 +18,20 @@
   src: url('/fonts/pt-sans-italic.ttf') format('truetype');
 }
 
+/* PT Sans Narrow */
+@font-face {
+  font-family: 'PT Sans Narrow';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/fonts/pt-sans-narrow-regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'PT Sans Narrow';
+  font-style: normal;
+  font-weight: 700;
+  src: url('/fonts/pt-sans-narrow-bold.ttf') format('truetype');
+}
+
 /* System font for UI — force it on the app root to override reveal.js bleed */
 :root,
 body,
@@ -447,6 +461,67 @@ body,
   background: #fff;
   cursor: pointer;
   color: #1a1a1a;
+}
+
+/* Color palette */
+.color-palette-wrapper {
+  position: relative;
+}
+
+.color-palette-btn {
+  font-weight: 700 !important;
+  position: relative;
+  padding-bottom: 6px !important;
+}
+
+.color-indicator {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 3px;
+  border-radius: 1px;
+}
+
+.color-palette-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 6px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0;
+  outline: 1px solid #ddd;
+}
+
+.color-swatch:hover {
+  outline-color: #333;
+  transform: scale(1.15);
+}
+
+.color-reset {
+  background: #fff !important;
+  color: #999;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Slide canvas — 1920x1080 (16:9), CSS-scaled to fit */
