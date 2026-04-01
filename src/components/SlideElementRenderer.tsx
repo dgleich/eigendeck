@@ -1,7 +1,8 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { pauseUndo, resumeUndo } from '../store/presentation';
-import type { SlideElement, ElementPosition } from '../types/presentation';
+import { TEXT_PRESET_STYLES } from '../types/presentation';
+import type { SlideElement, ElementPosition, TextElement } from '../types/presentation';
 
 interface Props {
   element: SlideElement;
@@ -14,75 +15,36 @@ interface Props {
 }
 
 export function SlideElementRenderer({
-  element,
-  zIndex,
-  scale,
-  projectPath,
-  onUpdate,
-  onDelete,
-  onSelect,
+  element, zIndex, scale, projectPath, onUpdate, onDelete, onSelect,
 }: Props) {
   switch (element.type) {
-    case 'title':
+    case 'text':
       return (
         <DraggableBox
-          position={element.position}
-          zIndex={zIndex}
-          scale={scale}
-          className="el-title"
-          onSelect={onSelect}
-          onDelete={onDelete}
+          position={element.position} zIndex={zIndex} scale={scale}
+          className={`el-text el-preset-${element.preset}`}
+          onSelect={onSelect} onDelete={onDelete}
           onPositionChange={(pos) => onUpdate({ position: pos } as any)}
         >
-          <EditableText
-            text={element.text}
-            style={{ fontSize: element.fontSize || 56 }}
-            className="el-title-text"
-            onCommit={(text) => onUpdate({ text } as any)}
-          />
-        </DraggableBox>
-      );
-
-    case 'textBox':
-      return (
-        <DraggableBox
-          position={element.position}
-          zIndex={zIndex}
-          scale={scale}
-          className="el-textbox"
-          onSelect={onSelect}
-          onDelete={onDelete}
-          onPositionChange={(pos) => onUpdate({ position: pos } as any)}
-        >
-          <EditableHtml
-            html={element.html}
-            className="el-textbox-content"
-            onCommit={(html) => onUpdate({ html } as any)}
-          />
+          <TextContent element={element} onCommit={(html) => onUpdate({ html } as any)} />
         </DraggableBox>
       );
 
     case 'image': {
       let src: string;
-      if (element.src.startsWith('data:')) {
-        src = element.src;
-      } else if (projectPath) {
+      if (element.src.startsWith('data:')) src = element.src;
+      else if (projectPath) {
         try { src = convertFileSrc(`${projectPath}/${element.src}`); }
         catch { src = element.src; }
-      } else {
-        src = element.src;
-      }
+      } else src = element.src;
       return (
         <DraggableBox
-          position={element.position}
-          zIndex={zIndex}
-          scale={scale}
-          className="el-image"
-          onSelect={onSelect}
-          onDelete={onDelete}
+          position={element.position} zIndex={zIndex} scale={scale}
+          className="el-image" onSelect={onSelect} onDelete={onDelete}
           onPositionChange={(pos) => onUpdate({ position: pos } as any)}
         >
-          <img src={src} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+          <img src={src} alt="" draggable={false}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
         </DraggableBox>
       );
     }
@@ -95,56 +57,105 @@ export function SlideElementRenderer({
       }
       return (
         <DraggableBox
-          position={element.position}
-          zIndex={zIndex}
-          scale={scale}
-          className="el-demo"
-          onSelect={onSelect}
-          onDelete={onDelete}
+          position={element.position} zIndex={zIndex} scale={scale}
+          className="el-demo" onSelect={onSelect} onDelete={onDelete}
           onPositionChange={(pos) => onUpdate({ position: pos } as any)}
         >
-          {src && (
+          {src ? (
             <iframe src={src} sandbox="allow-scripts allow-same-origin" title="demo"
               style={{ width: '100%', height: '100%', border: 'none' }} />
-          )}
+          ) : <div style={{ padding: 20, color: '#999' }}>Demo: {element.src}</div>}
         </DraggableBox>
       );
     }
 
     case 'arrow':
       return (
-        <ArrowRenderer
-          element={element}
-          zIndex={zIndex}
-          scale={scale}
-          onUpdate={onUpdate}
-          onDelete={onDelete}
-          onSelect={onSelect}
-        />
+        <ArrowRenderer element={element} zIndex={zIndex} scale={scale}
+          onUpdate={onUpdate} onDelete={onDelete} onSelect={onSelect} />
       );
   }
 }
 
 // ============================================
-// Draggable + resizable box (shared by most element types)
+// Text content with preset styling
+// ============================================
+function TextContent({
+  element,
+  onCommit,
+}: {
+  element: TextElement;
+  onCommit: (html: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const presetStyle = TEXT_PRESET_STYLES[element.preset];
+  const style: React.CSSProperties = {
+    width: '100%',
+    height: '100%',
+    fontFamily: element.fontFamily || presetStyle.fontFamily,
+    fontSize: element.fontSize || presetStyle.fontSize,
+    fontWeight: presetStyle.fontWeight,
+    fontStyle: presetStyle.fontStyle,
+    color: element.color || presetStyle.color,
+    lineHeight: 1.3,
+    padding: '8px 12px',
+    outline: 'none',
+    overflow: 'hidden',
+    cursor: editing ? 'text' : 'inherit',
+  };
+
+  useEffect(() => {
+    if (contentRef.current && !editing) {
+      contentRef.current.innerHTML = element.html;
+    }
+  }, [element.html, editing]);
+
+  const handleDoubleClick = () => {
+    setEditing(true);
+    setTimeout(() => {
+      contentRef.current?.focus();
+      // Place cursor at end
+      const sel = window.getSelection();
+      if (sel && contentRef.current) {
+        sel.selectAllChildren(contentRef.current);
+        sel.collapseToEnd();
+      }
+    }, 0);
+  };
+
+  const handleBlur = () => {
+    if (contentRef.current) {
+      onCommit(contentRef.current.innerHTML);
+    }
+    setEditing(false);
+  };
+
+  return (
+    <div
+      ref={contentRef}
+      style={style}
+      contentEditable={editing}
+      suppressContentEditableWarning
+      onDoubleClick={handleDoubleClick}
+      onBlur={handleBlur}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') { handleBlur(); }
+        e.stopPropagation(); // Don't trigger keyboard shortcuts while editing
+      }}
+    />
+  );
+}
+
+// ============================================
+// Draggable + resizable box
 // ============================================
 function DraggableBox({
-  position: pos,
-  zIndex,
-  scale,
-  className,
-  children,
-  onSelect,
-  onDelete,
-  onPositionChange,
+  position: pos, zIndex, scale, className, children, onSelect, onDelete, onPositionChange,
 }: {
-  position: ElementPosition;
-  zIndex: number;
-  scale: number;
-  className: string;
-  children: React.ReactNode;
-  onSelect: () => void;
-  onDelete: () => void;
+  position: ElementPosition; zIndex: number; scale: number; className: string;
+  children: React.ReactNode; onSelect: () => void; onDelete: () => void;
   onPositionChange: (pos: ElementPosition) => void;
 }) {
   const [isDragging, setIsDragging] = useState(false);
@@ -153,9 +164,8 @@ function DraggableBox({
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if ((e.target as HTMLElement).closest('.el-resize-handle, .el-delete-btn, input, [contenteditable="true"]')) return;
-      e.preventDefault();
-      e.stopPropagation();
+      if ((e.target as HTMLElement).closest('.el-resize-handle, .el-delete-btn, [contenteditable="true"]')) return;
+      e.preventDefault(); e.stopPropagation();
       onSelect();
       setIsDragging(true);
       pauseUndo();
@@ -169,8 +179,7 @@ function DraggableBox({
         });
       };
       const handleUp = () => {
-        setIsDragging(false);
-        resumeUndo();
+        setIsDragging(false); resumeUndo();
         window.removeEventListener('pointermove', handleMove);
         window.removeEventListener('pointerup', handleUp);
       };
@@ -182,9 +191,7 @@ function DraggableBox({
 
   const handleResizeDown = useCallback(
     (e: React.PointerEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      pauseUndo();
+      e.preventDefault(); e.stopPropagation(); pauseUndo();
       resizeStart.current = { x: e.clientX, y: e.clientY, w: pos.width, h: pos.height };
       const handleMove = (me: PointerEvent) => {
         onPositionChange({
@@ -208,13 +215,8 @@ function DraggableBox({
     <div
       className={`slide-element ${className} ${isDragging ? 'is-dragging' : ''}`}
       style={{
-        position: 'absolute',
-        left: pos.x,
-        top: pos.y,
-        width: pos.width,
-        height: pos.height,
-        zIndex,
-        cursor: isDragging ? 'grabbing' : 'grab',
+        position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
+        zIndex, cursor: isDragging ? 'grabbing' : 'grab',
       }}
       onPointerDown={handlePointerDown}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
@@ -227,102 +229,14 @@ function DraggableBox({
 }
 
 // ============================================
-// Editable text (for titles)
-// ============================================
-function EditableText({
-  text,
-  style,
-  className,
-  onCommit,
-}: {
-  text: string;
-  style?: React.CSSProperties;
-  className?: string;
-  onCommit: (text: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (editing) { inputRef.current?.focus(); inputRef.current?.select(); }
-  }, [editing]);
-
-  if (editing) {
-    return (
-      <input
-        ref={inputRef}
-        className={`el-inline-input ${className || ''}`}
-        defaultValue={text}
-        style={style}
-        onBlur={(e) => { onCommit(e.currentTarget.value); setEditing(false); }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') { onCommit(e.currentTarget.value); setEditing(false); }
-          if (e.key === 'Escape') setEditing(false);
-          e.stopPropagation();
-        }}
-      />
-    );
-  }
-
-  return (
-    <div className={className} style={style} onDoubleClick={() => setEditing(true)}>
-      {text}
-    </div>
-  );
-}
-
-// ============================================
-// Editable HTML (for text boxes)
-// ============================================
-function EditableHtml({
-  html,
-  className,
-  onCommit,
-}: {
-  html: string;
-  className?: string;
-  onCommit: (html: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (contentRef.current && !editing) {
-      contentRef.current.innerHTML = html;
-    }
-  }, [html, editing]);
-
-  return (
-    <div
-      ref={contentRef}
-      className={className}
-      contentEditable={editing}
-      suppressContentEditableWarning
-      onDoubleClick={() => { setEditing(true); setTimeout(() => contentRef.current?.focus(), 0); }}
-      onBlur={() => { if (contentRef.current) onCommit(contentRef.current.innerHTML); setEditing(false); }}
-      onKeyDown={(e) => { if (e.key === 'Escape') { if (contentRef.current) onCommit(contentRef.current.innerHTML); setEditing(false); } e.stopPropagation(); }}
-      style={editing ? { cursor: 'text', outline: 'none' } : {}}
-    />
-  );
-}
-
-// ============================================
-// Arrow renderer with draggable endpoints
+// Arrow renderer
 // ============================================
 function ArrowRenderer({
-  element: a,
-  zIndex,
-  scale,
-  onUpdate,
-  onDelete,
-  onSelect,
+  element: a, zIndex, scale, onUpdate, onDelete, onSelect,
 }: {
-  element: Extract<SlideElement, { type: 'arrow' }>;
-  zIndex: number;
-  scale: number;
+  element: Extract<SlideElement, { type: 'arrow' }>; zIndex: number; scale: number;
   onUpdate: (changes: Partial<SlideElement>) => void;
-  onDelete: () => void;
-  onSelect: () => void;
+  onDelete: () => void; onSelect: () => void;
 }) {
   const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = a;
   const dragStart = useRef({ mx: 0, my: 0, ox1: 0, oy1: 0, ox2: 0, oy2: 0 });
@@ -367,7 +281,6 @@ function ArrowRenderer({
   const hy1 = y2 - headSize * Math.sin(angle - ha);
   const hx2 = x2 - headSize * Math.cos(angle + ha);
   const hy2 = y2 - headSize * Math.sin(angle + ha);
-
   const pad = 30;
   const minX = Math.min(x1, x2, hx1, hx2) - pad;
   const minY = Math.min(y1, y2, hy1, hy2) - pad;
@@ -375,11 +288,8 @@ function ArrowRenderer({
   const maxY = Math.max(y1, y2, hy1, hy2) + pad;
 
   return (
-    <div
-      className="slide-element el-arrow"
-      style={{ position: 'absolute', left: minX, top: minY, width: maxX - minX, height: maxY - minY, pointerEvents: 'none', zIndex }}
-      onClick={(e) => { e.stopPropagation(); onSelect(); }}
-    >
+    <div className="slide-element el-arrow" onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      style={{ position: 'absolute', left: minX, top: minY, width: maxX - minX, height: maxY - minY, pointerEvents: 'none', zIndex }}>
       <svg width={maxX - minX} height={maxY - minY} style={{ overflow: 'visible' }}>
         <line x1={x1 - minX} y1={y1 - minY} x2={x2 - minX} y2={y2 - minY}
           stroke="transparent" strokeWidth={20} style={{ pointerEvents: 'stroke', cursor: 'move' }} onPointerDown={handleBody} />

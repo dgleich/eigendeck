@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
 import { usePresentationStore } from '../store/presentation';
+import { TEXT_PRESET_STYLES } from '../types/presentation';
 
 const SLIDE_WIDTH = 1920;
 const SLIDE_HEIGHT = 1080;
@@ -82,29 +83,21 @@ export function SlideSidebar() {
                   position: 'relative', background: '#fff',
                 }}
               >
-                {/* Body */}
-                <div className="slide-content-styles" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'transparent' }}
-                  dangerouslySetInnerHTML={{ __html: slide.bodyHtml || '' }} />
                 {/* Elements */}
                 {slide.elements.map((el) => {
                   const p = el.position;
                   switch (el.type) {
-                    case 'title':
+                    case 'text': {
+                      const ps = TEXT_PRESET_STYLES[el.preset];
                       return (
                         <div key={el.id} style={{
                           position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-                          fontFamily: "'PT Sans', sans-serif", fontWeight: 700, fontSize: el.fontSize || 56,
-                          color: '#222', lineHeight: 1.2, overflow: 'hidden', padding: '8px 12px',
-                        }}>{el.text}</div>
-                      );
-                    case 'textBox':
-                      return (
-                        <div key={el.id} style={{
-                          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-                          fontFamily: "'PT Sans', sans-serif", fontSize: 32, color: '#222',
-                          overflow: 'hidden', padding: '12px 16px',
+                          fontFamily: el.fontFamily || ps.fontFamily, fontWeight: ps.fontWeight,
+                          fontStyle: ps.fontStyle, fontSize: el.fontSize || ps.fontSize,
+                          color: el.color || ps.color, lineHeight: 1.3, overflow: 'hidden', padding: '8px 12px',
                         }} dangerouslySetInnerHTML={{ __html: el.html }} />
                       );
+                    }
                     case 'image':
                       return (
                         <div key={el.id} style={{

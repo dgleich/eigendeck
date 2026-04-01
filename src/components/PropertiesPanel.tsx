@@ -1,4 +1,5 @@
 import { usePresentationStore } from '../store/presentation';
+import { TEXT_PRESET_STYLES } from '../types/presentation';
 import type { SlideLayout } from '../types/presentation';
 
 const LAYOUTS: { id: SlideLayout; label: string }[] = [
@@ -80,16 +81,16 @@ export function PropertiesPanel() {
               </PropSection>
             )}
 
-            {/* Type-specific properties */}
-            {selectedEl.type === 'title' && (
+            {/* Text element properties */}
+            {selectedEl.type === 'text' && (
               <>
-                <PropSection label="Title Text">
-                  <input className="prop-input" value={selectedEl.text}
-                    onChange={(e) => updateElement(selectedEl.id, { text: e.target.value } as any)} />
+                <PropSection label="Preset">
+                  <span style={{ fontSize: 12, textTransform: 'capitalize' }}>{selectedEl.preset}</span>
                 </PropSection>
                 <PropSection label="Font Size">
-                  <input className="prop-input-sm" type="number" value={selectedEl.fontSize || 56}
-                    onChange={(e) => updateElement(selectedEl.id, { fontSize: parseInt(e.target.value) || 56 } as any)} />
+                  <input className="prop-input-sm" type="number"
+                    value={selectedEl.fontSize || TEXT_PRESET_STYLES[selectedEl.preset].fontSize}
+                    onChange={(e) => updateElement(selectedEl.id, { fontSize: parseInt(e.target.value) || 48 } as any)} />
                 </PropSection>
               </>
             )}

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { SpeakerPanel } from './SpeakerView';
+import { TEXT_PRESET_STYLES } from '../types/presentation';
 import type { SlideElement } from '../types/presentation';
 
 export function PresentMode() {
@@ -75,9 +76,6 @@ export function PresentMode() {
             className={`present-slide slide-layout-${slide.layout || 'default'}`}
             style={{ width: slideW, height: slideH, transform: `scale(${scale})`, transformOrigin: 'top left' }}
           >
-            {/* Body HTML */}
-            <div className="present-body slide-content-styles" dangerouslySetInnerHTML={{ __html: slide.bodyHtml || '' }} />
-
             {/* Elements in z-order */}
             {slide.elements.map((el, idx) => (
               <PresentElement key={el.id} element={el} zIndex={idx + 10} projectPath={projectPath} />
@@ -100,22 +98,23 @@ function PresentElement({ element: el, zIndex, projectPath }: { element: SlideEl
   const pos = el.position;
 
   switch (el.type) {
-    case 'title':
+    case 'text': {
+      const preset = TEXT_PRESET_STYLES[el.preset];
       return (
-        <div className="present-title" style={{
+        <div style={{
           position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-          fontSize: el.fontSize || 56, zIndex,
-        }}>
-          {el.text}
-        </div>
-      );
-
-    case 'textBox':
-      return (
-        <div className="present-textbox" style={{
-          position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, zIndex,
+          fontFamily: el.fontFamily || preset.fontFamily,
+          fontSize: el.fontSize || preset.fontSize,
+          fontWeight: preset.fontWeight,
+          fontStyle: preset.fontStyle,
+          color: el.color || preset.color,
+          lineHeight: 1.3,
+          padding: '8px 12px',
+          overflow: 'hidden',
+          zIndex,
         }} dangerouslySetInnerHTML={{ __html: el.html }} />
       );
+    }
 
     case 'image': {
       let src = el.src;

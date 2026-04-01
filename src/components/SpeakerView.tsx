@@ -75,7 +75,7 @@ export function SpeakerPanel() {
             <div
               className="speaker-next-preview"
               dangerouslySetInnerHTML={{
-                __html: nextSlide.bodyHtml || '<p>Empty</p>',
+                __html: nextSlide.elements.filter((e) => e.type === 'text').map((e) => e.type === 'text' ? e.html : '').join(' ') || '<p>Empty</p>',
               }}
             />
           </div>

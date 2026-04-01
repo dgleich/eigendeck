@@ -7,6 +7,7 @@ import {
 } from '@tauri-apps/plugin-fs';
 import {
   Presentation,
+  TEXT_PRESET_STYLES,
   createDefaultPresentation,
 } from '../types/presentation';
 import { usePresentationStore } from './presentation';
@@ -134,24 +135,17 @@ export async function exportPresentation(): Promise<void> {
 
     for (let i = 0; i < presentation.slides.length; i++) {
       const slide = presentation.slides[i];
-      const layout = slide.layout || 'default';
       let inner = '';
-
-      // Body
-      if (slide.bodyHtml) {
-        inner += `<div class="slide-body ${layout === 'centered' ? 'layout-centered' : ''} ${layout === 'two-column' ? 'layout-twocol' : ''}">${slide.bodyHtml}</div>`;
-      }
 
       // Elements in z-order
       for (const el of slide.elements) {
         const p = el.position;
         switch (el.type) {
-          case 'title':
-            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:'PT Sans',sans-serif;font-weight:700;font-size:${el.fontSize || 56}px;color:#222;line-height:1.2;padding:8px 12px;">${el.text}</div>`;
+          case 'text': {
+            const ps = TEXT_PRESET_STYLES[el.preset];
+            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;overflow:hidden;">${el.html}</div>`;
             break;
-          case 'textBox':
-            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:'PT Sans',sans-serif;font-size:32px;line-height:1.4;color:#222;padding:12px 16px;overflow:hidden;">${el.html}</div>`;
-            break;
+          }
           case 'image':
             inner += `<img src="${el.src}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;" />`;
             break;

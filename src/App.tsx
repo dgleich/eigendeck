@@ -7,6 +7,7 @@ import { PresentMode } from './components/PresentMode';
 import { NotesPanel } from './components/NotesPanel';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { usePresentationStore } from './store/presentation';
+import { createTextElement } from './types/presentation';
 import {
   saveProject,
   openProject,
@@ -101,8 +102,12 @@ function App() {
         <div className="sidebar-resize-handle" onPointerDown={handleResizeStart} />
         <div className="editor-area">
           <div className="editor-actions">
-            <button title="Add title" onClick={() => store.addElement({ id: crypto.randomUUID(), type: 'title', text: 'Title', position: { x: 80, y: 40, width: 1760, height: 100 }, fontSize: 56 })}>+ Title</button>
-            <button title="Add text box" onClick={() => store.addElement({ id: crypto.randomUUID(), type: 'textBox', html: '<p>Text</p>', position: { x: 200, y: 300, width: 600, height: 200 } })}>+ Text Box</button>
+            <button title="Add title text" onClick={() => store.addElement(createTextElement('title'))}>+ Title</button>
+            <button title="Add body text" onClick={() => store.addElement(createTextElement('body'))}>+ Body</button>
+            <button title="Add text box" onClick={() => store.addElement(createTextElement('textbox'))}>+ Text</button>
+            <button title="Add annotation (small, blue, italic)" onClick={() => store.addElement(createTextElement('annotation'))}>+ Note</button>
+            <button title="Add footnote (small, grey, narrow)" onClick={() => store.addElement(createTextElement('footnote'))}>+ Footnote</button>
+            <span className="divider" />
             <button title="Add arrow" onClick={() => store.addElement({ id: crypto.randomUUID(), type: 'arrow', x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: '#e53e3e', strokeWidth: 4, headSize: 16 })}>+ Arrow</button>
             <button title="Add image from file" onClick={async () => {
               const { open, message } = await import('@tauri-apps/plugin-dialog');

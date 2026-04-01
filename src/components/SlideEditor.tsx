@@ -1,38 +1,15 @@
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Heading from '@tiptap/extension-heading';
-import { TextStyle } from '@tiptap/extension-text-style';
-import { FontSize } from './FontSizeExtension';
-import { useEffect, useCallback, useRef, useState } from 'react';
-import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
+import { useEffect, useRef, useState } from 'react';
+import { usePresentationStore } from '../store/presentation';
 import { SlideElementRenderer } from './SlideElementRenderer';
 import type { SlideLayout } from '../types/presentation';
 
 export const SLIDE_WIDTH = 1920;
 export const SLIDE_HEIGHT = 1080;
 
-const FONT_SIZES = ['16px', '20px', '24px', '28px', '32px', '36px', '40px', '48px', '56px', '64px', '72px'];
-
 const LAYOUTS: { id: SlideLayout; label: string }[] = [
   { id: 'default', label: 'Default' },
   { id: 'centered', label: 'Centered' },
   { id: 'two-column', label: '2 Column' },
-];
-
-const COLORS = [
-  { color: '#222222', label: 'Black' },
-  { color: '#6b7280', label: 'Grey' },
-  { color: '#d1d5db', label: 'Light Grey' },
-  { color: '#16a34a', label: 'Green' },
-  { color: '#86efac', label: 'Light Green' },
-  { color: '#2563eb', label: 'Blue' },
-  { color: '#93c5fd', label: 'Light Blue' },
-  { color: '#dc2626', label: 'Red' },
-  { color: '#fca5a5', label: 'Light Red' },
-  { color: '#ea580c', label: 'Orange' },
-  { color: '#fdba74', label: 'Light Orange' },
-  { color: '#9333ea', label: 'Purple' },
-  { color: '#c4b5fd', label: 'Light Purple' },
 ];
 
 export function SlideEditor() {
@@ -45,34 +22,6 @@ export function SlideEditor() {
   const slide = presentation.slides[currentSlideIndex];
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const [colorOpen, setColorOpen] = useState(false);
-  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({ heading: false }),
-      Heading.configure({ levels: [1, 2, 3] }),
-      TextStyle,
-      FontSize,
-    ],
-    content: slide?.bodyHtml || '',
-    onUpdate: ({ editor }) => {
-      // Brief pause during typing so each keystroke isn't a separate undo entry
-      pauseUndo();
-      if (undoTimer.current) clearTimeout(undoTimer.current);
-      undoTimer.current = setTimeout(() => resumeUndo(), 300);
-      updateSlide(currentSlideIndex, { bodyHtml: editor.getHTML() });
-    },
-  });
-
-  useEffect(() => {
-    if (editor && slide) {
-      const currentContent = editor.getHTML();
-      if (currentContent !== slide.bodyHtml) {
-        editor.commands.setContent(slide.bodyHtml || '');
-      }
-    }
-  }, [currentSlideIndex, editor]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -91,6 +40,9 @@ export function SlideEditor() {
   // Cmd+V image paste
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
+      // Don't intercept paste if user is editing a text element
+      if ((e.target as HTMLElement).closest('[contenteditable="true"]')) return;
+
       const items = e.clipboardData?.items;
       if (!items) return;
       for (const item of Array.from(items)) {
@@ -104,17 +56,14 @@ export function SlideEditor() {
             if (projectPath) {
               saveImageFromBlob(blob, projectPath).then((relativePath) => {
                 addElement({
-                  id: crypto.randomUUID(),
-                  type: 'image',
+                  id: crypto.randomUUID(), type: 'image',
                   src: relativePath || dataUrl,
                   position: { x: 360, y: 200, width: 1200, height: 680 },
                 });
               });
             } else {
               addElement({
-                id: crypto.randomUUID(),
-                type: 'image',
-                src: dataUrl,
+                id: crypto.randomUUID(), type: 'image', src: dataUrl,
                 position: { x: 360, y: 200, width: 1200, height: 680 },
               });
             }
@@ -128,11 +77,6 @@ export function SlideEditor() {
     return () => window.removeEventListener('paste', handlePaste);
   }, [projectPath, addElement]);
 
-  const setHeading = useCallback(
-    (level: 1 | 2 | 3) => { editor?.chain().focus().toggleHeading({ level }).run(); },
-    [editor]
-  );
-
   if (!slide) return null;
 
   const layout = slide.layout || 'default';
@@ -142,61 +86,10 @@ export function SlideEditor() {
   return (
     <div className="slide-editor">
       <div className="editor-toolbar">
-        <select
-          className="layout-picker"
-          value={layout}
-          onChange={(e) => updateSlide(currentSlideIndex, { layout: e.target.value as SlideLayout })}
-          title="Slide layout"
-        >
-          {LAYOUTS.map((l) => (
-            <option key={l.id} value={l.id}>{l.label}</option>
-          ))}
+        <select className="layout-picker" value={layout} title="Slide layout"
+          onChange={(e) => updateSlide(currentSlideIndex, { layout: e.target.value as SlideLayout })}>
+          {LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
         </select>
-        <span className="divider" />
-        <button onClick={() => setHeading(1)} className={editor?.isActive('heading', { level: 1 }) ? 'active' : ''} title="Heading 1">H1</button>
-        <button onClick={() => setHeading(2)} className={editor?.isActive('heading', { level: 2 }) ? 'active' : ''} title="Heading 2">H2</button>
-        <button onClick={() => setHeading(3)} className={editor?.isActive('heading', { level: 3 }) ? 'active' : ''} title="Heading 3">H3</button>
-        <span className="divider" />
-        <button onClick={() => editor?.chain().focus().toggleBold().run()} className={editor?.isActive('bold') ? 'active' : ''} title="Bold (Cmd+B)">B</button>
-        <button onClick={() => editor?.chain().focus().toggleItalic().run()} className={editor?.isActive('italic') ? 'active' : ''} title="Italic (Cmd+I)">I</button>
-        <button onClick={() => editor?.chain().focus().toggleBulletList().run()} className={editor?.isActive('bulletList') ? 'active' : ''} title="Bullet List">List</button>
-        <span className="divider" />
-        <select className="font-size-picker" value="" title="Font size" onChange={(e) => { if (e.target.value) editor?.chain().focus().setFontSize(e.target.value).run(); }}>
-          <option value="" disabled>Size</option>
-          {FONT_SIZES.map((s) => <option key={s} value={s}>{parseInt(s)}</option>)}
-        </select>
-        <span className="divider" />
-        <button
-          onClick={() => {
-            const isNarrow = editor?.isActive('textStyle', { fontFamily: "'PT Sans Narrow', sans-serif" });
-            isNarrow ? editor?.chain().focus().unsetFontFamily().run() : editor?.chain().focus().setFontFamily("'PT Sans Narrow', sans-serif").run();
-          }}
-          className={editor?.isActive('textStyle', { fontFamily: "'PT Sans Narrow', sans-serif" }) ? 'active' : ''}
-          title="PT Sans Narrow"
-        >Narrow</button>
-        <button
-          onClick={() => {
-            const isUpper = editor?.isActive('textStyle', { textTransform: 'uppercase' });
-            isUpper ? editor?.chain().focus().unsetUppercase().run() : editor?.chain().focus().setUppercase().run();
-          }}
-          className={editor?.isActive('textStyle', { textTransform: 'uppercase' }) ? 'active' : ''}
-          title="Uppercase with letter spacing"
-        >AA</button>
-        <span className="divider" />
-        <div className="color-palette-wrapper">
-          <button onClick={() => setColorOpen(!colorOpen)} title="Text color" className="color-palette-btn">
-            A<span className="color-indicator" style={{ background: editor?.getAttributes('textStyle')?.color || '#222' }} />
-          </button>
-          {colorOpen && (
-            <div className="color-palette-dropdown">
-              {COLORS.map((c) => (
-                <button key={c.color} className="color-swatch" style={{ background: c.color }} title={c.label}
-                  onClick={() => { editor?.chain().focus().setTextColor(c.color).run(); setColorOpen(false); }} />
-              ))}
-              <button className="color-swatch color-reset" title="Reset" onClick={() => { editor?.chain().focus().unsetTextColor().run(); setColorOpen(false); }}>×</button>
-            </div>
-          )}
-        </div>
       </div>
       <div className="slide-canvas-container" ref={containerRef}>
         <div
@@ -204,7 +97,6 @@ export function SlideEditor() {
           style={{ width: SLIDE_WIDTH, height: SLIDE_HEIGHT, transform: `scale(${scale})`, transformOrigin: 'top center' }}
           onClick={(e) => { if (e.target === e.currentTarget) selectObject({ type: 'slide' }); }}
         >
-          <EditorContent editor={editor} className="editor-content" />
           {slide.elements.map((el, idx) => (
             <SlideElementRenderer
               key={el.id}

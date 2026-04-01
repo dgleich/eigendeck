@@ -53,7 +53,6 @@ describe('presentation store', () => {
     expect(state.presentation.slides).toHaveLength(2);
     expect(state.currentSlideIndex).toBe(1);
     expect(state.presentation.slides[0].id).not.toBe(state.presentation.slides[1].id);
-    // Elements should have different IDs
     if (state.presentation.slides[0].elements.length > 0) {
       expect(state.presentation.slides[0].elements[0].id).not.toBe(
         state.presentation.slides[1].elements[0].id
@@ -72,20 +71,20 @@ describe('presentation store', () => {
   it('adds and updates elements', () => {
     const store = usePresentationStore.getState();
     store.addElement({
-      id: 'test-el', type: 'textBox', html: '<p>Hello</p>',
+      id: 'test-el', type: 'text', preset: 'body', html: '<p>Hello</p>',
       position: { x: 0, y: 0, width: 100, height: 50 },
     });
-    expect(usePresentationStore.getState().presentation.slides[0].elements).toHaveLength(2); // title + new
+    expect(usePresentationStore.getState().presentation.slides[0].elements).toHaveLength(2);
 
     store.updateElement('test-el', { html: '<p>Updated</p>' } as any);
     const el = usePresentationStore.getState().presentation.slides[0].elements.find((e) => e.id === 'test-el');
-    expect(el?.type === 'textBox' && el.html).toBe('<p>Updated</p>');
+    expect(el?.type === 'text' && el.html).toBe('<p>Updated</p>');
   });
 
   it('deletes elements', () => {
     const store = usePresentationStore.getState();
     store.addElement({
-      id: 'del-me', type: 'textBox', html: 'x',
+      id: 'del-me', type: 'text', preset: 'textbox', html: 'x',
       position: { x: 0, y: 0, width: 100, height: 50 },
     });
     expect(usePresentationStore.getState().presentation.slides[0].elements).toHaveLength(2);
@@ -95,9 +94,8 @@ describe('presentation store', () => {
 
   it('moves element z-order', () => {
     const store = usePresentationStore.getState();
-    store.addElement({ id: 'a', type: 'textBox', html: 'A', position: { x: 0, y: 0, width: 100, height: 50 } });
-    store.addElement({ id: 'b', type: 'textBox', html: 'B', position: { x: 0, y: 0, width: 100, height: 50 } });
-    // Order: [title, a, b]
+    store.addElement({ id: 'a', type: 'text', preset: 'textbox', html: 'A', position: { x: 0, y: 0, width: 100, height: 50 } });
+    store.addElement({ id: 'b', type: 'text', preset: 'textbox', html: 'B', position: { x: 0, y: 0, width: 100, height: 50 } });
     store.moveElementZ('a', 'top');
     const els = usePresentationStore.getState().presentation.slides[0].elements;
     expect(els[els.length - 1].id).toBe('a');
@@ -105,7 +103,7 @@ describe('presentation store', () => {
 
   it('marks clean after save', () => {
     const store = usePresentationStore.getState();
-    store.updateSlide(0, { bodyHtml: '<h1>Changed</h1>' });
+    store.updateSlide(0, { notes: 'changed' });
     expect(usePresentationStore.getState().isDirty).toBe(true);
     store.markClean();
     expect(usePresentationStore.getState().isDirty).toBe(false);

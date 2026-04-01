@@ -8,7 +8,7 @@ describe('presentation types', () => {
     expect(pres.theme).toBe('white');
     expect(pres.slides).toHaveLength(1);
     expect(pres.slides[0].elements.length).toBeGreaterThan(0);
-    expect(pres.slides[0].elements[0].type).toBe('title');
+    expect(pres.slides[0].elements[0].type).toBe('text');
     expect(pres.config.width).toBe(1920);
     expect(pres.config.height).toBe(1080);
   });
