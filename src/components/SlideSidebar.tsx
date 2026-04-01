@@ -42,6 +42,10 @@ export function SlideSidebar() {
 
   const handleContainerPointerUp = useCallback(() => {
     if (dragging !== null && dropTarget !== null && dragging !== dropTarget) moveSlide(dragging, dropTarget);
+    if (dragging !== null) {
+      // Clear any text selection that happened during drag
+      window.getSelection()?.removeAllRanges();
+    }
     setDragging(null); setDropTarget(null);
   }, [dragging, dropTarget, moveSlide]);
 
@@ -83,26 +87,53 @@ export function SlideSidebar() {
                   dangerouslySetInnerHTML={{ __html: slide.bodyHtml || '' }} />
                 {/* Elements */}
                 {slide.elements.map((el) => {
-                  if (el.type === 'title') {
-                    return (
-                      <div key={el.id} style={{
-                        position: 'absolute', left: el.position.x, top: el.position.y, width: el.position.width,
-                        fontFamily: "'PT Sans', sans-serif", fontWeight: 700, fontSize: el.fontSize || 56,
-                        color: '#222', lineHeight: 1.2, overflow: 'hidden',
-                      }}>{el.text}</div>
-                    );
+                  const p = el.position;
+                  switch (el.type) {
+                    case 'title':
+                      return (
+                        <div key={el.id} style={{
+                          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
+                          fontFamily: "'PT Sans', sans-serif", fontWeight: 700, fontSize: el.fontSize || 56,
+                          color: '#222', lineHeight: 1.2, overflow: 'hidden', padding: '8px 12px',
+                        }}>{el.text}</div>
+                      );
+                    case 'textBox':
+                      return (
+                        <div key={el.id} style={{
+                          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
+                          fontFamily: "'PT Sans', sans-serif", fontSize: 32, color: '#222',
+                          overflow: 'hidden', padding: '12px 16px',
+                        }} dangerouslySetInnerHTML={{ __html: el.html }} />
+                      );
+                    case 'image':
+                      return (
+                        <div key={el.id} style={{
+                          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
+                          background: '#f0f0f0', border: '1px solid #ddd', borderRadius: 2,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 24, color: '#aaa',
+                        }}>IMG</div>
+                      );
+                    case 'arrow': {
+                      const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 3 } = el;
+                      return (
+                        <svg key={el.id} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
+                          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={strokeWidth} />
+                        </svg>
+                      );
+                    }
+                    case 'demo':
+                      return (
+                        <div key={el.id} style={{
+                          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
+                          background: '#e8f4f8', border: '1px dashed #93c5fd', borderRadius: 2,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 20, color: '#60a5fa',
+                        }}>DEMO</div>
+                      );
+                    default:
+                      return null;
                   }
-                  if (el.type === 'textBox') {
-                    return (
-                      <div key={el.id} style={{
-                        position: 'absolute', left: el.position.x, top: el.position.y,
-                        width: el.position.width, height: el.position.height,
-                        fontFamily: "'PT Sans', sans-serif", fontSize: 32, color: '#222',
-                        overflow: 'hidden', padding: '12px 16px',
-                      }} dangerouslySetInnerHTML={{ __html: el.html }} />
-                    );
-                  }
-                  return null;
                 })}
               </div>
             </div>
