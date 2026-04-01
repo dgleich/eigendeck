@@ -1,18 +1,31 @@
-export interface DemoPosition {
+export interface ElementPosition {
   x: number;
   y: number;
   width: number;
   height: number;
 }
 
-export interface ImagePosition {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+export type DemoPosition = ElementPosition;
+export type ImagePosition = ElementPosition;
 
 export type SlideLayout = 'default' | 'centered' | 'two-column';
+
+export interface TextBox {
+  id: string;
+  html: string;
+  position: ElementPosition;
+}
+
+export interface Arrow {
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  color?: string;
+  strokeWidth?: number;
+  headSize?: number;
+}
 
 export interface SlideContent {
   html: string;
@@ -20,6 +33,8 @@ export interface SlideContent {
   demoPosition?: DemoPosition;
   image?: string;
   imagePosition?: ImagePosition;
+  textBoxes?: TextBox[];
+  arrows?: Arrow[];
 }
 
 export interface Slide {

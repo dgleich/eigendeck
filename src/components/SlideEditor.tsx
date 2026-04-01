@@ -7,7 +7,9 @@ import { useEffect, useCallback, useRef, useState } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { DemoFrame } from './DemoFrame';
 import { DraggableImage } from './ImageElement';
-import type { SlideLayout } from '../types/presentation';
+import { TextBoxElement } from './TextBoxElement';
+import { ArrowElement } from './ArrowElement';
+import type { SlideLayout, TextBox, Arrow } from '../types/presentation';
 
 export const SLIDE_WIDTH = 1920;
 export const SLIDE_HEIGHT = 1080;
@@ -117,6 +119,46 @@ export function SlideEditor() {
       editor?.chain().focus().toggleHeading({ level }).run();
     },
     [editor]
+  );
+
+  const handleUpdateTextBox = useCallback(
+    (boxId: string, changes: Partial<TextBox>) => {
+      const boxes = [...(slide?.content.textBoxes || [])];
+      const idx = boxes.findIndex((b) => b.id === boxId);
+      if (idx >= 0) {
+        boxes[idx] = { ...boxes[idx], ...changes };
+        updateSlideContent(currentSlideIndex, { textBoxes: boxes });
+      }
+    },
+    [slide, currentSlideIndex, updateSlideContent]
+  );
+
+  const handleDeleteTextBox = useCallback(
+    (boxId: string) => {
+      const boxes = (slide?.content.textBoxes || []).filter((b) => b.id !== boxId);
+      updateSlideContent(currentSlideIndex, { textBoxes: boxes });
+    },
+    [slide, currentSlideIndex, updateSlideContent]
+  );
+
+  const handleUpdateArrow = useCallback(
+    (arrowId: string, changes: Partial<Arrow>) => {
+      const arrows = [...(slide?.content.arrows || [])];
+      const idx = arrows.findIndex((a) => a.id === arrowId);
+      if (idx >= 0) {
+        arrows[idx] = { ...arrows[idx], ...changes };
+        updateSlideContent(currentSlideIndex, { arrows });
+      }
+    },
+    [slide, currentSlideIndex, updateSlideContent]
+  );
+
+  const handleDeleteArrow = useCallback(
+    (arrowId: string) => {
+      const arrows = (slide?.content.arrows || []).filter((a) => a.id !== arrowId);
+      updateSlideContent(currentSlideIndex, { arrows });
+    },
+    [slide, currentSlideIndex, updateSlideContent]
   );
 
   if (!slide) return null;
@@ -231,6 +273,24 @@ export function SlideEditor() {
               }
             />
           )}
+          {(slide.content.textBoxes || []).map((box) => (
+            <TextBoxElement
+              key={box.id}
+              textBox={box}
+              scale={scale}
+              onUpdate={handleUpdateTextBox}
+              onDelete={handleDeleteTextBox}
+            />
+          ))}
+          {(slide.content.arrows || []).map((arrow) => (
+            <ArrowElement
+              key={arrow.id}
+              arrow={arrow}
+              scale={scale}
+              onUpdate={handleUpdateArrow}
+              onDelete={handleDeleteArrow}
+            />
+          ))}
           <div className="slide-number-display">
             {currentSlideIndex + 1}
           </div>

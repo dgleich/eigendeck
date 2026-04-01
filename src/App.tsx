@@ -90,6 +90,45 @@ function App() {
             <RemoveDemoButton />
             <AddImageButton />
             <RemoveImageButton />
+            <button
+              onClick={() => {
+                const store = usePresentationStore.getState();
+                const idx = store.currentSlideIndex;
+                const s = store.presentation.slides[idx];
+                const boxes = [...(s.content.textBoxes || [])];
+                boxes.push({
+                  id: crypto.randomUUID(),
+                  html: '<p>Text</p>',
+                  position: { x: 200, y: 300, width: 600, height: 200 },
+                });
+                store.updateSlideContent(idx, { textBoxes: boxes });
+              }}
+              title="Add a text box to the slide"
+            >
+              + Text Box
+            </button>
+            <button
+              onClick={() => {
+                const store = usePresentationStore.getState();
+                const idx = store.currentSlideIndex;
+                const s = store.presentation.slides[idx];
+                const arrows = [...(s.content.arrows || [])];
+                arrows.push({
+                  id: crypto.randomUUID(),
+                  x1: 400,
+                  y1: 400,
+                  x2: 800,
+                  y2: 400,
+                  color: '#e53e3e',
+                  strokeWidth: 4,
+                  headSize: 16,
+                });
+                store.updateSlideContent(idx, { arrows });
+              }}
+              title="Add an annotation arrow to the slide"
+            >
+              + Arrow
+            </button>
             {slide?.content.demo && (
               <span className="demo-label">Demo: {slide.content.demo}</span>
             )}

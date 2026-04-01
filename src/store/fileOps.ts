@@ -163,6 +163,33 @@ export async function exportPresentation(): Promise<void> {
         sectionContent += `\n<img class="slide-image" src="${imgSrcAttr}" style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${pos.width}px;height:${pos.height}px;object-fit:contain;" />`;
       }
 
+      // Text boxes
+      if (slide.content.textBoxes) {
+        for (const box of slide.content.textBoxes) {
+          const p = box.position;
+          sectionContent += `\n<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:'PT Sans',sans-serif;font-size:32px;line-height:1.4;color:#222;padding:12px 16px;overflow:hidden;">${box.html}</div>`;
+        }
+      }
+
+      // Arrows
+      if (slide.content.arrows && slide.content.arrows.length > 0) {
+        sectionContent += '\n<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">';
+        for (const a of slide.content.arrows) {
+          const color = a.color || '#e53e3e';
+          const sw = a.strokeWidth || 4;
+          const hs = a.headSize || 16;
+          const angle = Math.atan2(a.y2 - a.y1, a.x2 - a.x1);
+          const ha = Math.PI / 6;
+          const hx1 = a.x2 - hs * Math.cos(angle - ha);
+          const hy1 = a.y2 - hs * Math.sin(angle - ha);
+          const hx2 = a.x2 - hs * Math.cos(angle + ha);
+          const hy2 = a.y2 - hs * Math.sin(angle + ha);
+          sectionContent += `<line x1="${a.x1}" y1="${a.y1}" x2="${a.x2}" y2="${a.y2}" stroke="${color}" stroke-width="${sw}"/>`;
+          sectionContent += `<polygon points="${a.x2},${a.y2} ${hx1},${hy1} ${hx2},${hy2}" fill="${color}"/>`;
+        }
+        sectionContent += '</svg>';
+      }
+
       const notesHtml = slide.notes
         ? `\n<aside class="notes">${slide.notes}</aside>`
         : '';
