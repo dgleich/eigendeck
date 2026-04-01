@@ -1155,6 +1155,7 @@
 .present-body {
   position: absolute;
   z-index: 1;
+  background: transparent;
   top: 0;
   left: 0;
   width: 100%;
@@ -1168,6 +1169,11 @@
   color: #222;
   padding: 12px 16px;
   overflow: hidden;
+  z-index: 3;
+}
+
+.present-slide svg {
+  z-index: 4;
 }
 
 /* Centered layout in present mode */

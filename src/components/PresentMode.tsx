@@ -16,7 +16,8 @@ export function PresentMode() {
     usePresentationStore.getState().currentSlideIndex
   );
   const [showSpeaker, setShowSpeaker] = useState(false);
-  const [transition, setTransition] = useState<'none' | 'left' | 'right'>('none');
+  // transition kept for future use but currently instant
+  const transition = 'none';
   const viewportRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
@@ -39,20 +40,16 @@ export function PresentMode() {
   }, [slideW, slideH]);
 
   const goTo = useCallback(
-    (index: number, direction: 'left' | 'right') => {
+    (index: number) => {
       if (index < 0 || index >= totalSlides) return;
-      setTransition(direction);
-      setTimeout(() => {
-        setCurrentIndex(index);
-        selectSlide(index);
-        setTransition('none');
-      }, 200);
+      setCurrentIndex(index);
+      selectSlide(index);
     },
     [totalSlides, selectSlide]
   );
 
-  const goNext = useCallback(() => goTo(currentIndex + 1, 'left'), [currentIndex, goTo]);
-  const goPrev = useCallback(() => goTo(currentIndex - 1, 'right'), [currentIndex, goTo]);
+  const goNext = useCallback(() => goTo(currentIndex + 1), [currentIndex, goTo]);
+  const goPrev = useCallback(() => goTo(currentIndex - 1), [currentIndex, goTo]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -80,11 +77,11 @@ export function PresentMode() {
           break;
         case 'Home':
           e.preventDefault();
-          goTo(0, 'right');
+          goTo(0);
           break;
         case 'End':
           e.preventDefault();
-          goTo(totalSlides - 1, 'left');
+          goTo(totalSlides - 1);
           break;
       }
     };
