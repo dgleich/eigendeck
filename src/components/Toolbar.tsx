@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import {
-  openProject,
-  createProject,
   saveProject,
   exportPresentation,
 } from '../store/fileOps';
@@ -53,11 +51,8 @@ export function Toolbar() {
   return (
     <div className="toolbar">
       <div className="toolbar-left">
-        <button onClick={createProject} title="New Project (Cmd+N)">
-          New
-        </button>
-        <button onClick={openProject} title="Open Project (Cmd+O)">
-          Open
+        <button onClick={() => usePresentationStore.getState().addSlide()} title="Add slide after current">
+          + Slide
         </button>
         <button onClick={handleSave} title="Save (Cmd+S)">
           Save{isDirty ? ' *' : ''}
