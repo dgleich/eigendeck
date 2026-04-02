@@ -388,10 +388,10 @@ function ArrowRenderer({
 
   return (
     <div className="slide-element el-arrow" onClick={(e) => { e.stopPropagation(); onSelect(); }}
-      style={{ position: 'absolute', left: minX, top: minY, width: maxX - minX, height: maxY - minY, pointerEvents: 'none', zIndex }}>
+      style={{ position: 'absolute', left: minX, top: minY, width: maxX - minX, height: maxY - minY, pointerEvents: 'auto', zIndex }}>
       <svg width={maxX - minX} height={maxY - minY} style={{ overflow: 'visible' }}>
         <line x1={x1 - minX} y1={y1 - minY} x2={x2 - minX} y2={y2 - minY}
-          stroke="transparent" strokeWidth={20} style={{ pointerEvents: 'stroke', cursor: 'move' }} onPointerDown={handleBody} />
+          stroke="transparent" strokeWidth={24} style={{ pointerEvents: 'stroke', cursor: 'move' }} onPointerDown={handleBody} />
         <line x1={x1 - minX} y1={y1 - minY} x2={x2 - minX} y2={y2 - minY}
           stroke={color} strokeWidth={strokeWidth} style={{ pointerEvents: 'none' }} />
         <polygon points={`${x2 - minX},${y2 - minY} ${hx1 - minX},${hy1 - minY} ${hx2 - minX},${hy2 - minY}`}

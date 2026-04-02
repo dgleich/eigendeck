@@ -156,7 +156,7 @@
           "preset": "title",
           "html": "Interactive BFS Demo",
           "position": {
-            "x": 80,
+            "x": 82,
             "y": 40,
             "width": 1760,
             "height": 120
@@ -167,8 +167,8 @@
           "type": "demo",
           "src": "demos/bfs-demo.html",
           "position": {
-            "x": 80,
-            "y": 180,
+            "x": 88,
+            "y": 155,
             "width": 1770,
             "height": 716
           }
@@ -190,8 +190,8 @@
           "type": "arrow",
           "x1": 200,
           "y1": 918,
-          "x2": 418,
-          "y2": 897,
+          "x2": 543,
+          "y2": 905,
           "position": {
             "x": 0,
             "y": 0,
