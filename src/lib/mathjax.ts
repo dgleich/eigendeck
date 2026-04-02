@@ -123,6 +123,7 @@ export async function renderMathInHtml(html: string): Promise<string> {
       if (end !== -1) {
         const tex = html.slice(i + 2, end);
         try {
+          MJ.texReset();
           const container = await Promise.race([
             MJ.tex2svgPromise(tex, { display: true }),
             new Promise((_, reject) => setTimeout(() => reject(new Error('tex2svg timeout')), 2000)),
@@ -155,7 +156,9 @@ export async function renderMathInHtml(html: string): Promise<string> {
         const tex = html.slice(i + 1, end);
         console.log('renderMathInHtml: calling tex2svgPromise for:', JSON.stringify(tex));
         try {
-          // Race tex2svgPromise against a timeout since SRE Worker may hang
+          // Reset MathJax's TeX parser state before each conversion
+          MJ.texReset();
+          // Race tex2svgPromise against a timeout
           const container = await Promise.race([
             MJ.tex2svgPromise(tex, { display: false }),
             new Promise((_, reject) => setTimeout(() => reject(new Error('tex2svg timeout')), 2000)),
