@@ -100,7 +100,9 @@ export function loadMathJax(): Promise<any> {
 export async function renderMathInHtml(html: string): Promise<string> {
   if (!containsMath(html)) return html;
 
+  console.log('renderMathInHtml: loading MathJax...');
   const MJ = await loadMathJax();
+  console.log('renderMathInHtml: MathJax loaded, parsing html');
   const parts: string[] = [];
   let i = 0;
 
@@ -142,8 +144,10 @@ export async function renderMathInHtml(html: string): Promise<string> {
       const end = html.indexOf('$', i + 1);
       if (end !== -1 && !html.slice(i + 1, end).includes('\n')) {
         const tex = html.slice(i + 1, end);
+        console.log('renderMathInHtml: calling tex2svgPromise for:', tex);
         try {
           const container = await MJ.tex2svgPromise(tex, { display: false });
+          console.log('renderMathInHtml: tex2svgPromise resolved');
           const svg = container.querySelector('svg');
           if (svg) {
             svg.style.display = 'inline';
@@ -170,8 +174,10 @@ export async function renderMathInHtml(html: string): Promise<string> {
 
 export async function typesetElement(element: HTMLElement): Promise<void> {
   const rawHtml = element.getAttribute('data-raw') || element.innerHTML;
+  console.log('typesetElement: starting renderMathInHtml');
   try {
     const rendered = await renderMathInHtml(rawHtml);
+    console.log('typesetElement: rendered, length=', rendered.length);
     element.setAttribute('data-raw', rawHtml);
     element.innerHTML = rendered;
   } catch (e) {
