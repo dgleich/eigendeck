@@ -167,7 +167,9 @@ export async function renderMathInHtml(html: string): Promise<string> {
             const vAlign = svg.style.verticalAlign || '-0.025ex';
             svg.style.display = 'inline';
             svg.style.verticalAlign = vAlign;
-            console.log('SVG outerHTML length:', svg.outerHTML.length, 'vAlign:', vAlign);
+            const svgWidth = svg.getAttribute('width');
+            const svgViewBox = svg.getAttribute('viewBox');
+            console.log('SVG width:', svgWidth, 'viewBox:', svgViewBox, 'outerHTML preview:', svg.outerHTML.slice(0, 300));
             parts.push(svg.outerHTML);
           } else {
             parts.push(`$${tex}$`);
