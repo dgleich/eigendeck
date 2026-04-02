@@ -23,5 +23,8 @@ src-tauri/gen/
 public/mathjax/
 mathjax-ptsans-font/
 
+# Auto-save backups
+*.backup-*.json
+
 # Package lock (we commit it)
 # npm-debug.log*
