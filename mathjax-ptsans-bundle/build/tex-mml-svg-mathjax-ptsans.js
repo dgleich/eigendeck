@@ -1,0 +1,17 @@
+"use strict";
+var init_js_1 = require("@mathjax/src/components/cjs/startup/init.js");
+var loader_js_1 = require("@mathjax/src/cjs/components/loader.js");
+require("@mathjax/src/components/cjs/core/core.js");
+require("@mathjax/src/components/cjs/input/tex/tex.js");
+require("@mathjax/src/components/cjs/input/tex/extensions/boldsymbol/boldsymbol.js");
+require("@mathjax/src/components/cjs/input/mml/mml.js");
+var svg_js_1 = require("@mathjax/src/components/cjs/output/svg/svg.js");
+require("@mathjax/src/components/cjs/ui/menu/menu.js");
+require("@mathjax/src/components/cjs/a11y/util.js");
+require("@mathjax/src/components/cjs/a11y/semantic-enrich/semantic-enrich.js");
+require("@mathjax/src/components/cjs/a11y/complexity/complexity.js");
+require("@mathjax/src/components/cjs/a11y/explorer/explorer.js");
+require("@mathjax/src/components/cjs/a11y/assistive-mml/assistive-mml.js");
+loader_js_1.Loader.preLoaded('loader','startup','core','input/tex','[tex]/boldsymbol','input/mml','output/svg','ui/menu','a11y/util','a11y/sre','a11y/semantic-enrich','a11y/complexity','a11y/explorer','a11y/assistive-mml','a11y/speech');
+loader_js_1.Loader.saveVersion('tex-mml-svg-mathjax-ptsans');
+(0, svg_js_1.loadFont)(init_js_1.startup, true);
