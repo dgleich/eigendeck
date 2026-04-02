@@ -20,7 +20,11 @@ export function loadMathJax(): Promise<any> {
         displayMath: [['$$', '$$']],
       },
       svg: {
-        fontCache: 'none', // disable blob font cache — causes NetworkError in Tauri
+        fontCache: 'none',
+        internalSpeechTitles: false,
+      },
+      options: {
+        enableAssistiveMml: false, // disable extra MML output
       },
       startup: {
         typeset: false,
@@ -35,6 +39,14 @@ export function loadMathJax(): Promise<any> {
         },
       },
     };
+
+    // Suppress blob: URL errors from MathJax's internal font loading
+    window.addEventListener('error', (e) => {
+      if (e.filename?.startsWith('blob:')) {
+        e.preventDefault();
+        console.log('Suppressed blob error (MathJax font)');
+      }
+    });
 
     const script = document.createElement('script');
     script.src = '/mathjax/tex-mml-svg-mathjax-ptsans.js';
@@ -82,7 +94,9 @@ export async function renderMathInHtml(html: string): Promise<string> {
           const svg = container.querySelector('svg');
           if (svg) {
             parts.push(`<div style="text-align:center;margin:16px 0;">${svg.outerHTML}</div>`);
+            console.log('Display SVG generated');
           } else {
+            console.warn('No SVG found in display container');
             parts.push(`$$${tex}$$`);
           }
         } catch (e) {
@@ -102,12 +116,21 @@ export async function renderMathInHtml(html: string): Promise<string> {
         console.log('Rendering inline math:', tex);
         try {
           const container = await MJ.tex2svgPromise(tex, { display: false });
+          console.log('tex2svgPromise returned:', container?.tagName, container?.innerHTML?.slice(0, 200));
           const svg = container.querySelector('svg');
           if (svg) {
             svg.style.display = 'inline';
             svg.style.verticalAlign = 'middle';
+            // Remove any <defs> with blob references
+            const defs = svg.querySelector('defs');
+            if (defs) {
+              const uses = svg.querySelectorAll('use[href^="blob:"]');
+              uses.forEach((u: Element) => u.remove());
+            }
             parts.push(svg.outerHTML);
+            console.log('SVG generated, length:', svg.outerHTML.length);
           } else {
+            console.warn('No SVG found in container');
             parts.push(`$${tex}$`);
           }
         } catch (e) {
