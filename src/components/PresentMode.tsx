@@ -3,7 +3,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { SpeakerPanel } from './SpeakerView';
 import { TEXT_PRESET_STYLES } from '../types/presentation';
-import { typesetElement, containsMath } from '../lib/mathjax';
+import { typesetElement, resetMathElement, containsMath } from '../lib/mathjax';
 import type { SlideElement, TextElement } from '../types/presentation';
 
 export function PresentMode() {
@@ -147,8 +147,12 @@ function PresentTextElement({ element: el, zIndex }: { element: TextElement; zIn
   const preset = TEXT_PRESET_STYLES[el.preset];
 
   useEffect(() => {
-    if (ref.current && containsMath(el.html)) {
-      typesetElement(ref.current);
+    if (ref.current) {
+      // Set raw HTML first, then typeset math if present
+      resetMathElement(ref.current, el.html);
+      if (containsMath(el.html)) {
+        typesetElement(ref.current);
+      }
     }
   }, [el.html]);
 
@@ -164,6 +168,6 @@ function PresentTextElement({ element: el, zIndex }: { element: TextElement; zIn
       padding: '8px 12px',
       overflow: 'hidden',
       zIndex,
-    }} dangerouslySetInnerHTML={{ __html: el.html }} />
+    }} />
   );
 }
