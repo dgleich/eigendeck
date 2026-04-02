@@ -197,26 +197,21 @@ function TextContent({
     }
     if (el.childNodes.length <= 1 && (el.textContent || '').trimStart().startsWith('$$')) {
       applyToNode(el);
-    } else {
-      el.style.whiteSpace = ''; el.style.overflowX = '';
-      el.style.minHeight = ''; el.style.lineHeight = '';
-      el.style.display = ''; el.style.alignItems = '';
     }
+    // NOTE: don't clear styles on the root el — that overwrites React's lineHeight: 1.3
   };
 
   const stripMathLineStyles = (el: HTMLElement) => {
+    // Only strip styles from child elements, not the root (which has React-managed styles)
     for (const child of Array.from(el.querySelectorAll('*'))) {
       const c = child as HTMLElement;
       if (c.style.whiteSpace === 'nowrap') c.style.whiteSpace = '';
       if (c.style.overflowX === 'auto') c.style.overflowX = '';
       if (c.style.minHeight) c.style.minHeight = '';
-      if (c.style.lineHeight) c.style.lineHeight = '';
+      if (c.style.lineHeight === 'normal') c.style.lineHeight = '';
       if (c.style.display === 'flex') c.style.display = '';
       if (c.style.alignItems) c.style.alignItems = '';
     }
-    el.style.whiteSpace = ''; el.style.overflowX = '';
-    el.style.minHeight = ''; el.style.lineHeight = '';
-    el.style.display = ''; el.style.alignItems = '';
   };
 
   const startEditing = () => {
