@@ -35,10 +35,13 @@ interface PresentationState {
   // Slide actions
   selectSlide: (index: number) => void;
   addSlide: () => void;
+  addBuildSlide: () => void; // duplicate current into same group (for builds)
   deleteSlide: (index: number) => void;
   duplicateSlide: (index: number) => void;
   moveSlide: (from: number, to: number) => void;
   updateSlide: (index: number, changes: Partial<Slide>) => void;
+  groupSlides: (indices: number[]) => void;
+  ungroupSlide: (index: number) => void;
 
   // Element actions
   addElement: (element: SlideElement) => void;
@@ -146,6 +149,69 @@ export const usePresentationStore = create<PresentationState>()(
         set((state) => {
           const slides = [...state.presentation.slides];
           slides[index] = { ...slides[index], ...changes };
+          return {
+            presentation: { ...state.presentation, slides },
+            isDirty: true,
+          };
+        }),
+
+      // Build slide: duplicate current slide into the same group
+      addBuildSlide: () =>
+        set((state) => {
+          const slides = [...state.presentation.slides];
+          const idx = state.currentSlideIndex;
+          const original = slides[idx];
+          const groupId = original.groupId || crypto.randomUUID();
+
+          // Set groupId on original if it didn't have one
+          if (!original.groupId) {
+            slides[idx] = { ...original, groupId };
+          }
+
+          const copy: Slide = {
+            ...JSON.parse(JSON.stringify(original)),
+            id: crypto.randomUUID(),
+            groupId,
+            elements: original.elements.map((el) => ({
+              ...JSON.parse(JSON.stringify(el)),
+              id: crypto.randomUUID(),
+            })),
+          };
+
+          // Insert after the last slide in this group
+          let insertAt = idx + 1;
+          while (insertAt < slides.length && slides[insertAt].groupId === groupId) {
+            insertAt++;
+          }
+          slides.splice(insertAt, 0, copy);
+
+          return {
+            presentation: { ...state.presentation, slides },
+            currentSlideIndex: insertAt,
+            isDirty: true,
+          };
+        }),
+
+      // Group consecutive slides together
+      groupSlides: (indices) =>
+        set((state) => {
+          if (indices.length < 2) return state;
+          const slides = [...state.presentation.slides];
+          const groupId = crypto.randomUUID();
+          for (const i of indices) {
+            slides[i] = { ...slides[i], groupId };
+          }
+          return {
+            presentation: { ...state.presentation, slides },
+            isDirty: true,
+          };
+        }),
+
+      // Remove a slide from its group
+      ungroupSlide: (index) =>
+        set((state) => {
+          const slides = [...state.presentation.slides];
+          slides[index] = { ...slides[index], groupId: undefined };
           return {
             presentation: { ...state.presentation, slides },
             isDirty: true,

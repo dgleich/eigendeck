@@ -54,6 +54,9 @@ export function Toolbar() {
         <button onClick={() => usePresentationStore.getState().addSlide()} title="Add slide after current">
           + Slide
         </button>
+        <button onClick={() => usePresentationStore.getState().addBuildSlide()} title="Duplicate current slide as a build step (same group)">
+          + Build
+        </button>
         <button onClick={handleSave} title="Save (Cmd+S)">
           Save{isDirty ? ' *' : ''}
         </button>

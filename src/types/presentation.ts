@@ -119,6 +119,7 @@ export interface Slide {
   layout?: SlideLayout;
   elements: SlideElement[];
   notes: string;
+  groupId?: string; // slides with same groupId form a group
 }
 
 export interface PresentationConfig {
@@ -204,4 +205,40 @@ export function createBlankSlide(): Slide {
     ],
     notes: '',
   };
+}
+
+// ============================================
+// Slide group helpers
+// ============================================
+
+/** Get the display slide number for a given slide index (groups share a number) */
+export function getSlideNumber(slides: Slide[], index: number): number {
+  let num = 0;
+  for (let i = 0; i <= index; i++) {
+    const slide = slides[i];
+    const prev = i > 0 ? slides[i - 1] : null;
+    // Increment number if this slide starts a new group or has no group
+    if (!slide.groupId || !prev || prev.groupId !== slide.groupId) {
+      num++;
+    }
+  }
+  return num;
+}
+
+/** Check if a slide is a child (not the first) in its group */
+export function isGroupChild(slides: Slide[], index: number): boolean {
+  const slide = slides[index];
+  if (!slide.groupId) return false;
+  if (index === 0) return false;
+  return slides[index - 1].groupId === slide.groupId;
+}
+
+/** Get all slide indices in the same group */
+export function getGroupIndices(slides: Slide[], index: number): number[] {
+  const slide = slides[index];
+  if (!slide.groupId) return [index];
+  return slides.reduce<number[]>((acc, s, i) => {
+    if (s.groupId === slide.groupId) acc.push(i);
+    return acc;
+  }, []);
 }

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { SpeakerPanel } from './SpeakerView';
-import { TEXT_PRESET_STYLES } from '../types/presentation';
+import { TEXT_PRESET_STYLES, getSlideNumber } from '../types/presentation';
 import { typesetElement, resetMathElement, containsMath } from '../lib/mathjax';
 import type { SlideElement, TextElement } from '../types/presentation';
 
@@ -85,7 +85,7 @@ export function PresentMode() {
             {/* Footer */}
             <div className="slide-footer" style={{ zIndex: 1000 }}>
               <span className="slide-footer-meta">{meta}</span>
-              <span className="slide-footer-number">{currentIndex + 1}</span>
+              <span className="slide-footer-number">{getSlideNumber(presentation.slides, currentIndex)}</span>
             </div>
           </div>
         </div>

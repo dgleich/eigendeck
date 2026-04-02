@@ -151,6 +151,23 @@
       "layout": "default",
       "elements": [
         {
+          "id": "a1b2c3d4-1111-4aaa-b311-100000000004",
+          "type": "arrow",
+          "x1": 115,
+          "y1": 910,
+          "x2": 514,
+          "y2": 798,
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "color": "#e53e3e",
+          "strokeWidth": 3,
+          "headSize": 14
+        },
+        {
           "id": "a1b2c3d4-1111-4aaa-b311-100000000001",
           "type": "text",
           "preset": "title",
@@ -184,23 +201,6 @@
             "width": 800,
             "height": 50
           }
-        },
-        {
-          "id": "a1b2c3d4-1111-4aaa-b311-100000000004",
-          "type": "arrow",
-          "x1": 200,
-          "y1": 918,
-          "x2": 543,
-          "y2": 905,
-          "position": {
-            "x": 0,
-            "y": 0,
-            "width": 0,
-            "height": 0
-          },
-          "color": "#e53e3e",
-          "strokeWidth": 3,
-          "headSize": 14
         }
       ],
       "notes": "Live demo. Step through BFS one level at a time. Yellow = queued, green = visited."

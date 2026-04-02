@@ -281,6 +281,19 @@
   border-color: #93c5fd;
 }
 
+.slide-thumbnail.group-child {
+  margin-left: 16px;
+  border-left: 3px solid #93c5fd;
+}
+
+.slide-thumbnail.in-group {
+  border-left: 3px solid transparent;
+}
+
+.slide-thumbnail.in-group:not(.group-child) {
+  border-left: 3px solid #2563eb;
+}
+
 .slide-thumbnail.drag-over {
   border-color: #f59e0b;
   border-style: dashed;

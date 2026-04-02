@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { SlideElementRenderer } from './SlideElementRenderer';
+import { getSlideNumber } from '../types/presentation';
 import type { SlideLayout } from '../types/presentation';
 
 export const SLIDE_WIDTH = 1920;
@@ -111,7 +112,7 @@ export function SlideEditor() {
           ))}
           <div className="slide-footer">
             <span className="slide-footer-meta">{meta}</span>
-            <span className="slide-footer-number">{currentSlideIndex + 1}</span>
+            <span className="slide-footer-number">{getSlideNumber(presentation.slides, currentSlideIndex)}</span>
           </div>
         </div>
       </div>

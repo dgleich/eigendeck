@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
 import { usePresentationStore } from '../store/presentation';
-import { TEXT_PRESET_STYLES } from '../types/presentation';
+import { TEXT_PRESET_STYLES, getSlideNumber, isGroupChild } from '../types/presentation';
 
 const SLIDE_WIDTH = 1920;
 const SLIDE_HEIGHT = 1080;
@@ -59,10 +59,13 @@ export function SlideSidebar() {
         onPointerUp={handleContainerPointerUp}
         onPointerLeave={() => { if (dragging !== null) { setDragging(null); setDropTarget(null); } }}
       >
-        {presentation.slides.map((slide, index) => (
+        {presentation.slides.map((slide, index) => {
+          const child = isGroupChild(presentation.slides, index);
+          const slideNum = getSlideNumber(presentation.slides, index);
+          return (
           <div
             key={slide.id}
-            className={`slide-thumbnail${index === currentSlideIndex ? ' active' : ''}${dropTarget === index ? ' drag-over' : ''}${dragging === index ? ' dragging' : ''}`}
+            className={`slide-thumbnail${index === currentSlideIndex ? ' active' : ''}${dropTarget === index ? ' drag-over' : ''}${dragging === index ? ' dragging' : ''}${child ? ' group-child' : ''}${slide.groupId ? ' in-group' : ''}`}
             onClick={() => { if (dragging === null) selectSlide(index); }}
             onPointerDown={(e) => {
               if (e.button !== 0 || (e.target as HTMLElement).closest('.slide-actions')) return;
@@ -73,7 +76,7 @@ export function SlideSidebar() {
               window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
             }}
           >
-            <span className="slide-number">{index + 1}</span>
+            <span className="slide-number">{child ? '' : slideNum}</span>
             <div className="slide-thumb-clip" style={{ width: THUMB_WIDTH, height: THUMB_HEIGHT }}>
               <div
                 className="slide-thumb-render"
@@ -135,7 +138,8 @@ export function SlideSidebar() {
               <button onClick={(e) => { e.stopPropagation(); if (presentation.slides.length > 1 && confirm('Delete this slide?')) deleteSlide(index); }} title="Delete">X</button>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       <button className="btn-add-slide" onClick={addSlide} title="Add a new slide after the current one">+ Add Slide</button>
     </div>
