@@ -136,6 +136,46 @@ export const usePresentationStore = create<PresentationState>()(
       moveSlide: (from, to) =>
         set((state) => {
           const slides = [...state.presentation.slides];
+          const slide = slides[from];
+
+          // If this slide is a group parent, move the whole group
+          if (slide.groupId) {
+            const groupId = slide.groupId;
+            // Collect all group members
+            const groupSlides: Slide[] = [];
+            const otherSlides: Slide[] = [];
+            let firstGroupIdx = -1;
+            slides.forEach((s, i) => {
+              if (s.groupId === groupId) {
+                if (firstGroupIdx === -1) firstGroupIdx = i;
+                groupSlides.push(s);
+              } else {
+                otherSlides.push(s);
+              }
+            });
+
+            // Compute target position in the "others" array
+            // Adjust 'to' for removed group slides
+            let adjustedTo = to;
+            if (to > from) {
+              adjustedTo = Math.max(0, to - groupSlides.length + 1);
+            }
+            adjustedTo = Math.min(adjustedTo, otherSlides.length);
+
+            // Insert group at new position
+            otherSlides.splice(adjustedTo, 0, ...groupSlides);
+
+            // Find where the first group slide ended up
+            const newIdx = otherSlides.findIndex((s) => s.id === slide.id);
+
+            return {
+              presentation: { ...state.presentation, slides: otherSlides },
+              currentSlideIndex: newIdx >= 0 ? newIdx : to,
+              isDirty: true,
+            };
+          }
+
+          // Single slide move
           const [moved] = slides.splice(from, 1);
           slides.splice(to, 0, moved);
           return {
