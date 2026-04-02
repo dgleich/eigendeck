@@ -156,13 +156,33 @@ function TextContent({
     overflow: 'hidden',
   };
 
+  const logBounds = (label: string, el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
+    const children = Array.from(el.childNodes).map((c, i) => {
+      if (c.nodeType === Node.ELEMENT_NODE) {
+        const cr = (c as HTMLElement).getBoundingClientRect();
+        const text = (c.textContent || '').slice(0, 30);
+        return `  [${i}] ${cr.height.toFixed(1)}px h, ${cr.width.toFixed(1)}px w — "${text}"`;
+      }
+      return `  [${i}] text: "${(c.textContent || '').slice(0, 30)}"`;
+    });
+    console.log(`BOUNDS ${label}: total ${r.height.toFixed(1)}px h\n${children.join('\n')}`);
+  };
+
   // Display mode: render HTML and typeset math
   // typesetCounter forces re-typeset after each edit session
   useEffect(() => {
     if (displayRef.current && !editing) {
       resetMathElement(displayRef.current, element.html);
       if (containsMath(element.html)) {
-        typesetElement(displayRef.current);
+        requestAnimationFrame(() => {
+          if (displayRef.current) logBounds('before-mathjax', displayRef.current);
+        });
+        typesetElement(displayRef.current).then(() => {
+          requestAnimationFrame(() => {
+            if (displayRef.current) logBounds('after-mathjax', displayRef.current);
+          });
+        });
       }
     }
   }, [element.html, editing, typesetCounter]);
@@ -233,7 +253,10 @@ function TextContent({
         editRef.current.focus();
         // Re-apply after DOM settles (browser may reflow divs)
         requestAnimationFrame(() => {
-          if (editRef.current) applyMathLineStyles(editRef.current);
+          if (editRef.current) {
+            applyMathLineStyles(editRef.current);
+            logBounds('edit-mode', editRef.current);
+          }
         });
         const sel = window.getSelection();
         if (sel) {
