@@ -268,6 +268,16 @@ function TextContent({
   // Single div for both display and edit
   const mainRef = useRef<HTMLDivElement>(null);
 
+  // Warm up WebKit's contentEditable on mount to prevent first-click shift
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.contentEditable = 'true';
+      // Force a layout calc so WebKit initializes editing state
+      mainRef.current.getBoundingClientRect();
+      mainRef.current.contentEditable = 'false';
+    }
+  }, []);
+
   return (
     <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>
       {editing && createPortal(
