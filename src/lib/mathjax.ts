@@ -21,6 +21,26 @@ export function loadMathJax(): Promise<any> {
       }
     });
 
+    // Stub Worker so MathJax's blob worker creation doesn't fail.
+    // MathJax creates a Worker in the DOM adaptor for SRE.
+    // In Tauri, blob: Workers fail. This fake Worker just
+    // ignores messages and never fires onmessage.
+    const OrigWorker = window.Worker;
+    (window as any).Worker = function FakeWorker(url: string) {
+      if (typeof url === 'string' && url.startsWith('blob:')) {
+        console.log('Intercepted blob Worker, using stub');
+        return {
+          postMessage() {},
+          terminate() {},
+          onmessage: null,
+          onerror: null,
+          addEventListener() {},
+          removeEventListener() {},
+        };
+      }
+      return new OrigWorker(url);
+    };
+
     (window as any).MathJax = {
       tex: {
         inlineMath: [['$', '$']],
