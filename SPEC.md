@@ -512,3 +512,210 @@ Used for build animations, step-by-step demos, and linked object transitions.
 ### MathJax Tilde Fix
 - Tilde accent (`\tilde{x}`) positioned too high in PT Sans math font
 - Fix requires adjusting glyph metrics (y-coordinate 732) in mathjax-ptsans-bundle font data
+
+### Section Properties
+- Per-section styling and configuration
+- Sections group multiple slides with shared settings
+
+### Tacky Elements
+- Angled text boxes with hype fonts and fluorescent backgrounds
+- Fun callout/highlight boxes for emphasis
+
+### Table Editor
+- Insert and edit tables within slides
+- Row/column add/delete, cell merging
+
+### Image Shading & Cropping
+- Apply color overlays/tints to images
+- Crop images within their element bounds
+
+### Snap Guides & Alignment Lines
+- Hidden alignment guides that appear when dragging elements
+- Snap to edges, centers, and other elements
+- Show/hide toggle in View menu + keyboard shortcut
+
+---
+
+## Architectural Decisions
+
+Documenting key technical choices and why they were made.
+
+### Why Not Reveal.js (removed at commit v0.1.0-revealjs)
+
+Reveal.js was used initially for the presenter but caused constant problems:
+- Theme CSS bled into the app UI (required `!important` overrides everywhere)
+- Font sizes and text-transform didn't match editor WYSIWYG
+- `window.open()` for speaker notes blocked by Tauri's WebKit
+- Centered layout worked differently than our CSS
+- We positioned elements absolutely, outside reveal.js's `<section>` model
+
+**Decision**: Replace with custom presenter that renders slides identically to the editor.
+Same CSS, same components, same coordinate system. CSS bundle dropped 74%.
+
+### Why Not TipTap (removed at commit e0b70e1)
+
+TipTap was used for the main body text editor, but:
+- Only worked on one text area per slide
+- Couldn't apply to positioned text boxes
+- Large dependency (added ~400KB to JS bundle)
+- Fighting between TipTap's undo and our store-level undo
+
+**Decision**: Use native `contentEditable` with `document.execCommand` for formatting.
+All text is now positioned elements with presets. JS bundle dropped 61%.
+
+### ContentEditable Approach
+
+Each text element is a single `<div>` that:
+- Is always `contentEditable={editing}` (toggled on double-click)
+- Uses `beforeinput` event to block edits when not in editing mode (abandoned — caused issues)
+- Currently toggles contentEditable on double-click
+- `suppressContentEditableWarning` silences React
+- Floating toolbar portaled to `document.body` (outside the CSS-scaled canvas)
+
+**Critical rule**: `applyMathLineStyles()` must NEVER set/clear `lineHeight`, `display`, etc. on the root contentEditable div. Only child `<div>` elements. Clearing root styles overwrites React's managed styles and causes a visible layout shift. (Found via git bisect — commit 85a473d introduced the bug.)
+
+### Unified Elements Array
+
+Every piece of content on a slide is a `SlideElement` in an ordered array:
+- Array position = z-order (first = bottom, last = top)
+- Single `SlideElementRenderer` handles all types
+- `DraggableBox` wrapper provides drag/resize/delete for all non-arrow elements
+- Arrow elements have their own renderer (SVG-based, no bounding box)
+
+This replaced separate `title`, `textBoxes[]`, `arrows[]`, `image`, `demo` fields.
+-1007 net lines removed in the refactor.
+
+### MathJax Integration (complex — see section below)
+
+### CSS Scale-to-Fit
+
+The slide canvas is 1920×1080 and CSS-scaled to fit available space:
+- Editor: `ResizeObserver` computes scale, applies via `transform: scale(s)` with `transformOrigin: top center`
+- Presenter: wrapper div sized to `slideW * scale × slideH * scale`, inner slide scaled with `transformOrigin: top left`
+- Thumbnails: same approach at ~0.086 scale
+- All pointer coordinates divided by scale for slide-space positions
+
+### Auto-Save Architecture
+
+- `usePresentationStore.subscribe()` watches for presentation data changes
+- 3-second debounce timer
+- Also saves on `window.blur` and before entering present mode
+- Backup files: `presentation.backup-{ISO-timestamp}.json` (max 20, auto-pruned)
+- `JSON.stringify` comparison prevents duplicate saves
+
+### Undo/Redo (zundo)
+
+- `temporal` middleware on Zustand store
+- `partialize` tracks only `presentation` and `currentSlideIndex`
+- `equality` check via `JSON.stringify` prevents duplicate snapshots
+- `pauseUndo()` / `resumeUndo()` bracket continuous operations (drags, typing)
+- TipTap typing debounce: 300ms idle before snapshot
+- `clear()` called on file load to reset history
+
+---
+
+## MathJax Integration — Detailed Guide
+
+### Overview
+
+MathJax 4 with a custom PT Sans math font renders `$...$` (inline) and `$$...$$` (display) LaTeX as SVG.
+
+### Build & Setup
+
+The MathJax bundle lives in `mathjax-ptsans-bundle/` (committed to repo).
+
+**To deploy**: copy the nosre build to public/:
+```bash
+cp mathjax-ptsans-bundle/tex-mml-svg-mathjax-ptsans-nosre.js public/mathjax/tex-mml-svg-mathjax-ptsans.js
+```
+
+**To rebuild** (from `mathjax-ptsans-bundle/build/`):
+```bash
+npx webpack --config webpack-nosre.config.cjs
+```
+
+The `-nosre` variant excludes the Speech Rule Engine which creates blob: Workers that Tauri blocks.
+
+### Font Parameters
+
+In `mathjax-ptsans-bundle/cjs/common.js`:
+```js
+x_height: .500  // = OS/2.sxHeight / head.unitsPerEm for PT Sans
+```
+This is the critical parameter for text/math size matching. Don't change `em_scale`.
+
+### How Rendering Works (src/lib/mathjax.ts)
+
+1. **Load**: MathJax script loaded on first math encounter (lazy)
+2. **Config**: `fontCache: 'none'` (blob cache breaks in Tauri), `typeset: false` (manual control)
+3. **Parse**: `renderMathInHtml()` walks the HTML string character by character
+   - Skips HTML tags (`<...>`)
+   - Finds `$$...$$` → display math
+   - Finds `$...$` → inline math
+4. **Convert**: `MJ.tex2svgPromise(`{${tex}}`, { display })` — note the **brace wrapping**
+5. **Brace wrapping is critical**: without `{...}`, MathJax parses as multi-expression document and only returns the first expression
+6. **texReset()** called before each conversion to clear parser state
+7. **Timeout**: 2-second race against the promise (fallback to raw `$...$` on timeout)
+
+### Tauri-Specific Workarounds
+
+1. **Blob Worker stub**: MathJax's BrowserAdaptor creates a Worker via `new Worker(blobURL)`. Tauri blocks blob: URLs. We intercept `window.Worker` and return a fake that auto-replies to messages.
+
+2. **fontCache: 'none'**: MathJax's SVG font cache creates blob: URLs for stylesheets. Disabled.
+
+3. **Blob error suppression**: `window.addEventListener('error', ...)` catches and suppresses blob: errors.
+
+4. **nosre build**: The Speech Rule Engine loads a web worker via blob: that hangs `tex2svgPromise`. The `-nosre` webpack config excludes SRE modules.
+
+### WYSIWYG During Editing
+
+- `$$` lines get `white-space: nowrap` during editing (prevents wrapping of raw LaTeX)
+- Cached SVG heights set as `min-height` on `$$` lines for consistent line height
+- Compact `⋯` placeholder shown while MathJax renders (prevents layout jump)
+- `applyMathLineStyles()` runs on edit start, on every input, and after requestAnimationFrame
+- Styles stripped from child elements before saving (never from root element!)
+
+### Known Issues
+
+- `\tilde{x}` accent too high — glyph y-coordinate 732 in SVG font data needs adjustment
+- First MathJax render has a brief delay (script loading + first tex2svgPromise)
+- fontCache: 'none' means SVG paths are duplicated (slightly larger HTML export)
+
+---
+
+## Development Workflow
+
+### Local Development (Linux container on Mac)
+
+```bash
+# In the Colima/Docker container (/work is shared with Mac):
+npm install
+npm run tauri dev    # Won't work (no display) — use for build checks
+npm run build        # TypeScript + Vite build
+npm test             # Vitest unit tests
+cargo check          # Rust check (in src-tauri/)
+```
+
+### macOS Testing
+
+```bash
+# Same directory as Linux container (shared via virtiofs):
+npm install          # Reinstalls macOS-native node_modules
+npm run tauri dev    # Opens native window with hot-reload
+```
+
+`node_modules/` is platform-specific — `npm install` when switching between Linux and Mac.
+
+### MathJax Setup
+
+```bash
+cp mathjax-ptsans-bundle/tex-mml-svg-mathjax-ptsans-nosre.js public/mathjax/tex-mml-svg-mathjax-ptsans.js
+```
+
+### Git
+
+- Remote: `git@github.com:dgleich/eigendeck.git`
+- Config: David Gleich <david@dgleich.com>
+- Tags: `v0.1.0-revealjs` (last reveal.js version)
+- CI: GitHub Actions (TypeScript, Vite, cargo check, clippy)
+- Release: push tags `v*` for multi-platform builds
