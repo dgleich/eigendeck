@@ -91,7 +91,8 @@ function TextContent({
   onCommit: (html: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const displayRef = useRef<HTMLDivElement>(null);
+  const editRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0, width: 0 });
 
@@ -108,20 +109,19 @@ function TextContent({
     padding: '8px 12px',
     outline: 'none',
     overflow: 'hidden',
-    cursor: editing ? 'text' : 'inherit',
   };
 
+  // Display mode: render HTML and typeset math
   useEffect(() => {
-    if (contentRef.current && !editing) {
-      contentRef.current.innerHTML = element.html;
-      // Typeset math if content contains LaTeX delimiters
+    if (displayRef.current && !editing) {
+      displayRef.current.innerHTML = element.html;
       if (containsMath(element.html)) {
-        typesetElement(contentRef.current);
+        typesetElement(displayRef.current);
       }
     }
   }, [element.html, editing]);
 
-  // Position the toolbar above the element in screen coordinates
+  // Position toolbar
   useEffect(() => {
     if (editing && wrapperRef.current) {
       const rect = wrapperRef.current.getBoundingClientRect();
@@ -129,21 +129,25 @@ function TextContent({
     }
   }, [editing]);
 
-  const handleDoubleClick = () => {
+  const startEditing = () => {
     setEditing(true);
+    // Set the raw HTML source (not MathJax-processed) into the edit div
     setTimeout(() => {
-      contentRef.current?.focus();
-      const sel = window.getSelection();
-      if (sel && contentRef.current) {
-        sel.selectAllChildren(contentRef.current);
-        sel.collapseToEnd();
+      if (editRef.current) {
+        editRef.current.innerHTML = element.html;
+        editRef.current.focus();
+        const sel = window.getSelection();
+        if (sel) {
+          sel.selectAllChildren(editRef.current);
+          sel.collapseToEnd();
+        }
       }
     }, 0);
   };
 
   const commitAndClose = () => {
-    if (contentRef.current) {
-      onCommit(contentRef.current.innerHTML);
+    if (editRef.current) {
+      onCommit(editRef.current.innerHTML);
     }
     setEditing(false);
   };
@@ -162,28 +166,36 @@ function TextContent({
         </div>,
         document.body
       )}
+
+      {/* Display div: shows rendered content + MathJax SVGs */}
       <div
-        ref={contentRef}
-        style={style}
-        contentEditable={editing}
-        suppressContentEditableWarning
-        onDoubleClick={handleDoubleClick}
-        onBlur={(e) => {
-          // Don't blur if clicking into the toolbar (portaled to body)
-          const related = e.relatedTarget as HTMLElement | null;
-          if (related?.closest('.text-format-toolbar')) return;
-          // Small delay to allow toolbar clicks to register
-          setTimeout(() => {
-            if (!document.activeElement?.closest('.text-format-toolbar')) {
-              commitAndClose();
-            }
-          }, 100);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') { commitAndClose(); }
-          e.stopPropagation();
-        }}
+        ref={displayRef}
+        style={{ ...style, display: editing ? 'none' : 'block', cursor: 'inherit' }}
+        onDoubleClick={startEditing}
       />
+
+      {/* Edit div: shows raw HTML source, contentEditable */}
+      {editing && (
+        <div
+          ref={editRef}
+          style={{ ...style, cursor: 'text' }}
+          contentEditable
+          suppressContentEditableWarning
+          onBlur={(e) => {
+            const related = e.relatedTarget as HTMLElement | null;
+            if (related?.closest('.text-format-toolbar')) return;
+            setTimeout(() => {
+              if (!document.activeElement?.closest('.text-format-toolbar')) {
+                commitAndClose();
+              }
+            }, 100);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') { commitAndClose(); }
+            e.stopPropagation();
+          }}
+        />
+      )}
     </div>
   );
 }
