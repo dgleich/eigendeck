@@ -136,8 +136,6 @@ function TextContent({
 }) {
   const [editing, setEditing] = useState(false);
   const [typesetCounter, setTypesetCounter] = useState(0);
-  const displayRef = useRef<HTMLDivElement>(null);
-  const editRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0, width: 0 });
 
@@ -156,33 +154,12 @@ function TextContent({
     overflow: 'hidden',
   };
 
-  const logBounds = (label: string, el: HTMLElement) => {
-    const r = el.getBoundingClientRect();
-    const children = Array.from(el.childNodes).map((c, i) => {
-      if (c.nodeType === Node.ELEMENT_NODE) {
-        const cr = (c as HTMLElement).getBoundingClientRect();
-        const text = (c.textContent || '').slice(0, 30);
-        return `  [${i}] ${cr.height.toFixed(1)}px h, ${cr.width.toFixed(1)}px w — "${text}"`;
-      }
-      return `  [${i}] text: "${(c.textContent || '').slice(0, 30)}"`;
-    });
-    console.log(`BOUNDS ${label}: total ${r.height.toFixed(1)}px h\n${children.join('\n')}`);
-  };
-
   // Display mode: render HTML and typeset math
-  // typesetCounter forces re-typeset after each edit session
   useEffect(() => {
-    if (displayRef.current && !editing) {
-      resetMathElement(displayRef.current, element.html);
+    if (mainRef.current && !editing) {
+      resetMathElement(mainRef.current, element.html);
       if (containsMath(element.html)) {
-        requestAnimationFrame(() => {
-          if (displayRef.current) logBounds('before-mathjax', displayRef.current);
-        });
-        typesetElement(displayRef.current).then(() => {
-          requestAnimationFrame(() => {
-            if (displayRef.current) logBounds('after-mathjax', displayRef.current);
-          });
-        });
+        typesetElement(mainRef.current);
       }
     }
   }, [element.html, editing, typesetCounter]);
@@ -247,20 +224,17 @@ function TextContent({
   const startEditing = () => {
     setEditing(true);
     setTimeout(() => {
-      if (editRef.current) {
-        editRef.current.innerHTML = element.html;
-        applyMathLineStyles(editRef.current);
-        editRef.current.focus();
-        // Re-apply after DOM settles (browser may reflow divs)
+      if (mainRef.current) {
+        // Replace MathJax SVGs with raw source for editing
+        mainRef.current.innerHTML = element.html;
+        applyMathLineStyles(mainRef.current);
+        mainRef.current.focus();
         requestAnimationFrame(() => {
-          if (editRef.current) {
-            applyMathLineStyles(editRef.current);
-            logBounds('edit-mode', editRef.current);
-          }
+          if (mainRef.current) applyMathLineStyles(mainRef.current);
         });
         const sel = window.getSelection();
         if (sel) {
-          sel.selectAllChildren(editRef.current);
+          sel.selectAllChildren(mainRef.current);
           sel.collapseToEnd();
         }
       }
@@ -268,9 +242,9 @@ function TextContent({
   };
 
   const commitAndClose = () => {
-    if (editRef.current) {
-      // Strip the styles we added for $$ lines before saving
-      for (const child of Array.from(editRef.current.querySelectorAll('*'))) {
+    if (mainRef.current) {
+      // Strip $$ line styles before saving
+      for (const child of Array.from(mainRef.current.querySelectorAll('*'))) {
         const el = child as HTMLElement;
         if (el.style.whiteSpace === 'nowrap') el.style.whiteSpace = '';
         if (el.style.overflowX === 'auto') el.style.overflowX = '';
@@ -279,17 +253,20 @@ function TextContent({
         if (el.style.display === 'flex') el.style.display = '';
         if (el.style.alignItems) el.style.alignItems = '';
       }
-      editRef.current.style.whiteSpace = '';
-      editRef.current.style.overflowX = '';
-      editRef.current.style.minHeight = '';
-      editRef.current.style.lineHeight = '';
-      editRef.current.style.display = '';
-      editRef.current.style.alignItems = '';
-      onCommit(editRef.current.innerHTML);
+      mainRef.current.style.whiteSpace = '';
+      mainRef.current.style.overflowX = '';
+      mainRef.current.style.minHeight = '';
+      mainRef.current.style.lineHeight = '';
+      mainRef.current.style.display = '';
+      mainRef.current.style.alignItems = '';
+      onCommit(mainRef.current.innerHTML);
     }
     setEditing(false);
-    setTypesetCounter((c) => c + 1); // trigger re-typeset
+    setTypesetCounter((c) => c + 1);
   };
+
+  // Single div for both display and edit
+  const mainRef = useRef<HTMLDivElement>(null);
 
   return (
     <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>
@@ -306,38 +283,29 @@ function TextContent({
         document.body
       )}
 
-      {/* Display div: shows rendered content + MathJax SVGs */}
       <div
-        ref={displayRef}
-        style={{ ...style, display: editing ? 'none' : 'block', cursor: 'inherit' }}
-        onDoubleClick={startEditing}
+        ref={mainRef}
+        style={{ ...style, cursor: editing ? 'text' : 'inherit' }}
+        contentEditable={editing}
+        suppressContentEditableWarning
+        onDoubleClick={() => { if (!editing) startEditing(); }}
+        onBlur={editing ? (e) => {
+          const related = e.relatedTarget as HTMLElement | null;
+          if (related?.closest('.text-format-toolbar')) return;
+          setTimeout(() => {
+            if (!document.activeElement?.closest('.text-format-toolbar')) {
+              commitAndClose();
+            }
+          }, 100);
+        } : undefined}
+        onInput={editing ? () => {
+          if (mainRef.current) applyMathLineStyles(mainRef.current);
+        } : undefined}
+        onKeyDown={editing ? (e) => {
+          if (e.key === 'Escape') { commitAndClose(); }
+          e.stopPropagation();
+        } : undefined}
       />
-
-      {/* Edit div: shows raw HTML source, contentEditable */}
-      {editing && (
-        <div
-          ref={editRef}
-          style={{ ...style, cursor: 'text' }}
-          contentEditable
-          suppressContentEditableWarning
-          onBlur={(e) => {
-            const related = e.relatedTarget as HTMLElement | null;
-            if (related?.closest('.text-format-toolbar')) return;
-            setTimeout(() => {
-              if (!document.activeElement?.closest('.text-format-toolbar')) {
-                commitAndClose();
-              }
-            }, 100);
-          }}
-          onInput={() => {
-            if (editRef.current) applyMathLineStyles(editRef.current);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') { commitAndClose(); }
-            e.stopPropagation();
-          }}
-        />
-      )}
     </div>
   );
 }
