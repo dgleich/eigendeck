@@ -70,7 +70,6 @@ export function SlideElementRenderer({
 }
 
 // ============================================
-// ============================================
 // Demo element with overlay for dragging
 // ============================================
 function DemoBox({ element, zIndex, scale, projectPath, onSelect, onDelete, onUpdate }: {
@@ -85,7 +84,6 @@ function DemoBox({ element, zIndex, scale, projectPath, onSelect, onDelete, onUp
     try { src = convertFileSrc(`${projectPath}/${element.src}`); }
     catch { src = undefined; }
   }
-
   return (
     <DraggableBox
       position={element.position} zIndex={zIndex} scale={scale}
@@ -96,27 +94,15 @@ function DemoBox({ element, zIndex, scale, projectPath, onSelect, onDelete, onUp
         <iframe src={src} sandbox="allow-scripts allow-same-origin" title="demo"
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
       ) : <div style={{ padding: 20, color: '#999' }}>Demo: {element.src}</div>}
-      {/* Overlay: blocks iframe events so drag works. Double-click to interact with demo. */}
       {!interacting && (
-        <div
-          className="demo-overlay"
+        <div className="demo-overlay"
           onDoubleClick={(e) => { e.stopPropagation(); setInteracting(true); }}
-          style={{
-            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-            cursor: 'grab', zIndex: 1,
-          }}
-        />
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'grab', zIndex: 1 }} />
       )}
       {interacting && (
-        <button
-          className="demo-lock-btn"
-          onClick={() => setInteracting(false)}
-          style={{
-            position: 'absolute', top: 4, right: 4, zIndex: 2,
-            padding: '2px 8px', fontSize: 11, border: '1px solid #ccc',
-            borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer',
-          }}
-        >
+        <button className="demo-lock-btn" onClick={() => setInteracting(false)}
+          style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, padding: '2px 8px', fontSize: 11,
+            border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
           Lock
         </button>
       )}
@@ -125,7 +111,7 @@ function DemoBox({ element, zIndex, scale, projectPath, onSelect, onDelete, onUp
 }
 
 // ============================================
-// Text content with preset styling
+// Text content — built from the working MinimalText approach
 // ============================================
 function TextContent({
   element,
@@ -135,7 +121,7 @@ function TextContent({
   onCommit: (html: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [typesetCounter, setTypesetCounter] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0, width: 0 });
 
@@ -152,17 +138,30 @@ function TextContent({
     padding: '8px 12px',
     outline: 'none',
     overflow: 'hidden',
+    cursor: editing ? 'text' : 'inherit',
+    caretColor: editing ? 'auto' : 'transparent',
   };
 
-  // Display mode: render HTML and typeset math
+  // Display mode: set innerHTML and typeset math
   useEffect(() => {
-    if (mainRef.current && !editing) {
-      resetMathElement(mainRef.current, element.html);
+    if (ref.current && !editing) {
+      resetMathElement(ref.current, element.html);
       if (containsMath(element.html)) {
-        typesetElement(mainRef.current);
+        typesetElement(ref.current);
       }
     }
-  }, [element.html, editing, typesetCounter]);
+  }, [element.html, editing]);
+
+  // Block input when not editing
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const preventEdit = (e: Event) => {
+      if (!editing) e.preventDefault();
+    };
+    el.addEventListener('beforeinput', preventEdit);
+    return () => el.removeEventListener('beforeinput', preventEdit);
+  });
 
   // Position toolbar
   useEffect(() => {
@@ -172,11 +171,9 @@ function TextContent({
     }
   }, [editing]);
 
-  // Apply nowrap to lines starting with $$
-  // Extract TeX from a $$ line, e.g. "$$\int_0^1 f(x)$$" → "\int_0^1 f(x)"
+  // $$ line nowrap helpers
   const extractDisplayTex = (text: string): string | null => {
-    const trimmed = text.trim();
-    const match = trimmed.match(/^\$\$([\s\S]*?)\$\$/);
+    const match = text.trim().match(/^\$\$([\s\S]*?)\$\$/);
     return match ? match[1] : null;
   };
 
@@ -186,7 +183,6 @@ function TextContent({
       if (text.trimStart().startsWith('$$')) {
         node.style.whiteSpace = 'nowrap';
         node.style.overflowX = 'auto';
-        // Use cached SVG height to prevent layout jump on re-edit
         const tex = extractDisplayTex(text);
         if (tex) {
           const cachedHeight = getDisplayMathHeight(tex);
@@ -202,39 +198,50 @@ function TextContent({
         node.style.overflowX = '';
         node.style.minHeight = '';
         node.style.lineHeight = '';
+        node.style.display = '';
+        node.style.alignItems = '';
       }
     };
-
     for (const child of Array.from(el.childNodes)) {
-      if (child.nodeType === Node.ELEMENT_NODE) {
-        applyToNode(child as HTMLElement);
-      }
+      if (child.nodeType === Node.ELEMENT_NODE) applyToNode(child as HTMLElement);
     }
-    // Also check root element for single $$ line
     if (el.childNodes.length <= 1 && (el.textContent || '').trimStart().startsWith('$$')) {
       applyToNode(el);
     } else {
-      el.style.whiteSpace = '';
-      el.style.overflowX = '';
-      el.style.minHeight = '';
-      el.style.lineHeight = '';
+      el.style.whiteSpace = ''; el.style.overflowX = '';
+      el.style.minHeight = ''; el.style.lineHeight = '';
+      el.style.display = ''; el.style.alignItems = '';
     }
+  };
+
+  const stripMathLineStyles = (el: HTMLElement) => {
+    for (const child of Array.from(el.querySelectorAll('*'))) {
+      const c = child as HTMLElement;
+      if (c.style.whiteSpace === 'nowrap') c.style.whiteSpace = '';
+      if (c.style.overflowX === 'auto') c.style.overflowX = '';
+      if (c.style.minHeight) c.style.minHeight = '';
+      if (c.style.lineHeight) c.style.lineHeight = '';
+      if (c.style.display === 'flex') c.style.display = '';
+      if (c.style.alignItems) c.style.alignItems = '';
+    }
+    el.style.whiteSpace = ''; el.style.overflowX = '';
+    el.style.minHeight = ''; el.style.lineHeight = '';
+    el.style.display = ''; el.style.alignItems = '';
   };
 
   const startEditing = () => {
     setEditing(true);
     setTimeout(() => {
-      if (mainRef.current) {
-        // Replace MathJax SVGs with raw source for editing
-        mainRef.current.innerHTML = element.html;
-        applyMathLineStyles(mainRef.current);
-        mainRef.current.focus();
+      if (ref.current) {
+        ref.current.innerHTML = element.html;
+        applyMathLineStyles(ref.current);
+        ref.current.focus();
         requestAnimationFrame(() => {
-          if (mainRef.current) applyMathLineStyles(mainRef.current);
+          if (ref.current) applyMathLineStyles(ref.current);
         });
         const sel = window.getSelection();
         if (sel) {
-          sel.selectAllChildren(mainRef.current);
+          sel.selectAllChildren(ref.current);
           sel.collapseToEnd();
         }
       }
@@ -242,66 +249,27 @@ function TextContent({
   };
 
   const commitAndClose = () => {
-    if (mainRef.current) {
-      // Strip $$ line styles before saving
-      for (const child of Array.from(mainRef.current.querySelectorAll('*'))) {
-        const el = child as HTMLElement;
-        if (el.style.whiteSpace === 'nowrap') el.style.whiteSpace = '';
-        if (el.style.overflowX === 'auto') el.style.overflowX = '';
-        if (el.style.minHeight) el.style.minHeight = '';
-        if (el.style.lineHeight) el.style.lineHeight = '';
-        if (el.style.display === 'flex') el.style.display = '';
-        if (el.style.alignItems) el.style.alignItems = '';
-      }
-      mainRef.current.style.whiteSpace = '';
-      mainRef.current.style.overflowX = '';
-      mainRef.current.style.minHeight = '';
-      mainRef.current.style.lineHeight = '';
-      mainRef.current.style.display = '';
-      mainRef.current.style.alignItems = '';
-      onCommit(mainRef.current.innerHTML);
+    if (ref.current) {
+      stripMathLineStyles(ref.current);
+      onCommit(ref.current.innerHTML);
     }
     setEditing(false);
-    setTypesetCounter((c) => c + 1);
   };
-
-  // Single div for both display and edit
-  const mainRef = useRef<HTMLDivElement>(null);
-
-  // Prevent accidental edits when not in edit mode
-  useEffect(() => {
-    const el = mainRef.current;
-    if (!el) return;
-    const preventEdit = (e: Event) => {
-      if (!editing) e.preventDefault();
-    };
-    // Block input events but not pointer events (so drag still works)
-    el.addEventListener('beforeinput', preventEdit);
-    return () => el.removeEventListener('beforeinput', preventEdit);
-  });
 
   return (
     <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>
       {editing && createPortal(
         <div style={{
-          position: 'fixed',
-          top: toolbarPos.top,
-          left: toolbarPos.left,
-          width: Math.max(toolbarPos.width, 500),
-          zIndex: 9999,
+          position: 'fixed', top: toolbarPos.top, left: toolbarPos.left,
+          width: Math.max(toolbarPos.width, 500), zIndex: 9999,
         }}>
           <TextFormatToolbar onClose={commitAndClose} />
         </div>,
         document.body
       )}
-
       <div
-        ref={mainRef}
-        style={{
-          ...style,
-          cursor: editing ? 'text' : 'inherit',
-          caretColor: editing ? 'auto' : 'transparent',
-        }}
+        ref={ref}
+        style={style}
         contentEditable
         suppressContentEditableWarning
         onDoubleClick={() => { if (!editing) startEditing(); }}
@@ -309,16 +277,14 @@ function TextContent({
           const related = e.relatedTarget as HTMLElement | null;
           if (related?.closest('.text-format-toolbar')) return;
           setTimeout(() => {
-            if (!document.activeElement?.closest('.text-format-toolbar')) {
-              commitAndClose();
-            }
+            if (!document.activeElement?.closest('.text-format-toolbar')) commitAndClose();
           }, 100);
         } : undefined}
         onInput={editing ? () => {
-          if (mainRef.current) applyMathLineStyles(mainRef.current);
+          if (ref.current) applyMathLineStyles(ref.current);
         } : undefined}
         onKeyDown={editing ? (e) => {
-          if (e.key === 'Escape') { commitAndClose(); }
+          if (e.key === 'Escape') commitAndClose();
           e.stopPropagation();
         } : undefined}
       />
