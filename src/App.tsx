@@ -84,6 +84,7 @@ function App() {
         case 'export': exportPresentation(); break;
         case 'present': usePresentationStore.getState().setPresenting(true); break;
         case 'inspector': usePresentationStore.getState().toggleProperties(); break;
+        case 'debug-console': window.dispatchEvent(new CustomEvent('toggle-debug-console')); break;
       }
     });
     return () => { unlisten.then((fn) => fn()); };

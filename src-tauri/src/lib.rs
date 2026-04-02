@@ -76,10 +76,17 @@ pub fn run() {
                 .accelerator("CmdOrCtrl+I")
                 .build(app)?;
 
+            let debug_item = MenuItemBuilder::new("Debug Console")
+                .id("debug-console")
+                .accelerator("CmdOrCtrl+Shift+D")
+                .build(app)?;
+
             let view_menu = SubmenuBuilder::new(app, "View")
                 .item(&present_item)
                 .item(&speaker_item)
                 .item(&inspector_item)
+                .separator()
+                .item(&debug_item)
                 .separator()
                 .fullscreen()
                 .build()?;
