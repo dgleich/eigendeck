@@ -139,7 +139,6 @@ function TextContent({
     outline: 'none',
     overflow: 'hidden',
     cursor: editing ? 'text' : 'inherit',
-    caretColor: editing ? 'auto' : 'transparent',
   };
 
   // Display mode: set innerHTML and typeset math
@@ -152,16 +151,7 @@ function TextContent({
     }
   }, [element.html, editing]);
 
-  // Block input when not editing
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const preventEdit = (e: Event) => {
-      if (!editing) e.preventDefault();
-    };
-    el.addEventListener('beforeinput', preventEdit);
-    return () => el.removeEventListener('beforeinput', preventEdit);
-  });
+  // (no beforeinput blocker — using contentEditable toggle instead)
 
   // Position toolbar
   useEffect(() => {
@@ -270,8 +260,9 @@ function TextContent({
       <div
         ref={ref}
         style={style}
-        contentEditable
+        contentEditable={editing}
         suppressContentEditableWarning
+        dangerouslySetInnerHTML={{ __html: element.html }}
         onDoubleClick={() => { if (!editing) startEditing(); }}
         onBlur={editing ? (e) => {
           const related = e.relatedTarget as HTMLElement | null;
