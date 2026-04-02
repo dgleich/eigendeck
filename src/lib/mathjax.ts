@@ -125,7 +125,7 @@ export async function renderMathInHtml(html: string): Promise<string> {
         try {
           const container = await Promise.race([
             MJ.tex2svgPromise(tex, { display: true }),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('tex2svg timeout')), 5000)),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('tex2svg timeout')), 2000)),
           ]);
           const svg = (container as HTMLElement).querySelector('svg');
           if (svg) {
@@ -157,7 +157,7 @@ export async function renderMathInHtml(html: string): Promise<string> {
           // Race tex2svgPromise against a timeout since SRE Worker may hang
           const container = await Promise.race([
             MJ.tex2svgPromise(tex, { display: false }),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('tex2svg timeout')), 5000)),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('tex2svg timeout')), 2000)),
           ]);
           console.log('renderMathInHtml: tex2svgPromise resolved');
           const svg = (container as HTMLElement).querySelector('svg');
