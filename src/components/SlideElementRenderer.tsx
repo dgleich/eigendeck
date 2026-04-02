@@ -257,7 +257,6 @@ function TextContent({
         style={style}
         contentEditable={editing}
         suppressContentEditableWarning
-        dangerouslySetInnerHTML={{ __html: element.html }}
         onDoubleClick={() => { if (!editing) startEditing(); }}
         onBlur={editing ? (e) => {
           const related = e.relatedTarget as HTMLElement | null;
