@@ -116,7 +116,6 @@ function TextContent({
   // typesetCounter forces re-typeset after each edit session
   useEffect(() => {
     if (displayRef.current && !editing) {
-      console.log('TextContent effect: html=', JSON.stringify(element.html).slice(0, 100), 'containsMath=', containsMath(element.html));
       resetMathElement(displayRef.current, element.html);
       if (containsMath(element.html)) {
         typesetElement(displayRef.current);
