@@ -175,12 +175,38 @@ function TextContent({
     }
   }, [editing]);
 
+  // Apply nowrap to lines starting with $$
+  const applyMathLineStyles = (el: HTMLElement) => {
+    // Check direct text and child divs/lines
+    for (const child of Array.from(el.childNodes)) {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        const div = child as HTMLElement;
+        const text = div.textContent || '';
+        if (text.trimStart().startsWith('$$')) {
+          div.style.whiteSpace = 'nowrap';
+          div.style.overflowX = 'auto';
+        } else {
+          div.style.whiteSpace = '';
+          div.style.overflowX = '';
+        }
+      }
+    }
+    // Also check if the root element itself is a single $$ line
+    if (el.childNodes.length <= 1 && (el.textContent || '').trimStart().startsWith('$$')) {
+      el.style.whiteSpace = 'nowrap';
+      el.style.overflowX = 'auto';
+    } else {
+      el.style.whiteSpace = '';
+      el.style.overflowX = '';
+    }
+  };
+
   const startEditing = () => {
     setEditing(true);
-    // Set the raw HTML source (not MathJax-processed) into the edit div
     setTimeout(() => {
       if (editRef.current) {
         editRef.current.innerHTML = element.html;
+        applyMathLineStyles(editRef.current);
         editRef.current.focus();
         const sel = window.getSelection();
         if (sel) {
@@ -193,6 +219,14 @@ function TextContent({
 
   const commitAndClose = () => {
     if (editRef.current) {
+      // Strip the nowrap styles we added for $$ lines before saving
+      for (const child of Array.from(editRef.current.querySelectorAll('*'))) {
+        const el = child as HTMLElement;
+        if (el.style.whiteSpace === 'nowrap') el.style.whiteSpace = '';
+        if (el.style.overflowX === 'auto') el.style.overflowX = '';
+      }
+      editRef.current.style.whiteSpace = '';
+      editRef.current.style.overflowX = '';
       onCommit(editRef.current.innerHTML);
     }
     setEditing(false);
@@ -236,6 +270,9 @@ function TextContent({
                 commitAndClose();
               }
             }, 100);
+          }}
+          onInput={() => {
+            if (editRef.current) applyMathLineStyles(editRef.current);
           }}
           onKeyDown={(e) => {
             if (e.key === 'Escape') { commitAndClose(); }
