@@ -439,14 +439,55 @@ Key rules:
 
 ---
 
+## Slide Groups
+
+Groups are consecutive slides that share the same slide number and move together.
+Used for build animations, step-by-step demos, and linked object transitions.
+
+### Data Model
+
+```json
+{
+  "id": "uuid",
+  "groupId": "shared-group-uuid",
+  "layout": "default",
+  "elements": [...],
+  "notes": ""
+}
+```
+
+- Slides with the same `groupId` form a group
+- First slide in group = parent (shows number, full-size thumbnail)
+- Subsequent slides = children (indented, slightly smaller in sidebar)
+- `+ Build` button duplicates current slide into the same group
+
+### Behavior
+
+- **Numbering**: groups share one number (e.g., slides [A, B1, B2, C] show [1, 2, 2, 3])
+- **Sidebar**: children indented 20px, scaled to 90%, slightly transparent
+- **Move**: dragging parent moves entire group; dragging child moves just that slide
+- **Present mode**: arrow keys step through all slides including children
+
+---
+
+## Debug Console
+
+- Toggle: `Cmd+Shift+D` or View > Debug Console
+- Captures `console.log/warn/error` + unhandled errors
+- Inline panel at bottom of screen
+- Keeps last 300 entries
+- WebKit devtools auto-open in dev mode (`Cmd+Option+I`)
+
+---
+
 ## Future / Planned
 
 ### Linked Objects (cross-slide animation)
 - Elements can have a `linkId` shared across slides
-- Duplicate slide links all elements automatically
+- Duplicate slide within a group links all elements automatically
 - Linked elements in different positions → animate transition
 - New elements fade in, removed elements fade out
-- Replaces traditional fragment/build animations
+- Builds on slide groups system
 
 ### Multi-Select & Alignment
 - Shift+click to select multiple elements
@@ -467,3 +508,7 @@ Key rules:
 
 ### PDF Export
 - Render each slide to PDF page
+
+### MathJax Tilde Fix
+- Tilde accent (`\tilde{x}`) positioned too high in PT Sans math font
+- Fix requires adjusting glyph metrics (y-coordinate 732) in mathjax-ptsans-bundle font data
