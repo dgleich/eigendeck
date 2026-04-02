@@ -6,6 +6,7 @@ import { SlideEditor } from './components/SlideEditor';
 import { PresentMode } from './components/PresentMode';
 import { NotesPanel } from './components/NotesPanel';
 import { PropertiesPanel } from './components/PropertiesPanel';
+import { DebugConsole } from './components/DebugConsole';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
 import {
@@ -142,6 +143,7 @@ function App() {
         </div>
         {showProperties && <PropertiesPanel />}
       </div>
+      <DebugConsole />
     </div>
   );
 }

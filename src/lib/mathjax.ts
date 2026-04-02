@@ -2,16 +2,8 @@
  * MathJax integration for Eigendeck.
  *
  * Uses the custom mathjax-ptsans-font build which matches PT Sans.
- * Renders LaTeX as inline SVG via MathJax's tex2svg API.
- *
- * Approach: we do NOT use MathJax's DOM typesetting (typesetPromise).
- * Instead, we find $...$ and $$...$$ in the text, convert each to SVG
- * using tex2svgPromise, and build the HTML ourselves. This avoids
- * MathJax's internal DOM state tracking which breaks on re-typesetting.
- *
- * Conventions:
- *   $...$   — inline math
- *   $$...$$ — display (block) math
+ * Uses typesetPromise for DOM-based rendering (tex2svg not available
+ * in this bundle).
  */
 
 let mathjaxPromise: Promise<any> | null = null;
@@ -37,7 +29,7 @@ export function loadMathJax(): Promise<any> {
           MJ.startup.defaultReady();
           MJ.startup.promise.then(() => {
             mathjaxReady = true;
-            console.log('MathJax ready');
+            console.log('MathJax ready, available methods:', Object.keys(MJ).join(', '));
             resolve(MJ);
           });
         },
@@ -47,7 +39,11 @@ export function loadMathJax(): Promise<any> {
     const script = document.createElement('script');
     script.src = '/mathjax/tex-mml-svg-mathjax-ptsans.js';
     script.async = true;
-    script.onerror = () => reject(new Error('Failed to load MathJax'));
+    script.onload = () => console.log('MathJax script loaded');
+    script.onerror = (e) => {
+      console.error('MathJax script failed to load', e);
+      reject(new Error('Failed to load MathJax'));
+    };
     document.head.appendChild(script);
   });
 
@@ -55,103 +51,48 @@ export function loadMathJax(): Promise<any> {
 }
 
 /**
- * Process an HTML string: find $...$ and $$...$$ segments,
- * convert each to SVG, return new HTML with math replaced by SVGs.
+ * Typeset math in an element using MathJax's typesetPromise.
+ *
+ * To handle re-typesetting reliably:
+ * 1. Create a fresh inner wrapper div
+ * 2. Copy the raw HTML into it
+ * 3. Replace the element's children with the wrapper
+ * 4. Typeset the wrapper (MathJax has never seen it before)
  */
-export async function renderMathInHtml(html: string): Promise<string> {
-  if (!containsMath(html)) return html;
+export async function typesetElement(element: HTMLElement): Promise<void> {
+  const rawHtml = element.getAttribute('data-raw') || element.innerHTML;
+  console.log('typesetElement called, rawHtml length:', rawHtml.length, 'preview:', rawHtml.slice(0, 80));
 
   try {
     const MJ = await loadMathJax();
-    let result = '';
-    let i = 0;
 
-    while (i < html.length) {
-      // Check for display math $$...$$
-      if (html[i] === '$' && html[i + 1] === '$') {
-        const end = html.indexOf('$$', i + 2);
-        if (end !== -1) {
-          const tex = html.slice(i + 2, end);
-          try {
-            const node = await MJ.tex2svgPromise(tex, { display: true });
-            const svg = node.querySelector('svg');
-            if (svg) {
-              result += `<div style="text-align:center;margin:16px 0;">${svg.outerHTML}</div>`;
-            } else {
-              result += html.slice(i, end + 2);
-            }
-          } catch {
-            result += html.slice(i, end + 2);
-          }
-          i = end + 2;
-          continue;
-        }
-      }
+    // Create a brand new div that MathJax hasn't seen
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = rawHtml;
+    wrapper.style.cssText = 'display:contents'; // doesn't affect layout
 
-      // Check for inline math $...$
-      if (html[i] === '$' && html[i + 1] !== '$') {
-        // Don't match inside HTML tags
-        const end = html.indexOf('$', i + 1);
-        if (end !== -1 && !html.slice(i + 1, end).includes('\n')) {
-          const tex = html.slice(i + 1, end);
-          try {
-            const node = await MJ.tex2svgPromise(tex, { display: false });
-            const svg = node.querySelector('svg');
-            if (svg) {
-              // Inline: set vertical-align to match text baseline
-              svg.style.verticalAlign = 'middle';
-              result += svg.outerHTML;
-            } else {
-              result += html.slice(i, end + 1);
-            }
-          } catch {
-            result += html.slice(i, end + 1);
-          }
-          i = end + 1;
-          continue;
-        }
-      }
+    // Replace element's content with the fresh wrapper
+    element.innerHTML = '';
+    element.appendChild(wrapper);
 
-      // Regular character — but skip inside HTML tags
-      if (html[i] === '<') {
-        const tagEnd = html.indexOf('>', i);
-        if (tagEnd !== -1) {
-          result += html.slice(i, tagEnd + 1);
-          i = tagEnd + 1;
-          continue;
-        }
-      }
+    // Store raw for next time
+    element.setAttribute('data-raw', rawHtml);
 
-      result += html[i];
-      i++;
-    }
-
-    return result;
+    console.log('Calling MathJax.typesetPromise...');
+    await MJ.typesetPromise([wrapper]);
+    console.log('MathJax typeset complete');
   } catch (e) {
-    console.error('MathJax renderMathInHtml failed:', e);
-    return html;
+    console.error('MathJax typeset error:', e);
+    // Restore raw HTML on failure
+    element.innerHTML = rawHtml;
   }
 }
 
 /**
- * Render math in a DOM element by replacing its innerHTML.
- * Safe to call multiple times — processes from the raw source each time.
- */
-export async function typesetElement(element: HTMLElement): Promise<void> {
-  // Store raw HTML on first call, use it for subsequent calls
-  if (!element.hasAttribute('data-raw-html')) {
-    element.setAttribute('data-raw-html', element.innerHTML);
-  }
-  const raw = element.getAttribute('data-raw-html') || element.innerHTML;
-  const rendered = await renderMathInHtml(raw);
-  element.innerHTML = rendered;
-}
-
-/**
- * Reset an element so typesetElement will re-process from scratch.
+ * Reset element state for re-typesetting.
  */
 export function resetMathElement(element: HTMLElement, rawHtml: string): void {
-  element.removeAttribute('data-raw-html');
+  element.removeAttribute('data-raw');
   element.innerHTML = rawHtml;
 }
 
