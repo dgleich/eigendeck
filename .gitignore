@@ -19,7 +19,7 @@ Thumbs.db
 src-tauri/WixTools/
 src-tauri/gen/
 
-# MathJax custom font (2.9MB, built separately)
+# MathJax (public/mathjax/ is copied from mathjax-ptsans-bundle at build time)
 public/mathjax/
 mathjax-ptsans-font/
 
