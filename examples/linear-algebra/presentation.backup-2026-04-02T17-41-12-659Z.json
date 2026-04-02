@@ -77,12 +77,12 @@
           "id": "b2c3d4e5-2222-4bbb-b222-100000000002",
           "type": "text",
           "preset": "body",
-          "html": "Every matrix $A \\in \\mathbb{R}^{m \\times n}$ admits a factorization<br>$$A = U \\Sigma V^T$$<br>where:<br>• $U \\in \\mathbb{R}^{m \\times m}$ is orthogonal (left singular vectors)<br>• $V \\in \\mathbb{R}^{n \\times n}$ is orthogonal (right singular vectors)<br>• $\\Sigma \\in \\mathbb{R}^{m \\times n}$ is diagonal with $\\sigma_1 \\geq \\sigma_2 \\geq \\cdots \\geq 0$<br><br>The singular values satisfy $\\sigma_i = \\sqrt{\\lambda_i(A^T A)}$.",
+          "html": "Every matrix $A \\in \\mathbb{R}^{m \\times n}$ admits a factorization<br><br>$$A = U \\Sigma V^T$$<br><br>where:<br>• $U \\in \\mathbb{R}^{m \\times m}$ is orthogonal (left singular vectors)<br>• $V \\in \\mathbb{R}^{n \\times n}$ is orthogonal (right singular vectors)<br>• $\\Sigma \\in \\mathbb{R}^{m \\times n}$ is diagonal with $\\sigma_1 \\geq \\sigma_2 \\geq \\cdots \\geq 0$<br><br>The singular values satisfy $\\sigma_i = \\sqrt{\\lambda_i(A^T A)}$.",
           "position": {
-            "x": 78,
-            "y": 198,
-            "width": 1194,
-            "height": 779
+            "x": 80,
+            "y": 200,
+            "width": 1200,
+            "height": 700
           }
         },
         {
@@ -134,10 +134,10 @@
           "preset": "body",
           "html": "The <b>Eckart-Young-Mirsky theorem</b> states that the best rank-$k$ approximation to $A$ (in either the 2-norm or Frobenius norm) is given by the truncated SVD:<br><br>$$A_k = \\sum_{i=1}^{k} \\sigma_i \\, u_i \\, v_i^T$$<br><br>The approximation error is:<br><br>$$\\|A - A_k\\|_2 = \\sigma_{k+1}, \\qquad \\|A - A_k\\|_F = \\sqrt{\\sum_{i=k+1}^{r} \\sigma_i^2}$$<br><br>where $r = \\operatorname{rank}(A)$.",
           "position": {
-            "x": 76,
-            "y": 111,
-            "width": 1206,
-            "height": 928
+            "x": 80,
+            "y": 200,
+            "width": 1200,
+            "height": 700
           }
         },
         {

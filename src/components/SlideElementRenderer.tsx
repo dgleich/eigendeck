@@ -52,25 +52,14 @@ export function SlideElementRenderer({
       );
     }
 
-    case 'demo': {
-      let src: string | undefined;
-      if (projectPath) {
-        try { src = convertFileSrc(`${projectPath}/${element.src}`); }
-        catch { src = undefined; }
-      }
+    case 'demo':
       return (
-        <DraggableBox
-          position={element.position} zIndex={zIndex} scale={scale}
-          className="el-demo" onSelect={onSelect} onDelete={onDelete}
-          onPositionChange={(pos) => onUpdate({ position: pos } as any)}
-        >
-          {src ? (
-            <iframe src={src} sandbox="allow-scripts allow-same-origin" title="demo"
-              style={{ width: '100%', height: '100%', border: 'none' }} />
-          ) : <div style={{ padding: 20, color: '#999' }}>Demo: {element.src}</div>}
-        </DraggableBox>
+        <DemoBox
+          element={element} zIndex={zIndex} scale={scale}
+          projectPath={projectPath} onSelect={onSelect} onDelete={onDelete}
+          onUpdate={onUpdate}
+        />
       );
-    }
 
     case 'arrow':
       return (
@@ -78,6 +67,61 @@ export function SlideElementRenderer({
           onUpdate={onUpdate} onDelete={onDelete} onSelect={onSelect} />
       );
   }
+}
+
+// ============================================
+// ============================================
+// Demo element with overlay for dragging
+// ============================================
+function DemoBox({ element, zIndex, scale, projectPath, onSelect, onDelete, onUpdate }: {
+  element: Extract<SlideElement, { type: 'demo' }>;
+  zIndex: number; scale: number; projectPath: string | null;
+  onSelect: () => void; onDelete: () => void;
+  onUpdate: (changes: Partial<SlideElement>) => void;
+}) {
+  const [interacting, setInteracting] = useState(false);
+  let src: string | undefined;
+  if (projectPath) {
+    try { src = convertFileSrc(`${projectPath}/${element.src}`); }
+    catch { src = undefined; }
+  }
+
+  return (
+    <DraggableBox
+      position={element.position} zIndex={zIndex} scale={scale}
+      className="el-demo" onSelect={onSelect} onDelete={onDelete}
+      onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+    >
+      {src ? (
+        <iframe src={src} sandbox="allow-scripts allow-same-origin" title="demo"
+          style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
+      ) : <div style={{ padding: 20, color: '#999' }}>Demo: {element.src}</div>}
+      {/* Overlay: blocks iframe events so drag works. Double-click to interact with demo. */}
+      {!interacting && (
+        <div
+          className="demo-overlay"
+          onDoubleClick={(e) => { e.stopPropagation(); setInteracting(true); }}
+          style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            cursor: 'grab', zIndex: 1,
+          }}
+        />
+      )}
+      {interacting && (
+        <button
+          className="demo-lock-btn"
+          onClick={() => setInteracting(false)}
+          style={{
+            position: 'absolute', top: 4, right: 4, zIndex: 2,
+            padding: '2px 8px', fontSize: 11, border: '1px solid #ccc',
+            borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer',
+          }}
+        >
+          Lock
+        </button>
+      )}
+    </DraggableBox>
+  );
 }
 
 // ============================================

@@ -134,8 +134,8 @@
           "preset": "body",
           "html": "The <b>Eckart-Young-Mirsky theorem</b> states that the best rank-$k$ approximation to $A$ (in either the 2-norm or Frobenius norm) is given by the truncated SVD:<br><br>$$A_k = \\sum_{i=1}^{k} \\sigma_i \\, u_i \\, v_i^T$$<br><br>The approximation error is:<br><br>$$\\|A - A_k\\|_2 = \\sigma_{k+1}, \\qquad \\|A - A_k\\|_F = \\sqrt{\\sum_{i=k+1}^{r} \\sigma_i^2}$$<br><br>where $r = \\operatorname{rank}(A)$.",
           "position": {
-            "x": 76,
-            "y": 111,
+            "x": 80,
+            "y": 200,
             "width": 1206,
             "height": 928
           }
