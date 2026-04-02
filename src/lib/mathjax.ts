@@ -150,11 +150,17 @@ export async function renderMathInHtml(html: string): Promise<string> {
 export async function typesetElement(element: HTMLElement): Promise<void> {
   const rawHtml = element.getAttribute('data-raw') || element.innerHTML;
   try {
-    const rendered = await renderMathInHtml(rawHtml);
+    // Immediately hide $$...$$ blocks to prevent wrapping flash
     element.setAttribute('data-raw', rawHtml);
+    element.innerHTML = rawHtml
+      .replace(/\$\$([\s\S]+?)\$\$/g, '<div style="text-align:center;color:#999;font-style:italic;white-space:nowrap;overflow:hidden;">⋯</div>')
+      .replace(/\$([^\$\n]+?)\$/g, '<span style="color:#999;font-style:italic;">⋯</span>');
+
+    const rendered = await renderMathInHtml(rawHtml);
     element.innerHTML = rendered;
   } catch (e) {
     console.error('typesetElement error:', e);
+    element.innerHTML = rawHtml;
   }
 }
 
