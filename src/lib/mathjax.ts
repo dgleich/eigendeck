@@ -69,6 +69,13 @@ export function loadMathJax(): Promise<any> {
  * Render math in an HTML string.
  * Finds $...$ and $$...$$ and converts each to SVG.
  */
+// Cache of rendered display math heights: tex string → height string (e.g. "2.5ex")
+const displayMathHeights = new Map<string, string>();
+
+export function getDisplayMathHeight(tex: string): string | undefined {
+  return displayMathHeights.get(tex);
+}
+
 export async function renderMathInHtml(html: string): Promise<string> {
   if (!containsMath(html)) return html;
 
@@ -100,6 +107,9 @@ export async function renderMathInHtml(html: string): Promise<string> {
           ]);
           const svg = (container as HTMLElement).querySelector('svg');
           if (svg) {
+            // Cache the rendered height for WYSIWYG editing
+            const svgHeight = svg.getAttribute('height') || '';
+            if (svgHeight) displayMathHeights.set(tex, svgHeight);
             parts.push(`<div style="text-align:center;">${svg.outerHTML}</div>`);
           } else {
             parts.push(`$$${tex}$$`);

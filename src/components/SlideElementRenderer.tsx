@@ -4,7 +4,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { pauseUndo, resumeUndo } from '../store/presentation';
 import { TEXT_PRESET_STYLES } from '../types/presentation';
 import { TextFormatToolbar } from './TextFormatToolbar';
-import { typesetElement, resetMathElement, containsMath } from '../lib/mathjax';
+import { typesetElement, resetMathElement, containsMath, getDisplayMathHeight } from '../lib/mathjax';
 import type { SlideElement, ElementPosition, TextElement } from '../types/presentation';
 
 interface Props {
@@ -176,28 +176,49 @@ function TextContent({
   }, [editing]);
 
   // Apply nowrap to lines starting with $$
+  // Extract TeX from a $$ line, e.g. "$$\int_0^1 f(x)$$" → "\int_0^1 f(x)"
+  const extractDisplayTex = (text: string): string | null => {
+    const trimmed = text.trim();
+    const match = trimmed.match(/^\$\$([\s\S]*?)\$\$/);
+    return match ? match[1] : null;
+  };
+
   const applyMathLineStyles = (el: HTMLElement) => {
-    // Check direct text and child divs/lines
+    const applyToNode = (node: HTMLElement) => {
+      const text = node.textContent || '';
+      if (text.trimStart().startsWith('$$')) {
+        node.style.whiteSpace = 'nowrap';
+        node.style.overflowX = 'auto';
+        // Use cached SVG height for min-height to prevent layout jump
+        const tex = extractDisplayTex(text);
+        if (tex) {
+          const cachedHeight = getDisplayMathHeight(tex);
+          if (cachedHeight) {
+            node.style.minHeight = cachedHeight;
+            node.style.lineHeight = cachedHeight;
+          }
+        }
+      } else {
+        node.style.whiteSpace = '';
+        node.style.overflowX = '';
+        node.style.minHeight = '';
+        node.style.lineHeight = '';
+      }
+    };
+
     for (const child of Array.from(el.childNodes)) {
       if (child.nodeType === Node.ELEMENT_NODE) {
-        const div = child as HTMLElement;
-        const text = div.textContent || '';
-        if (text.trimStart().startsWith('$$')) {
-          div.style.whiteSpace = 'nowrap';
-          div.style.overflowX = 'auto';
-        } else {
-          div.style.whiteSpace = '';
-          div.style.overflowX = '';
-        }
+        applyToNode(child as HTMLElement);
       }
     }
-    // Also check if the root element itself is a single $$ line
+    // Also check root element for single $$ line
     if (el.childNodes.length <= 1 && (el.textContent || '').trimStart().startsWith('$$')) {
-      el.style.whiteSpace = 'nowrap';
-      el.style.overflowX = 'auto';
+      applyToNode(el);
     } else {
       el.style.whiteSpace = '';
       el.style.overflowX = '';
+      el.style.minHeight = '';
+      el.style.lineHeight = '';
     }
   };
 
@@ -223,14 +244,18 @@ function TextContent({
 
   const commitAndClose = () => {
     if (editRef.current) {
-      // Strip the nowrap styles we added for $$ lines before saving
+      // Strip the styles we added for $$ lines before saving
       for (const child of Array.from(editRef.current.querySelectorAll('*'))) {
         const el = child as HTMLElement;
         if (el.style.whiteSpace === 'nowrap') el.style.whiteSpace = '';
         if (el.style.overflowX === 'auto') el.style.overflowX = '';
+        if (el.style.minHeight) el.style.minHeight = '';
+        if (el.style.lineHeight) el.style.lineHeight = '';
       }
       editRef.current.style.whiteSpace = '';
       editRef.current.style.overflowX = '';
+      editRef.current.style.minHeight = '';
+      editRef.current.style.lineHeight = '';
       onCommit(editRef.current.innerHTML);
     }
     setEditing(false);
