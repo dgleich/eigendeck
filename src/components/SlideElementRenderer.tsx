@@ -268,15 +268,17 @@ function TextContent({
   // Single div for both display and edit
   const mainRef = useRef<HTMLDivElement>(null);
 
-  // Warm up WebKit's contentEditable on mount to prevent first-click shift
+  // Prevent accidental edits when not in edit mode
   useEffect(() => {
-    if (mainRef.current) {
-      mainRef.current.contentEditable = 'true';
-      // Force a layout calc so WebKit initializes editing state
-      mainRef.current.getBoundingClientRect();
-      mainRef.current.contentEditable = 'false';
-    }
-  }, []);
+    const el = mainRef.current;
+    if (!el) return;
+    const preventEdit = (e: Event) => {
+      if (!editing) e.preventDefault();
+    };
+    // Block input events but not pointer events (so drag still works)
+    el.addEventListener('beforeinput', preventEdit);
+    return () => el.removeEventListener('beforeinput', preventEdit);
+  });
 
   return (
     <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>
@@ -295,8 +297,12 @@ function TextContent({
 
       <div
         ref={mainRef}
-        style={{ ...style, cursor: editing ? 'text' : 'inherit' }}
-        contentEditable={editing}
+        style={{
+          ...style,
+          cursor: editing ? 'text' : 'inherit',
+          caretColor: editing ? 'auto' : 'transparent',
+        }}
+        contentEditable
         suppressContentEditableWarning
         onDoubleClick={() => { if (!editing) startEditing(); }}
         onBlur={editing ? (e) => {
