@@ -150,20 +150,24 @@ export async function renderMathInHtml(html: string): Promise<string> {
     // Inline math $...$
     if (html[i] === '$') {
       const end = html.indexOf('$', i + 1);
+      console.log('Found $ at', i, 'closing $ at', end, 'content:', JSON.stringify(html.slice(i, Math.min(i + 40, html.length))));
       if (end !== -1 && !html.slice(i + 1, end).includes('\n')) {
         const tex = html.slice(i + 1, end);
-        console.log('renderMathInHtml: calling tex2svgPromise for:', tex);
+        console.log('renderMathInHtml: calling tex2svgPromise for:', JSON.stringify(tex));
         try {
           // Race tex2svgPromise against a timeout since SRE Worker may hang
           const container = await Promise.race([
             MJ.tex2svgPromise(tex, { display: false }),
             new Promise((_, reject) => setTimeout(() => reject(new Error('tex2svg timeout')), 2000)),
           ]);
-          console.log('renderMathInHtml: tex2svgPromise resolved');
+          console.log('renderMathInHtml: tex2svgPromise resolved, tex was:', tex);
           const svg = (container as HTMLElement).querySelector('svg');
           if (svg) {
+            // Use the MathJax-computed vertical-align for proper baseline
+            const vAlign = svg.style.verticalAlign || '-0.025ex';
             svg.style.display = 'inline';
-            svg.style.verticalAlign = 'middle';
+            svg.style.verticalAlign = vAlign;
+            console.log('SVG outerHTML length:', svg.outerHTML.length, 'vAlign:', vAlign);
             parts.push(svg.outerHTML);
           } else {
             parts.push(`$${tex}$`);
