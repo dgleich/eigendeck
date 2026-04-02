@@ -1,9 +1,9 @@
 /**
  * MathJax integration for Eigendeck.
  *
- * Uses tex2svgPromise to convert LaTeX to SVG nodes directly,
- * avoiding typesetPromise which hangs due to blob URL font loading
- * issues in Tauri's webview.
+ * Uses tex2svgPromise with the custom PT Sans math font.
+ * SRE (speech rule engine) is disabled because it uses web workers
+ * loaded via blob: URLs which Tauri's webview blocks.
  */
 
 let mathjaxPromise: Promise<any> | null = null;
@@ -14,6 +14,13 @@ export function loadMathJax(): Promise<any> {
   if (mathjaxPromise) return mathjaxPromise;
 
   mathjaxPromise = new Promise((resolve, reject) => {
+    // Suppress blob: URL errors from MathJax SRE worker
+    window.addEventListener('error', (e) => {
+      if (e.filename?.startsWith('blob:')) {
+        e.preventDefault();
+      }
+    });
+
     (window as any).MathJax = {
       tex: {
         inlineMath: [['$', '$']],
@@ -21,10 +28,14 @@ export function loadMathJax(): Promise<any> {
       },
       svg: {
         fontCache: 'none',
-        internalSpeechTitles: false,
       },
       options: {
-        enableAssistiveMml: false, // disable extra MML output
+        enableAssistiveMml: false,
+        enableEnrichment: false,  // disable SRE enrichment (uses blob worker)
+        enableSpeech: false,      // disable SRE speech (uses blob worker)
+        sre: {
+          speech: 'none',
+        },
       },
       startup: {
         typeset: false,
@@ -40,14 +51,6 @@ export function loadMathJax(): Promise<any> {
       },
     };
 
-    // Suppress blob: URL errors from MathJax's internal font loading
-    window.addEventListener('error', (e) => {
-      if (e.filename?.startsWith('blob:')) {
-        e.preventDefault();
-        console.log('Suppressed blob error (MathJax font)');
-      }
-    });
-
     const script = document.createElement('script');
     script.src = '/mathjax/tex-mml-svg-mathjax-ptsans.js';
     script.async = true;
@@ -62,8 +65,7 @@ export function loadMathJax(): Promise<any> {
 }
 
 /**
- * Render math in an HTML string by finding $...$ and $$...$$ and
- * converting each to SVG via tex2svgPromise.
+ * Render math in an HTML string using tex2svgPromise.
  */
 export async function renderMathInHtml(html: string): Promise<string> {
   if (!containsMath(html)) return html;
@@ -73,7 +75,7 @@ export async function renderMathInHtml(html: string): Promise<string> {
   let i = 0;
 
   while (i < html.length) {
-    // Skip HTML tags entirely
+    // Skip HTML tags
     if (html[i] === '<') {
       const tagEnd = html.indexOf('>', i);
       if (tagEnd !== -1) {
@@ -88,19 +90,16 @@ export async function renderMathInHtml(html: string): Promise<string> {
       const end = html.indexOf('$$', i + 2);
       if (end !== -1) {
         const tex = html.slice(i + 2, end);
-        console.log('Rendering display math:', tex);
         try {
           const container = await MJ.tex2svgPromise(tex, { display: true });
           const svg = container.querySelector('svg');
           if (svg) {
             parts.push(`<div style="text-align:center;margin:16px 0;">${svg.outerHTML}</div>`);
-            console.log('Display SVG generated');
           } else {
-            console.warn('No SVG found in display container');
             parts.push(`$$${tex}$$`);
           }
         } catch (e) {
-          console.error('MathJax display math error:', e);
+          console.error('MathJax display error:', e);
           parts.push(`$$${tex}$$`);
         }
         i = end + 2;
@@ -113,28 +112,18 @@ export async function renderMathInHtml(html: string): Promise<string> {
       const end = html.indexOf('$', i + 1);
       if (end !== -1 && !html.slice(i + 1, end).includes('\n')) {
         const tex = html.slice(i + 1, end);
-        console.log('Rendering inline math:', tex);
         try {
           const container = await MJ.tex2svgPromise(tex, { display: false });
-          console.log('tex2svgPromise returned:', container?.tagName, container?.innerHTML?.slice(0, 200));
           const svg = container.querySelector('svg');
           if (svg) {
             svg.style.display = 'inline';
             svg.style.verticalAlign = 'middle';
-            // Remove any <defs> with blob references
-            const defs = svg.querySelector('defs');
-            if (defs) {
-              const uses = svg.querySelectorAll('use[href^="blob:"]');
-              uses.forEach((u: Element) => u.remove());
-            }
             parts.push(svg.outerHTML);
-            console.log('SVG generated, length:', svg.outerHTML.length);
           } else {
-            console.warn('No SVG found in container');
             parts.push(`$${tex}$`);
           }
         } catch (e) {
-          console.error('MathJax inline math error:', e);
+          console.error('MathJax inline error:', e);
           parts.push(`$${tex}$`);
         }
         i = end + 1;
@@ -149,19 +138,12 @@ export async function renderMathInHtml(html: string): Promise<string> {
   return parts.join('');
 }
 
-/**
- * Typeset math in a DOM element.
- * Sets innerHTML to rendered version, stores raw in data-raw.
- */
 export async function typesetElement(element: HTMLElement): Promise<void> {
   const rawHtml = element.getAttribute('data-raw') || element.innerHTML;
-  console.log('typesetElement called, rawHtml:', rawHtml.slice(0, 80));
-
   try {
     const rendered = await renderMathInHtml(rawHtml);
     element.setAttribute('data-raw', rawHtml);
     element.innerHTML = rendered;
-    console.log('typesetElement complete');
   } catch (e) {
     console.error('typesetElement error:', e);
   }
