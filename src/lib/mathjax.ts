@@ -107,7 +107,7 @@ export async function renderMathInHtml(html: string): Promise<string> {
           ]);
           const svg = (container as HTMLElement).querySelector('svg');
           if (svg) {
-            // Cache the rendered height for WYSIWYG editing
+            // Cache the SVG height for WYSIWYG editing
             const svgHeight = svg.getAttribute('height') || '';
             if (svgHeight) displayMathHeights.set(tex, svgHeight);
             parts.push(`<div style="text-align:center;">${svg.outerHTML}</div>`);

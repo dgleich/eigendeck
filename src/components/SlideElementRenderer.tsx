@@ -189,13 +189,15 @@ function TextContent({
       if (text.trimStart().startsWith('$$')) {
         node.style.whiteSpace = 'nowrap';
         node.style.overflowX = 'auto';
-        // Use cached SVG height for min-height to prevent layout jump
+        // Use cached SVG height to prevent layout jump on re-edit
         const tex = extractDisplayTex(text);
         if (tex) {
           const cachedHeight = getDisplayMathHeight(tex);
           if (cachedHeight) {
             node.style.minHeight = cachedHeight;
-            node.style.lineHeight = cachedHeight;
+            node.style.lineHeight = 'normal';
+            node.style.display = 'flex';
+            node.style.alignItems = 'center';
           }
         }
       } else {
@@ -251,11 +253,15 @@ function TextContent({
         if (el.style.overflowX === 'auto') el.style.overflowX = '';
         if (el.style.minHeight) el.style.minHeight = '';
         if (el.style.lineHeight) el.style.lineHeight = '';
+        if (el.style.display === 'flex') el.style.display = '';
+        if (el.style.alignItems) el.style.alignItems = '';
       }
       editRef.current.style.whiteSpace = '';
       editRef.current.style.overflowX = '';
       editRef.current.style.minHeight = '';
       editRef.current.style.lineHeight = '';
+      editRef.current.style.display = '';
+      editRef.current.style.alignItems = '';
       onCommit(editRef.current.innerHTML);
     }
     setEditing(false);
