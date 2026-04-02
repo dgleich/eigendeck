@@ -4,7 +4,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { pauseUndo, resumeUndo } from '../store/presentation';
 import { TEXT_PRESET_STYLES } from '../types/presentation';
 import { TextFormatToolbar } from './TextFormatToolbar';
-import { typesetElement, containsMath } from '../lib/mathjax';
+import { typesetElement, resetMathElement, containsMath } from '../lib/mathjax';
 import type { SlideElement, ElementPosition, TextElement } from '../types/presentation';
 
 interface Props {
@@ -116,10 +116,8 @@ function TextContent({
   // typesetCounter forces re-typeset after each edit session
   useEffect(() => {
     if (displayRef.current && !editing) {
-      // Reset innerHTML to raw source (clears any MathJax artifacts)
-      displayRef.current.innerHTML = element.html;
-      // Remove MathJax's data attributes that track processed state
-      displayRef.current.removeAttribute('data-raw-html');
+      // Reset from raw source, then typeset fresh
+      resetMathElement(displayRef.current, element.html);
       if (containsMath(element.html)) {
         typesetElement(displayRef.current);
       }

@@ -2,7 +2,12 @@
  * MathJax integration for Eigendeck.
  *
  * Uses the custom mathjax-ptsans-font build which matches PT Sans.
- * Renders LaTeX as inline SVG via MathJax's SVG output.
+ * Renders LaTeX as inline SVG via MathJax's tex2svg API.
+ *
+ * Approach: we do NOT use MathJax's DOM typesetting (typesetPromise).
+ * Instead, we find $...$ and $$...$$ in the text, convert each to SVG
+ * using tex2svgPromise, and build the HTML ourselves. This avoids
+ * MathJax's internal DOM state tracking which breaks on re-typesetting.
  *
  * Conventions:
  *   $...$   — inline math
@@ -50,51 +55,106 @@ export function loadMathJax(): Promise<any> {
 }
 
 /**
- * Typeset all math in a DOM element.
- *
- * Strategy: wipe the element, insert a fresh inner div with the raw HTML,
- * and typeset that. This avoids MathJax's internal state tracking issues
- * when re-typesetting the same element.
+ * Process an HTML string: find $...$ and $$...$$ segments,
+ * convert each to SVG, return new HTML with math replaced by SVGs.
  */
-export async function typesetElement(element: HTMLElement): Promise<void> {
+export async function renderMathInHtml(html: string): Promise<string> {
+  if (!containsMath(html)) return html;
+
   try {
     const MJ = await loadMathJax();
-    const rawHtml = element.getAttribute('data-raw-html');
-    if (rawHtml !== null) {
-      // Re-render from stored raw source
-      element.innerHTML = rawHtml;
+    let result = '';
+    let i = 0;
+
+    while (i < html.length) {
+      // Check for display math $$...$$
+      if (html[i] === '$' && html[i + 1] === '$') {
+        const end = html.indexOf('$$', i + 2);
+        if (end !== -1) {
+          const tex = html.slice(i + 2, end);
+          try {
+            const node = await MJ.tex2svgPromise(tex, { display: true });
+            const svg = node.querySelector('svg');
+            if (svg) {
+              result += `<div style="text-align:center;margin:16px 0;">${svg.outerHTML}</div>`;
+            } else {
+              result += html.slice(i, end + 2);
+            }
+          } catch {
+            result += html.slice(i, end + 2);
+          }
+          i = end + 2;
+          continue;
+        }
+      }
+
+      // Check for inline math $...$
+      if (html[i] === '$' && html[i + 1] !== '$') {
+        // Don't match inside HTML tags
+        const end = html.indexOf('$', i + 1);
+        if (end !== -1 && !html.slice(i + 1, end).includes('\n')) {
+          const tex = html.slice(i + 1, end);
+          try {
+            const node = await MJ.tex2svgPromise(tex, { display: false });
+            const svg = node.querySelector('svg');
+            if (svg) {
+              // Inline: set vertical-align to match text baseline
+              svg.style.verticalAlign = 'middle';
+              result += svg.outerHTML;
+            } else {
+              result += html.slice(i, end + 1);
+            }
+          } catch {
+            result += html.slice(i, end + 1);
+          }
+          i = end + 1;
+          continue;
+        }
+      }
+
+      // Regular character — but skip inside HTML tags
+      if (html[i] === '<') {
+        const tagEnd = html.indexOf('>', i);
+        if (tagEnd !== -1) {
+          result += html.slice(i, tagEnd + 1);
+          i = tagEnd + 1;
+          continue;
+        }
+      }
+
+      result += html[i];
+      i++;
     }
 
-    // Store the raw HTML before MathJax modifies it
+    return result;
+  } catch (e) {
+    console.error('MathJax renderMathInHtml failed:', e);
+    return html;
+  }
+}
+
+/**
+ * Render math in a DOM element by replacing its innerHTML.
+ * Safe to call multiple times — processes from the raw source each time.
+ */
+export async function typesetElement(element: HTMLElement): Promise<void> {
+  // Store raw HTML on first call, use it for subsequent calls
+  if (!element.hasAttribute('data-raw-html')) {
     element.setAttribute('data-raw-html', element.innerHTML);
-
-    // Clear any previous MathJax state
-    MJ.typesetClear([element]);
-
-    // Typeset
-    await MJ.typesetPromise([element]);
-  } catch (e) {
-    console.error('MathJax typeset error:', e);
   }
+  const raw = element.getAttribute('data-raw-html') || element.innerHTML;
+  const rendered = await renderMathInHtml(raw);
+  element.innerHTML = rendered;
 }
 
 /**
- * Convert a LaTeX string to SVG HTML string (for export).
+ * Reset an element so typesetElement will re-process from scratch.
  */
-export async function tex2svg(tex: string, display = false): Promise<string> {
-  try {
-    const MJ = await loadMathJax();
-    const node = await MJ.tex2svgPromise(tex, { display });
-    return node.outerHTML;
-  } catch (e) {
-    console.error('MathJax tex2svg failed:', e);
-    return tex;
-  }
+export function resetMathElement(element: HTMLElement, rawHtml: string): void {
+  element.removeAttribute('data-raw-html');
+  element.innerHTML = rawHtml;
 }
 
-/**
- * Check if a string contains LaTeX math delimiters.
- */
 export function containsMath(text: string): boolean {
   return /\$\$[\s\S]+?\$\$|\$[^\$\n]+?\$/.test(text);
 }
