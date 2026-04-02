@@ -19,5 +19,9 @@ Thumbs.db
 src-tauri/WixTools/
 src-tauri/gen/
 
+# MathJax custom font (2.9MB, built separately)
+public/mathjax/
+mathjax-ptsans-font/
+
 # Package lock (we commit it)
 # npm-debug.log*

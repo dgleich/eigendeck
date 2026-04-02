@@ -3,7 +3,8 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { SpeakerPanel } from './SpeakerView';
 import { TEXT_PRESET_STYLES } from '../types/presentation';
-import type { SlideElement } from '../types/presentation';
+import { typesetElement, containsMath } from '../lib/mathjax';
+import type { SlideElement, TextElement } from '../types/presentation';
 
 export function PresentMode() {
   const { presentation, setPresenting, selectSlide, projectPath } =
@@ -98,23 +99,8 @@ function PresentElement({ element: el, zIndex, projectPath }: { element: SlideEl
   const pos = el.position;
 
   switch (el.type) {
-    case 'text': {
-      const preset = TEXT_PRESET_STYLES[el.preset];
-      return (
-        <div style={{
-          position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-          fontFamily: el.fontFamily || preset.fontFamily,
-          fontSize: el.fontSize || preset.fontSize,
-          fontWeight: preset.fontWeight,
-          fontStyle: preset.fontStyle,
-          color: el.color || preset.color,
-          lineHeight: 1.3,
-          padding: '8px 12px',
-          overflow: 'hidden',
-          zIndex,
-        }} dangerouslySetInnerHTML={{ __html: el.html }} />
-      );
-    }
+    case 'text':
+      return <PresentTextElement element={el} zIndex={zIndex} />;
 
     case 'image': {
       let src = el.src;
@@ -153,4 +139,31 @@ function PresentElement({ element: el, zIndex, projectPath }: { element: SlideEl
       );
     }
   }
+}
+
+function PresentTextElement({ element: el, zIndex }: { element: TextElement; zIndex: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const pos = el.position;
+  const preset = TEXT_PRESET_STYLES[el.preset];
+
+  useEffect(() => {
+    if (ref.current && containsMath(el.html)) {
+      typesetElement(ref.current);
+    }
+  }, [el.html]);
+
+  return (
+    <div ref={ref} style={{
+      position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
+      fontFamily: el.fontFamily || preset.fontFamily,
+      fontSize: el.fontSize || preset.fontSize,
+      fontWeight: preset.fontWeight,
+      fontStyle: preset.fontStyle,
+      color: el.color || preset.color,
+      lineHeight: 1.3,
+      padding: '8px 12px',
+      overflow: 'hidden',
+      zIndex,
+    }} dangerouslySetInnerHTML={{ __html: el.html }} />
+  );
 }

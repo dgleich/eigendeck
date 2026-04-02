@@ -84,6 +84,12 @@ All text content uses `type: "text"` with a `preset` that determines default sty
 - `<span style="font-size: 32px">sized text</span>`
 - Plain text (no tags) is fine for simple content
 
+**LaTeX math**: Use `$...$` for inline math and `$$...$$` for display math:
+- `"html": "The eigenvalue $\\lambda$ satisfies $Ax = \\lambda x$"`
+- `"html": "$$\\sum_{i=1}^n x_i^2$$"`
+- Math is rendered as SVG using MathJax with a custom PT Sans math font
+- Escape backslashes in JSON: `\\lambda` not `\lambda`
+
 ### Image Element
 
 ```json

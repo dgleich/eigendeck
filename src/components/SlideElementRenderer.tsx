@@ -4,6 +4,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { pauseUndo, resumeUndo } from '../store/presentation';
 import { TEXT_PRESET_STYLES } from '../types/presentation';
 import { TextFormatToolbar } from './TextFormatToolbar';
+import { typesetElement, containsMath } from '../lib/mathjax';
 import type { SlideElement, ElementPosition, TextElement } from '../types/presentation';
 
 interface Props {
@@ -113,6 +114,10 @@ function TextContent({
   useEffect(() => {
     if (contentRef.current && !editing) {
       contentRef.current.innerHTML = element.html;
+      // Typeset math if content contains LaTeX delimiters
+      if (containsMath(element.html)) {
+        typesetElement(contentRef.current);
+      }
     }
   }, [element.html, editing]);
 
