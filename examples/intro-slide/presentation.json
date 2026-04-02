@@ -1,0 +1,98 @@
+{
+  "title": "Network Analysis and Spectral Methods",
+  "theme": "white",
+  "slides": [
+    {
+      "id": "c3d4e5f6-3333-4ccc-a333-000000000001",
+      "layout": "centered",
+      "elements": [
+        {
+          "id": "c3d4e5f6-3333-4ccc-a333-100000000001",
+          "type": "text",
+          "preset": "title",
+          "html": "Network Analysis and<br>Spectral Methods",
+          "fontSize": 84,
+          "position": { "x": 260, "y": 280, "width": 1400, "height": 220 }
+        },
+        {
+          "id": "c3d4e5f6-3333-4ccc-a333-100000000002",
+          "type": "text",
+          "preset": "body",
+          "html": "David F. Gleich",
+          "fontSize": 48,
+          "position": { "x": 260, "y": 540, "width": 1400, "height": 70 }
+        },
+        {
+          "id": "c3d4e5f6-3333-4ccc-a333-100000000003",
+          "type": "text",
+          "preset": "body",
+          "html": "Department of Computer Science, Purdue University",
+          "fontSize": 36,
+          "color": "#666",
+          "position": { "x": 260, "y": 620, "width": 1400, "height": 60 }
+        },
+        {
+          "id": "c3d4e5f6-3333-4ccc-a333-100000000004",
+          "type": "text",
+          "preset": "footnote",
+          "html": "SIAM Annual Meeting 2026 — Pittsburgh, PA",
+          "position": { "x": 260, "y": 760, "width": 1400, "height": 50 }
+        }
+      ],
+      "notes": "Title slide. Welcome the audience and introduce the talk topic."
+    },
+    {
+      "id": "c3d4e5f6-3333-4ccc-a333-000000000002",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "c3d4e5f6-3333-4ccc-b333-100000000001",
+          "type": "text",
+          "preset": "title",
+          "html": "Outline",
+          "position": { "x": 80, "y": 40, "width": 1760, "height": 120 }
+        },
+        {
+          "id": "c3d4e5f6-3333-4ccc-b333-100000000002",
+          "type": "text",
+          "preset": "body",
+          "html": "<b>1.</b> Graphs as matrices: adjacency and Laplacian representations<br><br><b>2.</b> Spectral graph theory: what eigenvalues reveal about structure<br><br><b>3.</b> PageRank and random walk methods<br><br><b>4.</b> Community detection via spectral clustering<br><br><b>5.</b> Scalable algorithms for large networks",
+          "position": { "x": 160, "y": 200, "width": 1200, "height": 600 }
+        },
+        {
+          "id": "c3d4e5f6-3333-4ccc-b333-100000000003",
+          "type": "text",
+          "preset": "annotation",
+          "html": "Focus of this talk",
+          "position": { "x": 1400, "y": 390, "width": 300, "height": 50 }
+        },
+        {
+          "id": "c3d4e5f6-3333-4ccc-b333-100000000004",
+          "type": "text",
+          "preset": "textbox",
+          "html": "~60 min + questions",
+          "fontSize": 28,
+          "color": "#888",
+          "position": { "x": 1400, "y": 460, "width": 300, "height": 50 }
+        },
+        {
+          "id": "c3d4e5f6-3333-4ccc-b333-100000000005",
+          "type": "text",
+          "preset": "footnote",
+          "html": "Slides available at dgleich.github.io/talks/siam2026",
+          "position": { "x": 80, "y": 1000, "width": 1000, "height": 50 }
+        }
+      ],
+      "notes": "Outline slide. Mention that sections 2 and 3 are the core of the talk."
+    }
+  ],
+  "config": {
+    "transition": "slide",
+    "backgroundTransition": "fade",
+    "width": 1920,
+    "height": 1080,
+    "showSlideNumber": true,
+    "author": "David F. Gleich",
+    "venue": "SIAM Annual Meeting 2026"
+  }
+}
