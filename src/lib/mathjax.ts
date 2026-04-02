@@ -156,11 +156,14 @@ export async function renderMathInHtml(html: string): Promise<string> {
         const tex = html.slice(i + 1, end);
         console.log('renderMathInHtml: calling tex2svgPromise for:', JSON.stringify(tex));
         try {
-          // Reset MathJax's TeX parser state before each conversion
           MJ.texReset();
-          // Race tex2svgPromise against a timeout
+          // Test: also try tex2mml to see if parser works
+          const mmlTest = MJ.tex2mml(tex, { display: false });
+          console.log('tex2mml result:', mmlTest.slice(0, 200));
+          // Wrap in braces to force single expression
+          const wrappedTex = `{${tex}}`;
           const container = await Promise.race([
-            MJ.tex2svgPromise(tex, { display: false }),
+            MJ.tex2svgPromise(wrappedTex, { display: false }),
             new Promise((_, reject) => setTimeout(() => reject(new Error('tex2svg timeout')), 2000)),
           ]);
           console.log('renderMathInHtml: tex2svgPromise resolved, tex was:', tex);
