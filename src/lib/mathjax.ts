@@ -123,8 +123,11 @@ export async function renderMathInHtml(html: string): Promise<string> {
       if (end !== -1) {
         const tex = html.slice(i + 2, end);
         try {
-          const container = await MJ.tex2svgPromise(tex, { display: true });
-          const svg = container.querySelector('svg');
+          const container = await Promise.race([
+            MJ.tex2svgPromise(tex, { display: true }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('tex2svg timeout')), 5000)),
+          ]);
+          const svg = (container as HTMLElement).querySelector('svg');
           if (svg) {
             parts.push(`<div style="text-align:center;margin:16px 0;">${svg.outerHTML}</div>`);
           } else {
@@ -132,7 +135,12 @@ export async function renderMathInHtml(html: string): Promise<string> {
           }
         } catch (e) {
           console.error('MathJax display error:', e);
-          parts.push(`$$${tex}$$`);
+          try {
+            const mml = MJ.tex2mml(tex, { display: true });
+            parts.push(`<div style="text-align:center;margin:16px 0;">${mml}</div>`);
+          } catch {
+            parts.push(`$$${tex}$$`);
+          }
         }
         i = end + 2;
         continue;
@@ -146,9 +154,13 @@ export async function renderMathInHtml(html: string): Promise<string> {
         const tex = html.slice(i + 1, end);
         console.log('renderMathInHtml: calling tex2svgPromise for:', tex);
         try {
-          const container = await MJ.tex2svgPromise(tex, { display: false });
+          // Race tex2svgPromise against a timeout since SRE Worker may hang
+          const container = await Promise.race([
+            MJ.tex2svgPromise(tex, { display: false }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('tex2svg timeout')), 5000)),
+          ]);
           console.log('renderMathInHtml: tex2svgPromise resolved');
-          const svg = container.querySelector('svg');
+          const svg = (container as HTMLElement).querySelector('svg');
           if (svg) {
             svg.style.display = 'inline';
             svg.style.verticalAlign = 'middle';
@@ -158,7 +170,14 @@ export async function renderMathInHtml(html: string): Promise<string> {
           }
         } catch (e) {
           console.error('MathJax inline error:', e);
-          parts.push(`$${tex}$`);
+          // On timeout/error, try tex2mml as fallback (MathML → browser renders)
+          try {
+            const mml = MJ.tex2mml(tex, { display: false });
+            console.log('Falling back to MathML');
+            parts.push(mml);
+          } catch {
+            parts.push(`$${tex}$`);
+          }
         }
         i = end + 1;
         continue;
