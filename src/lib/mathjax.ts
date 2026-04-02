@@ -100,7 +100,7 @@ export async function renderMathInHtml(html: string): Promise<string> {
           ]);
           const svg = (container as HTMLElement).querySelector('svg');
           if (svg) {
-            parts.push(`<div style="text-align:center;margin:16px 0;">${svg.outerHTML}</div>`);
+            parts.push(`<div style="text-align:center;">${svg.outerHTML}</div>`);
           } else {
             parts.push(`$$${tex}$$`);
           }
