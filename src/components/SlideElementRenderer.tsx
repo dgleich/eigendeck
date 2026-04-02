@@ -285,15 +285,8 @@ function TextContent({
 
       <div
         ref={mainRef}
-        style={{
-          ...style,
-          cursor: editing ? 'text' : 'inherit',
-          // Always contentEditable to avoid layout shift on first activation,
-          // but block interaction when not editing
-          caretColor: editing ? 'auto' : 'transparent',
-          WebkitUserModify: editing ? 'read-write' : 'read-only',
-        } as any}
-        contentEditable
+        style={{ ...style, cursor: editing ? 'text' : 'inherit' }}
+        contentEditable={editing}
         suppressContentEditableWarning
         onDoubleClick={() => { if (!editing) startEditing(); }}
         onBlur={editing ? (e) => {

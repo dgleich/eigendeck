@@ -892,15 +892,20 @@
   height: 100%;
 }
 
-/* Normalize text element rendering between display and edit modes.
-   contentEditable wraps lines in <div> with default margins.
-   Force both modes to match. */
+/* Normalize text element rendering between display and edit modes */
 .el-text div,
-.el-text p,
-.el-text br + div {
+.el-text p {
   margin: 0;
   padding: 0;
-  min-height: 1em;
+}
+
+/* Prevent WebKit from adding any styles when contentEditable activates */
+.el-text [contenteditable] {
+  outline: none;
+  -webkit-text-size-adjust: none;
+}
+.el-text [contenteditable]:focus {
+  outline: none;
 }
 
 /* Text box element */
