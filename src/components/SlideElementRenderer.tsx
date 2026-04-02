@@ -208,6 +208,10 @@ function TextContent({
         editRef.current.innerHTML = element.html;
         applyMathLineStyles(editRef.current);
         editRef.current.focus();
+        // Re-apply after DOM settles (browser may reflow divs)
+        requestAnimationFrame(() => {
+          if (editRef.current) applyMathLineStyles(editRef.current);
+        });
         const sel = window.getSelection();
         if (sel) {
           sel.selectAllChildren(editRef.current);
