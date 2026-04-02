@@ -12,16 +12,11 @@
 let mathjaxPromise: Promise<any> | null = null;
 let mathjaxReady = false;
 
-/**
- * Load MathJax if not already loaded.
- * Returns a promise that resolves when MathJax is ready.
- */
 export function loadMathJax(): Promise<any> {
   if (mathjaxReady) return Promise.resolve((window as any).MathJax);
   if (mathjaxPromise) return mathjaxPromise;
 
   mathjaxPromise = new Promise((resolve, reject) => {
-    // Configure MathJax before loading the script
     (window as any).MathJax = {
       tex: {
         inlineMath: [['$', '$']],
@@ -31,12 +26,13 @@ export function loadMathJax(): Promise<any> {
         fontCache: 'local',
       },
       startup: {
-        typeset: false, // We'll typeset manually
+        typeset: false,
         ready: () => {
           const MJ = (window as any).MathJax;
           MJ.startup.defaultReady();
           MJ.startup.promise.then(() => {
             mathjaxReady = true;
+            console.log('MathJax ready');
             resolve(MJ);
           });
         },
@@ -55,16 +51,30 @@ export function loadMathJax(): Promise<any> {
 
 /**
  * Typeset all math in a DOM element.
- * Call this after updating innerHTML that might contain $...$ or $$...$$.
+ *
+ * Strategy: wipe the element, insert a fresh inner div with the raw HTML,
+ * and typeset that. This avoids MathJax's internal state tracking issues
+ * when re-typesetting the same element.
  */
 export async function typesetElement(element: HTMLElement): Promise<void> {
   try {
     const MJ = await loadMathJax();
-    // Clear MathJax's internal document state for this element
+    const rawHtml = element.getAttribute('data-raw-html');
+    if (rawHtml !== null) {
+      // Re-render from stored raw source
+      element.innerHTML = rawHtml;
+    }
+
+    // Store the raw HTML before MathJax modifies it
+    element.setAttribute('data-raw-html', element.innerHTML);
+
+    // Clear any previous MathJax state
     MJ.typesetClear([element]);
+
+    // Typeset
     await MJ.typesetPromise([element]);
   } catch (e) {
-    console.error('MathJax typeset failed:', e);
+    console.error('MathJax typeset error:', e);
   }
 }
 

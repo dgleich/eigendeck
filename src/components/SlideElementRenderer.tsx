@@ -91,6 +91,7 @@ function TextContent({
   onCommit: (html: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [typesetCounter, setTypesetCounter] = useState(0);
   const displayRef = useRef<HTMLDivElement>(null);
   const editRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -112,14 +113,18 @@ function TextContent({
   };
 
   // Display mode: render HTML and typeset math
+  // typesetCounter forces re-typeset after each edit session
   useEffect(() => {
     if (displayRef.current && !editing) {
+      // Reset innerHTML to raw source (clears any MathJax artifacts)
       displayRef.current.innerHTML = element.html;
+      // Remove MathJax's data attributes that track processed state
+      displayRef.current.removeAttribute('data-raw-html');
       if (containsMath(element.html)) {
         typesetElement(displayRef.current);
       }
     }
-  }, [element.html, editing]);
+  }, [element.html, editing, typesetCounter]);
 
   // Position toolbar
   useEffect(() => {
@@ -150,6 +155,7 @@ function TextContent({
       onCommit(editRef.current.innerHTML);
     }
     setEditing(false);
+    setTypesetCounter((c) => c + 1); // trigger re-typeset
   };
 
   return (
