@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { SlideElementRenderer } from './SlideElementRenderer';
 import { getSlideNumber } from '../types/presentation';
-import type { SlideLayout } from '../types/presentation';
+import type { SlideLayout, SlideElement } from '../types/presentation';
 
 export const SLIDE_WIDTH = 1920;
 export const SLIDE_HEIGHT = 1080;
@@ -17,12 +17,14 @@ export function SlideEditor() {
   const {
     presentation, currentSlideIndex, updateSlide,
     addElement, updateElement, deleteElement,
-    selectObject, projectPath,
+    selectObject, toggleSelectElement, selectedObject, projectPath,
   } = usePresentationStore();
 
   const slide = presentation.slides[currentSlideIndex];
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [marquee, setMarquee] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -78,6 +80,72 @@ export function SlideEditor() {
     return () => window.removeEventListener('paste', handlePaste);
   }, [projectPath, addElement]);
 
+  // Marquee drag-to-select on canvas background
+  const handleCanvasPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget) return; // only on canvas background
+    e.preventDefault();
+    selectObject({ type: 'slide' });
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const startX = (e.clientX - rect.left) / scale;
+    const startY = (e.clientY - rect.top) / scale;
+
+    setMarquee({ x1: startX, y1: startY, x2: startX, y2: startY });
+
+    const handleMove = (me: PointerEvent) => {
+      const mx = (me.clientX - rect.left) / scale;
+      const my = (me.clientY - rect.top) / scale;
+      setMarquee({ x1: startX, y1: startY, x2: mx, y2: my });
+    };
+
+    const handleUp = (me: PointerEvent) => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+
+      const mx = (me.clientX - rect.left) / scale;
+      const my = (me.clientY - rect.top) / scale;
+      const selX1 = Math.min(startX, mx);
+      const selY1 = Math.min(startY, my);
+      const selX2 = Math.max(startX, mx);
+      const selY2 = Math.max(startY, my);
+
+      // Only select if marquee is larger than a small threshold (avoid accidental clicks)
+      if (selX2 - selX1 > 5 || selY2 - selY1 > 5) {
+        const currentSlide = usePresentationStore.getState().presentation.slides[
+          usePresentationStore.getState().currentSlideIndex
+        ];
+        const hitIds = currentSlide.elements
+          .filter((el: SlideElement) => {
+            if (el.type === 'arrow') {
+              // Check if either endpoint is inside the marquee
+              return (el.x1 >= selX1 && el.x1 <= selX2 && el.y1 >= selY1 && el.y1 <= selY2) ||
+                     (el.x2 >= selX1 && el.x2 <= selX2 && el.y2 >= selY1 && el.y2 <= selY2);
+            }
+            // Box intersection test
+            const elX1 = el.position.x;
+            const elY1 = el.position.y;
+            const elX2 = el.position.x + el.position.width;
+            const elY2 = el.position.y + el.position.height;
+            return elX1 < selX2 && elX2 > selX1 && elY1 < selY2 && elY2 > selY1;
+          })
+          .map((el: SlideElement) => el.id);
+
+        if (hitIds.length === 1) {
+          selectObject({ type: 'element', id: hitIds[0] });
+        } else if (hitIds.length > 1) {
+          selectObject({ type: 'multi', ids: hitIds });
+        }
+      }
+
+      setMarquee(null);
+    };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  }, [scale, selectObject]);
+
   if (!slide) return null;
 
   const layout = slide.layout || 'default';
@@ -94,22 +162,44 @@ export function SlideEditor() {
       </div>
       <div className="slide-canvas-container" ref={containerRef}>
         <div
+          ref={canvasRef}
           className={`slide-canvas slide-layout-${layout}`}
           style={{ width: SLIDE_WIDTH, height: SLIDE_HEIGHT, transform: `scale(${scale})`, transformOrigin: 'top center' }}
-          onClick={(e) => { if (e.target === e.currentTarget) selectObject({ type: 'slide' }); }}
+          onPointerDown={handleCanvasPointerDown}
         >
-          {slide.elements.map((el, idx) => (
-            <SlideElementRenderer
-              key={el.id}
-              element={el}
-              zIndex={idx + 10}
-              scale={scale}
-              projectPath={projectPath}
-              onUpdate={(changes) => updateElement(el.id, changes)}
-              onDelete={() => deleteElement(el.id)}
-              onSelect={() => selectObject({ type: 'element', id: el.id })}
-            />
-          ))}
+          {slide.elements.map((el, idx) => {
+            const isSelected = selectedObject?.type === 'element' && selectedObject.id === el.id
+              || selectedObject?.type === 'multi' && selectedObject.ids.includes(el.id);
+            return (
+              <SlideElementRenderer
+                key={el.id}
+                element={el}
+                zIndex={idx + 10}
+                scale={scale}
+                projectPath={projectPath}
+                isSelected={isSelected}
+                onUpdate={(changes) => updateElement(el.id, changes)}
+                onDelete={() => deleteElement(el.id)}
+                onSelect={(e) => {
+                  if (e?.shiftKey) toggleSelectElement(el.id);
+                  else selectObject({ type: 'element', id: el.id });
+                }}
+              />
+            );
+          })}
+          {marquee && (() => {
+            const x = Math.min(marquee.x1, marquee.x2);
+            const y = Math.min(marquee.y1, marquee.y2);
+            const w = Math.abs(marquee.x2 - marquee.x1);
+            const h = Math.abs(marquee.y2 - marquee.y1);
+            return (
+              <div className="marquee-selection" style={{
+                position: 'absolute', left: x, top: y, width: w, height: h,
+                border: '2px dashed #3b82f6', background: 'rgba(59, 130, 246, 0.08)',
+                pointerEvents: 'none', zIndex: 9998,
+              }} />
+            );
+          })()}
           <div className="slide-footer">
             <span className="slide-footer-meta">{meta}</span>
             <span className="slide-footer-number">{getSlideNumber(presentation.slides, currentSlideIndex)}</span>

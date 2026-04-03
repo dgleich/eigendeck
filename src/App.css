@@ -819,6 +819,19 @@
   border-color: #93c5fd;
 }
 
+.slide-element.is-selected {
+  border-color: #3b82f6;
+}
+
+.slide-element.is-selected .el-delete-btn,
+.slide-element.is-selected .el-resize-handle {
+  display: flex;
+}
+
+.slide-element.is-selected .el-resize-handle {
+  display: block;
+}
+
 .slide-element.is-dragging {
   border-color: #3b82f6;
   opacity: 0.9;

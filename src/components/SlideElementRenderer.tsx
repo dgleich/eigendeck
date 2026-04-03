@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { pauseUndo, resumeUndo } from '../store/presentation';
+import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { TEXT_PRESET_STYLES } from '../types/presentation';
 import { TextFormatToolbar } from './TextFormatToolbar';
 import { typesetElement, resetMathElement, containsMath, getDisplayMathHeight } from '../lib/mathjax';
@@ -12,20 +12,23 @@ interface Props {
   zIndex: number;
   scale: number;
   projectPath: string | null;
+  isSelected: boolean;
   onUpdate: (changes: Partial<SlideElement>) => void;
   onDelete: () => void;
-  onSelect: () => void;
+  onSelect: (e?: { shiftKey: boolean }) => void;
 }
 
 export function SlideElementRenderer({
-  element, zIndex, scale, projectPath, onUpdate, onDelete, onSelect,
+  element, zIndex, scale, projectPath, isSelected, onUpdate, onDelete, onSelect,
 }: Props) {
   switch (element.type) {
     case 'text':
       return (
         <DraggableBox
+          elementId={element.id}
           position={element.position} zIndex={zIndex} scale={scale}
           className={`el-text el-preset-${element.preset}`}
+          isSelected={isSelected}
           onSelect={onSelect} onDelete={onDelete}
           onPositionChange={(pos) => onUpdate({ position: pos } as any)}
         >
@@ -42,8 +45,10 @@ export function SlideElementRenderer({
       } else src = element.src;
       return (
         <DraggableBox
+          elementId={element.id}
           position={element.position} zIndex={zIndex} scale={scale}
-          className="el-image" onSelect={onSelect} onDelete={onDelete}
+          className="el-image" isSelected={isSelected}
+          onSelect={onSelect} onDelete={onDelete}
           onPositionChange={(pos) => onUpdate({ position: pos } as any)}
         >
           <img src={src} alt="" draggable={false}
@@ -56,7 +61,8 @@ export function SlideElementRenderer({
       return (
         <DemoBox
           element={element} zIndex={zIndex} scale={scale}
-          projectPath={projectPath} onSelect={onSelect} onDelete={onDelete}
+          projectPath={projectPath} isSelected={isSelected}
+          onSelect={onSelect} onDelete={onDelete}
           onUpdate={onUpdate}
         />
       );
@@ -64,6 +70,7 @@ export function SlideElementRenderer({
     case 'arrow':
       return (
         <ArrowRenderer element={element} zIndex={zIndex} scale={scale}
+          isSelected={isSelected}
           onUpdate={onUpdate} onDelete={onDelete} onSelect={onSelect} />
       );
   }
@@ -72,10 +79,11 @@ export function SlideElementRenderer({
 // ============================================
 // Demo element with overlay for dragging
 // ============================================
-function DemoBox({ element, zIndex, scale, projectPath, onSelect, onDelete, onUpdate }: {
+function DemoBox({ element, zIndex, scale, projectPath, isSelected, onSelect, onDelete, onUpdate }: {
   element: Extract<SlideElement, { type: 'demo' }>;
   zIndex: number; scale: number; projectPath: string | null;
-  onSelect: () => void; onDelete: () => void;
+  isSelected: boolean;
+  onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
   const [interacting, setInteracting] = useState(false);
@@ -86,8 +94,10 @@ function DemoBox({ element, zIndex, scale, projectPath, onSelect, onDelete, onUp
   }
   return (
     <DraggableBox
+      elementId={element.id}
       position={element.position} zIndex={zIndex} scale={scale}
-      className="el-demo" onSelect={onSelect} onDelete={onDelete}
+      className="el-demo" isSelected={isSelected}
+      onSelect={onSelect} onDelete={onDelete}
       onPositionChange={(pos) => onUpdate({ position: pos } as any)}
     >
       {src ? (
@@ -281,41 +291,79 @@ function TextContent({
 // Draggable + resizable box
 // ============================================
 function DraggableBox({
-  position: pos, zIndex, scale, className, children, onSelect, onDelete, onPositionChange,
+  elementId, position: pos, zIndex, scale, className, children, isSelected, onSelect, onDelete, onPositionChange,
 }: {
+  elementId: string;
   position: ElementPosition; zIndex: number; scale: number; className: string;
-  children: React.ReactNode; onSelect: () => void; onDelete: () => void;
+  children: React.ReactNode; isSelected: boolean;
+  onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onPositionChange: (pos: ElementPosition) => void;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0 });
+  const lastDelta = useRef({ dx: 0, dy: 0 });
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if ((e.target as HTMLElement).closest('.el-resize-handle, .el-delete-btn, [contenteditable="true"]')) return;
       e.preventDefault(); e.stopPropagation();
-      onSelect();
+
+      // Shift+click toggles selection without starting drag
+      if (e.shiftKey) {
+        onSelect({ shiftKey: true });
+        return;
+      }
+
+      // If not already selected, select it (clears multi-select)
+      if (!isSelected) onSelect();
+
       setIsDragging(true);
       pauseUndo();
       dragStart.current = { x: e.clientX, y: e.clientY, posX: pos.x, posY: pos.y };
+      lastDelta.current = { dx: 0, dy: 0 };
 
-      const handleMove = (me: PointerEvent) => {
-        onPositionChange({
-          ...pos,
-          x: Math.round(dragStart.current.posX + (me.clientX - dragStart.current.x) / scale),
-          y: Math.round(dragStart.current.posY + (me.clientY - dragStart.current.y) / scale),
-        });
-      };
-      const handleUp = () => {
-        setIsDragging(false); resumeUndo();
-        window.removeEventListener('pointermove', handleMove);
-        window.removeEventListener('pointerup', handleUp);
-      };
-      window.addEventListener('pointermove', handleMove);
-      window.addEventListener('pointerup', handleUp);
+      // Check if we're part of a multi-selection for group drag
+      const sel = usePresentationStore.getState().selectedObject;
+      const useMultiDrag = isSelected && sel?.type === 'multi' && sel.ids.includes(elementId);
+
+      if (useMultiDrag && sel?.type === 'multi') {
+        const ids = sel.ids;
+        const handleMove = (me: PointerEvent) => {
+          const dx = Math.round((me.clientX - dragStart.current.x) / scale);
+          const dy = Math.round((me.clientY - dragStart.current.y) / scale);
+          const ddx = dx - lastDelta.current.dx;
+          const ddy = dy - lastDelta.current.dy;
+          if (ddx !== 0 || ddy !== 0) {
+            usePresentationStore.getState().moveElementsBy(ids, ddx, ddy);
+            lastDelta.current = { dx, dy };
+          }
+        };
+        const handleUp = () => {
+          setIsDragging(false); resumeUndo();
+          window.removeEventListener('pointermove', handleMove);
+          window.removeEventListener('pointerup', handleUp);
+        };
+        window.addEventListener('pointermove', handleMove);
+        window.addEventListener('pointerup', handleUp);
+      } else {
+        const handleMove = (me: PointerEvent) => {
+          onPositionChange({
+            ...pos,
+            x: Math.round(dragStart.current.posX + (me.clientX - dragStart.current.x) / scale),
+            y: Math.round(dragStart.current.posY + (me.clientY - dragStart.current.y) / scale),
+          });
+        };
+        const handleUp = () => {
+          setIsDragging(false); resumeUndo();
+          window.removeEventListener('pointermove', handleMove);
+          window.removeEventListener('pointerup', handleUp);
+        };
+        window.addEventListener('pointermove', handleMove);
+        window.addEventListener('pointerup', handleUp);
+      }
     },
-    [pos, scale, onSelect, onPositionChange]
+    [elementId, pos, scale, isSelected, onSelect, onPositionChange]
   );
 
   const handleResizeDown = useCallback(
@@ -342,13 +390,13 @@ function DraggableBox({
 
   return (
     <div
-      className={`slide-element ${className} ${isDragging ? 'is-dragging' : ''}`}
+      className={`slide-element ${className} ${isDragging ? 'is-dragging' : ''} ${isSelected ? 'is-selected' : ''}`}
       style={{
         position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
         zIndex, cursor: isDragging ? 'grabbing' : 'grab',
       }}
       onPointerDown={handlePointerDown}
-      onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      onClick={(e) => e.stopPropagation()}
     >
       {children}
       <button className="el-delete-btn" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Delete">×</button>
@@ -361,11 +409,12 @@ function DraggableBox({
 // Arrow renderer
 // ============================================
 function ArrowRenderer({
-  element: a, zIndex, scale, onUpdate, onDelete, onSelect,
+  element: a, zIndex, scale, isSelected, onUpdate, onDelete, onSelect,
 }: {
   element: Extract<SlideElement, { type: 'arrow' }>; zIndex: number; scale: number;
+  isSelected: boolean;
   onUpdate: (changes: Partial<SlideElement>) => void;
-  onDelete: () => void; onSelect: () => void;
+  onDelete: () => void; onSelect: (e?: { shiftKey: boolean }) => void;
 }) {
   const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = a;
   const dragStart = useRef({ mx: 0, my: 0, ox1: 0, oy1: 0, ox2: 0, oy2: 0 });
@@ -417,7 +466,8 @@ function ArrowRenderer({
   const maxY = Math.max(y1, y2, hy1, hy2) + pad;
 
   return (
-    <div className="slide-element el-arrow" onClick={(e) => { e.stopPropagation(); onSelect(); }}
+    <div className={`slide-element el-arrow ${isSelected ? 'is-selected' : ''}`}
+      onClick={(e) => { e.stopPropagation(); onSelect(e.shiftKey ? { shiftKey: true } : undefined); }}
       style={{ position: 'absolute', left: minX, top: minY, width: maxX - minX, height: maxY - minY, pointerEvents: 'auto', zIndex }}>
       <svg width={maxX - minX} height={maxY - minY} style={{ overflow: 'visible' }}>
         <line x1={x1 - minX} y1={y1 - minY} x2={x2 - minX} y2={y2 - minY}

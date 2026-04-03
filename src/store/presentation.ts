@@ -47,10 +47,13 @@ interface PresentationState {
   addElement: (element: SlideElement) => void;
   updateElement: (elementId: string, changes: Partial<SlideElement>) => void;
   deleteElement: (elementId: string) => void;
+  deleteElements: (elementIds: string[]) => void;
   moveElementZ: (elementId: string, direction: 'top' | 'up' | 'down' | 'bottom') => void;
+  moveElementsBy: (elementIds: string[], dx: number, dy: number) => void;
 
   // Selection
   selectObject: (obj: SelectedObject) => void;
+  toggleSelectElement: (id: string) => void;
   toggleProperties: () => void;
 }
 
@@ -286,6 +289,15 @@ export const usePresentationStore = create<PresentationState>()(
           selectedObject: { type: 'slide' },
         })),
 
+      deleteElements: (elementIds) =>
+        set((state) => ({
+          ...updateCurrentSlide(state, (slide) => ({
+            ...slide,
+            elements: slide.elements.filter((el) => !elementIds.includes(el.id)),
+          })),
+          selectedObject: { type: 'slide' },
+        })),
+
       moveElementZ: (elementId, direction) =>
         set((state) =>
           updateCurrentSlide(state, (slide) => {
@@ -311,6 +323,39 @@ export const usePresentationStore = create<PresentationState>()(
             return { ...slide, elements };
           })
         ),
+
+      moveElementsBy: (elementIds, dx, dy) =>
+        set((state) =>
+          updateCurrentSlide(state, (slide) => ({
+            ...slide,
+            elements: slide.elements.map((el) => {
+              if (!elementIds.includes(el.id)) return el;
+              if (el.type === 'arrow') {
+                return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
+              }
+              return { ...el, position: { ...el.position, x: el.position.x + dx, y: el.position.y + dy } };
+            }),
+          }))
+        ),
+
+      toggleSelectElement: (id) =>
+        set((state) => {
+          const sel = state.selectedObject;
+          if (!sel || sel.type === 'slide') {
+            return { selectedObject: { type: 'element', id } };
+          }
+          if (sel.type === 'element') {
+            if (sel.id === id) return { selectedObject: { type: 'slide' } };
+            return { selectedObject: { type: 'multi', ids: [sel.id, id] } };
+          }
+          if (sel.type === 'multi') {
+            const ids = sel.ids.includes(id) ? sel.ids.filter((i) => i !== id) : [...sel.ids, id];
+            if (ids.length === 0) return { selectedObject: { type: 'slide' } };
+            if (ids.length === 1) return { selectedObject: { type: 'element', id: ids[0] } };
+            return { selectedObject: { type: 'multi', ids } };
+          }
+          return {};
+        }),
 
       setPresenting: (isPresenting) => set({ isPresenting }),
       markClean: () => set({ isDirty: false }),
