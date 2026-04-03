@@ -149,7 +149,7 @@ export function createTextElement(preset: TextPreset, overrides?: Partial<Elemen
     body:       { x: 80,  y: 180, width: 1760, height: 800 },
     textbox:    { x: 200, y: 300, width: 800,  height: 300 },
     annotation: { x: 200, y: 700, width: 600,  height: 150 },
-    footnote:   { x: 80,  y: 980, width: 1000, height: 60  },
+    footnote:   { x: 80,  y: 1020, width: 1000, height: 44  },
   };
 
   const defaultText: Record<TextPreset, string> = {

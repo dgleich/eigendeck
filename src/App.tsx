@@ -72,6 +72,18 @@ function App() {
         if (sel?.type === 'element') { e.preventDefault(); usePresentationStore.getState().deleteElement(sel.id); }
         if (sel?.type === 'multi') { e.preventDefault(); usePresentationStore.getState().deleteElements(sel.ids); }
       }
+      // Arrow keys: navigate slides when no element is focused for editing
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
+        const state = usePresentationStore.getState();
+        const sel = state.selectedObject;
+        if (!sel || sel.type === 'slide') {
+          e.preventDefault();
+          const idx = state.currentSlideIndex;
+          const total = state.presentation.slides.length;
+          if (e.key === 'ArrowUp' && idx > 0) state.selectSlide(idx - 1);
+          if (e.key === 'ArrowDown' && idx < total - 1) state.selectSlide(idx + 1);
+        }
+      }
       // Copy (Cmd+C) — only when not editing text
       if (e.key === 'c' && (e.ctrlKey || e.metaKey) && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
         const state = usePresentationStore.getState();

@@ -434,6 +434,17 @@ function ArrowRenderer({
   const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = a;
   const dragStart = useRef({ mx: 0, my: 0, ox1: 0, oy1: 0, ox2: 0, oy2: 0 });
 
+  // Snap point to nearest 15° angle relative to an anchor
+  const snapAngle = (px: number, py: number, ax: number, ay: number): [number, number] => {
+    const adx = px - ax, ady = py - ay;
+    const dist = Math.sqrt(adx * adx + ady * ady);
+    if (dist < 1) return [px, py];
+    const angle = Math.atan2(ady, adx);
+    const step = Math.PI / 12; // 15°
+    const snapped = Math.round(angle / step) * step;
+    return [Math.round(ax + dist * Math.cos(snapped)), Math.round(ay + dist * Math.sin(snapped))];
+  };
+
   const handleEndpoint = useCallback(
     (e: React.PointerEvent, which: 'start' | 'end') => {
       e.preventDefault(); e.stopPropagation(); onSelect(); pauseUndo();
@@ -441,8 +452,18 @@ function ArrowRenderer({
       const handleMove = (me: PointerEvent) => {
         const dx = (me.clientX - dragStart.current.mx) / scale;
         const dy = (me.clientY - dragStart.current.my) / scale;
-        if (which === 'start') onUpdate({ x1: Math.round(dragStart.current.ox1 + dx), y1: Math.round(dragStart.current.oy1 + dy) } as any);
-        else onUpdate({ x2: Math.round(dragStart.current.ox2 + dx), y2: Math.round(dragStart.current.oy2 + dy) } as any);
+        let newX: number, newY: number;
+        if (which === 'start') {
+          newX = Math.round(dragStart.current.ox1 + dx);
+          newY = Math.round(dragStart.current.oy1 + dy);
+          if (me.shiftKey) [newX, newY] = snapAngle(newX, newY, dragStart.current.ox2, dragStart.current.oy2);
+          onUpdate({ x1: newX, y1: newY } as any);
+        } else {
+          newX = Math.round(dragStart.current.ox2 + dx);
+          newY = Math.round(dragStart.current.oy2 + dy);
+          if (me.shiftKey) [newX, newY] = snapAngle(newX, newY, dragStart.current.ox1, dragStart.current.oy1);
+          onUpdate({ x2: newX, y2: newY } as any);
+        }
       };
       const handleUp = () => { resumeUndo(); window.removeEventListener('pointermove', handleMove); window.removeEventListener('pointerup', handleUp); };
       window.addEventListener('pointermove', handleMove); window.addEventListener('pointerup', handleUp);
