@@ -8,6 +8,8 @@ import { NotesPanel } from './components/NotesPanel';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { DebugConsole } from './components/DebugConsole';
 import { LinkOverlay } from './components/LinkOverlay';
+import { ContextMenu } from './components/ContextMenu';
+import type { MenuEntry } from './components/ContextMenu';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
 import type { SlideElement } from './types/presentation';
@@ -28,6 +30,7 @@ function App() {
   const resizeStartW = useRef(0);
   const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[] } | { type: 'slide'; data: any } | null>(null);
   const [linkOverlayElementId, setLinkOverlayElementId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuEntry[] } | null>(null);
 
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
@@ -131,6 +134,26 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Context menu: global event listener + suppress default
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail) setContextMenu({ x: detail.x, y: detail.y, items: detail.items });
+    };
+    const suppress = (e: MouseEvent) => {
+      // Allow default context menu in inputs/textareas
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+      if ((e.target as HTMLElement).closest('[contenteditable="true"]')) return;
+      e.preventDefault();
+    };
+    window.addEventListener('show-context-menu', handler);
+    window.addEventListener('contextmenu', suppress);
+    return () => {
+      window.removeEventListener('show-context-menu', handler);
+      window.removeEventListener('contextmenu', suppress);
+    };
+  }, []);
+
   // Link overlay custom event
   useEffect(() => {
     const handler = (e: Event) => {
@@ -212,6 +235,10 @@ function App() {
         {showProperties && <PropertiesPanel />}
       </div>
       <DebugConsole />
+      {contextMenu && (
+        <ContextMenu x={contextMenu.x} y={contextMenu.y} items={contextMenu.items}
+          onClose={() => setContextMenu(null)} />
+      )}
       {linkOverlayElementId && (
         <LinkOverlay
           elementId={linkOverlayElementId}

@@ -429,6 +429,40 @@ function DraggableBox({
       }}
       onPointerDown={handlePointerDown}
       onClick={(e) => e.stopPropagation()}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isSelected) onSelect();
+        const store = usePresentationStore.getState();
+        const items: import('./ContextMenu').MenuEntry[] = [
+          { label: 'Cut', shortcut: '\u2318X', onClick: () => {
+            // Copy then delete
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', metaKey: true }));
+            setTimeout(() => onDelete(), 50);
+          }},
+          { label: 'Copy', shortcut: '\u2318C', onClick: () => {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', metaKey: true }));
+          }},
+          { label: 'Paste', shortcut: '\u2318V', onClick: () => {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', metaKey: true }));
+          }},
+          { separator: true },
+          { label: 'Delete', shortcut: '\u232B', onClick: onDelete },
+          { separator: true },
+          { label: 'Bring to Front', onClick: () => store.moveElementZ(elementId, 'top') },
+          { label: 'Bring Forward', onClick: () => store.moveElementZ(elementId, 'up') },
+          { label: 'Send Backward', onClick: () => store.moveElementZ(elementId, 'down') },
+          { label: 'Send to Back', onClick: () => store.moveElementZ(elementId, 'bottom') },
+          ...(syncId ? [
+            { separator: true as const },
+            { label: 'Free Position', onClick: () => onUpdate({ syncId: undefined, _syncId: syncId } as any) },
+          ] : []),
+          ...(linkId ? [
+            { label: 'Unlink Animation', onClick: () => onUpdate({ linkId: undefined, _linkId: linkId } as any) },
+          ] : []),
+        ];
+        window.dispatchEvent(new CustomEvent('show-context-menu', { detail: { x: e.clientX, y: e.clientY, items } }));
+      }}
     >
       {children}
       {/* Link badges — shown when selected */}
@@ -567,6 +601,29 @@ function ArrowRenderer({
   return (
     <div className={`slide-element el-arrow ${isSelected ? 'is-selected' : ''}`}
       onClick={(e) => { e.stopPropagation(); onSelect(e.shiftKey ? { shiftKey: true } : undefined); }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onSelect();
+        const store = usePresentationStore.getState();
+        const items: import('./ContextMenu').MenuEntry[] = [
+          { label: 'Cut', shortcut: '\u2318X', onClick: () => {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', metaKey: true }));
+            setTimeout(() => onDelete(), 50);
+          }},
+          { label: 'Copy', shortcut: '\u2318C', onClick: () => {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', metaKey: true }));
+          }},
+          { separator: true },
+          { label: 'Delete', shortcut: '\u232B', onClick: onDelete },
+          { separator: true },
+          { label: 'Bring to Front', onClick: () => store.moveElementZ(a.id, 'top') },
+          { label: 'Bring Forward', onClick: () => store.moveElementZ(a.id, 'up') },
+          { label: 'Send Backward', onClick: () => store.moveElementZ(a.id, 'down') },
+          { label: 'Send to Back', onClick: () => store.moveElementZ(a.id, 'bottom') },
+        ];
+        window.dispatchEvent(new CustomEvent('show-context-menu', { detail: { x: e.clientX, y: e.clientY, items } }));
+      }}
       style={{ position: 'absolute', left: minX, top: minY, width: maxX - minX, height: maxY - minY, pointerEvents: 'auto', zIndex }}>
       <svg width={maxX - minX} height={maxY - minY} style={{ overflow: 'visible' }}>
         <line x1={x1 - minX} y1={y1 - minY} x2={x2 - minX} y2={y2 - minY}

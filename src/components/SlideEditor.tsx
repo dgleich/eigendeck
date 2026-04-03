@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { SlideElementRenderer } from './SlideElementRenderer';
-import { getSlideNumber } from '../types/presentation';
+import { getSlideNumber, createTextElement } from '../types/presentation';
 import type { SlideLayout, SlideElement } from '../types/presentation';
+import type { MenuEntry } from './ContextMenu';
 
 export const SLIDE_WIDTH = 1920;
 export const SLIDE_HEIGHT = 1080;
@@ -146,6 +147,25 @@ export function SlideEditor() {
     window.addEventListener('pointerup', handleUp);
   }, [scale, selectObject]);
 
+  // Context menu for canvas background
+  const handleCanvasContextMenu = useCallback((e: React.MouseEvent) => {
+    if (e.target !== e.currentTarget) return;
+    e.preventDefault();
+    const store = usePresentationStore.getState();
+    const items: MenuEntry[] = [
+      { label: 'Add Title', onClick: () => store.addElement(createTextElement('title')) },
+      { label: 'Add Body', onClick: () => store.addElement(createTextElement('body')) },
+      { label: 'Add Text Box', onClick: () => store.addElement(createTextElement('textbox')) },
+      { label: 'Add Annotation', onClick: () => store.addElement(createTextElement('annotation')) },
+      { label: 'Add Footnote', onClick: () => store.addElement(createTextElement('footnote')) },
+      { separator: true },
+      { label: 'Add Arrow', onClick: () => store.addElement({ id: crypto.randomUUID(), type: 'arrow', x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: '#e53e3e', strokeWidth: 4, headSize: 16 }) },
+      { separator: true },
+      { label: 'Paste', shortcut: '\u2318V', onClick: () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', metaKey: true })) },
+    ];
+    window.dispatchEvent(new CustomEvent('show-context-menu', { detail: { x: e.clientX, y: e.clientY, items } }));
+  }, []);
+
   if (!slide) return null;
 
   const layout = slide.layout || 'default';
@@ -166,6 +186,7 @@ export function SlideEditor() {
           className={`slide-canvas slide-layout-${layout}`}
           style={{ width: SLIDE_WIDTH, height: SLIDE_HEIGHT, transform: `scale(${scale})`, transformOrigin: 'top center' }}
           onPointerDown={handleCanvasPointerDown}
+          onContextMenu={handleCanvasContextMenu}
         >
           {slide.elements.map((el, idx) => {
             const isSelected = selectedObject?.type === 'element' && selectedObject.id === el.id

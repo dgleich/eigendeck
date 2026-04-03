@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { TEXT_PRESET_STYLES, getSlideNumber, isGroupChild } from '../types/presentation';
+import type { MenuEntry } from './ContextMenu';
 
 const SLIDE_WIDTH = 1920;
 const SLIDE_HEIGHT = 1080;
@@ -67,6 +68,18 @@ export function SlideSidebar() {
             key={slide.id}
             className={`slide-thumbnail${index === currentSlideIndex ? ' active' : ''}${dropTarget === index ? ' drag-over' : ''}${dragging === index ? ' dragging' : ''}${child ? ' group-child' : ''}${slide.groupId ? ' in-group' : ''}`}
             onClick={() => { if (dragging === null) selectSlide(index); }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              selectSlide(index);
+              const store = usePresentationStore.getState();
+              const items: MenuEntry[] = [
+                { label: 'Duplicate Slide', shortcut: 'D', onClick: () => duplicateSlide(index) },
+                { label: 'Add Build Slide', onClick: () => store.addBuildSlide() },
+                { separator: true },
+                { label: 'Delete Slide', shortcut: 'X', onClick: () => deleteSlide(index), disabled: presentation.slides.length <= 1 },
+              ];
+              window.dispatchEvent(new CustomEvent('show-context-menu', { detail: { x: e.clientX, y: e.clientY, items } }));
+            }}
             onPointerDown={(e) => {
               if (e.button !== 0 || (e.target as HTMLElement).closest('.slide-actions')) return;
               startY.current = e.clientY;
