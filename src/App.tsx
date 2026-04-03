@@ -7,6 +7,7 @@ import { PresentMode } from './components/PresentMode';
 import { NotesPanel } from './components/NotesPanel';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { DebugConsole } from './components/DebugConsole';
+import { LinkOverlay } from './components/LinkOverlay';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
 import type { SlideElement } from './types/presentation';
@@ -26,6 +27,7 @@ function App() {
   const resizeStartX = useRef(0);
   const resizeStartW = useRef(0);
   const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[] } | { type: 'slide'; data: any } | null>(null);
+  const [linkOverlayElementId, setLinkOverlayElementId] = useState<string | null>(null);
 
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
@@ -129,6 +131,16 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Link overlay custom event
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.elementId) setLinkOverlayElementId(detail.elementId);
+    };
+    window.addEventListener('open-link-overlay', handler);
+    return () => window.removeEventListener('open-link-overlay', handler);
+  }, []);
+
   // Native menu events
   useEffect(() => {
     const unlisten = listen<string>('menu-event', (event) => {
@@ -200,6 +212,12 @@ function App() {
         {showProperties && <PropertiesPanel />}
       </div>
       <DebugConsole />
+      {linkOverlayElementId && (
+        <LinkOverlay
+          elementId={linkOverlayElementId}
+          onClose={() => setLinkOverlayElementId(null)}
+        />
+      )}
     </div>
   );
 }

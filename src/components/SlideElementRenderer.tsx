@@ -427,8 +427,8 @@ function DraggableBox({
       onClick={(e) => e.stopPropagation()}
     >
       {children}
-      {/* Link badges — shown when selected, toggle on/off */}
-      {isSelected && (syncId || linkId || _syncId || _linkId) && (
+      {/* Link badges — shown when selected */}
+      {isSelected && (
         <div className="el-link-badges" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
           {/* Sync badge: green = active, grey = inactive (click to toggle) */}
           {(syncId || _syncId) && (
@@ -462,6 +462,15 @@ function DraggableBox({
               A
             </button>
           )}
+          {/* Link button: open Time Machine overlay */}
+          <button
+            className="el-link-badge el-badge-link"
+            title="Link to element on another slide"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('open-link-overlay', { detail: { elementId } }));
+            }}>
+            L
+          </button>
         </div>
       )}
       <button className="el-delete-btn" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Delete">×</button>

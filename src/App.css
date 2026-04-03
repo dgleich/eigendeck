@@ -929,6 +929,109 @@
   background: #16a34a;
 }
 
+.el-badge-link {
+  background: #2563eb;
+}
+
+.el-badge-link:hover {
+  background: #1d4ed8;
+}
+
+/* ============================================
+   Link Overlay (Time Machine view)
+   ============================================ */
+.link-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.link-overlay-content {
+  width: 90%;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.link-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+}
+
+.link-overlay-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.link-overlay-nav button {
+  padding: 4px 12px;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.link-overlay-nav button:hover:not(:disabled) {
+  background: rgba(255,255,255,0.2);
+}
+
+.link-overlay-nav button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.link-overlay-close {
+  padding: 4px 16px;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.link-overlay-close:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+.link-overlay-slide-container {
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  aspect-ratio: 16 / 9;
+  position: relative;
+}
+
+.link-overlay-slide {
+  width: 100%;
+  height: 100%;
+}
+
+.link-overlay-slide-container .link-overlay-slide {
+  transform-origin: top left;
+}
+
+.link-overlay-element:hover {
+  outline: 4px solid #3b82f6;
+  outline-offset: -4px;
+  border-radius: 4px;
+}
+
 /* Title element */
 .el-title-text {
   font-family: 'PT Sans', sans-serif;
