@@ -70,7 +70,8 @@ export const TEXT_PRESET_STYLES: Record<TextPreset, {
 interface BaseElement {
   id: string;
   position: ElementPosition;
-  linkId?: string;
+  linkId?: string;  // animation link: animate between positions in presenter
+  syncId?: string;  // content link: sync position/text across slides
 }
 
 export interface TextElement extends BaseElement {
@@ -145,7 +146,7 @@ export interface Presentation {
 
 export function createTextElement(preset: TextPreset, overrides?: Partial<ElementPosition>): TextElement {
   const defaults: Record<TextPreset, ElementPosition> = {
-    title:      { x: 80,  y: 40,  width: 1760, height: 120 },
+    title:      { x: 80,  y: 20,  width: 1760, height: 200 },
     body:       { x: 80,  y: 180, width: 1760, height: 800 },
     textbox:    { x: 200, y: 300, width: 800,  height: 300 },
     annotation: { x: 200, y: 700, width: 600,  height: 150 },

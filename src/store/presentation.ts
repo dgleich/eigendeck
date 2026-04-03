@@ -119,11 +119,11 @@ export const usePresentationStore = create<PresentationState>()(
         set((state) => {
           const slides = [...state.presentation.slides];
           const original = slides[index];
-          // Ensure original elements have linkIds, then copy with same linkId
-          const updatedOriginalElements = original.elements.map((el) => ({
-            ...el,
-            linkId: el.linkId || crypto.randomUUID(),
-          }));
+          // Ensure original elements have linkIds and syncIds
+          const updatedOriginalElements = original.elements.map((el) => {
+            const id = el.linkId || crypto.randomUUID();
+            return { ...el, linkId: id, syncId: el.syncId || id };
+          });
           slides[index] = { ...original, elements: updatedOriginalElements };
           const copy: Slide = {
             ...JSON.parse(JSON.stringify(slides[index])),
@@ -131,7 +131,7 @@ export const usePresentationStore = create<PresentationState>()(
             elements: updatedOriginalElements.map((el) => ({
               ...JSON.parse(JSON.stringify(el)),
               id: crypto.randomUUID(),
-              // linkId preserved from original
+              // linkId and syncId preserved from original
             })),
           };
           slides.splice(index + 1, 0, copy);
@@ -212,13 +212,13 @@ export const usePresentationStore = create<PresentationState>()(
           const original = slides[idx];
           const groupId = original.groupId || crypto.randomUUID();
 
-          // Ensure original elements have linkIds
-          const updatedElements = original.elements.map((el) => ({
-            ...el,
-            linkId: el.linkId || crypto.randomUUID(),
-          }));
+          // Ensure original elements have linkIds and syncIds
+          const updatedElements = original.elements.map((el) => {
+            const id = el.linkId || crypto.randomUUID();
+            return { ...el, linkId: id, syncId: el.syncId || id };
+          });
 
-          // Set groupId and linkIds on original if needed
+          // Set groupId and link/sync ids on original if needed
           slides[idx] = { ...original, groupId, elements: updatedElements };
 
           const copy: Slide = {
@@ -282,14 +282,51 @@ export const usePresentationStore = create<PresentationState>()(
         ),
 
       updateElement: (elementId, changes) =>
-        set((state) =>
-          updateCurrentSlide(state, (slide) => ({
+        set((state) => {
+          const currentSlide = state.presentation.slides[state.currentSlideIndex];
+          const element = currentSlide.elements.find((el) => el.id === elementId);
+          if (!element) return updateCurrentSlide(state, (s) => s);
+
+          // Apply changes to the target element
+          const updatedElement = { ...element, ...changes } as SlideElement;
+
+          // If element has syncId, propagate syncable changes across all slides
+          const syncId = updatedElement.syncId;
+          if (syncId) {
+            // Determine which properties to sync: position, html, fontSize, color, fontFamily
+            const syncChanges: Partial<SlideElement> = {};
+            if ('position' in changes) (syncChanges as any).position = (changes as any).position;
+            if ('html' in changes) (syncChanges as any).html = (changes as any).html;
+            if ('fontSize' in changes) (syncChanges as any).fontSize = (changes as any).fontSize;
+            if ('color' in changes) (syncChanges as any).color = (changes as any).color;
+            if ('fontFamily' in changes) (syncChanges as any).fontFamily = (changes as any).fontFamily;
+            // Arrow coords
+            if ('x1' in changes) (syncChanges as any).x1 = (changes as any).x1;
+            if ('y1' in changes) (syncChanges as any).y1 = (changes as any).y1;
+            if ('x2' in changes) (syncChanges as any).x2 = (changes as any).x2;
+            if ('y2' in changes) (syncChanges as any).y2 = (changes as any).y2;
+
+            if (Object.keys(syncChanges).length > 0) {
+              const slides = state.presentation.slides.map((slide) => ({
+                ...slide,
+                elements: slide.elements.map((el) => {
+                  if (el.id === elementId) return updatedElement;
+                  if (el.syncId === syncId) return { ...el, ...syncChanges } as SlideElement;
+                  return el;
+                }),
+              }));
+              return { presentation: { ...state.presentation, slides }, isDirty: true };
+            }
+          }
+
+          // No sync — just update current slide
+          return updateCurrentSlide(state, (slide) => ({
             ...slide,
             elements: slide.elements.map((el) =>
-              el.id === elementId ? { ...el, ...changes } as SlideElement : el
+              el.id === elementId ? updatedElement : el
             ),
-          }))
-        ),
+          }));
+        }),
 
       deleteElement: (elementId) =>
         set((state) => ({
@@ -336,8 +373,30 @@ export const usePresentationStore = create<PresentationState>()(
         ),
 
       moveElementsBy: (elementIds, dx, dy) =>
-        set((state) =>
-          updateCurrentSlide(state, (slide) => ({
+        set((state) => {
+          const currentSlide = state.presentation.slides[state.currentSlideIndex];
+          // Collect syncIds of moved elements
+          const syncIds = new Set<string>();
+          for (const el of currentSlide.elements) {
+            if (elementIds.includes(el.id) && el.syncId) syncIds.add(el.syncId);
+          }
+
+          if (syncIds.size > 0) {
+            // Sync move across all slides
+            const slides = state.presentation.slides.map((slide) => ({
+              ...slide,
+              elements: slide.elements.map((el) => {
+                if (!elementIds.includes(el.id) && !(el.syncId && syncIds.has(el.syncId))) return el;
+                if (el.type === 'arrow') {
+                  return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
+                }
+                return { ...el, position: { ...el.position, x: el.position.x + dx, y: el.position.y + dy } };
+              }),
+            }));
+            return { presentation: { ...state.presentation, slides }, isDirty: true };
+          }
+
+          return updateCurrentSlide(state, (slide) => ({
             ...slide,
             elements: slide.elements.map((el) => {
               if (!elementIds.includes(el.id)) return el;
@@ -346,8 +405,8 @@ export const usePresentationStore = create<PresentationState>()(
               }
               return { ...el, position: { ...el.position, x: el.position.x + dx, y: el.position.y + dy } };
             }),
-          }))
-        ),
+          }));
+        }),
 
       toggleSelectElement: (id) =>
         set((state) => {

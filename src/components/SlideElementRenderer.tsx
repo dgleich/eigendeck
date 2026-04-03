@@ -29,8 +29,10 @@ export function SlideElementRenderer({
           position={element.position} zIndex={zIndex} scale={scale}
           className={`el-text el-preset-${element.preset}`}
           isSelected={isSelected}
+          linkId={element.linkId} syncId={element.syncId}
           onSelect={onSelect} onDelete={onDelete}
           onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+          onUpdate={onUpdate}
         >
           <TextContent element={element} onCommit={(html) => onUpdate({ html } as any)} />
         </DraggableBox>
@@ -48,8 +50,10 @@ export function SlideElementRenderer({
           elementId={element.id}
           position={element.position} zIndex={zIndex} scale={scale}
           className="el-image" isSelected={isSelected}
+          linkId={element.linkId} syncId={element.syncId}
           onSelect={onSelect} onDelete={onDelete}
           onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+          onUpdate={onUpdate}
         >
           <img src={src} alt="" draggable={false}
             style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
@@ -97,8 +101,10 @@ function DemoBox({ element, zIndex, scale, projectPath, isSelected, onSelect, on
       elementId={element.id}
       position={element.position} zIndex={zIndex} scale={scale}
       className="el-demo" isSelected={isSelected}
+      linkId={element.linkId} syncId={element.syncId}
       onSelect={onSelect} onDelete={onDelete}
       onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+      onUpdate={onUpdate}
     >
       {src ? (
         <iframe src={src} sandbox="allow-scripts allow-same-origin" title="demo"
@@ -306,13 +312,16 @@ function TextContent({
 // Draggable + resizable box
 // ============================================
 function DraggableBox({
-  elementId, position: pos, zIndex, scale, className, children, isSelected, onSelect, onDelete, onPositionChange,
+  elementId, position: pos, zIndex, scale, className, children, isSelected,
+  linkId, syncId, onSelect, onDelete, onPositionChange, onUpdate,
 }: {
   elementId: string;
   position: ElementPosition; zIndex: number; scale: number; className: string;
   children: React.ReactNode; isSelected: boolean;
+  linkId?: string; syncId?: string;
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onPositionChange: (pos: ElementPosition) => void;
+  onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
@@ -414,6 +423,23 @@ function DraggableBox({
       onClick={(e) => e.stopPropagation()}
     >
       {children}
+      {/* Link badges — shown when selected */}
+      {isSelected && (syncId || linkId) && (
+        <div className="el-link-badges" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+          {syncId && (
+            <button className="el-link-badge el-badge-sync" title="Synced — click to free position"
+              onClick={() => onUpdate({ syncId: undefined } as any)}>
+              S
+            </button>
+          )}
+          {linkId && (
+            <button className="el-link-badge el-badge-anim" title="Animated — click to unlink"
+              onClick={() => onUpdate({ linkId: undefined } as any)}>
+              A
+            </button>
+          )}
+        </div>
+      )}
       <button className="el-delete-btn" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Delete">×</button>
       <div className="el-resize-handle" onPointerDown={handleResizeDown} />
     </div>
