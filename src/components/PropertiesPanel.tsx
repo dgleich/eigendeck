@@ -173,6 +173,18 @@ export function PropertiesPanel() {
               </div>
             </PropSection>
 
+            {/* Link status */}
+            {selectedEl.linkId && (
+              <PropSection label="Linked">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 11, color: '#999' }}>{selectedEl.linkId.slice(0, 8)}</span>
+                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '1px 6px' }}
+                    onClick={() => updateElement(selectedEl.id, { linkId: undefined } as any)}
+                    title="Remove link to other slides">Unlink</button>
+                </div>
+              </PropSection>
+            )}
+
             {/* Position/size for non-arrow elements */}
             {selectedEl.type !== 'arrow' && (
               <PropSection label="Position & Size">
