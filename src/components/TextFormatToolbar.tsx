@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 
 const COLORS = [
   { color: '#222222', label: 'Black' },
@@ -25,37 +25,35 @@ export function TextFormatToolbar(_props: Props) {
   const [colorOpen, setColorOpen] = useState(false);
   const [lastColor, setLastColor] = useState('#2563eb');
 
-  // Save and restore selection across toolbar interactions
-  const restoreFocusAndExec = useCallback((cmd: string, value?: string) => {
-    // execCommand works on the current selection, which should still be
-    // in the contentEditable since we use preventDefault on button mousedown
-    document.execCommand(cmd, false, value);
-  }, []);
-
-  // For buttons: prevent default to keep focus in contentEditable
-  const btnDown = (e: React.MouseEvent) => {
+  // Prevent toolbar clicks from stealing focus from the contentEditable
+  const keepFocus = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const exec = (cmd: string, value?: string) => {
+    document.execCommand(cmd, false, value);
   };
 
   return (
-    <div className="text-format-toolbar" tabIndex={-1}>
-      <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('bold')} title="Bold (Cmd+B)">
+    <div className="text-format-toolbar" onMouseDown={keepFocus}>
+      <button onClick={() => exec('bold')} title="Bold (Cmd+B)">
         <b>B</b>
       </button>
-      <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('italic')} title="Italic (Cmd+I)">
+      <button onClick={() => exec('italic')} title="Italic (Cmd+I)">
         <i>I</i>
       </button>
-      <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('underline')} title="Underline (Cmd+U)">
+      <button onClick={() => exec('underline')} title="Underline (Cmd+U)">
         <u>U</u>
       </button>
-      <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('strikeThrough')} title="Strikethrough">
+      <button onClick={() => exec('strikeThrough')} title="Strikethrough">
         <s>S</s>
       </button>
       <span className="tf-divider" />
 
       {/* Text color */}
       <div className="tf-color-wrapper">
-        <button onMouseDown={btnDown} onClick={() => setColorOpen(!colorOpen)} title="Text color"
+        <button onClick={() => setColorOpen(!colorOpen)} title="Text color"
           style={{ position: 'relative' }}>
           <span style={{ fontWeight: 700 }}>A</span>
           <span style={{
@@ -71,9 +69,8 @@ export function TextFormatToolbar(_props: Props) {
                 className="tf-color-swatch"
                 style={{ background: c.color, border: c.color === '#ffffff' ? '1px solid #ccc' : '1px solid transparent' }}
                 title={c.label}
-                onMouseDown={btnDown}
                 onClick={() => {
-                  restoreFocusAndExec('foreColor', c.color);
+                  exec('foreColor', c.color);
                   setLastColor(c.color);
                   setColorOpen(false);
                 }}
@@ -84,7 +81,7 @@ export function TextFormatToolbar(_props: Props) {
       </div>
       <span className="tf-divider" />
 
-      <button onMouseDown={btnDown} onClick={() => {
+      <button onClick={() => {
         const sel = window.getSelection();
         if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
           const range = sel.getRangeAt(0);
@@ -96,8 +93,8 @@ export function TextFormatToolbar(_props: Props) {
       }} title="Uppercase + letter spacing">AA</button>
       <span className="tf-divider" />
 
-      <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('insertUnorderedList')} title="Bullet list">List</button>
-      <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('removeFormat')} title="Clear formatting">×</button>
+      <button onClick={() => exec('insertUnorderedList')} title="Bullet list">List</button>
+      <button onClick={() => exec('removeFormat')} title="Clear formatting">×</button>
     </div>
   );
 }
