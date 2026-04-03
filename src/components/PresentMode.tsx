@@ -221,7 +221,14 @@ function computeLinkedTransitions(prevSlide: Slide | null, currentSlide: Slide):
 
   for (const el of currentSlide.elements) {
     if (el.linkId && prevByLinkId.has(el.linkId)) {
-      result.linked.push({ from: prevByLinkId.get(el.linkId)!, to: el });
+      const from = prevByLinkId.get(el.linkId)!;
+      // Arrows can't position-animate (SVG coords), so crossfade them
+      if (el.type === 'arrow' || from.type === 'arrow') {
+        result.fadeOut.push(from);
+        result.fadeIn.push(el);
+      } else {
+        result.linked.push({ from, to: el });
+      }
       matchedPrevLinkIds.add(el.linkId);
     } else if (el.linkId) {
       result.fadeIn.push(el);
