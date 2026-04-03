@@ -76,6 +76,8 @@ interface BaseElement {
   _syncId?: string;  // stored syncId when temporarily unsynced (for re-syncing)
 }
 
+export type VerticalAlign = 'top' | 'middle' | 'bottom';
+
 export interface TextElement extends BaseElement {
   type: 'text';
   preset: TextPreset;
@@ -84,6 +86,7 @@ export interface TextElement extends BaseElement {
   fontSize?: number;
   fontFamily?: string;
   color?: string;
+  verticalAlign?: VerticalAlign;
 }
 
 export interface ImageElement extends BaseElement {
@@ -133,6 +136,7 @@ export interface PresentationConfig {
   showSlideNumber?: boolean;
   author?: string;
   venue?: string;
+  mathPreamble?: string;
 }
 
 export interface Presentation {

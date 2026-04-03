@@ -1,6 +1,6 @@
 import { usePresentationStore } from '../store/presentation';
 import { TEXT_PRESET_STYLES } from '../types/presentation';
-import type { SlideLayout } from '../types/presentation';
+import type { SlideLayout, VerticalAlign } from '../types/presentation';
 
 const LAYOUTS: { id: SlideLayout; label: string }[] = [
   { id: 'default', label: 'Default (top-left)' },
@@ -119,6 +119,12 @@ export function PropertiesPanel() {
               <input className="prop-input" value={presentation.config.venue || ''}
                 onChange={(e) => updateConfig({ venue: e.target.value })} />
             </PropSection>
+            <PropSection label="LaTeX Preamble">
+              <textarea className="prop-input" value={presentation.config.mathPreamble || ''}
+                onChange={(e) => updateConfig({ mathPreamble: e.target.value })}
+                placeholder="\\newcommand{\\R}{\\mathbb{R}}"
+                style={{ fontFamily: 'monospace', fontSize: 11, minHeight: 60, resize: 'vertical' }} />
+            </PropSection>
           </>
         )}
 
@@ -211,6 +217,20 @@ export function PropertiesPanel() {
                   <input className="prop-input-sm" type="number"
                     value={selectedEl.fontSize || TEXT_PRESET_STYLES[selectedEl.preset].fontSize}
                     onChange={(e) => updateElement(selectedEl.id, { fontSize: parseInt(e.target.value) || 48 } as any)} />
+                </PropSection>
+                <PropSection label="Vertical Align">
+                  <div style={{ display: 'flex', gap: 2 }}>
+                    {(['top', 'middle', 'bottom'] as VerticalAlign[]).map((va) => {
+                      const current = selectedEl.verticalAlign || (selectedEl.preset === 'title' || selectedEl.preset === 'footnote' ? 'bottom' : 'top');
+                      return (
+                        <button key={va} className={`prop-zbtn ${current === va ? 'active' : ''}`}
+                          style={{ fontSize: 11, width: 'auto', padding: '2px 6px', background: current === va ? '#3b82f6' : undefined, color: current === va ? '#fff' : undefined }}
+                          onClick={() => updateElement(selectedEl.id, { verticalAlign: va } as any)}>
+                          {va.charAt(0).toUpperCase() + va.slice(1)}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </PropSection>
               </>
             )}

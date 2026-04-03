@@ -1058,16 +1058,17 @@
   height: 100%;
 }
 
-/* Title preset: bottom-align text (fits two lines) */
-.el-preset-title {
+/* Vertical alignment for text elements */
+.el-text[data-valign="middle"] > div > div {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  justify-content: center;
 }
 
-/* Footnote preset: bottom-align text within its box */
-.el-preset-footnote {
+.el-text[data-valign="bottom"] > div > div {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
 /* Normalize text element rendering between display and edit modes */

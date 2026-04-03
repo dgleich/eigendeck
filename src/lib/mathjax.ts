@@ -76,6 +76,25 @@ export function getDisplayMathHeight(tex: string): string | undefined {
   return displayMathHeights.get(tex);
 }
 
+// Track whether preamble has been applied
+let appliedPreamble = '';
+
+export async function applyMathPreamble(preamble: string): Promise<void> {
+  if (!preamble || preamble === appliedPreamble) return;
+  const MJ = await loadMathJax();
+  try {
+    MJ.texReset();
+    // Render preamble to register \newcommand, \def, etc.
+    await Promise.race([
+      MJ.tex2svgPromise(`{${preamble}}`, { display: false }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('preamble timeout')), 3000)),
+    ]);
+    appliedPreamble = preamble;
+  } catch (e) {
+    console.warn('MathJax preamble error:', e);
+  }
+}
+
 export async function renderMathInHtml(html: string): Promise<string> {
   if (!containsMath(html)) return html;
 
@@ -157,7 +176,9 @@ export async function renderMathInHtml(html: string): Promise<string> {
   return parts.join('');
 }
 
-export async function typesetElement(element: HTMLElement): Promise<void> {
+export async function typesetElement(element: HTMLElement, preamble?: string): Promise<void> {
+  if (preamble) await applyMathPreamble(preamble);
+
   const rawHtml = element.getAttribute('data-raw') || element.innerHTML;
   try {
     // Immediately hide $$...$$ blocks to prevent wrapping flash

@@ -330,19 +330,22 @@ function PresentTextElement({ element: el, zIndex, style }: { element: TextEleme
   const ref = useRef<HTMLDivElement>(null);
   const pos = el.position;
   const preset = TEXT_PRESET_STYLES[el.preset];
+  const mathPreamble = usePresentationStore((s) => s.presentation.config.mathPreamble);
 
   useEffect(() => {
     if (ref.current) {
       // Set raw HTML first, then typeset math if present
       resetMathElement(ref.current, el.html);
       if (containsMath(el.html)) {
-        typesetElement(ref.current);
+        typesetElement(ref.current, mathPreamble);
       }
     }
-  }, [el.html]);
+  }, [el.html, mathPreamble]);
+
+  const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
 
   return (
-    <div ref={ref} className={`el-text el-preset-${el.preset}`} style={{
+    <div ref={ref} className={`el-text el-preset-${el.preset}`} data-valign={valign} style={{
       position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
       fontFamily: el.fontFamily || preset.fontFamily,
       fontSize: el.fontSize || preset.fontSize,
@@ -353,6 +356,8 @@ function PresentTextElement({ element: el, zIndex, style }: { element: TextEleme
       padding: '8px 12px',
       overflow: 'hidden',
       zIndex,
+      ...(valign === 'middle' ? { display: 'flex', flexDirection: 'column' as const, justifyContent: 'center' } : {}),
+      ...(valign === 'bottom' ? { display: 'flex', flexDirection: 'column' as const, justifyContent: 'flex-end' } : {}),
       ...style,
     }} />
   );

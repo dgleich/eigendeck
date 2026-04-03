@@ -31,6 +31,7 @@ export function SlideElementRenderer({
           isSelected={isSelected}
           linkId={element.linkId} syncId={element.syncId}
           _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
+          dataValign={element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined)}
           onSelect={onSelect} onDelete={onDelete}
           onPositionChange={(pos) => onUpdate({ position: pos } as any)}
           onUpdate={onUpdate}
@@ -161,14 +162,15 @@ function TextContent({
   };
 
   // Display mode: set innerHTML and typeset math
+  const mathPreamble = usePresentationStore((s) => s.presentation.config.mathPreamble);
   useEffect(() => {
     if (ref.current && !editing) {
       resetMathElement(ref.current, element.html);
       if (containsMath(element.html)) {
-        typesetElement(ref.current);
+        typesetElement(ref.current, mathPreamble);
       }
     }
-  }, [element.html, editing]);
+  }, [element.html, editing, mathPreamble]);
 
   // (no beforeinput blocker — using contentEditable toggle instead)
 
@@ -316,13 +318,14 @@ function TextContent({
 // ============================================
 function DraggableBox({
   elementId, position: pos, zIndex, scale, className, children, isSelected,
-  linkId, syncId, _linkId, _syncId,
+  linkId, syncId, _linkId, _syncId, dataValign,
   onSelect, onDelete, onPositionChange, onUpdate,
 }: {
   elementId: string;
   position: ElementPosition; zIndex: number; scale: number; className: string;
   children: React.ReactNode; isSelected: boolean;
   linkId?: string; syncId?: string; _linkId?: string; _syncId?: string;
+  dataValign?: string;
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onPositionChange: (pos: ElementPosition) => void;
   onUpdate: (changes: Partial<SlideElement>) => void;
@@ -419,6 +422,7 @@ function DraggableBox({
   return (
     <div
       className={`slide-element ${className} ${isDragging ? 'is-dragging' : ''} ${isSelected ? 'is-selected' : ''}`}
+      data-valign={dataValign}
       style={{
         position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
         zIndex, cursor: isDragging ? 'grabbing' : 'grab',
