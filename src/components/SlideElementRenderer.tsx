@@ -243,13 +243,28 @@ function TextContent({
     }, 0);
   };
 
-  const commitAndClose = () => {
+  const commitAndClose = useCallback(() => {
     if (ref.current) {
       stripMathLineStyles(ref.current);
       onCommit(ref.current.innerHTML);
     }
     setEditing(false);
-  };
+  }, [onCommit]);
+
+  // Close editing when clicking outside this element
+  useEffect(() => {
+    if (!editing) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      // Stay open if clicking within our element or the toolbar
+      if (wrapperRef.current?.contains(target)) return;
+      if (target.closest('.text-format-toolbar')) return;
+      commitAndClose();
+    };
+    // Use capture so we see the event before stopPropagation in other handlers
+    window.addEventListener('pointerdown', handlePointerDown, true);
+    return () => window.removeEventListener('pointerdown', handlePointerDown, true);
+  }, [editing, commitAndClose]);
 
   return (
     <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>

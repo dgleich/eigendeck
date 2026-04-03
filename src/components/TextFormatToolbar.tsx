@@ -23,6 +23,7 @@ interface Props {
 
 export function TextFormatToolbar(_props: Props) {
   const [colorOpen, setColorOpen] = useState(false);
+  const [lastColor, setLastColor] = useState('#2563eb');
 
   // Save and restore selection across toolbar interactions
   const restoreFocusAndExec = useCallback((cmd: string, value?: string) => {
@@ -47,12 +48,20 @@ export function TextFormatToolbar(_props: Props) {
       <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('underline')} title="Underline (Cmd+U)">
         <u>U</u>
       </button>
+      <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('strikeThrough')} title="Strikethrough">
+        <s>S</s>
+      </button>
       <span className="tf-divider" />
 
       {/* Text color */}
       <div className="tf-color-wrapper">
-        <button onMouseDown={btnDown} onClick={() => setColorOpen(!colorOpen)} title="Text color">
-          A
+        <button onMouseDown={btnDown} onClick={() => setColorOpen(!colorOpen)} title="Text color"
+          style={{ position: 'relative' }}>
+          <span style={{ fontWeight: 700 }}>A</span>
+          <span style={{
+            position: 'absolute', bottom: 3, left: 4, right: 4, height: 3,
+            background: lastColor, borderRadius: 1,
+          }} />
         </button>
         {colorOpen && (
           <div className="tf-color-dropdown">
@@ -65,6 +74,7 @@ export function TextFormatToolbar(_props: Props) {
                 onMouseDown={btnDown}
                 onClick={() => {
                   restoreFocusAndExec('foreColor', c.color);
+                  setLastColor(c.color);
                   setColorOpen(false);
                 }}
               />
@@ -84,6 +94,7 @@ export function TextFormatToolbar(_props: Props) {
           try { range.surroundContents(span); } catch { span.appendChild(range.extractContents()); range.insertNode(span); }
         }
       }} title="Uppercase + letter spacing">AA</button>
+      <span className="tf-divider" />
 
       <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('insertUnorderedList')} title="Bullet list">List</button>
       <button onMouseDown={btnDown} onClick={() => restoreFocusAndExec('removeFormat')} title="Clear formatting">×</button>
