@@ -70,8 +70,10 @@ export const TEXT_PRESET_STYLES: Record<TextPreset, {
 interface BaseElement {
   id: string;
   position: ElementPosition;
-  linkId?: string;  // animation link: animate between positions in presenter
-  syncId?: string;  // content link: sync position/text across slides
+  linkId?: string;   // animation link: animate between positions in presenter
+  syncId?: string;   // content link: sync position/text across slides
+  _linkId?: string;  // stored linkId when temporarily unlinked (for re-linking)
+  _syncId?: string;  // stored syncId when temporarily unsynced (for re-syncing)
 }
 
 export interface TextElement extends BaseElement {

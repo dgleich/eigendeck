@@ -30,6 +30,7 @@ export function SlideElementRenderer({
           className={`el-text el-preset-${element.preset}`}
           isSelected={isSelected}
           linkId={element.linkId} syncId={element.syncId}
+          _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
           onSelect={onSelect} onDelete={onDelete}
           onPositionChange={(pos) => onUpdate({ position: pos } as any)}
           onUpdate={onUpdate}
@@ -51,6 +52,7 @@ export function SlideElementRenderer({
           position={element.position} zIndex={zIndex} scale={scale}
           className="el-image" isSelected={isSelected}
           linkId={element.linkId} syncId={element.syncId}
+          _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
           onSelect={onSelect} onDelete={onDelete}
           onPositionChange={(pos) => onUpdate({ position: pos } as any)}
           onUpdate={onUpdate}
@@ -102,6 +104,7 @@ function DemoBox({ element, zIndex, scale, projectPath, isSelected, onSelect, on
       position={element.position} zIndex={zIndex} scale={scale}
       className="el-demo" isSelected={isSelected}
       linkId={element.linkId} syncId={element.syncId}
+      _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
       onSelect={onSelect} onDelete={onDelete}
       onPositionChange={(pos) => onUpdate({ position: pos } as any)}
       onUpdate={onUpdate}
@@ -313,12 +316,13 @@ function TextContent({
 // ============================================
 function DraggableBox({
   elementId, position: pos, zIndex, scale, className, children, isSelected,
-  linkId, syncId, onSelect, onDelete, onPositionChange, onUpdate,
+  linkId, syncId, _linkId, _syncId,
+  onSelect, onDelete, onPositionChange, onUpdate,
 }: {
   elementId: string;
   position: ElementPosition; zIndex: number; scale: number; className: string;
   children: React.ReactNode; isSelected: boolean;
-  linkId?: string; syncId?: string;
+  linkId?: string; syncId?: string; _linkId?: string; _syncId?: string;
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onPositionChange: (pos: ElementPosition) => void;
   onUpdate: (changes: Partial<SlideElement>) => void;
@@ -423,18 +427,38 @@ function DraggableBox({
       onClick={(e) => e.stopPropagation()}
     >
       {children}
-      {/* Link badges — shown when selected */}
-      {isSelected && (syncId || linkId) && (
+      {/* Link badges — shown when selected, toggle on/off */}
+      {isSelected && (syncId || linkId || _syncId || _linkId) && (
         <div className="el-link-badges" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-          {syncId && (
-            <button className="el-link-badge el-badge-sync" title="Synced — click to free position"
-              onClick={() => onUpdate({ syncId: undefined } as any)}>
+          {/* Sync badge: green = active, grey = inactive (click to toggle) */}
+          {(syncId || _syncId) && (
+            <button
+              className={`el-link-badge ${syncId ? 'el-badge-sync' : 'el-badge-off'}`}
+              title={syncId ? 'Synced — click to free position' : 'Position free — click to re-sync'}
+              onClick={() => {
+                if (syncId) {
+                  // Free position: store syncId as _syncId, clear syncId
+                  onUpdate({ syncId: undefined, _syncId: syncId } as any);
+                } else if (_syncId) {
+                  // Re-sync: restore syncId from _syncId
+                  onUpdate({ syncId: _syncId, _syncId: undefined } as any);
+                }
+              }}>
               S
             </button>
           )}
-          {linkId && (
-            <button className="el-link-badge el-badge-anim" title="Animated — click to unlink"
-              onClick={() => onUpdate({ linkId: undefined } as any)}>
+          {/* Animation badge: purple = active, grey = inactive */}
+          {(linkId || _linkId) && (
+            <button
+              className={`el-link-badge ${linkId ? 'el-badge-anim' : 'el-badge-off'}`}
+              title={linkId ? 'Animated — click to unlink' : 'Not animated — click to re-link'}
+              onClick={() => {
+                if (linkId) {
+                  onUpdate({ linkId: undefined, _linkId: linkId } as any);
+                } else if (_linkId) {
+                  onUpdate({ linkId: _linkId, _linkId: undefined } as any);
+                }
+              }}>
               A
             </button>
           )}
