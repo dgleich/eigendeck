@@ -9,6 +9,7 @@ import { PropertiesPanel } from './components/PropertiesPanel';
 import { DebugConsole } from './components/DebugConsole';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
+import type { SlideElement } from './types/presentation';
 import {
   saveProject,
   openProject,
@@ -24,6 +25,7 @@ function App() {
   const [sidebarWidth, setSidebarWidth] = useState(200);
   const resizeStartX = useRef(0);
   const resizeStartW = useRef(0);
+  const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[] } | { type: 'slide'; data: any } | null>(null);
 
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
@@ -69,6 +71,46 @@ function App() {
         const sel = usePresentationStore.getState().selectedObject;
         if (sel?.type === 'element') { e.preventDefault(); usePresentationStore.getState().deleteElement(sel.id); }
         if (sel?.type === 'multi') { e.preventDefault(); usePresentationStore.getState().deleteElements(sel.ids); }
+      }
+      // Copy (Cmd+C) — only when not editing text
+      if (e.key === 'c' && (e.ctrlKey || e.metaKey) && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
+        const state = usePresentationStore.getState();
+        const sel = state.selectedObject;
+        const slide = state.presentation.slides[state.currentSlideIndex];
+        if (sel?.type === 'element') {
+          const el = slide.elements.find((el) => el.id === sel.id);
+          if (el) clipboardRef.current = { type: 'elements', data: [JSON.parse(JSON.stringify(el))] };
+        } else if (sel?.type === 'multi') {
+          clipboardRef.current = { type: 'elements', data: slide.elements
+            .filter((el) => sel.ids.includes(el.id))
+            .map((el) => JSON.parse(JSON.stringify(el))) };
+        } else if (!sel || sel.type === 'slide') {
+          clipboardRef.current = { type: 'slide', data: JSON.parse(JSON.stringify(slide)) };
+        }
+      }
+      // Paste (Cmd+V) — only when not editing text (image paste handled separately)
+      if (e.key === 'v' && (e.ctrlKey || e.metaKey) && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
+        const clip = clipboardRef.current;
+        if (clip?.type === 'elements') {
+          e.preventDefault();
+          const state = usePresentationStore.getState();
+          const newIds: string[] = [];
+          for (const el of clip.data) {
+            const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID() };
+            if (newEl.type === 'arrow') {
+              newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40;
+            } else {
+              newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 };
+            }
+            state.addElement(newEl);
+            newIds.push(newEl.id);
+          }
+          if (newIds.length === 1) state.selectObject({ type: 'element', id: newIds[0] });
+          else if (newIds.length > 1) state.selectObject({ type: 'multi', ids: newIds });
+        } else if (clip?.type === 'slide') {
+          e.preventDefault();
+          usePresentationStore.getState().duplicateSlide(usePresentationStore.getState().currentSlideIndex);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);

@@ -208,8 +208,8 @@ body { background: #000; overflow: hidden; font-family: 'PT Sans', sans-serif; }
 .layout-centered ul, .layout-centered ol { display:inline-block; text-align:left; padding-left:1em; list-style-position:inside; }
 .layout-twocol { column-count: 2; column-gap: 80px; }
 .slide-footer {
-  position: absolute; bottom: 20px; left: 80px; right: 40px;
-  display: flex; justify-content: space-between;
+  position: absolute; bottom: 20px; right: 40px;
+  display: flex; align-items: baseline; gap: 16px;
   font-family: 'PT Sans', sans-serif; color: #999; font-size: 18px;
 }
 .slide-footer span:last-child { font-size: 24px; }

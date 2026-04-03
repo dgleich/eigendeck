@@ -543,7 +543,7 @@
   justify-content: center;
   align-items: flex-start;
   padding: 16px;
-  overflow: hidden;
+  overflow: auto;
   background: #e8e8e8;
 }
 
@@ -552,7 +552,7 @@
   border: 1px solid #ccc;
   border-radius: 2px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  overflow: hidden;
+  overflow: visible;
   flex-shrink: 0;
 }
 
@@ -697,11 +697,10 @@
 .slide-footer {
   position: absolute;
   bottom: 20px;
-  left: 80px;
   right: 40px;
   display: flex;
-  justify-content: space-between;
   align-items: baseline;
+  gap: 16px;
   pointer-events: none;
   font-family: 'PT Sans', sans-serif;
   font-size: 20px;
@@ -903,6 +902,12 @@
   background: transparent;
   width: 100%;
   height: 100%;
+}
+
+/* Footnote preset: bottom-align text within its box */
+.el-preset-footnote {
+  display: flex;
+  align-items: flex-end;
 }
 
 /* Normalize text element rendering between display and edit modes */
