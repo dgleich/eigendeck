@@ -119,13 +119,19 @@ export const usePresentationStore = create<PresentationState>()(
         set((state) => {
           const slides = [...state.presentation.slides];
           const original = slides[index];
+          // Ensure original elements have linkIds, then copy with same linkId
+          const updatedOriginalElements = original.elements.map((el) => ({
+            ...el,
+            linkId: el.linkId || crypto.randomUUID(),
+          }));
+          slides[index] = { ...original, elements: updatedOriginalElements };
           const copy: Slide = {
-            ...JSON.parse(JSON.stringify(original)),
+            ...JSON.parse(JSON.stringify(slides[index])),
             id: crypto.randomUUID(),
-            // Give new IDs to all elements
-            elements: original.elements.map((el) => ({
+            elements: updatedOriginalElements.map((el) => ({
               ...JSON.parse(JSON.stringify(el)),
               id: crypto.randomUUID(),
+              // linkId preserved from original
             })),
           };
           slides.splice(index + 1, 0, copy);
@@ -206,18 +212,23 @@ export const usePresentationStore = create<PresentationState>()(
           const original = slides[idx];
           const groupId = original.groupId || crypto.randomUUID();
 
-          // Set groupId on original if it didn't have one
-          if (!original.groupId) {
-            slides[idx] = { ...original, groupId };
-          }
+          // Ensure original elements have linkIds
+          const updatedElements = original.elements.map((el) => ({
+            ...el,
+            linkId: el.linkId || crypto.randomUUID(),
+          }));
+
+          // Set groupId and linkIds on original if needed
+          slides[idx] = { ...original, groupId, elements: updatedElements };
 
           const copy: Slide = {
-            ...JSON.parse(JSON.stringify(original)),
+            ...JSON.parse(JSON.stringify(slides[idx])),
             id: crypto.randomUUID(),
             groupId,
-            elements: original.elements.map((el) => ({
+            elements: updatedElements.map((el) => ({
               ...JSON.parse(JSON.stringify(el)),
               id: crypto.randomUUID(),
+              // linkId preserved from original
             })),
           };
 
