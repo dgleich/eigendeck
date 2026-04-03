@@ -124,7 +124,20 @@ export function PresentMode() {
 
             {/* Linked elements that animate position/size */}
             {linkedTransitions.linked.map(({ from, to }, idx) => {
-              // During animation, show the element transitioning from old to new position
+              // Arrows: interpolate coordinates via rAF
+              if (from.type === 'arrow' && to.type === 'arrow') {
+                return (
+                  <AnimatedArrow
+                    key={`linked-arrow-${to.id}`}
+                    from={from}
+                    to={to}
+                    zIndex={idx + 10}
+                    animating={animating}
+                    hasPrev={prevIndex !== null}
+                  />
+                );
+              }
+
               const displayEl = to;
               const fromPos = getElementBounds(from);
               const toPos = getElementBounds(to);
@@ -221,14 +234,7 @@ function computeLinkedTransitions(prevSlide: Slide | null, currentSlide: Slide):
 
   for (const el of currentSlide.elements) {
     if (el.linkId && prevByLinkId.has(el.linkId)) {
-      const from = prevByLinkId.get(el.linkId)!;
-      // Arrows can't position-animate (SVG coords), so crossfade them
-      if (el.type === 'arrow' || from.type === 'arrow') {
-        result.fadeOut.push(from);
-        result.fadeIn.push(el);
-      } else {
-        result.linked.push({ from, to: el });
-      }
+      result.linked.push({ from: prevByLinkId.get(el.linkId)!, to: el });
       matchedPrevLinkIds.add(el.linkId);
     } else if (el.linkId) {
       result.fadeIn.push(el);
@@ -349,5 +355,78 @@ function PresentTextElement({ element: el, zIndex, style }: { element: TextEleme
       zIndex,
       ...style,
     }} />
+  );
+}
+
+// ============================================
+// Animated arrow — interpolates x1/y1/x2/y2 via rAF
+// ============================================
+
+function easeInOut(t: number): number {
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
+type ArrowEl = Extract<SlideElement, { type: 'arrow' }>;
+
+function AnimatedArrow({ from, to, zIndex, animating, hasPrev }: {
+  from: ArrowEl; to: ArrowEl; zIndex: number; animating: boolean; hasPrev: boolean;
+}) {
+  const [coords, setCoords] = useState({
+    x1: hasPrev ? from.x1 : to.x1,
+    y1: hasPrev ? from.y1 : to.y1,
+    x2: hasPrev ? from.x2 : to.x2,
+    y2: hasPrev ? from.y2 : to.y2,
+  });
+  const animRef = useRef<number | null>(null);
+  const startTime = useRef(0);
+
+  useEffect(() => {
+    if (!animating || !hasPrev) {
+      setCoords({ x1: to.x1, y1: to.y1, x2: to.x2, y2: to.y2 });
+      return;
+    }
+
+    startTime.current = performance.now();
+    const animate = (now: number) => {
+      const elapsed = now - startTime.current;
+      const t = Math.min(elapsed / TRANSITION_MS, 1);
+      const e = easeInOut(t);
+
+      setCoords({
+        x1: from.x1 + (to.x1 - from.x1) * e,
+        y1: from.y1 + (to.y1 - from.y1) * e,
+        x2: from.x2 + (to.x2 - from.x2) * e,
+        y2: from.y2 + (to.y2 - from.y2) * e,
+      });
+
+      if (t < 1) {
+        animRef.current = requestAnimationFrame(animate);
+      }
+    };
+
+    // Start from the 'from' position
+    setCoords({ x1: from.x1, y1: from.y1, x2: from.x2, y2: from.y2 });
+    animRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+    };
+  }, [animating, hasPrev, from.x1, from.y1, from.x2, from.y2, to.x1, to.y1, to.x2, to.y2]);
+
+  const { x1, y1, x2, y2 } = coords;
+  const color = to.color || '#e53e3e';
+  const strokeWidth = to.strokeWidth || 4;
+  const headSize = to.headSize || 16;
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const ha = Math.PI / 6;
+
+  return (
+    <svg style={{
+      position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+      pointerEvents: 'none', overflow: 'visible', zIndex,
+    }}>
+      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={strokeWidth} />
+      <polygon points={`${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}`} fill={color} />
+    </svg>
   );
 }
