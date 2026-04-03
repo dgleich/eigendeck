@@ -912,6 +912,31 @@
   padding: 0;
 }
 
+.el-text ul,
+.el-text ol {
+  padding-left: 0;
+  margin: 0;
+  list-style-type: none;
+}
+
+.el-text ol {
+  list-style-type: none;
+  counter-reset: ol-counter;
+}
+
+.el-text li {
+  margin-bottom: 0.15em;
+}
+
+.el-text ul li::before {
+  content: '- ';
+}
+
+.el-text ol li::before {
+  counter-increment: ol-counter;
+  content: counter(ol-counter) '. ';
+}
+
 /* Prevent WebKit from adding any styles when contentEditable activates */
 .el-text [contenteditable] {
   outline: none;

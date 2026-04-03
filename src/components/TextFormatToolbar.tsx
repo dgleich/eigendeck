@@ -93,7 +93,56 @@ export function TextFormatToolbar(_props: Props) {
       }} title="Uppercase + letter spacing">AA</button>
       <span className="tf-divider" />
 
-      <button onClick={() => exec('insertUnorderedList')} title="Bullet list">List</button>
+      <button onClick={() => {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+
+        // Check if already in a list — toggle off
+        let node: Node | null = sel.anchorNode;
+        while (node && node.nodeType !== Node.ELEMENT_NODE) node = node.parentNode;
+        const li = (node as HTMLElement)?.closest?.('li');
+        if (li) {
+          const ul = li.closest('ul');
+          if (ul) {
+            // Unwrap: replace UL with its li contents as divs
+            const parent = ul.parentNode!;
+            for (const item of Array.from(ul.children)) {
+              const div = document.createElement('div');
+              div.innerHTML = (item as HTMLElement).innerHTML;
+              parent.insertBefore(div, ul);
+            }
+            parent.removeChild(ul);
+            return;
+          }
+        }
+
+        // Try execCommand first (works in some WebKit versions)
+        const ok = document.execCommand('insertUnorderedList', false);
+        if (ok) return;
+
+        // Fallback: insert via insertHTML
+        if (!sel.isCollapsed) {
+          const text = sel.toString();
+          const lines = text.split('\n').filter(Boolean);
+          const html = '<ul>' + lines.map(l => `<li>${l}</li>`).join('') + '</ul>';
+          document.execCommand('insertHTML', false, html);
+        } else {
+          document.execCommand('insertHTML', false, '<ul><li><br></li></ul>');
+        }
+      }} title="Bullet list">List</button>
+      <span className="tf-divider" />
+
+      <button onClick={() => exec('justifyLeft')} title="Align left">
+        <span style={{ fontSize: 10, lineHeight: 1 }}>&#9776;</span>
+      </button>
+      <button onClick={() => exec('justifyCenter')} title="Align center">
+        <span style={{ fontSize: 10, lineHeight: 1 }}>&#9779;</span>
+      </button>
+      <button onClick={() => exec('justifyRight')} title="Align right">
+        <span style={{ fontSize: 10, lineHeight: 1 }}>&#9778;</span>
+      </button>
+      <span className="tf-divider" />
+
       <button onClick={() => exec('removeFormat')} title="Clear formatting">×</button>
     </div>
   );
