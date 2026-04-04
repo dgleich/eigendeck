@@ -195,7 +195,8 @@ body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
     };
 
     // Initial broadcast after simulation settles a bit
-    setTimeout(() => broadcastState(), 100);
+    console.log('[controller] simulation started, broadcasting in 100ms');
+    setTimeout(() => { console.log('[controller] broadcasting initial state'); broadcastState(); }, 100);
     // Hide body once it exists (script runs in <head> before body)
     if (document.body) document.body.style.display = 'none';
     else document.addEventListener('DOMContentLoaded', () => { document.body.style.display = 'none'; });
@@ -206,7 +207,8 @@ body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
   // Viewport: graph piece
   // ============================================
   if (piece === 'graph') {
-    document.addEventListener('DOMContentLoaded', () => {
+    const setupGraph = () => {
+      console.log('[graph] setupGraph called, readyState:', document.readyState);
       const container = document.createElement('div');
       container.className = 'ge-graph';
       document.body.appendChild(container);
@@ -296,12 +298,19 @@ body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
       });
 
       channel.onmessage = (e) => {
+        console.log('[graph] received message:', e.data.type);
         if (e.data.type === 'state') renderFromState(e.data);
       };
 
       // Request initial state
+      console.log('[graph] requesting initial state');
       channel.postMessage({ type: 'request-state' });
-    });
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupGraph);
+    } else {
+      setupGraph();
+    }
     return;
   }
 
@@ -309,7 +318,8 @@ body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
   // Viewport: stats piece
   // ============================================
   if (piece === 'stats') {
-    document.addEventListener('DOMContentLoaded', () => {
+    const setupStats = () => {
+      console.log('[stats] setupStats called, readyState:', document.readyState);
       const container = document.createElement('div');
       container.className = 'ge-stats';
       document.body.appendChild(container);
@@ -354,12 +364,19 @@ body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
       }
 
       channel.onmessage = (e) => {
+        console.log('[stats] received message:', e.data.type);
         if (e.data.type === 'state') renderStats(e.data);
       };
 
       // Request initial state
+      console.log('[stats] requesting initial state');
       channel.postMessage({ type: 'request-state' });
-    });
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupStats);
+    } else {
+      setupStats();
+    }
     return;
   }
 
