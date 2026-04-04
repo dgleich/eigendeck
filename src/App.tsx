@@ -77,6 +77,38 @@ function App() {
         if (sel?.type === 'element') { e.preventDefault(); usePresentationStore.getState().deleteElement(sel.id); }
         if (sel?.type === 'multi') { e.preventDefault(); usePresentationStore.getState().deleteElements(sel.ids); }
       }
+      // Duplicate element (Cmd+D)
+      if (e.key === 'd' && (e.ctrlKey || e.metaKey) && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
+        const state = usePresentationStore.getState();
+        const sel = state.selectedObject;
+        const slide = state.presentation.slides[state.currentSlideIndex];
+        if (sel?.type === 'element') {
+          e.preventDefault();
+          const el = slide.elements.find((el) => el.id === sel.id);
+          if (el) {
+            const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), linkId: undefined, syncId: undefined, _linkId: undefined, _syncId: undefined };
+            if (newEl.type === 'arrow') { newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40; }
+            else { newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 }; }
+            state.addElement(newEl);
+            state.selectObject({ type: 'element', id: newEl.id });
+          }
+        } else if (sel?.type === 'multi') {
+          e.preventDefault();
+          const newIds: string[] = [];
+          for (const id of sel.ids) {
+            const el = slide.elements.find((el) => el.id === id);
+            if (el) {
+              const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), linkId: undefined, syncId: undefined, _linkId: undefined, _syncId: undefined };
+              if (newEl.type === 'arrow') { newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40; }
+              else { newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 }; }
+              state.addElement(newEl);
+              newIds.push(newEl.id);
+            }
+          }
+          if (newIds.length === 1) state.selectObject({ type: 'element', id: newIds[0] });
+          else if (newIds.length > 1) state.selectObject({ type: 'multi', ids: newIds });
+        }
+      }
       // Arrow keys: navigate slides when no element is focused for editing
       if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
         const state = usePresentationStore.getState();
