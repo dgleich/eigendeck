@@ -880,6 +880,8 @@
   border-radius: 2px;
   cursor: nwse-resize;
   display: none;
+  z-index: 12;
+  pointer-events: all;
 }
 
 .slide-element:hover .el-resize-handle {

@@ -76,22 +76,89 @@
             "y": 20,
             "width": 1760,
             "height": 200
-          }
+          },
+          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
+          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
         },
         {
           "id": "2362251c-be44-42f3-92d0-76ff72873712",
-          "type": "text",
-          "preset": "body",
-          "html": "",
+          "type": "demo-piece",
+          "demoSrc": "demos/demo_powers_teaser.html",
+          "piece": "graph",
           "position": {
-            "x": 80,
-            "y": 182,
-            "width": 1760,
-            "height": 800
+            "x": 169,
+            "y": 331,
+            "width": 475,
+            "height": 455
+          },
+          "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
+          "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
+        },
+        {
+          "id": "3da7246f-c3cb-48c6-b9e7-bc93f1a5db14",
+          "type": "text",
+          "preset": "textbox",
+          "html": "$\\mA = \\bmat{0 &amp; 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 &amp; 0}$",
+          "position": {
+            "x": 780,
+            "y": 400,
+            "width": 800,
+            "height": 300
           }
         }
       ],
-      "notes": ""
+      "notes": "",
+      "groupId": "6ac46108-61f1-47b5-89e0-404ccdd228c0"
+    },
+    {
+      "id": "1c66c67b-2d54-4274-84b0-f7e85b2be3be",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "611615d9-d5c5-4860-bfd0-e0a4ccc4753e",
+          "type": "text",
+          "preset": "title",
+          "html": "<span style=\"text-align: center; font-weight: normal;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\">Powers of the Adjacency Matrix</span></span>",
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          },
+          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
+          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
+        },
+        {
+          "id": "967c25a6-bb4f-4d1f-8292-0d186544399d",
+          "type": "demo-piece",
+          "demoSrc": "demos/demo_powers_teaser.html",
+          "piece": "graph",
+          "position": {
+            "x": 169,
+            "y": 331,
+            "width": 475,
+            "height": 455
+          },
+          "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
+          "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
+        },
+        {
+          "id": "dbbc03e9-ff6f-47e8-a859-9c9480e595ad",
+          "type": "demo-piece",
+          "demoSrc": "demos/demo_powers_teaser.html",
+          "piece": "results",
+          "position": {
+            "x": 923,
+            "y": 395,
+            "width": 975,
+            "height": 555
+          },
+          "linkId": "182ef785-f625-4931-8cd0-929895267d37",
+          "syncId": "182ef785-f625-4931-8cd0-929895267d37"
+        }
+      ],
+      "notes": "",
+      "groupId": "6ac46108-61f1-47b5-89e0-404ccdd228c0"
     },
     {
       "id": "07aecdaa-23da-4a1f-baa1-b0d75a7bd01f",

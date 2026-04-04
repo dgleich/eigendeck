@@ -410,6 +410,10 @@ function DraggableBox({
       pauseUndo();
       dragStart.current = { x: e.clientX, y: e.clientY, posX: pos.x, posY: pos.y };
       lastDelta.current = { dx: 0, dy: 0 };
+      // Block iframes from stealing pointer events during drag
+      const blocker = document.createElement('div');
+      blocker.style.cssText = 'position:fixed;inset:0;z-index:99999;cursor:grabbing;';
+      document.body.appendChild(blocker);
 
       // Check if we're part of a multi-selection for group drag
       const sel = usePresentationStore.getState().selectedObject;
@@ -433,6 +437,7 @@ function DraggableBox({
           }
         };
         const handleUp = () => {
+          blocker.remove();
           setIsDragging(false); resumeUndo();
           window.removeEventListener('pointermove', handleMove);
           window.removeEventListener('pointerup', handleUp);
@@ -453,6 +458,7 @@ function DraggableBox({
           onPositionChange({ ...pos, x: newX, y: newY });
         };
         const handleUp = () => {
+          blocker.remove();
           setIsDragging(false); resumeUndo();
           window.removeEventListener('pointermove', handleMove);
           window.removeEventListener('pointerup', handleUp);
@@ -468,6 +474,10 @@ function DraggableBox({
     (e: React.PointerEvent) => {
       e.preventDefault(); e.stopPropagation(); pauseUndo();
       resizeStart.current = { x: e.clientX, y: e.clientY, w: pos.width, h: pos.height };
+      // Block iframes from stealing pointer events during resize
+      const blocker = document.createElement('div');
+      blocker.style.cssText = 'position:fixed;inset:0;z-index:99999;cursor:nwse-resize;';
+      document.body.appendChild(blocker);
       const handleMove = (me: PointerEvent) => {
         onPositionChange({
           ...pos,
@@ -476,6 +486,7 @@ function DraggableBox({
         });
       };
       const handleUp = () => {
+        blocker.remove();
         resumeUndo();
         window.removeEventListener('pointermove', handleMove);
         window.removeEventListener('pointerup', handleUp);
