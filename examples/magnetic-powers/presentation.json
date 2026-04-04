@@ -88,8 +88,8 @@
           "position": {
             "x": 169,
             "y": 331,
-            "width": 475,
-            "height": 455
+            "width": 455,
+            "height": 437
           },
           "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
           "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
@@ -100,8 +100,8 @@
           "preset": "textbox",
           "html": "$\\mA = \\bmat{0 &amp; 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 &amp; 0}$",
           "position": {
-            "x": 780,
-            "y": 400,
+            "x": 782,
+            "y": 398,
             "width": 800,
             "height": 300
           }
@@ -136,8 +136,8 @@
           "position": {
             "x": 169,
             "y": 331,
-            "width": 475,
-            "height": 455
+            "width": 455,
+            "height": 437
           },
           "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
           "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
