@@ -1289,8 +1289,9 @@
 /* Image element */
 .el-image { overflow: hidden; }
 
-/* Demo element */
-.el-demo { overflow: hidden; }
+/* Demo element — overflow visible so badges/delete aren't clipped */
+.el-demo { overflow: visible; }
+.el-demo iframe { overflow: hidden; }
 
 /* Arrow element */
 .el-arrow .arrow-handle { display: none; }
