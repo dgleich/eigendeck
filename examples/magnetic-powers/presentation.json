@@ -95,13 +95,13 @@
           "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
         },
         {
-          "id": "aea3894e-1bee-4aea-a671-a895870f2f70",
+          "id": "9351bba1-4bb4-4b72-b68d-f0c5da1362ab",
           "type": "text",
           "preset": "textbox",
-          "html": "$\\mA = \\bmat{0 &amp; 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 &amp; 0}$",
+          "html": "$\\mA = \\bmat{0 &amp; 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 &amp; 0}$<br>",
           "position": {
-            "x": 916,
-            "y": 441,
+            "x": 791,
+            "y": 499,
             "width": 800,
             "height": 300
           }
@@ -168,7 +168,7 @@
           "id": "01cf44fd-6fa5-49b0-87c7-26bbafbf89e1",
           "type": "text",
           "preset": "title",
-          "html": "Title",
+          "html": "$f(x) = x^2$",
           "position": {
             "x": 80,
             "y": 20,
@@ -178,6 +178,37 @@
         },
         {
           "id": "8cb98658-375d-4dac-a69d-64f648b477c6",
+          "type": "text",
+          "preset": "body",
+          "html": "",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "afcf93f7-1cfa-4a7b-9c9c-5a4588fed21f",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "b2ea3210-ef08-410d-8c90-e33fa1054692",
+          "type": "text",
+          "preset": "title",
+          "html": "Title",
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          }
+        },
+        {
+          "id": "8f32e211-0643-4de3-b2d1-3c82ac00cd01",
           "type": "text",
           "preset": "body",
           "html": "",
