@@ -258,7 +258,35 @@ function App() {
               if (!selected) return;
               const fullPath = selected as string;
               const relativePath = fullPath.startsWith(store.projectPath) ? fullPath.slice(store.projectPath.length + 1) : fullPath;
-              store.addElement({ id: crypto.randomUUID(), type: 'demo', src: relativePath, position: { x: 80, y: 200, width: 1760, height: 700 } });
+
+              // Check if this is a demo-piece demo by reading the HTML
+              try {
+                const { readTextFile } = await import('@tauri-apps/plugin-fs');
+                const html = await readTextFile(fullPath);
+                // Look for piece definitions: piece === 'name' or piece === "name"
+                const pieceMatches = html.matchAll(/piece\s*===?\s*['"](\w+)['"]/g);
+                const pieces = [...new Set([...pieceMatches].map(m => m[1]))];
+
+                if (pieces.length > 0 && html.includes('BroadcastChannel')) {
+                  // Demo-piece demo: create one element per piece
+                  let x = 80;
+                  for (const piece of pieces) {
+                    const width = Math.floor((1760 - (pieces.length - 1) * 40) / pieces.length);
+                    store.addElement({
+                      id: crypto.randomUUID(), type: 'demo-piece' as any,
+                      demoSrc: relativePath, piece,
+                      position: { x, y: 200, width, height: 700 },
+                    });
+                    x += width + 40;
+                  }
+                } else {
+                  // Regular iframe demo
+                  store.addElement({ id: crypto.randomUUID(), type: 'demo', src: relativePath, position: { x: 80, y: 200, width: 1760, height: 700 } });
+                }
+              } catch {
+                // Fallback: regular iframe demo
+                store.addElement({ id: crypto.randomUUID(), type: 'demo', src: relativePath, position: { x: 80, y: 200, width: 1760, height: 700 } });
+              }
             }}>+ Demo</button>
           </div>
           <SlideEditor />

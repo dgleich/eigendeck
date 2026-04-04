@@ -289,7 +289,7 @@ export function SlideEditor() {
                 } catch (err) { console.error('Failed to handle dropped image:', err); }
               } else if (isHtml && store.projectPath) {
                 try {
-                  const { readFile, writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
+                  const { readFile, readTextFile, writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
                   const demosDir = `${store.projectPath}/demos`;
                   if (!(await exists(demosDir))) await mkdir(demosDir);
                   if (!fullPath.startsWith(store.projectPath)) {
@@ -298,11 +298,30 @@ export function SlideEditor() {
                   const relativePath = fullPath.startsWith(store.projectPath)
                     ? fullPath.slice(store.projectPath.length + 1)
                     : `demos/${name}`;
-                  store.addElement({
-                    id: crypto.randomUUID(), type: 'demo',
-                    src: relativePath,
-                    position: { x: 80, y: 200, width: 1760, height: 700 },
-                  });
+
+                  // Detect demo-piece demos
+                  const html = await readTextFile(fullPath);
+                  const pieceMatches = html.matchAll(/piece\s*===?\s*['"](\w+)['"]/g);
+                  const pieces = [...new Set([...pieceMatches].map((m: RegExpMatchArray) => m[1]))];
+
+                  if (pieces.length > 0 && html.includes('BroadcastChannel')) {
+                    let x = 80;
+                    for (const piece of pieces) {
+                      const width = Math.floor((1760 - (pieces.length - 1) * 40) / pieces.length);
+                      store.addElement({
+                        id: crypto.randomUUID(), type: 'demo-piece' as any,
+                        demoSrc: relativePath, piece,
+                        position: { x, y: 200, width, height: 700 },
+                      });
+                      x += width + 40;
+                    }
+                  } else {
+                    store.addElement({
+                      id: crypto.randomUUID(), type: 'demo',
+                      src: relativePath,
+                      position: { x: 80, y: 200, width: 1760, height: 700 },
+                    });
+                  }
                 } catch (err) { console.error('Failed to handle dropped HTML:', err); }
               }
             }
