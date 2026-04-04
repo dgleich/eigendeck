@@ -3,9 +3,12 @@ import { useState } from 'react';
 const COLORS = [
   { color: '#222222', label: 'Black' },
   { color: '#6b7280', label: 'Grey' },
+  { color: '#9ca3af', label: 'Medium Grey' },
   { color: '#d1d5db', label: 'Light Grey' },
   { color: '#16a34a', label: 'Green' },
   { color: '#86efac', label: 'Light Green' },
+  { color: '#0d9488', label: 'Teal' },
+  { color: '#5eead4', label: 'Light Teal' },
   { color: '#2563eb', label: 'Blue' },
   { color: '#93c5fd', label: 'Light Blue' },
   { color: '#dc2626', label: 'Red' },

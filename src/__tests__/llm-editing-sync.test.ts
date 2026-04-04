@@ -21,7 +21,7 @@ describe('LLM-EDITING.md sync', () => {
   it('documents all TextPreset values', () => {
     const presetMatch = typesSource.match(/type TextPreset\s*=\s*([^;]+)/);
     if (presetMatch) {
-      const presets = presetMatch[1].match(/'(\w+)'/g)?.map(s => s.replace(/'/g, '')) || [];
+      const presets = presetMatch[1].match(/'(\w+)'/g)?.map((s: string) => s.replace(/'/g, '')) || [];
       for (const preset of presets) {
         expect(llmDoc).toContain(preset);
       }
@@ -32,7 +32,7 @@ describe('LLM-EDITING.md sync', () => {
     // Extract field names from BaseElement interface
     const baseMatch = typesSource.match(/interface BaseElement\s*\{([^}]+)\}/);
     if (baseMatch) {
-      const fields = baseMatch[1].match(/(\w+)\??:/g)?.map(s => s.replace(/\??:/, '')) || [];
+      const fields = baseMatch[1].match(/(\w+)\??:/g)?.map((s: string) => s.replace(/\??:/, '')) || [];
       for (const field of fields) {
         expect(llmDoc).toContain(field);
       }
@@ -42,7 +42,7 @@ describe('LLM-EDITING.md sync', () => {
   it('documents PresentationConfig fields', () => {
     const configMatch = typesSource.match(/interface PresentationConfig\s*\{([^}]+)\}/);
     if (configMatch) {
-      const fields = configMatch[1].match(/(\w+)\??:/g)?.map(s => s.replace(/\??:/, '')) || [];
+      const fields = configMatch[1].match(/(\w+)\??:/g)?.map((s: string) => s.replace(/\??:/, '')) || [];
       for (const field of fields) {
         expect(llmDoc).toContain(field);
       }
@@ -59,7 +59,7 @@ describe('LLM-EDITING.md sync', () => {
   it('documents Slide fields', () => {
     const slideMatch = typesSource.match(/interface Slide\s*\{([^}]+)\}/);
     if (slideMatch) {
-      const fields = slideMatch[1].match(/(\w+)\??:/g)?.map(s => s.replace(/\??:/, '')) || [];
+      const fields = slideMatch[1].match(/(\w+)\??:/g)?.map((s: string) => s.replace(/\??:/, '')) || [];
       for (const field of fields) {
         expect(llmDoc).toContain(field);
       }

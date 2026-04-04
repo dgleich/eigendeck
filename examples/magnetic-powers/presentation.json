@@ -1,0 +1,137 @@
+{
+  "title": "Untitled Presentation",
+  "theme": "white",
+  "slides": [
+    {
+      "id": "9b0a4f28-3407-464e-94a9-361d0ea70946",
+      "layout": "centered",
+      "elements": [
+        {
+          "id": "feb9681b-783d-4e6e-8d25-7117b66de641",
+          "type": "text",
+          "preset": "title",
+          "html": "<div style=\"text-align: center;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em; font-weight: normal;\">Fourier spectrum・Walk compression&nbsp;</span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">・Applications</span><br></div>",
+          "position": {
+            "x": 176,
+            "y": 188,
+            "width": 1596,
+            "height": 102
+          },
+          "fontSize": 48,
+          "verticalAlign": "top"
+        },
+        {
+          "id": "a1711e9e-e189-4a85-879c-605c8c4cc8b4",
+          "type": "text",
+          "preset": "textbox",
+          "html": "<span style=\"letter-spacing: 3.84px; text-align: center; text-transform: uppercase;\">POWERS OF THE MAGNETIC GRAPH MATRIX</span><br>",
+          "position": {
+            "x": 207,
+            "y": 106,
+            "width": 1529,
+            "height": 132
+          },
+          "fontSize": 72
+        },
+        {
+          "id": "cafd3f7d-6fe2-4b08-9bf7-567f510e454a",
+          "type": "text",
+          "preset": "textbox",
+          "html": "<div style=\"text-align: center;\"><i>David F. Gleich</i></div><div style=\"text-align: center;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\"><font color=\"#6b7280\">Purdue University&nbsp;</font></span></div>",
+          "position": {
+            "x": 236,
+            "y": 519,
+            "width": 1492,
+            "height": 210
+          },
+          "fontSize": 36
+        },
+        {
+          "id": "14258bd1-01a8-47f0-8dbf-2ad16fb45bdd",
+          "type": "text",
+          "preset": "textbox",
+          "html": "<div style=\"text-align: center;\"><i>Joint work with Pan Li and Yinan Huang&nbsp;</i></div><div style=\"text-align: center;\"><font color=\"#6b7280\">Georgia Tech</font></div>",
+          "position": {
+            "x": 227,
+            "y": 752,
+            "width": 1492,
+            "height": 210
+          },
+          "fontSize": 32
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "89095d98-f4c8-4b68-b0e4-fe97977ff52d",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "b407fa7c-538d-45ac-9651-f5440efc73c5",
+          "type": "text",
+          "preset": "title",
+          "html": "<span style=\"text-align: center; font-weight: normal;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\">Powers of the Adjacency Matrix</span></span>",
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          }
+        },
+        {
+          "id": "2362251c-be44-42f3-92d0-76ff72873712",
+          "type": "text",
+          "preset": "body",
+          "html": "",
+          "position": {
+            "x": 80,
+            "y": 182,
+            "width": 1760,
+            "height": 800
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "07aecdaa-23da-4a1f-baa1-b0d75a7bd01f",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "01cf44fd-6fa5-49b0-87c7-26bbafbf89e1",
+          "type": "text",
+          "preset": "title",
+          "html": "Title",
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          }
+        },
+        {
+          "id": "8cb98658-375d-4dac-a69d-64f648b477c6",
+          "type": "text",
+          "preset": "body",
+          "html": "",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          }
+        }
+      ],
+      "notes": ""
+    }
+  ],
+  "config": {
+    "transition": "slide",
+    "backgroundTransition": "fade",
+    "width": 1920,
+    "height": 1080,
+    "showSlideNumber": true,
+    "author": "David Gleich",
+    "venue": "UCLA Seminar"
+  }
+}
