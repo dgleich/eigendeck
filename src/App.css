@@ -1068,17 +1068,16 @@
   height: 100%;
 }
 
-/* Vertical alignment for text elements */
-.el-text[data-valign="middle"] > div > div {
+/* Vertical alignment for text elements — use min-height trick to avoid
+   disrupting MathJax SVG rendering (flex on the content div breaks SVGs) */
+.el-text[data-valign="middle"] > div {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  align-items: center;
 }
 
-.el-text[data-valign="bottom"] > div > div {
+.el-text[data-valign="bottom"] > div {
   display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  align-items: flex-end;
 }
 
 /* Normalize text element rendering between display and edit modes */

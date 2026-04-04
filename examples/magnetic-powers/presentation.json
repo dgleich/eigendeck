@@ -27,7 +27,7 @@
           "html": "<span style=\"letter-spacing: 3.84px; text-align: center; text-transform: uppercase;\">POWERS OF THE MAGNETIC GRAPH MATRIX</span><br>",
           "position": {
             "x": 207,
-            "y": 106,
+            "y": 104,
             "width": 1529,
             "height": 132
           },
@@ -95,13 +95,13 @@
           "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
         },
         {
-          "id": "6c855275-2404-4151-8da9-2fa21e6ac03a",
+          "id": "aea3894e-1bee-4aea-a671-a895870f2f70",
           "type": "text",
           "preset": "textbox",
-          "html": "Text",
+          "html": "$\\mA = \\bmat{0 &amp; 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 &amp; 0}$",
           "position": {
-            "x": 922,
-            "y": 457,
+            "x": 916,
+            "y": 441,
             "width": 800,
             "height": 300
           }
