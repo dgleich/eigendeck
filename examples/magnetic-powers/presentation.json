@@ -95,13 +95,13 @@
           "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
         },
         {
-          "id": "3da7246f-c3cb-48c6-b9e7-bc93f1a5db14",
+          "id": "6c855275-2404-4151-8da9-2fa21e6ac03a",
           "type": "text",
           "preset": "textbox",
-          "html": "$\\mA = \\bmat{0 &amp; 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 &amp; 0}$",
+          "html": "Text",
           "position": {
-            "x": 782,
-            "y": 398,
+            "x": 922,
+            "y": 457,
             "width": 800,
             "height": 300
           }
