@@ -191,7 +191,9 @@ body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
 
     // Initial broadcast after simulation settles a bit
     setTimeout(() => broadcastState(), 100);
-    document.body.style.display = 'none';
+    // Hide body once it exists (script runs in <head> before body)
+    if (document.body) document.body.style.display = 'none';
+    else document.addEventListener('DOMContentLoaded', () => { document.body.style.display = 'none'; });
     return;
   }
 
