@@ -48,8 +48,13 @@ body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
   const role = params.get('role');     // 'controller' or null
   const piece = params.get('piece');   // 'graph', 'stats', or null
 
+  console.log('[graph-explorer] hash:', location.hash, 'role:', role, 'piece:', piece);
+  console.log('[graph-explorer] href:', location.href);
+  console.log('[graph-explorer] pathname:', location.pathname);
+
   // Unique channel name based on demo file path
   const channelName = 'eigendeck-demo:' + location.pathname.split('/').pop();
+  console.log('[graph-explorer] channel:', channelName);
   const channel = new BroadcastChannel(channelName);
 
   // ============================================

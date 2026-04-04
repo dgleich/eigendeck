@@ -153,8 +153,13 @@ function DemoPieceBox({ element, zIndex, scale, projectPath, isSelected, onSelec
   const [interacting, setInteracting] = useState(false);
   let src: string | undefined;
   if (projectPath) {
-    try { src = convertFileSrc(`${projectPath}/${element.demoSrc}`) + `#piece=${element.piece}`; }
-    catch { src = undefined; }
+    try {
+      src = convertFileSrc(`${projectPath}/${element.demoSrc}`) + `#piece=${element.piece}`;
+      console.log(`[demo-piece] ${element.piece} iframe src:`, src);
+    }
+    catch (e) { console.error('[demo-piece] convertFileSrc error:', e); src = undefined; }
+  } else {
+    console.log('[demo-piece] no projectPath for', element.piece);
   }
   return (
     <DraggableBox
@@ -169,6 +174,8 @@ function DemoPieceBox({ element, zIndex, scale, projectPath, isSelected, onSelec
     >
       {src ? (
         <iframe src={src} sandbox="allow-scripts allow-same-origin" title={`demo-piece: ${element.piece}`}
+          onLoad={() => console.log(`[demo-piece] ${element.piece} iframe loaded`)}
+          onError={(e) => console.error(`[demo-piece] ${element.piece} iframe error:`, e)}
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
       ) : <div style={{ padding: 20, color: '#999' }}>Demo piece: {element.demoSrc} #{element.piece}</div>}
       {!interacting && (

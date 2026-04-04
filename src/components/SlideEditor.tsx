@@ -367,8 +367,11 @@ export function SlideEditor() {
             return Array.from(demoSrcs).map((demoSrc) => {
               let src: string | undefined;
               if (projectPath) {
-                try { src = convertFileSrc(`${projectPath}/${demoSrc}`) + '#role=controller'; }
-                catch { src = undefined; }
+                try {
+                  src = convertFileSrc(`${projectPath}/${demoSrc}`) + '#role=controller';
+                  console.log('[demo-controller] iframe src:', src);
+                }
+                catch (e) { console.error('[demo-controller] convertFileSrc error:', e); src = undefined; }
               }
               if (!src) return null;
               return (
@@ -377,6 +380,8 @@ export function SlideEditor() {
                   src={src}
                   sandbox="allow-scripts allow-same-origin"
                   title={`controller: ${demoSrc}`}
+                  onLoad={() => console.log('[demo-controller] iframe loaded')}
+                  onError={(e) => console.error('[demo-controller] iframe error:', e)}
                   style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }}
                 />
               );

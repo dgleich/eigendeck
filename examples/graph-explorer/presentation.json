@@ -11,7 +11,12 @@
           "type": "text",
           "preset": "title",
           "html": "Graph Explorer",
-          "position": { "x": 80, "y": 20, "width": 1760, "height": 200 },
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          },
           "verticalAlign": "bottom"
         },
         {
@@ -19,7 +24,12 @@
           "type": "text",
           "preset": "body",
           "html": "A directed graph with 7 nodes and 13 edges.<br>Click nodes to see statistics. Click two nodes to count directed paths.",
-          "position": { "x": 80, "y": 240, "width": 1760, "height": 200 }
+          "position": {
+            "x": 80,
+            "y": 240,
+            "width": 1760,
+            "height": 200
+          }
         }
       ],
       "notes": "Introduce the graph explorer demo"
@@ -34,7 +44,12 @@
           "type": "text",
           "preset": "title",
           "html": "The Graph",
-          "position": { "x": 80, "y": 20, "width": 1760, "height": 200 },
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          },
           "verticalAlign": "bottom",
           "linkId": "link-title",
           "syncId": "link-title"
@@ -44,7 +59,12 @@
           "type": "demo-piece",
           "demoSrc": "demos/graph-explorer.html",
           "piece": "graph",
-          "position": { "x": 80, "y": 240, "width": 900, "height": 650 },
+          "position": {
+            "x": 80,
+            "y": 240,
+            "width": 900,
+            "height": 650
+          },
           "linkId": "link-graph",
           "syncId": "link-graph"
         },
@@ -53,7 +73,12 @@
           "type": "text",
           "preset": "annotation",
           "html": "Click a node to select it",
-          "position": { "x": 1050, "y": 700, "width": 400, "height": 60 }
+          "position": {
+            "x": 1050,
+            "y": 700,
+            "width": 400,
+            "height": 60
+          }
         }
       ],
       "notes": "Show just the graph first"
@@ -68,7 +93,12 @@
           "type": "text",
           "preset": "title",
           "html": "The Graph",
-          "position": { "x": 80, "y": 20, "width": 1760, "height": 200 },
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          },
           "verticalAlign": "bottom",
           "linkId": "link-title",
           "syncId": "link-title"
@@ -78,7 +108,12 @@
           "type": "demo-piece",
           "demoSrc": "demos/graph-explorer.html",
           "piece": "graph",
-          "position": { "x": 80, "y": 240, "width": 900, "height": 650 },
+          "position": {
+            "x": 89,
+            "y": 312,
+            "width": 752,
+            "height": 530
+          },
           "linkId": "link-graph"
         },
         {
@@ -86,7 +121,12 @@
           "type": "demo-piece",
           "demoSrc": "demos/graph-explorer.html",
           "piece": "stats",
-          "position": { "x": 1020, "y": 240, "width": 500, "height": 650 },
+          "position": {
+            "x": 1020,
+            "y": 240,
+            "width": 500,
+            "height": 650
+          },
           "linkId": "link-stats"
         },
         {
@@ -94,7 +134,12 @@
           "type": "text",
           "preset": "annotation",
           "html": "Select two nodes to count paths between them",
-          "position": { "x": 1020, "y": 900, "width": 500, "height": 60 }
+          "position": {
+            "x": 1020,
+            "y": 900,
+            "width": 500,
+            "height": 60
+          }
         }
       ],
       "notes": "Reveal the stats panel"
@@ -108,7 +153,12 @@
           "type": "text",
           "preset": "title",
           "html": "Adjacency Matrix",
-          "position": { "x": 80, "y": 20, "width": 1760, "height": 200 },
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          },
           "verticalAlign": "bottom"
         },
         {
@@ -116,14 +166,24 @@
           "type": "text",
           "preset": "body",
           "html": "The adjacency matrix $\\mathbf{A}$ for this graph:<br>$$\\mathbf{A} = \\begin{pmatrix} 0 & 1 & 1 & 0 & 1 & 0 & 0 \\\\ 0 & 0 & 0 & 0 & 1 & 0 & 0 \\\\ 0 & 0 & 0 & 0 & 1 & 0 & 1 \\\\ 0 & 0 & 1 & 0 & 0 & 0 & 0 \\\\ 1 & 1 & 0 & 1 & 0 & 0 & 1 \\\\ 0 & 0 & 0 & 0 & 0 & 0 & 0 \\\\ 0 & 0 & 0 & 1 & 0 & 1 & 0 \\end{pmatrix}$$",
-          "position": { "x": 80, "y": 240, "width": 1760, "height": 700 }
+          "position": {
+            "x": 80,
+            "y": 240,
+            "width": 1760,
+            "height": 700
+          }
         },
         {
           "id": "footnote-4",
           "type": "text",
           "preset": "footnote",
           "html": "Entry $(\\mathbf{A}^k)_{ij}$ counts directed paths of length $k$ from $i$ to $j$",
-          "position": { "x": 80, "y": 1020, "width": 1200, "height": 44 },
+          "position": {
+            "x": 80,
+            "y": 1020,
+            "width": 1200,
+            "height": 44
+          },
           "verticalAlign": "bottom"
         }
       ],
