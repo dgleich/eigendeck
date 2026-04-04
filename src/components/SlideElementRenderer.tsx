@@ -361,8 +361,13 @@ function DraggableBox({
       if (useMultiDrag && sel?.type === 'multi') {
         const ids = sel.ids;
         const handleMove = (me: PointerEvent) => {
-          const dx = Math.round((me.clientX - dragStart.current.x) / scale);
-          const dy = Math.round((me.clientY - dragStart.current.y) / scale);
+          let dx = Math.round((me.clientX - dragStart.current.x) / scale);
+          let dy = Math.round((me.clientY - dragStart.current.y) / scale);
+          // Shift constrains to horizontal or vertical
+          if (me.shiftKey) {
+            if (Math.abs(dx) > Math.abs(dy)) dy = 0;
+            else dx = 0;
+          }
           const ddx = dx - lastDelta.current.dx;
           const ddy = dy - lastDelta.current.dy;
           if (ddx !== 0 || ddy !== 0) {
@@ -379,11 +384,16 @@ function DraggableBox({
         window.addEventListener('pointerup', handleUp);
       } else {
         const handleMove = (me: PointerEvent) => {
-          onPositionChange({
-            ...pos,
-            x: Math.round(dragStart.current.posX + (me.clientX - dragStart.current.x) / scale),
-            y: Math.round(dragStart.current.posY + (me.clientY - dragStart.current.y) / scale),
-          });
+          let newX = Math.round(dragStart.current.posX + (me.clientX - dragStart.current.x) / scale);
+          let newY = Math.round(dragStart.current.posY + (me.clientY - dragStart.current.y) / scale);
+          // Shift constrains to horizontal or vertical
+          if (me.shiftKey) {
+            const dx = Math.abs(newX - dragStart.current.posX);
+            const dy = Math.abs(newY - dragStart.current.posY);
+            if (dx > dy) newY = dragStart.current.posY;
+            else newX = dragStart.current.posX;
+          }
+          onPositionChange({ ...pos, x: newX, y: newY });
         };
         const handleUp = () => {
           setIsDragging(false); resumeUndo();
@@ -573,8 +583,13 @@ function ArrowRenderer({
       e.preventDefault(); e.stopPropagation(); onSelect(); pauseUndo();
       dragStart.current = { mx: e.clientX, my: e.clientY, ox1: x1, oy1: y1, ox2: x2, oy2: y2 };
       const handleMove = (me: PointerEvent) => {
-        const dx = (me.clientX - dragStart.current.mx) / scale;
-        const dy = (me.clientY - dragStart.current.my) / scale;
+        let dx = (me.clientX - dragStart.current.mx) / scale;
+        let dy = (me.clientY - dragStart.current.my) / scale;
+        // Shift constrains to horizontal or vertical
+        if (me.shiftKey) {
+          if (Math.abs(dx) > Math.abs(dy)) dy = 0;
+          else dx = 0;
+        }
         onUpdate({
           x1: Math.round(dragStart.current.ox1 + dx), y1: Math.round(dragStart.current.oy1 + dy),
           x2: Math.round(dragStart.current.ox2 + dx), y2: Math.round(dragStart.current.oy2 + dy),

@@ -547,6 +547,12 @@
   background: #e8e8e8;
 }
 
+.slide-canvas-container.drag-over {
+  background: #dbeafe;
+  outline: 3px dashed #3b82f6;
+  outline-offset: -3px;
+}
+
 .slide-canvas {
   background: #fff;
   border: 1px solid #ccc;

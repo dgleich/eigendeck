@@ -166,6 +166,154 @@ export function SlideEditor() {
     window.dispatchEvent(new CustomEvent('show-context-menu', { detail: { x: e.clientX, y: e.clientY, items } }));
   }, []);
 
+  // Drag-and-drop files onto canvas
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+
+    const store = usePresentationStore.getState();
+    const files = Array.from(e.dataTransfer.files);
+
+    for (const file of files) {
+      const name = file.name.toLowerCase();
+      const isImage = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(name);
+      const isHtml = /\.html?$/i.test(name);
+
+      if (isImage) {
+        if (store.projectPath) {
+          try {
+            const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
+            const imagesDir = `${store.projectPath}/images`;
+            if (!(await exists(imagesDir))) await mkdir(imagesDir);
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            await writeFile(`${imagesDir}/${file.name}`, bytes);
+            store.addElement({
+              id: crypto.randomUUID(), type: 'image',
+              src: `images/${file.name}`,
+              position: { x: 360, y: 200, width: 1200, height: 680 },
+            });
+          } catch (err) {
+            console.error('Failed to save dropped image:', err);
+            // Fallback to data URL
+            const reader = new FileReader();
+            reader.onload = () => {
+              store.addElement({
+                id: crypto.randomUUID(), type: 'image',
+                src: reader.result as string,
+                position: { x: 360, y: 200, width: 1200, height: 680 },
+              });
+            };
+            reader.readAsDataURL(file);
+          }
+        } else {
+          const reader = new FileReader();
+          reader.onload = () => {
+            store.addElement({
+              id: crypto.randomUUID(), type: 'image',
+              src: reader.result as string,
+              position: { x: 360, y: 200, width: 1200, height: 680 },
+            });
+          };
+          reader.readAsDataURL(file);
+        }
+      } else if (isHtml) {
+        if (store.projectPath) {
+          try {
+            const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
+            const demosDir = `${store.projectPath}/demos`;
+            if (!(await exists(demosDir))) await mkdir(demosDir);
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            await writeFile(`${demosDir}/${file.name}`, bytes);
+            store.addElement({
+              id: crypto.randomUUID(), type: 'demo',
+              src: `demos/${file.name}`,
+              position: { x: 80, y: 200, width: 1760, height: 700 },
+            });
+          } catch (err) {
+            console.error('Failed to save dropped HTML:', err);
+          }
+        } else {
+          console.warn('Cannot add demo without a project path — save project first');
+        }
+      }
+    }
+  }, []);
+
+  // Tauri drag-drop event (provides file paths directly)
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    (async () => {
+      try {
+        const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+        const win = getCurrentWebviewWindow();
+        unlisten = await win.onDragDropEvent(async (event) => {
+          if (event.payload.type === 'drop') {
+            const paths: string[] = event.payload.paths;
+            const store = usePresentationStore.getState();
+            for (const fullPath of paths) {
+              const name = fullPath.split('/').pop() || '';
+              const isImage = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(name);
+              const isHtml = /\.html?$/i.test(name);
+
+              if (isImage && store.projectPath) {
+                try {
+                  const { readFile, writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
+                  const imagesDir = `${store.projectPath}/images`;
+                  if (!(await exists(imagesDir))) await mkdir(imagesDir);
+                  if (!fullPath.startsWith(store.projectPath)) {
+                    await writeFile(`${imagesDir}/${name}`, await readFile(fullPath));
+                  }
+                  const relativePath = fullPath.startsWith(store.projectPath)
+                    ? fullPath.slice(store.projectPath.length + 1)
+                    : `images/${name}`;
+                  store.addElement({
+                    id: crypto.randomUUID(), type: 'image',
+                    src: relativePath,
+                    position: { x: 360, y: 200, width: 1200, height: 680 },
+                  });
+                } catch (err) { console.error('Failed to handle dropped image:', err); }
+              } else if (isHtml && store.projectPath) {
+                try {
+                  const { readFile, writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
+                  const demosDir = `${store.projectPath}/demos`;
+                  if (!(await exists(demosDir))) await mkdir(demosDir);
+                  if (!fullPath.startsWith(store.projectPath)) {
+                    await writeFile(`${demosDir}/${name}`, await readFile(fullPath));
+                  }
+                  const relativePath = fullPath.startsWith(store.projectPath)
+                    ? fullPath.slice(store.projectPath.length + 1)
+                    : `demos/${name}`;
+                  store.addElement({
+                    id: crypto.randomUUID(), type: 'demo',
+                    src: relativePath,
+                    position: { x: 80, y: 200, width: 1760, height: 700 },
+                  });
+                } catch (err) { console.error('Failed to handle dropped HTML:', err); }
+              }
+            }
+          }
+        });
+      } catch {
+        // Not in Tauri — HTML5 drag events will handle it
+      }
+    })();
+    return () => { if (unlisten) unlisten(); };
+  }, []);
+
   if (!slide) return null;
 
   const layout = slide.layout || 'default';
@@ -180,7 +328,8 @@ export function SlideEditor() {
           {LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
         </select>
       </div>
-      <div className="slide-canvas-container" ref={containerRef}>
+      <div className={`slide-canvas-container ${dragOver ? 'drag-over' : ''}`} ref={containerRef}
+        onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
         <div
           ref={canvasRef}
           className={`slide-canvas slide-layout-${layout}`}
