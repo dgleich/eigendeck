@@ -140,6 +140,15 @@ export function SlideSidebar() {
                           fontSize: 20, color: '#60a5fa',
                         }}>DEMO</div>
                       );
+                    case 'demo-piece':
+                      return (
+                        <div key={el.id} style={{
+                          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
+                          background: '#f0e8f8', border: '1px dashed #a78bfa', borderRadius: 2,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 16, color: '#7c3aed',
+                        }}>{el.piece}</div>
+                      );
                     default:
                       return null;
                   }

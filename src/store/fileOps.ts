@@ -158,6 +158,15 @@ export async function exportPresentation(): Promise<void> {
               } catch { /* skip */ }
             }
             break;
+          case 'demo-piece':
+            if (projectPath) {
+              try {
+                const demoHtml = await readTextFile(`${projectPath}/${el.demoSrc}`);
+                const escaped = demoHtml.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts"></iframe>`;
+              } catch { /* skip */ }
+            }
+            break;
           case 'arrow': {
             const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;
             const angle = Math.atan2(y2 - y1, x2 - x1);

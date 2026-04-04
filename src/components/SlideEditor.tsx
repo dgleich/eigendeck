@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { SlideElementRenderer } from './SlideElementRenderer';
 import { getSlideNumber, createTextElement } from '../types/presentation';
@@ -357,6 +358,30 @@ export function SlideEditor() {
               />
             );
           })}
+          {/* Hidden controller iframes for demo-piece elements */}
+          {(() => {
+            const demoSrcs = new Set<string>();
+            for (const el of slide.elements) {
+              if (el.type === 'demo-piece') demoSrcs.add(el.demoSrc);
+            }
+            return Array.from(demoSrcs).map((demoSrc) => {
+              let src: string | undefined;
+              if (projectPath) {
+                try { src = convertFileSrc(`${projectPath}/${demoSrc}`) + '#role=controller'; }
+                catch { src = undefined; }
+              }
+              if (!src) return null;
+              return (
+                <iframe
+                  key={`controller-${demoSrc}`}
+                  src={src}
+                  sandbox="allow-scripts allow-same-origin"
+                  title={`controller: ${demoSrc}`}
+                  style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }}
+                />
+              );
+            });
+          })()}
           {marquee && (() => {
             const x = Math.min(marquee.x1, marquee.x2);
             const y = Math.min(marquee.y1, marquee.y2);

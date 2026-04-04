@@ -74,6 +74,16 @@ export function SlideElementRenderer({
         />
       );
 
+    case 'demo-piece':
+      return (
+        <DemoPieceBox
+          element={element} zIndex={zIndex} scale={scale}
+          projectPath={projectPath} isSelected={isSelected}
+          onSelect={onSelect} onDelete={onDelete}
+          onUpdate={onUpdate}
+        />
+      );
+
     case 'arrow':
       return (
         <ArrowRenderer element={element} zIndex={zIndex} scale={scale}
@@ -114,6 +124,53 @@ function DemoBox({ element, zIndex, scale, projectPath, isSelected, onSelect, on
         <iframe src={src} sandbox="allow-scripts allow-same-origin" title="demo"
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
       ) : <div style={{ padding: 20, color: '#999' }}>Demo: {element.src}</div>}
+      {!interacting && (
+        <div className="demo-overlay"
+          onDoubleClick={(e) => { e.stopPropagation(); setInteracting(true); }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'grab', zIndex: 1 }} />
+      )}
+      {interacting && (
+        <button className="demo-lock-btn" onClick={() => setInteracting(false)}
+          style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, padding: '2px 8px', fontSize: 11,
+            border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
+          Lock
+        </button>
+      )}
+    </DraggableBox>
+  );
+}
+
+// ============================================
+// Demo-piece element — viewport iframe with piece hash
+// ============================================
+function DemoPieceBox({ element, zIndex, scale, projectPath, isSelected, onSelect, onDelete, onUpdate }: {
+  element: Extract<SlideElement, { type: 'demo-piece' }>;
+  zIndex: number; scale: number; projectPath: string | null;
+  isSelected: boolean;
+  onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
+  onUpdate: (changes: Partial<SlideElement>) => void;
+}) {
+  const [interacting, setInteracting] = useState(false);
+  let src: string | undefined;
+  if (projectPath) {
+    try { src = convertFileSrc(`${projectPath}/${element.demoSrc}`) + `#piece=${element.piece}`; }
+    catch { src = undefined; }
+  }
+  return (
+    <DraggableBox
+      elementId={element.id}
+      position={element.position} zIndex={zIndex} scale={scale}
+      className="el-demo el-demo-piece" isSelected={isSelected}
+      linkId={element.linkId} syncId={element.syncId}
+      _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
+      onSelect={onSelect} onDelete={onDelete}
+      onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+      onUpdate={onUpdate}
+    >
+      {src ? (
+        <iframe src={src} sandbox="allow-scripts allow-same-origin" title={`demo-piece: ${element.piece}`}
+          style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
+      ) : <div style={{ padding: 20, color: '#999' }}>Demo piece: {element.demoSrc} #{element.piece}</div>}
       {!interacting && (
         <div className="demo-overlay"
           onDoubleClick={(e) => { e.stopPropagation(); setInteracting(true); }}
