@@ -43,9 +43,6 @@ export function TextFormatToolbar(_props: Props) {
       <button onClick={() => exec('italic')} title="Italic (Cmd+I)">
         <i>I</i>
       </button>
-      <button onClick={() => exec('underline')} title="Underline (Cmd+U)">
-        <u>U</u>
-      </button>
       <button onClick={() => exec('strikeThrough')} title="Strikethrough">
         <s>S</s>
       </button>
