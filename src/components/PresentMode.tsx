@@ -190,6 +190,31 @@ export function PresentMode() {
               />
             ))}
 
+            {/* Hidden controller iframes for demo-piece elements */}
+            {(() => {
+              const demoSrcs = new Set<string>();
+              for (const el of slide.elements) {
+                if (el.type === 'demo-piece') demoSrcs.add(el.demoSrc);
+              }
+              return Array.from(demoSrcs).map((demoSrc) => {
+                let src: string | undefined;
+                if (projectPath) {
+                  try { src = convertFileSrc(`${projectPath}/${demoSrc}`) + '#role=controller'; }
+                  catch { src = undefined; }
+                }
+                if (!src) return null;
+                return (
+                  <iframe
+                    key={`controller-${demoSrc}`}
+                    src={src}
+                    sandbox="allow-scripts allow-same-origin"
+                    title={`controller: ${demoSrc}`}
+                    style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }}
+                  />
+                );
+              });
+            })()}
+
             {/* Footer */}
             <div className="slide-footer" style={{ zIndex: 1000 }}>
               <span className="slide-footer-meta">{meta}</span>
@@ -301,6 +326,19 @@ function PresentElement({ element: el, zIndex, projectPath, style }: {
       if (!src) return null;
       return (
         <iframe src={src} sandbox="allow-scripts allow-same-origin" title="demo" style={{
+          position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
+          border: 'none', zIndex,
+          ...style,
+        }} />
+      );
+    }
+
+    case 'demo-piece': {
+      let src: string | undefined;
+      if (projectPath) { try { src = convertFileSrc(`${projectPath}/${el.demoSrc}`) + `#piece=${el.piece}`; } catch { /* skip */ } }
+      if (!src) return null;
+      return (
+        <iframe src={src} sandbox="allow-scripts allow-same-origin" title={`demo-piece: ${el.piece}`} style={{
           position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
           border: 'none', zIndex,
           ...style,

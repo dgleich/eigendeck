@@ -193,6 +193,13 @@ function LinkableElement({ element: el, isLinked, onClick }: {
           DEMO
         </div>
       );
+    case 'demo-piece':
+      return (
+        <div style={{ ...wrapStyle, background: '#f0e8f8', border: isLinked ? '4px solid #16a34a' : '4px dashed #a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#7c3aed' }}
+          onClick={onClick} className="link-overlay-element">
+          {el.piece}
+        </div>
+      );
     case 'arrow': {
       const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;
       const angle = Math.atan2(y2 - y1, x2 - x1);

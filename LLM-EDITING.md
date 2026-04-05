@@ -153,6 +153,34 @@ The `position` field is required but ignored for arrows (use x1/y1/x2/y2).
 
 Demo files must be self-contained HTML (inline CSS/JS, or CDN references).
 
+### Demo-Piece Element
+
+```json
+{
+  "id": "unique-uuid",
+  "type": "demo-piece",
+  "demoSrc": "demos/simulation.html",
+  "piece": "graph-view",
+  "position": { "x": 80, "y": 200, "width": 900, "height": 600 },
+  "demoState": {}
+}
+```
+
+Demo-piece elements are viewport fragments of a multi-piece demo. The demo HTML file receives a hash fragment indicating its role:
+
+- **Viewport iframes**: loaded with `demoSrc#piece=PIECENAME` — render one visual piece of the demo
+- **Controller iframe**: loaded with `demoSrc#role=controller` — runs the simulation/logic, hidden (zero-size)
+
+The controller iframe is automatically added (one per unique `demoSrc` on the current slide). Communication between controller and viewports uses `BroadcastChannel` with a channel name derived from the demo's src path.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `demoSrc` | string | Relative path to the demo HTML file |
+| `piece` | string | Name of the piece/viewport to render |
+| `demoState` | object? | Optional state to pass to the demo |
+
+Multiple `demo-piece` elements can reference the same `demoSrc` with different `piece` names to show different views of the same simulation side by side.
+
 ## Linked Objects
 
 Elements can be linked across slides for animation and content synchronization.

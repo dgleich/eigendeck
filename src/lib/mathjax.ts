@@ -129,17 +129,26 @@ export async function renderMathInHtml(html: string): Promise<string> {
             MJ.tex2svgPromise(`{${tex}}`, { display: true }),
             new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000)),
           ]);
-          const svg = (container as HTMLElement).querySelector('svg');
-          if (svg) {
-            // Cache the SVG height for WYSIWYG editing
-            const svgHeight = svg.getAttribute('height') || '';
-            if (svgHeight) displayMathHeights.set(tex, svgHeight);
-            parts.push(`<div style="text-align:center;">${svg.outerHTML}</div>`);
+          const container2 = container as HTMLElement;
+          // Check for MathJax errors (undefined commands, syntax errors)
+          const errNode = container2.querySelector('mjx-container [data-mjx-error]') || container2.querySelector('[data-mml-node="merror"]');
+          if (errNode) {
+            const errMsg = errNode.getAttribute('data-mjx-error') || errNode.textContent || 'LaTeX error';
+            console.warn(`MathJax error in display math: ${errMsg}\nTeX: ${tex}`);
+            parts.push(`<div style="text-align:center;color:#dc2626;background:#fef2f2;border:1px solid #fca5a5;border-radius:4px;padding:8px;font-size:16px;font-family:monospace;">MathJax: ${errMsg}</div>`);
           } else {
-            parts.push(`$$${tex}$$`);
+            const svg = container2.querySelector('svg');
+            if (svg) {
+              const svgHeight = svg.getAttribute('height') || '';
+              if (svgHeight) displayMathHeights.set(tex, svgHeight);
+              parts.push(`<div style="text-align:center;">${svg.outerHTML}</div>`);
+            } else {
+              parts.push(`$$${tex}$$`);
+            }
           }
-        } catch {
-          parts.push(`$$${tex}$$`);
+        } catch (e) {
+          console.warn('MathJax render failed for display math:', tex, e);
+          parts.push(`<div style="color:#dc2626;font-size:14px;font-family:monospace;">$$${tex}$$ (render failed)</div>`);
         }
         i = end + 2;
         continue;
@@ -157,17 +166,26 @@ export async function renderMathInHtml(html: string): Promise<string> {
             MJ.tex2svgPromise(`{${tex}}`, { display: false }),
             new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000)),
           ]);
-          const svg = (container as HTMLElement).querySelector('svg');
-          if (svg) {
-            const vAlign = svg.style.verticalAlign || '-0.025ex';
-            svg.style.display = 'inline';
-            svg.style.verticalAlign = vAlign;
-            parts.push(svg.outerHTML);
+          const container2 = container as HTMLElement;
+          const errNode = container2.querySelector('mjx-container [data-mjx-error]') || container2.querySelector('[data-mml-node="merror"]');
+          if (errNode) {
+            const errMsg = errNode.getAttribute('data-mjx-error') || errNode.textContent || 'LaTeX error';
+            console.warn(`MathJax error in inline math: ${errMsg}\nTeX: ${tex}`);
+            parts.push(`<span style="color:#dc2626;background:#fef2f2;border:1px solid #fca5a5;border-radius:2px;padding:1px 4px;font-size:0.8em;font-family:monospace;" title="${tex}">MathJax: ${errMsg}</span>`);
           } else {
-            parts.push(`$${tex}$`);
+            const svg = container2.querySelector('svg');
+            if (svg) {
+              const vAlign = svg.style.verticalAlign || '-0.025ex';
+              svg.style.display = 'inline';
+              svg.style.verticalAlign = vAlign;
+              parts.push(svg.outerHTML);
+            } else {
+              parts.push(`$${tex}$`);
+            }
           }
-        } catch {
-          parts.push(`$${tex}$`);
+        } catch (e) {
+          console.warn('MathJax render failed for inline math:', tex, e);
+          parts.push(`<span style="color:#dc2626;font-family:monospace;">$${tex}$ (error)</span>`);
         }
         i = end + 1;
         continue;

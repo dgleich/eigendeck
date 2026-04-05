@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { TEXT_PRESET_STYLES } from '../types/presentation';
 import type { SlideLayout, VerticalAlign } from '../types/presentation';
@@ -235,6 +236,10 @@ export function PropertiesPanel() {
               </>
             )}
 
+            {selectedEl.type === 'demo-piece' && (
+              <DemoPieceProperties element={selectedEl} />
+            )}
+
             {selectedEl.type === 'arrow' && (
               <>
                 <PropSection label="Color">
@@ -259,6 +264,70 @@ export function PropertiesPanel() {
         )}
       </div>
     </div>
+  );
+}
+
+function DemoPieceProperties({ element }: { element: Extract<import('../types/presentation').SlideElement, { type: 'demo-piece' }> }) {
+  const { presentation, currentSlideIndex, addElement } = usePresentationStore();
+  const projectPath = usePresentationStore((s) => s.projectPath);
+  const [availablePieces, setAvailablePieces] = useState<string[]>([]);
+
+  // Scan the demo HTML for available pieces
+  useEffect(() => {
+    (async () => {
+      if (!projectPath) return;
+      try {
+        const { readTextFile } = await import('@tauri-apps/plugin-fs');
+        const html = await readTextFile(`${projectPath}/${element.demoSrc}`);
+        const matches = html.matchAll(/piece\s*===?\s*['"](\w+)['"]/g);
+        const pieces = [...new Set([...matches].map((m: RegExpMatchArray) => m[1]))];
+        setAvailablePieces(pieces);
+      } catch { setAvailablePieces([]); }
+    })();
+  }, [element.demoSrc, projectPath]);
+
+  // Which pieces are already on this slide?
+  const slide = presentation.slides[currentSlideIndex];
+  const piecesOnSlide = new Set(
+    slide.elements
+      .filter((el) => el.type === 'demo-piece' && el.demoSrc === element.demoSrc)
+      .map((el) => (el as typeof element).piece)
+  );
+
+  const missingPieces = availablePieces.filter((p) => !piecesOnSlide.has(p));
+
+  return (
+    <>
+      <PropSection label="Demo">
+        <span style={{ fontSize: 11, color: '#999', wordBreak: 'break-all' }}>{element.demoSrc}</span>
+      </PropSection>
+      <PropSection label="Piece">
+        <span style={{ fontSize: 12, fontWeight: 600 }}>{element.piece}</span>
+      </PropSection>
+      {missingPieces.length > 0 && (
+        <PropSection label="Add Piece">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {missingPieces.map((piece) => (
+              <button key={piece} className="prop-zbtn"
+                style={{ fontSize: 12, width: 'auto', padding: '3px 8px', textAlign: 'left' }}
+                onClick={() => {
+                  addElement({
+                    id: crypto.randomUUID(),
+                    type: 'demo-piece' as any,
+                    demoSrc: element.demoSrc,
+                    piece,
+                    position: { x: element.position.x + element.position.width + 40, y: element.position.y, width: 500, height: element.position.height },
+                  });
+                }}
+                title={`Add "${piece}" piece to this slide`}
+              >
+                + {piece}
+              </button>
+            ))}
+          </div>
+        </PropSection>
+      )}
+    </>
   );
 }
 

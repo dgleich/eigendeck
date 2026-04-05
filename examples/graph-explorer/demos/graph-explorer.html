@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; }
+body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
+
+/* Graph piece styles */
+.ge-graph { width: 100%; height: 100%; background: #fafafa; }
+.ge-graph svg { width: 100%; height: 100%; }
+.ge-node circle {
+  stroke: #fff; stroke-width: 2; cursor: pointer;
+  transition: r 0.15s ease;
+}
+.ge-node circle:hover { r: 14; }
+.ge-node.selected circle { stroke: #2563eb; stroke-width: 3; }
+.ge-node text {
+  font-size: 13px; font-weight: 700; fill: #fff;
+  pointer-events: none; text-anchor: middle; dominant-baseline: central;
+}
+.ge-link { stroke: #d1d5db; stroke-width: 2; }
+.ge-link.highlighted { stroke: #2563eb; stroke-width: 3; }
+
+/* Stats piece styles */
+.ge-stats {
+  width: 100%; height: 100%; padding: 20px 24px;
+  font-size: 20px; line-height: 1.6; color: #222; overflow-y: auto;
+}
+.ge-stats h3 {
+  margin: 0 0 12px; font-size: 24px; color: #222;
+  border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;
+}
+.ge-stat-label { color: #6b7280; font-size: 18px; }
+.ge-stat-value { font-weight: 700; color: #222; }
+.ge-stat-row { margin-bottom: 8px; }
+.ge-paths { margin-top: 12px; font-size: 18px; }
+.ge-no-selection { color: #9ca3af; font-style: italic; font-size: 20px; }
+.ge-pair-info { margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb; }
+</style>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+(function() {
+  // ============================================
+  // Parse role from URL hash
+  // ============================================
+  const params = new URLSearchParams(location.hash.slice(1));
+  const role = params.get('role');     // 'controller' or null
+  const piece = params.get('piece');   // 'graph', 'stats', or null
+
+  console.log('[graph-explorer] hash:', location.hash, 'role:', role, 'piece:', piece);
+  console.log('[graph-explorer] href:', location.href);
+  console.log('[graph-explorer] pathname:', location.pathname);
+
+  // Unique channel name based on demo file path
+  const channelName = 'eigendeck-demo:' + location.pathname.split('/').pop();
+  console.log('[graph-explorer] channel:', channelName);
+  const channel = new BroadcastChannel(channelName);
+
+  // ============================================
+  // Graph data
+  // ============================================
+  const graphData = {
+    nodes: [
+      { id: 0 }, { id: 1 }, { id: 2 }, { id: 3 },
+      { id: 4 }, { id: 5 }, { id: 6 },
+    ],
+    edges: [
+      [0,1],[0,2],[0,4],
+      [1,4],
+      [2,4],[2,6],
+      [3,2],
+      [4,0],[4,1],[4,3],[4,6],
+      [6,3],[6,5],
+    ],
+  };
+
+  const n = graphData.nodes.length;
+  const adj = Array.from({ length: n }, () => new Set());
+  const adjMatrix = Array.from({ length: n }, () => Array(n).fill(0));
+  for (const [u, v] of graphData.edges) {
+    adj[u].add(v);
+    adjMatrix[u][v] = 1;
+  }
+
+  function countPaths(from, to, maxLen) {
+    const results = [];
+    let power = Array.from({ length: n }, (_, i) =>
+      Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))
+    );
+    for (let k = 1; k <= maxLen; k++) {
+      const next = Array.from({ length: n }, () => Array(n).fill(0));
+      for (let i = 0; i < n; i++)
+        for (let j = 0; j < n; j++)
+          for (let m = 0; m < n; m++)
+            next[i][j] += power[i][m] * adjMatrix[m][j];
+      power = next;
+      results.push({ length: k, count: power[from][to] });
+    }
+    return results;
+  }
+
+  // ============================================
+  // Controller: manages state, broadcasts updates
+  // ============================================
+  if (role === 'controller') {
+    let selectedNodes = [];
+    let nodePositions = {};
+
+    // Initialize D3 simulation (headless — no rendering)
+    const nodes = graphData.nodes.map(d => ({ ...d }));
+    const links = graphData.edges.map(([s, t]) => ({ source: s, target: t }));
+
+    const simulation = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+      .force('charge', d3.forceManyBody().strength(-400))
+      .force('center', d3.forceCenter(450, 325))
+      .force('collide', d3.forceCollide(30))
+      .alphaDecay(0.005);
+
+    simulation.on('tick', () => {
+      nodePositions = {};
+      for (const node of nodes) {
+        nodePositions[node.id] = { x: node.x, y: node.y };
+      }
+      broadcastState();
+    });
+
+    function broadcastState() {
+      const highlightedEdges = [];
+      for (const nodeId of selectedNodes) {
+        for (const [u, v] of graphData.edges) {
+          if (u === nodeId || v === nodeId) highlightedEdges.push([u, v]);
+        }
+      }
+
+      let pathData = null;
+      if (selectedNodes.length === 2) {
+        pathData = {
+          from: selectedNodes[0],
+          to: selectedNodes[1],
+          paths: countPaths(selectedNodes[0], selectedNodes[1], 5),
+        };
+      }
+
+      const statsData = selectedNodes.map(nodeId => ({
+        nodeId,
+        inDeg: graphData.edges.filter(([_, v]) => v === nodeId).length,
+        outDeg: graphData.edges.filter(([u, _]) => u === nodeId).length,
+        neighbors: [...adj[nodeId]].sort((a, b) => a - b),
+      }));
+
+      channel.postMessage({
+        type: 'state',
+        nodePositions,
+        selectedNodes,
+        highlightedEdges,
+        statsData,
+        pathData,
+        graphData,
+      });
+    }
+
+    // Listen for interactions from viewports
+    channel.onmessage = (e) => {
+      const msg = e.data;
+      if (msg.type === 'click-node') {
+        const idx = selectedNodes.indexOf(msg.nodeId);
+        if (idx >= 0) {
+          selectedNodes.splice(idx, 1);
+        } else {
+          if (selectedNodes.length >= 2) selectedNodes.shift();
+          selectedNodes.push(msg.nodeId);
+        }
+        broadcastState();
+      } else if (msg.type === 'clear-selection') {
+        selectedNodes = [];
+        broadcastState();
+      } else if (msg.type === 'drag-node') {
+        const node = nodes.find(n => n.id === msg.nodeId);
+        if (node) {
+          if (msg.phase === 'start') {
+            simulation.alphaTarget(0.3).restart();
+            node.fx = msg.x; node.fy = msg.y;
+          } else if (msg.phase === 'drag') {
+            node.fx = msg.x; node.fy = msg.y;
+          } else if (msg.phase === 'end') {
+            simulation.alphaTarget(0);
+            node.fx = null; node.fy = null;
+          }
+        }
+      } else if (msg.type === 'request-state') {
+        broadcastState();
+      }
+    };
+
+    // Initial broadcast after simulation settles a bit
+    console.log('[controller] simulation started, broadcasting in 100ms');
+    setTimeout(() => { console.log('[controller] broadcasting initial state'); broadcastState(); }, 100);
+    // Hide body once it exists (script runs in <head> before body)
+    if (document.body) document.body.style.display = 'none';
+    else document.addEventListener('DOMContentLoaded', () => { document.body.style.display = 'none'; });
+    return;
+  }
+
+  // ============================================
+  // Viewport: graph piece
+  // ============================================
+  if (piece === 'graph') {
+    const setupGraph = () => {
+      console.log('[graph] setupGraph called, readyState:', document.readyState);
+      const container = document.createElement('div');
+      container.className = 'ge-graph';
+      document.body.appendChild(container);
+
+      const svg = d3.select(container).append('svg');
+      const g = svg.append('g');
+
+      const colors = ['#2563eb','#dc2626','#16a34a','#9333ea','#ea580c','#0d9488','#6b7280'];
+
+      // Arrow markers
+      const defs = svg.append('defs');
+      for (const [id, fill] of [['ge-arrow', '#d1d5db'], ['ge-arrow-hl', '#2563eb']]) {
+        defs.append('marker').attr('id', id)
+          .attr('viewBox', '0 -5 10 10').attr('refX', 22).attr('refY', 0)
+          .attr('markerWidth', 8).attr('markerHeight', 8).attr('orient', 'auto')
+          .append('path').attr('d', 'M0,-5L10,0L0,5').attr('fill', fill);
+      }
+
+      let linkGroup, nodeGroup;
+      let currentState = null;
+
+      function renderFromState(state) {
+        currentState = state;
+        const { nodePositions, selectedNodes, highlightedEdges, graphData: gd } = state;
+        if (!gd) return;
+
+        const hlSet = new Set(highlightedEdges.map(([u,v]) => `${u}-${v}`));
+
+        // Links
+        const linkData = gd.edges.map(([s, t]) => ({
+          source: s, target: t,
+          highlighted: hlSet.has(`${s}-${t}`),
+        }));
+
+        linkGroup = g.selectAll('.ge-link').data(linkData, d => `${d.source}-${d.target}`);
+        linkGroup.exit().remove();
+        const linkEnter = linkGroup.enter().append('line').attr('class', 'ge-link');
+        linkGroup = linkEnter.merge(linkGroup);
+        linkGroup
+          .attr('x1', d => nodePositions[d.source]?.x || 0)
+          .attr('y1', d => nodePositions[d.source]?.y || 0)
+          .attr('x2', d => nodePositions[d.target]?.x || 0)
+          .attr('y2', d => nodePositions[d.target]?.y || 0)
+          .classed('highlighted', d => d.highlighted)
+          .attr('marker-end', d => d.highlighted ? 'url(#ge-arrow-hl)' : 'url(#ge-arrow)');
+
+        // Nodes
+        const nodeData = gd.nodes.map(d => ({
+          ...d,
+          x: nodePositions[d.id]?.x || 0,
+          y: nodePositions[d.id]?.y || 0,
+          selected: selectedNodes.includes(d.id),
+        }));
+
+        nodeGroup = g.selectAll('.ge-node').data(nodeData, d => d.id);
+        nodeGroup.exit().remove();
+        const nodeEnter = nodeGroup.enter().append('g').attr('class', 'ge-node');
+        nodeEnter.append('circle').attr('r', 11).attr('fill', d => colors[d.id % colors.length]);
+        nodeEnter.append('text').text(d => d.id);
+
+        // Click and drag on enter
+        nodeEnter
+          .on('click', (event, d) => {
+            event.stopPropagation();
+            channel.postMessage({ type: 'click-node', nodeId: d.id });
+          })
+          .call(d3.drag()
+            .on('start', (event, d) => {
+              channel.postMessage({ type: 'drag-node', nodeId: d.id, x: event.x, y: event.y, phase: 'start' });
+            })
+            .on('drag', (event, d) => {
+              channel.postMessage({ type: 'drag-node', nodeId: d.id, x: event.x, y: event.y, phase: 'drag' });
+            })
+            .on('end', (event, d) => {
+              channel.postMessage({ type: 'drag-node', nodeId: d.id, x: event.x, y: event.y, phase: 'end' });
+            })
+          );
+
+        nodeGroup = nodeEnter.merge(nodeGroup);
+        nodeGroup
+          .attr('transform', d => `translate(${d.x},${d.y})`)
+          .classed('selected', d => d.selected);
+      }
+
+      svg.on('click', () => {
+        channel.postMessage({ type: 'clear-selection' });
+      });
+
+      channel.onmessage = (e) => {
+        console.log('[graph] received message:', e.data.type);
+        if (e.data.type === 'state') renderFromState(e.data);
+      };
+
+      // Request initial state
+      console.log('[graph] requesting initial state');
+      channel.postMessage({ type: 'request-state' });
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupGraph);
+    } else {
+      setupGraph();
+    }
+    return;
+  }
+
+  // ============================================
+  // Viewport: stats piece
+  // ============================================
+  if (piece === 'stats') {
+    const setupStats = () => {
+      console.log('[stats] setupStats called, readyState:', document.readyState);
+      const container = document.createElement('div');
+      container.className = 'ge-stats';
+      document.body.appendChild(container);
+
+      function renderStats(state) {
+        const { statsData, pathData, selectedNodes } = state;
+
+        if (!selectedNodes || selectedNodes.length === 0) {
+          container.innerHTML = `
+            <h3>Node Statistics</h3>
+            <p class="ge-no-selection">Click a node in the graph to see its statistics.</p>
+            <p class="ge-no-selection">Click two nodes to count directed paths between them.</p>
+          `;
+          return;
+        }
+
+        let html = '<h3>Node Statistics</h3>';
+
+        for (const s of statsData) {
+          html += `
+            <div style="margin-bottom: 16px;">
+              <div class="ge-stat-row"><span class="ge-stat-label">Node </span><span class="ge-stat-value" style="font-size:24px">${s.nodeId}</span></div>
+              <div class="ge-stat-row"><span class="ge-stat-label">In-degree: </span><span class="ge-stat-value">${s.inDeg}</span></div>
+              <div class="ge-stat-row"><span class="ge-stat-label">Out-degree: </span><span class="ge-stat-value">${s.outDeg}</span></div>
+              <div class="ge-stat-row"><span class="ge-stat-label">Out-neighbors: </span><span class="ge-stat-value">{${s.neighbors.join(', ')}}</span></div>
+            </div>
+          `;
+        }
+
+        if (pathData) {
+          html += `
+            <div class="ge-pair-info">
+              <div class="ge-stat-row"><span class="ge-stat-label">Paths from </span><span class="ge-stat-value">${pathData.from}</span><span class="ge-stat-label"> to </span><span class="ge-stat-value">${pathData.to}</span></div>
+              <div class="ge-paths">
+                ${pathData.paths.map(p => `<div class="ge-stat-row"><span class="ge-stat-label">Length ${p.length}: </span><span class="ge-stat-value">${p.count}</span></div>`).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        container.innerHTML = html;
+      }
+
+      channel.onmessage = (e) => {
+        console.log('[stats] received message:', e.data.type);
+        if (e.data.type === 'state') renderStats(e.data);
+      };
+
+      // Request initial state
+      console.log('[stats] requesting initial state');
+      channel.postMessage({ type: 'request-state' });
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupStats);
+    } else {
+      setupStats();
+    }
+    return;
+  }
+
+  // ============================================
+  // No role/piece — standalone mode (legacy iframe fallback)
+  // ============================================
+  // If loaded without hash params, render as a standalone demo
+  // with both graph and stats side by side
+  document.addEventListener('DOMContentLoaded', () => {
+    document.body.innerHTML = '<div style="display:flex;width:100%;height:100vh">' +
+      '<div id="graph" style="flex:2"></div>' +
+      '<div id="stats" style="flex:1;border-left:1px solid #ddd"></div></div>';
+    document.body.style.margin = '0';
+    // For standalone, just show a message
+    document.getElementById('stats').innerHTML =
+      '<div class="ge-stats"><h3>Graph Explorer</h3><p class="ge-no-selection">Open this demo in Eigendeck as demo-pieces for full interactivity.</p></div>';
+  });
+})();
+</script>
+</head>
+<body></body>
+</html>

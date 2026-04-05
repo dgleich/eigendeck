@@ -110,11 +110,19 @@ export interface DemoElement extends BaseElement {
   src: string;
 }
 
+export interface DemoPieceElement extends BaseElement {
+  type: 'demo-piece';
+  demoSrc: string;
+  piece: string;
+  demoState?: Record<string, unknown>;
+}
+
 export type SlideElement =
   | TextElement
   | ImageElement
   | ArrowElement
-  | DemoElement;
+  | DemoElement
+  | DemoPieceElement;
 
 // ============================================
 // Slide and Presentation
