@@ -18,6 +18,7 @@ export interface MonitorInfo {
   height: number;
   x: number;
   y: number;
+  scaleFactor: number;
   isPrimary: boolean;
 }
 
@@ -54,6 +55,7 @@ export async function detectProjector(): Promise<MonitorInfo | null> {
             height: m.size.height,
             x: m.position.x,
             y: m.position.y,
+            scaleFactor: m.scaleFactor,
             isPrimary: false,
           };
         }
@@ -70,6 +72,7 @@ export async function detectProjector(): Promise<MonitorInfo | null> {
           height: m.size.height,
           x: m.position.x,
           y: m.position.y,
+          scaleFactor: m.scaleFactor,
           isPrimary: false,
         };
       }
@@ -100,14 +103,20 @@ export async function openPresenterWindow(
     await closePresenterWindow();
 
     // Create presenter window on the secondary monitor
-    console.log(`[multi-monitor] Opening presenter on "${projector.name}" at (${projector.x}, ${projector.y}) ${projector.width}x${projector.height}`);
+    // Tauri window position uses logical pixels; monitor API returns physical pixels
+    const s = projector.scaleFactor || 1;
+    const logX = Math.round(projector.x / s);
+    const logY = Math.round(projector.y / s);
+    const logW = Math.round(projector.width / s);
+    const logH = Math.round(projector.height / s);
+    console.log(`[multi-monitor] Opening presenter on "${projector.name}" physical=(${projector.x}, ${projector.y}) ${projector.width}x${projector.height} scale=${s} logical=(${logX}, ${logY}) ${logW}x${logH}`);
     presenterWindow = new WebviewWindow('presenter', {
       url: '/presenter.html',
       title: 'Eigendeck Presenter',
-      x: projector.x,
-      y: projector.y,
-      width: projector.width,
-      height: projector.height,
+      x: logX,
+      y: logY,
+      width: logW,
+      height: logH,
       fullscreen: true,
       decorations: false,
       alwaysOnTop: true,
