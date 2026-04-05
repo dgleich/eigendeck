@@ -441,6 +441,48 @@
         }
       ],
       "notes": "Wrap up. Mention that BFS performance is a core HPC benchmark via Graph500."
+    },
+    {
+      "id": "decc2a52-2ccf-44b8-9525-eab10016bcf3",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "896f45da-3942-4a19-9c2b-21d004c2ea43",
+          "type": "text",
+          "preset": "title",
+          "html": "Title",
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          }
+        },
+        {
+          "id": "ad225bd8-c81c-4b8b-a4eb-a5b8618177ee",
+          "type": "text",
+          "preset": "body",
+          "html": "",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          }
+        },
+        {
+          "id": "ddb43a38-487d-48d8-b395-591e6c4caaf4",
+          "type": "demo",
+          "src": "demos/bfs-demo.html",
+          "position": {
+            "x": 80,
+            "y": 200,
+            "width": 1760,
+            "height": 700
+          }
+        }
+      ],
+      "notes": ""
     }
   ],
   "config": {

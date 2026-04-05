@@ -257,12 +257,26 @@ function App() {
               const selected = await open({ title: 'Select Demo', defaultPath: `${store.projectPath}/demos`, filters: [{ name: 'HTML', extensions: ['html'] }] });
               if (!selected) return;
               const fullPath = selected as string;
-              const relativePath = fullPath.startsWith(store.projectPath) ? fullPath.slice(store.projectPath.length + 1) : fullPath;
+              const fileName = fullPath.split('/').pop() || 'demo.html';
+
+              // Copy into demos/ if not already in project
+              let relativePath: string;
+              if (fullPath.startsWith(store.projectPath + '/')) {
+                relativePath = fullPath.slice(store.projectPath.length + 1);
+              } else {
+                relativePath = `demos/${fileName}`;
+                try {
+                  const { readFile, writeFile, exists, mkdir } = await import('@tauri-apps/plugin-fs');
+                  const demosDir = `${store.projectPath}/demos`;
+                  if (!(await exists(demosDir))) await mkdir(demosDir);
+                  await writeFile(`${demosDir}/${fileName}`, await readFile(fullPath));
+                } catch (err) { console.error('Copy demo failed:', err); }
+              }
 
               // Check if this is a demo-piece demo by reading the HTML
               try {
                 const { readTextFile } = await import('@tauri-apps/plugin-fs');
-                const html = await readTextFile(fullPath);
+                const html = await readTextFile(`${store.projectPath}/${relativePath}`);
                 // Look for piece definitions: piece === 'name' or piece === "name"
                 const pieceMatches = html.matchAll(/piece\s*===?\s*['"](\w+)['"]/g);
                 const pieces = [...new Set([...pieceMatches].map(m => m[1]))];

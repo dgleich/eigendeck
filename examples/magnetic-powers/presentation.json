@@ -1,5 +1,5 @@
 {
-  "title": "Untitled Presentation",
+  "title": "Magnetic Matrix Powers",
   "theme": "white",
   "slides": [
     {
@@ -86,8 +86,8 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 169,
-            "y": 331,
+            "x": 166,
+            "y": 394,
             "width": 455,
             "height": 437
           },
@@ -100,10 +100,22 @@
           "preset": "textbox",
           "html": "$\\mA = \\bmat{0 &amp; 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 &amp; 0}$<br>",
           "position": {
-            "x": 791,
-            "y": 499,
-            "width": 800,
-            "height": 300
+            "x": 719,
+            "y": 371,
+            "width": 667,
+            "height": 524
+          }
+        },
+        {
+          "id": "ef74b0ad-8a04-4703-ad7e-347f50222fdb",
+          "type": "text",
+          "preset": "textbox",
+          "html": "$\\mA^k$",
+          "position": {
+            "x": 1580,
+            "y": 571,
+            "width": 84,
+            "height": 91
           }
         }
       ],
@@ -134,8 +146,8 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 169,
-            "y": 331,
+            "x": 166,
+            "y": 394,
             "width": 455,
             "height": 437
           },
@@ -155,6 +167,112 @@
           },
           "linkId": "182ef785-f625-4931-8cd0-929895267d37",
           "syncId": "182ef785-f625-4931-8cd0-929895267d37"
+        },
+        {
+          "id": "c4d38376-2a38-4a8a-90ff-1f4af937ecf8",
+          "type": "text",
+          "preset": "textbox",
+          "html": "$\\mA^k$",
+          "position": {
+            "x": 811,
+            "y": 500,
+            "width": 84,
+            "height": 91
+          },
+          "linkId": "3b662a91-1b4e-472e-9113-9a254ea811ad",
+          "syncId": "3b662a91-1b4e-472e-9113-9a254ea811ad"
+        },
+        {
+          "id": "02126ddd-1246-4952-9e91-ac21a071751f",
+          "type": "text",
+          "preset": "textbox",
+          "html": "$\\mP^k$",
+          "position": {
+            "x": 807,
+            "y": 627,
+            "width": 84,
+            "height": 91
+          },
+          "linkId": "a0de5cd3-cf3e-4892-97f2-7f09c3ccb126",
+          "syncId": "a0de5cd3-cf3e-4892-97f2-7f09c3ccb126"
+        }
+      ],
+      "notes": "",
+      "groupId": "6ac46108-61f1-47b5-89e0-404ccdd228c0"
+    },
+    {
+      "id": "bd920539-d40c-4a9d-bb8b-b15bc0c8855f",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "85f5649f-56b5-4e3e-b126-91001fe3c1d0",
+          "type": "text",
+          "preset": "title",
+          "html": "<span style=\"text-align: center; font-weight: normal;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\">Powers of the Adjacency Matrix</span></span>",
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          },
+          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
+          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
+        },
+        {
+          "id": "1b9b28bf-47f5-4db0-9d9e-b505eebfd1df",
+          "type": "demo-piece",
+          "demoSrc": "demos/demo_powers_teaser.html",
+          "piece": "graph",
+          "position": {
+            "x": 166,
+            "y": 394,
+            "width": 455,
+            "height": 437
+          },
+          "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
+          "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
+        },
+        {
+          "id": "a37ce41f-64cf-4412-bd7e-35134dd601c3",
+          "type": "demo-piece",
+          "demoSrc": "demos/demo_powers_teaser.html",
+          "piece": "results",
+          "position": {
+            "x": 923,
+            "y": 395,
+            "width": 975,
+            "height": 555
+          },
+          "linkId": "182ef785-f625-4931-8cd0-929895267d37",
+          "syncId": "182ef785-f625-4931-8cd0-929895267d37"
+        },
+        {
+          "id": "19cb0125-de88-4b04-9ccb-dcbc857d10e7",
+          "type": "text",
+          "preset": "textbox",
+          "html": "$\\mA^k$",
+          "position": {
+            "x": 811,
+            "y": 500,
+            "width": 84,
+            "height": 91
+          },
+          "linkId": "3b662a91-1b4e-472e-9113-9a254ea811ad",
+          "syncId": "3b662a91-1b4e-472e-9113-9a254ea811ad"
+        },
+        {
+          "id": "399ab192-81e3-47f2-8788-65a160b517f6",
+          "type": "text",
+          "preset": "textbox",
+          "html": "$\\mP^k$",
+          "position": {
+            "x": 807,
+            "y": 627,
+            "width": 84,
+            "height": 91
+          },
+          "linkId": "a0de5cd3-cf3e-4892-97f2-7f09c3ccb126",
+          "syncId": "a0de5cd3-cf3e-4892-97f2-7f09c3ccb126"
         }
       ],
       "notes": "",
@@ -230,6 +348,7 @@
     "height": 1080,
     "showSlideNumber": true,
     "author": "David Gleich",
-    "venue": "UCLA Seminar"
+    "venue": "UCLA Seminar",
+    "mathPreamble": "\\newcommand{\\eps}{\\varepsilon}\n\\newcommand{\\kron}{\\otimes}\n\\DeclareMathOperator{\\diag}{diag}\n\\DeclareMathOperator{\\trace}{trace}\n\\DeclareMathOperator{\\rank}{rank}\n\\DeclareMathOperator*{\\minimize}{minimize}\n\\DeclareMathOperator*{\\maximize}{maximize}\n\\DeclareMathOperator{\\subjectto}{subject to}\n\n\\newcommand{\\mat}[1]{\\boldsymbol{#1}}\n\\renewcommand{\\vec}[1]{\\boldsymbol{\\mathrm{#1}}}\n\\newcommand{\\vecalt}[1]{\\boldsymbol{#1}}\n\n\\newcommand{\\conj}[1]{\\overline{#1}}\n\n\\newcommand{\\normof}[1]{\\|#1\\|}\n\\newcommand{\\onormof}[2]{\\|#1\\|_{#2}}\n\n\\newcommand{\\MIN}[2]{\\begin{array}{ll} \\minimize_{#1} & {#2} \\end{array}}\n\\newcommand{\\MINone}[3]{\\begin{array}{ll} \\minimize_{#1} & {#2} \\\\ \\subjectto & {#3} \\end{array}}\n\\newcommand{\\MINthree}[5]{\\begin{array}{ll} \\minimize_{#1} & {#2} \\\\ \\subjectto & {#3} \\\\ & {#4} \\\\ & {#5} \\end{array}}\n\n\\newcommand{\\MAX}[2]{\\begin{array}{ll} \\maximize_{#1} & {#2} \\end{array}}\n\\newcommand{\\MAXone}[3]{\\begin{array}{ll} \\maximize_{#1} & {#2} \\\\ \\subjectto & {#3} \\end{array}}\n\n\n\\newcommand{\\itr}[2]{#1^{(#2)}}\n\\newcommand{\\itn}[1]{^{(#1)}}\n\n\\newcommand{\\prob}{\\mathbb{P}}\n\\newcommand{\\probof}[1]{\\prob\\left\\{ #1 \\right\\}}\n\n\\newcommand{\\pmat}[1]{\\begin{pmatrix} #1 \\end{pmatrix}}\n\\newcommand{\\bmat}[1]{\\begin{bmatrix} #1 \\end{bmatrix}}\n\\newcommand{\\spmat}[1]{\\left(\\begin{smallmatrix} #1 \\end{smallmatrix}\\right)}\n\\newcommand{\\sbmat}[1]{\\left[\\begin{smallmatrix} #1 \\end{smallmatrix}\\right]}\n\n\\newcommand{\\RR}{\\mathbb{R}}\n\\newcommand{\\CC}{\\mathbb{C}}\n\\newcommand{\\eye}{\\mat{I}}\n\\newcommand{\\mA}{\\mat{A}}\n\\newcommand{\\mB}{\\mat{B}}\n\\newcommand{\\mC}{\\mat{C}}\n\\newcommand{\\mD}{\\mat{D}}\n\\newcommand{\\mE}{\\mat{E}}\n\\newcommand{\\mF}{\\mat{F}}\n\\newcommand{\\mG}{\\mat{G}}\n\\newcommand{\\mH}{\\mat{H}}\n\\newcommand{\\mI}{\\mat{I}}\n\\newcommand{\\mJ}{\\mat{J}}\n\\newcommand{\\mK}{\\mat{K}}\n\\newcommand{\\mL}{\\mat{L}}\n\\newcommand{\\mM}{\\mat{M}}\n\\newcommand{\\mN}{\\mat{N}}\n\\newcommand{\\mO}{\\mat{O}}\n\\newcommand{\\mP}{\\mat{P}}\n\\newcommand{\\mQ}{\\mat{Q}}\n\\newcommand{\\mR}{\\mat{R}}\n\\newcommand{\\mS}{\\mat{S}}\n\\newcommand{\\mT}{\\mat{T}}\n\\newcommand{\\mU}{\\mat{U}}\n\\newcommand{\\mV}{\\mat{V}}\n\\newcommand{\\mW}{\\mat{W}}\n\\newcommand{\\mX}{\\mat{X}}\n\\newcommand{\\mY}{\\mat{Y}}\n\\newcommand{\\mZ}{\\mat{Z}}\n\\newcommand{\\mLambda}{\\mat{\\Lambda}}\n\\newcommand{\\mPbar}{\\bar{\\mP}}\n\\newcommand{\\ones}{\\vec{e}}\n\\newcommand{\\va}{\\vec{a}}\n\\newcommand{\\vb}{\\vec{b}}\n\\newcommand{\\vc}{\\vec{c}}\n\\newcommand{\\vd}{\\vec{d}}\n\\newcommand{\\ve}{\\vec{e}}\n\\newcommand{\\vf}{\\vec{f}}\n\\newcommand{\\vg}{\\vec{g}}\n\\newcommand{\\vh}{\\vec{h}}\n\\newcommand{\\vi}{\\vec{i}}\n\\newcommand{\\vj}{\\vec{j}}\n\\newcommand{\\vk}{\\vec{k}}\n\\newcommand{\\vl}{\\vec{l}}\n\\newcommand{\\vm}{\\vec{l}}\n\\newcommand{\\vn}{\\vec{n}}\n\\newcommand{\\vo}{\\vec{o}}\n\\newcommand{\\vp}{\\vec{p}}\n\\newcommand{\\vq}{\\vec{q}}\n\\newcommand{\\vr}{\\vec{r}}\n\\newcommand{\\vs}{\\vec{s}}\n\\newcommand{\\vt}{\\vec{t}}\n\\newcommand{\\vu}{\\vec{u}}\n\\newcommand{\\vv}{\\vec{v}}\n\\newcommand{\\vw}{\\vec{w}}\n\\newcommand{\\vx}{\\vec{x}}\n\\newcommand{\\vy}{\\vec{y}}\n\\newcommand{\\vz}{\\vec{z}}\n\\newcommand{\\vpi}{\\vecalt{\\pi}}\n\n\\newcommand{\\vlambda}{\\vecalt{\\lambda}}\n"
   }
 }
