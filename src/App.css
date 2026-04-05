@@ -209,6 +209,60 @@
   color: #1a1a1a;
 }
 
+/* Recent projects dropdown */
+.recent-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 260px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  padding: 4px 0;
+  z-index: 1000;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.recent-item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.recent-item:hover {
+  background: #2563eb;
+}
+
+.recent-item:hover .recent-title,
+.recent-item:hover .recent-path {
+  color: #fff;
+}
+
+.recent-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.recent-path {
+  font-size: 11px;
+  color: #999;
+}
+
+.recent-empty {
+  padding: 12px;
+  color: #999;
+  font-size: 13px;
+  text-align: center;
+}
+
 .btn-present {
   background: #2563eb !important;
   color: #fff !important;

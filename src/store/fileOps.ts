@@ -16,6 +16,49 @@ async function showError(msg: string) {
   await message(msg, { title: 'Error', kind: 'error' });
 }
 
+// ============================================
+// Recent projects (stored in localStorage)
+// ============================================
+const RECENT_KEY = 'eigendeck-recent-projects';
+const MAX_RECENT = 10;
+
+export interface RecentProject {
+  path: string;
+  title: string;
+  lastOpened: string; // ISO timestamp
+}
+
+export function getRecentProjects(): RecentProject[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+  } catch { return []; }
+}
+
+function addRecentProject(path: string, title: string) {
+  const recents = getRecentProjects().filter((r) => r.path !== path);
+  recents.unshift({ path, title, lastOpened: new Date().toISOString() });
+  if (recents.length > MAX_RECENT) recents.length = MAX_RECENT;
+  localStorage.setItem(RECENT_KEY, JSON.stringify(recents));
+}
+
+export async function openRecentProject(path: string): Promise<void> {
+  const jsonPath = `${path}/presentation.json`;
+  try {
+    if (!(await exists(jsonPath))) {
+      await showError('Project not found at this path.');
+      return;
+    }
+    const content = await readTextFile(jsonPath);
+    const presentation: Presentation = JSON.parse(content);
+    const store = usePresentationStore.getState();
+    store.setProjectPath(path);
+    store.setPresentation(presentation);
+    addRecentProject(path, presentation.title);
+  } catch (e) {
+    await showError(`Failed to open project: ${e}`);
+  }
+}
+
 export async function openProject(): Promise<void> {
   const selected = await open({
     directory: true,
@@ -38,6 +81,7 @@ export async function openProject(): Promise<void> {
     const store = usePresentationStore.getState();
     store.setProjectPath(projectPath);
     store.setPresentation(presentation);
+    addRecentProject(projectPath, presentation.title);
   } catch (e) {
     await showError(`Failed to open project: ${e}`);
   }
@@ -67,6 +111,7 @@ export async function createProject(): Promise<void> {
     const store = usePresentationStore.getState();
     store.setProjectPath(projectPath);
     store.setPresentation(presentation);
+    addRecentProject(projectPath, presentation.title);
   } catch (e) {
     await showError(`Failed to create project: ${e}`);
   }
