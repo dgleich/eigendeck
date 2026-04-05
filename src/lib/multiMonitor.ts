@@ -7,6 +7,7 @@
 import { availableMonitors, currentMonitor } from '@tauri-apps/api/window';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { emitTo, listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
 import type { Presentation } from '../types/presentation';
 
 let presenterWindow: WebviewWindow | null = null;
@@ -137,10 +138,14 @@ export async function openPresenterWindow(
       new Promise((_, reject) => setTimeout(() => reject(new Error('Presenter window timeout')), 5000)),
     ]);
 
-    // Don't use fullscreen — it hides the menu bar/dock on the primary monitor.
-    // Instead, the window is already sized to cover the entire secondary monitor
-    // with decorations:false, which is how Keynote/PowerPoint do it.
-    console.log('[multi-monitor] Window ready (borderless, covering secondary monitor)');
+    // Set window level above the menu bar so it covers the secondary monitor fully.
+    // This is how Keynote/PowerPoint do it — no fullscreen API, just a high window level.
+    console.log('[multi-monitor] Window ready, setting window level above menu bar');
+    try {
+      await invoke('set_window_above_menubar', { label: 'presenter' });
+    } catch (e) {
+      console.warn('[multi-monitor] Could not set window level:', e);
+    }
 
     // Send presentation data
     await emitTo('presenter', 'presenter:init', {

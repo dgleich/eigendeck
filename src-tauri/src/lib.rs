@@ -1,9 +1,32 @@
 use tauri::menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager};
 
+/// Set window level above the menu bar on macOS so it covers everything
+/// on the secondary monitor (including the menu bar strip).
+#[tauri::command]
+fn set_window_above_menubar(app: tauri::AppHandle, label: String) -> Result<(), String> {
+    let _window = app
+        .get_webview_window(&label)
+        .ok_or_else(|| format!("Window '{}' not found", label))?;
+
+    #[cfg(target_os = "macos")]
+    {
+        use tauri::WebviewWindowExt;
+        let ns_window_ptr = _window.ns_window().map_err(|e| e.to_string())?;
+        unsafe {
+            // NSMainMenuWindowLevel = 24. Set our window to 25 to cover the menu bar.
+            let level: i64 = 25;
+            let _: () = objc2::msg_send![ns_window_ptr as *const objc2::runtime::AnyObject, setLevel: level];
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![set_window_above_menubar])
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
