@@ -137,15 +137,10 @@ export async function openPresenterWindow(
       new Promise((_, reject) => setTimeout(() => reject(new Error('Presenter window timeout')), 5000)),
     ]);
 
-    // Use simpleFullscreen on macOS — covers the screen including menu bar
-    // without creating a new Space (unlike setFullscreen which does)
-    console.log('[multi-monitor] Window ready, setting simple fullscreen');
-    try {
-      await presenterWindow.setSimpleFullscreen(true);
-    } catch {
-      // Fallback for non-macOS
-      await presenterWindow.setFullscreen(true);
-    }
+    // Don't use fullscreen — it hides the menu bar/dock on the primary monitor.
+    // Instead, the window is already sized to cover the entire secondary monitor
+    // with decorations:false, which is how Keynote/PowerPoint do it.
+    console.log('[multi-monitor] Window ready (borderless, covering secondary monitor)');
 
     // Send presentation data
     await emitTo('presenter', 'presenter:init', {
