@@ -9,7 +9,7 @@ import {
 import type { RecentProject } from '../store/fileOps';
 
 export function Toolbar() {
-  const { presentation, isDirty, setPresenting, setTitle, updateConfig, projectPath } =
+  const { presentation, isDirty, setTitle, updateConfig, projectPath } =
     usePresentationStore();
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -152,7 +152,7 @@ export function Toolbar() {
           Export
         </button>
         <button
-          onClick={() => setPresenting(true)}
+          onClick={() => window.dispatchEvent(new CustomEvent('start-presenting'))}
           title="Present (F5)"
           className="btn-present"
         >

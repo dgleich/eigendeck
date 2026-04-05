@@ -4,6 +4,8 @@ import { Toolbar } from './components/Toolbar';
 import { SlideSidebar } from './components/SlideSidebar';
 import { SlideEditor } from './components/SlideEditor';
 import { PresentMode } from './components/PresentMode';
+import { SpeakerMode } from './components/SpeakerMode';
+import { openPresenterWindow } from './lib/multiMonitor';
 import { NotesPanel } from './components/NotesPanel';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { DebugConsole } from './components/DebugConsole';
@@ -31,6 +33,7 @@ function App() {
   const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[] } | { type: 'slide'; data: any } | null>(null);
   const [linkOverlayElementId, setLinkOverlayElementId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuEntry[] } | null>(null);
+  const [multiMonitorPresenting, setMultiMonitorPresenting] = useState(false);
 
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
@@ -63,6 +66,27 @@ function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
+  // Start presenting — try multi-monitor first, fall back to single window
+  const startPresenting = useCallback(async () => {
+    const state = usePresentationStore.getState();
+    try {
+      const opened = await openPresenterWindow(
+        state.presentation,
+        state.currentSlideIndex,
+        state.projectPath
+      );
+      if (opened) {
+        setMultiMonitorPresenting(true);
+        state.setPresenting(true);
+        return;
+      }
+    } catch (e) {
+      console.log('Multi-monitor not available:', e);
+    }
+    // Fallback: single-window fullscreen
+    state.setPresenting(true);
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -70,7 +94,7 @@ function App() {
       if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); usePresentationStore.temporal.getState().undo(); }
       if ((e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) || (e.key === 'y' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); usePresentationStore.temporal.getState().redo(); }
       if (e.key === 'i' && (e.ctrlKey || e.metaKey) && !(e.target as HTMLElement).closest('[contenteditable]')) { e.preventDefault(); usePresentationStore.getState().toggleProperties(); }
-      if (e.key === 'F5') { e.preventDefault(); forceSave().then(() => usePresentationStore.getState().setPresenting(true)); }
+      if (e.key === 'F5') { e.preventDefault(); forceSave().then(() => startPresenting()); }
       // Delete selected element
       if ((e.key === 'Delete' || e.key === 'Backspace') && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
         const sel = usePresentationStore.getState().selectedObject;
@@ -166,6 +190,13 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Present button event
+  useEffect(() => {
+    const handler = () => { forceSave().then(() => startPresenting()); };
+    window.addEventListener('start-presenting', handler);
+    return () => window.removeEventListener('start-presenting', handler);
+  }, [startPresenting]);
+
   // Context menu: global event listener + suppress default
   useEffect(() => {
     const handler = (e: Event) => {
@@ -204,7 +235,7 @@ function App() {
         case 'open-project': openProject(); break;
         case 'save': saveProject(); break;
         case 'export': exportPresentation(); break;
-        case 'present': usePresentationStore.getState().setPresenting(true); break;
+        case 'present': startPresenting(); break;
         case 'inspector': usePresentationStore.getState().toggleProperties(); break;
         case 'debug-console': window.dispatchEvent(new CustomEvent('toggle-debug-console')); break;
       }
@@ -212,6 +243,7 @@ function App() {
     return () => { unlisten.then((fn) => fn()); };
   }, []);
 
+  if (isPresenting && multiMonitorPresenting) return <SpeakerMode />;
   if (isPresenting) return <PresentMode />;
 
   const store = usePresentationStore.getState();
