@@ -51,6 +51,21 @@ function PresenterApp() {
     return () => { unsubs.forEach((fn) => fn()); };
   }, []);
 
+  // Escape key closes the presenter window
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        // Tell main window we're closing
+        await emitTo('main', 'presenter:closed', {});
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        await getCurrentWindow().close();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Scale to fit viewport
   useEffect(() => {
     const el = viewportRef.current;

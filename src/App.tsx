@@ -200,6 +200,21 @@ function App() {
     return () => window.removeEventListener('start-presenting', handler);
   }, [startPresenting]);
 
+  // Listen for presenter window closing (Escape in presenter)
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    (async () => {
+      try {
+        const { listen: tauriListen } = await import('@tauri-apps/api/event');
+        unlisten = await tauriListen('presenter:closed', () => {
+          setMultiMonitorPresenting(false);
+          usePresentationStore.getState().setPresenting(false);
+        });
+      } catch { /* not in Tauri */ }
+    })();
+    return () => { if (unlisten) unlisten(); };
+  }, []);
+
   // Context menu: global event listener + suppress default
   useEffect(() => {
     const handler = (e: Event) => {

@@ -137,9 +137,15 @@ export async function openPresenterWindow(
       new Promise((_, reject) => setTimeout(() => reject(new Error('Presenter window timeout')), 5000)),
     ]);
 
-    // Now fullscreen on the correct monitor
-    console.log('[multi-monitor] Window ready, setting fullscreen');
-    await presenterWindow.setFullscreen(true);
+    // Use simpleFullscreen on macOS — covers the screen including menu bar
+    // without creating a new Space (unlike setFullscreen which does)
+    console.log('[multi-monitor] Window ready, setting simple fullscreen');
+    try {
+      await presenterWindow.setSimpleFullscreen(true);
+    } catch {
+      // Fallback for non-macOS
+      await presenterWindow.setFullscreen(true);
+    }
 
     // Send presentation data
     await emitTo('presenter', 'presenter:init', {
