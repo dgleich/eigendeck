@@ -426,14 +426,16 @@ function DraggableBox({
       // If not already selected, select it (clears multi-select)
       if (!isSelected) onSelect();
 
-      setIsDragging(true);
-      pauseUndo();
       dragStart.current = { x: e.clientX, y: e.clientY, posX: pos.x, posY: pos.y };
       lastDelta.current = { dx: 0, dy: 0 };
-      // Lazy blocker: prevents iframes from stealing events during actual drag
+      // Lazy: only start drag state and blocker on first actual movement
+      let dragStarted = false;
       let blocker: HTMLDivElement | null = null;
-      const ensureBlocker = () => {
-        if (!blocker) {
+      const ensureDragStarted = () => {
+        if (!dragStarted) {
+          dragStarted = true;
+          setIsDragging(true);
+          pauseUndo();
           blocker = document.createElement('div');
           blocker.style.cssText = 'position:fixed;inset:0;z-index:99999;cursor:grabbing;';
           document.body.appendChild(blocker);
@@ -447,7 +449,7 @@ function DraggableBox({
       if (useMultiDrag && sel?.type === 'multi') {
         const ids = sel.ids;
         const handleMove = (me: PointerEvent) => {
-          ensureBlocker();
+          ensureDragStarted();
           let dx = Math.round((me.clientX - dragStart.current.x) / scale);
           let dy = Math.round((me.clientY - dragStart.current.y) / scale);
           // Shift constrains to horizontal or vertical
@@ -464,7 +466,7 @@ function DraggableBox({
         };
         const handleUp = () => {
           blocker?.remove();
-          setIsDragging(false); resumeUndo();
+          if (dragStarted) { setIsDragging(false); resumeUndo(); }
           window.removeEventListener('pointermove', handleMove);
           window.removeEventListener('pointerup', handleUp);
         };
@@ -472,7 +474,7 @@ function DraggableBox({
         window.addEventListener('pointerup', handleUp);
       } else {
         const handleMove = (me: PointerEvent) => {
-          ensureBlocker();
+          ensureDragStarted();
           let newX = Math.round(dragStart.current.posX + (me.clientX - dragStart.current.x) / scale);
           let newY = Math.round(dragStart.current.posY + (me.clientY - dragStart.current.y) / scale);
           // Shift constrains to horizontal or vertical
@@ -486,7 +488,7 @@ function DraggableBox({
         };
         const handleUp = () => {
           blocker?.remove();
-          setIsDragging(false); resumeUndo();
+          if (dragStarted) { setIsDragging(false); resumeUndo(); }
           window.removeEventListener('pointermove', handleMove);
           window.removeEventListener('pointerup', handleUp);
         };
