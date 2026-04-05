@@ -70,18 +70,21 @@ function App() {
   const startPresenting = useCallback(async () => {
     const state = usePresentationStore.getState();
     try {
+      console.log('[present] Attempting multi-monitor...');
       const opened = await openPresenterWindow(
         state.presentation,
         state.currentSlideIndex,
         state.projectPath
       );
       if (opened) {
+        console.log('[present] Multi-monitor presenter opened');
         setMultiMonitorPresenting(true);
         state.setPresenting(true);
         return;
       }
+      console.log('[present] No secondary monitor, using single-window');
     } catch (e) {
-      console.log('Multi-monitor not available:', e);
+      console.log('[present] Multi-monitor not available:', e);
     }
     // Fallback: single-window fullscreen
     state.setPresenting(true);

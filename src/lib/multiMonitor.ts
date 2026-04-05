@@ -28,16 +28,26 @@ export interface MonitorInfo {
 export async function detectProjector(): Promise<MonitorInfo | null> {
   try {
     const monitors = await availableMonitors();
-    if (monitors.length <= 1) return null;
+    console.log(`[multi-monitor] Found ${monitors.length} monitor(s):`);
+    for (const m of monitors) {
+      console.log(`  - "${m.name}" ${m.size.width}x${m.size.height} at (${m.position.x}, ${m.position.y}) scale=${m.scaleFactor}`);
+    }
+    if (monitors.length <= 1) {
+      console.log('[multi-monitor] Only one monitor, using single-window mode');
+      return null;
+    }
 
     const primary = await currentMonitor();
     const primaryName = primary?.name || '';
+    console.log(`[multi-monitor] Primary monitor: "${primaryName}"`);
 
     // Find the non-primary monitor — prefer one with "projector" or "external" in name
     for (const m of monitors) {
+      console.log(`[multi-monitor] Checking "${m.name}" vs primary "${primaryName}"`);
       if (m.name !== primaryName) {
         const nameLower = (m.name || '').toLowerCase();
         if (nameLower.includes('projector') || nameLower.includes('external')) {
+          console.log(`[multi-monitor] Found projector: "${m.name}"`);
           return {
             name: m.name || 'External',
             width: m.size.width,
@@ -53,6 +63,7 @@ export async function detectProjector(): Promise<MonitorInfo | null> {
     // Fall back to any non-primary monitor
     for (const m of monitors) {
       if (m.name !== primaryName) {
+        console.log(`[multi-monitor] Using non-primary: "${m.name}"`);
         return {
           name: m.name || 'External',
           width: m.size.width,
@@ -89,6 +100,7 @@ export async function openPresenterWindow(
     await closePresenterWindow();
 
     // Create presenter window on the secondary monitor
+    console.log(`[multi-monitor] Opening presenter on "${projector.name}" at (${projector.x}, ${projector.y}) ${projector.width}x${projector.height}`);
     presenterWindow = new WebviewWindow('presenter', {
       url: '/presenter.html',
       title: 'Eigendeck Presenter',
