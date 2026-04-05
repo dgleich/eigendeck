@@ -5,20 +5,24 @@ use tauri::{Emitter, Manager};
 /// on the secondary monitor (including the menu bar strip).
 #[tauri::command]
 fn set_window_above_menubar(app: tauri::AppHandle, label: String) -> Result<(), String> {
-    let _window = app
+    let window = app
         .get_webview_window(&label)
         .ok_or_else(|| format!("Window '{}' not found", label))?;
 
     #[cfg(target_os = "macos")]
     {
-        use tauri::WebviewWindowExt;
-        let ns_window_ptr = _window.ns_window().map_err(|e| e.to_string())?;
+        use cocoa::appkit::NSWindow;
+        use cocoa::base::id;
+
+        let ns_win: id = window.ns_window().map_err(|e| e.to_string())? as id;
         unsafe {
-            // NSMainMenuWindowLevel = 24. Set our window to 25 to cover the menu bar.
-            let level: i64 = 25;
-            let _: () = objc2::msg_send![ns_window_ptr as *const objc2::runtime::AnyObject, setLevel: level];
+            // kCGMainMenuWindowLevel = 24. Level 25 is above the menu bar.
+            ns_win.setLevel_(25);
         }
     }
+
+    #[cfg(not(target_os = "macos"))]
+    let _ = window;
 
     Ok(())
 }
