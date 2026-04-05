@@ -99,6 +99,7 @@ export function SlideElementRenderer({
           <div style={{
             width: '100%', height: '100%',
             background: element.color || '#ffffff',
+            pointerEvents: 'none',
           }} />
         </DraggableBox>
       );
