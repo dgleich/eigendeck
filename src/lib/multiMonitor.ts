@@ -117,10 +117,10 @@ export async function openPresenterWindow(
       y: logY,
       width: logW,
       height: logH,
-      fullscreen: true,
+      fullscreen: false, // Position first, fullscreen after
       decorations: false,
       alwaysOnTop: true,
-      focus: false, // Keep focus on main window for speaker controls
+      focus: false,
     });
 
     // Wait for the presenter window to signal ready
@@ -136,6 +136,10 @@ export async function openPresenterWindow(
       readyPromise,
       new Promise((_, reject) => setTimeout(() => reject(new Error('Presenter window timeout')), 5000)),
     ]);
+
+    // Now fullscreen on the correct monitor
+    console.log('[multi-monitor] Window ready, setting fullscreen');
+    await presenterWindow.setFullscreen(true);
 
     // Send presentation data
     await emitTo('presenter', 'presenter:init', {
