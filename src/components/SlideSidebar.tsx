@@ -149,6 +149,13 @@ export function SlideSidebar() {
                           fontSize: 16, color: '#7c3aed',
                         }}>{el.piece}</div>
                       );
+                    case 'cover':
+                      return (
+                        <div key={el.id} style={{
+                          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
+                          background: el.color || '#fff', border: '1px solid #ddd',
+                        }} />
+                      );
                     default:
                       return null;
                   }

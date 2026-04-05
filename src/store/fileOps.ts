@@ -167,6 +167,9 @@ export async function exportPresentation(): Promise<void> {
               } catch { /* skip */ }
             }
             break;
+          case 'cover':
+            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:${el.color || '#ffffff'};"></div>`;
+            break;
           case 'arrow': {
             const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;
             const angle = Math.atan2(y2 - y1, x2 - x1);

@@ -117,12 +117,18 @@ export interface DemoPieceElement extends BaseElement {
   demoState?: Record<string, unknown>;
 }
 
+export interface CoverElement extends BaseElement {
+  type: 'cover';
+  color?: string;  // default white
+}
+
 export type SlideElement =
   | TextElement
   | ImageElement
   | ArrowElement
   | DemoElement
-  | DemoPieceElement;
+  | DemoPieceElement
+  | CoverElement;
 
 // ============================================
 // Slide and Presentation

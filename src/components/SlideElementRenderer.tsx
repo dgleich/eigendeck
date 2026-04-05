@@ -84,6 +84,25 @@ export function SlideElementRenderer({
         />
       );
 
+    case 'cover':
+      return (
+        <DraggableBox
+          elementId={element.id}
+          position={element.position} zIndex={zIndex} scale={scale}
+          className="el-cover" isSelected={isSelected}
+          linkId={element.linkId} syncId={element.syncId}
+          _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
+          onSelect={onSelect} onDelete={onDelete}
+          onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+          onUpdate={onUpdate}
+        >
+          <div style={{
+            width: '100%', height: '100%',
+            background: element.color || '#ffffff',
+          }} />
+        </DraggableBox>
+      );
+
     case 'arrow':
       return (
         <ArrowRenderer element={element} zIndex={zIndex} scale={scale}

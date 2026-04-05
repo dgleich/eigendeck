@@ -1291,6 +1291,14 @@
 /* Image element */
 .el-image { overflow: hidden; }
 
+/* Cover element — dashed border in editor to show bounds */
+.el-cover {
+  border: 2px dashed #d1d5db !important;
+}
+.el-cover.is-selected {
+  border: 2px solid #3b82f6 !important;
+}
+
 /* Demo element — overflow visible so badges/delete aren't clipped */
 .el-demo { overflow: visible; }
 .el-demo iframe { overflow: hidden; }

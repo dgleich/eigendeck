@@ -126,6 +126,15 @@ export function PresentMode() {
             {linkedTransitions.linked.map(({ from, to }, idx) => {
               // Arrows: interpolate coordinates via rAF
               if (from.type === 'arrow' && to.type === 'arrow') {
+                // If arrow hasn't moved, render statically
+                const arrowStatic = from.x1 === to.x1 && from.y1 === to.y1 &&
+                  from.x2 === to.x2 && from.y2 === to.y2;
+                if (arrowStatic) {
+                  return (
+                    <PresentElement key={`linked-${to.id}`} element={to} zIndex={idx + 10}
+                      projectPath={projectPath} />
+                  );
+                }
                 return (
                   <AnimatedArrow
                     key={`linked-arrow-${to.id}`}
@@ -142,13 +151,17 @@ export function PresentMode() {
               const fromPos = getElementBounds(from);
               const toPos = getElementBounds(to);
 
+              // If position hasn't changed, render statically — no transition, no flicker
+              const isStatic = fromPos.x === toPos.x && fromPos.y === toPos.y &&
+                fromPos.w === toPos.w && fromPos.h === toPos.h;
+
               return (
                 <PresentElement
                   key={`linked-${to.id}`}
                   element={displayEl}
                   zIndex={idx + 10}
                   projectPath={projectPath}
-                  style={{
+                  style={isStatic ? {} : {
                     // Start at old position, transition to new
                     ...(prevIndex !== null ? {
                       left: animating ? toPos.x : fromPos.x,
@@ -345,6 +358,15 @@ function PresentElement({ element: el, zIndex, projectPath, style }: {
         }} />
       );
     }
+
+    case 'cover':
+      return (
+        <div style={{
+          position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
+          background: el.color || '#ffffff', zIndex,
+          ...style,
+        }} />
+      );
 
     case 'arrow': {
       const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;

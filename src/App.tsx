@@ -233,6 +233,16 @@ function App() {
             <button title="Add footnote (small, grey, narrow)" onClick={() => store.addElement(createTextElement('footnote'))}>+ Footnote</button>
             <span className="divider" />
             <button title="Add arrow" onClick={() => store.addElement({ id: crypto.randomUUID(), type: 'arrow', x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: '#e53e3e', strokeWidth: 4, headSize: 16 })}>+ Arrow</button>
+            <button title="Add cover-up rectangle (white)" onClick={() => {
+              const sel = store.selectedObject;
+              const slide = store.presentation.slides[store.currentSlideIndex];
+              let pos = { x: 200, y: 300, width: 600, height: 400 };
+              if (sel?.type === 'element') {
+                const el = slide.elements.find((e) => e.id === sel.id);
+                if (el) pos = { ...el.position };
+              }
+              store.addElement({ id: crypto.randomUUID(), type: 'cover' as any, position: pos });
+            }}>+ Cover</button>
             <button title="Add image from file" onClick={async () => {
               const { open, message } = await import('@tauri-apps/plugin-dialog');
               if (!store.projectPath) { await message('Please save or open a project first.', { title: 'No Project Open', kind: 'info' }); return; }

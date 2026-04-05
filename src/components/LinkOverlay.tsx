@@ -200,6 +200,11 @@ function LinkableElement({ element: el, isLinked, onClick }: {
           {el.piece}
         </div>
       );
+    case 'cover':
+      return (
+        <div style={{ ...wrapStyle, background: el.color || '#fff', border: isLinked ? '4px solid #16a34a' : '4px solid #ddd' }}
+          onClick={onClick} className="link-overlay-element" />
+      );
     case 'arrow': {
       const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;
       const angle = Math.atan2(y2 - y1, x2 - x1);
