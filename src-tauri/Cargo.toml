@@ -27,4 +27,5 @@ tauri-plugin-fs = "2.4.5"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"
+core-graphics = "0.24"
 

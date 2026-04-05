@@ -27,10 +27,206 @@ fn set_window_above_menubar(app: tauri::AppHandle, label: String) -> Result<(), 
     Ok(())
 }
 
+/// Check if displays are mirrored and return info about available displays.
+#[tauri::command]
+fn check_display_mirroring() -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "macos")]
+    {
+        use core_graphics::display::*;
+
+        unsafe {
+            let max_displays: u32 = 16;
+            let mut displays = vec![0u32; max_displays as usize];
+            let mut display_count: u32 = 0;
+
+            let err = CGGetActiveDisplayList(max_displays, displays.as_mut_ptr(), &mut display_count);
+            if err != 0 {
+                return Err(format!("CGGetActiveDisplayList failed: {}", err));
+            }
+
+            displays.truncate(display_count as usize);
+            let main_display = CGMainDisplayID();
+
+            let mut is_mirrored = false;
+            let mut mirror_source: u32 = 0;
+            let mut secondary_display: u32 = 0;
+
+            for &d in &displays {
+                let mirror = CGDisplayMirrorOfDisplay(d);
+                if mirror != 0 {
+                    is_mirrored = true;
+                    mirror_source = mirror;
+                    secondary_display = d;
+                    break;
+                }
+            }
+
+            // If not mirrored, find secondary display
+            if !is_mirrored {
+                for &d in &displays {
+                    if d != main_display {
+                        secondary_display = d;
+                        break;
+                    }
+                }
+            }
+
+            Ok(serde_json::json!({
+                "displayCount": display_count,
+                "mainDisplay": main_display,
+                "secondaryDisplay": secondary_display,
+                "isMirrored": is_mirrored,
+                "mirrorSource": mirror_source,
+            }))
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(serde_json::json!({
+            "displayCount": 1,
+            "mainDisplay": 0,
+            "secondaryDisplay": 0,
+            "isMirrored": false,
+            "mirrorSource": 0,
+        }))
+    }
+}
+
+/// Disable display mirroring (un-mirror). Returns true if mirroring was disabled.
+#[tauri::command]
+fn disable_display_mirroring() -> Result<bool, String> {
+    #[cfg(target_os = "macos")]
+    {
+        use core_graphics::display::*;
+
+        unsafe {
+            let max_displays: u32 = 16;
+            let mut displays = vec![0u32; max_displays as usize];
+            let mut display_count: u32 = 0;
+
+            let err = CGGetActiveDisplayList(max_displays, displays.as_mut_ptr(), &mut display_count);
+            if err != 0 {
+                return Err(format!("CGGetActiveDisplayList failed: {}", err));
+            }
+
+            displays.truncate(display_count as usize);
+
+            // Find a mirrored display
+            let mut mirrored_display: u32 = 0;
+            for &d in &displays {
+                if CGDisplayMirrorOfDisplay(d) != 0 {
+                    mirrored_display = d;
+                    break;
+                }
+            }
+
+            if mirrored_display == 0 {
+                return Ok(false); // Not mirrored
+            }
+
+            // Disable mirroring
+            let mut config: CGDisplayConfigRef = std::ptr::null_mut();
+            let err = CGBeginDisplayConfiguration(&mut config);
+            if err != 0 {
+                return Err(format!("CGBeginDisplayConfiguration failed: {}", err));
+            }
+
+            // Setting mirror to kCGNullDirectDisplay (0) disables mirroring
+            let err = CGConfigureDisplayMirrorOfDisplay(config, mirrored_display, 0);
+            if err != 0 {
+                CGCancelDisplayConfiguration(config);
+                return Err(format!("CGConfigureDisplayMirrorOfDisplay failed: {}", err));
+            }
+
+            let err = CGCompleteDisplayConfiguration(config, CGConfigureOption::ConfigurePermanently);
+            if err != 0 {
+                return Err(format!("CGCompleteDisplayConfiguration failed: {}", err));
+            }
+
+            Ok(true)
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(false)
+    }
+}
+
+/// Re-enable display mirroring (mirror secondary to main).
+#[tauri::command]
+fn enable_display_mirroring() -> Result<bool, String> {
+    #[cfg(target_os = "macos")]
+    {
+        use core_graphics::display::*;
+
+        unsafe {
+            let max_displays: u32 = 16;
+            let mut displays = vec![0u32; max_displays as usize];
+            let mut display_count: u32 = 0;
+
+            let err = CGGetActiveDisplayList(max_displays, displays.as_mut_ptr(), &mut display_count);
+            if err != 0 {
+                return Err(format!("CGGetActiveDisplayList failed: {}", err));
+            }
+
+            displays.truncate(display_count as usize);
+
+            if display_count < 2 {
+                return Ok(false); // Only one display
+            }
+
+            let main_display = CGMainDisplayID();
+            let mut secondary_display: u32 = 0;
+            for &d in &displays {
+                if d != main_display {
+                    secondary_display = d;
+                    break;
+                }
+            }
+
+            if secondary_display == 0 {
+                return Ok(false);
+            }
+
+            // Enable mirroring: mirror secondary to main
+            let mut config: CGDisplayConfigRef = std::ptr::null_mut();
+            let err = CGBeginDisplayConfiguration(&mut config);
+            if err != 0 {
+                return Err(format!("CGBeginDisplayConfiguration failed: {}", err));
+            }
+
+            let err = CGConfigureDisplayMirrorOfDisplay(config, secondary_display, main_display);
+            if err != 0 {
+                CGCancelDisplayConfiguration(config);
+                return Err(format!("CGConfigureDisplayMirrorOfDisplay failed: {}", err));
+            }
+
+            let err = CGCompleteDisplayConfiguration(config, CGConfigureOption::ConfigurePermanently);
+            if err != 0 {
+                return Err(format!("CGCompleteDisplayConfiguration failed: {}", err));
+            }
+
+            Ok(true)
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(false)
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![set_window_above_menubar])
+        .invoke_handler(tauri::generate_handler![
+            set_window_above_menubar,
+            check_display_mirroring,
+            disable_display_mirroring,
+            enable_display_mirroring,
+        ])
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

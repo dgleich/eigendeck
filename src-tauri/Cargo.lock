@@ -883,6 +883,7 @@ name = "eigendeck"
 version = "0.1.0"
 dependencies = [
  "cocoa",
+ "core-graphics 0.24.0",
  "serde",
  "serde_json",
  "tauri",

@@ -12,6 +12,7 @@ import type { Presentation } from '../types/presentation';
 
 let presenterWindow: WebviewWindow | null = null;
 let navigationListener: (() => void) | null = null;
+let wasMirrored = false; // Track if we disabled mirroring so we can restore it
 
 export interface MonitorInfo {
   name: string;
@@ -93,9 +94,32 @@ export async function openPresenterWindow(
   currentIndex: number,
   projectPath: string | null
 ): Promise<boolean> {
+  // Check if displays are mirrored — if so, disable mirroring first
+  try {
+    const mirrorInfo = await invoke<{ isMirrored: boolean; displayCount: number }>('check_display_mirroring');
+    console.log('[multi-monitor] Mirror info:', mirrorInfo);
+
+    if (mirrorInfo.isMirrored) {
+      console.log('[multi-monitor] Displays are mirrored, disabling mirroring...');
+      const disabled = await invoke<boolean>('disable_display_mirroring');
+      if (disabled) {
+        wasMirrored = true;
+        console.log('[multi-monitor] Mirroring disabled, waiting for displays to reconfigure...');
+        // Wait for macOS to reconfigure displays
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    }
+  } catch (e) {
+    console.warn('[multi-monitor] Mirror check failed:', e);
+  }
+
   const projector = await detectProjector();
 
   if (!projector) {
+    // If we disabled mirroring but still can't find a second monitor, re-enable
+    if (wasMirrored) {
+      try { await invoke('enable_display_mirroring'); wasMirrored = false; } catch { /* ignore */ }
+    }
     return false; // Single monitor — caller should use in-window presenter
   }
 
@@ -199,6 +223,17 @@ export async function closePresenterWindow(): Promise<void> {
   if (navigationListener) {
     navigationListener();
     navigationListener = null;
+  }
+
+  // Restore mirroring if we disabled it
+  if (wasMirrored) {
+    console.log('[multi-monitor] Restoring display mirroring...');
+    try {
+      await invoke('enable_display_mirroring');
+      wasMirrored = false;
+    } catch (e) {
+      console.warn('[multi-monitor] Failed to restore mirroring:', e);
+    }
   }
 }
 
