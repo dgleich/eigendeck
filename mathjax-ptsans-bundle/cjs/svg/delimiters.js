@@ -27,8 +27,8 @@ exports.delimiters = {
     0x3D: {
         dir: Direction_js_1.H,
         stretch: [0, 0, 0],
-        HDW: [0.367, 0, 0.778],
-        hd: [0.367, 0]
+        HDW: [0.367, -0.133, 0.778],
+        hd: [0.367, -0.133]
     },
     0x5B: {
         dir: Direction_js_1.V,
@@ -100,8 +100,8 @@ exports.delimiters = {
         dir: Direction_js_1.H,
         sizes: [0.393, 0.569],
         stretch: [0, 0, 0],
-        HDW: [0.67, 0, 0],
-        hd: [0.67, 0]
+        HDW: [0.67, -0.63, 0],
+        hd: [0.67, -0.63]
     },
     0x306: {
         dir: Direction_js_1.H,
@@ -153,8 +153,8 @@ exports.delimiters = {
         dir: Direction_js_1.H,
         sizes: [0.393, 0.569],
         stretch: [0, 0, 0],
-        HDW: [0.82, 0, 0],
-        hd: [0.82, 0]
+        HDW: [0.82, -0.63, 0],
+        hd: [0.82, -0.63]
     },
     0x34D: {
         dir: Direction_js_1.H,
@@ -181,43 +181,43 @@ exports.delimiters = {
         dir: Direction_js_1.H,
         sizes: [0.423, 0.556],
         stretch: [0, 0, 0],
-        HDW: [0.711, 0, 0],
-        hd: [0.711, 0]
+        HDW: [0.711, -0.601, 0],
+        hd: [0.711, -0.601]
     },
     0x20D1: {
         dir: Direction_js_1.H,
         sizes: [0.423, 0.556],
         stretch: [0, 0, 0],
-        HDW: [0.711, 0, 0],
-        hd: [0.711, 0]
+        HDW: [0.711, -0.601, 0],
+        hd: [0.711, -0.601]
     },
     0x20D6: {
         dir: Direction_js_1.H,
         sizes: [0.417, 0.548],
         stretch: [0, 0, 0],
-        HDW: [0.711, 0, 0],
-        hd: [0.711, 0]
+        HDW: [0.711, -0.521, 0],
+        hd: [0.711, -0.521]
     },
     0x20D7: {
         dir: Direction_js_1.H,
         sizes: [0.417, 0.548],
         stretch: [0, 0, 0],
-        HDW: [0.711, 0, 0],
-        hd: [0.711, 0]
+        HDW: [0.711, -0.521, 0],
+        hd: [0.711, -0.521]
     },
     0x20E1: {
         dir: Direction_js_1.H,
         sizes: [0.471, 0.604],
         stretch: [0, 0, 0],
-        HDW: [0.711, 0, 0],
-        hd: [0.711, 0]
+        HDW: [0.711, -0.521, 0],
+        hd: [0.711, -0.521]
     },
     0x20E9: {
         dir: Direction_js_1.H,
         sizes: [0.361, 0.736, 1.111, 1.486, 1.861, 2.236, 2.611, 2.986],
         stretch: [0, 0, 0],
-        HDW: [0.726, 0, 0],
-        hd: [0.726, 0]
+        HDW: [0.726, -0.552, 0],
+        hd: [0.726, -0.552]
     },
     0x20EC: {
         dir: Direction_js_1.H,
@@ -446,8 +446,8 @@ exports.delimiters = {
         dir: Direction_js_1.H,
         sizes: [0.901, 1.367],
         stretch: [0, 0, 0],
-        HDW: [0.503, 0, 1],
-        hd: [0.503, 0]
+        HDW: [0.503, -0.23, 1],
+        hd: [0.503, -0.23]
     },
     0x21BD: {
         dir: Direction_js_1.H,
@@ -472,8 +472,8 @@ exports.delimiters = {
         dir: Direction_js_1.H,
         sizes: [0.901, 1.367],
         stretch: [0, 0, 0],
-        HDW: [0.503, 0, 1],
-        hd: [0.503, 0]
+        HDW: [0.503, -0.23, 1],
+        hd: [0.503, -0.23]
     },
     0x21C1: {
         dir: Direction_js_1.H,
@@ -709,8 +709,8 @@ exports.delimiters = {
     0x2212: {
         dir: Direction_js_1.H,
         stretch: [0, 0, 0],
-        HDW: [0.27, 0, 0.778],
-        hd: [0.27, 0]
+        HDW: [0.27, -0.23, 0.778],
+        hd: [0.27, -0.23]
     },
     0x221A: {
         dir: Direction_js_1.V,
@@ -769,8 +769,8 @@ exports.delimiters = {
     0x2261: {
         dir: Direction_js_1.H,
         stretch: [0, 0, 0],
-        HDW: [0.464, 0, 0.778],
-        hd: [0.464, 0]
+        HDW: [0.464, -0.036, 0.778],
+        hd: [0.464, -0.036]
     },
     0x2263: {
         dir: Direction_js_1.H,
@@ -850,8 +850,8 @@ exports.delimiters = {
         dir: Direction_js_1.H,
         sizes: [0.361, 0.736, 1.111, 1.486, 1.861, 2.236, 2.611, 2.986],
         stretch: [0, 0, 0],
-        HDW: [0.726, 0, 0.36],
-        hd: [0.726, 0]
+        HDW: [0.726, -0.552, 0.36],
+        hd: [0.726, -0.552]
     },
     0x23B5: {
         dir: Direction_js_1.H,
@@ -864,8 +864,8 @@ exports.delimiters = {
         dir: Direction_js_1.H,
         sizes: [0.505, 1.007, 1.509, 2.013, 2.517, 3.021, 3.525, 4.033],
         stretch: [0, 0, 0],
-        HDW: [0.727, 0, 0.504],
-        hd: [0.727, 0]
+        HDW: [0.727, -0.572, 0.504],
+        hd: [0.727, -0.572]
     },
     0x23DD: {
         dir: Direction_js_1.H,
@@ -877,8 +877,8 @@ exports.delimiters = {
     0x23DE: {
         dir: Direction_js_1.H,
         sizes: [0.493, 0.994, 1.495, 1.997, 2.499, 3.001, 3.503, 4.007],
-        HDW: [0.783, 0, 0.492],
-        hd: [0.783, 0]
+        HDW: [0.783, -0.539, 0.492],
+        hd: [0.783, -0.539]
     },
     0x23DF: {
         dir: Direction_js_1.H,
@@ -890,8 +890,8 @@ exports.delimiters = {
         dir: Direction_js_1.H,
         sizes: [0.547, 1.049, 1.551, 2.057, 2.565, 3.069, 3.575, 4.083],
         stretch: [0, 0, 0],
-        HDW: [0.829, 0, 0.546],
-        hd: [0.829, 0]
+        HDW: [0.829, -0.657, 0.546],
+        hd: [0.829, -0.657]
     },
     0x23E1: {
         dir: Direction_js_1.H,
@@ -904,8 +904,8 @@ exports.delimiters = {
         dir: Direction_js_1.H,
         sizes: [0.866, 1.312],
         stretch: [0, 0, 0],
-        HDW: [0.468, 0, 0.977],
-        hd: [0.468, 0]
+        HDW: [0.468, -0.032, 0.977],
+        hd: [0.468, -0.032]
     },
     0x27E6: {
         dir: Direction_js_1.V,
@@ -1012,8 +1012,8 @@ exports.delimiters = {
         dir: Direction_js_1.H,
         sizes: [0.866, 1.312],
         stretch: [0, 0, 0],
-        HDW: [0.468, 0, 0.977],
-        hd: [0.468, 0]
+        HDW: [0.468, -0.032, 0.977],
+        hd: [0.468, -0.032]
     },
     0x2B06: {
         dir: Direction_js_1.V,
@@ -1031,8 +1031,8 @@ exports.delimiters = {
         dir: Direction_js_1.H,
         sizes: [0.845, 1.291],
         stretch: [0, 0, 0],
-        HDW: [0.468, 0, 1.022],
-        hd: [0.468, 0]
+        HDW: [0.468, -0.032, 1.022],
+        hd: [0.468, -0.032]
     },
     0x2B0D: {
         dir: Direction_js_1.V,
