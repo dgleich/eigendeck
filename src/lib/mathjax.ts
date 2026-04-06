@@ -97,7 +97,7 @@ export async function applyMathPreamble(preamble: string): Promise<void> {
 
 // Unescape HTML entities in tex strings extracted from innerHTML
 function unescapeHtml(s: string): string {
-  return s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  return s.replace(/&nbsp;/g, ' ').replace(/\u00A0/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 }
 
 export async function renderMathInHtml(html: string): Promise<string> {

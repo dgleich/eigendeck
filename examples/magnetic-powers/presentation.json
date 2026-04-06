@@ -513,24 +513,10 @@
       "layout": "default",
       "elements": [
         {
-          "id": "9cab69c3-3f40-4db8-971f-4f9047601a0f",
-          "type": "text",
-          "preset": "body",
-          "html": "<br><div style=\"text-align: center;\">eepeated powering a matrix $\\to$ spectral analysis</div><div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div style=\"text-align: center;\">… but this only works well for undirected graphs …&nbsp;</div>",
-          "position": {
-            "x": 65,
-            "y": 233,
-            "width": 1760,
-            "height": 800
-          },
-          "linkId": "6ff818c2-01dd-4eef-b252-14ca580fa52e",
-          "_syncId": "6ff818c2-01dd-4eef-b252-14ca580fa52e"
-        },
-        {
           "id": "ff656399-3c00-4852-8985-92c14f9aed05",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center; font-weight: normal;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\">Walk Counting is central to&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">spectral analysis</span></span>",
+          "html": "<span style=\"text-align: center; font-weight: normal;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\">Walk Counting leads to&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">spectral analysis</span></span>",
           "position": {
             "x": 58,
             "y": 42,
@@ -539,37 +525,77 @@
           },
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
           "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
+        },
+        {
+          "id": "9cab69c3-3f40-4db8-971f-4f9047601a0f",
+          "type": "text",
+          "preset": "annotation",
+          "html": "<div style=\"text-align: center;\">Repeated powering of a matrix  $\\to$  spectral analysis</div><div style=\"text-align: center;\">… but this only works well for undirected graphs …</div>",
+          "position": {
+            "x": 80,
+            "y": 900,
+            "width": 1760,
+            "height": 120
+          },
+          "linkId": "6ff818c2-01dd-4eef-b252-14ca580fa52e",
+          "_syncId": "6ff818c2-01dd-4eef-b252-14ca580fa52e"
+        },
+        {
+          "id": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+          "type": "demo-piece",
+          "demoSrc": "demos/demo_block_model.html",
+          "piece": "graph",
+          "position": {
+            "x": 60,
+            "y": 220,
+            "width": 620,
+            "height": 650
+          }
+        },
+        {
+          "id": "d5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a",
+          "type": "demo-piece",
+          "demoSrc": "demos/demo_block_model.html",
+          "piece": "heatmap",
+          "position": {
+            "x": 720,
+            "y": 220,
+            "width": 1140,
+            "height": 650
+          }
         }
       ],
-      "notes": ""
+      "notes": "Block model demo: 44 nodes in 3 communities. As k increases, P^k heatmap shows walk probability concentrating within communities. The 2nd eigenvector bar chart below the heatmap shows the spectral clustering structure."
     },
     {
       "id": "1738c402-a6f2-48d5-b329-943e4f3ec96b",
       "layout": "default",
       "elements": [
         {
-          "id": "b61dac01-0829-4b9e-b719-ce5424b188d5",
-          "type": "text",
-          "preset": "title",
-          "html": "Title",
-          "position": {
-            "x": 80,
-            "y": 20,
-            "width": 1760,
-            "height": 200
-          }
-        },
-        {
           "id": "f7a8eeb0-5df0-4a5a-a33e-1519fd3c9646",
           "type": "text",
           "preset": "body",
-          "html": "",
+          "html": "<br><div style=\"text-align: center;\"><b>Weighted undirected graphs, Laplacians, Random Walks</b></div><div style=\"text-align: center;\">are all basically the same concept</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">if we make the graph directed,&nbsp;</div><div style=\"text-align: center;\">then all of this equivalence breaks down</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div>",
           "position": {
-            "x": 80,
-            "y": 180,
+            "x": 84,
+            "y": 242,
             "width": 1760,
             "height": 800
           }
+        },
+        {
+          "id": "c390b8d1-4ee7-40c5-b3e9-284c629d5b2a",
+          "type": "text",
+          "preset": "title",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: normal; letter-spacing: 5.76px; text-transform: uppercase;\">The problem is that spectral analysis has </span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">…</span><span style=\"font-weight: normal; letter-spacing: 5.76px; text-transform: uppercase;\">&nbsp;issues </span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">…</span><span style=\"font-weight: normal; letter-spacing: 5.76px; text-transform: uppercase;\">&nbsp;for directed graphs&nbsp;</span></span>",
+          "position": {
+            "x": 61,
+            "y": 51,
+            "width": 1807,
+            "height": 200
+          },
+          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
+          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
         }
       ],
       "notes": ""
