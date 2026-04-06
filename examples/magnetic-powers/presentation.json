@@ -63,6 +63,37 @@
       "notes": ""
     },
     {
+      "id": "850718d8-4e2e-448b-b51a-f166f570c146",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "8c4dafc8-a3f3-4aaa-adee-d6a2c4cd9cae",
+          "type": "text",
+          "preset": "title",
+          "html": "Title",
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          }
+        },
+        {
+          "id": "a7adc989-dd5a-4491-96a3-95a51bec70b6",
+          "type": "text",
+          "preset": "body",
+          "html": "",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
       "id": "89095d98-f4c8-4b68-b0e4-fe97977ff52d",
       "layout": "default",
       "elements": [
@@ -86,8 +117,8 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 166,
-            "y": 394,
+            "x": 97,
+            "y": 371,
             "width": 455,
             "height": 437
           },
@@ -114,8 +145,8 @@
           "preset": "textbox",
           "html": "<div style=\"text-align: center;\">$\\mA^k$</div><div style=\"text-align: center;\">counts walks</div>",
           "position": {
-            "x": 1450,
-            "y": 516,
+            "x": 1509,
+            "y": 488,
             "width": 340,
             "height": 247
           },
@@ -150,8 +181,8 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 166,
-            "y": 394,
+            "x": 97,
+            "y": 371,
             "width": 455,
             "height": 437
           },
@@ -179,8 +210,8 @@
           "preset": "textbox",
           "html": "<div style=\"text-align: center;\">$\\mP^k$</div><div style=\"text-align: center;\">evaluates probabilities</div>",
           "position": {
-            "x": 1450,
-            "y": 516,
+            "x": 1509,
+            "y": 488,
             "width": 340,
             "height": 247
           },
@@ -216,8 +247,8 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 166,
-            "y": 394,
+            "x": 97,
+            "y": 371,
             "width": 455,
             "height": 437
           },
@@ -228,30 +259,153 @@
           "id": "83c5ad85-c71e-4e16-97fe-509e274cccea",
           "type": "text",
           "preset": "textbox",
-          "html": "$\\mA_q = \\bmat{0 &amp; \\omega &amp; \\omega &amp; 0 &amp; \\omega &amp; 0 &amp; 0 \\\\ \\bar\\omega &amp; 0 &amp; 0 &amp; 0 &amp; \\omega &amp; 0 &amp; 0 \\\\ \\bar\\omega &amp; 0 &amp; 0 &amp; \\bar\\omega &amp; \\omega &amp; 0 &amp; \\omega \\\\ 0 &amp; 0 &amp; \\omega &amp; 0 &amp; \\bar\\omega &amp; 0 &amp; \\bar\\omega \\\\ \\bar\\omega &amp; \\bar\\omega &amp; \\bar\\omega &amp; \\omega &amp; 0 &amp; 0 &amp; \\omega \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \\bar\\omega \\\\ 0 &amp; 0 &amp; \\bar\\omega &amp; \\omega &amp; \\bar\\omega &amp; \\omega &amp; 0}$<br>",
+          "html": "$\\mA_q = \\bmat{0 &amp; \\omega &amp; \\omega &amp; 0 &amp; \\omega+\\bar\\omega &amp; 0 &amp; 0 \\\\ \\bar\\omega &amp; 0 &amp; 0 &amp; 0 &amp; \\omega+\\bar\\omega &amp; 0 &amp; 0 \\\\ \\bar\\omega &amp; 0 &amp; 0 &amp; \\bar\\omega &amp; \\omega &amp; 0 &amp; \\omega \\\\ 0 &amp; 0 &amp; \\omega &amp; 0 &amp; \\bar\\omega &amp; 0 &amp; \\bar\\omega \\\\ \\omega+\\bar\\omega &amp; \\omega+\\bar\\omega &amp; \\bar\\omega &amp; \\omega &amp; 0 &amp; 0 &amp; \\omega \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \\bar\\omega \\\\ 0 &amp; 0 &amp; \\bar\\omega &amp; \\omega &amp; \\bar\\omega &amp; \\omega &amp; 0}$<br>",
           "position": {
-            "x": 645,
-            "y": 316,
-            "width": 780,
-            "height": 669
+            "x": 553,
+            "y": 326,
+            "width": 883,
+            "height": 507
           },
           "linkId": "0e1dd9ce-8a46-4d6f-bc4b-64b4bac6d3a4",
-          "_syncId": "0e1dd9ce-8a46-4d6f-bc4b-64b4bac6d3a4"
+          "_syncId": "0e1dd9ce-8a46-4d6f-bc4b-64b4bac6d3a4",
+          "syncId": "0e1dd9ce-8a46-4d6f-bc4b-64b4bac6d3a4"
         },
         {
           "id": "e2287f1c-afb8-4890-935a-8d11c108527f",
           "type": "text",
           "preset": "textbox",
-          "html": "<div style=\"text-align: center;\">$\\mP^k$</div><div style=\"text-align: center;\">evaluates probabilities</div>",
+          "html": "<div style=\"text-align: center;\">$\\mA_q^k$</div><div style=\"text-align: center;\">evaluates&nbsp;</div><div style=\"text-align: center;\">????</div>",
           "position": {
-            "x": 1450,
-            "y": 516,
+            "x": 1507,
+            "y": 488,
             "width": 340,
             "height": 247
           },
           "linkId": "a4a6297f-e66d-43e4-af46-ca3b8e64c16a",
           "syncId": "a4a6297f-e66d-43e4-af46-ca3b8e64c16a",
           "_syncId": "a4a6297f-e66d-43e4-af46-ca3b8e64c16a"
+        },
+        {
+          "id": "5395253f-3ed4-4750-b68b-ddfafa2553d6",
+          "type": "text",
+          "preset": "annotation",
+          "html": "<div style=\"text-align: center;\">The “magnetic” adjacency matrix that arose from quantum mechanics …</div><div style=\"text-align: center;\">more on this later!&nbsp;</div>",
+          "position": {
+            "x": 687,
+            "y": 865,
+            "width": 600,
+            "height": 150
+          },
+          "linkId": "853641c2-8d44-4098-a06c-d62bb84b19d5",
+          "syncId": "853641c2-8d44-4098-a06c-d62bb84b19d5"
+        },
+        {
+          "id": "abe825da-a7ef-4557-9177-6df7d2a005f2",
+          "type": "text",
+          "preset": "annotation",
+          "html": "<div style=\"text-align: center;\">$\\omega = e^{i 2\\pi q}$</div>",
+          "position": {
+            "x": 715,
+            "y": 217,
+            "width": 600,
+            "height": 150
+          },
+          "linkId": "bbad2f59-9526-4ee2-8eac-e22247b7b45e",
+          "syncId": "bbad2f59-9526-4ee2-8eac-e22247b7b45e"
+        }
+      ],
+      "notes": "",
+      "groupId": "6ac46108-61f1-47b5-89e0-404ccdd228c0"
+    },
+    {
+      "id": "48b69fe6-17f3-4e8d-a6ed-547d6e8e8be2",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "e1796a77-efc8-4d8e-8272-591b6bdf260b",
+          "type": "text",
+          "preset": "title",
+          "html": "<span style=\"text-align: center; font-weight: normal;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\">Powers of the Adjacency Matrix</span></span>",
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          },
+          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
+          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
+        },
+        {
+          "id": "8cb503bb-eace-4956-bbb3-2a0eebee753f",
+          "type": "demo-piece",
+          "demoSrc": "demos/demo_powers_teaser.html",
+          "piece": "graph",
+          "position": {
+            "x": 97,
+            "y": 371,
+            "width": 455,
+            "height": 437
+          },
+          "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
+          "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
+        },
+        {
+          "id": "82c95302-2f6c-4e93-88fa-f792dd0902db",
+          "type": "text",
+          "preset": "textbox",
+          "html": "$\\mA_q = \\bmat{0 &amp; \\omega &amp; \\omega &amp; 0 &amp; \\omega+\\bar\\omega &amp; 0 &amp; 0 \\\\ \\bar\\omega &amp; 0 &amp; 0 &amp; 0 &amp; \\omega+\\bar\\omega &amp; 0 &amp; 0 \\\\ \\bar\\omega &amp; 0 &amp; 0 &amp; \\bar\\omega &amp; \\omega &amp; 0 &amp; \\omega \\\\ 0 &amp; 0 &amp; \\omega &amp; 0 &amp; \\bar\\omega &amp; 0 &amp; \\bar\\omega \\\\ \\omega+\\bar\\omega &amp; \\omega+\\bar\\omega &amp; \\bar\\omega &amp; \\omega &amp; 0 &amp; 0 &amp; \\omega \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \\bar\\omega \\\\ 0 &amp; 0 &amp; \\bar\\omega &amp; \\omega &amp; \\bar\\omega &amp; \\omega &amp; 0}$<br>",
+          "position": {
+            "x": 553,
+            "y": 326,
+            "width": 883,
+            "height": 507
+          },
+          "linkId": "0e1dd9ce-8a46-4d6f-bc4b-64b4bac6d3a4",
+          "_syncId": "0e1dd9ce-8a46-4d6f-bc4b-64b4bac6d3a4",
+          "syncId": "0e1dd9ce-8a46-4d6f-bc4b-64b4bac6d3a4"
+        },
+        {
+          "id": "f7099c3a-eeb6-4171-a3a0-f3957a0a4b25",
+          "type": "text",
+          "preset": "textbox",
+          "html": "<div style=\"text-align: center;\">$\\mA_q^k$</div><div style=\"text-align: center;\">evaluates&nbsp;</div><div style=\"text-align: center;\">????</div>",
+          "position": {
+            "x": 1507,
+            "y": 488,
+            "width": 340,
+            "height": 247
+          },
+          "linkId": "a4a6297f-e66d-43e4-af46-ca3b8e64c16a",
+          "syncId": "a4a6297f-e66d-43e4-af46-ca3b8e64c16a",
+          "_syncId": "a4a6297f-e66d-43e4-af46-ca3b8e64c16a"
+        },
+        {
+          "id": "a6276cd1-45d5-40a5-b920-6a6e8915def1",
+          "type": "text",
+          "preset": "annotation",
+          "html": "<div style=\"text-align: center;\">The “magnetic” adjacency matrix that arose from quantum mechanics …</div><div style=\"text-align: center;\">more on this later!&nbsp;</div>",
+          "position": {
+            "x": 687,
+            "y": 865,
+            "width": 600,
+            "height": 150
+          },
+          "linkId": "853641c2-8d44-4098-a06c-d62bb84b19d5",
+          "syncId": "853641c2-8d44-4098-a06c-d62bb84b19d5"
+        },
+        {
+          "id": "b079ae44-c563-4433-b300-2c96a47ba816",
+          "type": "text",
+          "preset": "annotation",
+          "html": "<div style=\"text-align: center;\">$\\omega = e^{i 2\\pi q}$</div>",
+          "position": {
+            "x": 715,
+            "y": 217,
+            "width": 600,
+            "height": 150
+          },
+          "linkId": "bbad2f59-9526-4ee2-8eac-e22247b7b45e",
+          "syncId": "bbad2f59-9526-4ee2-8eac-e22247b7b45e"
         }
       ],
       "notes": "",
@@ -281,8 +435,8 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 166,
-            "y": 394,
+            "x": 97,
+            "y": 371,
             "width": 455,
             "height": 437
           },
@@ -330,148 +484,20 @@
           },
           "linkId": "a0de5cd3-cf3e-4892-97f2-7f09c3ccb126",
           "syncId": "a0de5cd3-cf3e-4892-97f2-7f09c3ccb126"
-        }
-      ],
-      "notes": "",
-      "groupId": "6ac46108-61f1-47b5-89e0-404ccdd228c0"
-    },
-    {
-      "id": "bd920539-d40c-4a9d-bb8b-b15bc0c8855f",
-      "layout": "default",
-      "elements": [
-        {
-          "id": "85f5649f-56b5-4e3e-b126-91001fe3c1d0",
-          "type": "text",
-          "preset": "title",
-          "html": "<span style=\"text-align: center; font-weight: normal;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\">Powers of the Adjacency Matrix</span></span>",
-          "position": {
-            "x": 80,
-            "y": 20,
-            "width": 1760,
-            "height": 200
-          },
-          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
-          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
         },
         {
-          "id": "1b9b28bf-47f5-4db0-9d9e-b505eebfd1df",
-          "type": "demo-piece",
-          "demoSrc": "demos/demo_powers_teaser.html",
-          "piece": "graph",
-          "position": {
-            "x": 166,
-            "y": 394,
-            "width": 455,
-            "height": 437
-          },
-          "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
-          "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
-        },
-        {
-          "id": "a37ce41f-64cf-4412-bd7e-35134dd601c3",
-          "type": "demo-piece",
-          "demoSrc": "demos/demo_powers_teaser.html",
-          "piece": "results",
-          "position": {
-            "x": 923,
-            "y": 395,
-            "width": 975,
-            "height": 555
-          },
-          "linkId": "182ef785-f625-4931-8cd0-929895267d37",
-          "syncId": "182ef785-f625-4931-8cd0-929895267d37"
-        },
-        {
-          "id": "19cb0125-de88-4b04-9ccb-dcbc857d10e7",
+          "id": "766316e7-75bb-4146-abb6-7679cd2cdfc1",
           "type": "text",
           "preset": "textbox",
-          "html": "$\\mA^k$",
+          "html": "$\\mA_q^k$",
           "position": {
-            "x": 811,
-            "y": 500,
+            "x": 808,
+            "y": 764,
             "width": 84,
             "height": 91
           },
-          "linkId": "3b662a91-1b4e-472e-9113-9a254ea811ad",
-          "syncId": "3b662a91-1b4e-472e-9113-9a254ea811ad"
-        },
-        {
-          "id": "399ab192-81e3-47f2-8788-65a160b517f6",
-          "type": "text",
-          "preset": "textbox",
-          "html": "$\\mP^k$",
-          "position": {
-            "x": 807,
-            "y": 627,
-            "width": 84,
-            "height": 91
-          },
-          "linkId": "a0de5cd3-cf3e-4892-97f2-7f09c3ccb126",
-          "syncId": "a0de5cd3-cf3e-4892-97f2-7f09c3ccb126"
-        }
-      ],
-      "notes": "",
-      "groupId": "6ac46108-61f1-47b5-89e0-404ccdd228c0"
-    },
-    {
-      "id": "5bc4bba6-fede-4ffb-8e98-7007310abbff",
-      "layout": "default",
-      "elements": [
-        {
-          "id": "46466ffe-c5a1-4154-b954-9ee96720caec",
-          "type": "text",
-          "preset": "title",
-          "html": "<span style=\"text-align: center; font-weight: normal;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\">Powers of the Adjacency Matrix</span></span>",
-          "position": {
-            "x": 80,
-            "y": 20,
-            "width": 1760,
-            "height": 200
-          },
-          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
-          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
-        },
-        {
-          "id": "59de6243-4aa6-4048-a2fb-29ccfe8f7e66",
-          "type": "demo-piece",
-          "demoSrc": "demos/demo_powers_teaser.html",
-          "piece": "graph",
-          "position": {
-            "x": 166,
-            "y": 394,
-            "width": 455,
-            "height": 437
-          },
-          "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
-          "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
-        },
-        {
-          "id": "61f78fc1-a8ad-46ac-ada7-df933000e9b5",
-          "type": "text",
-          "preset": "textbox",
-          "html": "$\\mA = \\bmat{0 &amp; 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 &amp; 0}$<br>",
-          "position": {
-            "x": 715,
-            "y": 364,
-            "width": 700,
-            "height": 528
-          },
-          "linkId": "0e1dd9ce-8a46-4d6f-bc4b-64b4bac6d3a4",
-          "syncId": "0e1dd9ce-8a46-4d6f-bc4b-64b4bac6d3a4"
-        },
-        {
-          "id": "8223c8e0-2c4e-4e11-9d48-e4333f937b47",
-          "type": "text",
-          "preset": "textbox",
-          "html": "<div style=\"text-align: center;\">$\\mA^k$</div><div style=\"text-align: center;\">counts walks</div>",
-          "position": {
-            "x": 1450,
-            "y": 516,
-            "width": 340,
-            "height": 247
-          },
-          "linkId": "a4a6297f-e66d-43e4-af46-ca3b8e64c16a",
-          "syncId": "a4a6297f-e66d-43e4-af46-ca3b8e64c16a"
+          "linkId": "3b0803a3-849f-4dda-9fb0-9d4fc973e7fb",
+          "syncId": "3b0803a3-849f-4dda-9fb0-9d4fc973e7fb"
         }
       ],
       "notes": "",

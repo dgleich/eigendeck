@@ -147,7 +147,18 @@ export const usePresentationStore = create<PresentationState>()(
           const slides = [...state.presentation.slides];
           const slide = slides[from];
 
-          // If this slide is a group parent, move the whole group
+          // If both slides are in the same group, reorder within the group
+          if (slide.groupId && slides[to]?.groupId === slide.groupId) {
+            const [moved] = slides.splice(from, 1);
+            slides.splice(to, 0, moved);
+            return {
+              presentation: { ...state.presentation, slides },
+              currentSlideIndex: to,
+              isDirty: true,
+            };
+          }
+
+          // If this slide has a group and we're moving outside it, move the whole group
           if (slide.groupId) {
             const groupId = slide.groupId;
             // Collect all group members
