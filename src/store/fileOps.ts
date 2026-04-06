@@ -39,6 +39,18 @@ function addRecentProject(path: string, title: string) {
   recents.unshift({ path, title, lastOpened: new Date().toISOString() });
   if (recents.length > MAX_RECENT) recents.length = MAX_RECENT;
   localStorage.setItem(RECENT_KEY, JSON.stringify(recents));
+  syncRecentMenu();
+}
+
+/** Sync the recent projects list to the native File menu */
+export async function syncRecentMenu(): Promise<void> {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const recents = getRecentProjects();
+    await invoke('update_recent_menu', { projects: recents });
+  } catch {
+    // Not in Tauri or command not available
+  }
 }
 
 export async function openRecentProject(path: string): Promise<void> {

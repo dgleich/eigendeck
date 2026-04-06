@@ -20,6 +20,8 @@ import {
   openProject,
   createProject,
   exportPresentation,
+  openRecentProject,
+  syncRecentMenu,
 } from './store/fileOps';
 import { initAutoSave, forceSave } from './store/autoSave';
 import './App.css';
@@ -54,8 +56,8 @@ function App() {
     document.body.style.userSelect = 'none';
   }, [sidebarWidth]);
 
-  // Initialize auto-save
-  useEffect(() => { initAutoSave(); }, []);
+  // Initialize auto-save and sync recent menu
+  useEffect(() => { initAutoSave(); syncRecentMenu(); }, []);
 
   // Warn before closing
   useEffect(() => {
@@ -258,7 +260,10 @@ function App() {
         case 'debug-console': window.dispatchEvent(new CustomEvent('toggle-debug-console')); break;
       }
     });
-    return () => { unlisten.then((fn) => fn()); };
+    const unlistenRecent = listen<string>('menu-event-recent', (event) => {
+      openRecentProject(event.payload);
+    });
+    return () => { unlisten.then((fn) => fn()); unlistenRecent.then((fn) => fn()); };
   }, []);
 
   if (isPresenting && multiMonitorPresenting) return <SpeakerMode />;

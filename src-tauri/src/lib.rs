@@ -2,6 +2,11 @@
 
 use tauri::menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager};
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
+
+// Store recent project paths so we can map menu item IDs back to paths
+static RECENT_PATHS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 /// Set window level above the menu bar on macOS so it covers everything
 /// on the secondary monitor (including the menu bar strip).
@@ -220,6 +225,124 @@ fn enable_display_mirroring() -> Result<bool, String> {
     }
 }
 
+/// Update the "Open Recent" submenu with the given list of recent projects.
+#[tauri::command]
+fn update_recent_menu(app: tauri::AppHandle, projects: Vec<serde_json::Value>) -> Result<(), String> {
+    // Store paths for lookup when menu items are clicked
+    let paths: Vec<String> = projects
+        .iter()
+        .filter_map(|p| p.get("path").and_then(|v| v.as_str()).map(String::from))
+        .collect();
+    *RECENT_PATHS.lock().unwrap() = paths;
+
+    // Build the "Open Recent" submenu
+    let mut recent_sub = SubmenuBuilder::new(&app, "Open Recent");
+
+    if projects.is_empty() {
+        let empty = MenuItemBuilder::new("No Recent Projects")
+            .id("recent-empty")
+            .enabled(false)
+            .build(&app)
+            .map_err(|e| e.to_string())?;
+        recent_sub = recent_sub.item(&empty);
+    } else {
+        for (i, proj) in projects.iter().enumerate() {
+            let title = proj.get("title").and_then(|v| v.as_str()).unwrap_or("Untitled");
+            let dir = proj.get("path").and_then(|v| v.as_str())
+                .and_then(|p| p.rsplit('/').next())
+                .unwrap_or("");
+            let label = if dir.is_empty() { title.to_string() } else { format!("{} — {}", title, dir) };
+            let item = MenuItemBuilder::new(&label)
+                .id(format!("recent-{}", i))
+                .build(&app)
+                .map_err(|e| e.to_string())?;
+            recent_sub = recent_sub.item(&item);
+        }
+    }
+
+    let recent_menu = recent_sub.build().map_err(|e| e.to_string())?;
+
+    // Rebuild the entire File menu with the updated recent submenu
+    let new_item = MenuItemBuilder::new("New Project")
+        .id("new-project")
+        .accelerator("CmdOrCtrl+N")
+        .build(&app).map_err(|e| e.to_string())?;
+    let open_item = MenuItemBuilder::new("Open Project")
+        .id("open-project")
+        .accelerator("CmdOrCtrl+O")
+        .build(&app).map_err(|e| e.to_string())?;
+    let save_item = MenuItemBuilder::new("Save")
+        .id("save")
+        .accelerator("CmdOrCtrl+S")
+        .build(&app).map_err(|e| e.to_string())?;
+    let export_item = MenuItemBuilder::new("Export to HTML")
+        .id("export")
+        .accelerator("CmdOrCtrl+E")
+        .build(&app).map_err(|e| e.to_string())?;
+
+    let file_menu = SubmenuBuilder::new(&app, "File")
+        .item(&new_item)
+        .item(&open_item)
+        .item(&recent_menu)
+        .separator()
+        .item(&save_item)
+        .item(&export_item)
+        .separator()
+        .close_window()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    // We need to rebuild the full menu bar
+    let app_menu = SubmenuBuilder::new(&app, "Eigendeck")
+        .about(Some(AboutMetadata {
+            name: Some("Eigendeck".into()),
+            version: Some("0.1.0".into()),
+            ..Default::default()
+        }))
+        .separator()
+        .services()
+        .separator()
+        .hide()
+        .hide_others()
+        .show_all()
+        .separator()
+        .quit()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let edit_menu = SubmenuBuilder::new(&app, "Edit")
+        .undo().redo().separator().cut().copy().paste().select_all()
+        .build().map_err(|e| e.to_string())?;
+
+    let present_item = MenuItemBuilder::new("Present Mode").id("present").accelerator("F5")
+        .build(&app).map_err(|e| e.to_string())?;
+    let inspector_item = MenuItemBuilder::new("Toggle Inspector").id("inspector").accelerator("CmdOrCtrl+I")
+        .build(&app).map_err(|e| e.to_string())?;
+    let debug_item = MenuItemBuilder::new("Debug Console").id("debug-console").accelerator("CmdOrCtrl+Shift+D")
+        .build(&app).map_err(|e| e.to_string())?;
+
+    let view_menu = SubmenuBuilder::new(&app, "View")
+        .item(&present_item).item(&inspector_item).separator().item(&debug_item).separator().fullscreen()
+        .build().map_err(|e| e.to_string())?;
+
+    let window_menu = SubmenuBuilder::new(&app, "Window")
+        .minimize().maximize().separator().close_window()
+        .build().map_err(|e| e.to_string())?;
+
+    let menu = MenuBuilder::new(&app)
+        .item(&app_menu)
+        .item(&file_menu)
+        .item(&edit_menu)
+        .item(&view_menu)
+        .item(&window_menu)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    app.set_menu(menu).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -228,6 +351,7 @@ pub fn run() {
             check_display_mirroring,
             disable_display_mirroring,
             enable_display_mirroring,
+            update_recent_menu,
         ])
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -342,6 +466,16 @@ pub fn run() {
             app.on_menu_event(move |app_handle, event| {
                 let id = event.id().0.as_str();
                 if let Some(window) = app_handle.get_webview_window("main") {
+                    // Handle recent project menu items
+                    if let Some(idx_str) = id.strip_prefix("recent-") {
+                        if let Ok(idx) = idx_str.parse::<usize>() {
+                            let paths = RECENT_PATHS.lock().unwrap();
+                            if let Some(path) = paths.get(idx) {
+                                let _ = window.emit("menu-event-recent", path.as_str());
+                                return;
+                            }
+                        }
+                    }
                     let _ = window.emit("menu-event", id);
                 }
             });

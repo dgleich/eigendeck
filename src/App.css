@@ -131,17 +131,22 @@
   border-bottom: 1px solid #ddd;
   gap: 8px;
   flex-shrink: 0;
+  position: relative;
 }
 
 .toolbar-left,
 .toolbar-right {
   display: flex;
   gap: 4px;
+  z-index: 1;
 }
 
 .toolbar-center {
-  flex: 1;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   text-align: center;
+  pointer-events: auto;
 }
 
 .project-title {
