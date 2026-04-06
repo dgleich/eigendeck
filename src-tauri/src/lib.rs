@@ -1,3 +1,5 @@
+#![allow(deprecated)] // cocoa crate deprecation warnings — TODO: migrate to objc2
+
 use tauri::menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager};
 
@@ -52,7 +54,7 @@ fn check_display_mirroring() -> Result<serde_json::Value, String> {
             let mut secondary_display: u32 = 0;
 
             for &d in &displays {
-                let mirror = CGDisplayMirrorOfDisplay(d);
+                let mirror = CGDisplayMirrorsDisplay(d);
                 if mirror != 0 {
                     is_mirrored = true;
                     mirror_source = mirror;
@@ -115,7 +117,7 @@ fn disable_display_mirroring() -> Result<bool, String> {
             // Find a mirrored display
             let mut mirrored_display: u32 = 0;
             for &d in &displays {
-                if CGDisplayMirrorOfDisplay(d) != 0 {
+                if CGDisplayMirrorsDisplay(d) != 0 {
                     mirrored_display = d;
                     break;
                 }
