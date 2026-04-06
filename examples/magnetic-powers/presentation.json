@@ -575,13 +575,15 @@
           "id": "f7a8eeb0-5df0-4a5a-a33e-1519fd3c9646",
           "type": "text",
           "preset": "body",
-          "html": "<br><div style=\"text-align: center;\"><b>Weighted undirected graphs, Laplacians, Random Walks</b></div><div style=\"text-align: center;\">are all basically the same concept</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">if we make the graph directed,&nbsp;</div><div style=\"text-align: center;\">then all of this equivalence breaks down</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div>",
+          "html": "<div><br></div><div style=\"text-align: center;\"><b><br></b></div><div style=\"text-align: center;\"><b><br></b></div><div style=\"text-align: center;\">Weighted undirected graphs, Laplacians, Random Walks</div><div style=\"text-align: center;\">are all basically the same concept</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">if we make the graph directed,&nbsp;</div><div style=\"text-align: center;\">then all of this equivalence breaks down</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div>",
           "position": {
             "x": 84,
             "y": 242,
             "width": 1760,
             "height": 800
-          }
+          },
+          "linkId": "313a82f7-b74a-4d3b-af1b-80c0fa12b864",
+          "syncId": "313a82f7-b74a-4d3b-af1b-80c0fa12b864"
         },
         {
           "id": "c390b8d1-4ee7-40c5-b3e9-284c629d5b2a",
@@ -595,7 +597,74 @@
             "height": 200
           },
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
+          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
+          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "c59db189-03ec-48f5-8378-b585dd0214f5",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "c74e0adf-a8f8-4f36-bfb3-ff7c13baccda",
+          "type": "text",
+          "preset": "body",
+          "html": "<div><br></div><div style=\"text-align: center;\"><b><br></b></div><div style=\"text-align: center;\"><b><br></b></div><div style=\"text-align: center;\">Weighted undirected graphs, Laplacians, Random Walks</div><div style=\"text-align: center;\">are all basically the same concept</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">if we make the graph directed,&nbsp;</div><div style=\"text-align: center;\">then all of this equivalence breaks down</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div>",
+          "position": {
+            "x": 84,
+            "y": 242,
+            "width": 1760,
+            "height": 800
+          },
+          "linkId": "313a82f7-b74a-4d3b-af1b-80c0fa12b864",
+          "_syncId": "313a82f7-b74a-4d3b-af1b-80c0fa12b864"
+        },
+        {
+          "id": "d17b0eb0-7795-4360-84be-7d5f72b0cbaa",
+          "type": "text",
+          "preset": "title",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: normal; letter-spacing: 5.76px; text-transform: uppercase;\">The problem is that spectral analysis has </span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">…</span><span style=\"font-weight: normal; letter-spacing: 5.76px; text-transform: uppercase;\">&nbsp;issues </span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">…</span><span style=\"font-weight: normal; letter-spacing: 5.76px; text-transform: uppercase;\">&nbsp;for directed graphs&nbsp;</span></span>",
+          "position": {
+            "x": 61,
+            "y": 51,
+            "width": 1807,
+            "height": 200
+          },
+          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
           "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "51866a90-638d-474a-ab0e-09af419ccf7b",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "e6555ffe-a658-444f-8a48-96ef1723aaae",
+          "type": "text",
+          "preset": "title",
+          "html": "Title",
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          }
+        },
+        {
+          "id": "5b45c19d-5106-418e-b902-c635e80a7ba0",
+          "type": "text",
+          "preset": "body",
+          "html": "",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          }
         }
       ],
       "notes": ""

@@ -126,6 +126,34 @@ export function PropertiesPanel() {
                 placeholder="\\newcommand{\\R}{\\mathbb{R}}"
                 style={{ fontFamily: 'monospace', fontSize: 11, minHeight: 60, resize: 'vertical' }} />
             </PropSection>
+            {slide.elements.some((el) => el.syncId || el.linkId) && (
+              <PropSection label="Slide Links">
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  {slide.elements.some((el) => el.syncId) && (
+                    <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '3px 8px' }}
+                      onClick={() => {
+                        for (const el of slide.elements) {
+                          if (el.syncId) updateElement(el.id, { syncId: undefined, _syncId: el.syncId } as any);
+                        }
+                      }}
+                      title="Free position of all elements on this slide">
+                      Unsync All
+                    </button>
+                  )}
+                  {slide.elements.some((el) => el.linkId) && (
+                    <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '3px 8px' }}
+                      onClick={() => {
+                        for (const el of slide.elements) {
+                          if (el.linkId) updateElement(el.id, { linkId: undefined, _linkId: el.linkId } as any);
+                        }
+                      }}
+                      title="Remove animation links from all elements on this slide">
+                      Unlink All
+                    </button>
+                  )}
+                </div>
+              </PropSection>
+            )}
           </>
         )}
 
