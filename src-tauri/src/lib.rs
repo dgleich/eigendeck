@@ -139,7 +139,7 @@ fn disable_display_mirroring() -> Result<bool, String> {
                 return Err(format!("CGConfigureDisplayMirrorOfDisplay failed: {}", err));
             }
 
-            let err = CGCompleteDisplayConfiguration(config, CGConfigureOption::ConfigurePermanently);
+            let err = CGCompleteDisplayConfiguration(config, CGConfigureOption::ConfigureForSession);
             if err != 0 {
                 return Err(format!("CGCompleteDisplayConfiguration failed: {}", err));
             }
@@ -203,7 +203,7 @@ fn enable_display_mirroring() -> Result<bool, String> {
                 return Err(format!("CGConfigureDisplayMirrorOfDisplay failed: {}", err));
             }
 
-            let err = CGCompleteDisplayConfiguration(config, CGConfigureOption::ConfigurePermanently);
+            let err = CGCompleteDisplayConfiguration(config, CGConfigureOption::ConfigureForSession);
             if err != 0 {
                 return Err(format!("CGCompleteDisplayConfiguration failed: {}", err));
             }
