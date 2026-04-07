@@ -64,7 +64,13 @@ export function SlideElementRenderer({
           onUpdate={onUpdate}
         >
           <img src={src} alt="" draggable={false}
-            style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+            style={{
+              width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none',
+              ...(element.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
+              ...(element.borderRadius ? { borderRadius: element.borderRadius } : {}),
+              ...(element.opacity != null && element.opacity < 1 ? { opacity: element.opacity } : {}),
+              ...(element.rotation ? { transform: `rotate(${element.rotation}deg)` } : {}),
+            }} />
         </DraggableBox>
       );
     }

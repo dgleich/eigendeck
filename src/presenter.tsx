@@ -134,6 +134,10 @@ function PresenterElement({ element: el, zIndex, projectPath }: { element: Slide
         <img src={src} alt="" style={{
           position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
           objectFit: 'contain', zIndex,
+          ...(el.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
+          ...(el.borderRadius ? { borderRadius: el.borderRadius } : {}),
+          ...(el.opacity != null && el.opacity < 1 ? { opacity: el.opacity } : {}),
+          ...(el.rotation ? { transform: `rotate(${el.rotation}deg)` } : {}),
         }} />
       );
     }

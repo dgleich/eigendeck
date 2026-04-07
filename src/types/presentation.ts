@@ -92,6 +92,10 @@ export interface TextElement extends BaseElement {
 export interface ImageElement extends BaseElement {
   type: 'image';
   src: string;
+  shadow?: boolean;
+  borderRadius?: number;
+  opacity?: number;
+  rotation?: number;
 }
 
 export interface ArrowElement extends BaseElement {

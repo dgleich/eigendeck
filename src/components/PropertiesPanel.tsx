@@ -236,6 +236,44 @@ export function PropertiesPanel() {
               </PropSection>
             )}
 
+            {/* Image element properties */}
+            {selectedEl.type === 'image' && (
+              <>
+                <PropSection label="Effects">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                      <input type="checkbox" checked={!!selectedEl.shadow}
+                        onChange={(e) => updateElement(selectedEl.id, { shadow: e.target.checked } as any)} />
+                      Drop Shadow
+                    </label>
+                    <label style={{ fontSize: 12 }}>
+                      Rounded Corners
+                      <input className="prop-input-sm" type="number" min={0} max={100}
+                        value={selectedEl.borderRadius || 0}
+                        onChange={(e) => updateElement(selectedEl.id, { borderRadius: parseInt(e.target.value) || 0 } as any)}
+                        style={{ marginLeft: 6, width: 50 }} />
+                    </label>
+                    <label style={{ fontSize: 12 }}>
+                      Opacity
+                      <input type="range" min={0} max={1} step={0.05}
+                        value={selectedEl.opacity ?? 1}
+                        onChange={(e) => updateElement(selectedEl.id, { opacity: parseFloat(e.target.value) } as any)}
+                        style={{ marginLeft: 6, width: 80 }} />
+                      <span style={{ fontSize: 11, color: '#999', marginLeft: 4 }}>{Math.round((selectedEl.opacity ?? 1) * 100)}%</span>
+                    </label>
+                    <label style={{ fontSize: 12 }}>
+                      Rotation
+                      <input className="prop-input-sm" type="number" min={-180} max={180}
+                        value={selectedEl.rotation || 0}
+                        onChange={(e) => updateElement(selectedEl.id, { rotation: parseInt(e.target.value) || 0 } as any)}
+                        style={{ marginLeft: 6, width: 50 }} />
+                      <span style={{ fontSize: 11, color: '#999' }}>&deg;</span>
+                    </label>
+                  </div>
+                </PropSection>
+              </>
+            )}
+
             {/* Text element properties */}
             {selectedEl.type === 'text' && (
               <>
