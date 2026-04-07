@@ -70,7 +70,7 @@
           "id": "b407fa7c-538d-45ac-9651-f5440efc73c5",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Okay, so, it’s 2026. What have people done about this and why are you still talking?</span></span>",
+          "html": "<span style=\"text-align: center; font-weight: normal;\"><span style=\"letter-spacing: 5.76px; text-transform: uppercase;\">Powers of the adjacency matrix</span></span>",
           "position": {
             "x": 61,
             "y": 51,
@@ -134,7 +134,7 @@
           "id": "eb7e135c-0712-4da8-a2be-f3f093d1607c",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Okay, so, it’s 2026. What have people done about this and why are you still talking?</span></span>",
+          "html": "<span style=\"text-align: center; font-weight: normal;\"><span style=\"letter-spacing: 5.76px; text-transform: uppercase;\">Powers of the adjacency matrix</span></span>",
           "position": {
             "x": 61,
             "y": 51,
@@ -199,7 +199,7 @@
           "id": "6c21ed5b-413d-44cc-af64-fe7f61f49e6d",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Okay, so, it’s 2026. What have people done about this and why are you still talking?</span></span>",
+          "html": "<span style=\"text-align: center; font-weight: normal;\"><span style=\"letter-spacing: 5.76px; text-transform: uppercase;\">Powers of the adjacency matrix</span></span>",
           "position": {
             "x": 61,
             "y": 51,
@@ -293,7 +293,7 @@
           "id": "611615d9-d5c5-4860-bfd0-e0a4ccc4753e",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Okay, so, it’s 2026. What have people done about this and why are you still talking?</span></span>",
+          "html": "<span style=\"text-align: center; font-weight: normal;\"><span style=\"letter-spacing: 5.76px; text-transform: uppercase;\">Powers of the adjacency matrix</span></span>",
           "position": {
             "x": 61,
             "y": 51,
@@ -385,7 +385,7 @@
           "id": "e1796a77-efc8-4d8e-8272-591b6bdf260b",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Okay, so, it’s 2026. What have people done about this and why are you still talking?</span></span>",
+          "html": "<span style=\"text-align: center; font-weight: normal;\"><span style=\"letter-spacing: 5.76px; text-transform: uppercase;\">Powers of the adjacency matrix</span></span>",
           "position": {
             "x": 61,
             "y": 51,
@@ -494,7 +494,7 @@
           "id": "0f30f827-3011-4b6d-9347-f939135d31ed",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Okay, so, it’s 2026. What have people done about this and why are you still talking?</span></span>",
+          "html": "<span style=\"text-align: center; font-weight: normal;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\">Path and Walk Counting is central to&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">…</span><span style=\"font-weight: normal; letter-spacing: 0.08em; text-transform: uppercase;\">&nbsp;Centrality! </span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">…</span><span style=\"font-weight: normal; letter-spacing: 0.08em; text-transform: uppercase;\">&nbsp;</span></span>",
           "position": {
             "x": 61,
             "y": 51,
@@ -589,7 +589,7 @@
           "id": "c390b8d1-4ee7-40c5-b3e9-284c629d5b2a",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Okay, so, it’s 2026. What have people done about this and why are you still talking?</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: normal; letter-spacing: 5.76px; text-transform: uppercase;\">The problem is that spectral analysis has </span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">…</span><span style=\"font-weight: normal; letter-spacing: 5.76px; text-transform: uppercase;\">&nbsp;issues </span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">…</span><span style=\"font-weight: normal; letter-spacing: 5.76px; text-transform: uppercase;\">&nbsp;for directed graphs&nbsp;</span></span>",
           "position": {
             "x": 61,
             "y": 51,
@@ -613,7 +613,7 @@
           "src": "images/pasted-1775495687383.png",
           "position": {
             "x": 717,
-            "y": 268,
+            "y": 266,
             "width": 1200,
             "height": 680
           },
@@ -624,7 +624,7 @@
           "id": "d17b0eb0-7795-4360-84be-7d5f72b0cbaa",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Okay, so, it’s 2026. What have people done about this and why are you still talking?</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: normal; letter-spacing: 5.76px; text-transform: uppercase;\">The problem is that spectral analysis has </span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">…</span><span style=\"font-weight: normal; letter-spacing: 5.76px; text-transform: uppercase;\">&nbsp;issues </span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">…</span><span style=\"font-weight: normal; letter-spacing: 5.76px; text-transform: uppercase;\">&nbsp;for directed graphs&nbsp;</span></span>",
           "position": {
             "x": 61,
             "y": 51,
@@ -641,7 +641,7 @@
           "src": "images/pasted-1775495625299.png",
           "position": {
             "x": 58,
-            "y": 366,
+            "y": 368,
             "width": 841,
             "height": 496
           },
@@ -659,29 +659,27 @@
           "id": "5db2fa26-f16d-4998-9b76-6aed42c2fa99",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Okay, so, it’s 2026. What have people done about this and why are you still talking?</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Test</span></span>",
           "position": {
-            "x": 61,
+            "x": 59,
             "y": 51,
             "width": 1807,
             "height": 200
           },
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
-          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
-          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
+          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
         },
         {
-          "id": "3900712b-a26d-4ed3-88b6-5d0952605759",
+          "id": "52bdd193-7a10-4a99-84ed-db4a5e1b6524",
           "type": "text",
           "preset": "body",
-          "html": "<div style=\"text-align: center;\"><i>Drop direction entirely [ ??? ]</i></div><div style=\"text-align: center;\"><i>$$\\mG \\to \\mA = \\max(\\mG, \\mG^T)$$</i></div><div style=\"text-align: center;\"><i><br></i></div><div style=\"text-align: center;\"><i>Explicitly symmetrize the matrix [ ??? ]&nbsp;</i></div><div style=\"text-align: center;\"><i>$$\\mG \\to \\mA = \\mG + \\mG^T$$</i></div><div style=\"text-align: center;\"><i><br></i></div><div style=\"text-align: center;\"><i>Use singular values instead of eigenvalues [Dhillon ’??, probably even earlier]</i></div><div style=\"text-align: center;\"><i>$$\\mG \\to \\mA = \\bmat{0 &amp; \\mG \\\\ \\mG^T &amp; 0}$$</i></div><div style=\"text-align: center;\"><i><br></i></div><div style=\"text-align: center;\"><i>Use directed graph directly [ … many attempts … ]&nbsp;</i></div><div style=\"text-align: center;\"><i>$\\mG \\to \\mA = \\mG \\mD^{-1}$ and things like hitting tims, etc.&nbsp;</i></div><div style=\"text-align: center;\"><i><br></i></div><div style=\"text-align: center;\"><i>Flow-based circulation [Chung 2005]</i></div><div style=\"text-align: center;\">$\\mG \\to \\mA = \\text{Diag}(\\vpi(\\mG)) \\mD^{-1} \\mG + \\mG^T \\mD^{-1} \\text{Diag}(\\vpi(\\mG)) \\mG^T$</div>",
+          "html": "<div style=\"font-size: 36px; text-align: center;\"><i>Drop direction entirely [ ??? ]</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$$\\mG \\to \\mA = \\max(\\mG, \\mG^T)$$</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Explicitly symmetrize the matrix [ ??? ]&nbsp;</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$$\\mG \\to \\mA = \\mG + \\mG^T$$</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Use singular values instead of eigenvalues [Dhillon ’??, probably even earlier]</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$$\\mG \\to \\mA = \\bmat{0 &amp; \\mG \\\\ \\mG^T &amp; 0}$$</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Use directed graph directly [ … many attempts … ]&nbsp;</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$\\mG \\to \\mA = \\mG \\mD^{-1}$ and things like hitting tims, etc.&nbsp;</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Flow-based circulation [Chung 2005]</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA = \\text{Diag}(\\vpi(\\mG)) \\mD^{-1} \\mG + \\mG^T \\mD^{-1} \\text{Diag}(\\vpi(\\mG)) \\mG^T$</div>",
           "position": {
-            "x": 88,
-            "y": 230,
+            "x": 68,
+            "y": 241,
             "width": 1760,
             "height": 800
-          },
-          "fontSize": 36
+          }
         }
       ],
       "notes": ""

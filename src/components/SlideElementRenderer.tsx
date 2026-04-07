@@ -32,6 +32,11 @@ export function SlideElementRenderer({
           linkId={element.linkId} syncId={element.syncId}
           _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
           dataValign={element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined)}
+          onEdit={() => {
+            // Trigger edit mode on the TextContent inside this box
+            const el = document.querySelector(`[data-element-id="${element.id}"]`);
+            if (el) el.dispatchEvent(new CustomEvent('start-editing', { bubbles: false }));
+          }}
           onSelect={onSelect} onDelete={onDelete}
           onPositionChange={(pos) => onUpdate({ position: pos } as any)}
           onUpdate={onUpdate}
@@ -249,7 +254,14 @@ function TextContent({
     }
   }, [element.html, editing, mathPreamble]);
 
-  // (no beforeinput blocker — using contentEditable toggle instead)
+  // Listen for 'start-editing' custom event from context menu
+  useEffect(() => {
+    const el = wrapperRef.current?.closest('[data-element-id]');
+    if (!el) return;
+    const handler = () => { if (!editing) startEditing(); };
+    el.addEventListener('start-editing', handler);
+    return () => el.removeEventListener('start-editing', handler);
+  });
 
   // Position toolbar
   useEffect(() => {
@@ -395,7 +407,7 @@ function TextContent({
 // ============================================
 function DraggableBox({
   elementId, position: pos, zIndex, scale, className, children, isSelected,
-  linkId, syncId, _linkId, _syncId, dataValign,
+  linkId, syncId, _linkId, _syncId, dataValign, onEdit,
   onSelect, onDelete, onPositionChange, onUpdate,
 }: {
   elementId: string;
@@ -403,6 +415,7 @@ function DraggableBox({
   children: React.ReactNode; isSelected: boolean;
   linkId?: string; syncId?: string; _linkId?: string; _syncId?: string;
   dataValign?: string;
+  onEdit?: () => void;
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onPositionChange: (pos: ElementPosition) => void;
   onUpdate: (changes: Partial<SlideElement>) => void;
@@ -529,6 +542,7 @@ function DraggableBox({
   return (
     <div
       className={`slide-element ${className} ${isDragging ? 'is-dragging' : ''} ${isSelected ? 'is-selected' : ''}`}
+      data-element-id={elementId}
       data-valign={dataValign}
       style={{
         position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
@@ -542,6 +556,10 @@ function DraggableBox({
         if (!isSelected) onSelect();
         const store = usePresentationStore.getState();
         const items: import('./ContextMenu').MenuEntry[] = [
+          ...(onEdit ? [
+            { label: 'Edit Text', onClick: () => onEdit() },
+            { separator: true as const },
+          ] : []),
           { label: 'Cut', shortcut: '\u2318X', onClick: () => {
             // Copy then delete
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', metaKey: true }));

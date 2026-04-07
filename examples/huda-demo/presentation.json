@@ -26,8 +26,8 @@
           "preset": "textbox",
           "html": "It takes math $f(x) = x^2$<div><br></div><div>And does integrals…</div><div style=\"\">$$\\int_0^1 f(x) \\, dx$$&nbsp;</div>",
           "position": {
-            "x": 536,
-            "y": 581,
+            "x": 310,
+            "y": 576,
             "width": 867,
             "height": 355
           },
@@ -121,8 +121,8 @@
           "preset": "textbox",
           "html": "It takes math $f(x) = x^2$<div><br></div><div>And does integrals…</div><div style=\"\">$$\\int_0^1 f(x) \\, dx$$&nbsp;</div>",
           "position": {
-            "x": 536,
-            "y": 581,
+            "x": 310,
+            "y": 576,
             "width": 867,
             "height": 355
           },
@@ -204,8 +204,8 @@
           "preset": "textbox",
           "html": "It takes math $f(x) = x^2$<div><br></div><div>And does integrals…</div><div style=\"\">$$\\int_0^1 f(x) \\, dx$$&nbsp;</div>",
           "position": {
-            "x": 536,
-            "y": 581,
+            "x": 310,
+            "y": 576,
             "width": 867,
             "height": 355
           },
@@ -237,15 +237,15 @@
           "id": "08a76302-dc41-4e64-b31b-d3e8f707404a",
           "type": "text",
           "preset": "title",
-          "html": "Oh, shoot, I didn’t mean to change this!",
+          "html": "This keeps an animation link…&nbsp;",
           "position": {
-            "x": 158,
-            "y": 328,
+            "x": 153,
+            "y": 845,
             "width": 1600,
             "height": 140
           },
           "linkId": "52058235-d02c-44c8-b0d1-dd65378e9d32",
-          "syncId": "52058235-d02c-44c8-b0d1-dd65378e9d32"
+          "_syncId": "52058235-d02c-44c8-b0d1-dd65378e9d32"
         },
         {
           "id": "842ff77b-064c-4f1d-9304-9ae1f11a4612",
@@ -253,8 +253,8 @@
           "preset": "textbox",
           "html": "It takes math $f(x) = x^2$<div><br></div><div>And does integrals…</div><div style=\"\">$$\\int_0^1 f(x) \\, dx$$&nbsp;</div>",
           "position": {
-            "x": 536,
-            "y": 581,
+            "x": 310,
+            "y": 576,
             "width": 867,
             "height": 355
           },
