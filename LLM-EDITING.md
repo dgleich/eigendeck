@@ -116,11 +116,34 @@ All elements share these base fields:
   "id": "unique-uuid",
   "type": "image",
   "src": "images/diagram.png",
-  "position": { "x": 360, "y": 200, "width": 1200, "height": 680 }
+  "position": { "x": 360, "y": 200, "width": 1200, "height": 680 },
+  "shadow": true,
+  "borderRadius": 12,
+  "opacity": 0.9,
+  "rotation": -3
 }
 ```
 
-`src` is a relative path from the project directory. Images should be in `images/`.
+- `src`: relative path from the project directory. Images should be in `images/`.
+- `shadow`: optional boolean — adds a drop shadow
+- `borderRadius`: optional number — rounded corners in pixels
+- `opacity`: optional number 0–1 — image transparency
+- `rotation`: optional number — rotation in degrees
+
+### Cover Element
+
+```json
+{
+  "id": "unique-uuid",
+  "type": "cover",
+  "position": { "x": 80, "y": 200, "width": 800, "height": 600 },
+  "color": "#ffffff"
+}
+```
+
+A plain rectangle used to cover/hide other elements. Shows as a dashed outline in the editor, solid in presenter/export.
+
+- `color`: optional CSS color (default white)
 
 ### Arrow Element
 
