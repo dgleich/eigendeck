@@ -86,10 +86,10 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 97,
-            "y": 371,
-            "width": 455,
-            "height": 437
+            "x": 354,
+            "y": 675,
+            "width": 287,
+            "height": 324
           },
           "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
           "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
@@ -98,12 +98,12 @@
           "id": "9351bba1-4bb4-4b72-b68d-f0c5da1362ab",
           "type": "text",
           "preset": "textbox",
-          "html": "$\\mA = \\bmat{0 &amp; 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 1 &amp; 1 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 1 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 1 &amp; 0}$<br>",
+          "html": "$\\mA_q = \\bmat{0 &amp; \\omega &amp; \\omega &amp; 0 &amp; \\omega+\\bar\\omega &amp; 0 &amp; 0 \\\\ \\bar\\omega &amp; 0 &amp; 0 &amp; 0 &amp; \\omega+\\bar\\omega &amp; 0 &amp; 0 \\\\ \\bar\\omega &amp; 0 &amp; 0 &amp; \\bar\\omega &amp; \\omega &amp; 0 &amp; \\omega \\\\ 0 &amp; 0 &amp; \\omega &amp; 0 &amp; \\bar\\omega &amp; 0 &amp; \\bar\\omega \\\\ \\omega+\\bar\\omega &amp; \\omega+\\bar\\omega &amp; \\bar\\omega &amp; \\omega &amp; 0 &amp; 0 &amp; \\omega \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \\bar\\omega \\\\ 0 &amp; 0 &amp; \\bar\\omega &amp; \\omega &amp; \\bar\\omega &amp; \\omega &amp; 0}$<br>",
           "position": {
-            "x": 715,
-            "y": 364,
-            "width": 700,
-            "height": 528
+            "x": 553,
+            "y": 326,
+            "width": 883,
+            "height": 507
           },
           "linkId": "0e1dd9ce-8a46-4d6f-bc4b-64b4bac6d3a4",
           "syncId": "0e1dd9ce-8a46-4d6f-bc4b-64b4bac6d3a4"
@@ -150,10 +150,10 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 97,
-            "y": 371,
-            "width": 455,
-            "height": 437
+            "x": 354,
+            "y": 675,
+            "width": 287,
+            "height": 324
           },
           "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
           "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
@@ -162,12 +162,12 @@
           "id": "c8a99d0b-3db5-4a04-a601-aa68258adce3",
           "type": "text",
           "preset": "textbox",
-          "html": "$\\mP = \\bmat{0 &amp; \\tfrac{1}{3} &amp; \\tfrac{1}{3} &amp; 0 &amp; \\tfrac{1}{3} &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; \\tfrac{1}{2} &amp; 0 &amp; \\tfrac{1}{2} \\\\ 0 &amp; 0 &amp; 1 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ \\tfrac{1}{4} &amp; \\tfrac{1}{4} &amp; 0 &amp; \\tfrac{1}{4} &amp; 0 &amp; 0 &amp; \\tfrac{1}{4} \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 \\\\ 0 &amp; 0 &amp; 0 &amp; \\tfrac{1}{2} &amp; 0 &amp; \\tfrac{1}{2} &amp; 0}$<br>",
+          "html": "$\\mA_q = \\bmat{0 &amp; \\omega &amp; \\omega &amp; 0 &amp; \\omega+\\bar\\omega &amp; 0 &amp; 0 \\\\ \\bar\\omega &amp; 0 &amp; 0 &amp; 0 &amp; \\omega+\\bar\\omega &amp; 0 &amp; 0 \\\\ \\bar\\omega &amp; 0 &amp; 0 &amp; \\bar\\omega &amp; \\omega &amp; 0 &amp; \\omega \\\\ 0 &amp; 0 &amp; \\omega &amp; 0 &amp; \\bar\\omega &amp; 0 &amp; \\bar\\omega \\\\ \\omega+\\bar\\omega &amp; \\omega+\\bar\\omega &amp; \\bar\\omega &amp; \\omega &amp; 0 &amp; 0 &amp; \\omega \\\\ 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \\bar\\omega \\\\ 0 &amp; 0 &amp; \\bar\\omega &amp; \\omega &amp; \\bar\\omega &amp; \\omega &amp; 0}$<br>",
           "position": {
-            "x": 715,
-            "y": 364,
-            "width": 700,
-            "height": 528
+            "x": 553,
+            "y": 326,
+            "width": 883,
+            "height": 507
           },
           "linkId": "0e1dd9ce-8a46-4d6f-bc4b-64b4bac6d3a4",
           "syncId": "0e1dd9ce-8a46-4d6f-bc4b-64b4bac6d3a4",
@@ -215,10 +215,10 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 97,
-            "y": 371,
-            "width": 455,
-            "height": 437
+            "x": 354,
+            "y": 675,
+            "width": 287,
+            "height": 324
           },
           "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
           "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
@@ -309,10 +309,10 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 97,
-            "y": 371,
-            "width": 455,
-            "height": 437
+            "x": 354,
+            "y": 675,
+            "width": 287,
+            "height": 324
           },
           "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
           "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
@@ -401,10 +401,10 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 97,
-            "y": 371,
-            "width": 455,
-            "height": 437
+            "x": 354,
+            "y": 675,
+            "width": 287,
+            "height": 324
           },
           "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
           "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
@@ -664,10 +664,46 @@
           "id": "5db2fa26-f16d-4998-9b76-6aed42c2fa99",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Test</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Okay, so it’s 2026, What have people done about this and why are you still talking?&nbsp;</span></span>",
+          "position": {
+            "x": 57,
+            "y": 53,
+            "width": 1807,
+            "height": 200
+          },
+          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
+          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
+          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
+        },
+        {
+          "id": "52bdd193-7a10-4a99-84ed-db4a5e1b6524",
+          "type": "text",
+          "preset": "body",
+          "html": "<div style=\"font-size: 36px; text-align: center;\"><i>Drop direction entirely [ ??? ]</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$\\mG \\to \\mA = \\max(\\mG, \\mG^T)$</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Explicitly symmetrize the matrix [ ??? ]&nbsp;</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$\\mG \\to \\mA = \\mG + \\mG^T$</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Use singular values instead of eigenvalues [Dhillon ’??, probably even earlier]</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$\\mG \\to \\mA = \\bmat{0 &amp; \\mG \\\\ \\mG^T &amp; 0}$</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Use directed graph directly [ … many attempts … ]&nbsp;</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$\\mG \\to \\mA = \\mG \\mD^{-1}$ and things like hitting times, etc.&nbsp;</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Flow-based circulation [Chung 2005]</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA = \\text{Diag}(\\vpi(\\mG)) \\mD^{-1} \\mG + \\mG^T \\mD^{-1} \\text{Diag}(\\vpi(\\mG)) \\mG^T$</div>",
           "position": {
             "x": 59,
-            "y": 51,
+            "y": 258,
+            "width": 1760,
+            "height": 800
+          },
+          "linkId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585",
+          "syncId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "988a29cc-09ac-4927-bc44-bdf79e803d5a",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
+          "type": "text",
+          "preset": "title",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">… and then A complex idea &nbsp;…&nbsp;</span></span>",
+          "position": {
+            "x": 55,
+            "y": 53,
             "width": 1807,
             "height": 200
           },
@@ -675,16 +711,33 @@
           "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
         },
         {
-          "id": "52bdd193-7a10-4a99-84ed-db4a5e1b6524",
+          "id": "55f5ccac-8008-452c-ae39-44b4267a5376",
+          "type": "demo-piece",
+          "demoSrc": "demos/demo_powers_teaser.html",
+          "piece": "graph",
+          "position": {
+            "x": 354,
+            "y": 675,
+            "width": 287,
+            "height": 324
+          },
+          "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
+          "syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
+        },
+        {
+          "id": "b4f988de-d103-4793-be9e-9b12151b1f1b",
           "type": "text",
           "preset": "body",
-          "html": "<div style=\"font-size: 36px; text-align: center;\"><i>Drop direction entirely [ ??? ]</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$$\\mG \\to \\mA = \\max(\\mG, \\mG^T)$$</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Explicitly symmetrize the matrix [ ??? ]&nbsp;</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$$\\mG \\to \\mA = \\mG + \\mG^T$$</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Use singular values instead of eigenvalues [Dhillon ’??, probably even earlier]</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$$\\mG \\to \\mA = \\bmat{0 &amp; \\mG \\\\ \\mG^T &amp; 0}$$</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Use directed graph directly [ … many attempts … ]&nbsp;</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$\\mG \\to \\mA = \\mG \\mD^{-1}$ and things like hitting tims, etc.&nbsp;</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Flow-based circulation [Chung 2005]</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA = \\text{Diag}(\\vpi(\\mG)) \\mD^{-1} \\mG + \\mG^T \\mD^{-1} \\text{Diag}(\\vpi(\\mG)) \\mG^T$</div>",
+          "html": "<div style=\"font-size: 36px; text-align: center;\"><i>Benson, Gleich, Leskovec (2016)</i></div><div style=\"font-size: 36px; text-align: center;\">Given $\\mG$, enumerate directed motifs in $\\mG$, then analyze the weighted clique projection of the hypergraph where each clique is a hyperedge.&nbsp;</div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Guo &amp; Mohar 2017, Cucuringu 2019</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA$ with 1 for each bidirection edge and $i$ for $u \\to v$, $-i$ for $v \\to u$ for each directed edge $u,v$</div><div style=\"font-size: 36px; text-align: center;\"><br></div>",
           "position": {
-            "x": 68,
-            "y": 241,
+            "x": 118,
+            "y": 248,
             "width": 1760,
             "height": 800
-          }
+          },
+          "linkId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585",
+          "_syncId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585",
+          "fontSize": 62
         }
       ],
       "notes": ""
