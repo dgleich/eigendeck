@@ -1347,8 +1347,8 @@
 .debug-warn .debug-msg { color: #fbbf24; }
 .debug-error .debug-msg { color: #f87171; }
 
-/* Image element */
-.el-image { overflow: hidden; }
+/* Image element — overflow visible for drop shadow */
+.el-image { overflow: visible; }
 
 /* Cover element — dashed border in editor to show bounds */
 .el-cover {
