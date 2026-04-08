@@ -11,6 +11,7 @@ import {
   createDefaultPresentation,
 } from '../types/presentation';
 import { usePresentationStore } from './presentation';
+import { renderMathInHtml, containsMath, applyMathPreamble } from '../lib/mathjax';
 
 async function showError(msg: string) {
   await message(msg, { title: 'Error', kind: 'error' });
@@ -206,6 +207,11 @@ export async function exportPresentation(): Promise<void> {
       } catch { return src; }
     }
 
+    // Apply math preamble before rendering
+    if (presentation.config.mathPreamble) {
+      await applyMathPreamble(presentation.config.mathPreamble);
+    }
+
     const slides: string[] = [];
 
     for (let i = 0; i < presentation.slides.length; i++) {
@@ -220,7 +226,12 @@ export async function exportPresentation(): Promise<void> {
         switch (el.type) {
           case 'text': {
             const ps = TEXT_PRESET_STYLES[el.preset];
-            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;overflow:hidden;">${el.html}</div>`;
+            // Pre-render math to SVG so no MathJax JS needed in export
+            let textHtml = el.html;
+            if (containsMath(textHtml)) {
+              try { textHtml = await renderMathInHtml(textHtml); } catch { /* keep raw */ }
+            }
+            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;overflow:hidden;">${textHtml}</div>`;
             break;
           }
           case 'image': {
@@ -295,8 +306,6 @@ export async function exportPresentation(): Promise<void> {
       slides.push(`<div class="slide" data-index="${i}">${inner}</div>`);
     }
 
-    const preamble = presentation.config.mathPreamble || '';
-
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -325,21 +334,11 @@ li { margin-bottom: 0.15em; list-style-position: inside; }
 }
 .slide-footer-number { font-size: 24px; }
 </style>
-<script>
-  window.MathJax = {
-    tex: { inlineMath: [['\$', '\$']], displayMath: [['\$\$', '\$\$']]${preamble ? `,
-      macros: {}` : ''} },
-    svg: { fontCache: 'global' },
-    startup: { typeset: true }
-  };
-</script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
 </head>
 <body>
 <div id="viewport">
 ${slides.join('\n')}
 </div>
-${preamble ? `<div style="display:none">\\(${preamble.replace(/\\/g, '\\\\')}\\)</div>` : ''}
 <script>
 const slides = document.querySelectorAll('.slide');
 let current = 0;
