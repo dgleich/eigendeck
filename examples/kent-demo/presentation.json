@@ -1,0 +1,275 @@
+{
+  "title": "Untitled Presentation",
+  "theme": "white",
+  "slides": [
+    {
+      "id": "8c146aca-d8a8-4e83-adee-f5c06c149577",
+      "layout": "centered",
+      "elements": [
+        {
+          "id": "4af7a6b2-2033-4312-b220-dd1da0ca6fa3",
+          "type": "text",
+          "preset": "title",
+          "html": "Title",
+          "position": {
+            "x": 160,
+            "y": 400,
+            "width": 1600,
+            "height": 140
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "63a58680-a08d-45df-becf-5fe9fbed30c4",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "86cb2fb3-b442-494b-ac97-ce648443419f",
+          "type": "text",
+          "preset": "title",
+          "html": "Title",
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          },
+          "linkId": "eea6a435-019f-40fc-bd10-db62ed22a058",
+          "syncId": "eea6a435-019f-40fc-bd10-db62ed22a058"
+        },
+        {
+          "id": "8d13820e-98bc-49df-869c-f2cf94719192",
+          "type": "text",
+          "preset": "body",
+          "html": "",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          },
+          "linkId": "c6cf8744-8ba0-45cd-aff5-de75a9d6a579",
+          "syncId": "c6cf8744-8ba0-45cd-aff5-de75a9d6a579"
+        },
+        {
+          "id": "1b50a259-72fd-40c9-b1e6-0fce2320dead",
+          "type": "text",
+          "preset": "body",
+          "html": "Paths from $s$ to $t$<div><br></div><div>Let $G$ be a graph with vertices $V$ and $E$.</div><div><br></div><div><br></div>",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          },
+          "linkId": "b33aa82f-0de6-4b8c-b6ec-377f55f40e51",
+          "syncId": "b33aa82f-0de6-4b8c-b6ec-377f55f40e51"
+        },
+        {
+          "id": "1166c0b9-e42c-44b5-b4fd-68b59bafb0e0",
+          "type": "cover",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          }
+        },
+        {
+          "id": "26ff12fb-8394-49f5-af41-bd291ec324f7",
+          "type": "arrow",
+          "x1": 400,
+          "y1": 400,
+          "x2": 800,
+          "y2": 400,
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "color": "#2563eb",
+          "strokeWidth": 4,
+          "headSize": 16
+        },
+        {
+          "id": "62d83ed8-902d-491d-93b4-60b827323cde",
+          "type": "arrow",
+          "x1": 739,
+          "y1": 585,
+          "x2": 1139,
+          "y2": 585,
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "color": "#2563eb",
+          "strokeWidth": 4,
+          "headSize": 16
+        }
+      ],
+      "notes": "",
+      "groupId": "375ad7d1-573b-4240-b5fa-ed6c8c1321cc"
+    },
+    {
+      "id": "36d4de7c-1889-4c27-9f63-c9581cfe2eae",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "4f4a397e-1003-4d36-9301-655795164086",
+          "type": "text",
+          "preset": "title",
+          "html": "Title",
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          },
+          "linkId": "eea6a435-019f-40fc-bd10-db62ed22a058",
+          "syncId": "eea6a435-019f-40fc-bd10-db62ed22a058"
+        },
+        {
+          "id": "63710622-b988-4272-b525-70a5b1bb3266",
+          "type": "text",
+          "preset": "body",
+          "html": "",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          },
+          "linkId": "c6cf8744-8ba0-45cd-aff5-de75a9d6a579",
+          "syncId": "c6cf8744-8ba0-45cd-aff5-de75a9d6a579"
+        },
+        {
+          "id": "e3a9887d-7ca8-4b0e-833c-e6fd188a9852",
+          "type": "text",
+          "preset": "body",
+          "html": "Paths from $s$ to $t$<div><br></div><div>Let $G$ be a graph with vertices $V$ and $E$.</div><div><br></div><div><br></div>",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          },
+          "linkId": "b33aa82f-0de6-4b8c-b6ec-377f55f40e51",
+          "syncId": "b33aa82f-0de6-4b8c-b6ec-377f55f40e51"
+        }
+      ],
+      "notes": "",
+      "groupId": "375ad7d1-573b-4240-b5fa-ed6c8c1321cc"
+    },
+    {
+      "id": "71f89f2e-3b6b-45ec-90bc-1fdfb4ff2758",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "bb1627b1-ff53-4779-b7c8-f8527e395278",
+          "type": "text",
+          "preset": "title",
+          "html": "Title",
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          }
+        },
+        {
+          "id": "9a1f89ae-5875-4552-b97c-e59548278d54",
+          "type": "text",
+          "preset": "body",
+          "html": "",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          }
+        },
+        {
+          "id": "73fb2e1f-b3b3-4433-af00-3a1021aa3a37",
+          "type": "demo",
+          "src": "demos/bfs-demo.html",
+          "position": {
+            "x": 80,
+            "y": 200,
+            "width": 1760,
+            "height": 700
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "005e135b-dfe8-4e99-9047-b26cbd0ac121",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "5270c8ec-d351-44ae-b0f8-3fb4fa1ffed1",
+          "type": "text",
+          "preset": "title",
+          "html": "Title",
+          "position": {
+            "x": 80,
+            "y": 20,
+            "width": 1760,
+            "height": 200
+          }
+        },
+        {
+          "id": "d53e4609-a01a-4b5b-9d40-8853568b1370",
+          "type": "text",
+          "preset": "body",
+          "html": "",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          }
+        },
+        {
+          "id": "a226c67c-10d1-4aa7-bb2d-97c3a3e89f94",
+          "type": "demo-piece",
+          "demoSrc": "demos/demo_powers_teaser.html",
+          "piece": "graph",
+          "position": {
+            "x": 1059,
+            "y": 319,
+            "width": 625,
+            "height": 641
+          }
+        },
+        {
+          "id": "858d4db1-4f20-4874-9aa6-dced08a8155c",
+          "type": "demo-piece",
+          "demoSrc": "demos/demo_powers_teaser.html",
+          "piece": "results",
+          "position": {
+            "x": 101,
+            "y": 271,
+            "width": 860,
+            "height": 700
+          }
+        }
+      ],
+      "notes": ""
+    }
+  ],
+  "config": {
+    "transition": "slide",
+    "backgroundTransition": "fade",
+    "width": 1920,
+    "height": 1080,
+    "showSlideNumber": true,
+    "author": "",
+    "venue": ""
+  }
+}

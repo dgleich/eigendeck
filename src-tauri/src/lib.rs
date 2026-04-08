@@ -279,6 +279,9 @@ fn update_recent_menu(app: tauri::AppHandle, projects: Vec<serde_json::Value>) -
         .id("export")
         .accelerator("CmdOrCtrl+E")
         .build(&app).map_err(|e| e.to_string())?;
+    let import_item = MenuItemBuilder::new("Import from HTML...")
+        .id("import-html")
+        .build(&app).map_err(|e| e.to_string())?;
 
     let file_menu = SubmenuBuilder::new(&app, "File")
         .item(&new_item)
@@ -287,6 +290,7 @@ fn update_recent_menu(app: tauri::AppHandle, projects: Vec<serde_json::Value>) -
         .separator()
         .item(&save_item)
         .item(&export_item)
+        .item(&import_item)
         .separator()
         .close_window()
         .build()
@@ -390,6 +394,9 @@ pub fn run() {
                 .id("export")
                 .accelerator("CmdOrCtrl+E")
                 .build(app)?;
+            let import_item = MenuItemBuilder::new("Import from HTML...")
+                .id("import-html")
+                .build(app)?;
 
             let file_menu = SubmenuBuilder::new(app, "File")
                 .item(&new_item)
@@ -397,6 +404,7 @@ pub fn run() {
                 .separator()
                 .item(&save_item)
                 .item(&export_item)
+                .item(&import_item)
                 .separator()
                 .close_window()
                 .build()?;

@@ -339,6 +339,7 @@ li { margin-bottom: 0.15em; list-style-position: inside; }
 <div id="viewport">
 ${slides.join('\n')}
 </div>
+<!-- eigendeck-source: ${btoa(JSON.stringify(presentation))} -->
 <script>
 const slides = document.querySelectorAll('.slide');
 let current = 0;
@@ -378,5 +379,87 @@ document.addEventListener('keydown', (e) => {
     await writeTextFile(selected, html);
   } catch (e) {
     await showError(`Failed to export: ${e}`);
+  }
+}
+
+/**
+ * Import a presentation from an exported HTML file.
+ * Extracts the embedded presentation.json and sets up a project directory.
+ */
+export async function importFromHtml(): Promise<void> {
+  const htmlFile = await open({
+    title: 'Import from Exported HTML',
+    filters: [{ name: 'HTML', extensions: ['html'] }],
+  });
+  if (!htmlFile) return;
+
+  try {
+    const htmlContent = await readTextFile(htmlFile as string);
+
+    // Extract embedded presentation JSON
+    const match = htmlContent.match(/<!-- eigendeck-source: (.+?) -->/);
+    if (!match) {
+      await showError('This HTML file does not contain embedded Eigendeck data.\n\nOnly files exported from Eigendeck can be imported.');
+      return;
+    }
+
+    let presentation: Presentation;
+    try {
+      presentation = JSON.parse(atob(match[1]));
+    } catch {
+      await showError('Failed to decode embedded presentation data.');
+      return;
+    }
+
+    // Ask where to create the project directory
+    const projectDir = await open({
+      directory: true,
+      title: 'Select Directory for Imported Project',
+    });
+    if (!projectDir) return;
+
+    const projectPath = projectDir as string;
+
+    // Create subdirectories
+    const demosDir = `${projectPath}/demos`;
+    const imagesDir = `${projectPath}/images`;
+    if (!(await exists(demosDir))) await mkdir(demosDir);
+    if (!(await exists(imagesDir))) await mkdir(imagesDir);
+
+    // Extract inline images (data URLs) back to files
+    for (const slide of presentation.slides) {
+      for (const el of slide.elements) {
+        if (el.type === 'image' && el.src.startsWith('data:')) {
+          try {
+            const mimeMatch = el.src.match(/^data:image\/(\w+);base64,/);
+            const ext = mimeMatch?.[1] === 'jpeg' ? 'jpg' : (mimeMatch?.[1] || 'png');
+            const fileName = `imported-${el.id.slice(0, 8)}.${ext}`;
+            const base64 = el.src.replace(/^data:image\/\w+;base64,/, '');
+            const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+            const { writeFile } = await import('@tauri-apps/plugin-fs');
+            await writeFile(`${imagesDir}/${fileName}`, bytes);
+            el.src = `images/${fileName}`;
+          } catch (e) {
+            console.warn('Failed to extract image:', e);
+          }
+        }
+      }
+    }
+
+    // Save presentation.json
+    await writeTextFile(
+      `${projectPath}/presentation.json`,
+      JSON.stringify(presentation, null, 2)
+    );
+
+    // Open the imported project
+    const store = usePresentationStore.getState();
+    store.setProjectPath(projectPath);
+    store.setPresentation(presentation);
+    addRecentProject(projectPath, presentation.title);
+
+    console.log('Import successful:', projectPath);
+  } catch (e) {
+    await showError(`Failed to import: ${e}`);
   }
 }

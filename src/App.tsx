@@ -20,6 +20,7 @@ import {
   openProject,
   createProject,
   exportPresentation,
+  importFromHtml,
   openRecentProject,
   syncRecentMenu,
 } from './store/fileOps';
@@ -255,6 +256,7 @@ function App() {
         case 'open-project': openProject(); break;
         case 'save': saveProject(); break;
         case 'export': exportPresentation(); break;
+        case 'import-html': importFromHtml(); break;
         case 'present': startPresenting(); break;
         case 'inspector': usePresentationStore.getState().toggleProperties(); break;
         case 'debug-console': window.dispatchEvent(new CustomEvent('toggle-debug-console')); break;
