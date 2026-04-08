@@ -188,13 +188,33 @@ export async function exportPresentation(): Promise<void> {
       .filter(Boolean)
       .join(' \u00B7 ');
 
+    // Read and inline images as data URLs
+    const imageCache = new Map<string, string>();
+    async function getImageDataUrl(src: string): Promise<string> {
+      if (src.startsWith('data:')) return src;
+      if (imageCache.has(src)) return imageCache.get(src)!;
+      if (!projectPath) return src;
+      try {
+        const { readFile } = await import('@tauri-apps/plugin-fs');
+        const bytes = await readFile(`${projectPath}/${src}`);
+        const ext = src.split('.').pop()?.toLowerCase() || 'png';
+        const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+        const base64 = btoa(String.fromCharCode(...bytes));
+        const dataUrl = `data:${mime};base64,${base64}`;
+        imageCache.set(src, dataUrl);
+        return dataUrl;
+      } catch { return src; }
+    }
+
     const slides: string[] = [];
 
     for (let i = 0; i < presentation.slides.length; i++) {
       const slide = presentation.slides[i];
       let inner = '';
 
-      // Elements in z-order
+      // Collect demo-piece srcs for controller iframes
+      const demoPieceSrcs = new Set<string>();
+
       for (const el of slide.elements) {
         const p = el.position;
         switch (el.type) {
@@ -203,9 +223,19 @@ export async function exportPresentation(): Promise<void> {
             inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;overflow:hidden;">${el.html}</div>`;
             break;
           }
-          case 'image':
-            inner += `<img src="${el.src}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;" />`;
+          case 'image': {
+            const imgSrc = await getImageDataUrl(el.src);
+            const imgStyles: string[] = [
+              `position:absolute`, `left:${p.x}px`, `top:${p.y}px`,
+              `width:${p.width}px`, `height:${p.height}px`, `object-fit:contain`,
+            ];
+            if (el.shadow) imgStyles.push(`filter:drop-shadow(4px 8px 16px rgba(0,0,0,0.3))`);
+            if (el.borderRadius) imgStyles.push(`border-radius:${el.borderRadius}px`);
+            if (el.opacity != null && el.opacity < 1) imgStyles.push(`opacity:${el.opacity}`);
+            if (el.rotation) imgStyles.push(`transform:rotate(${el.rotation}deg)`);
+            inner += `<img src="${imgSrc}" style="${imgStyles.join(';')};" />`;
             break;
+          }
           case 'demo':
             if (projectPath) {
               try {
@@ -217,9 +247,15 @@ export async function exportPresentation(): Promise<void> {
             break;
           case 'demo-piece':
             if (projectPath) {
+              demoPieceSrcs.add(el.demoSrc);
               try {
                 const demoHtml = await readTextFile(`${projectPath}/${el.demoSrc}`);
-                const escaped = demoHtml.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                // Inject #piece=NAME into the HTML
+                const pieceHtml = demoHtml.replace(
+                  '<script>',
+                  `<script>location.hash='#piece=${el.piece}';`
+                );
+                const escaped = pieceHtml.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts"></iframe>`;
               } catch { /* skip */ }
             }
@@ -228,7 +264,7 @@ export async function exportPresentation(): Promise<void> {
             inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:${el.color || '#ffffff'};"></div>`;
             break;
           case 'arrow': {
-            const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;
+            const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
             const angle = Math.atan2(y2 - y1, x2 - x1);
             const ha = Math.PI / 6;
             inner += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">`;
@@ -240,11 +276,26 @@ export async function exportPresentation(): Promise<void> {
         }
       }
 
+      // Add hidden controller iframes for demo-pieces
+      for (const demoSrc of demoPieceSrcs) {
+        if (projectPath) {
+          try {
+            const demoHtml = await readTextFile(`${projectPath}/${demoSrc}`);
+            const ctrlHtml = demoHtml.replace('<script>', `<script>location.hash='#role=controller';`);
+            const escaped = ctrlHtml.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            inner += `<iframe srcdoc="${escaped}" style="position:absolute;width:0;height:0;border:none;opacity:0;" sandbox="allow-scripts"></iframe>`;
+          } catch { /* skip */ }
+        }
+      }
+
       // Footer
-      inner += `<div class="slide-footer"><span>${meta}</span><span>${i + 1}</span></div>`;
+      const slideNum = i + 1;
+      inner += `<div class="slide-footer"><span class="slide-footer-meta">${meta}</span><span class="slide-footer-number">${slideNum}</span></div>`;
 
       slides.push(`<div class="slide" data-index="${i}">${inner}</div>`);
     }
+
+    const preamble = presentation.config.mathPreamble || '';
 
     const html = `<!DOCTYPE html>
 <html>
@@ -259,49 +310,58 @@ body { background: #000; overflow: hidden; font-family: 'PT Sans', sans-serif; }
 #viewport { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
 .slide {
   width: ${W}px; height: ${H}px; background: #fff; position: relative; overflow: hidden;
-  transform-origin: center center; display: none;
+  transform-origin: top left; display: none;
 }
 .slide.active { display: block; }
-.slide-body {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  font-family: 'PT Sans', sans-serif; font-size: 32px; line-height: 1.4; color: #222;
-  padding: 60px 80px;
-}
-.slide-body h1 { font-size: 56px; font-weight: 700; margin-bottom: 24px; }
-.slide-body h2 { font-size: 44px; font-weight: 700; margin-bottom: 20px; }
-.slide-body h3 { font-size: 36px; font-weight: 700; margin-bottom: 16px; }
-.slide-body p { margin-bottom: 16px; }
-.slide-body ul, .slide-body ol { padding-left: 1.2em; margin-bottom: 16px; }
-.slide-body li { margin-bottom: 8px; }
-.layout-centered { display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; }
-.layout-centered ul, .layout-centered ol { display:inline-block; text-align:left; padding-left:1em; list-style-position:inside; }
-.layout-twocol { column-count: 2; column-gap: 80px; }
+ul, ol { padding-left: 0; margin: 0; list-style-type: none; }
+ul li::before { content: '- '; }
+ol { counter-reset: ol-counter; }
+ol li::before { counter-increment: ol-counter; content: counter(ol-counter) '. '; }
+li { margin-bottom: 0.15em; list-style-position: inside; }
 .slide-footer {
   position: absolute; bottom: 20px; right: 40px;
   display: flex; align-items: baseline; gap: 16px;
   font-family: 'PT Sans', sans-serif; color: #999; font-size: 18px;
 }
-.slide-footer span:last-child { font-size: 24px; }
+.slide-footer-number { font-size: 24px; }
 </style>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\$', '\$']], displayMath: [['\$\$', '\$\$']]${preamble ? `,
+      macros: {}` : ''} },
+    svg: { fontCache: 'global' },
+    startup: { typeset: true }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
 </head>
 <body>
 <div id="viewport">
 ${slides.join('\n')}
 </div>
+${preamble ? `<div style="display:none">\\(${preamble.replace(/\\/g, '\\\\')}\\)</div>` : ''}
 <script>
 const slides = document.querySelectorAll('.slide');
 let current = 0;
+const W = ${W}, H = ${H};
 function show(i) {
   slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
-  // Scale to fit
-  const vw = window.innerWidth, vh = window.innerHeight;
-  const s = slides[i];
-  const scale = Math.min(vw / ${W}, vh / ${H});
-  s.style.transform = 'scale(' + scale + ')';
+  resize();
   current = i;
 }
+function resize() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const scale = Math.min(vw / W, vh / H);
+  const s = slides[current];
+  if (!s) return;
+  s.style.transform = 'scale(' + scale + ')';
+  // Center the slide
+  const wrapper = document.getElementById('viewport');
+  wrapper.style.alignItems = 'flex-start';
+  wrapper.style.paddingTop = Math.max(0, (vh - H * scale) / 2) + 'px';
+}
 show(0);
-window.addEventListener('resize', () => show(current));
+window.addEventListener('resize', resize);
 document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'PageDown') {
     e.preventDefault(); if (current < slides.length - 1) show(current + 1);
