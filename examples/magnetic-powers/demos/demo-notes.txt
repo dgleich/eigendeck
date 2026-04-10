@@ -1,0 +1,11 @@
+I need a demo of walk profiles. 
+
+It should show the same graph from demo-powers. 
+Then it should let me pick a value of m and k.
+(Have little boxes like the demo-powers...) m up through 6.
+k up through m (we also need zero) for m. 
+
+I want to see the 7x7 matrix of walk profiles 
+
+Then I want to be able to click a cell and see the list of paths through the network.
+Remember that these are 

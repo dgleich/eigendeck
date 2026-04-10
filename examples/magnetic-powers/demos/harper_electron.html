@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Harper's Electron on a Lattice</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; background:#fff;
+  font-family:'PT Sans',Arial,sans-serif; }
+
+/* ── Lattice piece (isometric view) ─────────────── */
+.he-lattice { width:100%; height:100%; position:relative; }
+.he-lattice canvas { width:100%; height:100%; display:block; }
+
+/* ── Probability heatmap piece ──────────────────── */
+.he-prob { width:100%; height:100%; }
+.he-prob canvas { width:100%; height:100%; display:block; image-rendering:pixelated; }
+
+/* ── Controls piece ─────────────────────────────── */
+.he-controls { width:100%; height:100%; display:flex; flex-direction:column;
+  justify-content:center; gap:18px; padding:16px 20px; }
+.he-ctrl-row { display:flex; align-items:center; gap:14px; }
+.he-ctrl-label { font-size:24px; font-weight:700; color:#334155; white-space:nowrap; }
+.he-ctrl-slider { flex:1; height:8px; accent-color:#6366f1; }
+.he-ctrl-val { font-size:24px; color:#6366f1; font-weight:600; min-width:100px; text-align:right; }
+.he-ctrl-time { font-size:22px; color:#94a3b8; min-width:90px; text-align:right; }
+.he-ctrl-cb-row { display:flex; align-items:center; gap:10px; }
+.he-ctrl-cb-row label { font-size:24px; color:#334155; cursor:pointer;
+  display:flex; align-items:center; gap:8px; user-select:none; }
+.he-ctrl-cb-row input[type=checkbox] { width:22px; height:22px; accent-color:#dc2626; }
+
+/* ── Hamiltonian piece (grid with edge weights) ── */
+.he-ham { width:100%; height:100%; position:relative; }
+.he-ham canvas { width:100%; height:100%; display:block; }
+
+/* ── Standalone layout ──────────────────────────── */
+.he-standalone { display:flex; height:100%; gap:12px; padding:12px; }
+.he-standalone-left { flex:0 0 35%; display:flex; flex-direction:column; gap:12px; }
+.he-standalone-right { flex:1; display:flex; flex-direction:column; gap:12px; }
+.he-standalone-right > div:first-child { flex:1; }
+.he-standalone-right > div:last-child { flex:0 0 auto; max-height:340px; }
+</style>
+</head>
+<body>
+<script>
+(function() {
+'use strict';
+
+var params = new URLSearchParams(location.hash.slice(1));
+var role = params.get('role');
+var piece = params.get('piece');
+var channelName = 'eigendeck-demo:' + location.pathname.split('/').pop();
+var channel = new BroadcastChannel(channelName);
+
+// ─── Constants ────────────────────────────────────
+var N = 50;        // grid size
+var NN = N * N;    // total nodes
+var dt = 0.02;     // RK4 time step
+var T_MAX = 12.0;  // loop duration
+var STEPS_PER_FRAME = 3; // RK4 steps per animation frame
+
+// ─── Complex arithmetic ──────────────────────────
+function cAdd(ar,ai,br,bi) { return [ar+br, ai+bi]; }
+function cMul(ar,ai,br,bi) { return [ar*br-ai*bi, ar*bi+ai*br]; }
+
+// ─── Sparse magnetic Laplacian matvec: y = i*L_q * x ──
+// L_q = D - A_q where A_q has phase e^{i*2*pi*q*col} on horizontal edges
+// For Landau gauge: horizontal edges have phase 1, vertical edges have
+// phase e^{i*2*pi*q*col} going down, e^{-i*2*pi*q*col} going up.
+// Actually for Harper/Hofstadter: the standard Landau gauge puts the phase
+// on horizontal hops depending on the row.
+// (i,j) -> (i,j+1): weight e^{i*2*pi*q*i}  (hop right, phase depends on row)
+// (i,j) -> (i,j-1): weight e^{-i*2*pi*q*i}  (hop left)
+// (i,j) -> (i+1,j): weight 1  (hop down)
+// (i,j) -> (i-1,j): weight 1  (hop up)
+function matvec_iLq(xr, xi, q, yr, yi) {
+  // y = i * L_q * x = i * (D*x - A_q*x)
+  // We compute A_q * x first, then y = i*(deg*x - Ax)
+  var twopiq = 2 * Math.PI * q;
+  for (var idx = 0; idx < NN; idx++) {
+    var row = (idx / N) | 0;
+    var col = idx % N;
+    var deg = 0;
+    var axr = 0, axi = 0; // (A_q * x)[idx]
+
+    // hop right: (row, col) -> (row, col+1), phase e^{i*2*pi*q*row}
+    if (col < N - 1) {
+      var j = idx + 1;
+      var phase = twopiq * row;
+      var cr = Math.cos(phase), ci = Math.sin(phase);
+      var t = cMul(cr, ci, xr[j], xi[j]);
+      axr += t[0]; axi += t[1];
+      deg++;
+    }
+    // hop left: (row, col) -> (row, col-1), phase e^{-i*2*pi*q*row}
+    if (col > 0) {
+      var j2 = idx - 1;
+      var phase2 = -twopiq * row;
+      var cr2 = Math.cos(phase2), ci2 = Math.sin(phase2);
+      var t2 = cMul(cr2, ci2, xr[j2], xi[j2]);
+      axr += t2[0]; axi += t2[1];
+      deg++;
+    }
+    // hop down: (row, col) -> (row+1, col), phase 1
+    if (row < N - 1) {
+      var j3 = idx + N;
+      axr += xr[j3]; axi += xi[j3];
+      deg++;
+    }
+    // hop up: (row, col) -> (row-1, col), phase 1
+    if (row > 0) {
+      var j4 = idx - N;
+      axr += xr[j4]; axi += xi[j4];
+      deg++;
+    }
+
+    // L_q * x = deg*x - A_q*x
+    var lxr = deg * xr[idx] - axr;
+    var lxi = deg * xi[idx] - axi;
+
+    // i * (L_q * x) = i * (lxr + i*lxi) = -lxi + i*lxr
+    yr[idx] = -lxi;
+    yi[idx] = lxr;
+  }
+}
+
+// ─── RK4 step: dx/dt = i*L_q*x ──────────────────
+function rk4Step(xr, xi, q, h) {
+  var k1r = new Float64Array(NN), k1i = new Float64Array(NN);
+  var k2r = new Float64Array(NN), k2i = new Float64Array(NN);
+  var k3r = new Float64Array(NN), k3i = new Float64Array(NN);
+  var k4r = new Float64Array(NN), k4i = new Float64Array(NN);
+  var tr = new Float64Array(NN), ti = new Float64Array(NN);
+
+  // k1 = f(x)
+  matvec_iLq(xr, xi, q, k1r, k1i);
+
+  // k2 = f(x + h/2 * k1)
+  for (var i = 0; i < NN; i++) { tr[i] = xr[i] + 0.5*h*k1r[i]; ti[i] = xi[i] + 0.5*h*k1i[i]; }
+  matvec_iLq(tr, ti, q, k2r, k2i);
+
+  // k3 = f(x + h/2 * k2)
+  for (var i2 = 0; i2 < NN; i2++) { tr[i2] = xr[i2] + 0.5*h*k2r[i2]; ti[i2] = xi[i2] + 0.5*h*k2i[i2]; }
+  matvec_iLq(tr, ti, q, k3r, k3i);
+
+  // k4 = f(x + h * k3)
+  for (var i3 = 0; i3 < NN; i3++) { tr[i3] = xr[i3] + h*k3r[i3]; ti[i3] = xi[i3] + h*k3i[i3]; }
+  matvec_iLq(tr, ti, q, k4r, k4i);
+
+  // x += h/6 * (k1 + 2*k2 + 2*k3 + k4)
+  for (var i4 = 0; i4 < NN; i4++) {
+    xr[i4] += h/6 * (k1r[i4] + 2*k2r[i4] + 2*k3r[i4] + k4r[i4]);
+    xi[i4] += h/6 * (k1i[i4] + 2*k2i[i4] + 2*k3i[i4] + k4i[i4]);
+  }
+}
+
+// ─── Initial Gaussian state ──────────────────────
+function initGaussian(xr, xi, sigma) {
+  var cx = (N - 1) / 2, cy = (N - 1) / 2;
+  var norm = 0;
+  for (var r = 0; r < N; r++) {
+    for (var c = 0; c < N; c++) {
+      var dx = c - cx, dy = r - cy;
+      var v = Math.exp(-(dx*dx + dy*dy) / (2 * sigma * sigma));
+      xr[r * N + c] = v;
+      xi[r * N + c] = 0;
+      norm += v * v;
+    }
+  }
+  norm = Math.sqrt(norm);
+  for (var i = 0; i < NN; i++) { xr[i] /= norm; xi[i] /= norm; }
+}
+
+// ─── Compute |x|^2 as flat Float64Array ──────────
+function probabilities(xr, xi) {
+  var p = new Float64Array(NN);
+  for (var i = 0; i < NN; i++) p[i] = xr[i]*xr[i] + xi[i]*xi[i];
+  return p;
+}
+
+// ═══════════════════════════════════════════════════
+// CONTROLLER
+// ═══════════════════════════════════════════════════
+if (role === 'controller') {
+  document.addEventListener('DOMContentLoaded', function() {
+    document.body.style.display = 'none';
+  });
+
+  var q = 0;         // magnetic field parameter
+  var t = 0;         // current time
+  var showFieldCtrl = false;
+  var xr = new Float64Array(NN);
+  var xi = new Float64Array(NN);
+  var sigma = 3.0;
+  var animId = null;
+  var running = true;
+
+  function resetSim() {
+    t = 0;
+    initGaussian(xr, xi, sigma);
+  }
+  resetSim();
+
+  function broadcastState() {
+    var prob = probabilities(xr, xi);
+    channel.postMessage({
+      type: 'state',
+      q: q,
+      t: t,
+      N: N,
+      prob: Array.from(prob),
+      tMax: T_MAX,
+      showField: showFieldCtrl
+    });
+  }
+
+  function step() {
+    for (var s = 0; s < STEPS_PER_FRAME; s++) {
+      rk4Step(xr, xi, q, dt);
+      t += dt;
+    }
+    if (t >= T_MAX) {
+      resetSim();
+    }
+    broadcastState();
+    if (running) animId = requestAnimationFrame(step);
+  }
+
+  channel.onmessage = function(e) {
+    var d = e.data;
+    if (d.type === 'request-state') { broadcastState(); return; }
+    if (d.type === 'set-q') {
+      q = d.q;
+      resetSim();
+      broadcastState();
+    }
+    if (d.type === 'show-field') {
+      showFieldCtrl = d.value;
+      // Relay to all viewports
+      channel.postMessage({ type: 'show-field', value: d.value });
+    }
+  };
+
+  // Start animation
+  broadcastState();
+  animId = requestAnimationFrame(step);
+  return;
+}
+
+// ═══════════════════════════════════════════════════
+// LATTICE PIECE — isometric grid illustration
+// ═══════════════════════════════════════════════════
+if (piece === 'lattice') {
+  var latticeQ = 0;
+  var latticeProb = null;
+  var showField = false;
+
+  function probColorLattice(v) {
+    var t4 = Math.min(1, Math.max(0, v));
+    var r, g, b;
+    if (t4 < 0.25) { var s=t4/0.25; r=Math.round(s*80); g=0; b=Math.round(s*130); }
+    else if (t4 < 0.5) { var s2=(t4-0.25)/0.25; r=Math.round(80+s2*170); g=Math.round(s2*30); b=Math.round(130-s2*80); }
+    else if (t4 < 0.75) { var s3=(t4-0.5)/0.25; r=250; g=Math.round(30+s3*190); b=Math.round(50-s3*50); }
+    else { var s4=(t4-0.75)/0.25; r=255; g=Math.round(220+s4*35); b=Math.round(s4*200); }
+    return [r, g, b];
+  }
+
+  function setupLattice() {
+    var container = document.createElement('div');
+    container.className = 'he-lattice';
+    var canvas = document.createElement('canvas');
+    container.appendChild(canvas);
+    document.body.appendChild(container);
+
+    function drawLattice() {
+      var rect = canvas.getBoundingClientRect();
+      var dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      var ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      var W = rect.width, H = rect.height;
+      ctx.clearRect(0, 0, W, H);
+
+      // Use a coarser display grid for the isometric view
+      var gN = 9;
+      // Spacing to fit nicely
+      var spacing = Math.min(W, H) * 0.065;
+      // Isometric transform — same style as the original
+      var isoXf = 0.85, isoYf = 0.45;
+      var isoX = function(r, c) { return (c - r) * spacing * isoXf; };
+      var isoY = function(r, c) { return (c + r) * spacing * isoYf; };
+
+      // Reserve space: field arrow above, grid below
+      var fieldH = showField ? 30 + Math.max(30, H * 0.15) : 0;
+      var gridCx = W / 2;
+      var gridCy = fieldH + spacing * 0.5;
+
+      // 1) Paint probability as colored isometric quads
+      if (latticeProb) {
+        var maxP = 0;
+        for (var pi = 0; pi < latticeProb.length; pi++) {
+          if (latticeProb[pi] > maxP) maxP = latticeProb[pi];
+        }
+        if (maxP < 1e-10) maxP = 1e-10;
+
+        // Map gN display cells to 50x50 grid (sample or average)
+        var cellSize = N / gN;
+        for (var cr = 0; cr < gN; cr++) {
+          for (var cc = 0; cc < gN; cc++) {
+            // Sample from center of this cell
+            var sr = Math.floor((cr + 0.5) * cellSize);
+            var sc = Math.floor((cc + 0.5) * cellSize);
+            if (sr >= N) sr = N - 1;
+            if (sc >= N) sc = N - 1;
+            var pv = latticeProb[sr * N + sc];
+            var v = Math.sqrt(pv / maxP);
+            var rgb = probColorLattice(v);
+
+            // Isometric quad corners for cell (cr,cc) to (cr+1,cc+1)
+            var x0 = gridCx + isoX(cr, cc);
+            var y0 = gridCy + isoY(cr, cc);
+            var x1 = gridCx + isoX(cr, cc + 1);
+            var y1 = gridCy + isoY(cr, cc + 1);
+            var x2 = gridCx + isoX(cr + 1, cc + 1);
+            var y2 = gridCy + isoY(cr + 1, cc + 1);
+            var x3 = gridCx + isoX(cr + 1, cc);
+            var y3 = gridCy + isoY(cr + 1, cc);
+
+            ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0.8)';
+            ctx.beginPath();
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.lineTo(x3, y3);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+      }
+
+      // 2) Draw grid edges
+      ctx.strokeStyle = 'rgba(100,116,139,0.35)';
+      ctx.lineWidth = 1.0;
+      for (var r = 0; r <= gN; r++) {
+        // Horizontal lines in grid space
+        var lx0 = gridCx + isoX(r, 0), ly0 = gridCy + isoY(r, 0);
+        var lx1 = gridCx + isoX(r, gN), ly1 = gridCy + isoY(r, gN);
+        ctx.beginPath(); ctx.moveTo(lx0, ly0); ctx.lineTo(lx1, ly1); ctx.stroke();
+        // Vertical lines
+        var cx0 = gridCx + isoX(0, r), cy0 = gridCy + isoY(0, r);
+        var cx1 = gridCx + isoX(gN, r), cy1 = gridCy + isoY(gN, r);
+        ctx.beginPath(); ctx.moveTo(cx0, cy0); ctx.lineTo(cx1, cy1); ctx.stroke();
+      }
+
+      // 3) Draw nodes at grid intersections
+      var nodeR = Math.max(2.5, spacing * 0.06);
+      for (var r2 = 0; r2 <= gN; r2++) {
+        for (var c2 = 0; c2 <= gN; c2++) {
+          var nx = gridCx + isoX(r2, c2);
+          var ny = gridCy + isoY(r2, c2);
+          ctx.beginPath();
+          ctx.arc(nx, ny, nodeR, 0, 2 * Math.PI);
+          ctx.fillStyle = '#334155';
+          ctx.fill();
+        }
+      }
+
+      // 4) Magnetic field arrow above the grid
+      if (showField && latticeQ > 0.001) {
+        ctx.save();
+        ctx.strokeStyle = '#dc2626';
+        ctx.fillStyle = '#dc2626';
+
+        // Arrow in the gap above the grid, centered
+        var arrowX = gridCx;
+        // Scale length with q
+        var maxALen = fieldH - 35;
+        var minALen = 20;
+        var aLen = minALen + (latticeQ / 0.5) * (maxALen - minALen);
+        var aThick = 2 + latticeQ / 0.5 * 3;
+        ctx.lineWidth = aThick;
+
+        var aBot = fieldH - 8;
+        var aTop = aBot - aLen;
+
+        // Shaft
+        ctx.beginPath();
+        ctx.moveTo(arrowX, aBot);
+        ctx.lineTo(arrowX, aTop);
+        ctx.stroke();
+
+        // Arrowhead pointing down into the plane
+        var hs = 5 + latticeQ / 0.5 * 7;
+        ctx.beginPath();
+        ctx.moveTo(arrowX, aBot + hs * 0.3);
+        ctx.lineTo(arrowX - hs * 0.5, aBot - hs * 0.5);
+        ctx.lineTo(arrowX + hs * 0.5, aBot - hs * 0.5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Label
+        var bFs = Math.max(16, Math.min(24, H * 0.035));
+        ctx.font = 'bold ' + Math.round(bFs) + 'px "PT Sans", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('B', arrowX, aTop - 4);
+        ctx.restore();
+      }
+    }
+
+    channel.onmessage = function(e) {
+      if (e.data.type === 'state') {
+        latticeQ = e.data.q;
+        latticeProb = e.data.prob;
+        if (e.data.showField !== undefined) showField = e.data.showField;
+        drawLattice();
+      }
+      if (e.data.type === 'show-field') {
+        showField = e.data.value;
+        drawLattice();
+      }
+    };
+    channel.postMessage({ type: 'request-state' });
+
+    window.addEventListener('resize', drawLattice);
+    drawLattice();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupLattice);
+  } else { setupLattice(); }
+  return;
+}
+
+// ═══════════════════════════════════════════════════
+// PROBABILITY PIECE — clean heatmap, no controls
+// ═══════════════════════════════════════════════════
+if (piece === 'probability') {
+  function setupProbability() {
+    var container = document.createElement('div');
+    container.className = 'he-prob';
+    var canvas = document.createElement('canvas');
+    canvas.width = N;
+    canvas.height = N;
+    container.appendChild(canvas);
+    document.body.appendChild(container);
+
+    var ctx = canvas.getContext('2d');
+    var imgData = ctx.createImageData(N, N);
+
+    function probColor(v) {
+      var t4 = Math.min(1, Math.max(0, v));
+      var r, g, b;
+      if (t4 < 0.25) { var s=t4/0.25; r=Math.round(s*80); g=0; b=Math.round(s*130); }
+      else if (t4 < 0.5) { var s2=(t4-0.25)/0.25; r=Math.round(80+s2*170); g=Math.round(s2*30); b=Math.round(130-s2*80); }
+      else if (t4 < 0.75) { var s3=(t4-0.5)/0.25; r=250; g=Math.round(30+s3*190); b=Math.round(50-s3*50); }
+      else { var s4=(t4-0.75)/0.25; r=255; g=Math.round(220+s4*35); b=Math.round(s4*200); }
+      return [r, g, b];
+    }
+
+    function renderProb(prob) {
+      var maxP = 0;
+      for (var i = 0; i < prob.length; i++) if (prob[i] > maxP) maxP = prob[i];
+      if (maxP < 1e-10) maxP = 1e-10;
+      var data = imgData.data;
+      for (var i2 = 0; i2 < NN; i2++) {
+        var v = Math.sqrt(prob[i2] / maxP);
+        var c = probColor(v);
+        data[i2*4] = c[0]; data[i2*4+1] = c[1]; data[i2*4+2] = c[2]; data[i2*4+3] = 255;
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    channel.onmessage = function(e) {
+      if (e.data.type === 'state') renderProb(e.data.prob);
+    };
+    channel.postMessage({ type: 'request-state' });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupProbability);
+  } else { setupProbability(); }
+  return;
+}
+
+// ═══════════════════════════════════════════════════
+// CONTROLS PIECE — slider + checkbox
+// ═══════════════════════════════════════════════════
+if (piece === 'controls') {
+  function setupControls() {
+    var container = document.createElement('div');
+    container.className = 'he-controls';
+
+    // B field slider row
+    var sliderRow = document.createElement('div');
+    sliderRow.className = 'he-ctrl-row';
+
+    var label = document.createElement('span');
+    label.className = 'he-ctrl-label';
+    label.textContent = 'B field (q)';
+
+    var slider = document.createElement('input');
+    slider.type = 'range';
+    slider.className = 'he-ctrl-slider';
+    slider.min = '0';
+    slider.max = '0.5';
+    slider.step = '0.01';
+    slider.value = '0';
+
+    var valSpan = document.createElement('span');
+    valSpan.className = 'he-ctrl-val';
+    valSpan.textContent = 'q = 0';
+
+    sliderRow.appendChild(label);
+    sliderRow.appendChild(slider);
+    sliderRow.appendChild(valSpan);
+    container.appendChild(sliderRow);
+
+    // Time display row
+    var timeRow = document.createElement('div');
+    timeRow.className = 'he-ctrl-row';
+    var timeLabel = document.createElement('span');
+    timeLabel.className = 'he-ctrl-label';
+    timeLabel.textContent = 'Time';
+    var timeSpan = document.createElement('span');
+    timeSpan.className = 'he-ctrl-time';
+    timeSpan.textContent = 't = 0';
+    timeRow.appendChild(timeLabel);
+    timeRow.appendChild(timeSpan);
+    container.appendChild(timeRow);
+
+    // Show field checkbox row
+    var cbRow = document.createElement('div');
+    cbRow.className = 'he-ctrl-cb-row';
+    var cbLabel = document.createElement('label');
+    var fieldCb = document.createElement('input');
+    fieldCb.type = 'checkbox';
+    fieldCb.checked = false;
+    cbLabel.appendChild(fieldCb);
+    cbLabel.appendChild(document.createTextNode(' Show magnetic field'));
+    cbRow.appendChild(cbLabel);
+    container.appendChild(cbRow);
+
+    document.body.appendChild(container);
+
+    slider.addEventListener('input', function() {
+      var qVal = parseFloat(slider.value);
+      valSpan.textContent = 'q = ' + qVal.toFixed(2);
+      channel.postMessage({ type: 'set-q', q: qVal });
+    });
+
+    fieldCb.addEventListener('change', function() {
+      channel.postMessage({ type: 'show-field', value: fieldCb.checked });
+    });
+
+    channel.onmessage = function(e) {
+      if (e.data.type === 'state') {
+        timeSpan.textContent = 't = ' + e.data.t.toFixed(1);
+        if (Math.abs(parseFloat(slider.value) - e.data.q) > 0.005) {
+          slider.value = e.data.q;
+          valSpan.textContent = 'q = ' + e.data.q.toFixed(2);
+        }
+      }
+    };
+    channel.postMessage({ type: 'request-state' });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupControls);
+  } else { setupControls(); }
+  return;
+}
+
+// ═══════════════════════════════════════════════════
+// HAMILTONIAN PIECE — 5x5 grid with edge weight labels
+// ═══════════════════════════════════════════════════
+if (piece === 'hamiltonian') {
+  function setupHamiltonian() {
+    var container = document.createElement('div');
+    container.className = 'he-ham';
+    var canvas = document.createElement('canvas');
+    container.appendChild(canvas);
+    document.body.appendChild(container);
+
+    var currentQ = 0;
+
+    // Unicode superscript digits
+    var supDigits = ['\u2070','\u00B9','\u00B2','\u00B3','\u2074','\u2075','\u2076','\u2077','\u2078','\u2079'];
+    function toSup(n) {
+      if (n <= 1) return '';
+      return String(n).split('').map(function(d) { return supDigits[parseInt(d)]; }).join('');
+    }
+
+    // Small arrowhead helper
+    function drawArrowhead(ctx, x, y, angle, size, color) {
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.moveTo(size, 0);
+      ctx.lineTo(-size * 0.5, -size * 0.5);
+      ctx.lineTo(-size * 0.5, size * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawGrid(q) {
+      currentQ = q;
+      var rect = canvas.getBoundingClientRect();
+      var dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      var ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      var W = rect.width, H = rect.height;
+      ctx.clearRect(0, 0, W, H);
+
+      var gN = 5;
+      var margin = Math.min(W, H) * 0.14;
+      var availW = W - 2 * margin;
+      var availH = H - 2 * margin;
+      var spacing = Math.min(availW / (gN - 1), availH / (gN - 1));
+      var gridW = spacing * (gN - 1);
+      var gridH = spacing * (gN - 1);
+      var ox = (W - gridW) / 2;
+      var oy = (H - gridH) / 2;
+
+      var nodeR = Math.max(6, spacing * 0.08);
+      var fontSize = Math.max(14, Math.min(22, spacing * 0.2));
+      var smallFont = Math.max(11, fontSize * 0.7);
+      var arrowSize = Math.max(5, spacing * 0.06);
+      // Offset for the two directional arrows (above/below the edge line)
+      var edgeOff = spacing * 0.07;
+
+      var omegaColor = '#6366f1';   // purple-ish for ω (rightward)
+      var omegaBarColor = '#e11d48'; // red-ish for ω̄ (leftward)
+      var neutralColor = '#94a3b8';
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      for (var r = 0; r < gN; r++) {
+        for (var c = 0; c < gN; c++) {
+          var x1 = ox + c * spacing;
+          var y1 = oy + r * spacing;
+
+          // Horizontal edge: two directional sub-edges with arrowheads
+          if (c < gN - 1) {
+            var x2 = ox + (c + 1) * spacing;
+            var mx = (x1 + x2) / 2;
+            var hasPhase = q > 0.001 && r > 0;
+
+            // Rightward arrow (above the line) — picks up ω^r
+            var rColor = hasPhase ? omegaColor : neutralColor;
+            ctx.strokeStyle = rColor;
+            ctx.lineWidth = hasPhase ? 2.0 : 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x1 + nodeR + 2, y1 - edgeOff);
+            ctx.lineTo(x2 - nodeR - 2, y1 - edgeOff);
+            ctx.stroke();
+            drawArrowhead(ctx, x2 - nodeR - 2, y1 - edgeOff, 0, arrowSize, rColor);
+
+            // Leftward arrow (below the line) — picks up ω̄^r
+            var lColor = hasPhase ? omegaBarColor : neutralColor;
+            ctx.strokeStyle = lColor;
+            ctx.lineWidth = hasPhase ? 2.0 : 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x2 - nodeR - 2, y1 + edgeOff);
+            ctx.lineTo(x1 + nodeR + 2, y1 + edgeOff);
+            ctx.stroke();
+            drawArrowhead(ctx, x1 + nodeR + 2, y1 + edgeOff, Math.PI, arrowSize, lColor);
+
+            // Labels
+            var sup = toSup(r);
+            ctx.font = 'bold ' + fontSize + 'px "PT Sans", sans-serif';
+            // Rightward label above
+            ctx.fillStyle = rColor;
+            ctx.fillText(hasPhase ? '\u03C9' + sup : '1', mx, y1 - edgeOff - spacing * 0.12);
+            // Leftward label below
+            ctx.fillStyle = lColor;
+            ctx.fillText(hasPhase ? '\u03C9\u0305' + sup : '1', mx, y1 + edgeOff + spacing * 0.14);
+          }
+
+          // Vertical edge: single line, weight 1, no arrowheads needed (symmetric)
+          if (r < gN - 1) {
+            var y2v = oy + (r + 1) * spacing;
+            ctx.strokeStyle = neutralColor;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1 + nodeR);
+            ctx.lineTo(x1, y2v - nodeR);
+            ctx.stroke();
+
+            // Label on the right
+            ctx.font = fontSize + 'px "PT Sans", sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.textAlign = 'left';
+            ctx.fillText('1', x1 + spacing * 0.06, (y1 + y2v) / 2);
+            ctx.textAlign = 'center';
+          }
+        }
+      }
+
+      // Draw nodes on top
+      for (var r2 = 0; r2 < gN; r2++) {
+        for (var c2 = 0; c2 < gN; c2++) {
+          var nx = ox + c2 * spacing;
+          var ny = oy + r2 * spacing;
+          ctx.beginPath();
+          ctx.arc(nx, ny, nodeR, 0, 2 * Math.PI);
+          ctx.fillStyle = '#334155';
+          ctx.fill();
+        }
+      }
+
+      // Row labels on the left
+      ctx.font = smallFont + 'px "PT Sans", sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      for (var r3 = 0; r3 < gN; r3++) {
+        ctx.fillText('row ' + r3, ox - nodeR - 8, oy + r3 * spacing);
+      }
+    }
+
+    channel.onmessage = function(e) {
+      if (e.data.type === 'state') {
+        if (Math.abs(e.data.q - currentQ) > 0.001 || currentQ === -1) {
+          drawGrid(e.data.q);
+        }
+      }
+    };
+    channel.postMessage({ type: 'request-state' });
+
+    window.addEventListener('resize', function() { drawGrid(currentQ); });
+    currentQ = -1; // force first draw
+    drawGrid(0);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupHamiltonian);
+  } else { setupHamiltonian(); }
+  return;
+}
+
+// ═══════════════════════════════════════════════════
+// STANDALONE FALLBACK
+// ═══════════════════════════════════════════════════
+function setupStandalone() {
+  var q = 0, t = 0, saShowField = false;
+  var xr = new Float64Array(NN), xi = new Float64Array(NN);
+  var sigma = 3.0;
+
+  initGaussian(xr, xi, sigma);
+
+  var app = document.createElement('div');
+  app.className = 'he-standalone';
+
+  // Left: isometric lattice
+  var left = document.createElement('div');
+  left.className = 'he-standalone-left';
+  var latticeCanvas = document.createElement('canvas');
+  latticeCanvas.style.width = '100%';
+  latticeCanvas.style.flex = '1';
+  left.appendChild(latticeCanvas);
+
+  // Right: probability + controls
+  var right = document.createElement('div');
+  right.className = 'he-standalone-right';
+
+  var probDiv = document.createElement('div');
+  probDiv.style.position = 'relative';
+  var probCanvas = document.createElement('canvas');
+  probCanvas.width = N; probCanvas.height = N;
+  probCanvas.style.width = '100%'; probCanvas.style.height = '100%';
+  probCanvas.style.imageRendering = 'pixelated';
+  probDiv.appendChild(probCanvas);
+  right.appendChild(probDiv);
+
+  // Controls
+  var ctrlDiv = document.createElement('div');
+  ctrlDiv.className = 'he-controls';
+
+  var sliderRow = document.createElement('div');
+  sliderRow.className = 'he-ctrl-row';
+  sliderRow.innerHTML = '<span class="he-ctrl-label">B field (q)</span>' +
+    '<input type="range" class="he-ctrl-slider" min="0" max="0.5" step="0.01" value="0">' +
+    '<span class="he-ctrl-val">q = 0</span>';
+  ctrlDiv.appendChild(sliderRow);
+
+  var timeRow = document.createElement('div');
+  timeRow.className = 'he-ctrl-row';
+  timeRow.innerHTML = '<span class="he-ctrl-label">Time</span><span class="he-ctrl-time">t = 0</span>';
+  ctrlDiv.appendChild(timeRow);
+
+  var cbRow = document.createElement('div');
+  cbRow.className = 'he-ctrl-cb-row';
+  cbRow.innerHTML = '<label><input type="checkbox"> Show magnetic field</label>';
+  ctrlDiv.appendChild(cbRow);
+
+  right.appendChild(ctrlDiv);
+  app.appendChild(left); app.appendChild(right);
+  document.body.appendChild(app);
+
+  var slider = sliderRow.querySelector('input');
+  var valSpan = sliderRow.querySelector('.he-ctrl-val');
+  var timeSpan = timeRow.querySelector('.he-ctrl-time');
+  var fieldCb = cbRow.querySelector('input');
+  var probCtx = probCanvas.getContext('2d');
+  var imgData = probCtx.createImageData(N, N);
+
+  slider.addEventListener('input', function() {
+    q = parseFloat(slider.value);
+    valSpan.textContent = 'q = ' + q.toFixed(2);
+    t = 0; initGaussian(xr, xi, sigma);
+  });
+  fieldCb.addEventListener('change', function() {
+    saShowField = fieldCb.checked;
+  });
+
+  function probColor(v) {
+    var t4 = Math.min(1, Math.max(0, v));
+    var r, g, b;
+    if (t4 < 0.25) { var s=t4/0.25; r=Math.round(s*80); g=0; b=Math.round(s*130); }
+    else if (t4 < 0.5) { var s2=(t4-0.25)/0.25; r=Math.round(80+s2*170); g=Math.round(s2*30); b=Math.round(130-s2*80); }
+    else if (t4 < 0.75) { var s3=(t4-0.5)/0.25; r=250; g=Math.round(30+s3*190); b=Math.round(50-s3*50); }
+    else { var s4=(t4-0.75)/0.25; r=255; g=Math.round(220+s4*35); b=Math.round(s4*200); }
+    return [r, g, b];
+  }
+
+  function renderProb(prob) {
+    var maxP = 0;
+    for (var i = 0; i < prob.length; i++) if (prob[i] > maxP) maxP = prob[i];
+    if (maxP < 1e-10) maxP = 1e-10;
+    var data = imgData.data;
+    for (var i2 = 0; i2 < NN; i2++) {
+      var v = Math.sqrt(prob[i2] / maxP);
+      var c = probColor(v);
+      data[i2*4] = c[0]; data[i2*4+1] = c[1]; data[i2*4+2] = c[2]; data[i2*4+3] = 255;
+    }
+    probCtx.putImageData(imgData, 0, 0);
+    timeSpan.textContent = 't = ' + t.toFixed(1);
+  }
+
+  function drawLattice(prob) {
+    var rect = latticeCanvas.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    latticeCanvas.width = rect.width * dpr;
+    latticeCanvas.height = rect.height * dpr;
+    var ctx = latticeCanvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    var W = rect.width, H = rect.height;
+    ctx.clearRect(0, 0, W, H);
+
+    var gN = 9;
+    var spacing = Math.min(W, H) * 0.065;
+    var isoXf = 0.85, isoYf = 0.45;
+    var isoX = function(r,c) { return (c-r)*spacing*isoXf; };
+    var isoY = function(r,c) { return (c+r)*spacing*isoYf; };
+    var fieldH = saShowField && q > 0.001 ? 30 + Math.max(30, H*0.15) : 0;
+    var gridCx = W/2, gridCy = fieldH + spacing*0.5;
+
+    // Probability quads
+    if (prob) {
+      var maxP = 0;
+      for (var pi = 0; pi < prob.length; pi++) if (prob[pi] > maxP) maxP = prob[pi];
+      if (maxP < 1e-10) maxP = 1e-10;
+      var cellSize = N / gN;
+      for (var cr = 0; cr < gN; cr++) {
+        for (var cc = 0; cc < gN; cc++) {
+          var sr = Math.min(Math.floor((cr+0.5)*cellSize), N-1);
+          var sc = Math.min(Math.floor((cc+0.5)*cellSize), N-1);
+          var v = Math.sqrt(prob[sr*N+sc] / maxP);
+          var rgb = probColor(v);
+          ctx.fillStyle = 'rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+',0.8)';
+          ctx.beginPath();
+          ctx.moveTo(gridCx+isoX(cr,cc), gridCy+isoY(cr,cc));
+          ctx.lineTo(gridCx+isoX(cr,cc+1), gridCy+isoY(cr,cc+1));
+          ctx.lineTo(gridCx+isoX(cr+1,cc+1), gridCy+isoY(cr+1,cc+1));
+          ctx.lineTo(gridCx+isoX(cr+1,cc), gridCy+isoY(cr+1,cc));
+          ctx.closePath(); ctx.fill();
+        }
+      }
+    }
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(100,116,139,0.35)'; ctx.lineWidth = 1.0;
+    for (var gi = 0; gi <= gN; gi++) {
+      ctx.beginPath();
+      ctx.moveTo(gridCx+isoX(gi,0), gridCy+isoY(gi,0));
+      ctx.lineTo(gridCx+isoX(gi,gN), gridCy+isoY(gi,gN));
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(gridCx+isoX(0,gi), gridCy+isoY(0,gi));
+      ctx.lineTo(gridCx+isoX(gN,gi), gridCy+isoY(gN,gi));
+      ctx.stroke();
+    }
+
+    // Nodes
+    var nodeR = Math.max(2.5, spacing*0.06);
+    for (var r2 = 0; r2 <= gN; r2++) {
+      for (var c2 = 0; c2 <= gN; c2++) {
+        ctx.beginPath();
+        ctx.arc(gridCx+isoX(r2,c2), gridCy+isoY(r2,c2), nodeR, 0, 2*Math.PI);
+        ctx.fillStyle = '#334155'; ctx.fill();
+      }
+    }
+
+    // B arrow above
+    if (saShowField && q > 0.001) {
+      ctx.save();
+      ctx.strokeStyle = '#dc2626'; ctx.fillStyle = '#dc2626';
+      var maxAL = fieldH - 35, minAL = 20;
+      var aLen = minAL + (q/0.5)*(maxAL-minAL);
+      ctx.lineWidth = 2 + q/0.5*3;
+      var aX = gridCx, aBot = fieldH - 8, aTop = aBot - aLen;
+      ctx.beginPath(); ctx.moveTo(aX,aBot); ctx.lineTo(aX,aTop); ctx.stroke();
+      var hs = 5 + q/0.5*7;
+      ctx.beginPath();
+      ctx.moveTo(aX, aBot+hs*0.3);
+      ctx.lineTo(aX-hs*0.5, aBot-hs*0.5);
+      ctx.lineTo(aX+hs*0.5, aBot-hs*0.5);
+      ctx.closePath(); ctx.fill();
+      ctx.font = 'bold '+Math.max(16,Math.min(24,H*0.035))+'px "PT Sans", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText('B', aX, aTop-4);
+      ctx.restore();
+    }
+  }
+
+  function animate() {
+    for (var s = 0; s < STEPS_PER_FRAME; s++) { rk4Step(xr, xi, q, dt); t += dt; }
+    if (t >= T_MAX) { t = 0; initGaussian(xr, xi, sigma); }
+    var prob = probabilities(xr, xi);
+    renderProb(prob);
+    drawLattice(prob);
+    requestAnimationFrame(animate);
+  }
+
+  window.addEventListener('resize', function() { drawLattice(probabilities(xr, xi)); });
+  animate();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupStandalone);
+} else { setupStandalone(); }
+
+})();
+</script>
+</body>
+</html>

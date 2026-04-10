@@ -1,0 +1,29 @@
+{
+  "description": "7-node directed graph from the magnetic matrix powers teaser demo.",
+  "source": {"paper": "Gleich, Li, Huang — Powers of the Magnetic Graph Matrix"},
+  "layout": {"algorithm": "hand-placed", "width": 800, "height": 600},
+  "nodes": [
+    {"id": 0, "label": "1", "x": 362, "y": 68},
+    {"id": 1, "label": "2", "x": 133, "y": 243},
+    {"id": 2, "label": "3", "x": 591, "y": 243},
+    {"id": 3, "label": "4", "x": 695, "y": 438},
+    {"id": 4, "label": "5", "x": 362, "y": 340},
+    {"id": 5, "label": "6", "x": 181, "y": 525},
+    {"id": 6, "label": "7", "x": 524, "y": 525}
+  ],
+  "edges": [
+    {"source": 0, "target": 1, "weight": 1},
+    {"source": 0, "target": 2, "weight": 1},
+    {"source": 0, "target": 4, "weight": 1},
+    {"source": 1, "target": 4, "weight": 1},
+    {"source": 4, "target": 1, "weight": 1},
+    {"source": 2, "target": 4, "weight": 1},
+    {"source": 2, "target": 6, "weight": 1},
+    {"source": 4, "target": 3, "weight": 1},
+    {"source": 4, "target": 6, "weight": 1},
+    {"source": 6, "target": 3, "weight": 1},
+    {"source": 6, "target": 5, "weight": 1},
+    {"source": 3, "target": 2, "weight": 1},
+    {"source": 4, "target": 0, "weight": 1}
+  ]
+}
