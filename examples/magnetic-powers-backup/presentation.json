@@ -711,21 +711,6 @@
       "layout": "default",
       "elements": [
         {
-          "id": "b4f988de-d103-4793-be9e-9b12151b1f1b",
-          "type": "text",
-          "preset": "body",
-          "html": "<div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Benson, Gleich, Leskovec (2016)</i></div><div style=\"font-size: 36px; text-align: center;\">Given $\\mG$, enumerate directed motifs in $\\mG$, then analyze the weighted clique projection of the hypergraph where each clique is a hyperedge.&nbsp;</div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Liu &amp; Li 2015, Guo &amp; Mohar 2017</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA$ with 1 for each bidirection edge and $i$ for $u \\to v$, $-i$ for $v \\to u$ for each directed edge $u,v$</div><div style=\"font-size: 36px; text-align: center;\"><br></div>",
-          "position": {
-            "x": 124,
-            "y": 226,
-            "width": 1760,
-            "height": 800
-          },
-          "linkId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585",
-          "_syncId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585",
-          "fontSize": 62
-        },
-        {
           "id": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
           "type": "text",
           "preset": "title",
@@ -738,6 +723,35 @@
           },
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
           "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
+        },
+        {
+          "id": "55f5ccac-8008-452c-ae39-44b4267a5376",
+          "type": "demo-piece",
+          "demoSrc": "demos/demo_powers_teaser.html",
+          "piece": "graph",
+          "position": {
+            "x": 134,
+            "y": 620,
+            "width": 370,
+            "height": 452
+          },
+          "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
+          "_syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
+        },
+        {
+          "id": "b4f988de-d103-4793-be9e-9b12151b1f1b",
+          "type": "text",
+          "preset": "body",
+          "html": "<div style=\"font-size: 36px; text-align: center;\"><i>Benson, Gleich, Leskovec (2016)</i></div><div style=\"font-size: 36px; text-align: center;\">Given $\\mG$, enumerate directed motifs in $\\mG$, then analyze the weighted clique projection of the hypergraph where each clique is a hyperedge.&nbsp;</div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Liu &amp; Li 2015, Guo &amp; Mohar 2017</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA$ with 1 for each bidirection edge and $i$ for $u \\to v$, $-i$ for $v \\to u$ for each directed edge $u,v$</div><div style=\"font-size: 36px; text-align: center;\"><br></div>",
+          "position": {
+            "x": 124,
+            "y": 226,
+            "width": 1760,
+            "height": 800
+          },
+          "linkId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585",
+          "_syncId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585",
+          "fontSize": 62
         }
       ],
       "notes": ""
@@ -1353,7 +1367,7 @@
           "id": "5b45c19d-5106-418e-b902-c635e80a7ba0",
           "type": "text",
           "preset": "body",
-          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Let $G$ be a graph.&nbsp;</div><div style=\"text-align: center;\">Let $\\mA$ be the directed adjacency matrix.&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\Phi_{u,v}(m,k)$ is the number of <i>bidirectional</i> walks&nbsp;</div><div style=\"text-align: center;\">from $u \\to v$ of length $m$ with <i>exactly </i>$k$ forward edges.&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\Phi(m,m) = \\mA^m$ &nbsp; &nbsp; &nbsp;all edges are forward edges.&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\Phi(m,0) = (\\mA^T)^m$ &nbsp; &nbsp; &nbsp;all edges are backwards edges.&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\Phi(m,k) = \\Phi(m-1,k-1) \\mA + \\Phi(m-1,k) \\mA^T$</div>",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Let $G$ be a graph.&nbsp;</div><div style=\"text-align: center;\">Let $\\mA$ be the directed adjacency matrix.&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\Phi_{u,v}(m,k)$ is the number of <i>bidirectional</i> walks&nbsp;</div><div style=\"text-align: center;\">from $u \\to v$ of length $m$ with <i>exactly </i>$k$ forward edges.&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\Phi(m,m) = \\mA^m$ &nbsp; &nbsp; &nbsp;all edges are forward edges.&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\Phi(m,0) = (\\mA^T)^m$ &nbsp; &nbsp; &nbsp;all edges are backwards edges.&nbsp;</div>",
           "position": {
             "x": 76,
             "y": 210,
@@ -1774,7 +1788,7 @@
             "x": 21,
             "y": 27,
             "width": 1844,
-            "height": 998
+            "height": 953
           }
         }
       ],
@@ -1785,83 +1799,27 @@
       "layout": "default",
       "elements": [
         {
-          "id": "7fe27062-79b4-45f9-bb06-8bd34f6bb8dd",
-          "type": "image",
-          "src": "images/pasted-1775782347071.png",
-          "position": {
-            "x": 80,
-            "y": 161,
-            "width": 1774,
-            "height": 858
-          }
-        },
-        {
-          "id": "10620e52-0df0-41d8-bf8a-cdc888853439",
+          "id": "aa3a4416-9714-495b-9544-357f5e0641e8",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Spectral density as we vary the magnetic parameter shows a Decay regime</span></span>",
-          "position": {
-            "x": 66,
-            "y": 35,
-            "width": 1807,
-            "height": 200
-          },
-          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
-          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
-        },
-        {
-          "id": "da0a9451-509d-4c91-85c9-b497ea3ed505",
-          "type": "text",
-          "preset": "annotation",
-          "html": "This plots the magnitude of $&lt;|\\hat{\\mA}_q^{50}|&gt;$&nbsp;",
-          "position": {
-            "x": 537,
-            "y": 979,
-            "width": 600,
-            "height": 150
-          }
-        }
-      ],
-      "notes": ""
-    },
-    {
-      "id": "b85e223b-23fd-4639-b90a-369d5dec3fc8",
-      "layout": "default",
-      "elements": [
-        {
-          "id": "1ba85d2c-cc5a-4de2-8380-18f6fb9049c0",
-          "type": "demo-piece",
-          "demoSrc": "demos/walk_compressibility.html",
-          "piece": "plot",
+          "html": "Title",
           "position": {
             "x": 80,
-            "y": 200,
-            "width": 599,
-            "height": 690
+            "y": 20,
+            "width": 1760,
+            "height": 200
           }
         },
         {
-          "id": "67dd1d89-3b37-410b-8a76-a45d38e667d7",
-          "type": "demo-piece",
-          "demoSrc": "demos/walk_compressibility.html",
-          "piece": "heatmap",
+          "id": "1cc2a2b6-ef12-40ba-9227-84a2ff352901",
+          "type": "text",
+          "preset": "body",
+          "html": "",
           "position": {
-            "x": 680,
-            "y": 200,
-            "width": 560,
-            "height": 700
-          }
-        },
-        {
-          "id": "27a45e4c-eb6f-4635-b281-15ed49209439",
-          "type": "demo-piece",
-          "demoSrc": "demos/walk_compressibility.html",
-          "piece": "controls",
-          "position": {
-            "x": 1280,
-            "y": 200,
-            "width": 560,
-            "height": 700
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
           }
         }
       ],
@@ -1884,97 +1842,18 @@
           }
         },
         {
-          "id": "8ba17bf4-f223-4bbd-acd5-9d7850dad3e3",
-          "type": "image",
-          "src": "images/pasted-1775795821192.png",
-          "position": {
-            "x": 23,
-            "y": 184,
-            "width": 1869,
-            "height": 830
-          }
-        },
-        {
           "id": "9decadd3-26f2-4b1a-97cd-ca20eea1d464",
           "type": "text",
           "preset": "title",
           "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">The walk matrices of real data are often highly compressible&nbsp;</span></span>",
           "position": {
-            "x": 81,
-            "y": 48,
+            "x": 90,
+            "y": 64,
             "width": 1807,
             "height": 200
           },
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
           "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
-        },
-        {
-          "id": "0beee8cc-07c5-4e15-9ab2-f49e0490910e",
-          "type": "text",
-          "preset": "annotation",
-          "html": "These plot how accurately we recover the walk profiles from fewer frequencies than required.&nbsp;",
-          "position": {
-            "x": 311,
-            "y": 1004,
-            "width": 1263,
-            "height": 71
-          }
-        }
-      ],
-      "notes": ""
-    },
-    {
-      "id": "845e8d78-22b7-4e7a-b3aa-eccc193e3f1d",
-      "layout": "default",
-      "elements": [
-        {
-          "id": "7322b9e9-980a-4b68-aeef-f118fc8311ea",
-          "type": "text",
-          "preset": "body",
-          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Why does this work&nbsp;</div><div style=\"text-align: center;\">sometimes (ER with high degree) and not others (ER with low degree) ?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">What determines compressibility?&nbsp;</div>",
-          "position": {
-            "x": 80,
-            "y": 180,
-            "width": 1760,
-            "height": 800
-          }
-        }
-      ],
-      "notes": ""
-    },
-    {
-      "id": "7ab9e6ff-840d-4c8c-ad5d-c5009774936f",
-      "layout": "default",
-      "elements": [],
-      "notes": ""
-    },
-    {
-      "id": "97607a65-60ea-48d9-a3a1-94c34aaf189b",
-      "layout": "default",
-      "elements": [
-        {
-          "id": "09c81a06-151a-462e-90b8-37af8472d0fa",
-          "type": "text",
-          "preset": "title",
-          "html": "Title",
-          "position": {
-            "x": 80,
-            "y": 20,
-            "width": 1760,
-            "height": 200
-          }
-        },
-        {
-          "id": "2159490c-aee7-4d69-9e23-70be4003551d",
-          "type": "text",
-          "preset": "body",
-          "html": "",
-          "position": {
-            "x": 80,
-            "y": 180,
-            "width": 1760,
-            "height": 800
-          }
         }
       ],
       "notes": ""

@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { TEXT_PRESET_STYLES, getSlideNumber, isGroupChild } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
@@ -24,6 +24,16 @@ export function SlideSidebar() {
   const [dropTarget, setDropTarget] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
+
+  // Scroll the active slide into view when currentSlideIndex changes
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const thumbs = containerRef.current.querySelectorAll('.slide-thumbnail');
+    const active = thumbs[currentSlideIndex] as HTMLElement | undefined;
+    if (active) {
+      active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [currentSlideIndex]);
 
   const handleContainerPointerMove = useCallback(
     (e: React.PointerEvent) => {

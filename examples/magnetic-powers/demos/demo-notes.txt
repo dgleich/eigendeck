@@ -1,11 +1,30 @@
-I need a demo of walk profiles. 
+Okay, we need some demos of the walk profile compressibility. 
+To do this, we need to compute the walk profiles for some reasonable size directed ER 
+matrix ...
 
-It should show the same graph from demo-powers. 
-Then it should let me pick a value of m and k.
-(Have little boxes like the demo-powers...) m up through 6.
-k up through m (we also need zero) for m. 
+say n = 200, with a knob to vary average degree... 
 
-I want to see the 7x7 matrix of walk profiles 
+Then we want to compute the walk profiles for m = 30, and look at how well
+we approximate them.
 
-Then I want to be able to click a cell and see the list of paths through the network.
-Remember that these are 
+We should also do the other small networks we have here, I think they are all less than 
+500 vertices. 
+
+The goal is to see how well we approximate these walk profiles with q <= 15 frequencies.
+(Read the paper again, for more details, but we don't want to sample for these small
+scale studies.)
+
+This is on the random walk normalized version, so values stay contained. 
+e.g. the original walk counts are based on D^{-1} A and evaluate walk probabilities
+with exactly k forward edges. 
+
+---
+
+The walk profile at m is 
+m+1 n-by-n matrices. 
+Phi(m,k)_{i,j} is the number of walks of length m from i->j with exactly k forward edges.
+There is a recursive formula to compute them in the paper. 
+$\Phi(m,k) = \Phi(m-1,k-1) \mA + \Phi(m-1,k) \mA^T$
+where $\mA$ is the adjacency matrix. 
+These get dense quickly, so probably best to store as a dense matrix.
+
