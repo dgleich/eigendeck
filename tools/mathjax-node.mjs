@@ -15,8 +15,20 @@ let mjxPromise = null;
 async function getMathJax() {
   if (mjxPromise) return mjxPromise;
   mjxPromise = (async () => {
-    // MathJax 4 node entry point — sets up adaptor, handler, components
     const MathJax = require('@mathjax/src');
+
+    // Try to load the custom PT Sans font from the bundled cjs/ output
+    let PTSansFont = null;
+    try {
+      const fontModule = require('/work/mathjax-ptsans-bundle/cjs/svg.js');
+      PTSansFont = fontModule.MathJaxPTSansFont;
+    } catch (e) {
+      console.warn('  ! Could not load PT Sans font, using MathJax default:', e.message);
+    }
+
+    const svgOpts = { fontCache: 'none' };
+    if (PTSansFont) svgOpts.fontData = PTSansFont;
+
     const mjx = await MathJax.init({
       loader: { load: ['input/tex', 'output/svg', 'adaptors/liteDOM'] },
       tex: {
@@ -24,10 +36,9 @@ async function getMathJax() {
         displayMath: [['$$', '$$']],
         packages: ['base', 'ams', 'newcommand', 'configmacros', 'noundefined'],
       },
-      svg: { fontCache: 'none' },
+      svg: svgOpts,
       startup: { typeset: false },
     });
-    // Return both init result (has tex2svgPromise) and global (has adaptor)
     return { mjx, adaptor: MathJax.startup.adaptor };
   })();
   return mjxPromise;
