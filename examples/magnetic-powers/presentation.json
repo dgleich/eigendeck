@@ -58,6 +58,18 @@
             "height": 210
           },
           "fontSize": 32
+        },
+        {
+          "id": "24dac89e-a602-4ab6-8907-cfed51255dd3",
+          "type": "text",
+          "preset": "footnote",
+          "html": "Work supported by NSF, DOE. Main publication is&nbsp;https://doi.org/10.1073/pnas.2516664123. Code available&nbsp;https://github.com/Graph-COM/Walk_Profiles&nbsp;",
+          "position": {
+            "x": 80,
+            "y": 1020,
+            "width": 1335,
+            "height": 46
+          }
         }
       ],
       "notes": ""
@@ -105,8 +117,8 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 28,
-            "y": 347,
+            "x": 70,
+            "y": 387,
             "width": 605,
             "height": 559
           },
@@ -169,8 +181,8 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 28,
-            "y": 347,
+            "x": 70,
+            "y": 387,
             "width": 605,
             "height": 559
           },
@@ -219,8 +231,8 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 28,
-            "y": 347,
+            "x": 70,
+            "y": 387,
             "width": 605,
             "height": 559
           },
@@ -313,8 +325,8 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 28,
-            "y": 347,
+            "x": 70,
+            "y": 387,
             "width": 605,
             "height": 559
           },
@@ -405,8 +417,8 @@
           "demoSrc": "demos/demo_powers_teaser.html",
           "piece": "graph",
           "position": {
-            "x": 28,
-            "y": 347,
+            "x": 70,
+            "y": 387,
             "width": 605,
             "height": 559
           },
@@ -498,7 +510,7 @@
           "id": "a7adc989-dd5a-4491-96a3-95a51bec70b6",
           "type": "text",
           "preset": "body",
-          "html": "<div><b>Betweenness Centrality&nbsp;</b><br></div><div>- the number of paths between between $s \\to t$ without $v$ / number of shortest paths from $s \\to t$</div><div><br></div><div><b>Katz Centrality</b></div><div>- the number of walks from $s \\to t$ where each link in the walk is weighted $\\alpha$</div><div><br></div><div><b>PageRank centrality&nbsp;</b></div><div>- the probability of walking from $s \\to t$ where each link in the walk is weighted by $\\alpha P_{ij}$&nbsp;</div><div><br></div><div style=\"text-align: center;\">… and more! communicability, etc. …&nbsp;</div>",
+          "html": "<div><b>Betweenness Centrality&nbsp;</b><br></div><div>- the number of paths between between $s \\to t$ without $v$ / number of shortest paths from $s \\to t$</div><div><br></div><div><b>Katz Centrality</b></div><div>- the number of walks from $s \\to t$ where each link in the walk is weighted $\\alpha$</div><div><br></div><div><b>PageRank centrality&nbsp;</b></div><div>- the probability of walking from $s \\to t$ where each link in the walk is weighted by $\\alpha P_{ij}$&nbsp;</div><div><br></div><div style=\"text-align: center;\"><font color=\"#2563eb\"><i>… and more! communicability, etc. …&nbsp;</i></font></div>",
           "position": {
             "x": 67,
             "y": 233,
@@ -690,18 +702,17 @@
           "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
         },
         {
-          "id": "52bdd193-7a10-4a99-84ed-db4a5e1b6524",
+          "id": "98c8b3fa-861f-40a2-9986-e76261f5e7a0",
           "type": "text",
           "preset": "body",
-          "html": "<div style=\"font-size: 36px; text-align: center;\"><i>Drop direction entirely [ ??? ]</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$\\mG \\to \\mA = \\max(\\mG, \\mG^T)$</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Explicitly symmetrize the matrix [ ??? ]&nbsp;</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$\\mG \\to \\mA = \\mG + \\mG^T$</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Use singular values instead of eigenvalues [Dhillon ’??, Bin Yu ??? probably even earlier]</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$\\mG \\to \\mA = \\bmat{0 &amp; \\mG \\\\ \\mG^T &amp; 0}$</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Use directed graph directly [ … many attempts … ]&nbsp;</i></div><div style=\"font-size: 36px; text-align: center;\"><i>$\\mG \\to \\mA = \\mG \\mD^{-1}$ and things like hitting times, etc.&nbsp;</i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Flow-based circulation [Chung 2005]</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA = \\text{Diag}(\\vpi(\\mG)) \\mD^{-1} \\mG + \\mG^T \\mD^{-1} \\text{Diag}(\\vpi(\\mG)) \\mG^T$</div>",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Drop direction entirely [ baseline ]&nbsp;</div><div style=\"text-align: center;\">$\\mG \\to \\mA = \\max(\\mG, \\mG^T)$&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Explicitly symmetrize the matrix [ another baseline ]&nbsp;</div><div style=\"text-align: center;\">$\\mG \\to \\mA = \\mG + \\mG^T$&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Use singular values instead of eigenvalues [Dhillon 2001, Rohe, Qin, Yu 2012 ... even earlier in biliometrics?]&nbsp;</div><div style=\"text-align: center;\">$\\mG \\to \\mA = \\bmat{0 &amp; \\mG \\\\ \\mG^T &amp; 0}$&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Use directed graph directly [ Boley et al. 2011, Steward 1994 ]&nbsp;</div><div style=\"text-align: center;\">$\\mG \\to \\mA = \\mG \\mD^{-1}$ and things like asymmetric Laplacians, &nbsp;hitting times, etc.&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Flow-based circulation [Chung 2005]&nbsp;</div><div style=\"text-align: center;\">$\\mG \\to \\mA = \\text{Diag}(\\vpi(\\mG)) \\mD^{-1} \\mG + \\mG^T \\mD^{-1} \\text{Diag}(\\vpi(\\mG)) \\mG^T$<br></div>",
           "position": {
-            "x": 59,
-            "y": 258,
+            "x": 97,
+            "y": 235,
             "width": 1760,
             "height": 800
           },
-          "linkId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585",
-          "syncId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585"
+          "fontSize": 36
         }
       ],
       "notes": ""
@@ -714,30 +725,249 @@
           "id": "b4f988de-d103-4793-be9e-9b12151b1f1b",
           "type": "text",
           "preset": "body",
-          "html": "<div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Benson, Gleich, Leskovec (2016)</i></div><div style=\"font-size: 36px; text-align: center;\">Given $\\mG$, enumerate directed motifs in $\\mG$, then analyze the weighted clique projection of the hypergraph where each clique is a hyperedge.&nbsp;</div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Liu &amp; Li 2015, Guo &amp; Mohar 2017</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA$ with 1 for each bidirection edge and $i$ for $u \\to v$, $-i$ for $v \\to u$ for each directed edge $u,v$</div><div style=\"font-size: 36px; text-align: center;\"><br></div>",
+          "html": "<div style=\"font-size: 36px; text-align: center;\"><i>Benson, Gleich, Leskovec (2016)</i><br></div><div style=\"font-size: 36px; text-align: center;\">Given $\\mG$, enumerate directed motifs in $\\mG$, then analyze the weighted clique projection of the hypergraph where each clique is a hyperedge.&nbsp;</div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Liu &amp; Li 2015, Guo &amp; Mohar 2017</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA$ with 1 for each bidirection edge and $i$ for $u \\to v$, $-i$ for $v \\to u$ for each directed edge $u,v$</div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><i>Mohar 2020</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA = \\omega \\mG + \\bar{\\omega} \\mG^T$ with $\\omega = \\exp(2 \\pi i q)$ on the unit circle.&nbsp;</div><div style=\"font-size: 36px; text-align: center;\"><br></div>",
           "position": {
-            "x": 124,
-            "y": 226,
+            "x": 67,
+            "y": 135,
             "width": 1760,
-            "height": 800
+            "height": 915
           },
           "linkId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585",
           "_syncId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585",
-          "fontSize": 62
+          "fontSize": 62,
+          "syncId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585"
         },
         {
           "id": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">… and then A complex idea &nbsp;…&nbsp;</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">… and then some complex ideas &nbsp;…&nbsp;</span></span>",
           "position": {
-            "x": 53,
-            "y": 53,
+            "x": 64,
+            "y": -68,
             "width": 1807,
             "height": 200
           },
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
-          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
+          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
+          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
+        },
+        {
+          "id": "d9c77e44-a6a9-4604-8f35-912861b5b606",
+          "type": "demo-piece",
+          "demoSrc": "demos/motif_projection.html",
+          "piece": "original",
+          "position": {
+            "x": 38,
+            "y": 282,
+            "width": 408,
+            "height": 344
+          },
+          "linkId": "8155b42c-f057-4c93-a01b-7f5e651aa1ed",
+          "syncId": "8155b42c-f057-4c93-a01b-7f5e651aa1ed"
+        },
+        {
+          "id": "990870db-d4a8-4479-9e99-f91b16886504",
+          "type": "demo-piece",
+          "demoSrc": "demos/motif_projection.html",
+          "piece": "hyperedges",
+          "position": {
+            "x": 520,
+            "y": 277,
+            "width": 378,
+            "height": 339
+          },
+          "linkId": "fc2947e0-bbe7-43f9-9640-11c60ee50072",
+          "syncId": "fc2947e0-bbe7-43f9-9640-11c60ee50072"
+        },
+        {
+          "id": "90fe18ac-1d2d-4791-9ff5-99b8c346d0e2",
+          "type": "demo-piece",
+          "demoSrc": "demos/motif_projection.html",
+          "piece": "projection",
+          "position": {
+            "x": 1010,
+            "y": 290,
+            "width": 417,
+            "height": 338
+          },
+          "linkId": "ee831ca4-2c94-436e-9baf-0447a67a4d5b",
+          "syncId": "ee831ca4-2c94-436e-9baf-0447a67a4d5b"
+        },
+        {
+          "id": "33dba807-39f6-4555-b7a1-761b9171dfe8",
+          "type": "demo-piece",
+          "demoSrc": "demos/motif_projection.html",
+          "piece": "controls",
+          "position": {
+            "x": 1467,
+            "y": 265,
+            "width": 435,
+            "height": 380
+          },
+          "linkId": "0ad478f7-08b0-4d7e-abe9-6b3f7291e5c2",
+          "syncId": "0ad478f7-08b0-4d7e-abe9-6b3f7291e5c2"
+        },
+        {
+          "id": "d9ac3a09-772b-46d9-bdd1-a0f35c0f7f6f",
+          "type": "cover",
+          "position": {
+            "x": 178,
+            "y": 651,
+            "width": 1551,
+            "height": 375
+          }
+        }
+      ],
+      "notes": "",
+      "groupId": "c09718b4-c90b-4d71-b728-c81b75296832"
+    },
+    {
+      "id": "6b1010ec-90ae-45e4-9c6b-5b814376e233",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "5dd35e80-3f8c-4244-adfa-f4e00e79dfc5",
+          "type": "text",
+          "preset": "body",
+          "html": "<div style=\"font-size: 36px; text-align: center;\"><i>Benson, Gleich, Leskovec (2016)</i><br></div><div style=\"font-size: 36px; text-align: center;\">Given $\\mG$, enumerate directed motifs in $\\mG$, then analyze the weighted clique projection of the hypergraph where each clique is a hyperedge.&nbsp;</div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Liu &amp; Li 2015, Guo &amp; Mohar 2017</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA$ with 1 for each bidirection edge and $i$ for $u \\to v$, $-i$ for $v \\to u$ for each directed edge $u,v$</div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><i>Mohar 2020</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA = \\omega \\mG + \\bar{\\omega} \\mG^T$ with $\\omega = \\exp(2 \\pi i q)$ on the unit circle.&nbsp;</div><div style=\"font-size: 36px; text-align: center;\"><br></div>",
+          "position": {
+            "x": 67,
+            "y": 135,
+            "width": 1760,
+            "height": 915
+          },
+          "linkId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585",
+          "_syncId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585",
+          "fontSize": 62,
+          "syncId": "9d71d6d1-c1dd-4e98-ae30-6b0176176585"
+        },
+        {
+          "id": "7e13f031-e306-4a5b-aac3-65e9c10da80a",
+          "type": "text",
+          "preset": "title",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">… and then some complex ideas &nbsp;…&nbsp;</span></span>",
+          "position": {
+            "x": 64,
+            "y": -68,
+            "width": 1807,
+            "height": 200
+          },
+          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
+          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
+          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
+        },
+        {
+          "id": "6310e876-7b5d-48da-b5be-416921d91bc5",
+          "type": "demo-piece",
+          "demoSrc": "demos/motif_projection.html",
+          "piece": "original",
+          "position": {
+            "x": 38,
+            "y": 282,
+            "width": 408,
+            "height": 344
+          },
+          "linkId": "8155b42c-f057-4c93-a01b-7f5e651aa1ed",
+          "syncId": "8155b42c-f057-4c93-a01b-7f5e651aa1ed"
+        },
+        {
+          "id": "d62b8e9c-25bf-4c13-9aa5-32ac802bd00e",
+          "type": "demo-piece",
+          "demoSrc": "demos/motif_projection.html",
+          "piece": "hyperedges",
+          "position": {
+            "x": 520,
+            "y": 277,
+            "width": 378,
+            "height": 339
+          },
+          "linkId": "fc2947e0-bbe7-43f9-9640-11c60ee50072",
+          "syncId": "fc2947e0-bbe7-43f9-9640-11c60ee50072"
+        },
+        {
+          "id": "da449e06-ed0a-4f31-815a-124cb24a51e6",
+          "type": "demo-piece",
+          "demoSrc": "demos/motif_projection.html",
+          "piece": "projection",
+          "position": {
+            "x": 1010,
+            "y": 290,
+            "width": 417,
+            "height": 338
+          },
+          "linkId": "ee831ca4-2c94-436e-9baf-0447a67a4d5b",
+          "syncId": "ee831ca4-2c94-436e-9baf-0447a67a4d5b"
+        },
+        {
+          "id": "5a781b58-61dd-4798-94c5-b3b3bff2ac80",
+          "type": "demo-piece",
+          "demoSrc": "demos/motif_projection.html",
+          "piece": "controls",
+          "position": {
+            "x": 1467,
+            "y": 265,
+            "width": 435,
+            "height": 380
+          },
+          "linkId": "0ad478f7-08b0-4d7e-abe9-6b3f7291e5c2",
+          "syncId": "0ad478f7-08b0-4d7e-abe9-6b3f7291e5c2"
+        }
+      ],
+      "notes": "",
+      "groupId": "c09718b4-c90b-4d71-b728-c81b75296832"
+    },
+    {
+      "id": "eb574671-cc1f-44e3-834b-e773005616e4",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "2bd49246-2811-45ad-b755-8533366a2177",
+          "type": "text",
+          "preset": "body",
+          "html": "<div><br></div><div><br></div><div style=\"text-align: center;\">See Mason’s Paper for more on Complex Weights.</div><div style=\"text-align: center;\">I’ve found a few applications for PageRank with complex valued teleportation parameters.&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div>",
+          "position": {
+            "x": 128,
+            "y": -64,
+            "width": 1638,
+            "height": 448
+          }
+        },
+        {
+          "id": "5c152e4c-772d-4bd7-bf95-ae3a989b0638",
+          "type": "image",
+          "src": "images/pasted-1775701368583.png",
+          "position": {
+            "x": 34,
+            "y": 285,
+            "width": 1083,
+            "height": 661
+          },
+          "shadow": true
+        },
+        {
+          "id": "84e39b30-0f38-42f9-a389-6ac70491d7cc",
+          "type": "text",
+          "preset": "footnote",
+          "html": "Constantine &amp; Gleich, Random Alpha PageRank; (Lemma 6) Gleich &amp; Rossi, PageRank with Dynamic Teleportation",
+          "position": {
+            "x": 80,
+            "y": 1020,
+            "width": 1000,
+            "height": 44
+          }
+        },
+        {
+          "id": "4869a140-1a4e-4d5b-9696-b0ee9fb0c4a9",
+          "type": "image",
+          "src": "images/pasted-1775803686757.png",
+          "position": {
+            "x": 1142,
+            "y": 389,
+            "width": 733,
+            "height": 447
+          },
+          "shadow": true
         }
       ],
       "notes": ""
@@ -774,43 +1004,19 @@
       "notes": ""
     },
     {
-      "id": "eb574671-cc1f-44e3-834b-e773005616e4",
+      "id": "67a2865c-f09c-4951-8565-33b03dd4baf8",
       "layout": "default",
       "elements": [
         {
-          "id": "2bd49246-2811-45ad-b755-8533366a2177",
+          "id": "e6bc934c-811a-4380-a286-b8dda4fdba14",
           "type": "text",
           "preset": "body",
-          "html": "<div><br></div><div><br></div><div style=\"text-align: center;\">See Mason’s Paper for more on Complex Weights.</div><div style=\"text-align: center;\">I’ve found a few applications for PageRank with complex valued teleportation paraemters.&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div>",
-          "position": {
-            "x": 128,
-            "y": -64,
-            "width": 1638,
-            "height": 448
-          }
-        },
-        {
-          "id": "5c152e4c-772d-4bd7-bf95-ae3a989b0638",
-          "type": "image",
-          "src": "images/pasted-1775701368583.png",
-          "position": {
-            "x": 424,
-            "y": 285,
-            "width": 1083,
-            "height": 661
-          },
-          "shadow": true
-        },
-        {
-          "id": "84e39b30-0f38-42f9-a389-6ac70491d7cc",
-          "type": "text",
-          "preset": "footnote",
-          "html": "Constantine &amp; Gleich, Random Alpha PageRank; (Lemma 6) Gleich &amp; Rossi, PageRank with Dynamic Teleportation",
+          "html": "<div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Liu &amp; Li 2015, Guo &amp; Mohar 2017</i><br></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA$ with 1 for each bidirection edge and $i$ for $u \\to v$, $-i$ for $v \\to u$ for each directed edge $u,v$</div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><i>Mohar 2020</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA = \\omega \\mG + \\bar{\\omega} \\mG^T$ with $\\omega = \\exp(2 \\pi i q)$ on the unit circle.&nbsp;</div><div><br></div><div style=\"text-align: center;\">We use the Mohar 2020 construction here.&nbsp;</div><div><br></div><div style=\"text-align: center;\">Both are called “magnetic adjacency” matrices.</div><div style=\"text-align: center;\">Where does this come from?&nbsp;</div><div style=\"text-align: center;\">The magnetic Laplacian!&nbsp;</div>",
           "position": {
             "x": 80,
-            "y": 1020,
-            "width": 1000,
-            "height": 44
+            "y": 182,
+            "width": 1760,
+            "height": 800
           }
         }
       ],
@@ -833,21 +1039,6 @@
           },
           "linkId": "438b2d4f-4d82-4c39-b387-d89a9334c5e8",
           "syncId": "438b2d4f-4d82-4c39-b387-d89a9334c5e8"
-        },
-        {
-          "id": "d44680cc-c943-4e32-8b60-15c74673d4e8",
-          "type": "text",
-          "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Where does the&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Magnetic LaplaCIAN Come From?</span></span>",
-          "position": {
-            "x": 49,
-            "y": 32,
-            "width": 1807,
-            "height": 200
-          },
-          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
-          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
-          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
         },
         {
           "id": "81bb18d9-1220-4ec4-9c9b-7dfd702b4b44",
@@ -889,6 +1080,20 @@
             "height": 322
           },
           "fontSize": 48
+        },
+        {
+          "id": "c99024ab-0c35-4035-96ed-4a2d886193c1",
+          "type": "text",
+          "preset": "title",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Where does the&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Magnetic Laplacian Come from?</span></span>",
+          "position": {
+            "x": 82,
+            "y": 10,
+            "width": 1760,
+            "height": 200
+          },
+          "linkId": "60c751b8-4e5f-45e0-965b-690ac36be198",
+          "syncId": "60c751b8-4e5f-45e0-965b-690ac36be198"
         }
       ],
       "notes": "",
@@ -911,21 +1116,6 @@
           },
           "linkId": "438b2d4f-4d82-4c39-b387-d89a9334c5e8",
           "syncId": "438b2d4f-4d82-4c39-b387-d89a9334c5e8"
-        },
-        {
-          "id": "274095ae-be50-47e7-8e3c-9cb3145c8432",
-          "type": "text",
-          "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Where does the&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Magnetic LaplaCIAN Come From?</span></span>",
-          "position": {
-            "x": 49,
-            "y": 32,
-            "width": 1807,
-            "height": 200
-          },
-          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
-          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
-          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
         },
         {
           "id": "0fc1366c-55a7-4b3a-9bf4-5ba6c216d556",
@@ -996,6 +1186,20 @@
             "height": 407
           },
           "fontSize": 48
+        },
+        {
+          "id": "811cf4a4-94fe-45cc-b93b-9d8244d53876",
+          "type": "text",
+          "preset": "title",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Where does the&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Magnetic Laplacian Come from?</span></span>",
+          "position": {
+            "x": 82,
+            "y": 10,
+            "width": 1760,
+            "height": 200
+          },
+          "linkId": "60c751b8-4e5f-45e0-965b-690ac36be198",
+          "syncId": "60c751b8-4e5f-45e0-965b-690ac36be198"
         }
       ],
       "notes": "",
@@ -1018,21 +1222,6 @@
           },
           "linkId": "1f767fd4-c8ba-4308-b17c-161a467baa5f",
           "_syncId": "1f767fd4-c8ba-4308-b17c-161a467baa5f"
-        },
-        {
-          "id": "af674882-573c-4481-a894-2c62122ed2d4",
-          "type": "text",
-          "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Where does the&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Magnetic LaplaCIAN Come From?</span></span>",
-          "position": {
-            "x": 49,
-            "y": 32,
-            "width": 1807,
-            "height": 200
-          },
-          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
-          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
-          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
         },
         {
           "id": "5fe23d9c-7af7-4c45-a82c-026f12772b6f",
@@ -1120,6 +1309,20 @@
           },
           "linkId": "43e2dac4-75a1-429c-a5c0-3a8f0bfd201e",
           "syncId": "43e2dac4-75a1-429c-a5c0-3a8f0bfd201e"
+        },
+        {
+          "id": "d03abcfa-9389-43b8-9bd8-1b07f333e324",
+          "type": "text",
+          "preset": "title",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Where does the&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Magnetic Laplacian Come from?</span></span>",
+          "position": {
+            "x": 82,
+            "y": 10,
+            "width": 1760,
+            "height": 200
+          },
+          "linkId": "60c751b8-4e5f-45e0-965b-690ac36be198",
+          "syncId": "60c751b8-4e5f-45e0-965b-690ac36be198"
         }
       ],
       "notes": "",
@@ -1142,21 +1345,6 @@
           },
           "linkId": "1f767fd4-c8ba-4308-b17c-161a467baa5f",
           "syncId": "1f767fd4-c8ba-4308-b17c-161a467baa5f"
-        },
-        {
-          "id": "51095516-f8d8-420b-bcd2-7acbd1866f59",
-          "type": "text",
-          "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Where does the&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Magnetic LaplaCIAN Come From?</span></span>",
-          "position": {
-            "x": 49,
-            "y": 32,
-            "width": 1807,
-            "height": 200
-          },
-          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
-          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
-          "syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
         },
         {
           "id": "4220ef16-91f0-48fd-9fa6-4649b87c0d31",
@@ -1198,6 +1386,20 @@
             "height": 835
           },
           "fontSize": 36
+        },
+        {
+          "id": "4eee21fc-ee04-4792-9737-c1d40045a993",
+          "type": "text",
+          "preset": "title",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Where does the&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Magnetic Laplacian Come from?</span></span>",
+          "position": {
+            "x": 82,
+            "y": 10,
+            "width": 1760,
+            "height": 200
+          },
+          "linkId": "60c751b8-4e5f-45e0-965b-690ac36be198",
+          "syncId": "60c751b8-4e5f-45e0-965b-690ac36be198"
         }
       ],
       "notes": "",
@@ -1346,6 +1548,25 @@
       "groupId": "9e8fa905-c8b7-4985-998e-85d9ee7f8ce7"
     },
     {
+      "id": "ee62d16e-2ce3-4829-9ab3-5609a92dab85",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "69d181f6-31c5-42b4-9541-17feff07a5b5",
+          "type": "text",
+          "preset": "body",
+          "html": "<div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div style=\"text-align: center;\">… onto walk profiles …&nbsp;</div>",
+          "position": {
+            "x": 100,
+            "y": 130,
+            "width": 1760,
+            "height": 800
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
       "id": "51866a90-638d-474a-ab0e-09af419ccf7b",
       "layout": "default",
       "elements": [
@@ -1469,10 +1690,10 @@
           "id": "9730e514-98fa-4dbd-bd60-5a8822b14e9c",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Our main Theorem&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Walk Counts and the Magnetic Matrix&nbsp;</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">… and then some complex ideas &nbsp;…&nbsp;</span></span>",
           "position": {
-            "x": 49,
-            "y": 32,
+            "x": 64,
+            "y": -68,
             "width": 1807,
             "height": 200
           },
@@ -1518,10 +1739,10 @@
           "id": "6125a424-6be3-469e-b5fd-b44326f60478",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Our main Theorem&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Walk Counts and the Magnetic Matrix&nbsp;</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">… and then some complex ideas &nbsp;…&nbsp;</span></span>",
           "position": {
-            "x": 49,
-            "y": 32,
+            "x": 64,
+            "y": -68,
             "width": 1807,
             "height": 200
           },
@@ -1567,10 +1788,10 @@
           "id": "744c3e31-b479-4040-acba-1d91104e6fcf",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Our main Theorem&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Walk Counts and the Magnetic Matrix&nbsp;</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">… and then some complex ideas &nbsp;…&nbsp;</span></span>",
           "position": {
-            "x": 49,
-            "y": 32,
+            "x": 64,
+            "y": -68,
             "width": 1807,
             "height": 200
           },
@@ -1617,10 +1838,10 @@
           "id": "02605735-f455-445f-91f2-f7d0e6c8d5d0",
           "type": "text",
           "preset": "title",
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Our main Theorem&nbsp;</span></span><span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">Walk Counts and the Magnetic Matrix&nbsp;</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">… and then some complex ideas &nbsp;…&nbsp;</span></span>",
           "position": {
-            "x": 49,
-            "y": 32,
+            "x": 64,
+            "y": -68,
             "width": 1807,
             "height": 200
           },
@@ -1846,7 +2067,7 @@
           "demoSrc": "demos/walk_compressibility.html",
           "piece": "heatmap",
           "position": {
-            "x": 680,
+            "x": 705,
             "y": 200,
             "width": 560,
             "height": 700
@@ -1931,7 +2152,135 @@
           "id": "7322b9e9-980a-4b68-aeef-f118fc8311ea",
           "type": "text",
           "preset": "body",
-          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Why does this work&nbsp;</div><div style=\"text-align: center;\">sometimes (ER with high degree) and not others (ER with low degree) ?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">What determines compressibility?&nbsp;</div>",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Why does this work&nbsp;</div><div style=\"text-align: center;\">sometimes (ER with high degree) and not others (ER with low degree) ?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">What determines compressibility?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">It’s the spectral radius $\\rho(\\mA_q)$!&nbsp;</div><div style=\"text-align: center;\">If this is near 1 (for the random walk veresions), then we get no convergence, whereas if this is smaller, we get rapid decay.&nbsp;</div>",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          },
+          "linkId": "5f500420-7701-4cca-92da-7414c4e9bda1",
+          "syncId": "5f500420-7701-4cca-92da-7414c4e9bda1"
+        },
+        {
+          "id": "c01e1c83-2aa0-4031-ab7d-fa10fd63d4e7",
+          "type": "cover",
+          "position": {
+            "x": 118,
+            "y": 631,
+            "width": 1743,
+            "height": 383
+          }
+        }
+      ],
+      "notes": "",
+      "groupId": "25e0d375-24d9-44be-a17f-1a31f8516c7e"
+    },
+    {
+      "id": "784802fe-39c0-4d33-aa00-05e47bc06c8c",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "d6bc5450-9ea7-4151-a892-f12fd1ef3db0",
+          "type": "text",
+          "preset": "body",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Why does this work&nbsp;</div><div style=\"text-align: center;\">sometimes (ER with high degree) and not others (ER with low degree) ?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">What determines compressibility?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">It’s the spectral radius $\\rho(\\mA_q)$!&nbsp;</div><div style=\"text-align: center;\">If this is near 1 (for the random walk veresions), then we get no convergence, whereas if this is smaller, we get rapid decay.&nbsp;</div>",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          },
+          "linkId": "5f500420-7701-4cca-92da-7414c4e9bda1",
+          "syncId": "5f500420-7701-4cca-92da-7414c4e9bda1"
+        }
+      ],
+      "notes": "",
+      "groupId": "25e0d375-24d9-44be-a17f-1a31f8516c7e"
+    },
+    {
+      "id": "7ab9e6ff-840d-4c8c-ad5d-c5009774936f",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "e950a2da-2019-40ed-bbe3-32dd97e20995",
+          "type": "image",
+          "src": "images/pasted-1775798980942.png",
+          "position": {
+            "x": -49,
+            "y": 121,
+            "width": 1989,
+            "height": 985
+          }
+        },
+        {
+          "id": "20225088-95dc-4169-9a42-aca62bc345b1",
+          "type": "text",
+          "preset": "title",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">It’s the spectral radius that determines how compressible a walk profile is&nbsp;</span></span>",
+          "position": {
+            "x": 51,
+            "y": 30,
+            "width": 1807,
+            "height": 200
+          },
+          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
+          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "e8a547ef-3fcb-40b1-8f22-03b470693764",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "825c3af2-02cd-41c5-82a1-fdd53270f700",
+          "type": "text",
+          "preset": "body",
+          "html": "",
+          "position": {
+            "x": 80,
+            "y": 180,
+            "width": 1760,
+            "height": 800
+          }
+        },
+        {
+          "id": "c621a4ff-9f88-4710-8bb9-ba64653c2284",
+          "type": "image",
+          "src": "images/pasted-1775795821192.png",
+          "position": {
+            "x": 30,
+            "y": 21,
+            "width": 1869,
+            "height": 830
+          }
+        },
+        {
+          "id": "e0450585-c0df-49ad-b895-25389bbf4241",
+          "type": "text",
+          "preset": "annotation",
+          "html": "Computational and Program Graphs are the least compressible here (along with a few biological graphs). That’s because they are _almost_ directed trees and trees have $\\rho(\\hat{|mA_q}) = 1$",
+          "position": {
+            "x": 345,
+            "y": 875,
+            "width": 1089,
+            "height": 152
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "97607a65-60ea-48d9-a3a1-94c34aaf189b",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "2159490c-aee7-4d69-9e23-70be4003551d",
+          "type": "text",
+          "preset": "body",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Can we use powers of the magnetic adjacency matrix to find cycles?</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">- Yes, if there is only one backward edge and we don’t count repeated nodes</div><div style=\"text-align: center;\">- No if there is more than one backward edge and we don’t count repeated nodes</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">What about in practice?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">We train a classifier to predict if node $u$ is involved in a length $m$ cycle using</div><div style=\"text-align: center;\">- Magnetic adjacency powers</div><div style=\"text-align: center;\">- \"Drop direction” graph powers</div><div style=\"text-align: center;\">- Unidirectional walks: $\\mA^m$ or $(\\mA^T)^m$</div>",
           "position": {
             "x": 80,
             "y": 180,
@@ -1943,37 +2292,172 @@
       "notes": ""
     },
     {
-      "id": "7ab9e6ff-840d-4c8c-ad5d-c5009774936f",
-      "layout": "default",
-      "elements": [],
-      "notes": ""
-    },
-    {
-      "id": "97607a65-60ea-48d9-a3a1-94c34aaf189b",
+      "id": "045b3f05-88aa-477d-9eed-61de973686aa",
       "layout": "default",
       "elements": [
         {
-          "id": "09c81a06-151a-462e-90b8-37af8472d0fa",
-          "type": "text",
-          "preset": "title",
-          "html": "Title",
+          "id": "6c85a451-69d1-4647-bfa4-1f0e2fd829ba",
+          "type": "image",
+          "src": "images/pasted-1775800329220.png",
           "position": {
-            "x": 80,
-            "y": 20,
-            "width": 1760,
-            "height": 200
+            "x": 150,
+            "y": 18,
+            "width": 1569,
+            "height": 920
           }
         },
         {
-          "id": "2159490c-aee7-4d69-9e23-70be4003551d",
+          "id": "9ba74002-a2c6-47f7-b364-d79a32f4d1c3",
           "type": "text",
-          "preset": "body",
-          "html": "",
+          "preset": "annotation",
+          "html": "The blue line shows what happens with powers of the magnetic adjacency as we use more potentials. The other lines are fixed.&nbsp;",
           "position": {
-            "x": 80,
-            "y": 180,
-            "width": 1760,
-            "height": 800
+            "x": 274,
+            "y": 910,
+            "width": 600,
+            "height": 150
+          }
+        },
+        {
+          "id": "00967504-1012-403f-bee3-090c39521cc4",
+          "type": "text",
+          "preset": "annotation",
+          "html": "Walk profiles (red) does well. The magnetic potentials quickly converge to that behavior.&nbsp;",
+          "position": {
+            "x": 937,
+            "y": 913,
+            "width": 600,
+            "height": 150
+          }
+        },
+        {
+          "id": "ee251541-b97e-4c42-b9ca-850e52001c02",
+          "type": "text",
+          "preset": "annotation",
+          "html": "rw is undirected walks&nbsp;<div><br></div><div>rw+ is unidirectional walks</div><div><br></div><div>wp is&nbsp;</div><div>walk profiles</div>",
+          "position": {
+            "x": 63,
+            "y": 115,
+            "width": 217,
+            "height": 489
+          }
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "7e124fc1-3e03-4b28-a0bc-98555623d6a9",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "7e841ac5-b175-446d-abdf-84c256088d16",
+          "type": "image",
+          "src": "images/pasted-1775800519593.png",
+          "position": {
+            "x": -16,
+            "y": 68,
+            "width": 1881,
+            "height": 1070
+          }
+        },
+        {
+          "id": "a807da94-25a1-4575-a2c1-159b5aabb1bf",
+          "type": "text",
+          "preset": "title",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">These magnetic Adjacency matrices also help improve a link prediction task</span></span>",
+          "position": {
+            "x": 61,
+            "y": 19,
+            "width": 1807,
+            "height": 200
+          },
+          "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
+          "_syncId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "820c682b-d90f-45a5-bee7-a0cad08232b7",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "63102c35-5fd3-4ab9-a548-0a955379bd05",
+          "type": "demo-piece",
+          "demoSrc": "demos/demo_powers_teaser.html",
+          "piece": "graph",
+          "position": {
+            "x": 218,
+            "y": 439,
+            "width": 605,
+            "height": 559
+          },
+          "linkId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a",
+          "_syncId": "7f6f7bd2-0ada-4860-a2df-5c0a660c4c6a"
+        },
+        {
+          "id": "5f5aaf21-5292-4393-a55e-53ae0bf6f65d",
+          "type": "demo-piece",
+          "demoSrc": "demos/demo_powers_teaser.html",
+          "piece": "results",
+          "position": {
+            "x": 827,
+            "y": 432,
+            "width": 975,
+            "height": 555
+          },
+          "linkId": "182ef785-f625-4931-8cd0-929895267d37",
+          "_syncId": "182ef785-f625-4931-8cd0-929895267d37"
+        },
+        {
+          "id": "870096bf-9b22-4d98-a995-3ca8c05c3f35",
+          "type": "text",
+          "preset": "footnote",
+          "html": "Work supported by NSF, DOE. Main publication is&nbsp;https://doi.org/10.1073/pnas.2516664123. Code available&nbsp;https://github.com/Graph-COM/Walk_Profiles&nbsp;",
+          "position": {
+            "x": 67,
+            "y": 1016,
+            "width": 1335,
+            "height": 46
+          }
+        },
+        {
+          "id": "09beb5b7-1c26-4b76-b0d8-1223cb71d415",
+          "type": "text",
+          "preset": "title",
+          "html": "<div style=\"text-align: center;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em; font-weight: normal;\">Fourier spectrum・Walk compression&nbsp;</span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">・Applications</span><br></div>",
+          "position": {
+            "x": 154,
+            "y": 131,
+            "width": 1596,
+            "height": 102
+          },
+          "fontSize": 48,
+          "verticalAlign": "top"
+        },
+        {
+          "id": "90f889b4-bb19-4e5b-bbbc-f522484b3a88",
+          "type": "text",
+          "preset": "textbox",
+          "html": "<span style=\"letter-spacing: 3.84px; text-align: center; text-transform: uppercase;\">POWERS OF THE MAGNETIC GRAPH MATRIX</span><br>",
+          "position": {
+            "x": 185,
+            "y": 47,
+            "width": 1529,
+            "height": 132
+          },
+          "fontSize": 72
+        },
+        {
+          "id": "8c3f4183-ee9e-4af7-bac7-d27be7ed9d31",
+          "type": "text",
+          "preset": "textbox",
+          "html": "<div style=\"text-align: center;\"><i><font color=\"#6b7280\">We present a combinatorial interpretation of powers of magnetic graph matrices that fundamentally reveals how these matrices encode local network structure.&nbsp;</font></i></div>",
+          "position": {
+            "x": 330,
+            "y": 213,
+            "width": 1218,
+            "height": 217
           }
         }
       ],
