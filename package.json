@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "eigendeck": "node tools/eigendeck.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
