@@ -189,6 +189,43 @@ export async function exportPresentation(): Promise<void> {
       .filter(Boolean)
       .join(' \u00B7 ');
 
+    // Helper: HTML-escape a string for use in a srcdoc attribute.
+    // Only need to escape & and " (since srcdoc is double-quoted).
+    // We also escape < and > to be safe — the browser will decode them
+    // when parsing the srcdoc value as HTML.
+    function htmlEscapeForSrcdoc(s: string): string {
+      return s
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    // Helper: inject role/piece hash AND a unique channel key into a demo HTML.
+    // In srcdoc iframes, location.pathname is empty, so demos that derive their
+    // BroadcastChannel name from pathname would all collide. We override the
+    // BroadcastChannel constructor to inject a unique prefix per slide+demo.
+    function injectDemoBootstrap(html: string, hash: string, channelKey: string): string {
+      const bootstrap = `<script>
+(function(){
+  var __ch = ${JSON.stringify(channelKey)};
+  try { window.location.hash = ${JSON.stringify(hash)}; } catch(e) {}
+  var _BC = window.BroadcastChannel;
+  if (_BC) {
+    window.BroadcastChannel = function(name) {
+      return new _BC(__ch + ':' + name);
+    };
+    window.BroadcastChannel.prototype = _BC.prototype;
+  }
+})();
+</script>`;
+      // Insert bootstrap right after <head> if present, else at start of <body>
+      if (html.includes('<head>')) {
+        return html.replace('<head>', '<head>' + bootstrap);
+      }
+      return bootstrap + html;
+    }
+
     // Read and inline images as data URLs
     const imageCache = new Map<string, string>();
     async function getImageDataUrl(src: string): Promise<string> {
@@ -200,11 +237,21 @@ export async function exportPresentation(): Promise<void> {
         const bytes = await readFile(`${projectPath}/${src}`);
         const ext = src.split('.').pop()?.toLowerCase() || 'png';
         const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-        const base64 = btoa(String.fromCharCode(...bytes));
+        // Convert bytes to base64 in chunks to avoid stack overflow
+        // (String.fromCharCode(...bytes) blows the stack on images > ~50KB)
+        let binary = '';
+        const chunkSize = 8192;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          binary += String.fromCharCode.apply(null, Array.from(bytes.slice(i, i + chunkSize)));
+        }
+        const base64 = btoa(binary);
         const dataUrl = `data:${mime};base64,${base64}`;
         imageCache.set(src, dataUrl);
         return dataUrl;
-      } catch { return src; }
+      } catch (e) {
+        console.error(`Failed to inline image ${src}:`, e);
+        return src;
+      }
     }
 
     // Apply math preamble before rendering
@@ -251,9 +298,9 @@ export async function exportPresentation(): Promise<void> {
             if (projectPath) {
               try {
                 const demoHtml = await readTextFile(`${projectPath}/${el.src}`);
-                const escaped = demoHtml.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts"></iframe>`;
-              } catch { /* skip */ }
+                const escaped = htmlEscapeForSrcdoc(demoHtml);
+                inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
+              } catch (e) { console.error('Demo export failed:', e); }
             }
             break;
           case 'demo-piece':
@@ -261,14 +308,14 @@ export async function exportPresentation(): Promise<void> {
               demoPieceSrcs.add(el.demoSrc);
               try {
                 const demoHtml = await readTextFile(`${projectPath}/${el.demoSrc}`);
-                // Inject #piece=NAME into the HTML
-                const pieceHtml = demoHtml.replace(
-                  '<script>',
-                  `<script>location.hash='#piece=${el.piece}';`
-                );
-                const escaped = pieceHtml.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts"></iframe>`;
-              } catch { /* skip */ }
+                // Each slide-demo combination needs a unique channel name
+                // (in srcdoc iframes, location.pathname is empty, so the
+                // demo's default channel naming would collide across demos)
+                const channelKey = `slide${i}-${el.demoSrc.replace(/[^a-z0-9]/gi, '')}`;
+                const pieceHtml = injectDemoBootstrap(demoHtml, `#piece=${el.piece}`, channelKey);
+                const escaped = htmlEscapeForSrcdoc(pieceHtml);
+                inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
+              } catch (e) { console.error('Demo piece export failed:', e); }
             }
             break;
           case 'cover':
@@ -292,10 +339,11 @@ export async function exportPresentation(): Promise<void> {
         if (projectPath) {
           try {
             const demoHtml = await readTextFile(`${projectPath}/${demoSrc}`);
-            const ctrlHtml = demoHtml.replace('<script>', `<script>location.hash='#role=controller';`);
-            const escaped = ctrlHtml.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            inner += `<iframe srcdoc="${escaped}" style="position:absolute;width:0;height:0;border:none;opacity:0;" sandbox="allow-scripts"></iframe>`;
-          } catch { /* skip */ }
+            const channelKey = `slide${i}-${demoSrc.replace(/[^a-z0-9]/gi, '')}`;
+            const ctrlHtml = injectDemoBootstrap(demoHtml, '#role=controller', channelKey);
+            const escaped = htmlEscapeForSrcdoc(ctrlHtml);
+            inner += `<iframe srcdoc="${escaped}" style="position:absolute;width:1px;height:1px;border:none;opacity:0;pointer-events:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
+          } catch (e) { console.error('Controller iframe export failed:', e); }
         }
       }
 
