@@ -15,6 +15,7 @@ import { readFileSync, writeFileSync, existsSync, statSync, readdirSync } from '
 import { resolve, basename, dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildExportHtml } from '../src/lib/exportCore.mjs';
+import { renderMathInHtml as nodeRenderMath, applyPreamble as nodeApplyPreamble } from './mathjax-node.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -238,22 +239,19 @@ async function cmdExport(projectDir, outPath) {
   console.log(`Exporting ${slides.length} slides to ${outPath}...`);
 
   // Build the HTML using the shared export module.
-  // Node provides filesystem; math is left as raw $...$ (MathJax CDN renders at runtime).
+  // Node MathJax renders math to SVG (matches GUI output).
   const html = await buildExportHtml({
     presentation,
     readFile: async (path) => new Uint8Array(readFileSync(join(projectDir, path))),
     readTextFile: async (path) => readFileSync(join(projectDir, path), 'utf8'),
-    renderMath: null,        // CLI: no in-process MathJax (would need heavy deps)
-    applyMathPreamble: null,
+    renderMath: nodeRenderMath,
+    applyMathPreamble: nodeApplyPreamble,
   });
 
   writeFileSync(outPath, html);
   const sz = statSync(outPath).size;
   console.log(c(GREEN, `✓ Exported ${slides.length} slides → ${outPath} (${(sz / 1024 / 1024).toFixed(2)} MB)`));
-  if (/\$/.test(html)) {
-    console.log(c(YELLOW, '  Note: Math will be rendered at runtime via MathJax CDN (needs internet).'));
-    console.log(c(YELLOW, '  For offline math, use the GUI export which pre-renders to SVG.'));
-  }
+  console.log(c(CYAN, '  Math pre-rendered to SVG — fully self-contained, no internet required.'));
 }
 
 // ============================================================================
