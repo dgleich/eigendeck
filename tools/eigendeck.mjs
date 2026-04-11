@@ -13,6 +13,10 @@
 
 import { readFileSync, writeFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { resolve, basename, dirname, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { buildExportHtml } from '../src/lib/exportCore.mjs';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ============================================================================
 // Color helpers
@@ -221,66 +225,11 @@ function cmdValidate(projectDir) {
 }
 
 // ============================================================================
-// export command — pure JS port of src/store/fileOps.ts exportPresentation
+// export command — uses shared logic from src/lib/exportCore.mjs
 // ============================================================================
-
-const TEXT_PRESET_STYLES = {
-  title:      { fontSize: 72, fontFamily: "'PT Sans', sans-serif", fontWeight: '700', fontStyle: 'normal', color: '#222' },
-  body:       { fontSize: 48, fontFamily: "'PT Sans', sans-serif", fontWeight: 'normal', fontStyle: 'normal', color: '#222' },
-  textbox:    { fontSize: 48, fontFamily: "'PT Sans', sans-serif", fontWeight: 'normal', fontStyle: 'normal', color: '#222' },
-  annotation: { fontSize: 32, fontFamily: "'PT Sans', sans-serif", fontWeight: 'normal', fontStyle: 'italic', color: '#2563eb' },
-  footnote:   { fontSize: 24, fontFamily: "'PT Sans Narrow', sans-serif", fontWeight: 'normal', fontStyle: 'normal', color: '#888' },
-};
-
-function htmlEscapeForSrcdoc(s) {
-  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-function injectDemoBootstrap(html, hash, channelKey) {
-  const bootstrap = `<script>
-(function(){
-  var __ch = ${JSON.stringify(channelKey)};
-  try { window.location.hash = ${JSON.stringify(hash)}; } catch(e) {}
-  var _BC = window.BroadcastChannel;
-  if (_BC) {
-    window.BroadcastChannel = function(name) {
-      return new _BC(__ch + ':' + name);
-    };
-    window.BroadcastChannel.prototype = _BC.prototype;
-  }
-})();
-</script>`;
-  if (html.includes('<head>')) {
-    return html.replace('<head>', '<head>' + bootstrap);
-  }
-  return bootstrap + html;
-}
-
-function imageDataUrl(projectDir, src, cache) {
-  if (src.startsWith('data:')) return src;
-  if (cache.has(src)) return cache.get(src);
-  try {
-    const bytes = readFileSync(join(projectDir, src));
-    const ext = src.split('.').pop()?.toLowerCase() || 'png';
-    const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-    const base64 = bytes.toString('base64');
-    const dataUrl = `data:${mime};base64,${base64}`;
-    cache.set(src, dataUrl);
-    return dataUrl;
-  } catch (e) {
-    console.error(c(RED, `  ! Failed to read image ${src}: ${e.message}`));
-    return src;
-  }
-}
-
-function cmdExport(projectDir, outPath) {
+async function cmdExport(projectDir, outPath) {
   const presentation = loadPresentation(projectDir);
   const slides = presentation.slides || [];
-  const W = presentation.config?.width || 1920;
-  const H = presentation.config?.height || 1080;
-  const meta = [presentation.config?.author, presentation.config?.venue].filter(Boolean).join(' \u00B7 ');
-  const imageCache = new Map();
-  const slideHtml = [];
 
   if (!outPath) {
     outPath = join(projectDir, (presentation.title || 'presentation').replace(/[^a-zA-Z0-9]/g, '-') + '.html');
@@ -288,175 +237,21 @@ function cmdExport(projectDir, outPath) {
 
   console.log(`Exporting ${slides.length} slides to ${outPath}...`);
 
-  for (let i = 0; i < slides.length; i++) {
-    const slide = slides[i];
-    let inner = '';
-    const demoPieceSrcs = new Set();
-
-    for (const el of slide.elements || []) {
-      const p = el.position;
-      switch (el.type) {
-        case 'text': {
-          const ps = TEXT_PRESET_STYLES[el.preset] || TEXT_PRESET_STYLES.body;
-          // Note: math is NOT pre-rendered in CLI export — would need MathJax
-          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;overflow:hidden;">${el.html}</div>`;
-          break;
-        }
-        case 'image': {
-          const imgSrc = imageDataUrl(projectDir, el.src, imageCache);
-          const imgStyles = [
-            `position:absolute`, `left:${p.x}px`, `top:${p.y}px`,
-            `width:${p.width}px`, `height:${p.height}px`, `object-fit:contain`,
-          ];
-          if (el.shadow) imgStyles.push(`filter:drop-shadow(4px 8px 16px rgba(0,0,0,0.3))`);
-          if (el.borderRadius) imgStyles.push(`border-radius:${el.borderRadius}px`);
-          if (el.opacity != null && el.opacity < 1) imgStyles.push(`opacity:${el.opacity}`);
-          if (el.rotation) imgStyles.push(`transform:rotate(${el.rotation}deg)`);
-          inner += `<img src="${imgSrc}" style="${imgStyles.join(';')};" />`;
-          break;
-        }
-        case 'demo': {
-          try {
-            const demoHtml = readFileSync(join(projectDir, el.src), 'utf8');
-            const escaped = htmlEscapeForSrcdoc(demoHtml);
-            inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
-          } catch (e) {
-            console.error(c(RED, `  ! Demo export failed for ${el.src}: ${e.message}`));
-          }
-          break;
-        }
-        case 'demo-piece': {
-          demoPieceSrcs.add(el.demoSrc);
-          try {
-            const demoHtml = readFileSync(join(projectDir, el.demoSrc), 'utf8');
-            const channelKey = `slide${i}-${el.demoSrc.replace(/[^a-z0-9]/gi, '')}`;
-            const pieceHtml = injectDemoBootstrap(demoHtml, `#piece=${el.piece}`, channelKey);
-            const escaped = htmlEscapeForSrcdoc(pieceHtml);
-            inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
-          } catch (e) {
-            console.error(c(RED, `  ! Demo piece export failed for ${el.demoSrc}: ${e.message}`));
-          }
-          break;
-        }
-        case 'cover':
-          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:${el.color || '#ffffff'};"></div>`;
-          break;
-        case 'arrow': {
-          const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
-          const angle = Math.atan2(y2 - y1, x2 - x1);
-          const ha = Math.PI / 6;
-          inner += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">`;
-          inner += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${strokeWidth}"/>`;
-          inner += `<polygon points="${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}" fill="${color}"/>`;
-          inner += `</svg>`;
-          break;
-        }
-      }
-    }
-
-    // Hidden controller iframes for demo-pieces
-    for (const demoSrc of demoPieceSrcs) {
-      try {
-        const demoHtml = readFileSync(join(projectDir, demoSrc), 'utf8');
-        const channelKey = `slide${i}-${demoSrc.replace(/[^a-z0-9]/gi, '')}`;
-        const ctrlHtml = injectDemoBootstrap(demoHtml, '#role=controller', channelKey);
-        const escaped = htmlEscapeForSrcdoc(ctrlHtml);
-        inner += `<iframe srcdoc="${escaped}" style="position:absolute;width:1px;height:1px;border:none;opacity:0;pointer-events:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
-      } catch (e) {
-        console.error(c(RED, `  ! Controller iframe failed for ${demoSrc}: ${e.message}`));
-      }
-    }
-
-    inner += `<div class="slide-footer"><span class="slide-footer-meta">${meta}</span><span class="slide-footer-number">${i + 1}</span></div>`;
-    slideHtml.push(`<div class="slide" data-index="${i}">${inner}</div>`);
-  }
-
-  // Note: math will be rendered at runtime via MathJax CDN
-  // (Pre-rendering would require running MathJax in Node, which is heavy)
-  const preamble = presentation.config?.mathPreamble || '';
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${presentation.title || 'Presentation'}</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #000; overflow: hidden; font-family: 'PT Sans', sans-serif; }
-#viewport { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: flex-start; }
-.slide {
-  width: ${W}px; height: ${H}px; background: #fff; position: relative; overflow: hidden;
-  transform-origin: top left; display: none;
-}
-.slide.active { display: block; }
-ul, ol { padding-left: 0; margin: 0; list-style-type: none; }
-ul li::before { content: '- '; }
-ol { counter-reset: ol-counter; }
-ol li::before { counter-increment: ol-counter; content: counter(ol-counter) '. '; }
-li { margin-bottom: 0.15em; list-style-position: inside; }
-.slide-footer {
-  position: absolute; bottom: 20px; right: 40px;
-  display: flex; align-items: baseline; gap: 16px;
-  font-family: 'PT Sans', sans-serif; color: #999; font-size: 18px;
-}
-.slide-footer-number { font-size: 24px; }
-</style>
-${preamble || /\$/.test(slideHtml.join('')) ? `<script>
-window.MathJax = {
-  tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']]${preamble ? `,
-    macros: {} ` : ''} },
-  svg: { fontCache: 'global' },
-  startup: { typeset: true }
-};
-</script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>` : ''}
-</head>
-<body>
-<div id="viewport">
-${slideHtml.join('\n')}
-</div>
-<!-- eigendeck-source: ${Buffer.from(JSON.stringify(presentation)).toString('base64')} -->
-<script>
-const slides = document.querySelectorAll('.slide');
-let current = 0;
-const W = ${W}, H = ${H};
-function show(i) {
-  slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
-  resize();
-  current = i;
-}
-function resize() {
-  const vw = window.innerWidth, vh = window.innerHeight;
-  const scale = Math.min(vw / W, vh / H);
-  const s = slides[current];
-  if (!s) return;
-  s.style.transform = 'scale(' + scale + ')';
-  const wrapper = document.getElementById('viewport');
-  wrapper.style.paddingTop = Math.max(0, (vh - H * scale) / 2) + 'px';
-}
-show(0);
-window.addEventListener('resize', resize);
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'PageDown') {
-    e.preventDefault(); if (current < slides.length - 1) show(current + 1);
-  }
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
-    e.preventDefault(); if (current > 0) show(current - 1);
-  }
-  if (e.key === 'Home') { e.preventDefault(); show(0); }
-  if (e.key === 'End') { e.preventDefault(); show(slides.length - 1); }
-});
-</script>
-</body>
-</html>`;
+  // Build the HTML using the shared export module.
+  // Node provides filesystem; math is left as raw $...$ (MathJax CDN renders at runtime).
+  const html = await buildExportHtml({
+    presentation,
+    readFile: async (path) => new Uint8Array(readFileSync(join(projectDir, path))),
+    readTextFile: async (path) => readFileSync(join(projectDir, path), 'utf8'),
+    renderMath: null,        // CLI: no in-process MathJax (would need heavy deps)
+    applyMathPreamble: null,
+  });
 
   writeFileSync(outPath, html);
   const sz = statSync(outPath).size;
   console.log(c(GREEN, `✓ Exported ${slides.length} slides → ${outPath} (${(sz / 1024 / 1024).toFixed(2)} MB)`));
-  console.log(`  Inlined ${imageCache.size} images`);
-  if (/\$/.test(slideHtml.join(''))) {
-    console.log(c(YELLOW, '  Note: Math is rendered at runtime via MathJax CDN.'));
+  if (/\$/.test(html)) {
+    console.log(c(YELLOW, '  Note: Math will be rendered at runtime via MathJax CDN (needs internet).'));
     console.log(c(YELLOW, '  For offline math, use the GUI export which pre-renders to SVG.'));
   }
 }
@@ -541,7 +336,7 @@ if (!existsSync(projectDir) || !statSync(projectDir).isDirectory()) {
 switch (cmd) {
   case 'info': cmdInfo(projectDir); break;
   case 'validate': cmdValidate(projectDir); break;
-  case 'export': cmdExport(projectDir, rest[0]); break;
+  case 'export': await cmdExport(projectDir, rest[0]); break;
   case 'lint': cmdLint(projectDir); break;
   default:
     console.error(c(RED, `Unknown command: ${cmd}`));
