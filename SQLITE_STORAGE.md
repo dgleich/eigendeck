@@ -302,3 +302,46 @@ If IPC overhead matters for drag (60fps), batch position updates client-side and
 3. Demo HTML files: store as assets (BLOBs) or keep external? BLOBs = single file. External = editable in text editor.
 
 4. Keep JSON directory export on every save for LLM editing compatibility?
+
+## Keeping Things in Sync
+
+### Git hooks (`.githooks/`)
+
+Install with: `git config core.hooksPath .githooks`
+
+**pre-commit**:
+- Warns if `src/types/presentation.ts` changed without updating `LLM-EDITING.md`
+- Warns if SQL schema changed without updating `SQLITE_STORAGE.md`
+- Reminds to test both GUI and CLI export when `exportCore.mjs` changes
+
+**post-commit**:
+- Auto-runs `bench-perf.mjs` when storage-related code changes
+- Saves results to `tools/perf-results/` for tracking over time
+- Non-blocking: failures don't prevent the commit
+
+### Canonical conversion (toJSON / fromJSON)
+
+All JSON interchange uses two functions (currently in `tools/bench-json-convert.mjs`, to be moved to `src/lib/sqliteStorage.ts`):
+
+- **`toJSON(db)`**: SQLite → `Presentation` JSON object. Used by HTML export, CLI tools, LLM editing export.
+- **`fromJSON(db, presentation, timestamp)`**: `Presentation` JSON → SQLite. Used by import, migration from JSON directories.
+
+These are the ONLY bridge between the two formats. If the schema changes, update these functions and the round-trip test will catch mismatches.
+
+### Performance tracking
+
+```bash
+# Run and save results
+node tools/bench-perf.mjs --save tools/perf-results/
+
+# Compare latest vs baseline
+ls -t tools/perf-results/perf-*.json | head -2 | xargs -I{} jq '.results | to_entries[] | "\(.key): \(.value.median)ms"' {}
+```
+
+Results are JSON files with timestamps, medians, p95, p99. Check for regressions before merging schema changes.
+
+### Test coverage
+
+- `src/__tests__/llm-editing-sync.test.ts`: verifies LLM-EDITING.md covers all TypeScript types
+- `tools/bench-json-convert.mjs`: verifies round-trip SQLite → JSON → SQLite
+- `tools/bench-perf.mjs`: catches performance regressions
