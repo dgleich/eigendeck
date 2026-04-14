@@ -58,6 +58,7 @@ fn main() {
         "edit" => cmd_edit(&args[3..]),
         "export" => cmd_export(&args[3..]),
         "import" => cmd_import(&args[3..]),
+        "store-asset" => cmd_store_asset(&args[3..]),
         "compact" => cmd_compact(&args[3..]),
         "unpack" => cmd_unpack(db_path, &args[3..]),
         _ => {
@@ -638,6 +639,47 @@ fn cmd_import(args: &[String]) -> Result<(), String> {
     let _: Value = serde_json::from_str(&content).map_err(|e| format!("Invalid JSON: {}", e))?;
     storage::db_import_json(content)?;
     println!("Imported from {}", input);
+    Ok(())
+}
+
+fn cmd_store_asset(args: &[String]) -> Result<(), String> {
+    let file_path = args.first().ok_or("Usage: store-asset <file> [--as <path>]")?;
+    let as_path = args.iter()
+        .position(|a| a == "--as")
+        .and_then(|i| args.get(i + 1))
+        .map(|s| s.as_str());
+
+    let data = std::fs::read(file_path).map_err(|e| format!("Failed to read {}: {}", file_path, e))?;
+
+    let rel_path = as_path.unwrap_or_else(|| {
+        // Derive relative path from filename
+        let name = std::path::Path::new(file_path.as_str()).file_name()
+            .and_then(|n| n.to_str()).unwrap_or("unknown");
+        if file_path.contains("demo") || file_path.ends_with(".html") {
+            // Leak a string for the borrow checker
+            Box::leak(format!("demos/{}", name).into_boxed_str())
+        } else {
+            Box::leak(format!("images/{}", name).into_boxed_str())
+        }
+    });
+
+    let ext = std::path::Path::new(rel_path).extension()
+        .and_then(|e| e.to_str()).unwrap_or("bin");
+    let mime = match ext {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "svg" => "image/svg+xml",
+        "webp" => "image/webp",
+        "html" => "text/html",
+        "js" => "application/javascript",
+        "json" => "application/json",
+        "css" => "text/css",
+        _ => "application/octet-stream",
+    };
+
+    storage::db_store_asset(rel_path.to_string(), data, mime.to_string())?;
+    println!("Stored {} ({} bytes)", rel_path, std::fs::metadata(file_path).map(|m| m.len()).unwrap_or(0));
     Ok(())
 }
 
