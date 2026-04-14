@@ -34,7 +34,10 @@ describe('file operations', () => {
     it('loads presentation from selected directory', async () => {
       const pres = createDefaultPresentation();
       pres.title = 'Test Talk';
-      mockOpen.mockResolvedValue('/home/user/talks/test');
+      // First call (file picker) returns null, second call (dir picker) returns path
+      mockOpen
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce('/home/user/talks/test');
       mockExists.mockResolvedValue(true);
       mockReadTextFile.mockResolvedValue(JSON.stringify(pres));
       await openProject();
