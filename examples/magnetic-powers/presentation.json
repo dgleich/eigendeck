@@ -14,7 +14,7 @@
       "elements": [
         {
           "fontSize": 48,
-          "html": "<div style=\"text-align: center;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em; font-weight: normal;\">Fourier spectrum\u30fbWalk compression&nbsp;</span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">\u30fbApplications</span><br></div>",
+          "html": "<div style=\"text-align: center;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em; font-weight: normal;\">Fourier spectrum・Walk compression&nbsp;</span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">・Applications</span><br></div>",
           "id": "feb9681b-783d-4e6e-8d25-7117b66de641",
           "position": {
             "height": 102,
@@ -127,6 +127,7 @@
             "x": 70,
             "y": 387
           },
+          "syncId": "2362251c-be44-42f3-92d0-76ff72873712",
           "type": "demo-piece"
         },
         {
@@ -187,6 +188,7 @@
             "x": 70,
             "y": 387
           },
+          "syncId": "2362251c-be44-42f3-92d0-76ff72873712",
           "type": "demo-piece"
         },
         {
@@ -234,6 +236,7 @@
             "x": 70,
             "y": 387
           },
+          "syncId": "2362251c-be44-42f3-92d0-76ff72873712",
           "type": "demo-piece"
         },
         {
@@ -247,6 +250,7 @@
             "y": 326
           },
           "preset": "textbox",
+          "syncId": "83c5ad85-c71e-4e16-97fe-509e274cccea",
           "type": "text"
         },
         {
@@ -263,7 +267,7 @@
           "type": "text"
         },
         {
-          "html": "<div style=\"text-align: center;\">The \u201cmagnetic\u201d adjacency matrix that arose from quantum mechanics \u2026</div><div style=\"text-align: center;\">more on this later!&nbsp;</div>",
+          "html": "<div style=\"text-align: center;\">The “magnetic” adjacency matrix that arose from quantum mechanics …</div><div style=\"text-align: center;\">more on this later!&nbsp;</div>",
           "id": "5395253f-3ed4-4750-b68b-ddfafa2553d6",
           "linkId": "853641c2-8d44-4098-a06c-d62bb84b19d5",
           "position": {
@@ -273,6 +277,7 @@
             "y": 840
           },
           "preset": "annotation",
+          "syncId": "5395253f-3ed4-4750-b68b-ddfafa2553d6",
           "type": "text"
         },
         {
@@ -287,6 +292,7 @@
             "y": 255
           },
           "preset": "annotation",
+          "syncId": "abe825da-a7ef-4557-9177-6df7d2a005f2",
           "type": "text"
         },
         {
@@ -321,6 +327,7 @@
             "x": 70,
             "y": 387
           },
+          "syncId": "2362251c-be44-42f3-92d0-76ff72873712",
           "type": "demo-piece"
         },
         {
@@ -407,6 +414,7 @@
             "x": 70,
             "y": 387
           },
+          "syncId": "2362251c-be44-42f3-92d0-76ff72873712",
           "type": "demo-piece"
         },
         {
@@ -420,6 +428,7 @@
             "y": 326
           },
           "preset": "textbox",
+          "syncId": "83c5ad85-c71e-4e16-97fe-509e274cccea",
           "type": "text"
         },
         {
@@ -436,7 +445,7 @@
           "type": "text"
         },
         {
-          "html": "<div style=\"text-align: center;\">The \u201cmagnetic\u201d adjacency matrix that arose from quantum mechanics \u2026</div><div style=\"text-align: center;\">more on this later!&nbsp;</div>",
+          "html": "<div style=\"text-align: center;\">The “magnetic” adjacency matrix that arose from quantum mechanics …</div><div style=\"text-align: center;\">more on this later!&nbsp;</div>",
           "id": "5395253f-3ed4-4750-b68b-ddfafa2553d6",
           "linkId": "853641c2-8d44-4098-a06c-d62bb84b19d5",
           "position": {
@@ -446,6 +455,7 @@
             "y": 840
           },
           "preset": "annotation",
+          "syncId": "5395253f-3ed4-4750-b68b-ddfafa2553d6",
           "type": "text"
         },
         {
@@ -460,6 +470,7 @@
             "y": 255
           },
           "preset": "annotation",
+          "syncId": "abe825da-a7ef-4557-9177-6df7d2a005f2",
           "type": "text"
         },
         {
@@ -484,7 +495,7 @@
     {
       "elements": [
         {
-          "html": "<div><b>Betweenness Centrality&nbsp;</b><br></div><div>- the number of paths between between $s \\to t$ without $v$ / number of shortest paths from $s \\to t$</div><div><br></div><div><b>Katz Centrality</b></div><div>- the number of walks from $s \\to t$ where each link in the walk is weighted $\\alpha$</div><div><br></div><div><b>PageRank centrality&nbsp;</b></div><div>- the probability of walking from $s \\to t$ where each link in the walk is weighted by $\\alpha P_{ij}$&nbsp;</div><div><br></div><div style=\"text-align: center;\"><font color=\"#2563eb\"><i>\u2026 and more! communicability, etc. \u2026&nbsp;</i></font></div>",
+          "html": "<div><b>Betweenness Centrality&nbsp;</b><br></div><div>- the number of paths between between $s \\to t$ without $v$ / number of shortest paths from $s \\to t$</div><div><br></div><div><b>Katz Centrality</b></div><div>- the number of walks from $s \\to t$ where each link in the walk is weighted $\\alpha$</div><div><br></div><div><b>PageRank centrality&nbsp;</b></div><div>- the probability of walking from $s \\to t$ where each link in the walk is weighted by $\\alpha P_{ij}$&nbsp;</div><div><br></div><div style=\"text-align: center;\"><font color=\"#2563eb\"><i>… and more! communicability, etc. …&nbsp;</i></font></div>",
           "id": "a7adc989-dd5a-4491-96a3-95a51bec70b6",
           "linkId": "6ff818c2-01dd-4eef-b252-14ca580fa52e",
           "position": {
@@ -530,7 +541,7 @@
           "type": "text"
         },
         {
-          "html": "<div style=\"text-align: center;\">Repeated powering of a matrix  $\\to$  spectral analysis</div><div style=\"text-align: center;\">\u2026 but this only works well for undirected graphs \u2026</div>",
+          "html": "<div style=\"text-align: center;\">Repeated powering of a matrix  $\\to$  spectral analysis</div><div style=\"text-align: center;\">… but this only works well for undirected graphs …</div>",
           "id": "9cab69c3-3f40-4db8-971f-4f9047601a0f",
           "linkId": "6ff818c2-01dd-4eef-b252-14ca580fa52e",
           "position": {
@@ -587,7 +598,7 @@
           "type": "text"
         },
         {
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">The problem is that spectral analysis has \u2026 issues \u2026 for directed graph</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">The problem is that spectral analysis has … issues … for directed graph</span></span>",
           "id": "c390b8d1-4ee7-40c5-b3e9-284c629d5b2a",
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
           "position": {
@@ -623,7 +634,7 @@
           "type": "image"
         },
         {
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">THE PROBLEM IS THAT SPECTRAL ANALYSIS HAS \u2026 ISSUES \u2026 FOR DIRECTED GRAPH</span><br></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">THE PROBLEM IS THAT SPECTRAL ANALYSIS HAS … ISSUES … FOR DIRECTED GRAPH</span><br></span>",
           "id": "d17b0eb0-7795-4360-84be-7d5f72b0cbaa",
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
           "position": {
@@ -656,7 +667,7 @@
     {
       "elements": [
         {
-          "html": "<span style=\"text-align: center;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em; font-weight: normal;\">Okay, so it\u2019s 2026, What have people done about this and why are you still talking?</span><br></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em; font-weight: normal;\">Okay, so it’s 2026, What have people done about this and why are you still talking?</span><br></span>",
           "id": "5db2fa26-f16d-4998-9b76-6aed42c2fa99",
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
           "position": {
@@ -700,10 +711,11 @@
             "y": 135
           },
           "preset": "body",
+          "syncId": "b4f988de-d103-4793-be9e-9b12151b1f1b",
           "type": "text"
         },
         {
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">\u2026 and then some complex ideas &nbsp;\u2026&nbsp;</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">… and then some complex ideas &nbsp;…&nbsp;</span></span>",
           "id": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
           "position": {
@@ -713,6 +725,7 @@
             "y": -68
           },
           "preset": "title",
+          "syncId": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
           "type": "text"
         },
         {
@@ -726,6 +739,7 @@
             "x": 38,
             "y": 282
           },
+          "syncId": "d9c77e44-a6a9-4604-8f35-912861b5b606",
           "type": "demo-piece"
         },
         {
@@ -739,6 +753,7 @@
             "x": 520,
             "y": 277
           },
+          "syncId": "990870db-d4a8-4479-9e99-f91b16886504",
           "type": "demo-piece"
         },
         {
@@ -752,6 +767,7 @@
             "x": 1010,
             "y": 290
           },
+          "syncId": "90fe18ac-1d2d-4791-9ff5-99b8c346d0e2",
           "type": "demo-piece"
         },
         {
@@ -765,6 +781,7 @@
             "x": 1467,
             "y": 265
           },
+          "syncId": "33dba807-39f6-4555-b7a1-761b9171dfe8",
           "type": "demo-piece"
         },
         {
@@ -797,10 +814,11 @@
             "y": 135
           },
           "preset": "body",
+          "syncId": "b4f988de-d103-4793-be9e-9b12151b1f1b",
           "type": "text"
         },
         {
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">\u2026 and then some complex ideas &nbsp;\u2026&nbsp;</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">… and then some complex ideas &nbsp;…&nbsp;</span></span>",
           "id": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
           "position": {
@@ -810,6 +828,7 @@
             "y": -68
           },
           "preset": "title",
+          "syncId": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
           "type": "text"
         },
         {
@@ -823,6 +842,7 @@
             "x": 38,
             "y": 282
           },
+          "syncId": "d9c77e44-a6a9-4604-8f35-912861b5b606",
           "type": "demo-piece"
         },
         {
@@ -836,6 +856,7 @@
             "x": 520,
             "y": 277
           },
+          "syncId": "990870db-d4a8-4479-9e99-f91b16886504",
           "type": "demo-piece"
         },
         {
@@ -849,6 +870,7 @@
             "x": 1010,
             "y": 290
           },
+          "syncId": "90fe18ac-1d2d-4791-9ff5-99b8c346d0e2",
           "type": "demo-piece"
         },
         {
@@ -862,6 +884,7 @@
             "x": 1467,
             "y": 265
           },
+          "syncId": "33dba807-39f6-4555-b7a1-761b9171dfe8",
           "type": "demo-piece"
         }
       ],
@@ -873,7 +896,7 @@
     {
       "elements": [
         {
-          "html": "<div><br></div><div><br></div><div style=\"text-align: center;\">See Mason\u2019s Paper for more on Complex Weights.</div><div style=\"text-align: center;\">I\u2019ve found a few applications for PageRank with complex valued teleportation parameters.&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div>",
+          "html": "<div><br></div><div><br></div><div style=\"text-align: center;\">See Mason’s Paper for more on Complex Weights.</div><div style=\"text-align: center;\">I’ve found a few applications for PageRank with complex valued teleportation parameters.&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div>",
           "id": "2bd49246-2811-45ad-b755-8533366a2177",
           "position": {
             "height": 448,
@@ -959,7 +982,7 @@
     {
       "elements": [
         {
-          "html": "<div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Liu &amp; Li 2015, Guo &amp; Mohar 2017</i><br></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA$ with 1 for each bidirection edge and $i$ for $u \\to v$, $-i$ for $v \\to u$ for each directed edge $u,v$</div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><i>Mohar 2020</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA = \\omega \\mG + \\bar{\\omega} \\mG^T$ with $\\omega = \\exp(2 \\pi i q)$ on the unit circle.&nbsp;</div><div><br></div><div style=\"text-align: center;\">We use the Mohar 2020 construction here.&nbsp;</div><div><br></div><div style=\"text-align: center;\">Both are called \u201cmagnetic adjacency\u201d matrices.</div><div style=\"text-align: center;\">Where does this come from?&nbsp;</div><div style=\"text-align: center;\">The magnetic Laplacian!&nbsp;</div>",
+          "html": "<div style=\"font-size: 36px; text-align: center;\"><i><br></i></div><div style=\"font-size: 36px; text-align: center;\"><i>Liu &amp; Li 2015, Guo &amp; Mohar 2017</i><br></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA$ with 1 for each bidirection edge and $i$ for $u \\to v$, $-i$ for $v \\to u$ for each directed edge $u,v$</div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><br></div><div style=\"font-size: 36px; text-align: center;\"><i>Mohar 2020</i></div><div style=\"font-size: 36px; text-align: center;\">$\\mG \\to \\mA = \\omega \\mG + \\bar{\\omega} \\mG^T$ with $\\omega = \\exp(2 \\pi i q)$ on the unit circle.&nbsp;</div><div><br></div><div style=\"text-align: center;\">We use the Mohar 2020 construction here.&nbsp;</div><div><br></div><div style=\"text-align: center;\">Both are called “magnetic adjacency” matrices.</div><div style=\"text-align: center;\">Where does this come from?&nbsp;</div><div style=\"text-align: center;\">The magnetic Laplacian!&nbsp;</div>",
           "id": "e6bc934c-811a-4380-a286-b8dda4fdba14",
           "position": {
             "height": 800,
@@ -988,6 +1011,7 @@
             "y": 222
           },
           "preset": "body",
+          "syncId": "61988532-02de-4ce5-b55f-93087d6d4d6d",
           "type": "text"
         },
         {
@@ -1001,19 +1025,7 @@
             "y": 357
           },
           "preset": "annotation",
-          "type": "text"
-        },
-        {
-          "fontSize": 48,
-          "html": "$\\frac{dx}{dt} = -i \\mL x$ for<div>the standard 5-point Laplacian matrix on a grid-graph.&nbsp;</div>",
-          "id": "945ae018-715a-4585-b566-fe0a7f5fc70e",
-          "position": {
-            "height": 322,
-            "width": 463,
-            "x": 173,
-            "y": 688
-          },
-          "preset": "annotation",
+          "syncId": "fd6f191a-3927-4707-9c03-6434479839de",
           "type": "text"
         },
         {
@@ -1027,20 +1039,34 @@
             "y": 10
           },
           "preset": "title",
+          "syncId": "c99024ab-0c35-4035-96ed-4a2d886193c1",
           "type": "text"
         },
         {
-          "id": "81bb18d9-1220-4ec4-9c9b-7dfd702b4b44",
-          "type": "demo-piece",
           "demoSrc": "demos/harper_electron.html",
+          "id": "81bb18d9-1220-4ec4-9c9b-7dfd702b4b44",
+          "linkId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75",
           "piece": "lattice",
           "position": {
-            "x": 491,
-            "y": 495,
+            "height": 950,
             "width": 823,
-            "height": 950
+            "x": 491,
+            "y": 495
           },
-          "linkId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75"
+          "type": "demo-piece"
+        },
+        {
+          "fontSize": 48,
+          "html": "$\\frac{dx}{dt} = -i \\mL x$ for<div>the standard 5-point Laplacian matrix on a grid-graph.&nbsp;</div>",
+          "id": "945ae018-715a-4585-b566-fe0a7f5fc70e",
+          "position": {
+            "height": 322,
+            "width": 463,
+            "x": 173,
+            "y": 688
+          },
+          "preset": "annotation",
+          "type": "text"
         }
       ],
       "groupId": "cd2dae4f-f066-495e-a640-dd6515900167",
@@ -1061,19 +1087,7 @@
             "y": 222
           },
           "preset": "body",
-          "type": "text"
-        },
-        {
-          "html": "Put an electron in a plane with with a grid-like crystal structure. Where is the electron?",
-          "id": "fd6f191a-3927-4707-9c03-6434479839de",
-          "linkId": "37392bb3-6650-4c42-8c9c-3de55c85d183",
-          "position": {
-            "height": 150,
-            "width": 600,
-            "x": 610,
-            "y": 357
-          },
-          "preset": "annotation",
+          "syncId": "61988532-02de-4ce5-b55f-93087d6d4d6d",
           "type": "text"
         },
         {
@@ -1087,6 +1101,7 @@
             "x": 138,
             "y": 877
           },
+          "syncId": "6b32860e-c686-482d-96e0-82efa0b566e6",
           "type": "demo-piece"
         },
         {
@@ -1126,21 +1141,21 @@
             "y": 10
           },
           "preset": "title",
+          "syncId": "c99024ab-0c35-4035-96ed-4a2d886193c1",
           "type": "text"
         },
         {
-          "id": "0fc1366c-55a7-4b3a-9bf4-5ba6c216d556",
-          "type": "demo-piece",
           "demoSrc": "demos/harper_electron.html",
+          "id": "0fc1366c-55a7-4b3a-9bf4-5ba6c216d556",
+          "linkId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75",
           "piece": "lattice",
           "position": {
-            "x": 39,
-            "y": 486,
+            "height": 722,
             "width": 604,
-            "height": 722
+            "x": 39,
+            "y": 486
           },
-          "linkId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75",
-          "_syncId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75"
+          "type": "demo-piece"
         }
       ],
       "groupId": "cd2dae4f-f066-495e-a640-dd6515900167",
@@ -1177,19 +1192,6 @@
           "type": "text"
         },
         {
-          "html": "Put an electron in a plane with with a grid-like crystal structure. Where is the electron?",
-          "id": "fd6f191a-3927-4707-9c03-6434479839de",
-          "linkId": "37392bb3-6650-4c42-8c9c-3de55c85d183",
-          "position": {
-            "height": 150,
-            "width": 600,
-            "x": 610,
-            "y": 357
-          },
-          "preset": "annotation",
-          "type": "text"
-        },
-        {
           "demoSrc": "demos/harper_electron.html",
           "id": "6b32860e-c686-482d-96e0-82efa0b566e6",
           "linkId": "35b8e0cf-1b95-4e77-aaf0-507a1abaf748",
@@ -1200,6 +1202,7 @@
             "x": 138,
             "y": 877
           },
+          "syncId": "6b32860e-c686-482d-96e0-82efa0b566e6",
           "type": "demo-piece"
         },
         {
@@ -1239,21 +1242,21 @@
             "y": 10
           },
           "preset": "title",
+          "syncId": "c99024ab-0c35-4035-96ed-4a2d886193c1",
           "type": "text"
         },
         {
-          "id": "f3d3a3a9-4995-4ec4-b028-a40a612e7f6d",
-          "type": "demo-piece",
           "demoSrc": "demos/harper_electron.html",
+          "id": "f3d3a3a9-4995-4ec4-b028-a40a612e7f6d",
+          "linkId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75",
           "piece": "lattice",
           "position": {
-            "x": 39,
-            "y": 486,
+            "height": 722,
             "width": 604,
-            "height": 722
+            "x": 39,
+            "y": 486
           },
-          "linkId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75",
-          "_syncId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75"
+          "type": "demo-piece"
         }
       ],
       "groupId": "cd2dae4f-f066-495e-a640-dd6515900167",
@@ -1274,6 +1277,7 @@
             "x": 49,
             "y": 223
           },
+          "syncId": "9fa7b8f0-d828-4df7-9272-bfcf199b3172",
           "type": "demo-piece"
         },
         {
@@ -1300,11 +1304,12 @@
             "x": 138,
             "y": 877
           },
+          "syncId": "6b32860e-c686-482d-96e0-82efa0b566e6",
           "type": "demo-piece"
         },
         {
           "fontSize": 36,
-          "html": "<div style=\"text-align: center;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\">Citations you\u2019ll see for this.&nbsp;</span></span></div><b><div><b><br></b></div>Harper 1955.</b> Posed the problem of an electron in a magnetic field and all the relevant simplications.&nbsp;<div><br></div><div><b>Sunada/Shubin 1994. </b>What if we don\u2019t just use a grid graph and make it more general?&nbsp;&nbsp;</div><div><br></div><div><b>Mohar &amp; Guo 2017, Liu &amp; Li 2015.&nbsp;</b></div><div>$i, -i$ for directed edges, $1$ for bidrectional.&nbsp;</div><div><br></div><div><b>Mohar 2020.</b> $\\omega \\mA + \\bar{\\omega} \\mA^T$&nbsp;</div><div><br></div><div style=\"text-align: center;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\">USES WITH DATA</span></div><div><b>Fanuel et al. 2017/2018.</b> Magnetic Laplacians for Eigenmaps.&nbsp;</div><div><b>Cloninger 2017. </b>Markov normalized magnetic Eigenmaps.</div><div><b>Cucuringu et al. 2020.</b> Use in community detection.&nbsp;</div><div><br></div>",
+          "html": "<div style=\"text-align: center;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\">Citations you’ll see for this.&nbsp;</span></span></div><b><div><b><br></b></div>Harper 1955.</b> Posed the problem of an electron in a magnetic field and all the relevant simplications.&nbsp;<div><br></div><div><b>Sunada/Shubin 1994. </b>What if we don’t just use a grid graph and make it more general?&nbsp;&nbsp;</div><div><br></div><div><b>Mohar &amp; Guo 2017, Liu &amp; Li 2015.&nbsp;</b></div><div>$i, -i$ for directed edges, $1$ for bidrectional.&nbsp;</div><div><br></div><div><b>Mohar 2020.</b> $\\omega \\mA + \\bar{\\omega} \\mA^T$&nbsp;</div><div><br></div><div style=\"text-align: center;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em;\">USES WITH DATA</span></div><div><b>Fanuel et al. 2017/2018.</b> Magnetic Laplacians for Eigenmaps.&nbsp;</div><div><b>Cloninger 2017. </b>Markov normalized magnetic Eigenmaps.</div><div><b>Cucuringu et al. 2020.</b> Use in community detection.&nbsp;</div><div><br></div>",
           "id": "e66e300f-ec86-4cae-be24-45b94f4c2595",
           "position": {
             "height": 835,
@@ -1326,6 +1331,7 @@
             "y": 10
           },
           "preset": "title",
+          "syncId": "c99024ab-0c35-4035-96ed-4a2d886193c1",
           "type": "text"
         }
       ],
@@ -1337,7 +1343,7 @@
     {
       "elements": [
         {
-          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mA$ - adjacency matrix for a simple directed graph.&nbsp;</div><div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Mohar\u2019s construction $\\omega \\mA + \\bar{\\omega} \\mA^T$&nbsp;</div></div><div style=\"text-align: center;\">does NOT result in</div><div><div><ul><li style=\"text-align: center;\">The Harper operator<br></li><li style=\"text-align: center;\">The Liu &amp; Li / Mohar&amp; Guo operator</li></ul></div><div style=\"text-align: center;\">for any choice of $\\mA$</div></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">you need to allow allow edge phases or</div><div style=\"text-align: center;\">more topology / algebra in the construction</div>",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mA$ - adjacency matrix for a simple directed graph.&nbsp;</div><div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Mohar’s construction $\\omega \\mA + \\bar{\\omega} \\mA^T$&nbsp;</div></div><div style=\"text-align: center;\">does NOT result in</div><div><div><ul><li style=\"text-align: center;\">The Harper operator<br></li><li style=\"text-align: center;\">The Liu &amp; Li / Mohar&amp; Guo operator</li></ul></div><div style=\"text-align: center;\">for any choice of $\\mA$</div></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">you need to allow allow edge phases or</div><div style=\"text-align: center;\">more topology / algebra in the construction</div>",
           "id": "bfb99ce8-71e4-4054-8672-12307811fc0f",
           "linkId": "40c59177-d9d1-4dcf-9dea-609dfa3567da",
           "position": {
@@ -1347,6 +1353,7 @@
             "y": 245
           },
           "preset": "body",
+          "syncId": "bfb99ce8-71e4-4054-8672-12307811fc0f",
           "type": "text"
         },
         {
@@ -1373,6 +1380,7 @@
             "x": 49,
             "y": 223
           },
+          "syncId": "9fa7b8f0-d828-4df7-9272-bfcf199b3172",
           "type": "demo-piece"
         },
         {
@@ -1386,6 +1394,7 @@
             "x": 138,
             "y": 877
           },
+          "syncId": "6b32860e-c686-482d-96e0-82efa0b566e6",
           "type": "demo-piece"
         },
         {
@@ -1407,7 +1416,7 @@
     {
       "elements": [
         {
-          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mA$ - adjacency matrix for a simple directed graph.&nbsp;</div><div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Mohar\u2019s construction $\\omega \\mA + \\bar{\\omega} \\mA^T$&nbsp;</div></div><div style=\"text-align: center;\">does NOT result in</div><div><div><ul><li style=\"text-align: center;\">The Harper operator<br></li><li style=\"text-align: center;\">The Liu &amp; Li / Mohar&amp; Guo operator</li></ul></div><div style=\"text-align: center;\">for any choice of $\\mA$</div></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">you need to allow allow edge phases or</div><div style=\"text-align: center;\">more topology / algebra in the construction</div>",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mA$ - adjacency matrix for a simple directed graph.&nbsp;</div><div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Mohar’s construction $\\omega \\mA + \\bar{\\omega} \\mA^T$&nbsp;</div></div><div style=\"text-align: center;\">does NOT result in</div><div><div><ul><li style=\"text-align: center;\">The Harper operator<br></li><li style=\"text-align: center;\">The Liu &amp; Li / Mohar&amp; Guo operator</li></ul></div><div style=\"text-align: center;\">for any choice of $\\mA$</div></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">you need to allow allow edge phases or</div><div style=\"text-align: center;\">more topology / algebra in the construction</div>",
           "id": "bfb99ce8-71e4-4054-8672-12307811fc0f",
           "linkId": "40c59177-d9d1-4dcf-9dea-609dfa3567da",
           "position": {
@@ -1417,6 +1426,7 @@
             "y": 245
           },
           "preset": "body",
+          "syncId": "bfb99ce8-71e4-4054-8672-12307811fc0f",
           "type": "text"
         },
         {
@@ -1443,6 +1453,7 @@
             "x": 49,
             "y": 223
           },
+          "syncId": "9fa7b8f0-d828-4df7-9272-bfcf199b3172",
           "type": "demo-piece"
         },
         {
@@ -1456,6 +1467,7 @@
             "x": 138,
             "y": 877
           },
+          "syncId": "6b32860e-c686-482d-96e0-82efa0b566e6",
           "type": "demo-piece"
         }
       ],
@@ -1467,7 +1479,7 @@
     {
       "elements": [
         {
-          "html": "<div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div style=\"text-align: center;\">\u2026 onto walk profiles \u2026&nbsp;</div>",
+          "html": "<div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div><br></div><div style=\"text-align: center;\">… onto walk profiles …&nbsp;</div>",
           "id": "69d181f6-31c5-42b4-9541-17feff07a5b5",
           "position": {
             "height": 800,
@@ -1586,7 +1598,7 @@
     {
       "elements": [
         {
-          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\omega(q) = \\exp(2 i \\pi q)$&nbsp;</div><div style=\"text-align: center;\">$\\mA_q = \\omega(q) \\mA &nbsp;+ \\bar{\\omega(q)} \\mA^T$&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mA_q^m = (\\omega(q) \\mA + \\bar{\\omega(q)} \\mA^T)^m$</div><div style=\"text-align: center;\">\u2026 and we take a big binomial expansions \u2026&nbsp;</div><div style=\"text-align: center;\">$\\omega(q)^m \\mA^m + \\bar{\\omega}(q)^m (\\mA^T)^m + \\text{crossterms}$</div><div style=\"text-align: center;\">crossterms: all arrangements of $k$ choices for $\\omega(q)\\mA$ and $m-k$ of $\\bar{\\omega(q)} \\mA^T$<br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Group crossterms by phase</div><div style=\"text-align: center;\">$\\mA_q^m = \\omega(q)^m \\Phi(m,m) + \\omega(q)^{m-2} \\Phi(m,m-1) + \\omega(q)^{m-4} \\Phi(m,m-2) + \\ldots + \\omega(q)^{-m} \\Phi(m,0)$<br></div><div style=\"text-align: center;\">$\\text{vec}(\\mA_q^m) = \\bmat{\\text{vec}(\\Phi(m,0)) &amp; \\cdots &amp; \\text{vec}(\\Phi(m,m))} \\vf$&nbsp;</div>",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\omega(q) = \\exp(2 i \\pi q)$&nbsp;</div><div style=\"text-align: center;\">$\\mA_q = \\omega(q) \\mA &nbsp;+ \\bar{\\omega(q)} \\mA^T$&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mA_q^m = (\\omega(q) \\mA + \\bar{\\omega(q)} \\mA^T)^m$</div><div style=\"text-align: center;\">… and we take a big binomial expansions …&nbsp;</div><div style=\"text-align: center;\">$\\omega(q)^m \\mA^m + \\bar{\\omega}(q)^m (\\mA^T)^m + \\text{crossterms}$</div><div style=\"text-align: center;\">crossterms: all arrangements of $k$ choices for $\\omega(q)\\mA$ and $m-k$ of $\\bar{\\omega(q)} \\mA^T$<br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Group crossterms by phase</div><div style=\"text-align: center;\">$\\mA_q^m = \\omega(q)^m \\Phi(m,m) + \\omega(q)^{m-2} \\Phi(m,m-1) + \\omega(q)^{m-4} \\Phi(m,m-2) + \\ldots + \\omega(q)^{-m} \\Phi(m,0)$<br></div><div style=\"text-align: center;\">$\\text{vec}(\\mA_q^m) = \\bmat{\\text{vec}(\\Phi(m,0)) &amp; \\cdots &amp; \\text{vec}(\\Phi(m,m))} \\vf$&nbsp;</div>",
           "id": "5de927cb-64c1-4702-9ea0-c713e9e02d32",
           "linkId": "2144cbdd-2f36-4bac-a9d6-77ce5c4352e3",
           "position": {
@@ -1596,10 +1608,11 @@
             "y": 180
           },
           "preset": "body",
+          "syncId": "5de927cb-64c1-4702-9ea0-c713e9e02d32",
           "type": "text"
         },
         {
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">\u2026 and then some complex ideas &nbsp;\u2026&nbsp;</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">… and then some complex ideas &nbsp;…&nbsp;</span></span>",
           "id": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
           "position": {
@@ -1609,6 +1622,7 @@
             "y": -68
           },
           "preset": "title",
+          "syncId": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
           "type": "text"
         },
         {
@@ -1631,7 +1645,7 @@
     {
       "elements": [
         {
-          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\omega(q) = \\exp(2 i \\pi q)$&nbsp;</div><div style=\"text-align: center;\">$\\mA_q = \\omega(q) \\mA &nbsp;+ \\bar{\\omega(q)} \\mA^T$&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mA_q^m = (\\omega(q) \\mA + \\bar{\\omega(q)} \\mA^T)^m$</div><div style=\"text-align: center;\">\u2026 and we take a big binomial expansions \u2026&nbsp;</div><div style=\"text-align: center;\">$\\omega(q)^m \\mA^m + \\bar{\\omega}(q)^m (\\mA^T)^m + \\text{crossterms}$</div><div style=\"text-align: center;\">crossterms: all arrangements of $k$ choices for $\\omega(q)\\mA$ and $m-k$ of $\\bar{\\omega(q)} \\mA^T$<br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Group crossterms by phase</div><div style=\"text-align: center;\">$\\mA_q^m = \\omega(q)^m \\Phi(m,m) + \\omega(q)^{m-2} \\Phi(m,m-1) + \\omega(q)^{m-4} \\Phi(m,m-2) + \\ldots + \\omega(q)^{-m} \\Phi(m,0)$<br></div><div style=\"text-align: center;\">$\\text{vec}(\\mA_q^m) = \\bmat{\\text{vec}(\\Phi(m,0)) &amp; \\cdots &amp; \\text{vec}(\\Phi(m,m))} \\vf$&nbsp;</div>",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\omega(q) = \\exp(2 i \\pi q)$&nbsp;</div><div style=\"text-align: center;\">$\\mA_q = \\omega(q) \\mA &nbsp;+ \\bar{\\omega(q)} \\mA^T$&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mA_q^m = (\\omega(q) \\mA + \\bar{\\omega(q)} \\mA^T)^m$</div><div style=\"text-align: center;\">… and we take a big binomial expansions …&nbsp;</div><div style=\"text-align: center;\">$\\omega(q)^m \\mA^m + \\bar{\\omega}(q)^m (\\mA^T)^m + \\text{crossterms}$</div><div style=\"text-align: center;\">crossterms: all arrangements of $k$ choices for $\\omega(q)\\mA$ and $m-k$ of $\\bar{\\omega(q)} \\mA^T$<br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Group crossterms by phase</div><div style=\"text-align: center;\">$\\mA_q^m = \\omega(q)^m \\Phi(m,m) + \\omega(q)^{m-2} \\Phi(m,m-1) + \\omega(q)^{m-4} \\Phi(m,m-2) + \\ldots + \\omega(q)^{-m} \\Phi(m,0)$<br></div><div style=\"text-align: center;\">$\\text{vec}(\\mA_q^m) = \\bmat{\\text{vec}(\\Phi(m,0)) &amp; \\cdots &amp; \\text{vec}(\\Phi(m,m))} \\vf$&nbsp;</div>",
           "id": "5de927cb-64c1-4702-9ea0-c713e9e02d32",
           "linkId": "2144cbdd-2f36-4bac-a9d6-77ce5c4352e3",
           "position": {
@@ -1641,10 +1655,11 @@
             "y": 180
           },
           "preset": "body",
+          "syncId": "5de927cb-64c1-4702-9ea0-c713e9e02d32",
           "type": "text"
         },
         {
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">\u2026 and then some complex ideas &nbsp;\u2026&nbsp;</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">… and then some complex ideas &nbsp;…&nbsp;</span></span>",
           "id": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
           "position": {
@@ -1654,6 +1669,7 @@
             "y": -68
           },
           "preset": "title",
+          "syncId": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
           "type": "text"
         },
         {
@@ -1665,6 +1681,7 @@
             "x": 70,
             "y": 709
           },
+          "syncId": "e10fce70-42a2-415f-b517-cc4940dda83b",
           "type": "cover"
         }
       ],
@@ -1676,7 +1693,7 @@
     {
       "elements": [
         {
-          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\omega(q) = \\exp(2 i \\pi q)$&nbsp;</div><div style=\"text-align: center;\">$\\mA_q = \\omega(q) \\mA &nbsp;+ \\bar{\\omega(q)} \\mA^T$&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mA_q^m = (\\omega(q) \\mA + \\bar{\\omega(q)} \\mA^T)^m$</div><div style=\"text-align: center;\">\u2026 and we take a big binomial expansions \u2026&nbsp;</div><div style=\"text-align: center;\">$\\omega(q)^m \\mA^m + \\bar{\\omega}(q)^m (\\mA^T)^m + \\text{crossterms}$</div><div style=\"text-align: center;\">crossterms: all arrangements of $k$ choices for $\\omega(q)\\mA$ and $m-k$ of $\\bar{\\omega(q)} \\mA^T$<br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Group crossterms by phase</div><div style=\"text-align: center;\">$\\mA_q^m = \\omega(q)^m \\Phi(m,m) + \\omega(q)^{m-2} \\Phi(m,m-1) + \\omega(q)^{m-4} \\Phi(m,m-2) + \\ldots + \\omega(q)^{-m} \\Phi(m,0)$<br></div><div style=\"text-align: center;\">$\\text{vec}(\\mA_q^m) = \\bmat{\\text{vec}(\\Phi(m,0)) &amp; \\cdots &amp; \\text{vec}(\\Phi(m,m))} \\vf$&nbsp;</div>",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\omega(q) = \\exp(2 i \\pi q)$&nbsp;</div><div style=\"text-align: center;\">$\\mA_q = \\omega(q) \\mA &nbsp;+ \\bar{\\omega(q)} \\mA^T$&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mA_q^m = (\\omega(q) \\mA + \\bar{\\omega(q)} \\mA^T)^m$</div><div style=\"text-align: center;\">… and we take a big binomial expansions …&nbsp;</div><div style=\"text-align: center;\">$\\omega(q)^m \\mA^m + \\bar{\\omega}(q)^m (\\mA^T)^m + \\text{crossterms}$</div><div style=\"text-align: center;\">crossterms: all arrangements of $k$ choices for $\\omega(q)\\mA$ and $m-k$ of $\\bar{\\omega(q)} \\mA^T$<br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Group crossterms by phase</div><div style=\"text-align: center;\">$\\mA_q^m = \\omega(q)^m \\Phi(m,m) + \\omega(q)^{m-2} \\Phi(m,m-1) + \\omega(q)^{m-4} \\Phi(m,m-2) + \\ldots + \\omega(q)^{-m} \\Phi(m,0)$<br></div><div style=\"text-align: center;\">$\\text{vec}(\\mA_q^m) = \\bmat{\\text{vec}(\\Phi(m,0)) &amp; \\cdots &amp; \\text{vec}(\\Phi(m,m))} \\vf$&nbsp;</div>",
           "id": "5de927cb-64c1-4702-9ea0-c713e9e02d32",
           "linkId": "2144cbdd-2f36-4bac-a9d6-77ce5c4352e3",
           "position": {
@@ -1686,10 +1703,11 @@
             "y": 180
           },
           "preset": "body",
+          "syncId": "5de927cb-64c1-4702-9ea0-c713e9e02d32",
           "type": "text"
         },
         {
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">\u2026 and then some complex ideas &nbsp;\u2026&nbsp;</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">… and then some complex ideas &nbsp;…&nbsp;</span></span>",
           "id": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
           "position": {
@@ -1699,6 +1717,7 @@
             "y": -68
           },
           "preset": "title",
+          "syncId": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
           "type": "text"
         },
         {
@@ -1710,6 +1729,7 @@
             "x": 70,
             "y": 709
           },
+          "syncId": "e10fce70-42a2-415f-b517-cc4940dda83b",
           "type": "cover"
         }
       ],
@@ -1721,7 +1741,7 @@
     {
       "elements": [
         {
-          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\omega(q) = \\exp(2 i \\pi q)$&nbsp;</div><div style=\"text-align: center;\">$\\mA_q = \\omega(q) \\mA &nbsp;+ \\bar{\\omega(q)} \\mA^T$&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mA_q^m = (\\omega(q) \\mA + \\bar{\\omega(q)} \\mA^T)^m$</div><div style=\"text-align: center;\">\u2026 and we take a big binomial expansions \u2026&nbsp;</div><div style=\"text-align: center;\">$\\omega(q)^m \\mA^m + \\bar{\\omega}(q)^m (\\mA^T)^m + \\text{crossterms}$</div><div style=\"text-align: center;\">crossterms: all arrangements of $k$ choices for $\\omega(q)\\mA$ and $m-k$ of $\\bar{\\omega(q)} \\mA^T$<br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Group crossterms by phase</div><div style=\"text-align: center;\">$\\mA_q^m = \\omega(q)^m \\Phi(m,m) + \\omega(q)^{m-2} \\Phi(m,m-1) + \\omega(q)^{m-4} \\Phi(m,m-2) + \\ldots + \\omega(q)^{-m} \\Phi(m,0)$<br></div><div style=\"text-align: center;\">$\\text{vec}(\\mA_q^m) = \\bmat{\\text{vec}(\\Phi(m,0)) &amp; \\cdots &amp; \\text{vec}(\\Phi(m,m))} \\vf$&nbsp;</div>",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\omega(q) = \\exp(2 i \\pi q)$&nbsp;</div><div style=\"text-align: center;\">$\\mA_q = \\omega(q) \\mA &nbsp;+ \\bar{\\omega(q)} \\mA^T$&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mA_q^m = (\\omega(q) \\mA + \\bar{\\omega(q)} \\mA^T)^m$</div><div style=\"text-align: center;\">… and we take a big binomial expansions …&nbsp;</div><div style=\"text-align: center;\">$\\omega(q)^m \\mA^m + \\bar{\\omega}(q)^m (\\mA^T)^m + \\text{crossterms}$</div><div style=\"text-align: center;\">crossterms: all arrangements of $k$ choices for $\\omega(q)\\mA$ and $m-k$ of $\\bar{\\omega(q)} \\mA^T$<br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Group crossterms by phase</div><div style=\"text-align: center;\">$\\mA_q^m = \\omega(q)^m \\Phi(m,m) + \\omega(q)^{m-2} \\Phi(m,m-1) + \\omega(q)^{m-4} \\Phi(m,m-2) + \\ldots + \\omega(q)^{-m} \\Phi(m,0)$<br></div><div style=\"text-align: center;\">$\\text{vec}(\\mA_q^m) = \\bmat{\\text{vec}(\\Phi(m,0)) &amp; \\cdots &amp; \\text{vec}(\\Phi(m,m))} \\vf$&nbsp;</div>",
           "id": "5de927cb-64c1-4702-9ea0-c713e9e02d32",
           "linkId": "2144cbdd-2f36-4bac-a9d6-77ce5c4352e3",
           "position": {
@@ -1731,10 +1751,11 @@
             "y": 180
           },
           "preset": "body",
+          "syncId": "5de927cb-64c1-4702-9ea0-c713e9e02d32",
           "type": "text"
         },
         {
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">\u2026 and then some complex ideas &nbsp;\u2026&nbsp;</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">… and then some complex ideas &nbsp;…&nbsp;</span></span>",
           "id": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
           "position": {
@@ -1744,6 +1765,7 @@
             "y": -68
           },
           "preset": "title",
+          "syncId": "25a86c68-68cd-44c0-8cee-bd20dd09702d",
           "type": "text"
         },
         {
@@ -1798,7 +1820,7 @@
     {
       "elements": [
         {
-          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">We can use the standard choice of q\u2019s around the unit circle to get a unitary matrix.&nbsp;<br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">We can simplify much the complex arithmetic&nbsp;</div><div style=\"text-align: center;\">since we know that the walk matrices are real.&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">with $q_j = \\tfrac{j}{2(m+1)}$</div><div style=\"text-align: center;\">$\\Phi(m,k) = \\frac{1}{m+1} \\left( \\mA_{q0}^m + 2 \\sum_{j=1}^{\\lceil m/2 \\rceil} \\text{Re}( \\frac{\\exp( i \\pi j (m - 2k)}{ m+1 } &nbsp;\\mA_{qj}^m) \\right)$</div><div style=\"text-align: center;\"><br></div>",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">We can use the standard choice of q’s around the unit circle to get a unitary matrix.&nbsp;<br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">We can simplify much the complex arithmetic&nbsp;</div><div style=\"text-align: center;\">since we know that the walk matrices are real.&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">with $q_j = \\tfrac{j}{2(m+1)}$</div><div style=\"text-align: center;\">$\\Phi(m,k) = \\frac{1}{m+1} \\left( \\mA_{q0}^m + 2 \\sum_{j=1}^{\\lceil m/2 \\rceil} \\text{Re}( \\frac{\\exp( i \\pi j (m - 2k)}{ m+1 } &nbsp;\\mA_{qj}^m) \\right)$</div><div style=\"text-align: center;\"><br></div>",
           "id": "056e3a09-5342-4bbe-b423-ad287b717e4e",
           "position": {
             "height": 800,
@@ -1830,7 +1852,7 @@
     {
       "elements": [
         {
-          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">The equivalence can be adapted&nbsp;</div><div style=\"text-align: center;\">for powers of any of the following matrices</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mA_q$ - adjacency (what we saw)</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mD^{-1} \\mA_q$ - random walk</div><div style=\"text-align: center;\">$\\mD^{-1/2} \\mA_q \\mD^{-1/2}$ - normalized adjacency</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><i><font color=\"#2563eb\">Using $\\mD^{-1} \\mA_q$ gives the expected probabilistic interpretation and keeps all the \u201ccounts\u201d normalized to probabilities&nbsp;</font></i></div><div style=\"text-align: center;\"><i><font color=\"#2563eb\"><br></font></i></div><div style=\"text-align: center;\"><i><font color=\"#2563eb\"><b>The real data demos use the random walk version.&nbsp;</b></font></i></div>",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">The equivalence can be adapted&nbsp;</div><div style=\"text-align: center;\">for powers of any of the following matrices</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mA_q$ - adjacency (what we saw)</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">$\\mD^{-1} \\mA_q$ - random walk</div><div style=\"text-align: center;\">$\\mD^{-1/2} \\mA_q \\mD^{-1/2}$ - normalized adjacency</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><i><font color=\"#2563eb\">Using $\\mD^{-1} \\mA_q$ gives the expected probabilistic interpretation and keeps all the “counts” normalized to probabilities&nbsp;</font></i></div><div style=\"text-align: center;\"><i><font color=\"#2563eb\"><br></font></i></div><div style=\"text-align: center;\"><i><font color=\"#2563eb\"><b>The real data demos use the random walk version.&nbsp;</b></font></i></div>",
           "id": "6d1ea733-8680-420d-a2ae-04e10bbbc058",
           "position": {
             "height": 840,
@@ -2040,7 +2062,7 @@
     {
       "elements": [
         {
-          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Why does this work&nbsp;</div><div style=\"text-align: center;\">sometimes (ER with high degree) and not others (ER with low degree) ?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">What determines compressibility?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">It\u2019s the spectral radius $\\rho(\\mA_q)$!&nbsp;</div><div style=\"text-align: center;\">If this is near 1 (for the random walk veresions), then we get no convergence, whereas if this is smaller, we get rapid decay.&nbsp;</div>",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Why does this work&nbsp;</div><div style=\"text-align: center;\">sometimes (ER with high degree) and not others (ER with low degree) ?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">What determines compressibility?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">It’s the spectral radius $\\rho(\\mA_q)$!&nbsp;</div><div style=\"text-align: center;\">If this is near 1 (for the random walk veresions), then we get no convergence, whereas if this is smaller, we get rapid decay.&nbsp;</div>",
           "id": "7322b9e9-980a-4b68-aeef-f118fc8311ea",
           "linkId": "5f500420-7701-4cca-92da-7414c4e9bda1",
           "position": {
@@ -2050,6 +2072,7 @@
             "y": 180
           },
           "preset": "body",
+          "syncId": "7322b9e9-980a-4b68-aeef-f118fc8311ea",
           "type": "text"
         },
         {
@@ -2071,7 +2094,7 @@
     {
       "elements": [
         {
-          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Why does this work&nbsp;</div><div style=\"text-align: center;\">sometimes (ER with high degree) and not others (ER with low degree) ?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">What determines compressibility?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">It\u2019s the spectral radius $\\rho(\\mA_q)$!&nbsp;</div><div style=\"text-align: center;\">If this is near 1 (for the random walk veresions), then we get no convergence, whereas if this is smaller, we get rapid decay.&nbsp;</div>",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Why does this work&nbsp;</div><div style=\"text-align: center;\">sometimes (ER with high degree) and not others (ER with low degree) ?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">What determines compressibility?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">It’s the spectral radius $\\rho(\\mA_q)$!&nbsp;</div><div style=\"text-align: center;\">If this is near 1 (for the random walk veresions), then we get no convergence, whereas if this is smaller, we get rapid decay.&nbsp;</div>",
           "id": "7322b9e9-980a-4b68-aeef-f118fc8311ea",
           "linkId": "5f500420-7701-4cca-92da-7414c4e9bda1",
           "position": {
@@ -2081,6 +2104,7 @@
             "y": 180
           },
           "preset": "body",
+          "syncId": "7322b9e9-980a-4b68-aeef-f118fc8311ea",
           "type": "text"
         }
       ],
@@ -2103,7 +2127,7 @@
           "type": "image"
         },
         {
-          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">It\u2019s the spectral radius that determines how compressible a walk profile is&nbsp;</span></span>",
+          "html": "<span style=\"text-align: center;\"><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">It’s the spectral radius that determines how compressible a walk profile is&nbsp;</span></span>",
           "id": "20225088-95dc-4169-9a42-aca62bc345b1",
           "linkId": "178ea41c-5ac7-408d-a8b3-1ba0cf63c7df",
           "position": {
@@ -2146,7 +2170,7 @@
           "type": "image"
         },
         {
-          "html": "Computational and Program Graphs are the least compressible here (along with a few biological graphs). That\u2019s because they are _almost_ directed trees and trees have $\\rho(\\hat{|mA_q}) = 1$",
+          "html": "Computational and Program Graphs are the least compressible here (along with a few biological graphs). That’s because they are _almost_ directed trees and trees have $\\rho(\\hat{|mA_q}) = 1$",
           "id": "e0450585-c0df-49ad-b895-25389bbf4241",
           "position": {
             "height": 152,
@@ -2165,7 +2189,7 @@
     {
       "elements": [
         {
-          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Can we use powers of the magnetic adjacency matrix to find cycles?</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">- Yes, if there is only one backward edge and we don\u2019t count repeated nodes</div><div style=\"text-align: center;\">- No if there is more than one backward edge and we don\u2019t count repeated nodes</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">What about in practice?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">We train a classifier to predict if node $u$ is involved in a length $m$ cycle using</div><div style=\"text-align: center;\">- Magnetic adjacency powers</div><div style=\"text-align: center;\">- \"Drop direction\u201d graph powers</div><div style=\"text-align: center;\">- Unidirectional walks: $\\mA^m$ or $(\\mA^T)^m$</div>",
+          "html": "<div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">Can we use powers of the magnetic adjacency matrix to find cycles?</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">- Yes, if there is only one backward edge and we don’t count repeated nodes</div><div style=\"text-align: center;\">- No if there is more than one backward edge and we don’t count repeated nodes</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">What about in practice?&nbsp;</div><div style=\"text-align: center;\"><br></div><div style=\"text-align: center;\">We train a classifier to predict if node $u$ is involved in a length $m$ cycle using</div><div style=\"text-align: center;\">- Magnetic adjacency powers</div><div style=\"text-align: center;\">- \"Drop direction” graph powers</div><div style=\"text-align: center;\">- Unidirectional walks: $\\mA^m$ or $(\\mA^T)^m$</div>",
           "id": "2159490c-aee7-4d69-9e23-70be4003551d",
           "position": {
             "height": 800,
@@ -2308,7 +2332,7 @@
         },
         {
           "fontSize": 48,
-          "html": "<div style=\"text-align: center;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em; font-weight: normal;\">Fourier spectrum\u30fbWalk compression&nbsp;</span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">\u30fbApplications</span><br></div>",
+          "html": "<div style=\"text-align: center;\"><span style=\"text-transform: uppercase; letter-spacing: 0.08em; font-weight: normal;\">Fourier spectrum・Walk compression&nbsp;</span><span style=\"font-weight: 400; letter-spacing: 5.76px; text-transform: uppercase;\">・Applications</span><br></div>",
           "id": "09beb5b7-1c26-4b76-b0d8-1223cb71d415",
           "position": {
             "height": 102,

@@ -119,22 +119,31 @@ fn timestamp() -> String {
     format!("{}-{:08}", now, seq)
 }
 
-/// Simple ISO timestamp without chrono dependency
+/// ISO 8601 UTC timestamp without chrono dependency.
+/// Uses Howard Hinnant's civil_from_days algorithm for correct dates.
 fn chrono_lite_now() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let d = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
     let secs = d.as_secs();
     let millis = d.subsec_millis();
-    // Simple UTC format (good enough for ordering)
     let s = secs % 60;
     let m = (secs / 60) % 60;
     let h = (secs / 3600) % 24;
-    let days = secs / 86400;
-    // Approximate date (not perfectly accurate but fine for ordering)
-    let y = 1970 + days / 365;
-    let rem_days = days % 365;
-    let mo = rem_days / 30 + 1;
-    let d = rem_days % 30 + 1;
+    let days = (secs / 86400) as i64;
+
+    // civil_from_days: days since epoch → (year, month, day)
+    // https://howardhinnant.github.io/date_algorithms.html
+    let z = days + 719468;
+    let era = (if z >= 0 { z } else { z - 146096 }) / 146097;
+    let doe = (z - era * 146097) as u64;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe as i64 + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let mo = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if mo <= 2 { y + 1 } else { y };
+
     format!(
         "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z",
         y, mo, d, h, m, s, millis

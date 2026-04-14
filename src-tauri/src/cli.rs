@@ -13,16 +13,17 @@ use std::process;
 use eigendeck_lib::storage;
 
 // Global flag for JSON output
-static mut JSON_OUTPUT: bool = false;
+use std::sync::atomic::{AtomicBool, Ordering};
+static JSON_OUTPUT: AtomicBool = AtomicBool::new(false);
 
-fn is_json() -> bool { unsafe { JSON_OUTPUT } }
+fn is_json() -> bool { JSON_OUTPUT.load(Ordering::Relaxed) }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
 
     // Check for --json flag anywhere in args
     let json_flag = args.iter().any(|a| a == "--json");
-    unsafe { JSON_OUTPUT = json_flag; }
+    JSON_OUTPUT.store(json_flag, Ordering::Relaxed);
 
     // Filter --json from args so it doesn't interfere with verb parsing
     let args: Vec<String> = args.into_iter().filter(|a| a != "--json").collect();
@@ -754,6 +755,7 @@ fn cmd_unpack(db_path: &str, args: &[String]) -> Result<(), String> {
 
 // UUID helper (minimal, no external crate)
 mod uuid {
+    use std::fmt;
     pub struct Uuid;
     impl Uuid {
         pub fn new_v4() -> UuidResult {
@@ -765,14 +767,16 @@ mod uuid {
             let c = CTR.fetch_add(1, Ordering::Relaxed);
             UuidResult(format!("{:08x}-{:04x}-4{:03x}-{:04x}-{:012x}",
                 ((a >> 96) as u32).wrapping_add(c as u32),
-                (a >> 80) as u16 & 0xffff,
-                (a >> 64) as u16 & 0xfff,
-                0x8000 | ((a >> 48) as u16 & 0x3fff),
-                a as u64 & 0xffffffffffff))
+                ((a >> 80) as u16) & 0xfff,
+                ((a >> 64) as u16) & 0xfff,
+                0x8000 | (((a >> 48) as u16) & 0x3fff),
+                (a as u64) & 0xffffffffffff))
         }
     }
     pub struct UuidResult(String);
-    impl UuidResult {
-        pub fn to_string(&self) -> String { self.0.clone() }
+    impl fmt::Display for UuidResult {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}", self.0)
+        }
     }
 }

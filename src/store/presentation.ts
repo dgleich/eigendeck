@@ -489,13 +489,131 @@ export function resumeUndo() {
 }
 
 // ============================================================================
-// SQLite write-through
+// SQLite incremental write-through
 // ============================================================================
-// When a .eigendeck DB is open, every presentation state change is persisted.
-// This runs async in the background — UI is never blocked.
+// Zustand is the interaction layer. SQLite is the persistence layer.
+// Changes are tracked via dirty sets and flushed incrementally — only
+// modified elements/slides are written, preserving temporal history.
+//
+// During drag: Zustand updates only (no SQLite writes).
+// On pointerup / text commit / explicit save: flush dirty items to SQLite.
 
 let sqliteDbPath: string | null = null;
-let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Dirty tracking: which items need to be written to SQLite
+const dirtyElements = new Set<string>();    // element IDs that changed
+const dirtySlides = new Set<string>();      // slide IDs that changed
+let dirtyPresentation = false;             // config/title changed
+let fullResyncNeeded = false;              // slide order changed, need full reimport
+
+/** Mark an element as dirty (will be flushed to SQLite) */
+export function markElementDirty(elementId: string) {
+  if (!sqliteDbPath) return;
+  dirtyElements.add(elementId);
+  scheduleFlush();
+}
+
+/** Mark a slide as dirty */
+export function markSlideDirty(slideId: string) {
+  if (!sqliteDbPath) return;
+  dirtySlides.add(slideId);
+  scheduleFlush();
+}
+
+/** Mark presentation metadata as dirty */
+export function markPresentationDirty() {
+  if (!sqliteDbPath) return;
+  dirtyPresentation = true;
+  scheduleFlush();
+}
+
+/** Mark that a full resync is needed (slide add/delete/reorder) */
+export function markFullResync() {
+  if (!sqliteDbPath) return;
+  fullResyncNeeded = true;
+  scheduleFlush();
+}
+
+/** Force an immediate flush (called on explicit save, pointerup, text commit) */
+export async function flushToSqlite(): Promise<void> {
+  if (!sqliteDbPath) return;
+  if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const state = usePresentationStore.getState();
+
+    // If a full resync is needed (structural change), do a full reimport.
+    // This is the only case where we use db_import_json.
+    // TODO: replace with incremental slide add/delete/reorder operations.
+    if (fullResyncNeeded) {
+      await invoke('db_import_json', { json: JSON.stringify(state.presentation) });
+      dirtyElements.clear();
+      dirtySlides.clear();
+      dirtyPresentation = false;
+      fullResyncNeeded = false;
+      return;
+    }
+
+    // Incremental: only write dirty items
+    if (dirtyPresentation) {
+      await invoke('db_update_presentation', { key: 'title', value: state.presentation.title });
+      await invoke('db_update_presentation', { key: 'config', value: JSON.stringify(state.presentation.config) });
+      dirtyPresentation = false;
+    }
+
+    for (const elementId of dirtyElements) {
+      // Find the element in the current state
+      for (const slide of state.presentation.slides) {
+        const el = slide.elements.find((e) => e.id === elementId);
+        if (el) {
+          const { linkId, syncId, _syncId, _linkId, ...data } = el as any;
+          await invoke('db_update_element', {
+            id: elementId,
+            data: JSON.stringify(data),
+            linkId: linkId || null,
+          });
+          break;
+        }
+      }
+    }
+    dirtyElements.clear();
+
+    // Slide metadata changes (layout, notes, groupId)
+    for (const slideId of dirtySlides) {
+      const slide = state.presentation.slides.find((s) => s.id === slideId);
+      if (slide) {
+        await invoke('db_update_slide', {
+          slideId,
+          layout: slide.layout || null,
+          notes: slide.notes || null,
+          groupId: slide.groupId || null,
+        });
+      }
+    }
+    dirtySlides.clear();
+
+  } catch (e) {
+    console.error('SQLite flush failed:', e);
+    // On failure, mark full resync to recover
+    fullResyncNeeded = true;
+  }
+}
+
+/** Debounced flush — called when dirty items accumulate */
+function scheduleFlush() {
+  if (!sqliteDbPath) return;
+  if (flushTimer) clearTimeout(flushTimer);
+  flushTimer = setTimeout(async () => {
+    await flushToSqlite();
+    // Periodic WAL checkpoint
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('db_checkpoint');
+    } catch { /* ignore */ }
+  }, 1000); // 1s debounce
+}
 
 /** Open a .eigendeck SQLite file and load its contents into the store */
 export async function openSqliteProject(dbPath: string): Promise<void> {
@@ -505,6 +623,11 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     const json = await invoke<string>('db_export_json');
     const presentation: Presentation = JSON.parse(json);
     sqliteDbPath = dbPath;
+    // Clear any dirty state
+    dirtyElements.clear();
+    dirtySlides.clear();
+    dirtyPresentation = false;
+    fullResyncNeeded = false;
     const store = usePresentationStore.getState();
     store.setPresentation(presentation);
     store.setProjectPath(dbPath.replace(/\.eigendeck$/, ''));
@@ -518,8 +641,7 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
 export async function closeSqliteProject(): Promise<void> {
   if (!sqliteDbPath) return;
   try {
-    // Persist latest state before closing
-    await persistNow();
+    await flushToSqlite();
     const { invoke } = await import('@tauri-apps/api/core');
     await invoke('db_close');
     sqliteDbPath = null;
@@ -528,42 +650,74 @@ export async function closeSqliteProject(): Promise<void> {
   }
 }
 
-/** Persist the current state to SQLite immediately */
-async function persistNow(): Promise<void> {
-  if (!sqliteDbPath) return;
-  try {
-    const { invoke } = await import('@tauri-apps/api/core');
-    const state = usePresentationStore.getState();
-    await invoke('db_import_json', { json: JSON.stringify(state.presentation) });
-  } catch (e) {
-    console.error('SQLite persist failed:', e);
-  }
-}
-
-/** Debounced persist — called on every state change */
-function schedulePersist() {
-  if (!sqliteDbPath) return;
-  if (persistTimer) clearTimeout(persistTimer);
-  persistTimer = setTimeout(async () => {
-    await persistNow();
-    // Checkpoint WAL to keep sidecar files small
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('db_checkpoint');
-    } catch { /* ignore checkpoint errors */ }
-  }, 2000); // 2s debounce (was 500ms — reduces write frequency)
-}
-
 /** Check if a SQLite DB is currently open */
 export function isSqliteOpen(): boolean {
   return sqliteDbPath !== null;
 }
 
-// Subscribe to store changes and persist
-let lastPresentation: Presentation | null = null;
+// ============================================================================
+// Auto-detect changes via subscriber
+// ============================================================================
+// Compare previous and current presentation to find what changed,
+// then mark dirty items for incremental flush.
+
+let prevPresentation: Presentation | null = null;
+
 usePresentationStore.subscribe((state) => {
-  if (state.presentation !== lastPresentation) {
-    lastPresentation = state.presentation;
-    schedulePersist();
+  if (!sqliteDbPath) return;
+  const curr = state.presentation;
+  if (curr === prevPresentation) return;
+
+  if (!prevPresentation) {
+    // First load — don't treat as dirty
+    prevPresentation = curr;
+    return;
+  }
+
+  const prev = prevPresentation;
+  prevPresentation = curr;
+
+  // Detect structural changes (slide count/order changed)
+  if (prev.slides.length !== curr.slides.length) {
+    markFullResync();
+    return;
+  }
+  for (let i = 0; i < curr.slides.length; i++) {
+    if (prev.slides[i]?.id !== curr.slides[i]?.id) {
+      markFullResync();
+      return;
+    }
+  }
+
+  // Detect presentation metadata changes
+  if (prev.title !== curr.title || JSON.stringify(prev.config) !== JSON.stringify(curr.config)) {
+    markPresentationDirty();
+  }
+
+  // Detect per-slide changes
+  for (let i = 0; i < curr.slides.length; i++) {
+    const ps = prev.slides[i];
+    const cs = curr.slides[i];
+    if (!ps || !cs) continue;
+
+    // Slide metadata
+    if (ps.layout !== cs.layout || ps.notes !== cs.notes || ps.groupId !== cs.groupId) {
+      markSlideDirty(cs.id);
+    }
+
+    // Element changes
+    if (ps.elements !== cs.elements) {
+      // Element count changed = structural (add/delete)
+      if (ps.elements.length !== cs.elements.length) {
+        markFullResync();
+        return;
+      }
+      // Find which elements changed
+      for (let j = 0; j < cs.elements.length; j++) {
+        if (ps.elements[j] !== cs.elements[j]) {
+          markElementDirty(cs.elements[j].id);
+        }
+      }
+    }
   }
 });

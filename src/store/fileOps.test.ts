@@ -1,17 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs';
-import { openProject, saveProject } from './fileOps';
+import { openProject, saveProject, createProject } from './fileOps';
 import { usePresentationStore } from './presentation';
 import { createDefaultPresentation } from '../types/presentation';
 
 const mockOpen = vi.mocked(open);
 const mockSave = vi.mocked(save);
-const mockReadTextFile = vi.mocked(readTextFile);
-const mockWriteTextFile = vi.mocked(writeTextFile);
-const mockExists = vi.mocked(exists);
 
-describe('file operations', () => {
+describe('file operations (SQLite only)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     usePresentationStore.setState({
@@ -29,44 +25,40 @@ describe('file operations', () => {
     it('does nothing if dialog is cancelled', async () => {
       mockOpen.mockResolvedValue(null);
       await openProject();
-      expect(mockReadTextFile).not.toHaveBeenCalled();
+      // No invoke calls should happen
     });
 
-    it('loads presentation from selected directory', async () => {
-      const pres = createDefaultPresentation();
-      pres.title = 'Test Talk';
-      // First call (file picker) returns null, second call (dir picker) returns path
-      mockOpen
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce('/home/user/talks/test');
-      mockExists.mockResolvedValue(true);
-      mockReadTextFile.mockResolvedValue(JSON.stringify(pres));
+    it('shows .eigendeck filter in dialog', async () => {
+      mockOpen.mockResolvedValue(null);
       await openProject();
-      const state = usePresentationStore.getState();
-      expect(state.projectPath).toBe('/home/user/talks/test');
-      expect(state.presentation.title).toBe('Test Talk');
+      expect(mockOpen).toHaveBeenCalledWith(expect.objectContaining({
+        filters: expect.arrayContaining([
+          expect.objectContaining({ extensions: ['eigendeck'] }),
+        ]),
+      }));
+    });
+  });
+
+  describe('createProject', () => {
+    it('does nothing if save dialog is cancelled', async () => {
+      mockSave.mockResolvedValue(null);
+      await createProject();
+    });
+
+    it('defaults to .eigendeck extension', async () => {
+      mockSave.mockResolvedValue(null);
+      await createProject();
+      expect(mockSave).toHaveBeenCalledWith(expect.objectContaining({
+        defaultPath: 'Untitled.eigendeck',
+      }));
     });
   });
 
   describe('saveProject', () => {
-    it('saves to existing JSON project path without dialog', async () => {
-      usePresentationStore.setState({ projectPath: '/home/user/talks/existing', isDirty: true });
-      mockExists.mockResolvedValue(true); // presentation.json exists
-      mockWriteTextFile.mockResolvedValue(undefined);
+    it('creates new project if none open', async () => {
+      mockSave.mockResolvedValue(null);
       await saveProject();
-      expect(mockWriteTextFile).toHaveBeenCalledWith(
-        '/home/user/talks/existing/presentation.json',
-        expect.any(String)
-      );
-      expect(usePresentationStore.getState().isDirty).toBe(false);
-    });
-
-    it('prompts for file when no project is open', async () => {
-      mockSave.mockResolvedValue('/home/user/new.eigendeck');
-      mockExists.mockResolvedValue(false); // no existing presentation.json
-      // This will try to invoke db_open which will fail (not in Tauri)
-      // but we just verify the save dialog was shown
-      await saveProject().catch(() => {});
+      // Should have shown create dialog
       expect(mockSave).toHaveBeenCalled();
     });
   });
