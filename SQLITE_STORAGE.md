@@ -275,17 +275,13 @@ If `external_path` is set for an asset, the app watches that file:
 
 File watches are on by default. Can be disabled per-asset or globally.
 
-### CLI: unpack / pack
+### CLI: unpack
 
 ```bash
 # Extract all assets to disk alongside the .eigendeck file
 eigendeck unpack myproject.eigendeck
 # Creates: myproject/images/photo.png, myproject/demos/graph.html
 # Sets external_path on each asset → app watches these files
-
-# Re-import all external files (useful before sharing)
-eigendeck pack myproject.eigendeck
-# Reads each external_path, re-imports BLOB, clears external_path
 
 # Unpack just demos (for editing)
 eigendeck unpack myproject.eigendeck --demos
@@ -294,12 +290,14 @@ eigendeck unpack myproject.eigendeck --demos
 eigendeck unpack myproject.eigendeck --images
 ```
 
+No `pack` command needed — file watches auto-reimport changes, so the DB always has the latest BLOBs. To stop watching, just delete the unpacked directory (external_path becomes stale, cleared on next startup).
+
 ### Workflow
 
 1. **Normal use**: everything in SQLite. No files on disk. Drag-and-drop imports to BLOB.
 2. **Demo editing**: run `eigendeck unpack --demos`. Edit `demos/my-demo.html` in VS Code. App watches, auto-reimports on save.
 3. **Image editing**: run `eigendeck unpack --images`. Edit in Photoshop. App watches.
-4. **Sharing**: just send the `.eigendeck` file. All assets are inside.
+4. **Sharing**: just send the `.eigendeck` file. All assets are already inside.
 5. **LLM editing**: run `eigendeck unpack` + `eigendeck export-json`. Edit `presentation.json`. Run `eigendeck import-json`.
 
 ## File Format
