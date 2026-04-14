@@ -2,6 +2,7 @@
 name = "eigendeck"
 version = "0.1.0"
 description = "A presentation tool with embedded HTML demos"
+default-run = "eigendeck"
 authors = ["David F. Gleich"]
 edition = "2021"
 
