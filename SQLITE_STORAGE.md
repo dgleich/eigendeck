@@ -245,12 +245,62 @@ Run thinning on app startup and periodically.
 
 ## Asset Storage
 
-Binary files stored as BLOBs in `assets`:
+**SQLite is the source of truth.** All assets (images, demos) are stored as BLOBs.
 
-- **Dedup**: hash content, skip if exists
-- **No versioning**: assets are immutable
+```sql
+CREATE TABLE assets (
+    path TEXT PRIMARY KEY,       -- e.g. "images/photo.png", "demos/graph.html"
+    data BLOB NOT NULL,
+    mime_type TEXT,
+    size INTEGER,
+    hash TEXT,                   -- SHA-256 for dedup
+    created_at TEXT,
+    external_path TEXT,          -- absolute path to watched file on disk (NULL if not unpacked)
+    external_mtime TEXT          -- last known mtime of external file (for change detection)
+);
+```
+
+- **Dedup**: hash content, skip if same hash exists
+- **No versioning**: assets are immutable (new version = new import with updated hash)
 - **Lazy load**: only read BLOB when rendering
-- **Path-based**: referenced by relative path in element data (e.g. `images/photo.png`)
+- **Path-based**: elements reference by relative path (e.g. `images/photo.png`)
+
+### File Watching
+
+If `external_path` is set for an asset, the app watches that file:
+
+- **File modified**: re-import BLOB into DB, update hash and external_mtime
+- **File deleted**: clear external_path (BLOB still in DB)
+- **App startup**: check all external_paths, re-import any that changed since last external_mtime
+
+File watches are on by default. Can be disabled per-asset or globally.
+
+### CLI: unpack / pack
+
+```bash
+# Extract all assets to disk alongside the .eigendeck file
+eigendeck unpack myproject.eigendeck
+# Creates: myproject/images/photo.png, myproject/demos/graph.html
+# Sets external_path on each asset → app watches these files
+
+# Re-import all external files (useful before sharing)
+eigendeck pack myproject.eigendeck
+# Reads each external_path, re-imports BLOB, clears external_path
+
+# Unpack just demos (for editing)
+eigendeck unpack myproject.eigendeck --demos
+
+# Unpack just images
+eigendeck unpack myproject.eigendeck --images
+```
+
+### Workflow
+
+1. **Normal use**: everything in SQLite. No files on disk. Drag-and-drop imports to BLOB.
+2. **Demo editing**: run `eigendeck unpack --demos`. Edit `demos/my-demo.html` in VS Code. App watches, auto-reimports on save.
+3. **Image editing**: run `eigendeck unpack --images`. Edit in Photoshop. App watches.
+4. **Sharing**: just send the `.eigendeck` file. All assets are inside.
+5. **LLM editing**: run `eigendeck unpack` + `eigendeck export-json`. Edit `presentation.json`. Run `eigendeck import-json`.
 
 ## File Format
 
@@ -299,9 +349,9 @@ If IPC overhead matters for drag (60fps), batch position updates client-side and
 
 2. WAL mode creates `-wal` and `-shm` sidecar files (cleaned up on close). Use `PRAGMA journal_mode = DELETE` instead for true single-file?
 
-3. Demo HTML files: store as assets (BLOBs) or keep external? BLOBs = single file. External = editable in text editor.
+3. File watch implementation: use Tauri's `watch` API, or `fs.watch` / `chokidar` on the JS side? Need to handle debouncing (editors do save-delete-rename cycles).
 
-4. Keep JSON directory export on every save for LLM editing compatibility?
+4. Should `eigendeck unpack` create a companion directory next to the `.eigendeck` file, or a subdirectory? E.g. `myproject.eigendeck` → `myproject/images/` vs `myproject.eigendeck.d/images/`.
 
 ## Keeping Things in Sync
 
