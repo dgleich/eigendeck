@@ -368,6 +368,7 @@ pub fn run() {
             storage::db_add_element,
             storage::db_remove_element_from_slide,
             storage::db_compact,
+            storage::db_checkpoint,
             storage::db_add_slide,
             storage::db_delete_slide,
             storage::db_duplicate_slide,
@@ -511,6 +512,12 @@ pub fn run() {
             });
 
             Ok(())
+        })
+        .on_window_event(|_window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                // Checkpoint WAL and close SQLite on window close
+                let _ = storage::close_db();
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

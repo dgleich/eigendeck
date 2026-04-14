@@ -60,17 +60,7 @@ function App() {
   // Initialize auto-save and sync recent menu
   useEffect(() => { initAutoSave(); syncRecentMenu(); }, []);
 
-  // Close SQLite on app shutdown
-  useEffect(() => {
-    const handleUnload = async () => {
-      try {
-        const { closeSqliteProject, isSqliteOpen } = await import('./store/presentation');
-        if (isSqliteOpen()) await closeSqliteProject();
-      } catch { /* shutting down */ }
-    };
-    window.addEventListener('beforeunload', handleUnload);
-    return () => window.removeEventListener('beforeunload', handleUnload);
-  }, []);
+  // SQLite DB is closed from Rust via on_window_event(Destroyed) — no JS handler needed.
 
   // Warn before closing
   useEffect(() => {

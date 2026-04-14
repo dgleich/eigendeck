@@ -526,6 +526,15 @@ pub fn db_remove_element_from_slide(slide_id: String, element_id: String) -> Res
     })
 }
 
+/// Checkpoint WAL — merges WAL into main DB file, shrinks sidecar files
+#[tauri::command]
+pub fn db_checkpoint() -> Result<(), String> {
+    with_db(|conn| {
+        conn.execute_batch("PRAGMA wal_checkpoint(PASSIVE);")?;
+        Ok(())
+    })
+}
+
 /// Compact: delete old history and VACUUM
 #[tauri::command]
 pub fn db_compact(keep_all: bool) -> Result<String, String> {

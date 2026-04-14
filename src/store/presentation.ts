@@ -544,7 +544,14 @@ async function persistNow(): Promise<void> {
 function schedulePersist() {
   if (!sqliteDbPath) return;
   if (persistTimer) clearTimeout(persistTimer);
-  persistTimer = setTimeout(() => persistNow(), 500); // 500ms debounce
+  persistTimer = setTimeout(async () => {
+    await persistNow();
+    // Checkpoint WAL to keep sidecar files small
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('db_checkpoint');
+    } catch { /* ignore checkpoint errors */ }
+  }, 2000); // 2s debounce (was 500ms — reduces write frequency)
 }
 
 /** Check if a SQLite DB is currently open */
