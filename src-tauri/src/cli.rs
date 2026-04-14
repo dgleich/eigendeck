@@ -12,8 +12,20 @@ use std::process;
 // Use the library's storage module
 use eigendeck_lib::storage;
 
+// Global flag for JSON output
+static mut JSON_OUTPUT: bool = false;
+
+fn is_json() -> bool { unsafe { JSON_OUTPUT } }
+
 fn main() {
     let args: Vec<String> = env::args().collect();
+
+    // Check for --json flag anywhere in args
+    let json_flag = args.iter().any(|a| a == "--json");
+    unsafe { JSON_OUTPUT = json_flag; }
+
+    // Filter --json from args so it doesn't interfere with verb parsing
+    let args: Vec<String> = args.into_iter().filter(|a| a != "--json").collect();
 
     if args.len() < 3 {
         print_usage();
@@ -45,6 +57,7 @@ fn main() {
         "move" => cmd_move(&args[3..]),
         "edit" => cmd_edit(&args[3..]),
         "export" => cmd_export(&args[3..]),
+        "import" => cmd_import(&args[3..]),
         "compact" => cmd_compact(&args[3..]),
         "unpack" => cmd_unpack(db_path, &args[3..]),
         _ => {
@@ -88,6 +101,7 @@ Verbs:
   move element <id> <x> <y>     Move element to position
   edit element <id> <json>      Update element data (full JSON)
   export json [output.json]     Export as presentation.json
+  import json <input.json>      Import from presentation.json
   compact [--all]               Delete history, shrink DB
   unpack [--demos] [--images]   Extract assets"
     );
@@ -116,6 +130,19 @@ fn cmd_info() -> Result<(), String> {
     let json_str = storage::db_export_json()?;
     let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
 
+    if is_json() {
+        let title = p.get("title").and_then(|v| v.as_str()).unwrap_or("Untitled");
+        let slides = p.get("slides").and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(0);
+        let mut el_count = 0;
+        if let Some(sl) = p.get("slides").and_then(|v| v.as_array()) {
+            for s in sl { el_count += s.get("elements").and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(0); }
+        }
+        println!("{}", serde_json::to_string_pretty(&serde_json::json!({
+            "title": title, "slides": slides, "elements": el_count, "config": p.get("config"),
+        })).unwrap());
+        return Ok(());
+    }
+
     let title = p.get("title").and_then(|v| v.as_str()).unwrap_or("Untitled");
     let slides = p.get("slides").and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(0);
     let config = p.get("config").unwrap_or(&Value::Null);
@@ -142,6 +169,30 @@ fn cmd_list(args: &[String]) -> Result<(), String> {
     let json_str = storage::db_export_json()?;
     let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
     let slides = p.get("slides").and_then(|v| v.as_array()).ok_or("No slides")?;
+
+    if is_json() {
+        match what {
+            "slides" => {
+                let summary: Vec<Value> = slides.iter().enumerate().map(|(i, s)| {
+                    serde_json::json!({
+                        "index": i + 1,
+                        "id": s.get("id"),
+                        "layout": s.get("layout"),
+                        "groupId": s.get("groupId"),
+                        "elementCount": s.get("elements").and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(0),
+                    })
+                }).collect();
+                println!("{}", serde_json::to_string_pretty(&summary).unwrap());
+            }
+            "elements" => {
+                let num: usize = args.get(1).and_then(|s| s.parse().ok()).ok_or("Usage: list elements <N>")?;
+                let slide = slides.get(num - 1).ok_or("Slide not found")?;
+                println!("{}", serde_json::to_string_pretty(slide.get("elements").unwrap_or(&Value::Null)).unwrap());
+            }
+            _ => return Err(format!("Unknown: list {}", what)),
+        }
+        return Ok(());
+    }
 
     match what {
         "slides" => {
@@ -263,6 +314,7 @@ fn cmd_search(args: &[String]) -> Result<(), String> {
     let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
     let slides = p.get("slides").and_then(|v| v.as_array()).ok_or("No slides")?;
 
+    let mut results: Vec<Value> = Vec::new();
     let mut found = 0;
     for (i, s) in slides.iter().enumerate() {
         if let Some(els) = s.get("elements").and_then(|v| v.as_array()) {
@@ -276,15 +328,27 @@ fn cmd_search(args: &[String]) -> Result<(), String> {
                     if let Some(idx) = lower.find(&query_lower) {
                         let start = idx.saturating_sub(20);
                         let end = (idx + query.len() + 20).min(text.len());
-                        println!("  Slide {}, {} ({}): ...{}...", i + 1, &id[..8.min(id.len())], preset, &text[start..end]);
+                        if is_json() {
+                            results.push(serde_json::json!({
+                                "slide": i + 1, "elementId": id, "preset": preset,
+                                "context": &text[start..end], "element": el,
+                            }));
+                        } else {
+                            println!("  Slide {}, {} ({}): ...{}...", i + 1, &id[..8.min(id.len())], preset, &text[start..end]);
+                        }
                         found += 1;
                     }
                 }
             }
         }
     }
-    if found == 0 { println!("No results for \"{}\"", query); }
-    else { println!("\n{} match(es)", found); }
+    if is_json() {
+        println!("{}", serde_json::to_string_pretty(&results).unwrap());
+    } else if found == 0 {
+        println!("No results for \"{}\"", query);
+    } else {
+        println!("\n{} match(es)", found);
+    }
     Ok(())
 }
 
@@ -326,6 +390,10 @@ fn cmd_history(args: &[String]) -> Result<(), String> {
         .unwrap_or(50);
 
     let json_str = storage::db_get_history(limit)?;
+    if is_json() {
+        println!("{}", json_str);
+        return Ok(());
+    }
     let events: Vec<Value> = serde_json::from_str(&json_str).unwrap_or_default();
 
     if events.is_empty() {
@@ -558,6 +626,18 @@ fn cmd_export(args: &[String]) -> Result<(), String> {
         }
         _ => return Err(format!("Unknown format: {} (supported: json)", format)),
     }
+    Ok(())
+}
+
+fn cmd_import(args: &[String]) -> Result<(), String> {
+    let format = args.first().map(|s| s.as_str()).ok_or("Usage: import json <input.json>")?;
+    if format != "json" { return Err("Usage: import json <input.json>".to_string()); }
+    let input = args.get(1).ok_or("Usage: import json <input.json>")?;
+    let content = std::fs::read_to_string(input).map_err(|e| format!("Failed to read {}: {}", input, e))?;
+    // Validate JSON
+    let _: Value = serde_json::from_str(&content).map_err(|e| format!("Invalid JSON: {}", e))?;
+    storage::db_import_json(content)?;
+    println!("Imported from {}", input);
     Ok(())
 }
 
