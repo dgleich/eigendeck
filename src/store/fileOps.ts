@@ -1,33 +1,36 @@
-import { open, save, message } from '@tauri-apps/plugin-dialog';
-import {
-  readTextFile,
-  writeTextFile,
-  mkdir,
-  exists,
-} from '@tauri-apps/plugin-fs';
+/**
+ * File operations — SQLite (.eigendeck) only.
+ *
+ * No JSON directory support. Convert old presentations via:
+ *   eigendeck-cli new.eigendeck import json old/presentation.json
+ */
+
+import { save, message } from '@tauri-apps/plugin-dialog';
+import { invoke } from '@tauri-apps/api/core';
 import {
   Presentation,
   createDefaultPresentation,
 } from '../types/presentation';
-import { usePresentationStore } from './presentation';
-import { renderMathInHtml, applyMathPreamble } from '../lib/mathjax';
+import { usePresentationStore, openSqliteProject, flushToSqlite } from './presentation';
 // @ts-ignore — pure JS module shared with the CLI tool
 import { buildExportHtml } from '../lib/exportCore.mjs';
+import { renderMathInHtml, applyMathPreamble } from '../lib/mathjax';
+import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 
 async function showError(msg: string) {
   await message(msg, { title: 'Error', kind: 'error' });
 }
 
-// ============================================
-// Recent projects (stored in localStorage)
-// ============================================
+// ============================================================================
+// Recent projects (localStorage)
+// ============================================================================
 const RECENT_KEY = 'eigendeck-recent-projects';
 const MAX_RECENT = 10;
 
 export interface RecentProject {
   path: string;
   title: string;
-  lastOpened: string; // ISO timestamp
+  lastOpened: string;
 }
 
 export function getRecentProjects(): RecentProject[] {
@@ -44,90 +47,62 @@ function addRecentProject(path: string, title: string) {
   syncRecentMenu();
 }
 
-/** Sync the recent projects list to the native File menu */
 export async function syncRecentMenu(): Promise<void> {
   try {
-    const { invoke } = await import('@tauri-apps/api/core');
     const recents = getRecentProjects();
     await invoke('update_recent_menu', { projects: recents });
-  } catch {
-    // Not in Tauri or command not available
+  } catch { /* not in Tauri or command not available */ }
+}
+
+// ============================================================================
+// Open / Create / Save
+// ============================================================================
+
+export async function openProject(): Promise<void> {
+  const { open } = await import('@tauri-apps/plugin-dialog');
+  const selected = await open({
+    title: 'Open Presentation',
+    filters: [{ name: 'Eigendeck', extensions: ['eigendeck'] }],
+  });
+  if (!selected) return;
+
+  try {
+    await openSqliteProject(selected as string);
+    const store = usePresentationStore.getState();
+    addRecentProject(selected as string, store.presentation.title);
+  } catch (e) {
+    await showError(`Failed to open: ${e}`);
   }
 }
 
 export async function openRecentProject(path: string): Promise<void> {
-  const jsonPath = `${path}/presentation.json`;
   try {
-    if (!(await exists(jsonPath))) {
-      await showError('Project not found at this path.');
-      return;
-    }
-    const content = await readTextFile(jsonPath);
-    const presentation: Presentation = JSON.parse(content);
+    await openSqliteProject(path);
     const store = usePresentationStore.getState();
-    store.setProjectPath(path);
-    store.setPresentation(presentation);
-    addRecentProject(path, presentation.title);
+    addRecentProject(path, store.presentation.title);
   } catch (e) {
-    await showError(`Failed to open project: ${e}`);
-  }
-}
-
-export async function openProject(): Promise<void> {
-  const selected = await open({
-    directory: true,
-    title: 'Open Presentation Project',
-  });
-  if (!selected) return;
-
-  const projectPath = selected as string;
-  const jsonPath = `${projectPath}/presentation.json`;
-
-  try {
-    if (!(await exists(jsonPath))) {
-      await showError('No presentation.json found in selected directory.');
-      return;
-    }
-
-    const content = await readTextFile(jsonPath);
-    const presentation: Presentation = JSON.parse(content);
-
-    const store = usePresentationStore.getState();
-    store.setProjectPath(projectPath);
-    store.setPresentation(presentation);
-    addRecentProject(projectPath, presentation.title);
-  } catch (e) {
-    await showError(`Failed to open project: ${e}`);
+    await showError(`Failed to open: ${e}`);
   }
 }
 
 export async function createProject(): Promise<void> {
-  const selected = await open({
-    directory: true,
-    title: 'Select Directory for New Project',
+  const selected = await save({
+    title: 'Create New Presentation',
+    defaultPath: 'Untitled.eigendeck',
+    filters: [{ name: 'Eigendeck', extensions: ['eigendeck'] }],
   });
   if (!selected) return;
 
-  const projectPath = selected as string;
-  const presentation = createDefaultPresentation();
-
   try {
-    const demosDir = `${projectPath}/demos`;
-    const imagesDir = `${projectPath}/images`;
-    if (!(await exists(demosDir))) await mkdir(demosDir);
-    if (!(await exists(imagesDir))) await mkdir(imagesDir);
-
-    await writeTextFile(
-      `${projectPath}/presentation.json`,
-      JSON.stringify(presentation, null, 2)
-    );
-
+    const presentation = createDefaultPresentation();
+    await invoke('db_open', { path: selected });
+    await invoke('db_import_json', { json: JSON.stringify(presentation) });
+    await openSqliteProject(selected as string);
     const store = usePresentationStore.getState();
-    store.setProjectPath(projectPath);
-    store.setPresentation(presentation);
-    addRecentProject(projectPath, presentation.title);
+    store.markClean();
+    addRecentProject(selected as string, presentation.title);
   } catch (e) {
-    await showError(`Failed to create project: ${e}`);
+    await showError(`Failed to create: ${e}`);
   }
 }
 
@@ -135,42 +110,45 @@ export async function saveProject(): Promise<void> {
   const store = usePresentationStore.getState();
 
   if (!store.projectPath) {
-    // No project open — ask user to pick a directory
-    const selected = await open({
-      directory: true,
-      title: 'Choose a folder to save this presentation',
+    // No project open — ask where to save, then persist current state
+    const selected = await save({
+      title: 'Save Presentation',
+      defaultPath: `${store.presentation.title.replace(/[^a-zA-Z0-9]/g, '-') || 'Untitled'}.eigendeck`,
+      filters: [{ name: 'Eigendeck', extensions: ['eigendeck'] }],
     });
     if (!selected) return;
 
-    const projectPath = selected as string;
-    store.setProjectPath(projectPath);
-
-    // Create subdirectories if they don't exist
     try {
-      const demosDir = `${projectPath}/demos`;
-      const imagesDir = `${projectPath}/images`;
-      if (!(await exists(demosDir))) await mkdir(demosDir);
-      if (!(await exists(imagesDir))) await mkdir(imagesDir);
-    } catch {
-      // dirs may already exist
+      await invoke('db_open', { path: selected });
+      // Import the CURRENT editor state — not a blank default
+      await invoke('db_import_json', { json: JSON.stringify(store.presentation) });
+      // Set the project path so future saves go to this file
+      store.setProjectPath((selected as string).replace(/\.eigendeck$/, ''));
+      // Don't call openSqliteProject — it would reload from DB and overwrite.
+      // Just set the sqliteDbPath so the write-through subscriber activates.
+      const { setSqliteDbPath } = await import('./presentation');
+      setSqliteDbPath(selected as string);
+      store.markClean();
+      addRecentProject(selected as string, store.presentation.title);
+    } catch (e) {
+      console.error('Save failed:', e);
+      await showError(`Failed to save: ${e}`);
     }
+    return;
   }
 
-  const projectPath = usePresentationStore.getState().projectPath;
-  if (!projectPath) return;
-
   try {
-    const jsonPath = `${projectPath}/presentation.json`;
-    const content = JSON.stringify(usePresentationStore.getState().presentation, null, 2);
-    console.log(`Saving to: ${jsonPath}`);
-    await writeTextFile(jsonPath, content);
+    await flushToSqlite();
     store.markClean();
-    console.log('Save successful');
   } catch (e) {
     console.error('Save failed:', e);
     await showError(`Failed to save: ${e}`);
   }
 }
+
+// ============================================================================
+// Export
+// ============================================================================
 
 export async function exportPresentation(): Promise<void> {
   const store = usePresentationStore.getState();
@@ -184,34 +162,49 @@ export async function exportPresentation(): Promise<void> {
   if (!selected) return;
 
   try {
+    // Read assets from SQLite for inlining
     const html = await buildExportHtml({
       presentation,
-      // Tauri-based filesystem (paths are relative to projectPath)
       readFile: async (path: string) => {
-        if (!projectPath) throw new Error('No project path');
-        const { readFile } = await import('@tauri-apps/plugin-fs');
-        return readFile(`${projectPath}/${path}`);
+        try {
+          const data = await invoke<number[]>('db_get_asset', { path });
+          return new Uint8Array(data);
+        } catch {
+          // Fallback: try reading from disk (for unpacked assets)
+          if (projectPath) {
+            const { readFile } = await import('@tauri-apps/plugin-fs');
+            return readFile(`${projectPath}/${path}`);
+          }
+          throw new Error(`Asset not found: ${path}`);
+        }
       },
       readTextFile: async (path: string) => {
-        if (!projectPath) throw new Error('No project path');
-        return readTextFile(`${projectPath}/${path}`);
+        try {
+          const data = await invoke<number[]>('db_get_asset', { path });
+          return new TextDecoder().decode(new Uint8Array(data));
+        } catch {
+          if (projectPath) {
+            return readTextFile(`${projectPath}/${path}`);
+          }
+          throw new Error(`Asset not found: ${path}`);
+        }
       },
-      // GUI: pre-render math via the in-app MathJax instance
       renderMath: renderMathInHtml,
       applyMathPreamble: applyMathPreamble,
     });
 
-    await writeTextFile(selected, html);
+    await writeTextFile(selected as string, html);
   } catch (e) {
     await showError(`Failed to export: ${e}`);
   }
 }
 
-/**
- * Import a presentation from an exported HTML file.
- * Extracts the embedded presentation.json and sets up a project directory.
- */
+// ============================================================================
+// Import from exported HTML
+// ============================================================================
+
 export async function importFromHtml(): Promise<void> {
+  const { open } = await import('@tauri-apps/plugin-dialog');
   const htmlFile = await open({
     title: 'Import from Exported HTML',
     filters: [{ name: 'HTML', extensions: ['html'] }],
@@ -220,11 +213,9 @@ export async function importFromHtml(): Promise<void> {
 
   try {
     const htmlContent = await readTextFile(htmlFile as string);
-
-    // Extract embedded presentation JSON
     const match = htmlContent.match(/<!-- eigendeck-source: (.+?) -->/);
     if (!match) {
-      await showError('This HTML file does not contain embedded Eigendeck data.\n\nOnly files exported from Eigendeck can be imported.');
+      await showError('This HTML file does not contain embedded Eigendeck data.');
       return;
     }
 
@@ -236,54 +227,18 @@ export async function importFromHtml(): Promise<void> {
       return;
     }
 
-    // Ask where to create the project directory
-    const projectDir = await open({
-      directory: true,
-      title: 'Select Directory for Imported Project',
+    // Save as new .eigendeck file
+    const selected = await save({
+      title: 'Save Imported Presentation',
+      defaultPath: `${presentation.title.replace(/[^a-zA-Z0-9]/g, '-')}.eigendeck`,
+      filters: [{ name: 'Eigendeck', extensions: ['eigendeck'] }],
     });
-    if (!projectDir) return;
+    if (!selected) return;
 
-    const projectPath = projectDir as string;
-
-    // Create subdirectories
-    const demosDir = `${projectPath}/demos`;
-    const imagesDir = `${projectPath}/images`;
-    if (!(await exists(demosDir))) await mkdir(demosDir);
-    if (!(await exists(imagesDir))) await mkdir(imagesDir);
-
-    // Extract inline images (data URLs) back to files
-    for (const slide of presentation.slides) {
-      for (const el of slide.elements) {
-        if (el.type === 'image' && el.src.startsWith('data:')) {
-          try {
-            const mimeMatch = el.src.match(/^data:image\/(\w+);base64,/);
-            const ext = mimeMatch?.[1] === 'jpeg' ? 'jpg' : (mimeMatch?.[1] || 'png');
-            const fileName = `imported-${el.id.slice(0, 8)}.${ext}`;
-            const base64 = el.src.replace(/^data:image\/\w+;base64,/, '');
-            const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-            const { writeFile } = await import('@tauri-apps/plugin-fs');
-            await writeFile(`${imagesDir}/${fileName}`, bytes);
-            el.src = `images/${fileName}`;
-          } catch (e) {
-            console.warn('Failed to extract image:', e);
-          }
-        }
-      }
-    }
-
-    // Save presentation.json
-    await writeTextFile(
-      `${projectPath}/presentation.json`,
-      JSON.stringify(presentation, null, 2)
-    );
-
-    // Open the imported project
-    const store = usePresentationStore.getState();
-    store.setProjectPath(projectPath);
-    store.setPresentation(presentation);
-    addRecentProject(projectPath, presentation.title);
-
-    console.log('Import successful:', projectPath);
+    await invoke('db_open', { path: selected });
+    await invoke('db_import_json', { json: JSON.stringify(presentation) });
+    await openSqliteProject(selected as string);
+    addRecentProject(selected as string, presentation.title);
   } catch (e) {
     await showError(`Failed to import: ${e}`);
   }

@@ -24,7 +24,7 @@ import {
   openRecentProject,
   syncRecentMenu,
 } from './store/fileOps';
-import { initAutoSave, forceSave } from './store/autoSave';
+import { flushToSqlite } from './store/presentation';
 import './App.css';
 
 function App() {
@@ -58,7 +58,9 @@ function App() {
   }, [sidebarWidth]);
 
   // Initialize auto-save and sync recent menu
-  useEffect(() => { initAutoSave(); syncRecentMenu(); }, []);
+  useEffect(() => { syncRecentMenu(); }, []);
+
+  // SQLite DB is closed from Rust via on_window_event(Destroyed) — no JS handler needed.
 
   // Warn before closing
   useEffect(() => {
@@ -96,11 +98,11 @@ function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 's' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); forceSave().catch(() => saveProject()); }
+      if (e.key === 's' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); flushToSqlite().then(() => saveProject()); }
       if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); usePresentationStore.temporal.getState().undo(); }
       if ((e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) || (e.key === 'y' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); usePresentationStore.temporal.getState().redo(); }
       if (e.key === 'i' && (e.ctrlKey || e.metaKey) && !(e.target as HTMLElement).closest('[contenteditable]')) { e.preventDefault(); usePresentationStore.getState().toggleProperties(); }
-      if (e.key === 'F5') { e.preventDefault(); forceSave().then(() => startPresenting()); }
+      if (e.key === 'F5') { e.preventDefault(); flushToSqlite().then(() => startPresenting()); }
       // Delete selected element
       if ((e.key === 'Delete' || e.key === 'Backspace') && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
         const sel = usePresentationStore.getState().selectedObject;
@@ -198,7 +200,7 @@ function App() {
 
   // Present button event
   useEffect(() => {
-    const handler = () => { forceSave().then(() => startPresenting()); };
+    const handler = () => { flushToSqlite().then(() => startPresenting()); };
     window.addEventListener('start-presenting', handler);
     return () => window.removeEventListener('start-presenting', handler);
   }, [startPresenting]);

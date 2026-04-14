@@ -1,14 +1,51 @@
 # Editing Eigendeck Presentations with an LLM
 
-This guide explains the `presentation.json` format so an LLM (like Claude Code)
-can directly create and edit presentations.
+This guide explains how to edit Eigendeck presentations programmatically.
 
-## File Location
+## Two Formats
+
+### SQLite (`.eigendeck` file) — preferred
+
+Use the `eigendeck-cli` tool. Every edit is automatically versioned (undo-safe).
+
+```bash
+# Read
+eigendeck-cli deck.eigendeck outline              # text outline of all slides
+eigendeck-cli deck.eigendeck list slides           # list slides with element counts
+eigendeck-cli deck.eigendeck list elements 3       # elements on slide 3
+eigendeck-cli deck.eigendeck show element abc      # full JSON (partial ID match)
+eigendeck-cli deck.eigendeck search "eigenvalue"   # find text across all slides
+eigendeck-cli deck.eigendeck get-text abc          # plain text of element
+eigendeck-cli deck.eigendeck info                  # presentation stats
+eigendeck-cli deck.eigendeck history               # edit history
+
+# Write (each creates a versioned snapshot)
+eigendeck-cli deck.eigendeck set-text abc "New text with $\LaTeX$"
+eigendeck-cli deck.eigendeck add text 3 "A new bullet point"
+eigendeck-cli deck.eigendeck add slide --after 5
+eigendeck-cli deck.eigendeck move element abc 400 300
+eigendeck-cli deck.eigendeck move slide 3 1
+eigendeck-cli deck.eigendeck remove element abc
+eigendeck-cli deck.eigendeck remove slide 5
+eigendeck-cli deck.eigendeck edit element abc '{"html":"...","position":{...}}'
+
+# Bulk edit: export → edit JSON → reimport
+eigendeck-cli deck.eigendeck export json /tmp/edit.json
+# ... edit /tmp/edit.json ...
+eigendeck-cli deck.eigendeck import json /tmp/edit.json
+
+# Maintenance
+eigendeck-cli deck.eigendeck validate              # check for issues
+eigendeck-cli deck.eigendeck compact               # shrink DB, prune old history
+eigendeck-cli deck.eigendeck unpack --demos         # extract demos for editing
+```
+
+### JSON directory (legacy)
 
 ```
 my-presentation/
-  presentation.json     # Edit this file
-  demos/                # HTML demo files (self-contained)
+  presentation.json     # Edit this file directly
+  demos/                # HTML demo files
   images/               # Image files
 ```
 

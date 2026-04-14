@@ -28,3 +28,7 @@ mathjax-ptsans-font/
 
 # Package lock (we commit it)
 # npm-debug.log*
+
+# SQLite WAL sidecar files
+*.eigendeck-wal
+*.eigendeck-shm

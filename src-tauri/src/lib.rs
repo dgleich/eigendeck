@@ -1,5 +1,7 @@
 #![allow(deprecated)] // cocoa crate deprecation warnings — TODO: migrate to objc2
 
+pub mod storage;
+
 use tauri::menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager};
 use std::sync::Mutex;
@@ -356,6 +358,28 @@ pub fn run() {
             disable_display_mirroring,
             enable_display_mirroring,
             update_recent_menu,
+            storage::db_open,
+            storage::db_close,
+            storage::db_import_json,
+            storage::db_export_json,
+            storage::db_get_slides,
+            storage::db_get_slide_elements,
+            storage::db_update_element,
+            storage::db_add_element,
+            storage::db_remove_element_from_slide,
+            storage::db_compact,
+            storage::db_get_history,
+            storage::db_checkpoint,
+            storage::db_add_slide,
+            storage::db_delete_slide,
+            storage::db_duplicate_slide,
+            storage::db_move_slide,
+            storage::db_update_slide,
+            storage::db_update_z_order,
+            storage::db_free_element,
+            storage::db_store_asset,
+            storage::db_get_asset,
+            storage::db_update_presentation,
         ])
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -489,6 +513,12 @@ pub fn run() {
             });
 
             Ok(())
+        })
+        .on_window_event(|_window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                // Checkpoint WAL and close SQLite on window close
+                let _ = storage::close_db();
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

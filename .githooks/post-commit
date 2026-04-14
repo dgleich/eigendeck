@@ -1,0 +1,41 @@
+#!/bin/bash
+#
+# Post-commit hook: run performance benchmarks when storage-related code changes.
+#
+# Checks if any files in the "hot path" were modified and runs the perf suite
+# if so. Results are saved to tools/perf-results/ for tracking.
+#
+# Install: git config core.hooksPath .githooks
+#
+
+# Files that could affect storage performance
+HOT_FILES="src/lib/exportCore.mjs tools/bench-perf.mjs tools/bench-junction.mjs tools/bench-json-convert.mjs"
+SCHEMA_FILES="SQLITE_STORAGE.md"
+
+# Check if any hot files were in the last commit
+changed=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null)
+run_perf=false
+
+for f in $HOT_FILES $SCHEMA_FILES; do
+  if echo "$changed" | grep -q "$f"; then
+    run_perf=true
+    break
+  fi
+done
+
+if [ "$run_perf" = true ]; then
+  echo ""
+  echo "=== Storage-related files changed — running performance benchmarks ==="
+
+  # Check if better-sqlite3 is available
+  if node -e "require('better-sqlite3')" 2>/dev/null; then
+    node tools/bench-perf.mjs --save tools/perf-results/ 2>/dev/null
+    if [ $? -eq 0 ]; then
+      echo "=== Performance results saved to tools/perf-results/ ==="
+    else
+      echo "=== Performance benchmark failed (non-blocking) ==="
+    fi
+  else
+    echo "=== Skipping benchmarks: better-sqlite3 not installed ==="
+  fi
+fi

@@ -32,9 +32,13 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "archiver": "^7.0.1",
+    "better-sqlite3": "^12.8.0",
     "jsdom": "^29.0.1",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.2",
+    "yauzl": "^3.3.0",
+    "yazl": "^3.3.1"
   }
 }

@@ -55,23 +55,29 @@ export function SlideEditor() {
           e.preventDefault();
           const blob = item.getAsFile();
           if (!blob) continue;
+
+          const ext = blob.type.split('/')[1] || 'png';
+          const fileName = `pasted-${Date.now()}.${ext}`;
+          const relativePath = `images/${fileName}`;
+          const bytes = new Uint8Array(await blob.arrayBuffer());
+
+          // Store as SQLite asset
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            const mime = blob.type || `image/${ext}`;
+            await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime });
+          } catch (e) {
+            console.error('Failed to store pasted image:', e);
+          }
+
+          // Use data URL for display (SQLite BLOBs can't be loaded via convertFileSrc)
           const reader = new FileReader();
           reader.onload = () => {
-            const dataUrl = reader.result as string;
-            if (projectPath) {
-              saveImageFromBlob(blob, projectPath).then((relativePath) => {
-                addElement({
-                  id: crypto.randomUUID(), type: 'image',
-                  src: relativePath || dataUrl,
-                  position: { x: 360, y: 200, width: 1200, height: 680 },
-                });
-              });
-            } else {
-              addElement({
-                id: crypto.randomUUID(), type: 'image', src: dataUrl,
-                position: { x: 360, y: 200, width: 1200, height: 680 },
-              });
-            }
+            addElement({
+              id: crypto.randomUUID(), type: 'image',
+              src: reader.result as string, // data URL for display
+              position: { x: 360, y: 200, width: 1200, height: 680 },
+            });
           };
           reader.readAsDataURL(blob);
           break;
@@ -424,17 +430,4 @@ export function SlideEditor() {
   );
 }
 
-async function saveImageFromBlob(blob: File, projectPath: string): Promise<string | null> {
-  try {
-    const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
-    const imagesDir = `${projectPath}/images`;
-    if (!(await exists(imagesDir))) await mkdir(imagesDir);
-    const ext = blob.type.split('/')[1] || 'png';
-    const fileName = `pasted-${Date.now()}.${ext}`;
-    await writeFile(`${imagesDir}/${fileName}`, new Uint8Array(await blob.arrayBuffer()));
-    return `images/${fileName}`;
-  } catch (e) {
-    console.error('Failed to save pasted image:', e);
-    return null;
-  }
-}
+// Images are now stored as SQLite BLOBs via db_store_asset — no filesystem writes.

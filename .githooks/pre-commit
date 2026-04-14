@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+# Pre-commit hook: check that docs stay in sync when data model changes.
+#
+# Install: git config core.hooksPath .githooks
+#
+
+staged=$(git diff --cached --name-only 2>/dev/null)
+
+# If presentation types changed, remind about LLM-EDITING.md
+if echo "$staged" | grep -q "src/types/presentation.ts"; then
+  # Check if LLM-EDITING.md is also staged
+  if ! echo "$staged" | grep -q "LLM-EDITING.md"; then
+    echo ""
+    echo "⚠  src/types/presentation.ts changed but LLM-EDITING.md was not updated."
+    echo "   Run 'npm test' to check if the sync test catches missing docs."
+    echo "   (This is a warning, not blocking the commit.)"
+    echo ""
+  fi
+fi
+
+# If SQLite schema changed, remind about SQLITE_STORAGE.md
+if echo "$staged" | grep -qE "schema|CREATE TABLE|CREATE INDEX" && echo "$staged" | grep -qE "\.sql$|\.mjs$|\.ts$"; then
+  if ! echo "$staged" | grep -q "SQLITE_STORAGE.md"; then
+    echo ""
+    echo "⚠  SQL schema may have changed. Consider updating SQLITE_STORAGE.md."
+    echo ""
+  fi
+fi
+
+# If export logic changed, remind to test both GUI and CLI
+if echo "$staged" | grep -q "exportCore.mjs"; then
+  echo ""
+  echo "ℹ  exportCore.mjs changed — test both GUI export and CLI export:"
+  echo "   GUI: Export from the app"
+  echo "   CLI: node tools/eigendeck.mjs export examples/magnetic-powers /tmp/test.html"
+  echo ""
+fi

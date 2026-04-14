@@ -487,3 +487,303 @@ export function pauseUndo() {
 export function resumeUndo() {
   usePresentationStore.temporal.getState().resume();
 }
+
+// ============================================================================
+// SQLite incremental write-through
+// ============================================================================
+// Zustand is the interaction layer. SQLite is the persistence layer.
+// Changes are tracked via dirty sets and flushed incrementally — only
+// modified elements/slides are written, preserving temporal history.
+//
+// During drag: Zustand updates only (no SQLite writes).
+// On pointerup / text commit / explicit save: flush dirty items to SQLite.
+
+let sqliteDbPath: string | null = null;
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Dirty tracking: which items need to be written to SQLite
+const dirtyElements = new Set<string>();    // element IDs whose data changed
+const dirtySlides = new Set<string>();      // slide IDs whose metadata changed
+let dirtyPresentation = false;              // config/title changed
+
+// Structural changes tracked explicitly
+const addedSlides = new Map<string, { position: number; layout: string; groupId?: string }>();
+const deletedSlides = new Set<string>();
+const addedElements = new Map<string, { slideId: string; element: any; zOrder: number }>();
+const deletedElements = new Map<string, string>();  // elementId → slideId it was removed from
+
+/** Mark an element as dirty (will be flushed to SQLite) */
+export function markElementDirty(elementId: string) {
+  if (!sqliteDbPath) return;
+  dirtyElements.add(elementId);
+  scheduleFlush();
+}
+
+/** Mark a slide as dirty */
+export function markSlideDirty(slideId: string) {
+  if (!sqliteDbPath) return;
+  dirtySlides.add(slideId);
+  scheduleFlush();
+}
+
+/** Mark presentation metadata as dirty */
+export function markPresentationDirty() {
+  if (!sqliteDbPath) return;
+  dirtyPresentation = true;
+  scheduleFlush();
+}
+
+/** Force an immediate flush (called on explicit save, pointerup, text commit) */
+export async function flushToSqlite(): Promise<void> {
+  if (!sqliteDbPath) return;
+  if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const state = usePresentationStore.getState();
+
+    // Structural changes: add/delete slides and elements
+    for (const slideId of deletedSlides) {
+      try { await invoke('db_delete_slide', { slideId }); } catch (e) { console.warn('delete slide failed:', e); }
+    }
+    deletedSlides.clear();
+
+    for (const [slideId, info] of addedSlides) {
+      try {
+        await invoke('db_add_slide', { id: slideId, position: info.position, layout: info.layout, groupId: info.groupId || null });
+      } catch (e) { console.warn('add slide failed:', e); }
+    }
+    addedSlides.clear();
+
+    for (const [elementId, slideId] of deletedElements) {
+      try {
+        await invoke('db_remove_element_from_slide', { slideId, elementId });
+      } catch (e) { console.warn('remove element failed:', e); }
+    }
+    deletedElements.clear();
+
+    for (const [_key, info] of addedElements) {
+      try {
+        const { linkId, syncId, _syncId, _linkId, ...data } = info.element as any;
+        await invoke('db_add_element', {
+          slideId: info.slideId,
+          elementId: info.element.id,
+          elementType: info.element.type,
+          data: JSON.stringify(data),
+          linkId: linkId || null,
+          zOrder: info.zOrder,
+        });
+      } catch (e) { console.warn('add element failed:', e); }
+    }
+    addedElements.clear();
+
+    // Incremental: only write dirty items
+    if (dirtyPresentation) {
+      await invoke('db_update_presentation', { key: 'title', value: state.presentation.title });
+      await invoke('db_update_presentation', { key: 'config', value: JSON.stringify(state.presentation.config) });
+      dirtyPresentation = false;
+    }
+
+    for (const elementId of dirtyElements) {
+      // Find the element in the current state
+      for (const slide of state.presentation.slides) {
+        const el = slide.elements.find((e) => e.id === elementId);
+        if (el) {
+          const { linkId, syncId, _syncId, _linkId, ...data } = el as any;
+          await invoke('db_update_element', {
+            id: elementId,
+            data: JSON.stringify(data),
+            linkId: linkId || null,
+          });
+          break;
+        }
+      }
+    }
+    dirtyElements.clear();
+
+    // Slide metadata changes (layout, notes, groupId)
+    for (const slideId of dirtySlides) {
+      const slide = state.presentation.slides.find((s) => s.id === slideId);
+      if (slide) {
+        await invoke('db_update_slide', {
+          slideId,
+          layout: slide.layout || null,
+          notes: slide.notes || null,
+          groupId: slide.groupId || null,
+        });
+      }
+    }
+    dirtySlides.clear();
+
+  } catch (e) {
+    console.error('SQLite flush failed:', e);
+    // Don't wipe history on failure — just log and retry next flush
+  }
+}
+
+/** Debounced flush — called when dirty items accumulate */
+function scheduleFlush() {
+  if (!sqliteDbPath) return;
+  if (flushTimer) clearTimeout(flushTimer);
+  flushTimer = setTimeout(async () => {
+    await flushToSqlite();
+    // Periodic WAL checkpoint
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('db_checkpoint');
+    } catch { /* ignore */ }
+  }, 1000); // 1s debounce
+}
+
+/** Open a .eigendeck SQLite file and load its contents into the store */
+export async function openSqliteProject(dbPath: string): Promise<void> {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('db_open', { path: dbPath });
+    const json = await invoke<string>('db_export_json');
+    const presentation: Presentation = JSON.parse(json);
+    sqliteDbPath = dbPath;
+    // Clear any dirty state
+    dirtyElements.clear();
+    dirtySlides.clear();
+    dirtyPresentation = false;
+    addedSlides.clear();
+    deletedSlides.clear();
+    addedElements.clear();
+    deletedElements.clear();
+    const store = usePresentationStore.getState();
+    store.setPresentation(presentation);
+    store.setProjectPath(dbPath.replace(/\.eigendeck$/, ''));
+  } catch (e) {
+    console.error('Failed to open SQLite project:', e);
+    throw e;
+  }
+}
+
+/** Close the SQLite DB, checkpointing WAL */
+export async function closeSqliteProject(): Promise<void> {
+  if (!sqliteDbPath) return;
+  try {
+    await flushToSqlite();
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('db_close');
+    sqliteDbPath = null;
+  } catch (e) {
+    console.error('Failed to close SQLite project:', e);
+  }
+}
+
+/** Check if a SQLite DB is currently open */
+export function isSqliteOpen(): boolean {
+  return sqliteDbPath !== null;
+}
+
+/** Set the SQLite DB path (used by saveProject when saving for the first time) */
+export function setSqliteDbPath(path: string) {
+  sqliteDbPath = path;
+  dirtyElements.clear();
+  dirtySlides.clear();
+  dirtyPresentation = false;
+  addedSlides.clear();
+  deletedSlides.clear();
+  addedElements.clear();
+  deletedElements.clear();
+}
+
+// ============================================================================
+// Auto-detect changes via subscriber
+// ============================================================================
+// Compare previous and current presentation to find what changed,
+// then mark dirty items for incremental flush.
+
+let prevPresentation: Presentation | null = null;
+
+usePresentationStore.subscribe((state) => {
+  if (!sqliteDbPath) return;
+  const curr = state.presentation;
+  if (curr === prevPresentation) return;
+
+  if (!prevPresentation) {
+    // First load — don't treat as dirty
+    prevPresentation = curr;
+    return;
+  }
+
+  const prev = prevPresentation;
+  prevPresentation = curr;
+
+  // Detect presentation metadata changes
+  if (prev.title !== curr.title || JSON.stringify(prev.config) !== JSON.stringify(curr.config)) {
+    markPresentationDirty();
+  }
+
+  // Detect added/deleted slides
+  const prevSlideIds = new Set(prev.slides.map((s) => s.id));
+  const currSlideIds = new Set(curr.slides.map((s) => s.id));
+
+  for (const cs of curr.slides) {
+    if (!prevSlideIds.has(cs.id)) {
+      // New slide added
+      const idx = curr.slides.indexOf(cs);
+      addedSlides.set(cs.id, { position: idx, layout: cs.layout || 'default', groupId: cs.groupId });
+      // All elements on this slide are new
+      for (let j = 0; j < cs.elements.length; j++) {
+        addedElements.set(cs.elements[j].id, { slideId: cs.id, element: cs.elements[j], zOrder: j });
+      }
+      scheduleFlush();
+    }
+  }
+
+  for (const ps of prev.slides) {
+    if (!currSlideIds.has(ps.id)) {
+      // Slide deleted
+      deletedSlides.add(ps.id);
+      scheduleFlush();
+    }
+  }
+
+  // Detect per-slide changes (only for slides that exist in both)
+  for (const cs of curr.slides) {
+    const ps = prev.slides.find((s) => s.id === cs.id);
+    if (!ps) continue;
+
+    // Slide metadata
+    if (ps.layout !== cs.layout || ps.notes !== cs.notes || ps.groupId !== cs.groupId) {
+      markSlideDirty(cs.id);
+    }
+
+    // Element changes
+    if (ps.elements !== cs.elements) {
+      const prevElIds = new Set(ps.elements.map((e) => e.id));
+      const currElIds = new Set(cs.elements.map((e) => e.id));
+
+      // New elements added to this slide
+      for (let j = 0; j < cs.elements.length; j++) {
+        const el = cs.elements[j];
+        if (!prevElIds.has(el.id)) {
+          addedElements.set(el.id, { slideId: cs.id, element: el, zOrder: j });
+          scheduleFlush();
+        }
+      }
+
+      // Elements removed from this slide
+      for (const pel of ps.elements) {
+        if (!currElIds.has(pel.id)) {
+          deletedElements.set(pel.id, cs.id);
+          scheduleFlush();
+        }
+      }
+
+      // Elements that changed (same ID, different data)
+      for (let j = 0; j < cs.elements.length; j++) {
+        const cel = cs.elements[j];
+        if (prevElIds.has(cel.id)) {
+          const pel = ps.elements.find((e) => e.id === cel.id);
+          if (pel && pel !== cel) {
+            markElementDirty(cel.id);
+          }
+        }
+      }
+    }
+  }
+});
