@@ -1,6 +1,6 @@
 #![allow(deprecated)] // cocoa crate deprecation warnings — TODO: migrate to objc2
 
-mod storage;
+pub mod storage;
 
 use tauri::menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager};
