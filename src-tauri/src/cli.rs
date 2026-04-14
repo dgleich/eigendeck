@@ -320,25 +320,31 @@ fn cmd_validate() -> Result<(), String> {
 }
 
 fn cmd_history(args: &[String]) -> Result<(), String> {
-    let _limit: usize = args.iter()
+    let limit: i32 = args.iter()
         .find(|a| a.starts_with("--limit="))
         .and_then(|a| a.split('=').nth(1)?.parse().ok())
         .unwrap_or(50);
 
-    // Use the slides JSON to get element IDs, then query the DB directly
-    // for temporal history. This is the one place we need raw DB access
-    // beyond what the library provides.
-    let json_str = storage::db_export_json()?;
-    let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
+    let json_str = storage::db_get_history(limit)?;
+    let events: Vec<Value> = serde_json::from_str(&json_str).unwrap_or_default();
 
-    // For now, just show current state with metadata
-    let slides = p.get("slides").and_then(|v| v.as_array()).ok_or("No slides")?;
-    println!("Current state: {} slides", slides.len());
-    for (i, s) in slides.iter().enumerate() {
-        let el_count = s.get("elements").and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(0);
-        println!("  Slide {}: {} elements", i + 1, el_count);
+    if events.is_empty() {
+        println!("No history.");
+        return Ok(());
     }
-    println!("\n(Full history requires direct DB access — use 'eigendeck-history.mjs' for detailed temporal view)");
+
+    for ev in &events {
+        let ts = ev.get("timestamp").and_then(|v| v.as_str()).unwrap_or("?");
+        let action = ev.get("action").and_then(|v| v.as_str()).unwrap_or("?");
+        let id = ev.get("elementId").and_then(|v| v.as_str()).unwrap_or("?");
+        let el_type = ev.get("elementType").and_then(|v| v.as_str()).unwrap_or("?");
+        let preset = ev.get("preset").and_then(|v| v.as_str()).unwrap_or("");
+        let preview = ev.get("preview").and_then(|v| v.as_str()).unwrap_or("");
+
+        let preset_str = if preset.is_empty() { String::new() } else { format!(" ({})", preset) };
+        let ts_short = &ts[..ts.len().min(23)];
+        println!("  {} {:>7} {} {}{} \"{}\"", ts_short, action, &id[..8.min(id.len())], el_type, preset_str, preview);
+    }
     Ok(())
 }
 

@@ -526,6 +526,71 @@ pub fn db_remove_element_from_slide(slide_id: String, element_id: String) -> Res
     })
 }
 
+/// Get edit history — returns JSON array of events
+#[tauri::command]
+pub fn db_get_history(limit: i32) -> Result<String, String> {
+    with_db(|conn| {
+        let mut events: Vec<Value> = Vec::new();
+
+        // Element changes
+        let mut stmt = conn.prepare(
+            "SELECT id, type, data, valid_from, valid_to FROM elements ORDER BY valid_from DESC LIMIT ?1"
+        )?;
+        let rows = stmt.query_map(params![limit], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, Option<String>>(4)?,
+            ))
+        })?;
+
+        for row in rows {
+            let (id, el_type, data_str, valid_from, valid_to) = row?;
+            let data: Value = serde_json::from_str(&data_str).unwrap_or(Value::Null);
+            let html = data.get("html").and_then(|v| v.as_str()).unwrap_or("");
+            // Strip HTML tags for preview
+            let text: String = {
+                let mut r = String::new();
+                let mut in_tag = false;
+                for c in html.chars() {
+                    if c == '<' { in_tag = true; }
+                    else if c == '>' { in_tag = false; }
+                    else if !in_tag { r.push(c); }
+                }
+                r.replace("&nbsp;", " ").replace("&amp;", "&")
+            };
+            let preview = if text.len() > 60 { format!("{}...", &text[..60]) } else { text };
+
+            let is_current = valid_to.is_none();
+            // Check if this is a creation or update
+            let is_creation: bool = conn.query_row(
+                "SELECT COUNT(*) = 0 FROM elements WHERE id = ?1 AND valid_from < ?2",
+                params![&id, &valid_from],
+                |row| row.get(0),
+            ).unwrap_or(true);
+
+            let action = if is_creation { "create" } else if is_current { "update" } else { "closed" };
+
+            events.push(serde_json::json!({
+                "timestamp": valid_from,
+                "action": action,
+                "elementId": id,
+                "elementType": el_type,
+                "preset": data.get("preset").and_then(|v| v.as_str()),
+                "preview": preview,
+                "current": is_current,
+            }));
+        }
+
+        // Reverse so oldest first
+        events.reverse();
+
+        Ok(serde_json::to_string_pretty(&events).unwrap())
+    })
+}
+
 /// Checkpoint WAL — merges WAL into main DB file, shrinks sidecar files
 #[tauri::command]
 pub fn db_checkpoint() -> Result<(), String> {

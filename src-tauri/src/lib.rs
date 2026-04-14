@@ -368,6 +368,7 @@ pub fn run() {
             storage::db_add_element,
             storage::db_remove_element_from_slide,
             storage::db_compact,
+            storage::db_get_history,
             storage::db_checkpoint,
             storage::db_add_slide,
             storage::db_delete_slide,
