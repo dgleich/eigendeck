@@ -502,10 +502,15 @@ let sqliteDbPath: string | null = null;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Dirty tracking: which items need to be written to SQLite
-const dirtyElements = new Set<string>();    // element IDs that changed
-const dirtySlides = new Set<string>();      // slide IDs that changed
-let dirtyPresentation = false;             // config/title changed
-let fullResyncNeeded = false;              // slide order changed, need full reimport
+const dirtyElements = new Set<string>();    // element IDs whose data changed
+const dirtySlides = new Set<string>();      // slide IDs whose metadata changed
+let dirtyPresentation = false;              // config/title changed
+
+// Structural changes tracked explicitly
+const addedSlides = new Map<string, { position: number; layout: string; groupId?: string }>();
+const deletedSlides = new Set<string>();
+const addedElements = new Map<string, { slideId: string; element: any; zOrder: number }>();
+const deletedElements = new Map<string, string>();  // elementId → slideId it was removed from
 
 /** Mark an element as dirty (will be flushed to SQLite) */
 export function markElementDirty(elementId: string) {
@@ -528,13 +533,6 @@ export function markPresentationDirty() {
   scheduleFlush();
 }
 
-/** Mark that a full resync is needed (slide add/delete/reorder) */
-export function markFullResync() {
-  if (!sqliteDbPath) return;
-  fullResyncNeeded = true;
-  scheduleFlush();
-}
-
 /** Force an immediate flush (called on explicit save, pointerup, text commit) */
 export async function flushToSqlite(): Promise<void> {
   if (!sqliteDbPath) return;
@@ -544,17 +542,40 @@ export async function flushToSqlite(): Promise<void> {
     const { invoke } = await import('@tauri-apps/api/core');
     const state = usePresentationStore.getState();
 
-    // If a full resync is needed (structural change), do a full reimport.
-    // This is the only case where we use db_import_json.
-    // TODO: replace with incremental slide add/delete/reorder operations.
-    if (fullResyncNeeded) {
-      await invoke('db_import_json', { json: JSON.stringify(state.presentation) });
-      dirtyElements.clear();
-      dirtySlides.clear();
-      dirtyPresentation = false;
-      fullResyncNeeded = false;
-      return;
+    // Structural changes: add/delete slides and elements
+    for (const slideId of deletedSlides) {
+      try { await invoke('db_delete_slide', { slideId }); } catch (e) { console.warn('delete slide failed:', e); }
     }
+    deletedSlides.clear();
+
+    for (const [slideId, info] of addedSlides) {
+      try {
+        await invoke('db_add_slide', { id: slideId, position: info.position, layout: info.layout, groupId: info.groupId || null });
+      } catch (e) { console.warn('add slide failed:', e); }
+    }
+    addedSlides.clear();
+
+    for (const [elementId, slideId] of deletedElements) {
+      try {
+        await invoke('db_remove_element_from_slide', { slideId, elementId });
+      } catch (e) { console.warn('remove element failed:', e); }
+    }
+    deletedElements.clear();
+
+    for (const [_key, info] of addedElements) {
+      try {
+        const { linkId, syncId, _syncId, _linkId, ...data } = info.element as any;
+        await invoke('db_add_element', {
+          slideId: info.slideId,
+          elementId: info.element.id,
+          elementType: info.element.type,
+          data: JSON.stringify(data),
+          linkId: linkId || null,
+          zOrder: info.zOrder,
+        });
+      } catch (e) { console.warn('add element failed:', e); }
+    }
+    addedElements.clear();
 
     // Incremental: only write dirty items
     if (dirtyPresentation) {
@@ -596,8 +617,7 @@ export async function flushToSqlite(): Promise<void> {
 
   } catch (e) {
     console.error('SQLite flush failed:', e);
-    // On failure, mark full resync to recover
-    fullResyncNeeded = true;
+    // Don't wipe history on failure — just log and retry next flush
   }
 }
 
@@ -627,7 +647,10 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     dirtyElements.clear();
     dirtySlides.clear();
     dirtyPresentation = false;
-    fullResyncNeeded = false;
+    addedSlides.clear();
+    deletedSlides.clear();
+    addedElements.clear();
+    deletedElements.clear();
     const store = usePresentationStore.getState();
     store.setPresentation(presentation);
     store.setProjectPath(dbPath.replace(/\.eigendeck$/, ''));
@@ -661,7 +684,10 @@ export function setSqliteDbPath(path: string) {
   dirtyElements.clear();
   dirtySlides.clear();
   dirtyPresentation = false;
-  fullResyncNeeded = false;
+  addedSlides.clear();
+  deletedSlides.clear();
+  addedElements.clear();
+  deletedElements.clear();
 }
 
 // ============================================================================
@@ -686,28 +712,40 @@ usePresentationStore.subscribe((state) => {
   const prev = prevPresentation;
   prevPresentation = curr;
 
-  // Detect structural changes (slide count/order changed)
-  if (prev.slides.length !== curr.slides.length) {
-    markFullResync();
-    return;
-  }
-  for (let i = 0; i < curr.slides.length; i++) {
-    if (prev.slides[i]?.id !== curr.slides[i]?.id) {
-      markFullResync();
-      return;
-    }
-  }
-
   // Detect presentation metadata changes
   if (prev.title !== curr.title || JSON.stringify(prev.config) !== JSON.stringify(curr.config)) {
     markPresentationDirty();
   }
 
-  // Detect per-slide changes
-  for (let i = 0; i < curr.slides.length; i++) {
-    const ps = prev.slides[i];
-    const cs = curr.slides[i];
-    if (!ps || !cs) continue;
+  // Detect added/deleted slides
+  const prevSlideIds = new Set(prev.slides.map((s) => s.id));
+  const currSlideIds = new Set(curr.slides.map((s) => s.id));
+
+  for (const cs of curr.slides) {
+    if (!prevSlideIds.has(cs.id)) {
+      // New slide added
+      const idx = curr.slides.indexOf(cs);
+      addedSlides.set(cs.id, { position: idx, layout: cs.layout || 'default', groupId: cs.groupId });
+      // All elements on this slide are new
+      for (let j = 0; j < cs.elements.length; j++) {
+        addedElements.set(cs.elements[j].id, { slideId: cs.id, element: cs.elements[j], zOrder: j });
+      }
+      scheduleFlush();
+    }
+  }
+
+  for (const ps of prev.slides) {
+    if (!currSlideIds.has(ps.id)) {
+      // Slide deleted
+      deletedSlides.add(ps.id);
+      scheduleFlush();
+    }
+  }
+
+  // Detect per-slide changes (only for slides that exist in both)
+  for (const cs of curr.slides) {
+    const ps = prev.slides.find((s) => s.id === cs.id);
+    if (!ps) continue;
 
     // Slide metadata
     if (ps.layout !== cs.layout || ps.notes !== cs.notes || ps.groupId !== cs.groupId) {
@@ -716,15 +754,34 @@ usePresentationStore.subscribe((state) => {
 
     // Element changes
     if (ps.elements !== cs.elements) {
-      // Element count changed = structural (add/delete)
-      if (ps.elements.length !== cs.elements.length) {
-        markFullResync();
-        return;
-      }
-      // Find which elements changed
+      const prevElIds = new Set(ps.elements.map((e) => e.id));
+      const currElIds = new Set(cs.elements.map((e) => e.id));
+
+      // New elements added to this slide
       for (let j = 0; j < cs.elements.length; j++) {
-        if (ps.elements[j] !== cs.elements[j]) {
-          markElementDirty(cs.elements[j].id);
+        const el = cs.elements[j];
+        if (!prevElIds.has(el.id)) {
+          addedElements.set(el.id, { slideId: cs.id, element: el, zOrder: j });
+          scheduleFlush();
+        }
+      }
+
+      // Elements removed from this slide
+      for (const pel of ps.elements) {
+        if (!currElIds.has(pel.id)) {
+          deletedElements.set(pel.id, cs.id);
+          scheduleFlush();
+        }
+      }
+
+      // Elements that changed (same ID, different data)
+      for (let j = 0; j < cs.elements.length; j++) {
+        const cel = cs.elements[j];
+        if (prevElIds.has(cel.id)) {
+          const pel = ps.elements.find((e) => e.id === cel.id);
+          if (pel && pel !== cel) {
+            markElementDirty(cel.id);
+          }
         }
       }
     }
