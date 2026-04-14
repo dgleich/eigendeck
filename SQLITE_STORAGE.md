@@ -321,14 +321,27 @@ Extract current state → write presentation.json + asset files.
 
 ## Architecture
 
-**Recommended: Rust side (Tauri)**
+**All SQLite in Rust.** No Zustand in-memory store. No WASM.
+
+```
+React Component
+  → invoke('get_slide_elements', { slideId })
+  → Rust: rusqlite query
+  → returns JSON
+  → Component renders
+
+React Component (edit)
+  → invoke('update_element', { id, data })
+  → Rust: close old version + insert new
+  → returns success
+  → Component re-fetches affected data
+```
 
 - `rusqlite` in the Tauri backend
 - Frontend sends commands via `invoke()`
 - Native speed, direct file access
-- All DB operations are async IPC
-
-If IPC overhead matters for drag (60fps), batch position updates client-side and flush on pointerup.
+- For drag (60fps): batch position updates client-side, flush on pointerup via single `invoke()`
+- File watching: Tauri watch plugin, events forwarded to frontend to trigger re-render
 
 ## Implementation Plan
 
@@ -341,15 +354,21 @@ If IPC overhead matters for drag (60fps), batch position updates client-side and
 7. CLI: read/write SQLite in tools/eigendeck.mjs
 8. Export: SQLite → HTML, SQLite → JSON directory
 
-## Open Questions
+## Decisions
 
-1. Zustand store as cache: keep full state in memory, SQLite as persistence? Or query SQLite on every read?
+1. **No in-memory cache.** No Zustand store holding the full presentation. SQLite is fast enough (0.005ms per slide load, 0.002ms per element lookup) to be the sole source of truth. React components call Tauri `invoke()` to read/write. Eliminates two-sources-of-truth bugs.
 
-2. WAL mode creates `-wal` and `-shm` sidecar files (cleaned up on close). Use `PRAGMA journal_mode = DELETE` instead for true single-file?
+2. **WAL mode + checkpoint on close.** WAL is 48x faster for writes than DELETE mode. Sidecar files (`-wal`, `-shm`) are cleaned up on graceful close via `PRAGMA wal_checkpoint(TRUNCATE)`. They persist only on crash and are harmless (SQLite recovers on next open).
 
-3. File watch implementation: use Tauri's `watch` API, or `fs.watch` / `chokidar` on the JS side? Need to handle debouncing (editors do save-delete-rename cycles).
+3. **File watch via Tauri watch plugin.** Uses native backends (kqueue/FSEvents/inotify). Handles cross-platform quirks and editor save-delete-rename cycles. We need Tauri for file access anyway — no point adding a JS watcher that can't see the filesystem from the WebView.
 
-4. Should `eigendeck unpack` create a companion directory next to the `.eigendeck` file, or a subdirectory? E.g. `myproject.eigendeck` → `myproject/images/` vs `myproject.eigendeck.d/images/`.
+4. **Unpack creates `myproject/` directory.** `eigendeck unpack myproject.eigendeck` → creates `myproject/images/`, `myproject/demos/`. Errors if `myproject/` already exists. `--output <dir>` flag to export elsewhere.
+
+5. **Version everything.** All three temporal tables (slides, elements, slide_elements) track history. Slide reorders, layout changes, note edits — all versioned.
+
+6. **Auto-convert on open.** When opening an old `presentation.json` directory, ask the user if they want to convert to `.eigendeck`. If yes, create the SQLite file and import. Keep the original directory as-is (non-destructive).
+
+7. **Compact in app + CLI.** Both a menu item (File > Compact Presentation) and `eigendeck compact` CLI command. Deletes old history, runs VACUUM.
 
 ## Keeping Things in Sync
 
