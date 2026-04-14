@@ -74,13 +74,57 @@ export async function openRecentProject(path: string): Promise<void> {
 }
 
 export async function openProject(): Promise<void> {
+  // Allow opening both directories (JSON) and .eigendeck files (SQLite)
   const selected = await open({
-    directory: true,
-    title: 'Open Presentation Project',
+    directory: false,
+    multiple: false,
+    title: 'Open Presentation',
+    filters: [
+      { name: 'Eigendeck', extensions: ['eigendeck'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
   });
-  if (!selected) return;
 
-  const projectPath = selected as string;
+  if (!selected) {
+    // Try directory picker as fallback
+    const dir = await open({ directory: true, title: 'Open Presentation Directory' });
+    if (!dir) return;
+    const projectPath = dir as string;
+    const jsonPath = `${projectPath}/presentation.json`;
+    try {
+      if (!(await exists(jsonPath))) {
+        await showError('No presentation.json found in selected directory.');
+        return;
+      }
+      const content = await readTextFile(jsonPath);
+      const presentation: Presentation = JSON.parse(content);
+      const store = usePresentationStore.getState();
+      store.setProjectPath(projectPath);
+      store.setPresentation(presentation);
+      addRecentProject(projectPath, presentation.title);
+    } catch (e) {
+      await showError(`Failed to open project: ${e}`);
+    }
+    return;
+  }
+
+  const filePath = selected as string;
+
+  // SQLite .eigendeck file
+  if (filePath.endsWith('.eigendeck')) {
+    try {
+      const { openSqliteProject } = await import('./presentation');
+      await openSqliteProject(filePath);
+      const store = usePresentationStore.getState();
+      addRecentProject(filePath, store.presentation.title);
+    } catch (e) {
+      await showError(`Failed to open .eigendeck file: ${e}`);
+    }
+    return;
+  }
+
+  // JSON directory (selected a file inside it)
+  const projectPath = filePath.substring(0, filePath.lastIndexOf('/'));
   const jsonPath = `${projectPath}/presentation.json`;
 
   try {
@@ -160,6 +204,18 @@ export async function saveProject(): Promise<void> {
   if (!projectPath) return;
 
   try {
+    // If SQLite is open, the write-through subscriber handles persistence.
+    // Just force a flush.
+    const { isSqliteOpen } = await import('./presentation');
+    if (isSqliteOpen()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('db_import_json', { json: JSON.stringify(store.presentation) });
+      store.markClean();
+      console.log('Saved to SQLite');
+      return;
+    }
+
+    // JSON directory save
     const jsonPath = `${projectPath}/presentation.json`;
     const content = JSON.stringify(usePresentationStore.getState().presentation, null, 2);
     console.log(`Saving to: ${jsonPath}`);

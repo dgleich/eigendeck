@@ -852,3 +852,918 @@ pub fn db_update_presentation(key: String, value: String) -> Result<(), String> 
         Ok(())
     })
 }
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    /// Set the global DB to an in-memory connection with schema created.
+    fn setup_global_db() {
+        let conn = Connection::open_in_memory().unwrap();
+        create_schema(&conn).unwrap();
+        let mut db = DB.lock().unwrap();
+        *db = Some(conn);
+    }
+
+    /// Tear down the global DB.
+    fn teardown_global_db() {
+        let mut db = DB.lock().unwrap();
+        *db = None;
+    }
+
+    /// A minimal presentation JSON for testing.
+    fn sample_presentation() -> String {
+        json!({
+            "title": "Test Presentation",
+            "theme": "dark",
+            "config": { "aspectRatio": "16:9" },
+            "slides": [
+                {
+                    "id": "slide-1",
+                    "layout": "default",
+                    "notes": "Speaker notes here",
+                    "elements": [
+                        {
+                            "id": "el-1",
+                            "type": "text",
+                            "x": 100, "y": 50, "width": 400, "height": 80,
+                            "content": "Hello world"
+                        },
+                        {
+                            "id": "el-2",
+                            "type": "image",
+                            "x": 200, "y": 200, "width": 300, "height": 300,
+                            "src": "test.png"
+                        }
+                    ]
+                },
+                {
+                    "id": "slide-2",
+                    "layout": "centered",
+                    "notes": "",
+                    "groupId": "group-A",
+                    "elements": [
+                        {
+                            "id": "el-3",
+                            "type": "text",
+                            "x": 50, "y": 50, "width": 500, "height": 100,
+                            "content": "Slide two"
+                        }
+                    ]
+                }
+            ]
+        })
+        .to_string()
+    }
+
+    // ---- Schema tests ----
+
+    #[test]
+    fn test_schema_creation() {
+        let conn = Connection::open_in_memory().unwrap();
+        create_schema(&conn).unwrap();
+
+        let tables: Vec<String> = {
+            let mut stmt = conn
+                .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+                .unwrap();
+            stmt.query_map([], |row| row.get(0))
+                .unwrap()
+                .filter_map(|r| r.ok())
+                .collect()
+        };
+
+        assert!(tables.contains(&"_meta".to_string()));
+        assert!(tables.contains(&"presentation".to_string()));
+        assert!(tables.contains(&"slides".to_string()));
+        assert!(tables.contains(&"elements".to_string()));
+        assert!(tables.contains(&"slide_elements".to_string()));
+        assert!(tables.contains(&"assets".to_string()));
+
+        let version: String = conn
+            .query_row(
+                "SELECT value FROM _meta WHERE key = 'schema_version'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(version, "1");
+    }
+
+    #[test]
+    fn test_schema_idempotent() {
+        let conn = Connection::open_in_memory().unwrap();
+        create_schema(&conn).unwrap();
+        create_schema(&conn).unwrap();
+    }
+
+    #[test]
+    fn test_schema_indexes_exist() {
+        let conn = Connection::open_in_memory().unwrap();
+        create_schema(&conn).unwrap();
+
+        let indexes: Vec<String> = {
+            let mut stmt = conn
+                .prepare("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_%'")
+                .unwrap();
+            stmt.query_map([], |row| row.get(0))
+                .unwrap()
+                .filter_map(|r| r.ok())
+                .collect()
+        };
+
+        for idx in &[
+            "idx_el_current",
+            "idx_el_id",
+            "idx_se_slide",
+            "idx_se_element",
+            "idx_slides_current",
+            "idx_el_link",
+        ] {
+            assert!(
+                indexes.contains(&idx.to_string()),
+                "missing index: {}",
+                idx
+            );
+        }
+    }
+
+    // ---- Timestamp tests ----
+
+    #[test]
+    fn test_timestamp_unique_and_ordered() {
+        let t1 = timestamp();
+        let t2 = timestamp();
+        let t3 = timestamp();
+        assert_ne!(t1, t2);
+        assert_ne!(t2, t3);
+        assert!(t1 < t2);
+        assert!(t2 < t3);
+    }
+
+    // ---- Import / Export round-trip ----
+
+    #[test]
+    fn test_import_export_roundtrip() {
+        setup_global_db();
+
+        db_import_json(sample_presentation()).unwrap();
+
+        let output_str = db_export_json().unwrap();
+        let output: Value = serde_json::from_str(&output_str).unwrap();
+
+        assert_eq!(output["title"], "Test Presentation");
+        assert_eq!(output["theme"], "dark");
+        assert_eq!(output["config"]["aspectRatio"], "16:9");
+
+        let slides = output["slides"].as_array().unwrap();
+        assert_eq!(slides.len(), 2);
+
+        assert_eq!(slides[0]["id"], "slide-1");
+        assert_eq!(slides[0]["layout"], "default");
+        assert_eq!(slides[0]["notes"], "Speaker notes here");
+        let els = slides[0]["elements"].as_array().unwrap();
+        assert_eq!(els.len(), 2);
+        assert_eq!(els[0]["id"], "el-1");
+        assert_eq!(els[0]["type"], "text");
+        assert_eq!(els[0]["content"], "Hello world");
+        assert_eq!(els[1]["id"], "el-2");
+        assert_eq!(els[1]["type"], "image");
+
+        assert_eq!(slides[1]["id"], "slide-2");
+        assert_eq!(slides[1]["groupId"], "group-A");
+        assert_eq!(slides[1]["layout"], "centered");
+        let els2 = slides[1]["elements"].as_array().unwrap();
+        assert_eq!(els2.len(), 1);
+        assert_eq!(els2[0]["id"], "el-3");
+
+        teardown_global_db();
+    }
+
+    // ---- Get slides ----
+
+    #[test]
+    fn test_get_slides() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        let slides: Vec<Value> =
+            serde_json::from_str(&db_get_slides().unwrap()).unwrap();
+
+        assert_eq!(slides.len(), 2);
+        assert_eq!(slides[0]["id"], "slide-1");
+        assert_eq!(slides[0]["position"], 0);
+        assert_eq!(slides[1]["id"], "slide-2");
+        assert_eq!(slides[1]["position"], 1);
+        assert_eq!(slides[1]["groupId"], "group-A");
+
+        teardown_global_db();
+    }
+
+    // ---- Get slide elements ----
+
+    #[test]
+    fn test_get_slide_elements() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        let els: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("slide-1".to_string()).unwrap()).unwrap();
+        assert_eq!(els.len(), 2);
+        assert_eq!(els[0]["id"], "el-1");
+        assert_eq!(els[1]["id"], "el-2");
+
+        let els2: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("slide-2".to_string()).unwrap()).unwrap();
+        assert_eq!(els2.len(), 1);
+        assert_eq!(els2[0]["id"], "el-3");
+
+        // Non-existent slide returns empty
+        let empty: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("no-such-slide".to_string()).unwrap())
+                .unwrap();
+        assert_eq!(empty.len(), 0);
+
+        teardown_global_db();
+    }
+
+    // ---- Sync dedup ----
+
+    #[test]
+    fn test_sync_dedup() {
+        setup_global_db();
+
+        let input = json!({
+            "title": "Sync Test",
+            "slides": [
+                {
+                    "id": "s1",
+                    "elements": [
+                        { "id": "shared-1", "type": "text", "syncId": "sync-abc",
+                          "x": 10, "y": 20, "content": "shared text" }
+                    ]
+                },
+                {
+                    "id": "s2",
+                    "elements": [
+                        { "id": "shared-1-copy", "type": "text", "syncId": "sync-abc",
+                          "x": 10, "y": 20, "content": "shared text" }
+                    ]
+                }
+            ]
+        })
+        .to_string();
+
+        db_import_json(input).unwrap();
+
+        // One element row, two junction rows
+        let conn = DB.lock().unwrap();
+        let c = conn.as_ref().unwrap();
+        let el_count: i32 = c
+            .query_row(
+                "SELECT COUNT(*) FROM elements WHERE valid_to IS NULL",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(el_count, 1, "synced elements should produce one element row");
+
+        let se_count: i32 = c
+            .query_row(
+                "SELECT COUNT(*) FROM slide_elements WHERE valid_to IS NULL",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(se_count, 2, "synced element should appear on both slides");
+        drop(conn);
+
+        // Export should mark both with syncId
+        let output: Value =
+            serde_json::from_str(&db_export_json().unwrap()).unwrap();
+        let s1_els = output["slides"][0]["elements"].as_array().unwrap();
+        let s2_els = output["slides"][1]["elements"].as_array().unwrap();
+        assert!(s1_els[0].get("syncId").is_some());
+        assert!(s2_els[0].get("syncId").is_some());
+
+        teardown_global_db();
+    }
+
+    // ---- Update element ----
+
+    #[test]
+    fn test_update_element() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        let new_data = json!({
+            "id": "el-1", "type": "text",
+            "x": 100, "y": 50, "width": 400, "height": 80,
+            "content": "Updated content"
+        })
+        .to_string();
+        db_update_element("el-1".to_string(), new_data, None).unwrap();
+
+        // Current version has new content
+        let els: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("slide-1".to_string()).unwrap()).unwrap();
+        let el1 = els.iter().find(|e| e["id"] == "el-1").unwrap();
+        assert_eq!(el1["content"], "Updated content");
+
+        // Two total versions (original + updated)
+        let conn = DB.lock().unwrap();
+        let c = conn.as_ref().unwrap();
+        let total: i32 = c
+            .query_row("SELECT COUNT(*) FROM elements WHERE id = 'el-1'", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(total, 2);
+
+        let closed: i32 = c
+            .query_row(
+                "SELECT COUNT(*) FROM elements WHERE id = 'el-1' AND valid_to IS NOT NULL",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(closed, 1);
+
+        drop(conn);
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_update_preserves_type() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        let data = json!({ "id": "el-2", "src": "new.png" }).to_string();
+        db_update_element("el-2".to_string(), data, None).unwrap();
+
+        let conn = DB.lock().unwrap();
+        let c = conn.as_ref().unwrap();
+        let el_type: String = c
+            .query_row(
+                "SELECT type FROM elements WHERE id = 'el-2' AND valid_to IS NULL",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(el_type, "image");
+
+        drop(conn);
+        teardown_global_db();
+    }
+
+    // ---- Add element ----
+
+    #[test]
+    fn test_add_element() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        let data = json!({ "id": "el-new", "type": "arrow", "x1": 0, "y1": 0 }).to_string();
+        db_add_element(
+            "slide-1".to_string(),
+            "el-new".to_string(),
+            "arrow".to_string(),
+            data,
+            None,
+            5,
+        )
+        .unwrap();
+
+        let els: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("slide-1".to_string()).unwrap()).unwrap();
+        assert_eq!(els.len(), 3);
+        assert!(els.iter().any(|e| e["id"] == "el-new"));
+
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_add_element_with_link_id() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        let data = json!({ "id": "el-linked", "type": "text", "content": "linked" }).to_string();
+        db_add_element(
+            "slide-1".to_string(),
+            "el-linked".to_string(),
+            "text".to_string(),
+            data,
+            Some("link-xyz".to_string()),
+            10,
+        )
+        .unwrap();
+
+        let els: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("slide-1".to_string()).unwrap()).unwrap();
+        let linked = els.iter().find(|e| e["id"] == "el-linked").unwrap();
+        assert_eq!(linked["linkId"], "link-xyz");
+
+        teardown_global_db();
+    }
+
+    // ---- Remove element from slide ----
+
+    #[test]
+    fn test_remove_element_from_slide() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        db_remove_element_from_slide("slide-1".to_string(), "el-2".to_string()).unwrap();
+
+        let els: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("slide-1".to_string()).unwrap()).unwrap();
+        assert_eq!(els.len(), 1);
+        assert_eq!(els[0]["id"], "el-1");
+
+        // Element row still exists
+        let conn = DB.lock().unwrap();
+        let c = conn.as_ref().unwrap();
+        let exists: bool = c
+            .query_row(
+                "SELECT COUNT(*) > 0 FROM elements WHERE id = 'el-2' AND valid_to IS NULL",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(exists);
+
+        drop(conn);
+        teardown_global_db();
+    }
+
+    // ---- Temporal versioning ----
+
+    #[test]
+    fn test_temporal_versioning_multiple_updates() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        for i in 1..=3 {
+            let data = json!({
+                "id": "el-1", "type": "text",
+                "content": format!("Version {}", i)
+            })
+            .to_string();
+            db_update_element("el-1".to_string(), data, None).unwrap();
+        }
+
+        // Current version is the last
+        let els: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("slide-1".to_string()).unwrap()).unwrap();
+        let el1 = els.iter().find(|e| e["id"] == "el-1").unwrap();
+        assert_eq!(el1["content"], "Version 3");
+
+        let conn = DB.lock().unwrap();
+        let c = conn.as_ref().unwrap();
+        // 1 original + 3 updates = 4 total, 1 current, 3 closed
+        let total: i32 = c
+            .query_row("SELECT COUNT(*) FROM elements WHERE id = 'el-1'", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(total, 4);
+        let current: i32 = c
+            .query_row(
+                "SELECT COUNT(*) FROM elements WHERE id = 'el-1' AND valid_to IS NULL",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(current, 1);
+
+        drop(conn);
+        teardown_global_db();
+    }
+
+    // ---- Compact ----
+
+    #[test]
+    fn test_compact_deletes_history() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        for i in 1..=3 {
+            let data = json!({ "id": "el-1", "type": "text", "content": format!("v{}", i) }).to_string();
+            db_update_element("el-1".to_string(), data, None).unwrap();
+        }
+
+        // History exists
+        {
+            let conn = DB.lock().unwrap();
+            let c = conn.as_ref().unwrap();
+            let closed: i32 = c
+                .query_row(
+                    "SELECT COUNT(*) FROM elements WHERE valid_to IS NOT NULL",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert!(closed > 0);
+        }
+
+        db_compact(true).unwrap();
+
+        // All closed versions gone, current remain
+        let conn = DB.lock().unwrap();
+        let c = conn.as_ref().unwrap();
+        let closed: i32 = c
+            .query_row(
+                "SELECT COUNT(*) FROM elements WHERE valid_to IS NOT NULL",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(closed, 0);
+
+        let current: i32 = c
+            .query_row(
+                "SELECT COUNT(*) FROM elements WHERE valid_to IS NULL",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(current > 0);
+
+        drop(conn);
+        teardown_global_db();
+    }
+
+    // ---- Edge cases ----
+
+    #[test]
+    fn test_empty_presentation() {
+        setup_global_db();
+
+        let input = json!({ "title": "Empty", "slides": [] }).to_string();
+        db_import_json(input).unwrap();
+
+        let slides: Vec<Value> =
+            serde_json::from_str(&db_get_slides().unwrap()).unwrap();
+        assert_eq!(slides.len(), 0);
+
+        let output: Value =
+            serde_json::from_str(&db_export_json().unwrap()).unwrap();
+        assert_eq!(output["title"], "Empty");
+        assert_eq!(output["slides"].as_array().unwrap().len(), 0);
+
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_element_on_multiple_slides() {
+        setup_global_db();
+
+        let input = json!({
+            "title": "Multi-slide",
+            "slides": [
+                { "id": "s1", "elements": [] },
+                { "id": "s2", "elements": [] }
+            ]
+        })
+        .to_string();
+        db_import_json(input).unwrap();
+
+        // Add element to slide 1
+        let data = json!({ "id": "shared", "type": "text", "content": "on both" }).to_string();
+        db_add_element("s1".to_string(), "shared".to_string(), "text".to_string(), data, None, 0).unwrap();
+
+        // Add junction for slide 2
+        {
+            let conn = DB.lock().unwrap();
+            let c = conn.as_ref().unwrap();
+            let ts = timestamp();
+            c.execute(
+                "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
+                params!["s2", "shared", 0, &ts],
+            )
+            .unwrap();
+        }
+
+        let els1: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("s1".to_string()).unwrap()).unwrap();
+        let els2: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("s2".to_string()).unwrap()).unwrap();
+        assert_eq!(els1.len(), 1);
+        assert_eq!(els2.len(), 1);
+
+        // Remove from s1, should remain on s2
+        db_remove_element_from_slide("s1".to_string(), "shared".to_string()).unwrap();
+        let els1_after: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("s1".to_string()).unwrap()).unwrap();
+        let els2_after: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("s2".to_string()).unwrap()).unwrap();
+        assert_eq!(els1_after.len(), 0);
+        assert_eq!(els2_after.len(), 1);
+
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_import_clears_previous_data() {
+        setup_global_db();
+
+        db_import_json(sample_presentation()).unwrap();
+        let slides1: Vec<Value> =
+            serde_json::from_str(&db_get_slides().unwrap()).unwrap();
+        assert_eq!(slides1.len(), 2);
+
+        let input2 = json!({
+            "title": "New",
+            "slides": [{ "id": "only-slide", "elements": [] }]
+        })
+        .to_string();
+        db_import_json(input2).unwrap();
+
+        let slides2: Vec<Value> =
+            serde_json::from_str(&db_get_slides().unwrap()).unwrap();
+        assert_eq!(slides2.len(), 1);
+        assert_eq!(slides2[0]["id"], "only-slide");
+
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_import_strips_sync_link_fields_from_data() {
+        setup_global_db();
+
+        let input = json!({
+            "title": "Strip test",
+            "slides": [{
+                "id": "s1",
+                "elements": [{
+                    "id": "e1", "type": "text",
+                    "syncId": "sync-1", "linkId": "link-1",
+                    "_syncId": "old", "_linkId": "old",
+                    "content": "test"
+                }]
+            }]
+        })
+        .to_string();
+        db_import_json(input).unwrap();
+
+        let conn = DB.lock().unwrap();
+        let c = conn.as_ref().unwrap();
+        let data: String = c
+            .query_row(
+                "SELECT data FROM elements WHERE id = 'e1' AND valid_to IS NULL",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let parsed: Value = serde_json::from_str(&data).unwrap();
+        assert!(parsed.get("syncId").is_none());
+        assert!(parsed.get("linkId").is_none());
+        assert!(parsed.get("_syncId").is_none());
+        assert!(parsed.get("_linkId").is_none());
+        assert_eq!(parsed["content"], "test");
+
+        let link_id: Option<String> = c
+            .query_row(
+                "SELECT link_id FROM elements WHERE id = 'e1' AND valid_to IS NULL",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(link_id, Some("link-1".to_string()));
+
+        drop(conn);
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_export_defaults() {
+        setup_global_db();
+
+        let input = json!({ "slides": [] }).to_string();
+        db_import_json(input).unwrap();
+
+        let output: Value =
+            serde_json::from_str(&db_export_json().unwrap()).unwrap();
+        assert_eq!(output["title"], "Untitled");
+        assert_eq!(output["theme"], "white");
+
+        teardown_global_db();
+    }
+
+    // ---- Slide operations ----
+
+    #[test]
+    fn test_add_slide() {
+        setup_global_db();
+        db_import_json(json!({ "slides": [] }).to_string()).unwrap();
+
+        db_add_slide("new-s".to_string(), 0, "centered".to_string(), Some("g1".to_string())).unwrap();
+
+        let slides: Vec<Value> =
+            serde_json::from_str(&db_get_slides().unwrap()).unwrap();
+        assert_eq!(slides.len(), 1);
+        assert_eq!(slides[0]["id"], "new-s");
+        assert_eq!(slides[0]["layout"], "centered");
+        assert_eq!(slides[0]["groupId"], "g1");
+
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_delete_slide() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        db_delete_slide("slide-1".to_string()).unwrap();
+
+        let slides: Vec<Value> =
+            serde_json::from_str(&db_get_slides().unwrap()).unwrap();
+        assert_eq!(slides.len(), 1);
+        assert_eq!(slides[0]["id"], "slide-2");
+
+        // Slide-1 element junctions should also be closed
+        let els: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("slide-1".to_string()).unwrap()).unwrap();
+        assert_eq!(els.len(), 0);
+
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_duplicate_slide() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        db_duplicate_slide(
+            "slide-1".to_string(),
+            "slide-1-copy".to_string(),
+            2,
+            None,
+        )
+        .unwrap();
+
+        let slides: Vec<Value> =
+            serde_json::from_str(&db_get_slides().unwrap()).unwrap();
+        assert_eq!(slides.len(), 3);
+
+        // Duplicated slide should have same elements as source
+        let src_els: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("slide-1".to_string()).unwrap()).unwrap();
+        let dup_els: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("slide-1-copy".to_string()).unwrap())
+                .unwrap();
+        assert_eq!(src_els.len(), dup_els.len());
+
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_move_slide() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        db_move_slide("slide-1".to_string(), 5).unwrap();
+
+        let slides: Vec<Value> =
+            serde_json::from_str(&db_get_slides().unwrap()).unwrap();
+        // slide-2 (pos 1) should come first, then slide-1 (pos 5)
+        assert_eq!(slides[0]["id"], "slide-2");
+        assert_eq!(slides[1]["id"], "slide-1");
+        assert_eq!(slides[1]["position"], 5);
+
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_update_slide_metadata() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        db_update_slide(
+            "slide-1".to_string(),
+            Some("two-column".to_string()),
+            Some("Updated notes".to_string()),
+            None,
+        )
+        .unwrap();
+
+        let slides: Vec<Value> =
+            serde_json::from_str(&db_get_slides().unwrap()).unwrap();
+        let s1 = slides.iter().find(|s| s["id"] == "slide-1").unwrap();
+        assert_eq!(s1["layout"], "two-column");
+        assert_eq!(s1["notes"], "Updated notes");
+
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_update_z_order() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        // el-1 is z=0, el-2 is z=1; move el-1 to z=10
+        db_update_z_order("slide-1".to_string(), "el-1".to_string(), 10).unwrap();
+
+        let els: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("slide-1".to_string()).unwrap()).unwrap();
+        // el-2 (z=1) should come before el-1 (z=10)
+        assert_eq!(els[0]["id"], "el-2");
+        assert_eq!(els[1]["id"], "el-1");
+
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_free_element() {
+        setup_global_db();
+
+        // Create synced element on two slides
+        let input = json!({
+            "slides": [
+                { "id": "s1", "elements": [
+                    { "id": "shared", "type": "text", "syncId": "sy", "content": "orig" }
+                ]},
+                { "id": "s2", "elements": [
+                    { "id": "shared-copy", "type": "text", "syncId": "sy", "content": "orig" }
+                ]}
+            ]
+        })
+        .to_string();
+        db_import_json(input).unwrap();
+
+        // Free element on s1 (give it a new independent copy)
+        db_free_element(
+            "s1".to_string(),
+            "shared".to_string(),
+            "freed-el".to_string(),
+            None,
+        )
+        .unwrap();
+
+        // s1 should still have exactly 1 element (the freed copy)
+        let els1: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("s1".to_string()).unwrap()).unwrap();
+        assert_eq!(els1.len(), 1);
+        // The data is copied from original, so content matches
+        assert_eq!(els1[0]["content"], "orig");
+
+        // Verify the DB-level element id is "freed-el" (not in data JSON, but in elements table)
+        {
+            let conn = DB.lock().unwrap();
+            let c = conn.as_ref().unwrap();
+            let freed_exists: bool = c
+                .query_row(
+                    "SELECT COUNT(*) > 0 FROM elements WHERE id = 'freed-el' AND valid_to IS NULL",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert!(freed_exists, "freed element should exist with new id");
+            // Junction should point to freed-el on s1
+            let junction_el: String = c
+                .query_row(
+                    "SELECT element_id FROM slide_elements WHERE slide_id = 's1' AND valid_to IS NULL",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(junction_el, "freed-el");
+        }
+
+        // s2 still has the original
+        let els2: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("s2".to_string()).unwrap()).unwrap();
+        assert_eq!(els2.len(), 1);
+        assert_eq!(els2[0]["content"], "orig");
+
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_store_and_get_asset() {
+        setup_global_db();
+
+        let data = vec![0x89, 0x50, 0x4E, 0x47]; // PNG magic bytes
+        db_store_asset("img/test.png".to_string(), data.clone(), "image/png".to_string()).unwrap();
+
+        let retrieved = db_get_asset("img/test.png".to_string()).unwrap();
+        assert_eq!(retrieved, data);
+
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_update_presentation_metadata() {
+        setup_global_db();
+        db_import_json(json!({ "title": "Old", "slides": [] }).to_string()).unwrap();
+
+        db_update_presentation("title".to_string(), "New Title".to_string()).unwrap();
+
+        let output: Value =
+            serde_json::from_str(&db_export_json().unwrap()).unwrap();
+        assert_eq!(output["title"], "New Title");
+
+        teardown_global_db();
+    }
+}

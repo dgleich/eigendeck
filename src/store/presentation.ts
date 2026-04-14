@@ -487,3 +487,76 @@ export function pauseUndo() {
 export function resumeUndo() {
   usePresentationStore.temporal.getState().resume();
 }
+
+// ============================================================================
+// SQLite write-through
+// ============================================================================
+// When a .eigendeck DB is open, every presentation state change is persisted.
+// This runs async in the background — UI is never blocked.
+
+let sqliteDbPath: string | null = null;
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Open a .eigendeck SQLite file and load its contents into the store */
+export async function openSqliteProject(dbPath: string): Promise<void> {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('db_open', { path: dbPath });
+    const json = await invoke<string>('db_export_json');
+    const presentation: Presentation = JSON.parse(json);
+    sqliteDbPath = dbPath;
+    const store = usePresentationStore.getState();
+    store.setPresentation(presentation);
+    store.setProjectPath(dbPath.replace(/\.eigendeck$/, ''));
+  } catch (e) {
+    console.error('Failed to open SQLite project:', e);
+    throw e;
+  }
+}
+
+/** Close the SQLite DB, checkpointing WAL */
+export async function closeSqliteProject(): Promise<void> {
+  if (!sqliteDbPath) return;
+  try {
+    // Persist latest state before closing
+    await persistNow();
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('db_close');
+    sqliteDbPath = null;
+  } catch (e) {
+    console.error('Failed to close SQLite project:', e);
+  }
+}
+
+/** Persist the current state to SQLite immediately */
+async function persistNow(): Promise<void> {
+  if (!sqliteDbPath) return;
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const state = usePresentationStore.getState();
+    await invoke('db_import_json', { json: JSON.stringify(state.presentation) });
+  } catch (e) {
+    console.error('SQLite persist failed:', e);
+  }
+}
+
+/** Debounced persist — called on every state change */
+function schedulePersist() {
+  if (!sqliteDbPath) return;
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => persistNow(), 500); // 500ms debounce
+}
+
+/** Check if a SQLite DB is currently open */
+export function isSqliteOpen(): boolean {
+  return sqliteDbPath !== null;
+}
+
+// Subscribe to store changes and persist
+let lastPresentation: Presentation | null = null;
+usePresentationStore.subscribe((state) => {
+  if (state.presentation !== lastPresentation) {
+    lastPresentation = state.presentation;
+    schedulePersist();
+  }
+});
