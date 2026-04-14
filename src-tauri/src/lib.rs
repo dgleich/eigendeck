@@ -368,6 +368,16 @@ pub fn run() {
             storage::db_add_element,
             storage::db_remove_element_from_slide,
             storage::db_compact,
+            storage::db_add_slide,
+            storage::db_delete_slide,
+            storage::db_duplicate_slide,
+            storage::db_move_slide,
+            storage::db_update_slide,
+            storage::db_update_z_order,
+            storage::db_free_element,
+            storage::db_store_asset,
+            storage::db_get_asset,
+            storage::db_update_presentation,
         ])
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())

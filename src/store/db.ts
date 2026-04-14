@@ -243,3 +243,98 @@ export async function dbCompact(deleteAll: boolean = false): Promise<{ beforeByt
   const json = await invoke<string>('db_compact', { keepAll: deleteAll });
   return JSON.parse(json);
 }
+
+// ============================================================================
+// Slide operations
+// ============================================================================
+
+export async function dbAddSlide(
+  id: string,
+  position: number,
+  layout: string = 'default',
+  groupId?: string | null
+): Promise<void> {
+  await invoke('db_add_slide', { id, position, layout, groupId: groupId ?? null });
+  emit('slides-changed');
+}
+
+export async function dbDeleteSlide(slideId: string): Promise<void> {
+  await invoke('db_delete_slide', { slideId });
+  emit('slides-changed');
+}
+
+export async function dbDuplicateSlide(
+  sourceSlideId: string,
+  newSlideId: string,
+  newPosition: number,
+  groupId?: string | null
+): Promise<void> {
+  await invoke('db_duplicate_slide', {
+    sourceSlideId,
+    newSlideId,
+    newPosition,
+    groupId: groupId ?? null,
+  });
+  emit('slides-changed');
+}
+
+export async function dbMoveSlide(slideId: string, newPosition: number): Promise<void> {
+  await invoke('db_move_slide', { slideId, newPosition });
+  emit('slides-changed');
+}
+
+export async function dbUpdateSlide(
+  slideId: string,
+  changes: { layout?: string; notes?: string; groupId?: string | null }
+): Promise<void> {
+  await invoke('db_update_slide', {
+    slideId,
+    layout: changes.layout ?? null,
+    notes: changes.notes ?? null,
+    groupId: changes.groupId ?? null,
+  });
+  emit('slides-changed');
+}
+
+export async function dbUpdateZOrder(
+  slideId: string,
+  elementId: string,
+  newZOrder: number
+): Promise<void> {
+  await invoke('db_update_z_order', { slideId, elementId, newZOrder });
+  emit(`slide-elements-changed:${slideId}`);
+}
+
+export async function dbFreeElement(
+  slideId: string,
+  elementId: string,
+  newElementId: string,
+  linkId?: string | null
+): Promise<void> {
+  await invoke('db_free_element', {
+    slideId,
+    elementId,
+    newElementId,
+    linkId: linkId ?? null,
+  });
+  emit(`slide-elements-changed:${slideId}`);
+  emit('elements-changed');
+}
+
+export async function dbStoreAsset(
+  path: string,
+  data: Uint8Array,
+  mimeType: string
+): Promise<void> {
+  await invoke('db_store_asset', { path, data: Array.from(data), mimeType });
+}
+
+export async function dbGetAsset(path: string): Promise<Uint8Array> {
+  const data = await invoke<number[]>('db_get_asset', { path });
+  return new Uint8Array(data);
+}
+
+export async function dbUpdatePresentation(key: string, value: string): Promise<void> {
+  await invoke('db_update_presentation', { key, value });
+  emit('presentation-changed');
+}

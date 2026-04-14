@@ -567,3 +567,288 @@ pub fn db_compact(keep_all: bool) -> Result<String, String> {
         .to_string())
     })
 }
+
+// ============================================================================
+// Slide operations
+// ============================================================================
+
+/// Add a new slide at a given position
+#[tauri::command]
+pub fn db_add_slide(
+    id: String,
+    position: i32,
+    layout: String,
+    group_id: Option<String>,
+) -> Result<(), String> {
+    let ts = timestamp();
+    with_db(|conn| {
+        conn.execute(
+            "INSERT INTO slides VALUES (?1, ?2, ?3, '', ?4, ?5, NULL)",
+            params![&id, position, &layout, &group_id, &ts],
+        )?;
+        Ok(())
+    })
+}
+
+/// Delete a slide (close it and all its element references)
+#[tauri::command]
+pub fn db_delete_slide(slide_id: String) -> Result<(), String> {
+    let ts = timestamp();
+    with_db(|conn| {
+        let tx = conn.unchecked_transaction()?;
+        tx.execute(
+            "UPDATE slides SET valid_to = ?1 WHERE id = ?2 AND valid_to IS NULL",
+            params![&ts, &slide_id],
+        )?;
+        tx.execute(
+            "UPDATE slide_elements SET valid_to = ?1 WHERE slide_id = ?2 AND valid_to IS NULL",
+            params![&ts, &slide_id],
+        )?;
+        tx.commit()?;
+        Ok(())
+    })
+}
+
+/// Duplicate a slide: create new slide + copy all element references (synced)
+#[tauri::command]
+pub fn db_duplicate_slide(
+    source_slide_id: String,
+    new_slide_id: String,
+    new_position: i32,
+    group_id: Option<String>,
+) -> Result<(), String> {
+    let ts = timestamp();
+    with_db(|conn| {
+        let tx = conn.unchecked_transaction()?;
+
+        // Get source slide metadata
+        let (layout, notes, src_group): (String, String, Option<String>) = tx.query_row(
+            "SELECT layout, notes, group_id FROM slides WHERE id = ?1 AND valid_to IS NULL",
+            params![&source_slide_id],
+            |row| Ok((
+                row.get::<_, Option<String>>(0)?.unwrap_or_else(|| "default".to_string()),
+                row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                row.get::<_, Option<String>>(2)?,
+            )),
+        )?;
+
+        let final_group_id = group_id.or(src_group);
+
+        // Create new slide
+        tx.execute(
+            "INSERT INTO slides VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+            params![&new_slide_id, new_position, &layout, &notes, &final_group_id, &ts],
+        )?;
+
+        // Copy all slide_element references (same elements = synced)
+        tx.execute(
+            "INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from)
+             SELECT ?1, element_id, z_order, ?2
+             FROM slide_elements WHERE slide_id = ?3 AND valid_to IS NULL",
+            params![&new_slide_id, &ts, &source_slide_id],
+        )?;
+
+        tx.commit()?;
+        Ok(())
+    })
+}
+
+/// Move a slide to a new position (reorder)
+#[tauri::command]
+pub fn db_move_slide(slide_id: String, new_position: i32) -> Result<(), String> {
+    let ts = timestamp();
+    with_db(|conn| {
+        let tx = conn.unchecked_transaction()?;
+
+        // Get current slide data
+        let (layout, notes, group_id): (String, String, Option<String>) = tx.query_row(
+            "SELECT layout, notes, group_id FROM slides WHERE id = ?1 AND valid_to IS NULL",
+            params![&slide_id],
+            |row| Ok((
+                row.get::<_, Option<String>>(0)?.unwrap_or_else(|| "default".to_string()),
+                row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                row.get::<_, Option<String>>(2)?,
+            )),
+        )?;
+
+        // Close old version
+        tx.execute(
+            "UPDATE slides SET valid_to = ?1 WHERE id = ?2 AND valid_to IS NULL",
+            params![&ts, &slide_id],
+        )?;
+
+        // Insert new version with updated position
+        tx.execute(
+            "INSERT INTO slides VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+            params![&slide_id, new_position, &layout, &notes, &group_id, &ts],
+        )?;
+
+        tx.commit()?;
+        Ok(())
+    })
+}
+
+/// Update slide metadata (layout, notes, group_id)
+#[tauri::command]
+pub fn db_update_slide(
+    slide_id: String,
+    layout: Option<String>,
+    notes: Option<String>,
+    group_id: Option<String>,
+) -> Result<(), String> {
+    let ts = timestamp();
+    with_db(|conn| {
+        let tx = conn.unchecked_transaction()?;
+
+        // Get current
+        let (cur_pos, cur_layout, cur_notes, cur_group): (i32, String, String, Option<String>) = tx.query_row(
+            "SELECT position, layout, notes, group_id FROM slides WHERE id = ?1 AND valid_to IS NULL",
+            params![&slide_id],
+            |row| Ok((
+                row.get(0)?,
+                row.get::<_, Option<String>>(1)?.unwrap_or_else(|| "default".to_string()),
+                row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                row.get::<_, Option<String>>(3)?,
+            )),
+        )?;
+
+        // Close old
+        tx.execute(
+            "UPDATE slides SET valid_to = ?1 WHERE id = ?2 AND valid_to IS NULL",
+            params![&ts, &slide_id],
+        )?;
+
+        // Insert updated
+        tx.execute(
+            "INSERT INTO slides VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+            params![
+                &slide_id,
+                cur_pos,
+                layout.as_deref().unwrap_or(&cur_layout),
+                notes.as_deref().unwrap_or(&cur_notes),
+                group_id.or(cur_group),
+                &ts
+            ],
+        )?;
+
+        tx.commit()?;
+        Ok(())
+    })
+}
+
+/// Update z-order of an element on a slide
+#[tauri::command]
+pub fn db_update_z_order(
+    slide_id: String,
+    element_id: String,
+    new_z_order: i32,
+) -> Result<(), String> {
+    let ts = timestamp();
+    with_db(|conn| {
+        let tx = conn.unchecked_transaction()?;
+        // Close old
+        tx.execute(
+            "UPDATE slide_elements SET valid_to = ?1 WHERE slide_id = ?2 AND element_id = ?3 AND valid_to IS NULL",
+            params![&ts, &slide_id, &element_id],
+        )?;
+        // Insert new
+        tx.execute(
+            "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
+            params![&slide_id, &element_id, new_z_order, &ts],
+        )?;
+        tx.commit()?;
+        Ok(())
+    })
+}
+
+/// Free a synced element: duplicate it so one slide gets its own copy
+#[tauri::command]
+pub fn db_free_element(
+    slide_id: String,
+    element_id: String,
+    new_element_id: String,
+    link_id: Option<String>,
+) -> Result<(), String> {
+    let ts = timestamp();
+    with_db(|conn| {
+        let tx = conn.unchecked_transaction()?;
+
+        // Get current element data
+        let (el_type, data): (String, String) = tx.query_row(
+            "SELECT type, data FROM elements WHERE id = ?1 AND valid_to IS NULL",
+            params![&element_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )?;
+
+        // Get current z_order
+        let z_order: i32 = tx.query_row(
+            "SELECT z_order FROM slide_elements WHERE slide_id = ?1 AND element_id = ?2 AND valid_to IS NULL",
+            params![&slide_id, &element_id],
+            |row| row.get(0),
+        )?;
+
+        // Create copy of element
+        tx.execute(
+            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+            params![&new_element_id, &el_type, &data, &link_id, &ts],
+        )?;
+
+        // Remove old reference from this slide
+        tx.execute(
+            "UPDATE slide_elements SET valid_to = ?1 WHERE slide_id = ?2 AND element_id = ?3 AND valid_to IS NULL",
+            params![&ts, &slide_id, &element_id],
+        )?;
+
+        // Add new reference
+        tx.execute(
+            "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
+            params![&slide_id, &new_element_id, z_order, &ts],
+        )?;
+
+        tx.commit()?;
+        Ok(())
+    })
+}
+
+/// Store an asset (image/demo) as a BLOB
+#[tauri::command]
+pub fn db_store_asset(
+    path: String,
+    data: Vec<u8>,
+    mime_type: String,
+) -> Result<(), String> {
+    with_db(|conn| {
+        let size = data.len() as i64;
+        let now = timestamp();
+        conn.execute(
+            "INSERT OR REPLACE INTO assets VALUES (?1, ?2, ?3, ?4, NULL, ?5, NULL, NULL)",
+            params![&path, &data, &mime_type, size, &now],
+        )?;
+        Ok(())
+    })
+}
+
+/// Read an asset BLOB
+#[tauri::command]
+pub fn db_get_asset(path: String) -> Result<Vec<u8>, String> {
+    with_db(|conn| {
+        let data: Vec<u8> = conn.query_row(
+            "SELECT data FROM assets WHERE path = ?1",
+            params![&path],
+            |row| row.get(0),
+        )?;
+        Ok(data)
+    })
+}
+
+/// Update presentation metadata
+#[tauri::command]
+pub fn db_update_presentation(key: String, value: String) -> Result<(), String> {
+    with_db(|conn| {
+        conn.execute(
+            "INSERT OR REPLACE INTO presentation VALUES (?1, ?2)",
+            params![&key, &value],
+        )?;
+        Ok(())
+    })
+}
