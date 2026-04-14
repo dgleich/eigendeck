@@ -19,6 +19,8 @@ SQLite incremental saves are 400x faster than ZIP and give free unlimited histor
 
 ## Data Model
 
+Three tables + assets. Elements own their position. Sync is just one element appearing on multiple slides via the junction table.
+
 ### Schema
 
 ```sql
@@ -28,29 +30,38 @@ CREATE TABLE presentation (
     value TEXT
 );
 
--- Slides with temporal versioning
+-- Slides (temporal)
 CREATE TABLE slides (
     id TEXT NOT NULL,
     position INTEGER,
     layout TEXT,
     notes TEXT,
     group_id TEXT,
-    valid_from TEXT NOT NULL,   -- ISO timestamp + counter
-    valid_to TEXT,              -- NULL = current version
-    PRIMARY KEY (id, valid_from)
-);
-
--- Elements with temporal versioning
-CREATE TABLE elements (
-    id TEXT NOT NULL,
-    slide_id TEXT NOT NULL,
-    type TEXT NOT NULL,
-    data TEXT NOT NULL,         -- Full element JSON
-    sync_id TEXT,              -- Content sync group
-    link_id TEXT,              -- Animation link group
     valid_from TEXT NOT NULL,
     valid_to TEXT,
     PRIMARY KEY (id, valid_from)
+);
+
+-- Elements own their content AND position (temporal)
+CREATE TABLE elements (
+    id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    data TEXT NOT NULL,         -- Full JSON: html, position, fontSize, color, etc.
+    link_id TEXT,               -- Animation link (different elements that animate between slides)
+    valid_from TEXT NOT NULL,
+    valid_to TEXT,
+    PRIMARY KEY (id, valid_from)
+);
+
+-- Junction: which elements appear on which slides
+-- Sync = one element, multiple rows here
+CREATE TABLE slide_elements (
+    slide_id TEXT NOT NULL,
+    element_id TEXT NOT NULL,
+    z_order INTEGER NOT NULL,
+    valid_from TEXT NOT NULL,
+    valid_to TEXT,
+    PRIMARY KEY (slide_id, element_id, valid_from)
 );
 
 -- Binary assets (images, demos) — stored once, deduped by hash
@@ -67,87 +78,146 @@ CREATE TABLE assets (
 ### Indexes
 
 ```sql
--- Current state queries (most common)
 CREATE INDEX idx_el_current ON elements(valid_to) WHERE valid_to IS NULL;
-CREATE INDEX idx_el_slide ON elements(slide_id) WHERE valid_to IS NULL;
 CREATE INDEX idx_el_id ON elements(id) WHERE valid_to IS NULL;
-CREATE INDEX idx_el_sync ON elements(sync_id) WHERE valid_to IS NULL AND sync_id IS NOT NULL;
+CREATE INDEX idx_se_slide ON slide_elements(slide_id) WHERE valid_to IS NULL;
+CREATE INDEX idx_se_element ON slide_elements(element_id) WHERE valid_to IS NULL;
 CREATE INDEX idx_slides_current ON slides(valid_to) WHERE valid_to IS NULL;
+CREATE INDEX idx_el_link ON elements(link_id) WHERE valid_to IS NULL AND link_id IS NOT NULL;
 ```
 
 ### Pragmas
 
 ```sql
-PRAGMA journal_mode = WAL;      -- Write-ahead log for concurrent reads
-PRAGMA synchronous = NORMAL;    -- Fast writes, safe against app crashes
+PRAGMA journal_mode = WAL;
+PRAGMA synchronous = NORMAL;
 ```
+
+## How Sync Works
+
+**Synced element** = one row in `elements`, multiple rows in `slide_elements`.
+
+```
+elements:       { id: "abc", type: "text", data: {html: "Title", position: {x:80, y:20, ...}} }
+
+slide_elements: { slide_id: "slide-1", element_id: "abc", z_order: 0 }
+                { slide_id: "slide-2", element_id: "abc", z_order: 0 }
+                { slide_id: "slide-3", element_id: "abc", z_order: 0 }
+```
+
+- Edit text on any slide → one UPDATE to `elements`. All three slides see it instantly.
+- Move element → one UPDATE to `elements` (position is in data). All three slides move.
+- No propagation code. No syncId matching. Just relational data.
+
+## How Animation Works
+
+**Animation link** = two DIFFERENT elements with the same `link_id`.
+
+```
+elements:       { id: "abc", link_id: "L1", data: {position: {x:80, y:200}} }   -- slide 1
+                { id: "def", link_id: "L1", data: {position: {x:500, y:200}} }  -- slide 2
+```
+
+In the presenter, elements with matching `link_id` on consecutive slides animate between their positions. They're separate elements with separate content and positions.
+
+## Freeing a Synced Element
+
+When you want an element to have independent content on one slide:
+
+1. Duplicate the element: INSERT new row in `elements` with new ID, copy of data
+2. Update the `slide_elements` row for that slide to point to the new copy
+3. Optionally set matching `link_id` on both for animation
+
+Before: one element on 3 slides.
+After: original on 2 slides, copy on 1 slide. They're independent.
 
 ## Operations
 
-### Read current state
+### Load a slide
 
 ```sql
--- All current slides
-SELECT * FROM slides WHERE valid_to IS NULL ORDER BY position;
-
--- Elements for one slide
-SELECT * FROM elements WHERE slide_id = ? AND valid_to IS NULL;
-
--- All elements for all slides (sidebar thumbnails)
-SELECT * FROM elements WHERE valid_to IS NULL ORDER BY slide_id;
+SELECT e.id, e.type, e.data, e.link_id, se.z_order
+FROM slide_elements se
+JOIN elements e ON e.id = se.element_id AND e.valid_to IS NULL
+WHERE se.slide_id = ? AND se.valid_to IS NULL
+ORDER BY se.z_order;
 ```
 
-### Write a change
+### Edit an element (text, position, any property)
 
 ```sql
--- Close the old version
+-- Close old version
 UPDATE elements SET valid_to = ? WHERE id = ? AND valid_to IS NULL;
-
--- Insert the new version
-INSERT INTO elements (id, slide_id, type, data, sync_id, link_id, valid_from)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+-- Insert new version
+INSERT INTO elements (id, type, data, link_id, valid_from)
+VALUES (?, ?, ?, ?, ?);
 ```
 
-Always wrapped in a transaction. For sync propagation, close+insert for every element with matching sync_id.
+One write. Every slide that references this element sees the change.
 
-### Undo / History
+### Add element to a slide
 
 ```sql
--- Get all change timestamps (for undo stack)
-SELECT DISTINCT valid_from FROM elements ORDER BY valid_from DESC LIMIT 50;
-
--- Restore state at a specific time
-SELECT * FROM elements
-WHERE slide_id = ?
-  AND valid_from <= ?
-  AND (valid_to IS NULL OR valid_to > ?);
+INSERT INTO elements (id, type, data, link_id, valid_from)
+VALUES (?, ?, ?, ?, ?);
+INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from)
+VALUES (?, ?, ?, ?);
 ```
 
-### Add/Delete slides
+### Delete element from one slide
 
-Same temporal pattern: close old version, insert new. Deleting a slide closes all its elements too.
+```sql
+UPDATE slide_elements SET valid_to = ?
+WHERE slide_id = ? AND element_id = ? AND valid_to IS NULL;
+```
 
-## UI Performance (benchmarked)
+Element still exists on other slides.
 
-250 slides, 895 elements, 10 build groups:
+### Delete element from all slides
 
-| Operation | Time | Notes |
-|---|---|---|
-| Load slide elements | 0.005ms | Instant |
-| Update position (drag) | 0.065ms | 15,000/sec, 0.4% of 60fps budget |
-| Sync 20 elements | 0.52ms | 1,900/sec |
-| Text edit commit | 0.053ms | Instant |
-| Add element | 0.054ms | Instant |
-| Delete element | 0.004ms | Instant |
-| Get element by ID | 0.002ms | Instant |
-| Load all 250 slides | 1.6ms | Fine for sidebar |
-| Undo (history query) | 1.8ms | Imperceptible |
+```sql
+UPDATE slide_elements SET valid_to = ?
+WHERE element_id = ? AND valid_to IS NULL;
+```
 
-No operation blocks the render loop.
+### Duplicate a slide (build step)
+
+```sql
+-- New slide
+INSERT INTO slides (id, position, ...) VALUES (...);
+-- Copy all element references (same elements, new z_order rows)
+INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from)
+SELECT ?, element_id, z_order, ?
+FROM slide_elements
+WHERE slide_id = ? AND valid_to IS NULL;
+```
+
+All elements are now synced between original and copy. To free one, duplicate the element.
+
+### Find which slides an element appears on
+
+```sql
+SELECT slide_id FROM slide_elements
+WHERE element_id = ? AND valid_to IS NULL;
+```
+
+### Undo: restore state at timestamp
+
+```sql
+-- Elements as of time T
+SELECT e.id, e.type, e.data, e.link_id
+FROM elements e
+WHERE e.valid_from <= ? AND (e.valid_to IS NULL OR e.valid_to > ?);
+
+-- Slide-element mappings as of time T
+SELECT se.slide_id, se.element_id, se.z_order
+FROM slide_elements se
+WHERE se.valid_from <= ? AND (se.valid_to IS NULL OR se.valid_to > ?);
+```
 
 ## Timestamp Strategy
 
-Timestamps use ISO 8601 + a monotonic counter suffix to avoid collisions in tight loops:
+ISO 8601 + monotonic counter to avoid collisions:
 
 ```
 2026-04-12T14:53:01.234Z-00000001
@@ -158,11 +228,9 @@ Timestamps use ISO 8601 + a monotonic counter suffix to avoid collisions in tigh
 - **Drag/resize**: write on `pointerup` only (not every frame)
 - **Text edit**: write on commit (blur / escape)
 - **Other changes**: write immediately
-- **Auto-save**: no longer needed — every change is persisted instantly
+- **Auto-save**: not needed — every change is persisted instantly
 
 ## History Retention (Exponential Thinning)
-
-Keep every version indefinitely isn't practical for large presentations. Use exponential thinning:
 
 | Age | Keep |
 |---|---|
@@ -173,95 +241,64 @@ Keep every version indefinitely isn't practical for large presentations. Use exp
 | 1 week – 1 month | One per day |
 | > 1 month | One per week |
 
-Run thinning on app startup and periodically (e.g. every 30 minutes). Implementation:
-
-```sql
--- Delete intermediate versions older than 10 minutes,
--- keeping one per minute
-DELETE FROM elements
-WHERE valid_to IS NOT NULL
-  AND valid_from < datetime('now', '-10 minutes')
-  AND valid_from NOT IN (
-    SELECT MIN(valid_from) FROM elements
-    WHERE valid_to IS NOT NULL
-    GROUP BY strftime('%Y-%m-%d %H:%M', valid_from)
-  );
-```
+Run thinning on app startup and periodically.
 
 ## Asset Storage
 
-Binary files (images, demos) stored as BLOBs in the `assets` table:
+Binary files stored as BLOBs in `assets`:
 
-- **Deduplication**: hash the content, skip if same hash exists
-- **No versioning**: assets are immutable (if an image changes, it's a new path)
-- **Lazy loading**: only load asset data when actually needed (e.g. when rendering a slide with that image)
-- **Large file handling**: SQLite handles BLOBs up to 2GB; for very large files, consider storing outside the DB
+- **Dedup**: hash content, skip if exists
+- **No versioning**: assets are immutable
+- **Lazy load**: only read BLOB when rendering
+- **Path-based**: referenced by relative path in element data (e.g. `images/photo.png`)
 
 ## File Format
 
-The `.eigendeck` file is a SQLite database. It can be:
+`.eigendeck` = SQLite database. Can be:
 
-- Opened directly by `better-sqlite3` (Node) or `rusqlite` (Rust/Tauri)
-- Inspected with `sqlite3` CLI or any SQLite browser
-- Shared as a single file (email, cloud, USB)
-- Round-tripped: export to HTML (with embedded source), import back
+- Opened by `better-sqlite3` (Node), `rusqlite` (Rust), `sqlite3` CLI
+- Shared as a single file
+- Inspected with any SQLite browser
 
 ### Migration from JSON
 
-On first open of a JSON directory:
-1. Create a new `.eigendeck` SQLite file
-2. Import presentation.json into `presentation` + `slides` + `elements` tables
-3. Import images/ and demos/ into `assets` table
-4. Keep the original directory as-is (non-destructive)
+1. Create `.eigendeck` SQLite file
+2. Each element → row in `elements` + row in `slide_elements` per slide
+3. Images/demos → rows in `assets`
+4. Keep original directory (non-destructive)
 
 ### Export to JSON directory
 
-For compatibility and LLM editing:
-1. Extract current state from SQLite
-2. Write presentation.json
-3. Extract assets to images/ and demos/
+Extract current state → write presentation.json + asset files.
 
 ## Architecture
 
-### Where SQLite runs
+**Recommended: Rust side (Tauri)**
 
-**Option A: Rust side (Tauri)**
-- Use `rusqlite` crate in the Tauri backend
+- `rusqlite` in the Tauri backend
 - Frontend sends commands via `invoke()`
-- Pro: native speed, direct file access
-- Con: all DB operations are async IPC calls
+- Native speed, direct file access
+- All DB operations are async IPC
 
-**Option B: JavaScript side (WebView)**
-- Use `sql.js` (SQLite compiled to WASM) in the frontend
-- Pro: synchronous access, simpler state management
-- Con: WASM overhead, file I/O still needs Tauri
-
-**Option C: Hybrid**
-- Rust handles file I/O and asset storage
-- Frontend uses `sql.js` for the element/slide data (small, frequent)
-- Best of both: fast synchronous queries + native file access
-
-**Recommendation**: Start with Option A (Rust). If IPC overhead is noticeable, move hot-path queries to WASM.
+If IPC overhead matters for drag (60fps), batch position updates client-side and flush on pointerup.
 
 ## Implementation Plan
 
-1. **Schema + migration**: Create the SQLite schema, write JSON→SQLite importer
-2. **Read path**: Replace `setPresentation()` with SQLite queries
-3. **Write path**: Replace `updateElement()` / `addElement()` / etc with SQLite writes
-4. **Asset storage**: Store images/demos as BLOBs, load on demand
-5. **History UI**: Timeline browser, undo from DB instead of zundo
-6. **Thinning**: Implement exponential history pruning
-7. **CLI support**: Update `tools/eigendeck.mjs` to read/write SQLite
-8. **Export**: SQLite → HTML export, SQLite → JSON directory export
+1. Schema + migration (JSON → SQLite importer)
+2. Read path: load presentation from SQLite
+3. Write path: element updates, slide changes
+4. Asset storage: images/demos as BLOBs
+5. History UI: timeline browser, undo from DB
+6. Thinning: exponential history pruning
+7. CLI: read/write SQLite in tools/eigendeck.mjs
+8. Export: SQLite → HTML, SQLite → JSON directory
 
 ## Open Questions
 
-1. Should the Zustand store still hold the full presentation in memory, with SQLite as a persistence layer? Or should we query SQLite on every read?
+1. Zustand store as cache: keep full state in memory, SQLite as persistence? Or query SQLite on every read?
 
-2. How to handle concurrent access (e.g. collaborative editing via WebSocket + SQLite)?
+2. WAL mode creates `-wal` and `-shm` sidecar files (cleaned up on close). Use `PRAGMA journal_mode = DELETE` instead for true single-file?
 
-3. Should demo HTML files be stored as assets (BLOBs) or kept as external files? BLOBs make single-file work; external files allow editing demos in a text editor.
+3. Demo HTML files: store as assets (BLOBs) or keep external? BLOBs = single file. External = editable in text editor.
 
-4. Should we keep JSON directory as a parallel format (always export on save) for LLM editing compatibility?
-
-5. WAL mode creates `-wal` and `-shm` sidecar files. These are temporary and cleaned up on close, but could confuse users if they see them. Alternative: use `PRAGMA journal_mode = DELETE` (slower but single file).
+4. Keep JSON directory export on every save for LLM editing compatibility?
