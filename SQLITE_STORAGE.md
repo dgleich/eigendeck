@@ -360,7 +360,7 @@ React Component (edit)
 
 2. **WAL mode + checkpoint on close.** WAL is 48x faster for writes than DELETE mode. Sidecar files (`-wal`, `-shm`) are cleaned up on graceful close via `PRAGMA wal_checkpoint(TRUNCATE)`. They persist only on crash and are harmless (SQLite recovers on next open).
 
-3. **File watch via Tauri watch plugin.** Uses native backends (kqueue/FSEvents/inotify). Handles cross-platform quirks and editor save-delete-rename cycles. We need Tauri for file access anyway — no point adding a JS watcher that can't see the filesystem from the WebView.
+3. **File watch via `@tauri-apps/plugin-fs` (already installed).** The `watch()` function in the FS plugin uses native backends (kqueue/FSEvents/inotify) with built-in debouncing. No additional plugin needed — it's part of our existing `tauri-plugin-fs` dependency.
 
 4. **Unpack creates `myproject/` directory.** `eigendeck unpack myproject.eigendeck` → creates `myproject/images/`, `myproject/demos/`. Errors if `myproject/` already exists. `--output <dir>` flag to export elsewhere.
 

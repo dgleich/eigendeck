@@ -1,5 +1,7 @@
 #![allow(deprecated)] // cocoa crate deprecation warnings — TODO: migrate to objc2
 
+mod storage;
+
 use tauri::menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager};
 use std::sync::Mutex;
@@ -356,6 +358,16 @@ pub fn run() {
             disable_display_mirroring,
             enable_display_mirroring,
             update_recent_menu,
+            storage::db_open,
+            storage::db_close,
+            storage::db_import_json,
+            storage::db_export_json,
+            storage::db_get_slides,
+            storage::db_get_slide_elements,
+            storage::db_update_element,
+            storage::db_add_element,
+            storage::db_remove_element_from_slide,
+            storage::db_compact,
         ])
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
