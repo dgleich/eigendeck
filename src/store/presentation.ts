@@ -655,6 +655,15 @@ export function isSqliteOpen(): boolean {
   return sqliteDbPath !== null;
 }
 
+/** Set the SQLite DB path (used by saveProject when saving for the first time) */
+export function setSqliteDbPath(path: string) {
+  sqliteDbPath = path;
+  dirtyElements.clear();
+  dirtySlides.clear();
+  dirtyPresentation = false;
+  fullResyncNeeded = false;
+}
+
 // ============================================================================
 // Auto-detect changes via subscriber
 // ============================================================================

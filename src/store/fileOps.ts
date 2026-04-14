@@ -110,8 +110,30 @@ export async function saveProject(): Promise<void> {
   const store = usePresentationStore.getState();
 
   if (!store.projectPath) {
-    // No project open — create one
-    await createProject();
+    // No project open — ask where to save, then persist current state
+    const selected = await save({
+      title: 'Save Presentation',
+      defaultPath: `${store.presentation.title.replace(/[^a-zA-Z0-9]/g, '-') || 'Untitled'}.eigendeck`,
+      filters: [{ name: 'Eigendeck', extensions: ['eigendeck'] }],
+    });
+    if (!selected) return;
+
+    try {
+      await invoke('db_open', { path: selected });
+      // Import the CURRENT editor state — not a blank default
+      await invoke('db_import_json', { json: JSON.stringify(store.presentation) });
+      // Set the project path so future saves go to this file
+      store.setProjectPath((selected as string).replace(/\.eigendeck$/, ''));
+      // Don't call openSqliteProject — it would reload from DB and overwrite.
+      // Just set the sqliteDbPath so the write-through subscriber activates.
+      const { setSqliteDbPath } = await import('./presentation');
+      setSqliteDbPath(selected as string);
+      store.markClean();
+      addRecentProject(selected as string, store.presentation.title);
+    } catch (e) {
+      console.error('Save failed:', e);
+      await showError(`Failed to save: ${e}`);
+    }
     return;
   }
 
