@@ -991,19 +991,6 @@
           "type": "text"
         },
         {
-          "demoSrc": "demos/harper_electron.html",
-          "id": "81bb18d9-1220-4ec4-9c9b-7dfd702b4b44",
-          "linkId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75",
-          "piece": "lattice",
-          "position": {
-            "height": 950,
-            "width": 823,
-            "x": 491,
-            "y": 495
-          },
-          "type": "demo-piece"
-        },
-        {
           "html": "Put an electron in a plane with with a grid-like crystal structure. Where is the electron?",
           "id": "fd6f191a-3927-4707-9c03-6434479839de",
           "linkId": "37392bb3-6650-4c42-8c9c-3de55c85d183",
@@ -1041,6 +1028,19 @@
           },
           "preset": "title",
           "type": "text"
+        },
+        {
+          "id": "81bb18d9-1220-4ec4-9c9b-7dfd702b4b44",
+          "type": "demo-piece",
+          "demoSrc": "demos/harper_electron.html",
+          "piece": "lattice",
+          "position": {
+            "x": 491,
+            "y": 495,
+            "width": 823,
+            "height": 950
+          },
+          "linkId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75"
         }
       ],
       "groupId": "cd2dae4f-f066-495e-a640-dd6515900167",
@@ -1062,19 +1062,6 @@
           },
           "preset": "body",
           "type": "text"
-        },
-        {
-          "demoSrc": "demos/harper_electron.html",
-          "id": "81bb18d9-1220-4ec4-9c9b-7dfd702b4b44",
-          "linkId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75",
-          "piece": "lattice",
-          "position": {
-            "height": 950,
-            "width": 823,
-            "x": 39,
-            "y": 486
-          },
-          "type": "demo-piece"
         },
         {
           "html": "Put an electron in a plane with with a grid-like crystal structure. Where is the electron?",
@@ -1140,6 +1127,20 @@
           },
           "preset": "title",
           "type": "text"
+        },
+        {
+          "id": "0fc1366c-55a7-4b3a-9bf4-5ba6c216d556",
+          "type": "demo-piece",
+          "demoSrc": "demos/harper_electron.html",
+          "piece": "lattice",
+          "position": {
+            "x": 39,
+            "y": 486,
+            "width": 604,
+            "height": 722
+          },
+          "linkId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75",
+          "_syncId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75"
         }
       ],
       "groupId": "cd2dae4f-f066-495e-a640-dd6515900167",
@@ -1174,19 +1175,6 @@
           },
           "preset": "annotation",
           "type": "text"
-        },
-        {
-          "demoSrc": "demos/harper_electron.html",
-          "id": "81bb18d9-1220-4ec4-9c9b-7dfd702b4b44",
-          "linkId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75",
-          "piece": "lattice",
-          "position": {
-            "height": 950,
-            "width": 823,
-            "x": 39,
-            "y": 486
-          },
-          "type": "demo-piece"
         },
         {
           "html": "Put an electron in a plane with with a grid-like crystal structure. Where is the electron?",
@@ -1252,6 +1240,20 @@
           },
           "preset": "title",
           "type": "text"
+        },
+        {
+          "id": "f3d3a3a9-4995-4ec4-b028-a40a612e7f6d",
+          "type": "demo-piece",
+          "demoSrc": "demos/harper_electron.html",
+          "piece": "lattice",
+          "position": {
+            "x": 39,
+            "y": 486,
+            "width": 604,
+            "height": 722
+          },
+          "linkId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75",
+          "_syncId": "0f7b21e2-4923-4a7a-ba25-127bc3a93d75"
         }
       ],
       "groupId": "cd2dae4f-f066-495e-a640-dd6515900167",
