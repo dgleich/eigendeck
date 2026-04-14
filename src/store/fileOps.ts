@@ -146,30 +146,29 @@ export async function openProject(): Promise<void> {
 }
 
 export async function createProject(): Promise<void> {
-  const selected = await open({
-    directory: true,
-    title: 'Select Directory for New Project',
+  // Default to .eigendeck format
+  const selected = await save({
+    title: 'Create New Presentation',
+    defaultPath: 'Untitled.eigendeck',
+    filters: [
+      { name: 'Eigendeck', extensions: ['eigendeck'] },
+    ],
   });
   if (!selected) return;
 
-  const projectPath = selected as string;
+  const filePath = selected as string;
   const presentation = createDefaultPresentation();
 
   try {
-    const demosDir = `${projectPath}/demos`;
-    const imagesDir = `${projectPath}/images`;
-    if (!(await exists(demosDir))) await mkdir(demosDir);
-    if (!(await exists(imagesDir))) await mkdir(imagesDir);
-
-    await writeTextFile(
-      `${projectPath}/presentation.json`,
-      JSON.stringify(presentation, null, 2)
-    );
+    const { openSqliteProject } = await import('./presentation');
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('db_open', { path: filePath });
+    await invoke('db_import_json', { json: JSON.stringify(presentation) });
+    await openSqliteProject(filePath);
 
     const store = usePresentationStore.getState();
-    store.setProjectPath(projectPath);
-    store.setPresentation(presentation);
-    addRecentProject(projectPath, presentation.title);
+    store.markClean();
+    addRecentProject(filePath, presentation.title);
   } catch (e) {
     await showError(`Failed to create project: ${e}`);
   }
@@ -177,54 +176,85 @@ export async function createProject(): Promise<void> {
 
 export async function saveProject(): Promise<void> {
   const store = usePresentationStore.getState();
+  const { isSqliteOpen, openSqliteProject } = await import('./presentation');
 
-  if (!store.projectPath) {
-    // No project open — ask user to pick a directory
-    const selected = await open({
-      directory: true,
-      title: 'Choose a folder to save this presentation',
-    });
-    if (!selected) return;
+  // If SQLite is already open, just flush
+  if (isSqliteOpen()) {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('db_import_json', { json: JSON.stringify(store.presentation) });
+      store.markClean();
+      console.log('Saved to SQLite');
+    } catch (e) {
+      console.error('SQLite save failed:', e);
+      await showError(`Failed to save: ${e}`);
+    }
+    return;
+  }
 
-    const projectPath = selected as string;
+  // If we have a project path with presentation.json, save as JSON (legacy)
+  if (store.projectPath && (await exists(`${store.projectPath}/presentation.json`))) {
+    try {
+      const jsonPath = `${store.projectPath}/presentation.json`;
+      const content = JSON.stringify(store.presentation, null, 2);
+      await writeTextFile(jsonPath, content);
+      store.markClean();
+      console.log('Saved to JSON');
+    } catch (e) {
+      console.error('Save failed:', e);
+      await showError(`Failed to save: ${e}`);
+    }
+    return;
+  }
+
+  // No project open — ask user where to save
+  const selected = await save({
+    title: 'Save Presentation',
+    defaultPath: `${store.presentation.title.replace(/[^a-zA-Z0-9]/g, '-')}.eigendeck`,
+    filters: [
+      { name: 'Eigendeck', extensions: ['eigendeck'] },
+      { name: 'JSON Directory', extensions: ['*'] },
+    ],
+  });
+  if (!selected) return;
+
+  const filePath = selected as string;
+
+  if (filePath.endsWith('.eigendeck')) {
+    // Save as SQLite
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('db_open', { path: filePath });
+      await invoke('db_import_json', { json: JSON.stringify(store.presentation) });
+      // Now switch to SQLite mode
+      await openSqliteProject(filePath);
+      store.markClean();
+      addRecentProject(filePath, store.presentation.title);
+      console.log('Saved as .eigendeck:', filePath);
+    } catch (e) {
+      console.error('Save as .eigendeck failed:', e);
+      await showError(`Failed to save: ${e}`);
+    }
+  } else {
+    // Save as JSON directory
+    const projectPath = filePath;
     store.setProjectPath(projectPath);
-
-    // Create subdirectories if they don't exist
     try {
       const demosDir = `${projectPath}/demos`;
       const imagesDir = `${projectPath}/images`;
       if (!(await exists(demosDir))) await mkdir(demosDir);
       if (!(await exists(imagesDir))) await mkdir(imagesDir);
-    } catch {
-      // dirs may already exist
-    }
-  }
-
-  const projectPath = usePresentationStore.getState().projectPath;
-  if (!projectPath) return;
-
-  try {
-    // If SQLite is open, the write-through subscriber handles persistence.
-    // Just force a flush.
-    const { isSqliteOpen } = await import('./presentation');
-    if (isSqliteOpen()) {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('db_import_json', { json: JSON.stringify(store.presentation) });
+      await writeTextFile(
+        `${projectPath}/presentation.json`,
+        JSON.stringify(store.presentation, null, 2)
+      );
       store.markClean();
-      console.log('Saved to SQLite');
-      return;
+      addRecentProject(projectPath, store.presentation.title);
+      console.log('Saved as JSON directory:', projectPath);
+    } catch (e) {
+      console.error('Save failed:', e);
+      await showError(`Failed to save: ${e}`);
     }
-
-    // JSON directory save
-    const jsonPath = `${projectPath}/presentation.json`;
-    const content = JSON.stringify(usePresentationStore.getState().presentation, null, 2);
-    console.log(`Saving to: ${jsonPath}`);
-    await writeTextFile(jsonPath, content);
-    store.markClean();
-    console.log('Save successful');
-  } catch (e) {
-    console.error('Save failed:', e);
-    await showError(`Failed to save: ${e}`);
   }
 }
 
