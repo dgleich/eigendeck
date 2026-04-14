@@ -60,6 +60,18 @@ function App() {
   // Initialize auto-save and sync recent menu
   useEffect(() => { initAutoSave(); syncRecentMenu(); }, []);
 
+  // Close SQLite on app shutdown
+  useEffect(() => {
+    const handleUnload = async () => {
+      try {
+        const { closeSqliteProject, isSqliteOpen } = await import('./store/presentation');
+        if (isSqliteOpen()) await closeSqliteProject();
+      } catch { /* shutting down */ }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, []);
+
   // Warn before closing
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
