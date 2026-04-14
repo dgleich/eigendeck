@@ -1,5 +1,6 @@
 #!/bin/bash
 # Build the eigendeck-cli binary
+source "$HOME/.cargo/env" 2>/dev/null
 cd src-tauri && cargo build --bin eigendeck-cli --release
 echo ""
 echo "Built: src-tauri/target/release/eigendeck-cli"
