@@ -802,26 +802,81 @@ This is the critical parameter for text/math size matching. Don't change `em_sca
 ```bash
 # In the Colima/Docker container (/work is shared with Mac):
 npm install
-npm run tauri dev    # Won't work (no display) — use for build checks
 npm run build        # TypeScript + Vite build
-npm test             # Vitest unit tests
-cargo check          # Rust check (in src-tauri/)
+npm test             # Vitest unit tests (47 tests)
+cd src-tauri && cargo check && cargo test --lib -- --test-threads=1  # Rust (29 tests)
 ```
 
 ### macOS Testing
 
 ```bash
-# Same directory as Linux container (shared via virtiofs):
 npm install          # Reinstalls macOS-native node_modules
-npm run tauri dev    # Opens native window with hot-reload
+bash mac-build.sh    # Full dev mode with hot-reload
 ```
 
 `node_modules/` is platform-specific — `npm install` when switching between Linux and Mac.
+
+### CLI Tool
+
+```bash
+bash build-cli.sh    # Builds src-tauri/target/release/eigendeck-cli
+
+# Usage:
+eigendeck-cli myproject.eigendeck info
+eigendeck-cli myproject.eigendeck outline
+eigendeck-cli myproject.eigendeck list slides
+eigendeck-cli myproject.eigendeck list elements 3
+eigendeck-cli myproject.eigendeck show slide 3
+eigendeck-cli myproject.eigendeck show element abc     # partial ID match
+eigendeck-cli myproject.eigendeck search "eigenvalue"
+eigendeck-cli myproject.eigendeck history
+eigendeck-cli myproject.eigendeck validate
+
+# Editing:
+eigendeck-cli myproject.eigendeck set-text abc "New text"
+eigendeck-cli myproject.eigendeck add slide
+eigendeck-cli myproject.eigendeck add text 3 "New body text"
+eigendeck-cli myproject.eigendeck move element abc 400 300
+eigendeck-cli myproject.eigendeck remove slide 5
+eigendeck-cli myproject.eigendeck edit element abc '{"html":"..."}'
+
+# Bulk edit (LLM workflow):
+eigendeck-cli myproject.eigendeck export json /tmp/edit.json
+# ... edit the JSON ...
+eigendeck-cli myproject.eigendeck import json /tmp/edit.json
+
+# Maintenance:
+eigendeck-cli myproject.eigendeck compact --all     # delete all history
+eigendeck-cli myproject.eigendeck unpack --demos    # extract assets to disk
+
+# JSON output for machines/LLMs:
+eigendeck-cli myproject.eigendeck --json list slides
+eigendeck-cli myproject.eigendeck --json search "matrix"
+```
+
+### Converting Old JSON Projects
+
+```bash
+eigendeck-cli new.eigendeck import json old-project/presentation.json
+# Then import assets:
+eigendeck-cli new.eigendeck store-asset old-project/images/photo.png --as images/photo.png
+eigendeck-cli new.eigendeck store-asset old-project/demos/demo.html --as demos/demo.html
+```
+
+Or use the batch script: `bash tools/convert-examples.sh`
 
 ### MathJax Setup
 
 ```bash
 cp mathjax-ptsans-bundle/tex-mml-svg-mathjax-ptsans-nosre.js public/mathjax/tex-mml-svg-mathjax-ptsans.js
+```
+
+### Performance Benchmarks
+
+```bash
+node tools/bench-perf.mjs --save tools/perf-results/   # track over time
+node tools/bench-storage.mjs examples/magnetic-powers   # SQLite vs ZIP vs JSON
+node tools/test-history-integrity.mjs                   # verify temporal history
 ```
 
 ### Git
@@ -831,3 +886,4 @@ cp mathjax-ptsans-bundle/tex-mml-svg-mathjax-ptsans-nosre.js public/mathjax/tex-
 - Tags: `v0.1.0-revealjs` (last reveal.js version)
 - CI: GitHub Actions (TypeScript, Vite, cargo check, clippy)
 - Release: push tags `v*` for multi-platform builds
+- Hooks: `git config core.hooksPath .githooks` (pre-commit warnings, post-commit perf)
