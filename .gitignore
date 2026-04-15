@@ -32,3 +32,6 @@ mathjax-ptsans-font/
 # SQLite WAL sidecar files
 *.eigendeck-wal
 *.eigendeck-shm
+
+# Stray gitignore directory
+gitignore/
