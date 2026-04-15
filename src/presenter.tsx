@@ -7,8 +7,8 @@
 import { useEffect, useState, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { listen, emitTo } from '@tauri-apps/api/event';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { TEXT_PRESET_STYLES, getSlideNumber } from './types/presentation';
+import { useAssetUrl, useDemoUrl } from './lib/demoAssets';
 import { typesetElement, resetMathElement, containsMath } from './lib/mathjax';
 import type { Presentation, SlideElement, TextElement } from './types/presentation';
 import './App.css';
@@ -118,53 +118,21 @@ function PresenterApp() {
   );
 }
 
-function PresenterElement({ element: el, zIndex, projectPath }: { element: SlideElement; zIndex: number; projectPath: string | null }) {
+function PresenterElement({ element: el, zIndex }: { element: SlideElement; zIndex: number; projectPath?: string | null }) {
   const pos = el.position;
 
   switch (el.type) {
     case 'text':
       return <PresenterTextElement element={el} zIndex={zIndex} />;
 
-    case 'image': {
-      let src = el.src;
-      if (!src.startsWith('data:') && projectPath) {
-        try { src = convertFileSrc(`${projectPath}/${el.src}`); } catch { /* keep original */ }
-      }
-      return (
-        <img src={src} alt="" style={{
-          position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-          objectFit: 'contain', zIndex,
-          ...(el.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
-          ...(el.borderRadius ? { borderRadius: el.borderRadius } : {}),
-          ...(el.opacity != null && el.opacity < 1 ? { opacity: el.opacity } : {}),
-          ...(el.rotation ? { transform: `rotate(${el.rotation}deg)` } : {}),
-        }} />
-      );
-    }
+    case 'image':
+      return <PresenterImage element={el} zIndex={zIndex} />;
 
-    case 'demo': {
-      let src: string | undefined;
-      if (projectPath) { try { src = convertFileSrc(`${projectPath}/${el.src}`); } catch { /* skip */ } }
-      if (!src) return null;
-      return (
-        <iframe src={src} sandbox="allow-scripts allow-same-origin" title="demo" style={{
-          position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-          border: 'none', zIndex,
-        }} />
-      );
-    }
+    case 'demo':
+      return <PresenterDemoIframe assetPath={el.src} pos={pos} zIndex={zIndex} />;
 
-    case 'demo-piece': {
-      let src: string | undefined;
-      if (projectPath) { try { src = convertFileSrc(`${projectPath}/${el.demoSrc}`) + `#piece=${el.piece}`; } catch { /* skip */ } }
-      if (!src) return null;
-      return (
-        <iframe src={src} sandbox="allow-scripts allow-same-origin" title={`demo-piece: ${el.piece}`} style={{
-          position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-          border: 'none', zIndex,
-        }} />
-      );
-    }
+    case 'demo-piece':
+      return <PresenterDemoIframe assetPath={el.demoSrc} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} />;
 
     case 'cover':
       return (
@@ -214,6 +182,38 @@ function PresenterTextElement({ element: el, zIndex }: { element: TextElement; z
       padding: '8px 12px',
       overflow: 'hidden',
       zIndex,
+    }} />
+  );
+}
+
+function PresenterImage({ element: el, zIndex }: { element: Extract<SlideElement, { type: 'image' }>; zIndex: number }) {
+  const pos = el.position;
+  const assetSrc = el.src.startsWith('data:') ? undefined : el.src;
+  const blobUrl = useAssetUrl(assetSrc);
+  const src = el.src.startsWith('data:') ? el.src : (blobUrl || el.src);
+  return (
+    <img src={src} alt="" style={{
+      position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
+      objectFit: 'contain', zIndex,
+      ...(el.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
+      ...(el.borderRadius ? { borderRadius: el.borderRadius } : {}),
+      ...(el.opacity != null && el.opacity < 1 ? { opacity: el.opacity } : {}),
+      ...(el.rotation ? { transform: `rotate(${el.rotation}deg)` } : {}),
+    }} />
+  );
+}
+
+function PresenterDemoIframe({ assetPath, hash, title, pos, zIndex }: {
+  assetPath: string; hash?: string; title?: string;
+  pos: { x: number; y: number; width: number; height: number };
+  zIndex: number;
+}) {
+  const src = useDemoUrl(assetPath, hash);
+  if (!src) return null;
+  return (
+    <iframe src={src} sandbox="allow-scripts allow-same-origin" title={title || 'demo'} style={{
+      position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
+      border: 'none', zIndex,
     }} />
   );
 }

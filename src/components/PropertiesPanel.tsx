@@ -335,22 +335,21 @@ export function PropertiesPanel() {
 
 function DemoPieceProperties({ element }: { element: Extract<import('../types/presentation').SlideElement, { type: 'demo-piece' }> }) {
   const { presentation, currentSlideIndex, addElement } = usePresentationStore();
-  const projectPath = usePresentationStore((s) => s.projectPath);
   const [availablePieces, setAvailablePieces] = useState<string[]>([]);
 
-  // Scan the demo HTML for available pieces
+  // Scan the demo HTML for available pieces (from SQLite asset)
   useEffect(() => {
     (async () => {
-      if (!projectPath) return;
       try {
-        const { readTextFile } = await import('@tauri-apps/plugin-fs');
-        const html = await readTextFile(`${projectPath}/${element.demoSrc}`);
+        const { invoke } = await import('@tauri-apps/api/core');
+        const data = await invoke<number[]>('db_get_asset', { path: element.demoSrc });
+        const html = new TextDecoder().decode(new Uint8Array(data));
         const matches = html.matchAll(/piece\s*===?\s*['"](\w+)['"]/g);
         const pieces = [...new Set([...matches].map((m: RegExpMatchArray) => m[1]))];
         setAvailablePieces(pieces);
       } catch { setAvailablePieces([]); }
     })();
-  }, [element.demoSrc, projectPath]);
+  }, [element.demoSrc]);
 
   // Which pieces are already on this slide?
   const slide = presentation.slides[currentSlideIndex];
