@@ -94,6 +94,10 @@ export async function createProject(): Promise<void> {
   if (!selected) return;
 
   try {
+    // Close previous project cleanly before creating new one
+    const { closeSqliteProject } = await import('./presentation');
+    await closeSqliteProject();
+
     const presentation = createDefaultPresentation();
     await invoke('db_open', { path: selected });
     await invoke('db_import_json', { json: JSON.stringify(presentation) });

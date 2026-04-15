@@ -644,13 +644,19 @@ function scheduleFlush() {
 export async function openSqliteProject(dbPath: string): Promise<void> {
   try {
     const { invoke } = await import('@tauri-apps/api/core');
-    await invoke('db_open', { path: dbPath });
-    const json = await invoke<string>('db_export_json');
-    const presentation: Presentation = JSON.parse(json);
-    // IMPORTANT: Disable write-through while loading to prevent re-inserting
-    // all slides/elements as "new". Set sqliteDbPath AFTER setPresentation.
-    sqliteDbPath = null; // Disable subscriber during load
-    // Clear any dirty state
+
+    // Close previous project cleanly (flush pending writes, checkpoint WAL)
+    if (sqliteDbPath) {
+      await closeSqliteProject();
+    }
+
+    // Cancel any pending flush timer from the previous project
+    if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+
+    // Disable write-through during load
+    sqliteDbPath = null;
+
+    // Clear dirty state
     dirtyElements.clear();
     dirtySlides.clear();
     dirtyPresentation = false;
@@ -658,12 +664,25 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     deletedSlides.clear();
     addedElements.clear();
     deletedElements.clear();
+
+    // Clear cached blob URLs from previous project
+    const { clearAssetCache } = await import('../lib/demoAssets');
+    clearAssetCache();
+
+    // Open new DB and load
+    await invoke('db_open', { path: dbPath });
+    const json = await invoke<string>('db_export_json');
+    const presentation: Presentation = JSON.parse(json);
+
     const store = usePresentationStore.getState();
     store.setPresentation(presentation);
     store.setProjectPath(dbPath.replace(/\.eigendeck$/, ''));
+    store.markClean();
+
     // Reset prevPresentation so subscriber doesn't diff against old state
     prevPresentation = presentation;
-    // Now enable write-through
+
+    // Enable write-through for the new project
     sqliteDbPath = dbPath;
   } catch (e) {
     console.error('Failed to open SQLite project:', e);
