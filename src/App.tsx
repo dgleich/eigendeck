@@ -108,10 +108,14 @@ function App() {
       if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); usePresentationStore.temporal.getState().undo(); }
       if ((e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) || (e.key === 'y' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); usePresentationStore.temporal.getState().redo(); }
       const inEditable = !!(e.target as HTMLElement).closest('[contenteditable="true"]');
-      // Cmd+I: italic when editing text (WebKit handles natively), inspector otherwise
+      if (inEditable && (e.ctrlKey || e.metaKey)) {
+        const key = e.key.toLowerCase();
+        if (key === 'b') { e.preventDefault(); document.execCommand('bold'); }
+        if (key === 'i') { e.preventDefault(); document.execCommand('italic'); }
+        if (key === 'e') { e.preventDefault(); document.execCommand('justifyCenter'); }
+      }
+      // Cmd+I outside text: toggle inspector
       if (e.key.toLowerCase() === 'i' && (e.ctrlKey || e.metaKey) && !inEditable) { e.preventDefault(); usePresentationStore.getState().toggleProperties(); }
-      // Cmd+E: center text (not handled natively by WebKit)
-      if (inEditable && e.key.toLowerCase() === 'e' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); document.execCommand('justifyCenter'); }
       if (e.key === 'h' && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); usePresentationStore.getState().toggleHistory(); }
       if (e.key === 'F5') { e.preventDefault(); flushToSqlite().then(() => startPresenting()); }
       // Delete selected element
