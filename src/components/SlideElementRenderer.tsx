@@ -474,9 +474,12 @@ function DraggableBox({
       const sel = usePresentationStore.getState().selectedObject;
       const useMultiDrag = isSelected && sel?.type === 'multi' && sel.ids.includes(elementId);
 
+      const DEAD_ZONE = 4; // px — ignore tiny movements (prevents drag on double-click)
+
       if (useMultiDrag && sel?.type === 'multi') {
         const ids = sel.ids;
         const handleMove = (me: PointerEvent) => {
+          if (!dragStarted && Math.abs(me.clientX - dragStart.current.x) < DEAD_ZONE && Math.abs(me.clientY - dragStart.current.y) < DEAD_ZONE) return;
           ensureDragStarted();
           let dx = Math.round((me.clientX - dragStart.current.x) / scale);
           let dy = Math.round((me.clientY - dragStart.current.y) / scale);
@@ -502,6 +505,7 @@ function DraggableBox({
         window.addEventListener('pointerup', handleUp);
       } else {
         const handleMove = (me: PointerEvent) => {
+          if (!dragStarted && Math.abs(me.clientX - dragStart.current.x) < DEAD_ZONE && Math.abs(me.clientY - dragStart.current.y) < DEAD_ZONE) return;
           ensureDragStarted();
           let newX = Math.round(dragStart.current.posX + (me.clientX - dragStart.current.x) / scale);
           let newY = Math.round(dragStart.current.posY + (me.clientY - dragStart.current.y) / scale);
