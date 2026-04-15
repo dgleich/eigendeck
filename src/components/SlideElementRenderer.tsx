@@ -421,6 +421,7 @@ function TextContent({
           const replacements: [string, string][] = [
             ['\u2013>', '\u2192'],   // –> → →  (en-dash + >)
             ['<\u2013', '\u2190'],   // <– → ←
+            ['\u2190>', '\u2194'],   // ←> → ↔  (left arrow + > = bidi arrow)
             ['<=>', '\u21D4'],       // <=> → ⇔
             ['=>', '\u21D2'],        // => → ⇒
             ['---', '\u2014'],       // --- → em-dash
