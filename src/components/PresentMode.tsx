@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
+import { useDemoUrl } from '../lib/demoAssets';
 import { SpeakerPanel } from './SpeakerView';
 import { TEXT_PRESET_STYLES, getSlideNumber } from '../types/presentation';
 import { typesetElement, resetMathElement, containsMath } from '../lib/mathjax';
@@ -209,23 +210,9 @@ export function PresentMode() {
               for (const el of slide.elements) {
                 if (el.type === 'demo-piece') demoSrcs.add(el.demoSrc);
               }
-              return Array.from(demoSrcs).map((demoSrc) => {
-                let src: string | undefined;
-                if (projectPath) {
-                  try { src = convertFileSrc(`${projectPath}/${demoSrc}`) + '#role=controller'; }
-                  catch { src = undefined; }
-                }
-                if (!src) return null;
-                return (
-                  <iframe
-                    key={`controller-${demoSrc}`}
-                    src={src}
-                    sandbox="allow-scripts allow-same-origin"
-                    title={`controller: ${demoSrc}`}
-                    style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }}
-                  />
-                );
-              });
+              return Array.from(demoSrcs).map((demoSrc) => (
+                <PresentControllerIframe key={`controller-${demoSrc}`} assetPath={demoSrc} />
+              ));
             })()}
 
             {/* Footer */}
@@ -337,31 +324,11 @@ function PresentElement({ element: el, zIndex, projectPath, style }: {
       );
     }
 
-    case 'demo': {
-      let src: string | undefined;
-      if (projectPath) { try { src = convertFileSrc(`${projectPath}/${el.src}`); } catch { /* skip */ } }
-      if (!src) return null;
-      return (
-        <iframe src={src} sandbox="allow-scripts allow-same-origin" title="demo" style={{
-          position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-          border: 'none', zIndex,
-          ...style,
-        }} />
-      );
-    }
+    case 'demo':
+      return <PresentDemoIframe assetPath={el.src} pos={pos} zIndex={zIndex} style={style} />;
 
-    case 'demo-piece': {
-      let src: string | undefined;
-      if (projectPath) { try { src = convertFileSrc(`${projectPath}/${el.demoSrc}`) + `#piece=${el.piece}`; } catch { /* skip */ } }
-      if (!src) return null;
-      return (
-        <iframe src={src} sandbox="allow-scripts allow-same-origin" title={`demo-piece: ${el.piece}`} style={{
-          position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-          border: 'none', zIndex,
-          ...style,
-        }} />
-      );
-    }
+    case 'demo-piece':
+      return <PresentDemoIframe assetPath={el.demoSrc} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} style={style} />;
 
     case 'cover':
       return (
@@ -497,5 +464,38 @@ function AnimatedArrow({ from, to, zIndex, animating, hasPrev }: {
       <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={strokeWidth} />
       <polygon points={`${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}`} fill={color} />
     </svg>
+  );
+}
+
+// ============================================
+// Demo iframe components (use hooks for blob URLs)
+// ============================================
+
+function PresentDemoIframe({ assetPath, hash, title, pos, zIndex, style }: {
+  assetPath: string; hash?: string; title?: string;
+  pos: { x: number; y: number; width: number; height: number };
+  zIndex: number; style?: React.CSSProperties;
+}) {
+  const src = useDemoUrl(assetPath, hash);
+  if (!src) return null;
+  return (
+    <iframe src={src} sandbox="allow-scripts allow-same-origin" title={title || 'demo'} style={{
+      position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
+      border: 'none', zIndex,
+      ...style,
+    }} />
+  );
+}
+
+function PresentControllerIframe({ assetPath }: { assetPath: string }) {
+  const src = useDemoUrl(assetPath, 'role=controller');
+  if (!src) return null;
+  return (
+    <iframe
+      src={src}
+      sandbox="allow-scripts allow-same-origin"
+      title={`controller: ${assetPath}`}
+      style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }}
+    />
   );
 }

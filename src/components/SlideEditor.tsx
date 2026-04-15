@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
+import { useDemoUrl } from '../lib/demoAssets';
 import { SlideElementRenderer } from './SlideElementRenderer';
 import { getSlideNumber, createTextElement } from '../types/presentation';
 import type { SlideLayout, SlideElement } from '../types/presentation';
@@ -378,23 +378,9 @@ export function SlideEditor() {
             for (const el of slide.elements) {
               if (el.type === 'demo-piece') demoSrcs.add(el.demoSrc);
             }
-            return Array.from(demoSrcs).map((demoSrc) => {
-              let src: string | undefined;
-              if (projectPath) {
-                try { src = convertFileSrc(`${projectPath}/${demoSrc}`) + '#role=controller'; }
-                catch { src = undefined; }
-              }
-              if (!src) return null;
-              return (
-                <iframe
-                  key={`controller-${demoSrc}`}
-                  src={src}
-                  sandbox="allow-scripts allow-same-origin"
-                  title={`controller: ${demoSrc}`}
-                  style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }}
-                />
-              );
-            });
+            return Array.from(demoSrcs).map((demoSrc) => (
+              <ControllerIframe key={`controller-${demoSrc}`} assetPath={demoSrc} />
+            ));
           })()}
           {marquee && (() => {
             const x = Math.min(marquee.x1, marquee.x2);
@@ -419,4 +405,16 @@ export function SlideEditor() {
   );
 }
 
-// Images are now stored as SQLite BLOBs via db_store_asset — no filesystem writes.
+/** Hidden controller iframe that loads demo HTML from SQLite */
+function ControllerIframe({ assetPath }: { assetPath: string }) {
+  const src = useDemoUrl(assetPath, 'role=controller');
+  if (!src) return null;
+  return (
+    <iframe
+      src={src}
+      sandbox="allow-scripts allow-same-origin"
+      title={`controller: ${assetPath}`}
+      style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }}
+    />
+  );
+}

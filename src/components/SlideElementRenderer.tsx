@@ -2,6 +2,8 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
+import { useDemoUrl } from '../lib/demoAssets';
+
 import { TEXT_PRESET_STYLES } from '../types/presentation';
 import { TextFormatToolbar } from './TextFormatToolbar';
 import { typesetElement, resetMathElement, containsMath, getDisplayMathHeight } from '../lib/mathjax';
@@ -127,19 +129,15 @@ export function SlideElementRenderer({
 // ============================================
 // Demo element with overlay for dragging
 // ============================================
-function DemoBox({ element, zIndex, scale, projectPath, isSelected, onSelect, onDelete, onUpdate }: {
+function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpdate }: {
   element: Extract<SlideElement, { type: 'demo' }>;
-  zIndex: number; scale: number; projectPath: string | null;
+  zIndex: number; scale: number; projectPath?: string | null;
   isSelected: boolean;
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
   const [interacting, setInteracting] = useState(false);
-  let src: string | undefined;
-  if (projectPath) {
-    try { src = convertFileSrc(`${projectPath}/${element.src}`); }
-    catch { src = undefined; }
-  }
+  const src = useDemoUrl(element.src);
   return (
     <DraggableBox
       elementId={element.id}
@@ -174,19 +172,15 @@ function DemoBox({ element, zIndex, scale, projectPath, isSelected, onSelect, on
 // ============================================
 // Demo-piece element — viewport iframe with piece hash
 // ============================================
-function DemoPieceBox({ element, zIndex, scale, projectPath, isSelected, onSelect, onDelete, onUpdate }: {
+function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpdate }: {
   element: Extract<SlideElement, { type: 'demo-piece' }>;
-  zIndex: number; scale: number; projectPath: string | null;
+  zIndex: number; scale: number; projectPath?: string | null;
   isSelected: boolean;
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
   const [interacting, setInteracting] = useState(false);
-  let src: string | undefined;
-  if (projectPath) {
-    try { src = convertFileSrc(`${projectPath}/${element.demoSrc}`) + `#piece=${element.piece}`; }
-    catch { src = undefined; }
-  }
+  const src = useDemoUrl(element.demoSrc, `piece=${element.piece}`);
   return (
     <DraggableBox
       elementId={element.id}
