@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 
 const COLORS = [
   { color: '#222222', label: 'Black' },
@@ -28,60 +28,37 @@ export function TextFormatToolbar(_props: Props) {
   const [colorOpen, setColorOpen] = useState(false);
   const [lastColor, setLastColor] = useState('#2563eb');
 
-  // Prevent toolbar clicks from stealing focus from the contentEditable
-  const keepFocus = (e: React.MouseEvent) => {
+  // Execute a command on mouseDown (before blur can happen)
+  // preventDefault keeps focus in the contentEditable
+  const execOnMouseDown = (cmd: string, value?: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-  };
-
-  const exec = (cmd: string, value?: string) => {
-    // Restore focus and selection if lost (portal can cause blur)
-    const sel = window.getSelection();
-    const editable = document.querySelector('[contenteditable="true"]') as HTMLElement;
-    if (editable && document.activeElement !== editable) {
-      editable.focus();
-      // If selection was lost, try to restore it
-      if (sel && sel.rangeCount === 0 && savedRange.current) {
-        sel.removeAllRanges();
-        sel.addRange(savedRange.current);
-      }
-    }
     document.execCommand(cmd, false, value);
   };
 
-  // Save selection continuously so we can restore after toolbar click causes blur
-  const savedRange = useRef<Range | null>(null);
-  useEffect(() => {
-    const saveSelection = () => {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) {
-        const range = sel.getRangeAt(0);
-        const editable = document.querySelector('[contenteditable="true"]');
-        if (editable && editable.contains(range.commonAncestorContainer)) {
-          savedRange.current = range.cloneRange();
-        }
-      }
-    };
-    document.addEventListener('selectionchange', saveSelection);
-    return () => document.removeEventListener('selectionchange', saveSelection);
-  }, []);
+  // For buttons that need custom logic, prevent default and run action
+  const onAction = (fn: () => void) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fn();
+  };
 
   return (
-    <div className="text-format-toolbar" onMouseDown={keepFocus}>
-      <button onClick={() => exec('bold')} title="Bold (Cmd+B)">
+    <div className="text-format-toolbar" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+      <button onMouseDown={execOnMouseDown('bold')} title="Bold (Cmd+B)">
         <b>B</b>
       </button>
-      <button onClick={() => exec('italic')} title="Italic (Cmd+I)">
+      <button onMouseDown={execOnMouseDown('italic')} title="Italic (Cmd+I)">
         <i>I</i>
       </button>
-      <button onClick={() => exec('strikeThrough')} title="Strikethrough">
+      <button onMouseDown={execOnMouseDown('strikeThrough')} title="Strikethrough">
         <s>S</s>
       </button>
       <span className="tf-divider" />
 
       {/* Text color */}
       <div className="tf-color-wrapper">
-        <button onClick={() => setColorOpen(!colorOpen)} title="Text color"
+        <button onMouseDown={onAction(() => setColorOpen(!colorOpen))} title="Text color"
           style={{ position: 'relative' }}>
           <span style={{ fontWeight: 700 }}>A</span>
           <span style={{
@@ -97,8 +74,10 @@ export function TextFormatToolbar(_props: Props) {
                 className="tf-color-swatch"
                 style={{ background: c.color, border: c.color === '#ffffff' ? '1px solid #ccc' : '1px solid transparent' }}
                 title={c.label}
-                onClick={() => {
-                  exec('foreColor', c.color);
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  document.execCommand('foreColor', false, c.color);
                   setLastColor(c.color);
                   setColorOpen(false);
                 }}
@@ -109,7 +88,7 @@ export function TextFormatToolbar(_props: Props) {
       </div>
       <span className="tf-divider" />
 
-      <button onClick={() => {
+      <button onMouseDown={onAction(() => {
         const sel = window.getSelection();
         if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
           const range = sel.getRangeAt(0);
@@ -118,10 +97,10 @@ export function TextFormatToolbar(_props: Props) {
           span.style.letterSpacing = '0.08em';
           try { range.surroundContents(span); } catch { span.appendChild(range.extractContents()); range.insertNode(span); }
         }
-      }} title="Uppercase + letter spacing">AA</button>
+      })} title="Uppercase + letter spacing">AA</button>
       <span className="tf-divider" />
 
-      <button onClick={() => {
+      <button onMouseDown={onAction(() => {
         const sel = window.getSelection();
         if (!sel || sel.rangeCount === 0) return;
 
@@ -132,7 +111,6 @@ export function TextFormatToolbar(_props: Props) {
         if (li) {
           const ul = li.closest('ul');
           if (ul) {
-            // Unwrap: replace UL with its li contents as divs
             const parent = ul.parentNode!;
             for (const item of Array.from(ul.children)) {
               const div = document.createElement('div');
@@ -144,11 +122,9 @@ export function TextFormatToolbar(_props: Props) {
           }
         }
 
-        // Try execCommand first (works in some WebKit versions)
         const ok = document.execCommand('insertUnorderedList', false);
         if (ok) return;
 
-        // Fallback: insert via insertHTML
         if (!sel.isCollapsed) {
           const text = sel.toString();
           const lines = text.split('\n').filter(Boolean);
@@ -157,21 +133,21 @@ export function TextFormatToolbar(_props: Props) {
         } else {
           document.execCommand('insertHTML', false, '<ul><li><br></li></ul>');
         }
-      }} title="Bullet list">List</button>
+      })} title="Bullet list">List</button>
       <span className="tf-divider" />
 
-      <button onClick={() => exec('justifyLeft')} title="Align left">
+      <button onMouseDown={execOnMouseDown('justifyLeft')} title="Align left">
         <span style={{ fontSize: 10, lineHeight: 1 }}>&#9776;</span>
       </button>
-      <button onClick={() => exec('justifyCenter')} title="Align center">
+      <button onMouseDown={execOnMouseDown('justifyCenter')} title="Align center">
         <span style={{ fontSize: 10, lineHeight: 1 }}>&#9779;</span>
       </button>
-      <button onClick={() => exec('justifyRight')} title="Align right">
+      <button onMouseDown={execOnMouseDown('justifyRight')} title="Align right">
         <span style={{ fontSize: 10, lineHeight: 1 }}>&#9778;</span>
       </button>
       <span className="tf-divider" />
 
-      <button onClick={() => exec('removeFormat')} title="Strip formatting from selection (removes bold, italic, color, etc.)">
+      <button onMouseDown={execOnMouseDown('removeFormat')} title="Strip formatting from selection">
         <span style={{ textDecoration: 'line-through', fontWeight: 400 }}>T</span>
       </button>
     </div>
