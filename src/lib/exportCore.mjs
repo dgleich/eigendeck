@@ -58,21 +58,31 @@ export function injectDemoBootstrap(html, hash, channelKey) {
   var _USP = window.URLSearchParams;
   window.URLSearchParams = function(init) {
     var inst = new _USP(init);
-    // If the init was empty/missing (srcdoc hash is empty), inject our params
     if (!init || init === '' || init === '#') {
       for (var k in __hp) inst.set(k, __hp[k]);
     }
     return inst;
   };
   window.URLSearchParams.prototype = _USP.prototype;
-  // Override BroadcastChannel with unique prefix
-  var _BC = window.BroadcastChannel;
-  if (_BC) {
-    window.BroadcastChannel = function(name) {
-      return new _BC(__ch + ':' + name);
-    };
-    window.BroadcastChannel.prototype = _BC.prototype;
-  }
+  // Replace BroadcastChannel with postMessage relay via parent.
+  // srcdoc iframes may have opaque origins where BroadcastChannel won't work.
+  window.BroadcastChannel = function(name) {
+    this._name = __ch + ':' + name;
+    this.onmessage = null;
+    var self = this;
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.__bc === self._name && self.onmessage) {
+        self.onmessage({ data: e.data.payload });
+      }
+    });
+  };
+  window.BroadcastChannel.prototype.postMessage = function(msg) {
+    // Send to parent, which relays to all sibling iframes
+    try {
+      window.parent.postMessage({ __bc: this._name, payload: msg }, '*');
+    } catch(e) {}
+  };
+  window.BroadcastChannel.prototype.close = function() { this.onmessage = null; };
 })();
 </script>`;
   if (html.includes('<head>')) {
@@ -274,6 +284,21 @@ ${slideHtml.join('\n')}
 </div>
 <!-- eigendeck-source: ${sourceB64} -->
 <script>
+// BroadcastChannel relay: srcdoc iframes use postMessage to parent,
+// parent forwards to all sibling iframes on the same slide.
+window.addEventListener('message', function(e) {
+  if (!e.data || !e.data.__bc) return;
+  // Relay to all iframes in the current active slide
+  var active = document.querySelector('.slide.active');
+  if (!active) return;
+  var iframes = active.querySelectorAll('iframe');
+  for (var i = 0; i < iframes.length; i++) {
+    if (iframes[i].contentWindow !== e.source) {
+      try { iframes[i].contentWindow.postMessage(e.data, '*'); } catch(ex) {}
+    }
+  }
+});
+
 const slides = document.querySelectorAll('.slide');
 let current = 0;
 const W = ${W}, H = ${H};
