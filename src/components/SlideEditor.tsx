@@ -238,23 +238,18 @@ export function SlideEditor() {
           reader.readAsDataURL(file);
         }
       } else if (isHtml) {
-        if (store.projectPath) {
-          try {
-            const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
-            const demosDir = `${store.projectPath}/demos`;
-            if (!(await exists(demosDir))) await mkdir(demosDir);
-            const bytes = new Uint8Array(await file.arrayBuffer());
-            await writeFile(`${demosDir}/${file.name}`, bytes);
-            store.addElement({
-              id: crypto.randomUUID(), type: 'demo',
-              src: `demos/${file.name}`,
-              position: { x: 80, y: 200, width: 1760, height: 700 },
-            });
-          } catch (err) {
-            console.error('Failed to save dropped HTML:', err);
-          }
-        } else {
-          console.warn('Cannot add demo without a project path — save project first');
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          const relativePath = `demos/${file.name}`;
+          await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html' });
+          store.addElement({
+            id: crypto.randomUUID(), type: 'demo',
+            src: relativePath,
+            position: { x: 80, y: 200, width: 1760, height: 700 },
+          });
+        } catch (err) {
+          console.error('Failed to store dropped HTML:', err);
         }
       }
     }
@@ -276,34 +271,28 @@ export function SlideEditor() {
               const isImage = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(name);
               const isHtml = /\.html?$/i.test(name);
 
-              if (isImage && store.projectPath) {
+              if (isImage) {
                 try {
-                  const { readFile, writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
-                  const imagesDir = `${store.projectPath}/images`;
-                  if (!(await exists(imagesDir))) await mkdir(imagesDir);
-                  if (!fullPath.startsWith(store.projectPath)) {
-                    await writeFile(`${imagesDir}/${name}`, await readFile(fullPath));
-                  }
-                  const relativePath = fullPath.startsWith(store.projectPath)
-                    ? fullPath.slice(store.projectPath.length + 1)
-                    : `images/${name}`;
+                  const { invoke } = await import('@tauri-apps/api/core');
+                  const { readFile } = await import('@tauri-apps/plugin-fs');
+                  const relativePath = `images/${name}`;
+                  const bytes = await readFile(fullPath);
+                  const ext = name.split('.').pop()?.toLowerCase() || 'png';
+                  const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+                  await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime });
                   store.addElement({
                     id: crypto.randomUUID(), type: 'image',
                     src: relativePath,
                     position: { x: 360, y: 200, width: 1200, height: 680 },
                   });
                 } catch (err) { console.error('Failed to handle dropped image:', err); }
-              } else if (isHtml && store.projectPath) {
+              } else if (isHtml) {
                 try {
-                  const { readFile, readTextFile, writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
-                  const demosDir = `${store.projectPath}/demos`;
-                  if (!(await exists(demosDir))) await mkdir(demosDir);
-                  if (!fullPath.startsWith(store.projectPath)) {
-                    await writeFile(`${demosDir}/${name}`, await readFile(fullPath));
-                  }
-                  const relativePath = fullPath.startsWith(store.projectPath)
-                    ? fullPath.slice(store.projectPath.length + 1)
-                    : `demos/${name}`;
+                  const { invoke } = await import('@tauri-apps/api/core');
+                  const { readFile, readTextFile } = await import('@tauri-apps/plugin-fs');
+                  const relativePath = `demos/${name}`;
+                  const bytes = await readFile(fullPath);
+                  await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html' });
 
                   // Detect demo-piece demos
                   const html = await readTextFile(fullPath);
