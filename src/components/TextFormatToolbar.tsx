@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 const COLORS = [
   { color: '#222222', label: 'Black' },
@@ -27,38 +27,62 @@ interface Props {
 export function TextFormatToolbar(_props: Props) {
   const [colorOpen, setColorOpen] = useState(false);
   const [lastColor, setLastColor] = useState('#2563eb');
+  const savedRange = useRef<Range | null>(null);
 
-  // Execute a command on mouseDown (before blur can happen)
-  // preventDefault keeps focus in the contentEditable
-  const execOnMouseDown = (cmd: string, value?: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  // Continuously save the selection from the contentEditable
+  useEffect(() => {
+    const save = () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const r = sel.getRangeAt(0);
+        const editable = document.querySelector('[contenteditable="true"]');
+        if (editable && editable.contains(r.commonAncestorContainer)) {
+          savedRange.current = r.cloneRange();
+        }
+      }
+    };
+    document.addEventListener('selectionchange', save);
+    // Save immediately on mount
+    save();
+    return () => document.removeEventListener('selectionchange', save);
+  }, []);
+
+  // Restore selection, focus, then execute command
+  const exec = useCallback((cmd: string, value?: string) => {
+    const editable = document.querySelector('[contenteditable="true"]') as HTMLElement;
+    if (editable) {
+      editable.focus();
+      if (savedRange.current) {
+        const sel = window.getSelection();
+        if (sel) {
+          sel.removeAllRanges();
+          sel.addRange(savedRange.current);
+        }
+      }
+    }
     document.execCommand(cmd, false, value);
-  };
+  }, []);
 
-  // For buttons that need custom logic, prevent default and run action
-  const onAction = (fn: () => void) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    fn();
-  };
+  const btn = (label: React.ReactNode, cmd: string, title: string, value?: string) => (
+    <button
+      onMouseDown={(e) => { e.preventDefault(); }}
+      onClick={() => exec(cmd, value)}
+      title={title}
+    >
+      {label}
+    </button>
+  );
 
   return (
-    <div className="text-format-toolbar">
-      <button onMouseDown={execOnMouseDown('bold')} title="Bold (Cmd+B)">
-        <b>B</b>
-      </button>
-      <button onMouseDown={execOnMouseDown('italic')} title="Italic (Cmd+I)">
-        <i>I</i>
-      </button>
-      <button onMouseDown={execOnMouseDown('strikeThrough')} title="Strikethrough">
-        <s>S</s>
-      </button>
+    <div className="text-format-toolbar" onMouseDown={(e) => e.preventDefault()}>
+      {btn(<b>B</b>, 'bold', 'Bold (Cmd+B)')}
+      {btn(<i>I</i>, 'italic', 'Italic (Cmd+I)')}
+      {btn(<s>S</s>, 'strikeThrough', 'Strikethrough')}
       <span className="tf-divider" />
 
       {/* Text color */}
       <div className="tf-color-wrapper">
-        <button onMouseDown={onAction(() => setColorOpen(!colorOpen))} title="Text color"
+        <button onMouseDown={(e) => e.preventDefault()} onClick={() => setColorOpen(!colorOpen)} title="Text color"
           style={{ position: 'relative' }}>
           <span style={{ fontWeight: 700 }}>A</span>
           <span style={{
@@ -74,10 +98,9 @@ export function TextFormatToolbar(_props: Props) {
                 className="tf-color-swatch"
                 style={{ background: c.color, border: c.color === '#ffffff' ? '1px solid #ccc' : '1px solid transparent' }}
                 title={c.label}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  document.execCommand('foreColor', false, c.color);
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  exec('foreColor', c.color);
                   setLastColor(c.color);
                   setColorOpen(false);
                 }}
@@ -88,7 +111,9 @@ export function TextFormatToolbar(_props: Props) {
       </div>
       <span className="tf-divider" />
 
-      <button onMouseDown={onAction(() => {
+      <button onMouseDown={(e) => e.preventDefault()} onClick={() => {
+        const editable = document.querySelector('[contenteditable="true"]') as HTMLElement;
+        if (editable) { editable.focus(); if (savedRange.current) { const sel = window.getSelection(); if (sel) { sel.removeAllRanges(); sel.addRange(savedRange.current); } } }
         const sel = window.getSelection();
         if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
           const range = sel.getRangeAt(0);
@@ -97,14 +122,15 @@ export function TextFormatToolbar(_props: Props) {
           span.style.letterSpacing = '0.08em';
           try { range.surroundContents(span); } catch { span.appendChild(range.extractContents()); range.insertNode(span); }
         }
-      })} title="Uppercase + letter spacing">AA</button>
+      }} title="Uppercase + letter spacing">AA</button>
       <span className="tf-divider" />
 
-      <button onMouseDown={onAction(() => {
+      <button onMouseDown={(e) => e.preventDefault()} onClick={() => {
+        const editable = document.querySelector('[contenteditable="true"]') as HTMLElement;
+        if (editable) { editable.focus(); if (savedRange.current) { const sel = window.getSelection(); if (sel) { sel.removeAllRanges(); sel.addRange(savedRange.current); } } }
         const sel = window.getSelection();
         if (!sel || sel.rangeCount === 0) return;
 
-        // Check if already in a list — toggle off
         let node: Node | null = sel.anchorNode;
         while (node && node.nodeType !== Node.ELEMENT_NODE) node = node.parentNode;
         const li = (node as HTMLElement)?.closest?.('li');
@@ -133,23 +159,15 @@ export function TextFormatToolbar(_props: Props) {
         } else {
           document.execCommand('insertHTML', false, '<ul><li><br></li></ul>');
         }
-      })} title="Bullet list">List</button>
+      }} title="Bullet list">List</button>
       <span className="tf-divider" />
 
-      <button onMouseDown={execOnMouseDown('justifyLeft')} title="Align left">
-        <span style={{ fontSize: 10, lineHeight: 1 }}>&#9776;</span>
-      </button>
-      <button onMouseDown={execOnMouseDown('justifyCenter')} title="Align center">
-        <span style={{ fontSize: 10, lineHeight: 1 }}>&#9779;</span>
-      </button>
-      <button onMouseDown={execOnMouseDown('justifyRight')} title="Align right">
-        <span style={{ fontSize: 10, lineHeight: 1 }}>&#9778;</span>
-      </button>
+      {btn(<span style={{ fontSize: 10, lineHeight: 1 }}>&#9776;</span>, 'justifyLeft', 'Align left')}
+      {btn(<span style={{ fontSize: 10, lineHeight: 1 }}>&#9779;</span>, 'justifyCenter', 'Align center')}
+      {btn(<span style={{ fontSize: 10, lineHeight: 1 }}>&#9778;</span>, 'justifyRight', 'Align right')}
       <span className="tf-divider" />
 
-      <button onMouseDown={execOnMouseDown('removeFormat')} title="Strip formatting from selection">
-        <span style={{ textDecoration: 'line-through', fontWeight: 400 }}>T</span>
-      </button>
+      {btn(<span style={{ textDecoration: 'line-through', fontWeight: 400 }}>T</span>, 'removeFormat', 'Strip formatting')}
     </div>
   );
 }
