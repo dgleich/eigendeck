@@ -8,6 +8,7 @@ import { SpeakerMode } from './components/SpeakerMode';
 import { openPresenterWindow } from './lib/multiMonitor';
 import { NotesPanel } from './components/NotesPanel';
 import { PropertiesPanel } from './components/PropertiesPanel';
+import { HistoryPanel } from './components/HistoryPanel';
 import { DebugConsole } from './components/DebugConsole';
 import { LinkOverlay } from './components/LinkOverlay';
 import { ContextMenu } from './components/ContextMenu';
@@ -28,7 +29,7 @@ import { flushToSqlite } from './store/presentation';
 import './App.css';
 
 function App() {
-  const { isPresenting, showProperties } =
+  const { isPresenting, showProperties, showHistory } =
     usePresentationStore();
   const [sidebarWidth, setSidebarWidth] = useState(200);
   const resizeStartX = useRef(0);
@@ -57,8 +58,13 @@ function App() {
     document.body.style.userSelect = 'none';
   }, [sidebarWidth]);
 
-  // Initialize auto-save and sync recent menu
-  useEffect(() => { syncRecentMenu(); }, []);
+  // Initialize: open in-memory DB so assets work before first save, sync recent menu
+  useEffect(() => {
+    import('@tauri-apps/api/core').then(({ invoke }) => {
+      invoke('db_open_memory').catch(() => { /* may already have a DB open */ });
+    }).catch(() => { /* not in Tauri */ });
+    syncRecentMenu();
+  }, []);
 
   // SQLite DB is closed from Rust via on_window_event(Destroyed) — no JS handler needed.
 
@@ -102,6 +108,7 @@ function App() {
       if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); usePresentationStore.temporal.getState().undo(); }
       if ((e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) || (e.key === 'y' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); usePresentationStore.temporal.getState().redo(); }
       if (e.key === 'i' && (e.ctrlKey || e.metaKey) && !(e.target as HTMLElement).closest('[contenteditable]')) { e.preventDefault(); usePresentationStore.getState().toggleProperties(); }
+      if (e.key === 'h' && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); usePresentationStore.getState().toggleHistory(); }
       if (e.key === 'F5') { e.preventDefault(); flushToSqlite().then(() => startPresenting()); }
       // Delete selected element
       if ((e.key === 'Delete' || e.key === 'Backspace') && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
@@ -261,6 +268,7 @@ function App() {
         case 'import-html': importFromHtml(); break;
         case 'present': startPresenting(); break;
         case 'inspector': usePresentationStore.getState().toggleProperties(); break;
+        case 'history': usePresentationStore.getState().toggleHistory(); break;
         case 'debug-console': window.dispatchEvent(new CustomEvent('toggle-debug-console')); break;
       }
     });
@@ -303,55 +311,43 @@ function App() {
               store.addElement({ id: crypto.randomUUID(), type: 'cover' as any, position: pos });
             }}>+ Cover</button>
             <button title="Add image from file" onClick={async () => {
-              const { open, message } = await import('@tauri-apps/plugin-dialog');
-              if (!store.projectPath) { await message('Please save or open a project first.', { title: 'No Project Open', kind: 'info' }); return; }
+              const { open } = await import('@tauri-apps/plugin-dialog');
               const selected = await open({ title: 'Select Image', filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'] }] });
               if (!selected) return;
               const fullPath = selected as string;
               const fileName = fullPath.split('/').pop() || 'image.png';
-              const relativePath = fullPath.startsWith(store.projectPath) ? fullPath.slice(store.projectPath.length + 1) : `images/${fileName}`;
-              if (!fullPath.startsWith(store.projectPath)) {
-                try {
-                  const { readFile, writeFile, exists, mkdir } = await import('@tauri-apps/plugin-fs');
-                  const imagesDir = `${store.projectPath}/images`;
-                  if (!(await exists(imagesDir))) await mkdir(imagesDir);
-                  await writeFile(`${imagesDir}/${fileName}`, await readFile(fullPath));
-                } catch (err) { console.error('Copy failed:', err); }
-              }
+              const relativePath = `images/${fileName}`;
+              try {
+                const { invoke } = await import('@tauri-apps/api/core');
+                const { readFile } = await import('@tauri-apps/plugin-fs');
+                const bytes = await readFile(fullPath);
+                const ext = fileName.split('.').pop()?.toLowerCase() || 'png';
+                const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+                await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime });
+              } catch (err) { console.error('Failed to store image:', err); }
               store.addElement({ id: crypto.randomUUID(), type: 'image', src: relativePath, position: { x: 360, y: 200, width: 1200, height: 680 } });
             }}>+ Image</button>
             <button title="Add demo HTML" onClick={async () => {
-              const { open, message } = await import('@tauri-apps/plugin-dialog');
-              if (!store.projectPath) { await message('Please save or open a project first.', { title: 'No Project Open', kind: 'info' }); return; }
-              const selected = await open({ title: 'Select Demo', defaultPath: `${store.projectPath}/demos`, filters: [{ name: 'HTML', extensions: ['html'] }] });
+              const { open } = await import('@tauri-apps/plugin-dialog');
+              const selected = await open({ title: 'Select Demo', filters: [{ name: 'HTML', extensions: ['html'] }] });
               if (!selected) return;
               const fullPath = selected as string;
               const fileName = fullPath.split('/').pop() || 'demo.html';
+              const relativePath = `demos/${fileName}`;
 
-              // Copy into demos/ if not already in project
-              let relativePath: string;
-              if (fullPath.startsWith(store.projectPath + '/')) {
-                relativePath = fullPath.slice(store.projectPath.length + 1);
-              } else {
-                relativePath = `demos/${fileName}`;
-                try {
-                  const { readFile, writeFile, exists, mkdir } = await import('@tauri-apps/plugin-fs');
-                  const demosDir = `${store.projectPath}/demos`;
-                  if (!(await exists(demosDir))) await mkdir(demosDir);
-                  await writeFile(`${demosDir}/${fileName}`, await readFile(fullPath));
-                } catch (err) { console.error('Copy demo failed:', err); }
-              }
-
-              // Check if this is a demo-piece demo by reading the HTML
+              // Store demo HTML as SQLite asset
               try {
-                const { readTextFile } = await import('@tauri-apps/plugin-fs');
-                const html = await readTextFile(`${store.projectPath}/${relativePath}`);
-                // Look for piece definitions: piece === 'name' or piece === "name"
+                const { invoke } = await import('@tauri-apps/api/core');
+                const { readFile, readTextFile } = await import('@tauri-apps/plugin-fs');
+                const bytes = await readFile(fullPath);
+                await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html' });
+
+                // Check if this is a demo-piece demo
+                const html = await readTextFile(fullPath);
                 const pieceMatches = html.matchAll(/piece\s*===?\s*['"](\w+)['"]/g);
                 const pieces = [...new Set([...pieceMatches].map(m => m[1]))];
 
                 if (pieces.length > 0 && html.includes('BroadcastChannel')) {
-                  // Demo-piece demo: create one element per piece
                   let x = 80;
                   for (const piece of pieces) {
                     const width = Math.floor((1760 - (pieces.length - 1) * 40) / pieces.length);
@@ -363,12 +359,10 @@ function App() {
                     x += width + 40;
                   }
                 } else {
-                  // Regular iframe demo
                   store.addElement({ id: crypto.randomUUID(), type: 'demo', src: relativePath, position: { x: 80, y: 200, width: 1760, height: 700 } });
                 }
-              } catch {
-                // Fallback: regular iframe demo
-                store.addElement({ id: crypto.randomUUID(), type: 'demo', src: relativePath, position: { x: 80, y: 200, width: 1760, height: 700 } });
+              } catch (err) {
+                console.error('Failed to add demo:', err);
               }
             }}>+ Demo</button>
           </div>
@@ -376,6 +370,7 @@ function App() {
           <NotesPanel />
         </div>
         {showProperties && <PropertiesPanel />}
+        {showHistory && <HistoryPanel />}
       </div>
       <DebugConsole />
       {contextMenu && (

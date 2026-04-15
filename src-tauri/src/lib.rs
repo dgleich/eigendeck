@@ -324,11 +324,13 @@ fn update_recent_menu(app: tauri::AppHandle, projects: Vec<serde_json::Value>) -
         .build(&app).map_err(|e| e.to_string())?;
     let inspector_item = MenuItemBuilder::new("Toggle Inspector").id("inspector").accelerator("CmdOrCtrl+I")
         .build(&app).map_err(|e| e.to_string())?;
+    let history_item = MenuItemBuilder::new("History").id("history").accelerator("CmdOrCtrl+Shift+H")
+        .build(&app).map_err(|e| e.to_string())?;
     let debug_item = MenuItemBuilder::new("Debug Console").id("debug-console").accelerator("CmdOrCtrl+Shift+D")
         .build(&app).map_err(|e| e.to_string())?;
 
     let view_menu = SubmenuBuilder::new(&app, "View")
-        .item(&present_item).item(&inspector_item).separator().item(&debug_item).separator().fullscreen()
+        .item(&present_item).item(&inspector_item).item(&history_item).separator().item(&debug_item).separator().fullscreen()
         .build().map_err(|e| e.to_string())?;
 
     let window_menu = SubmenuBuilder::new(&app, "Window")
@@ -359,6 +361,8 @@ pub fn run() {
             enable_display_mirroring,
             update_recent_menu,
             storage::db_open,
+            storage::db_open_memory,
+            storage::db_save_to_file,
             storage::db_close,
             storage::db_import_json,
             storage::db_export_json,
@@ -369,6 +373,8 @@ pub fn run() {
             storage::db_remove_element_from_slide,
             storage::db_compact,
             storage::db_get_history,
+            storage::db_get_history_timestamps,
+            storage::db_get_state_at,
             storage::db_checkpoint,
             storage::db_add_slide,
             storage::db_delete_slide,
@@ -457,6 +463,11 @@ pub fn run() {
                 .accelerator("CmdOrCtrl+I")
                 .build(app)?;
 
+            let history_item = MenuItemBuilder::new("History")
+                .id("history")
+                .accelerator("CmdOrCtrl+Shift+H")
+                .build(app)?;
+
             let debug_item = MenuItemBuilder::new("Debug Console")
                 .id("debug-console")
                 .accelerator("CmdOrCtrl+Shift+D")
@@ -466,6 +477,7 @@ pub fn run() {
                 .item(&present_item)
                 .item(&speaker_item)
                 .item(&inspector_item)
+                .item(&history_item)
                 .separator()
                 .item(&debug_item)
                 .separator()

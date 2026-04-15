@@ -22,6 +22,7 @@ interface PresentationState {
   projectPath: string | null;
   selectedObject: SelectedObject;
   showProperties: boolean;
+  showHistory: boolean;
 
   // Presentation actions
   setPresentation: (p: Presentation) => void;
@@ -55,6 +56,7 @@ interface PresentationState {
   selectObject: (obj: SelectedObject) => void;
   toggleSelectElement: (id: string) => void;
   toggleProperties: () => void;
+  toggleHistory: () => void;
 }
 
 function updateCurrentSlide(
@@ -79,6 +81,7 @@ export const usePresentationStore = create<PresentationState>()(
       projectPath: null,
       selectedObject: { type: 'slide' },
       showProperties: false,
+      showHistory: false,
 
       setPresentation: (presentation) => {
         set({ presentation, currentSlideIndex: 0, isDirty: false, selectedObject: { type: 'slide' } });
@@ -465,6 +468,8 @@ export const usePresentationStore = create<PresentationState>()(
       selectObject: (selectedObject) => set({ selectedObject }),
       toggleProperties: () =>
         set((state) => ({ showProperties: !state.showProperties })),
+      toggleHistory: () =>
+        set((state) => ({ showHistory: !state.showHistory })),
     }),
     {
       partialize: (state) => ({

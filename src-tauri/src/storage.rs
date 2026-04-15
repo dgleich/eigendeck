@@ -91,7 +91,7 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
     Ok(())
 }
 
-/// Open or create a .eigendeck SQLite database
+/// Open or create a .eigendeck SQLite database on disk
 pub fn open_db(path: &str) -> SqlResult<()> {
     let conn = Connection::open(path)?;
     create_schema(&conn)?;
@@ -100,11 +100,40 @@ pub fn open_db(path: &str) -> SqlResult<()> {
     Ok(())
 }
 
+/// Open an in-memory SQLite database (used before first save)
+pub fn open_memory_db() -> SqlResult<()> {
+    let conn = Connection::open_in_memory()?;
+    create_schema(&conn)?;
+    let mut db = DB.lock().unwrap();
+    *db = Some(conn);
+    Ok(())
+}
+
+/// Save the current in-memory DB to a file, then reopen from that file.
+/// Uses SQLite's backup API for an atomic copy.
+pub fn save_to_file(path: &str) -> SqlResult<()> {
+    let mut db = DB.lock().unwrap();
+    let src = db.as_ref().ok_or(rusqlite::Error::InvalidQuery)?;
+    {
+        let mut dest = Connection::open(path)?;
+        let backup = rusqlite::backup::Backup::new(src, &mut dest)?;
+        backup.run_to_completion(100, std::time::Duration::from_millis(0), None)?;
+        // dest closes on drop, flushing everything
+    }
+    // Now reopen from the file so future writes go to disk
+    let conn = Connection::open(path)?;
+    // WAL mode is already set in schema, but ensure it after reopen
+    conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;")?;
+    *db = Some(conn);
+    Ok(())
+}
+
 /// Close the database, checkpointing WAL for clean single file
 pub fn close_db() -> SqlResult<()> {
     let mut db = DB.lock().unwrap();
     if let Some(conn) = db.take() {
-        conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")?;
+        // Only checkpoint if it's a file-backed DB (not in-memory)
+        let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
         // Connection drops and closes here
     }
     Ok(())
@@ -168,6 +197,18 @@ where
 #[tauri::command]
 pub fn db_open(path: String) -> Result<(), String> {
     open_db(&path).map_err(|e| e.to_string())
+}
+
+/// Open an in-memory database (used on app start before first save)
+#[tauri::command]
+pub fn db_open_memory() -> Result<(), String> {
+    open_memory_db().map_err(|e| e.to_string())
+}
+
+/// Save in-memory DB to a file, then reopen from file
+#[tauri::command]
+pub fn db_save_to_file(path: String) -> Result<(), String> {
+    save_to_file(&path).map_err(|e| e.to_string())
 }
 
 /// Close the current database
@@ -597,6 +638,214 @@ pub fn db_get_history(limit: i32) -> Result<String, String> {
         events.reverse();
 
         Ok(serde_json::to_string_pretty(&events).unwrap())
+    })
+}
+
+/// Get distinct history timestamps for the timeline scrubber.
+/// Returns JSON array of { timestamp, summary } objects.
+#[tauri::command]
+pub fn db_get_history_timestamps() -> Result<String, String> {
+    with_db(|conn| {
+        // Collect all timestamps from all temporal tables
+        let mut timestamps: Vec<(String, String)> = Vec::new();
+
+        // Element changes
+        let mut stmt = conn.prepare(
+            "SELECT valid_from, id, type, data FROM elements ORDER BY valid_from"
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+            ))
+        })?;
+        for row in rows {
+            let (ts, _id, el_type, data_str) = row?;
+            let data: Value = serde_json::from_str(&data_str).unwrap_or(Value::Null);
+            let preview = data.get("html").and_then(|v| v.as_str()).unwrap_or("");
+            // Strip tags
+            let text: String = {
+                let mut r = String::new();
+                let mut in_tag = false;
+                for c in preview.chars().take(80) {
+                    if c == '<' { in_tag = true; }
+                    else if c == '>' { in_tag = false; }
+                    else if !in_tag { r.push(c); }
+                }
+                r.replace("&nbsp;", " ").replace("&amp;", "&")
+            };
+            let summary = if text.is_empty() {
+                format!("{} element", el_type)
+            } else if text.len() > 40 {
+                format!("{}: {}...", el_type, &text[..40])
+            } else {
+                format!("{}: {}", el_type, text)
+            };
+            timestamps.push((ts, summary));
+        }
+
+        // Slide changes
+        let mut stmt = conn.prepare(
+            "SELECT valid_from, id, position FROM slides ORDER BY valid_from"
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i32>(2)?,
+            ))
+        })?;
+        for row in rows {
+            let (ts, _id, pos) = row?;
+            timestamps.push((ts, format!("slide {}", pos + 1)));
+        }
+
+        // Sort by timestamp, deduplicate consecutive identical timestamps
+        timestamps.sort_by(|a, b| a.0.cmp(&b.0));
+
+        // Group by base timestamp (strip sequence suffix for display)
+        let mut result: Vec<Value> = Vec::new();
+        let mut last_ts = String::new();
+        for (ts, summary) in &timestamps {
+            if *ts != last_ts {
+                result.push(serde_json::json!({
+                    "timestamp": ts,
+                    "summary": summary,
+                }));
+                last_ts = ts.clone();
+            }
+        }
+
+        Ok(serde_json::to_string(&result).unwrap())
+    })
+}
+
+/// Reconstruct the full presentation state as it was at a given timestamp.
+/// Uses temporal queries: valid_from <= ts AND (valid_to IS NULL OR valid_to > ts).
+#[tauri::command]
+pub fn db_get_state_at(at: String) -> Result<String, String> {
+    with_db(|conn| {
+        // Metadata (not temporal — use current)
+        let mut title = String::from("Untitled");
+        let mut theme = String::from("white");
+        let mut config = Value::Object(serde_json::Map::new());
+
+        let mut stmt = conn.prepare("SELECT key, value FROM presentation")?;
+        let rows = stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?;
+        for row in rows {
+            let (key, value) = row?;
+            match key.as_str() {
+                "title" => title = value,
+                "theme" => theme = value,
+                "config" => {
+                    config = serde_json::from_str(&value).unwrap_or(config);
+                }
+                _ => {}
+            }
+        }
+
+        // Elements alive at `at`
+        let mut elements: std::collections::HashMap<String, (Value, Option<String>)> =
+            std::collections::HashMap::new();
+        let mut stmt = conn.prepare(
+            "SELECT id, data, link_id FROM elements WHERE valid_from <= ?1 AND (valid_to IS NULL OR valid_to > ?1)"
+        )?;
+        let rows = stmt.query_map(params![&at], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+            ))
+        })?;
+        for row in rows {
+            let (id, data, link_id) = row?;
+            let parsed: Value = serde_json::from_str(&data).unwrap_or(Value::Null);
+            elements.insert(id, (parsed, link_id));
+        }
+
+        // slide_elements alive at `at`
+        let mut se_by_slide: std::collections::HashMap<String, Vec<(String, i32)>> =
+            std::collections::HashMap::new();
+        let mut el_count: std::collections::HashMap<String, i32> =
+            std::collections::HashMap::new();
+
+        let mut stmt = conn.prepare(
+            "SELECT slide_id, element_id, z_order FROM slide_elements WHERE valid_from <= ?1 AND (valid_to IS NULL OR valid_to > ?1) ORDER BY slide_id, z_order"
+        )?;
+        let rows = stmt.query_map(params![&at], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i32>(2)?,
+            ))
+        })?;
+        for row in rows {
+            let (slide_id, element_id, z_order) = row?;
+            se_by_slide
+                .entry(slide_id)
+                .or_default()
+                .push((element_id.clone(), z_order));
+            *el_count.entry(element_id).or_insert(0) += 1;
+        }
+
+        // Slides alive at `at`
+        let mut slides_json = Vec::new();
+        let mut stmt = conn.prepare(
+            "SELECT id, position, layout, notes, group_id FROM slides WHERE valid_from <= ?1 AND (valid_to IS NULL OR valid_to > ?1) ORDER BY position"
+        )?;
+        let rows = stmt.query_map(params![&at], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i32>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, Option<String>>(4)?,
+            ))
+        })?;
+        for row in rows {
+            let (id, _position, layout, notes, group_id) = row?;
+            let mut slide_elements = Vec::new();
+            if let Some(se_rows) = se_by_slide.get(&id) {
+                for (element_id, _z_order) in se_rows {
+                    if let Some((data, link_id)) = elements.get(element_id) {
+                        let mut el = data.clone();
+                        if let Some(obj) = el.as_object_mut() {
+                            if let Some(lid) = link_id {
+                                obj.insert("linkId".to_string(), Value::String(lid.clone()));
+                            }
+                            if el_count.get(element_id).copied().unwrap_or(0) > 1 {
+                                obj.insert("syncId".to_string(), Value::String(element_id.clone()));
+                            }
+                        }
+                        slide_elements.push(el);
+                    }
+                }
+            }
+
+            let mut slide = serde_json::json!({
+                "id": id,
+                "layout": layout.unwrap_or_else(|| "default".to_string()),
+                "elements": slide_elements,
+                "notes": notes.unwrap_or_default(),
+            });
+            if let Some(gid) = group_id {
+                slide.as_object_mut().unwrap().insert("groupId".to_string(), Value::String(gid));
+            }
+            slides_json.push(slide);
+        }
+
+        let presentation = serde_json::json!({
+            "title": title,
+            "theme": theme,
+            "slides": slides_json,
+            "config": config,
+        });
+
+        Ok(serde_json::to_string(&presentation).unwrap())
     })
 }
 
