@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const COLORS = [
   { color: '#222222', label: 'Black' },
@@ -35,13 +35,36 @@ export function TextFormatToolbar(_props: Props) {
   };
 
   const exec = (cmd: string, value?: string) => {
-    // Ensure the contentEditable has focus before executing
+    // Restore focus and selection if lost (portal can cause blur)
+    const sel = window.getSelection();
     const editable = document.querySelector('[contenteditable="true"]') as HTMLElement;
     if (editable && document.activeElement !== editable) {
       editable.focus();
+      // If selection was lost, try to restore it
+      if (sel && sel.rangeCount === 0 && savedRange.current) {
+        sel.removeAllRanges();
+        sel.addRange(savedRange.current);
+      }
     }
     document.execCommand(cmd, false, value);
   };
+
+  // Save selection continuously so we can restore after toolbar click causes blur
+  const savedRange = useRef<Range | null>(null);
+  useEffect(() => {
+    const saveSelection = () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        const editable = document.querySelector('[contenteditable="true"]');
+        if (editable && editable.contains(range.commonAncestorContainer)) {
+          savedRange.current = range.cloneRange();
+        }
+      }
+    };
+    document.addEventListener('selectionchange', saveSelection);
+    return () => document.removeEventListener('selectionchange', saveSelection);
+  }, []);
 
   return (
     <div className="text-format-toolbar" onMouseDown={keepFocus}>
