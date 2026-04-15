@@ -405,34 +405,39 @@ function TextContent({
         } : undefined}
         onInput={editing ? (e) => {
           if (ref.current) applyMathLineStyles(ref.current);
-          // Auto-replace text patterns — only trigger on the completing character
+          // Auto-replace text patterns
           const inputData = (e.nativeEvent as InputEvent).data;
           if (!inputData) return;
           const trigger = inputData.slice(-1);
-          if (!'->= '.includes(trigger)) return;
+          if (!'->='.includes(trigger)) return;
           const sel = window.getSelection();
-          if (sel && sel.rangeCount > 0 && sel.isCollapsed) {
-            const node = sel.anchorNode;
-            if (node?.nodeType === Node.TEXT_NODE) {
-              const text = node.textContent || '';
-              const offset = sel.anchorOffset;
-              // Ordered longest-first to match greedily
-              const replacements: [string, string][] = [
-                ['-->', '\u2192'], ['<--', '\u2190'], ['<->', '\u2194'],
-                ['<=>', '\u21D4'], ['=>', '\u21D2'],
-                ['---', '\u2014'],
-              ];
-              for (const [pattern, replacement] of replacements) {
-                if (offset >= pattern.length && text.slice(offset - pattern.length, offset) === pattern) {
-                  const range = document.createRange();
-                  range.setStart(node, offset - pattern.length);
-                  range.setEnd(node, offset);
-                  range.deleteContents();
-                  range.insertNode(document.createTextNode(replacement));
-                  sel.collapseToEnd();
-                  break;
-                }
-              }
+          if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return;
+          const node = sel.anchorNode;
+          if (node?.nodeType !== Node.TEXT_NODE) return;
+          const text = node.textContent || '';
+          const offset = sel.anchorOffset;
+          // Two-stage: -- → en-dash, then en-dash + > → arrow
+          // Ordered longest-first
+          const replacements: [string, string][] = [
+            ['\u2013>', '\u2192'],   // –> → →  (en-dash + >)
+            ['<\u2013', '\u2190'],   // <– → ←
+            ['<=>', '\u21D4'],       // <=> → ⇔
+            ['=>', '\u21D2'],        // => → ⇒
+            ['---', '\u2014'],       // --- → em-dash
+            ['--', '\u2013'],        // -- → en-dash
+          ];
+          for (const [pattern, replacement] of replacements) {
+            if (offset >= pattern.length && text.slice(offset - pattern.length, offset) === pattern) {
+              const newText = text.slice(0, offset - pattern.length) + replacement + text.slice(offset);
+              node.textContent = newText;
+              // Position cursor after the replacement
+              const newOffset = offset - pattern.length + replacement.length;
+              const range = document.createRange();
+              range.setStart(node, newOffset);
+              range.collapse(true);
+              sel.removeAllRanges();
+              sel.addRange(range);
+              break;
             }
           }
         } : undefined}
