@@ -100,11 +100,15 @@ pub fn open_db(path: &str) -> SqlResult<()> {
     Ok(())
 }
 
-/// Open an in-memory SQLite database (used before first save)
+/// Open an in-memory SQLite database (used before first save).
+/// No-op if a DB is already open (prevents clobbering a file-backed DB).
 pub fn open_memory_db() -> SqlResult<()> {
+    let mut db = DB.lock().unwrap();
+    if db.is_some() {
+        return Ok(()); // Already have a DB open — don't clobber it
+    }
     let conn = Connection::open_in_memory()?;
     create_schema(&conn)?;
-    let mut db = DB.lock().unwrap();
     *db = Some(conn);
     Ok(())
 }
@@ -611,7 +615,10 @@ pub fn db_get_history(limit: i32) -> Result<String, String> {
                 }
                 r.replace("&nbsp;", " ").replace("&amp;", "&")
             };
-            let preview = if text.len() > 60 { format!("{}...", &text[..60]) } else { text };
+            let preview = if text.chars().count() > 60 {
+                let s: String = text.chars().take(60).collect();
+                format!("{}...", s)
+            } else { text };
 
             let is_current = valid_to.is_none();
             // Check if this is a creation or update
@@ -678,8 +685,9 @@ pub fn db_get_history_timestamps() -> Result<String, String> {
             };
             let summary = if text.is_empty() {
                 format!("{} element", el_type)
-            } else if text.len() > 40 {
-                format!("{}: {}...", el_type, &text[..40])
+            } else if text.chars().count() > 40 {
+                let s: String = text.chars().take(40).collect();
+                format!("{}: {}...", el_type, s)
             } else {
                 format!("{}: {}", el_type, text)
             };

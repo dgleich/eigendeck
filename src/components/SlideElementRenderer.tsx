@@ -1,8 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
-import { useDemoUrl } from '../lib/demoAssets';
+import { useDemoUrl, useAssetUrl } from '../lib/demoAssets';
 
 import { TEXT_PRESET_STYLES } from '../types/presentation';
 import { TextFormatToolbar } from './TextFormatToolbar';
@@ -47,35 +46,12 @@ export function SlideElementRenderer({
         </DraggableBox>
       );
 
-    case 'image': {
-      let src: string;
-      if (element.src.startsWith('data:')) src = element.src;
-      else if (projectPath) {
-        try { src = convertFileSrc(`${projectPath}/${element.src}`); }
-        catch { src = element.src; }
-      } else src = element.src;
+    case 'image':
       return (
-        <DraggableBox
-          elementId={element.id}
-          position={element.position} zIndex={zIndex} scale={scale}
-          className="el-image" isSelected={isSelected}
-          linkId={element.linkId} syncId={element.syncId}
-          _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
-          onSelect={onSelect} onDelete={onDelete}
-          onPositionChange={(pos) => onUpdate({ position: pos } as any)}
-          onUpdate={onUpdate}
-        >
-          <img src={src} alt="" draggable={false}
-            style={{
-              width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none',
-              ...(element.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
-              ...(element.borderRadius ? { borderRadius: element.borderRadius } : {}),
-              ...(element.opacity != null && element.opacity < 1 ? { opacity: element.opacity } : {}),
-              ...(element.rotation ? { transform: `rotate(${element.rotation}deg)` } : {}),
-            }} />
-        </DraggableBox>
+        <ImageBox element={element} zIndex={zIndex} scale={scale}
+          isSelected={isSelected} onSelect={onSelect} onDelete={onDelete}
+          onUpdate={onUpdate} />
       );
-    }
 
     case 'demo':
       return (
@@ -124,6 +100,43 @@ export function SlideElementRenderer({
           onUpdate={onUpdate} onDelete={onDelete} onSelect={onSelect} />
       );
   }
+}
+
+// ============================================
+// Image element — loads from SQLite blob URL
+// ============================================
+function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpdate }: {
+  element: Extract<SlideElement, { type: 'image' }>;
+  zIndex: number; scale: number;
+  isSelected: boolean;
+  onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
+  onUpdate: (changes: Partial<SlideElement>) => void;
+}) {
+  // data: URLs are used inline, relative paths load from SQLite
+  const assetSrc = element.src.startsWith('data:') ? undefined : element.src;
+  const blobUrl = useAssetUrl(assetSrc);
+  const src = element.src.startsWith('data:') ? element.src : (blobUrl || element.src);
+  return (
+    <DraggableBox
+      elementId={element.id}
+      position={element.position} zIndex={zIndex} scale={scale}
+      className="el-image" isSelected={isSelected}
+      linkId={element.linkId} syncId={element.syncId}
+      _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
+      onSelect={onSelect} onDelete={onDelete}
+      onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+      onUpdate={onUpdate}
+    >
+      <img src={src} alt="" draggable={false}
+        style={{
+          width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none',
+          ...(element.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
+          ...(element.borderRadius ? { borderRadius: element.borderRadius } : {}),
+          ...(element.opacity != null && element.opacity < 1 ? { opacity: element.opacity } : {}),
+          ...(element.rotation ? { transform: `rotate(${element.rotation}deg)` } : {}),
+        }} />
+    </DraggableBox>
+  );
 }
 
 // ============================================

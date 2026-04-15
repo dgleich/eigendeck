@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { usePresentationStore } from '../store/presentation';
+import { usePresentationStore, flushToSqlite } from '../store/presentation';
 import type { Presentation } from '../types/presentation';
 
 interface HistoryEntry {
@@ -162,8 +162,10 @@ export function HistoryPanel() {
           </div>
           <button
             className="history-restore-btn"
-            onClick={() => {
+            onClick={async () => {
               if (previewData && confirm('Restore presentation to this point in time? Current state will be saved first.')) {
+                // Flush current state to SQLite so it's preserved in history
+                await flushToSqlite();
                 setPresentation(previewData);
                 toggleHistory();
               }

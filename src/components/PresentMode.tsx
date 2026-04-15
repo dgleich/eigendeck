@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
-import { useDemoUrl } from '../lib/demoAssets';
+import { useDemoUrl, useAssetUrl } from '../lib/demoAssets';
 import { SpeakerPanel } from './SpeakerView';
 import { TEXT_PRESET_STYLES, getSlideNumber } from '../types/presentation';
 import { typesetElement, resetMathElement, containsMath } from '../lib/mathjax';
@@ -296,8 +295,8 @@ function getElementBounds(el: SlideElement): { x: number; y: number; w: number; 
 // Present element renderers
 // ============================================
 
-function PresentElement({ element: el, zIndex, projectPath, style }: {
-  element: SlideElement; zIndex: number; projectPath: string | null;
+function PresentElement({ element: el, zIndex, style }: {
+  element: SlideElement; zIndex: number; projectPath?: string | null;
   style?: React.CSSProperties;
 }) {
   const pos = el.position;
@@ -306,23 +305,8 @@ function PresentElement({ element: el, zIndex, projectPath, style }: {
     case 'text':
       return <PresentTextElement element={el} zIndex={zIndex} style={style} />;
 
-    case 'image': {
-      let src = el.src;
-      if (!src.startsWith('data:') && projectPath) {
-        try { src = convertFileSrc(`${projectPath}/${el.src}`); } catch { /* keep original */ }
-      }
-      return (
-        <img src={src} alt="" style={{
-          position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-          objectFit: 'contain', zIndex,
-          ...(el.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
-          ...(el.borderRadius ? { borderRadius: el.borderRadius } : {}),
-          ...(el.opacity != null && el.opacity < 1 ? { opacity: el.opacity } : {}),
-          ...(el.rotation ? { transform: `rotate(${el.rotation}deg)` } : {}),
-          ...style,
-        }} />
-      );
-    }
+    case 'image':
+      return <PresentImage element={el} zIndex={zIndex} style={style} />;
 
     case 'demo':
       return <PresentDemoIframe assetPath={el.src} pos={pos} zIndex={zIndex} style={style} />;
@@ -470,6 +454,26 @@ function AnimatedArrow({ from, to, zIndex, animating, hasPrev }: {
 // ============================================
 // Demo iframe components (use hooks for blob URLs)
 // ============================================
+
+function PresentImage({ element: el, zIndex, style }: {
+  element: Extract<SlideElement, { type: 'image' }>; zIndex: number; style?: React.CSSProperties;
+}) {
+  const pos = el.position;
+  const assetSrc = el.src.startsWith('data:') ? undefined : el.src;
+  const blobUrl = useAssetUrl(assetSrc);
+  const src = el.src.startsWith('data:') ? el.src : (blobUrl || el.src);
+  return (
+    <img src={src} alt="" style={{
+      position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
+      objectFit: 'contain', zIndex,
+      ...(el.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
+      ...(el.borderRadius ? { borderRadius: el.borderRadius } : {}),
+      ...(el.opacity != null && el.opacity < 1 ? { opacity: el.opacity } : {}),
+      ...(el.rotation ? { transform: `rotate(${el.rotation}deg)` } : {}),
+      ...style,
+    }} />
+  );
+}
 
 function PresentDemoIframe({ assetPath, hash, title, pos, zIndex, style }: {
   assetPath: string; hash?: string; title?: string;

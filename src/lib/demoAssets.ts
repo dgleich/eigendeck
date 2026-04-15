@@ -1,7 +1,7 @@
 /**
- * Manages blob URLs for demo HTML assets stored in SQLite.
- * Assets are loaded from db_get_asset and served as blob URLs
- * so iframes can render them without filesystem access.
+ * Manages blob URLs for assets stored in SQLite.
+ * Loads via db_get_asset and creates blob URLs so iframes/images
+ * can render without filesystem access.
  */
 
 import { useState, useEffect } from 'react';
@@ -11,14 +11,24 @@ import { usePresentationStore } from '../store/presentation';
 // Cache: asset path -> blob URL (without hash)
 const blobCache = new Map<string, string>();
 
-/** Load a demo asset from SQLite and return a blob URL. Uses a cache. */
-export async function getDemoUrl(assetPath: string, hash?: string): Promise<string | undefined> {
-  // Check cache first
+/** Guess MIME type from file extension */
+function mimeFromPath(path: string): string {
+  const ext = path.split('.').pop()?.toLowerCase() || '';
+  const map: Record<string, string> = {
+    html: 'text/html', htm: 'text/html',
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+    gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp',
+  };
+  return map[ext] || 'application/octet-stream';
+}
+
+/** Load an asset from SQLite and return a blob URL. Uses a cache. */
+export async function getAssetUrl(assetPath: string, hash?: string): Promise<string | undefined> {
   let blobUrl = blobCache.get(assetPath);
   if (!blobUrl) {
     try {
       const data = await invoke<number[]>('db_get_asset', { path: assetPath });
-      const blob = new Blob([new Uint8Array(data)], { type: 'text/html' });
+      const blob = new Blob([new Uint8Array(data)], { type: mimeFromPath(assetPath) });
       blobUrl = URL.createObjectURL(blob);
       blobCache.set(assetPath, blobUrl);
     } catch {
@@ -35,23 +45,37 @@ export async function getDemoUrl(assetPath: string, hash?: string): Promise<stri
   return hash ? `${blobUrl}#${hash}` : blobUrl;
 }
 
-/** React hook: load demo HTML from SQLite as a blob URL */
-export function useDemoUrl(assetPath: string, hash?: string): string | undefined {
+/** React hook: load an asset from SQLite as a blob URL */
+export function useAssetUrl(assetPath: string | undefined, hash?: string): string | undefined {
   const [url, setUrl] = useState<string | undefined>(() => {
-    // Synchronous check: if already cached, use immediately
+    if (!assetPath) return undefined;
     const cached = blobCache.get(assetPath);
     return cached ? (hash ? `${cached}#${hash}` : cached) : undefined;
   });
 
   useEffect(() => {
-    getDemoUrl(assetPath, hash).then(setUrl);
+    if (!assetPath) { setUrl(undefined); return; }
+    getAssetUrl(assetPath, hash).then(setUrl);
   }, [assetPath, hash]);
 
   return url;
 }
 
+// Convenience aliases
+export const useDemoUrl = useAssetUrl;
+export const getDemoUrl = getAssetUrl;
+
+/** Invalidate a specific cached asset (e.g. after re-import) */
+export function invalidateAsset(assetPath: string) {
+  const old = blobCache.get(assetPath);
+  if (old) {
+    URL.revokeObjectURL(old);
+    blobCache.delete(assetPath);
+  }
+}
+
 /** Clean up all cached blob URLs (call on project close) */
-export function clearDemoCache() {
+export function clearAssetCache() {
   for (const url of blobCache.values()) {
     URL.revokeObjectURL(url);
   }
