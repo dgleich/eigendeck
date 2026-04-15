@@ -43,6 +43,8 @@ const role = params.get('role');   // 'controller' or null
 const piece = params.get('piece'); // piece name or null
 ```
 
+> **Export compatibility:** In HTML exports, demos run inside `srcdoc` iframes where `location.hash` and `location.pathname` are empty. Eigendeck injects a bootstrap script that patches `URLSearchParams` and `BroadcastChannel` so the above patterns work in all contexts. No special handling needed in your demo code.
+
 ## BroadcastChannel
 
 All iframes from the same demo communicate via a shared `BroadcastChannel`:
@@ -51,6 +53,8 @@ All iframes from the same demo communicate via a shared `BroadcastChannel`:
 const channelName = 'eigendeck-demo:' + location.pathname.split('/').pop();
 const channel = new BroadcastChannel(channelName);
 ```
+
+> **Note:** In exported HTML, the bootstrap overrides the `BroadcastChannel` constructor to add a unique per-slide channel prefix, preventing collisions between demos on different slides.
 
 ### Controller Messages (outgoing)
 

@@ -159,6 +159,27 @@ body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
 </html>
 ```
 
+## How Eigendeck Loads Demos
+
+Demos run in three contexts, all handled automatically:
+
+| Context | iframe type | `location.hash` | `BroadcastChannel` |
+|---------|------------|------------------|---------------------|
+| **Editor** | blob URL | Works natively | Works natively |
+| **Presenter** | blob URL | Works natively | Works natively |
+| **HTML Export** | srcdoc | Empty (broken) | Pathname empty (broken) |
+
+For HTML export, Eigendeck injects a bootstrap `<script>` before your code that:
+1. Patches `URLSearchParams` — if `location.hash` is empty (srcdoc), the constructor injects the correct piece/role params
+2. Patches `BroadcastChannel` — adds a unique per-slide prefix so demos on different slides don't collide
+
+**You don't need to handle this.** Just use the standard pattern:
+```js
+const params = new URLSearchParams(location.hash.slice(1));
+const channel = new BroadcastChannel('eigendeck-demo:' + location.pathname.split('/').pop());
+```
+The bootstrap makes both work in all contexts.
+
 ## Critical Rules
 
 1. **`html, body { width: 100%; height: 100%; }`** — Without this, iframe content collapses to zero height.

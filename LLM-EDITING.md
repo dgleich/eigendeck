@@ -233,6 +233,8 @@ Demo-piece elements are viewport fragments of a multi-piece demo. The demo HTML 
 
 The controller iframe is automatically added (one per unique `demoSrc` on the current slide). Communication between controller and viewports uses `BroadcastChannel` with a channel name derived from the demo's src path.
 
+> **Export note:** In HTML exports, demos run in `srcdoc` iframes. Eigendeck injects a bootstrap that patches `URLSearchParams` and `BroadcastChannel` so the standard `location.hash` / `location.pathname` patterns work. Demo authors don't need special handling. See `DEMO_AUTHORING.md` for the full demo authoring guide.
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `demoSrc` | string | Relative path to the demo HTML file |

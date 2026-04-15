@@ -39,10 +39,33 @@ export function htmlEscapeForSrcdoc(s) {
  * BroadcastChannel constructor to inject a unique prefix per slide+demo.
  */
 export function injectDemoBootstrap(html, hash, channelKey) {
+  // Parse the hash to extract params (e.g. "#piece=lattice" -> {piece: "lattice"})
+  const hashParams = {};
+  if (hash) {
+    const qs = hash.startsWith('#') ? hash.slice(1) : hash;
+    for (const part of qs.split('&')) {
+      const [k, v] = part.split('=');
+      if (k) hashParams[k] = v || '';
+    }
+  }
   const bootstrap = `<script>
 (function(){
   var __ch = ${JSON.stringify(channelKey)};
-  try { window.location.hash = ${JSON.stringify(hash)}; } catch(e) {}
+  var __hp = ${JSON.stringify(hashParams)};
+  // Set location.hash (works in normal iframes, may fail in srcdoc)
+  try { window.location.hash = ${JSON.stringify(hash || '')}; } catch(e) {}
+  // Patch URLSearchParams so demos reading location.hash get injected values
+  var _USP = window.URLSearchParams;
+  window.URLSearchParams = function(init) {
+    var inst = new _USP(init);
+    // If the init was empty/missing (srcdoc hash is empty), inject our params
+    if (!init || init === '' || init === '#') {
+      for (var k in __hp) inst.set(k, __hp[k]);
+    }
+    return inst;
+  };
+  window.URLSearchParams.prototype = _USP.prototype;
+  // Override BroadcastChannel with unique prefix
   var _BC = window.BroadcastChannel;
   if (_BC) {
     window.BroadcastChannel = function(name) {
