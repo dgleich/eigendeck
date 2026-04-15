@@ -328,9 +328,11 @@ fn update_recent_menu(app: tauri::AppHandle, projects: Vec<serde_json::Value>) -
         .build(&app).map_err(|e| e.to_string())?;
     let debug_item = MenuItemBuilder::new("Debug Console").id("debug-console").accelerator("CmdOrCtrl+Shift+D")
         .build(&app).map_err(|e| e.to_string())?;
+    let devtools_item = MenuItemBuilder::new("Developer Tools").id("devtools").accelerator("CmdOrCtrl+Alt+I")
+        .build(&app).map_err(|e| e.to_string())?;
 
     let view_menu = SubmenuBuilder::new(&app, "View")
-        .item(&present_item).item(&inspector_item).item(&history_item).separator().item(&debug_item).separator().fullscreen()
+        .item(&present_item).item(&inspector_item).item(&history_item).separator().item(&debug_item).item(&devtools_item).separator().fullscreen()
         .build().map_err(|e| e.to_string())?;
 
     let window_menu = SubmenuBuilder::new(&app, "Window")
