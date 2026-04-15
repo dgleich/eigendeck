@@ -501,11 +501,7 @@ pub fn run() {
 
             app.set_menu(menu)?;
 
-            // Open devtools in dev mode — JS console goes to stdout
-            #[cfg(debug_assertions)]
-            if let Some(window) = app.get_webview_window("main") {
-                window.open_devtools();
-            }
+            // Devtools available via Cmd+Shift+D menu item (not opened by default)
 
             app.on_menu_event(move |app_handle, event| {
                 let id = event.id().0.as_str();
