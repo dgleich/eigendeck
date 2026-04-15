@@ -80,13 +80,13 @@ After building, verify these work:
 
 1. **App launches** — `npm run tauri dev` opens a window
 2. **New project** — Click New, select an empty directory, verify it creates `presentation.json`, `demos/`, `images/`
-3. **Open project** — Click Open, select `example-project/` from the repo root
+3. **Open project** — Click Open, select `example-demos/example-project/` from the repo root
 4. **Edit slide** — Click on the slide canvas, type text, use H1/H2/Bold/Italic buttons
 5. **Add slide** — Click "+ Add Slide" in sidebar
 6. **Reorder slides** — Drag a slide thumbnail in the sidebar
 7. **Delete/duplicate** — Hover a thumbnail, use D and X buttons
 8. **Present mode** — Click "Present" button or press F5, arrow keys to navigate, Esc to exit
-9. **Demo iframe** — Open example-project, slide 2 should show the BFS demo
+9. **Demo iframe** — Open example-demos/example-project, slide 2 should show the BFS demo
 10. **Demo reload** — Click the Reload button on the demo iframe
 11. **Save** — Ctrl+S (or Cmd+S), verify `presentation.json` is updated
 12. **Export** — Click Export, save as HTML, open the exported file in a browser

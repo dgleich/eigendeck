@@ -15,7 +15,7 @@ node tools/bench-junction.mjs
 node tools/bench-json-convert.mjs
 
 # Storage format comparison (SQLite vs ZIP vs JSON)
-node tools/bench-storage.mjs examples/magnetic-powers
+node tools/bench-storage.mjs example-demos/magnetic-powers
 ```
 
 ## Baseline (April 2026, 250 slides, ~1000 elements)

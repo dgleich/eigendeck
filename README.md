@@ -75,7 +75,7 @@ my-presentation/
     diagram.png
 ```
 
-See `example-project/` for a working example.
+See `example-demos/example-project/` for a working example.
 
 ## Demo development workflow
 

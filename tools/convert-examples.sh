@@ -21,7 +21,7 @@ fi
 converted=0
 skipped=0
 
-for dir in examples/*/; do
+for dir in example-demos/*/; do
     json="${dir}presentation.json"
     if [ ! -f "$json" ]; then
         continue

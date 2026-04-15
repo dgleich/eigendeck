@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Block Model — Powers Reveal Structure</title>
+<style>
+html, body { width:100%; height:100%; margin:0; padding:0; background:#fff;
+  font-family:"PT Sans",Arial,sans-serif; overflow:hidden }
+
+/* ── Graph piece ─────────────────────────────────── */
+.bm-graph-svg { width:100%; height:100%; display:block }
+.bm-edge { stroke:#c0c8d4; stroke-width:1; opacity:0.45 }
+.bm-node { stroke:#fff; stroke-width:2; cursor:default; opacity:0.92 }
+.bm-label { font-size:9px; fill:#fff; text-anchor:middle; dominant-baseline:central; pointer-events:none; font-weight:700 }
+
+/* ── Heatmap piece ───────────────────────────────── */
+.bm-hm-root { display:flex; flex-direction:column; height:100%; padding:8px; gap:6px }
+.bm-hm-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+.bm-hm-title { font-size:17px; font-weight:700; color:#334155 }
+.bm-kpill { display:inline-flex; align-items:center; justify-content:center; min-width:36px; height:32px;
+  padding:0 8px; border-radius:16px; border:2.5px solid #c7d2fe; background:#fff; font-size:15px;
+  font-weight:700; color:#6366f1; cursor:pointer; transition:all .15s; user-select:none }
+.bm-kpill:hover { background:#eef2ff }
+.bm-kpill-sel { background:#4f46e5; border-color:#4f46e5; color:#fff }
+.bm-hm-canvas-wrap { flex:1; display:flex; align-items:center; justify-content:center; min-height:0 }
+.bm-hm-canvas { image-rendering:pixelated; border:1px solid #e2e8f0; border-radius:4px }
+.bm-eiglabel { font-size:13px; color:#94a3b8; text-align:center; margin-top:2px }
+.bm-eig-wrap { height:60px; display:flex; align-items:flex-end; gap:1px; padding:0 2px }
+.bm-eig-bar { flex:1; border-radius:2px 2px 0 0; transition:height .3s ease }
+.bm-eig-zero { height:1px; background:#cbd5e1; align-self:center; flex:none; width:100% }
+
+/* ── Standalone ──────────────────────────────────── */
+.bm-standalone { display:flex; height:100%; padding:10px; gap:12px }
+.bm-standalone-left { flex:0 0 40%; min-width:0 }
+.bm-standalone-right { flex:1; display:flex; flex-direction:column; gap:8px; overflow:hidden }
+</style>
+</head>
+<body>
+<script>
+(function() {
+'use strict';
+
+var params = new URLSearchParams(location.hash.slice(1));
+var role = params.get('role');
+var piece = params.get('piece');
+var channelName = 'eigendeck-demo:demo_block_model.html';
+var channel = new BroadcastChannel(channelName);
+var NS = 'http://www.w3.org/2000/svg';
+
+// ─── Block model parameters ───────────────────────────────
+var COMM_SIZES = [16, 14, 14];
+var N = COMM_SIZES.reduce(function(a,b){return a+b}, 0);
+var P_IN = 0.4;
+var P_OUT = 0.008;
+var COMMUNITY_COLORS = ['#2563eb', '#dc2626', '#16a34a'];
+var K_VALUES = [1, 2, 5, 10, 25];
+
+// ─── Deterministic seeded RNG ─────────────────────────────
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+var rng = mulberry32(42);
+
+// ─── Generate block model graph ───────────────────────────
+var community = []; // community[i] = which community node i belongs to
+var commStart = []; // starting index of each community
+var adj = []; // adjacency list
+var edges = [];
+(function generateGraph() {
+  var idx = 0;
+  for (var c = 0; c < COMM_SIZES.length; c++) {
+    commStart.push(idx);
+    for (var k = 0; k < COMM_SIZES[c]; k++) { community.push(c); idx++; }
+  }
+  for (var i = 0; i < N; i++) adj.push([]);
+  for (var i2 = 0; i2 < N; i2++) {
+    for (var j = i2 + 1; j < N; j++) {
+      var p = community[i2] === community[j] ? P_IN : P_OUT;
+      if (rng() < p) {
+        adj[i2].push(j); adj[j].push(i2);
+        edges.push([i2, j]);
+      }
+    }
+  }
+})();
+
+// ─── Force-directed layout ────────────────────────────────
+var CX = 200, CY = 175, PAD = 28;
+var positions = [];
+(function layout() {
+  // Initialize: place communities in well-separated triangular arrangement
+  var commCenters = [
+    [CX, CY - 100],      // top
+    [CX - 110, CY + 70], // bottom-left
+    [CX + 110, CY + 70]  // bottom-right
+  ];
+  for (var i = 0; i < N; i++) {
+    var cc = commCenters[community[i]];
+    positions.push([cc[0] + (rng() - 0.5) * 60, cc[1] + (rng() - 0.5) * 60]);
+  }
+
+  var IDEAL_LEN = 28;     // ideal edge length
+  var REPULSION = 600;     // coulomb-like repulsion strength
+  var SPRING = 0.08;       // spring stiffness
+  var GRAVITY = 0.08;      // pull toward center (keeps clusters from flying apart)
+  var ITERS = 500;
+
+  for (var iter = 0; iter < ITERS; iter++) {
+    var temp = 4.0 * Math.max(0.005, 1 - iter / ITERS); // cooling
+    var fx = new Float64Array(N), fy = new Float64Array(N);
+
+    // Repulsion (all pairs)
+    for (var i2 = 0; i2 < N; i2++) {
+      for (var j = i2 + 1; j < N; j++) {
+        var dx = positions[i2][0] - positions[j][0];
+        var dy = positions[i2][1] - positions[j][1];
+        var d2 = dx * dx + dy * dy;
+        if (d2 < 1) d2 = 1;
+        var f = REPULSION / d2;
+        fx[i2] += dx * f; fy[i2] += dy * f;
+        fx[j] -= dx * f; fy[j] -= dy * f;
+      }
+    }
+
+    // Attraction along edges (Hooke's law)
+    for (var e = 0; e < edges.length; e++) {
+      var u = edges[e][0], v = edges[e][1];
+      var dx2 = positions[v][0] - positions[u][0];
+      var dy2 = positions[v][1] - positions[u][1];
+      var d = Math.sqrt(dx2 * dx2 + dy2 * dy2) + 0.01;
+      var f2 = SPRING * (d - IDEAL_LEN);
+      var ux2 = dx2 / d, uy2 = dy2 / d;
+      fx[u] += ux2 * f2; fy[u] += uy2 * f2;
+      fx[v] -= ux2 * f2; fy[v] -= uy2 * f2;
+    }
+
+    // Gravity toward center (no hard walls — this keeps everything in bounds)
+    for (var i3 = 0; i3 < N; i3++) {
+      fx[i3] += (CX - positions[i3][0]) * GRAVITY;
+      fy[i3] += (CY - positions[i3][1]) * GRAVITY;
+    }
+
+    // Apply with temperature limiting — NO hard clipping
+    for (var i4 = 0; i4 < N; i4++) {
+      var fmag = Math.sqrt(fx[i4] * fx[i4] + fy[i4] * fy[i4]) + 0.01;
+      var cap = Math.min(fmag, temp) / fmag;
+      positions[i4][0] += fx[i4] * cap;
+      positions[i4][1] += fy[i4] * cap;
+    }
+  }
+
+  // Rescale to fit viewBox with padding
+  var minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity;
+  for (var i5 = 0; i5 < N; i5++) {
+    if (positions[i5][0] < minx) minx = positions[i5][0];
+    if (positions[i5][0] > maxx) maxx = positions[i5][0];
+    if (positions[i5][1] < miny) miny = positions[i5][1];
+    if (positions[i5][1] > maxy) maxy = positions[i5][1];
+  }
+  var rangeX = maxx - minx || 1, rangeY = maxy - miny || 1;
+  var scale = Math.min((400 - 2 * PAD) / rangeX, (350 - 2 * PAD) / rangeY);
+  var midX = (minx + maxx) / 2, midY = (miny + maxy) / 2;
+  for (var i6 = 0; i6 < N; i6++) {
+    positions[i6][0] = CX + (positions[i6][0] - midX) * scale;
+    positions[i6][1] = CY + (positions[i6][1] - midY) * scale;
+  }
+})();
+
+// ─── Matrix operations (real-valued) ──────────────────────
+function matNew(n) { var m = new Float64Array(n * n); return m; }
+function matMul(a, b, n) {
+  var c = matNew(n);
+  for (var i = 0; i < n; i++) for (var k = 0; k < n; k++) {
+    var v = a[i * n + k]; if (v === 0) continue;
+    for (var j = 0; j < n; j++) c[i * n + j] += v * b[k * n + j];
+  }
+  return c;
+}
+function matPow(m, p, n) {
+  var r = matNew(n); for (var i = 0; i < n; i++) r[i * n + i] = 1;
+  var b = new Float64Array(m);
+  while (p > 0) { if (p & 1) r = matMul(r, b, n); if (p > 1) b = matMul(b, b, n); p >>= 1; }
+  return r;
+}
+
+// ─── Build random walk matrix P = D^{-1} A ───────────────
+var Pmat = matNew(N);
+(function buildP() {
+  for (var i = 0; i < N; i++) {
+    var deg = adj[i].length;
+    if (deg === 0) { Pmat[i * N + i] = 1; continue; }
+    for (var k = 0; k < deg; k++) Pmat[i * N + adj[i][k]] = 1 / deg;
+  }
+})();
+
+// ─── Precompute P^k for all k values ─────────────────────
+var Ppow = {};
+K_VALUES.forEach(function(k) { Ppow[k] = matPow(Pmat, k, N); });
+
+// ─── Compute 2nd eigenvector via power iteration on ───────
+// (I - ee^T/n) P to deflate the leading eigenvector
+var eigvec2 = new Float64Array(N);
+(function computeEig() {
+  // Use power iteration on P^T (left eigenvector = right eigenvector of P^T)
+  // Actually for the symmetric case (undirected), just use A's eigenvectors
+  // Build symmetric normalized adjacency: D^{-1/2} A D^{-1/2}
+  var deg = new Float64Array(N);
+  for (var i = 0; i < N; i++) deg[i] = adj[i].length || 1;
+  var Lsym = matNew(N);
+  for (var e = 0; e < edges.length; e++) {
+    var u = edges[e][0], v = edges[e][1];
+    var w = 1 / Math.sqrt(deg[u] * deg[v]);
+    Lsym[u * N + v] = w; Lsym[v * N + u] = w;
+  }
+  // Power iteration for top eigenvector, then deflate, repeat for 2nd
+  function powerIter(M, deflect) {
+    var x = new Float64Array(N);
+    for (var i = 0; i < N; i++) x[i] = rng() - 0.5;
+    for (var iter = 0; iter < 200; iter++) {
+      // Multiply
+      var y = new Float64Array(N);
+      for (var i2 = 0; i2 < N; i2++) for (var j = 0; j < N; j++) y[i2] += M[i2 * N + j] * x[j];
+      // Deflate
+      if (deflect) {
+        var dot = 0;
+        for (var i3 = 0; i3 < N; i3++) dot += y[i3] * deflect[i3];
+        for (var i4 = 0; i4 < N; i4++) y[i4] -= dot * deflect[i4];
+      }
+      // Normalize
+      var norm = 0;
+      for (var i5 = 0; i5 < N; i5++) norm += y[i5] * y[i5];
+      norm = Math.sqrt(norm) || 1;
+      for (var i6 = 0; i6 < N; i6++) x[i6] = y[i6] / norm;
+    }
+    return x;
+  }
+  var v1 = powerIter(Lsym, null);
+  eigvec2 = powerIter(Lsym, v1);
+})();
+
+// ─── Derive state for broadcasting ───────────────────────
+function deriveState(selK) {
+  var heatmap = [];
+  var mat = Ppow[selK];
+  var maxVal = 0;
+  for (var i = 0; i < N * N; i++) if (mat[i] > maxVal) maxVal = mat[i];
+  for (var i2 = 0; i2 < N; i2++) {
+    var row = [];
+    for (var j = 0; j < N; j++) row.push(mat[i2 * N + j] / (maxVal || 1));
+    heatmap.push(row);
+  }
+  return {
+    type: 'state', N: N, selK: selK,
+    positions: positions, edges: edges, community: community,
+    colors: COMMUNITY_COLORS, kValues: K_VALUES,
+    heatmap: heatmap, eigvec2: Array.from(eigvec2)
+  };
+}
+
+// ─── SVG helper ───────────────────────────────────────────
+function svgEl(tag, attrs) {
+  var e = document.createElementNS(NS, tag);
+  if (attrs) Object.keys(attrs).forEach(function(k) { e.setAttribute(k, attrs[k]); });
+  return e;
+}
+
+// ─── Render graph ─────────────────────────────────────────
+function renderGraph(svg, s) {
+  svg.innerHTML = '';
+  // Edges
+  for (var e = 0; e < s.edges.length; e++) {
+    var u = s.edges[e][0], v = s.edges[e][1];
+    svg.appendChild(svgEl('line', {
+      x1: s.positions[u][0], y1: s.positions[u][1],
+      x2: s.positions[v][0], y2: s.positions[v][1],
+      class: 'bm-edge'
+    }));
+  }
+  // Nodes
+  for (var i = 0; i < s.N; i++) {
+    svg.appendChild(svgEl('circle', {
+      cx: s.positions[i][0], cy: s.positions[i][1], r: 10,
+      class: 'bm-node', fill: s.colors[s.community[i]]
+    }));
+  }
+}
+
+// ─── Render heatmap ───────────────────────────────────────
+function renderHeatmap(root, s, handlers) {
+  // K pills
+  var pills = root.querySelector('.bm-k-pills');
+  pills.innerHTML = '';
+  s.kValues.forEach(function(k) {
+    var p = document.createElement('span');
+    p.className = 'bm-kpill' + (k === s.selK ? ' bm-kpill-sel' : '');
+    p.textContent = k;
+    p.onclick = function() { handlers.onSetK(k); };
+    pills.appendChild(p);
+  });
+
+  // Canvas heatmap
+  var wrap = root.querySelector('.bm-hm-canvas-wrap');
+  var canvas = root.querySelector('.bm-hm-canvas');
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.className = 'bm-hm-canvas';
+    canvas.width = s.N; canvas.height = s.N;
+    wrap.appendChild(canvas);
+  }
+  // Size canvas to fit container
+  var size = Math.min(wrap.clientWidth, wrap.clientHeight - 20, 400);
+  canvas.style.width = size + 'px'; canvas.style.height = size + 'px';
+
+  var ctx = canvas.getContext('2d');
+  var img = ctx.createImageData(s.N, s.N);
+  for (var i = 0; i < s.N; i++) {
+    for (var j = 0; j < s.N; j++) {
+      var v = s.heatmap[i][j];
+      var idx = (i * s.N + j) * 4;
+      // Blue-white colormap: 0 = white, 1 = deep blue
+      var t = Math.min(1, Math.pow(v, 0.5)); // sqrt for better contrast
+      img.data[idx]     = Math.round(255 * (1 - t * 0.85));  // R
+      img.data[idx + 1] = Math.round(255 * (1 - t * 0.75));  // G
+      img.data[idx + 2] = Math.round(255 * (1 - t * 0.1));   // B
+      img.data[idx + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  // Eigenvector bar chart
+  var eigWrap = root.querySelector('.bm-eig-wrap');
+  if (eigWrap) {
+    eigWrap.innerHTML = '';
+    var maxE = 0;
+    for (var i2 = 0; i2 < s.N; i2++) if (Math.abs(s.eigvec2[i2]) > maxE) maxE = Math.abs(s.eigvec2[i2]);
+    for (var i3 = 0; i3 < s.N; i3++) {
+      var val = s.eigvec2[i3];
+      var h = Math.abs(val) / (maxE || 1) * 28;
+      var bar = document.createElement('div');
+      bar.className = 'bm-eig-bar';
+      bar.style.height = h + 'px';
+      bar.style.background = s.colors[s.community[i3]];
+      bar.style.opacity = '0.8';
+      if (val < 0) {
+        bar.style.alignSelf = 'flex-start';
+        bar.style.borderRadius = '0 0 2px 2px';
+        bar.style.marginTop = '30px';
+      } else {
+        bar.style.alignSelf = 'flex-end';
+      }
+      eigWrap.appendChild(bar);
+    }
+  }
+}
+
+// ─── Create heatmap DOM ───────────────────────────────────
+function createHeatmapRoot() {
+  var root = document.createElement('div');
+  root.className = 'bm-hm-root';
+  root.innerHTML =
+    '<div class="bm-hm-head">' +
+      '<span class="bm-hm-title">P<sup>k</sup></span>' +
+      '<span style="font-size:14px;color:#94a3b8;margin-right:2px">k =</span>' +
+      '<span class="bm-k-pills"></span>' +
+    '</div>' +
+    '<div class="bm-hm-canvas-wrap"></div>' +
+    '<div class="bm-eiglabel">2nd eigenvector of A</div>' +
+    '<div class="bm-eig-wrap"></div>';
+  return root;
+}
+
+// ─── Controller ───────────────────────────────────────────
+function setupController() {
+  document.body.style.display = 'none';
+  var selK = 1;
+
+  function broadcast() { channel.postMessage(deriveState(selK)); }
+
+  channel.onmessage = function(e) {
+    var d = e.data;
+    if (d.type === 'request-state') { broadcast(); return; }
+    if (d.type === 'set-k') { selK = d.k; }
+    broadcast();
+  };
+  broadcast();
+}
+
+// ─── Graph viewport ───────────────────────────────────────
+function setupGraphViewport() {
+  var svg = svgEl('svg', { viewBox: '0 0 400 350' });
+  svg.classList.add('bm-graph-svg');
+  document.body.appendChild(svg);
+
+  channel.onmessage = function(e) {
+    if (e.data.type === 'state') renderGraph(svg, e.data);
+  };
+  channel.postMessage({ type: 'request-state' });
+}
+
+// ─── Heatmap viewport ─────────────────────────────────────
+function setupHeatmapViewport() {
+  var root = createHeatmapRoot();
+  document.body.appendChild(root);
+  var handlers = {
+    onSetK: function(k) { channel.postMessage({ type: 'set-k', k: k }); }
+  };
+  channel.onmessage = function(e) {
+    if (e.data.type === 'state') renderHeatmap(root, e.data, handlers);
+  };
+  channel.postMessage({ type: 'request-state' });
+}
+
+// ─── Standalone fallback ──────────────────────────────────
+function setupStandalone() {
+  var selK = 1;
+  var app = document.createElement('div'); app.className = 'bm-standalone';
+
+  var left = document.createElement('div'); left.className = 'bm-standalone-left';
+  var svg = svgEl('svg', { viewBox: '0 0 400 350' });
+  svg.classList.add('bm-graph-svg');
+  left.appendChild(svg);
+
+  var right = document.createElement('div'); right.className = 'bm-standalone-right';
+  var hmRoot = createHeatmapRoot();
+  while (hmRoot.firstChild) right.appendChild(hmRoot.firstChild);
+
+  app.appendChild(left); app.appendChild(right);
+  document.body.appendChild(app);
+
+  function refresh() {
+    var s = deriveState(selK);
+    renderGraph(svg, s);
+    renderHeatmap(right, s, handlers);
+  }
+  var handlers = {
+    onSetK: function(k) { selK = k; refresh(); }
+  };
+  refresh();
+}
+
+// ─── Init ─────────────────────────────────────────────────
+function init() {
+  if (role === 'controller') return setupController();
+  if (piece === 'graph') return setupGraphViewport();
+  if (piece === 'heatmap') return setupHeatmapViewport();
+  // Standalone fallback
+  setupStandalone();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else { init(); }
+
+})();
+</script>
+</body>
+</html>

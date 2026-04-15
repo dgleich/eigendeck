@@ -1,0 +1,302 @@
+{
+  "description": "Small directed graph example (11 nodes) from Gleich 2006. Two components connected by directed bridge edges. Bidirectional edges are stored as two directed edges.",
+  "source": {
+    "name": "gleich-directed-2006-example",
+    "notes": "Textbook example for directed graph measures (PageRank, hubs/authorities, etc.)"
+  },
+  "layout": {
+    "algorithm": "hand-placed",
+    "width": 800,
+    "height": 600
+  },
+  "nodes": [
+    {
+      "id": 1,
+      "label": "1",
+      "in_degree": 4,
+      "out_degree": 2,
+      "x": 80.0,
+      "y": 142.9
+    },
+    {
+      "id": 2,
+      "label": "2",
+      "in_degree": 2,
+      "out_degree": 2,
+      "x": 171.4,
+      "y": 268.6
+    },
+    {
+      "id": 3,
+      "label": "3",
+      "in_degree": 2,
+      "out_degree": 2,
+      "x": 80.0,
+      "y": 478.1
+    },
+    {
+      "id": 4,
+      "label": "4",
+      "in_degree": 2,
+      "out_degree": 2,
+      "x": 297.1,
+      "y": 101.0
+    },
+    {
+      "id": 5,
+      "label": "5",
+      "in_degree": 3,
+      "out_degree": 5,
+      "x": 297.1,
+      "y": 415.2
+    },
+    {
+      "id": 6,
+      "label": "6",
+      "in_degree": 3,
+      "out_degree": 3,
+      "x": 468.6,
+      "y": 80.0
+    },
+    {
+      "id": 7,
+      "label": "7",
+      "in_degree": 4,
+      "out_degree": 3,
+      "x": 468.6,
+      "y": 394.3
+    },
+    {
+      "id": 8,
+      "label": "8",
+      "in_degree": 3,
+      "out_degree": 4,
+      "x": 720.0,
+      "y": 80.0
+    },
+    {
+      "id": 9,
+      "label": "9",
+      "in_degree": 4,
+      "out_degree": 4,
+      "x": 605.7,
+      "y": 247.6
+    },
+    {
+      "id": 10,
+      "label": "10",
+      "in_degree": 3,
+      "out_degree": 3,
+      "x": 720.0,
+      "y": 310.5
+    },
+    {
+      "id": 11,
+      "label": "11",
+      "in_degree": 3,
+      "out_degree": 3,
+      "x": 617.1,
+      "y": 520.0
+    }
+  ],
+  "edges": [
+    {
+      "source": 1,
+      "target": 2,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 2,
+      "target": 1,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 1,
+      "target": 3,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 3,
+      "target": 1,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 2,
+      "target": 5,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 5,
+      "target": 2,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 3,
+      "target": 5,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 5,
+      "target": 3,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 4,
+      "target": 5,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 5,
+      "target": 4,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 6,
+      "target": 7,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 7,
+      "target": 6,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 6,
+      "target": 8,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 8,
+      "target": 6,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 7,
+      "target": 9,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 9,
+      "target": 7,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 7,
+      "target": 11,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 11,
+      "target": 7,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 8,
+      "target": 9,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 9,
+      "target": 8,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 8,
+      "target": 10,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 10,
+      "target": 8,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 9,
+      "target": 10,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 10,
+      "target": 9,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 9,
+      "target": 11,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 11,
+      "target": 9,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 10,
+      "target": 11,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 11,
+      "target": 10,
+      "weight": 1,
+      "bidirectional": true
+    },
+    {
+      "source": 4,
+      "target": 1,
+      "weight": 1,
+      "bidirectional": false
+    },
+    {
+      "source": 8,
+      "target": 1,
+      "weight": 1,
+      "bidirectional": false
+    },
+    {
+      "source": 6,
+      "target": 4,
+      "weight": 1,
+      "bidirectional": false
+    },
+    {
+      "source": 5,
+      "target": 6,
+      "weight": 1,
+      "bidirectional": false
+    },
+    {
+      "source": 5,
+      "target": 7,
+      "weight": 1,
+      "bidirectional": false
+    }
+  ]
+}

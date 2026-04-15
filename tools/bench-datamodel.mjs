@@ -19,7 +19,7 @@ import { join, resolve } from 'node:path';
 const require = createRequire(import.meta.url);
 const Database = require('better-sqlite3');
 
-const projectDir = resolve(process.argv[2] || '/work/examples/magnetic-powers');
+const projectDir = resolve(process.argv[2] || '/work/example-demos/magnetic-powers');
 const presentation = JSON.parse(readFileSync(join(projectDir, 'presentation.json'), 'utf8'));
 
 // Build a 250-slide presentation with build groups (up to 25 slides each)

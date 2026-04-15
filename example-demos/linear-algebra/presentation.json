@@ -1,0 +1,247 @@
+{
+  "title": "Eigenvalues and the Singular Value Decomposition",
+  "theme": "white",
+  "slides": [
+    {
+      "id": "b2c3d4e5-2222-4bbb-a222-000000000001",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "b2c3d4e5-2222-4bbb-a222-100000000001",
+          "type": "text",
+          "preset": "title",
+          "html": "Eigenvalues and Eigenvectors",
+          "position": {
+            "x": 80,
+            "y": 40,
+            "width": 1760,
+            "height": 120
+          }
+        },
+        {
+          "id": "b2c3d4e5-2222-4bbb-a222-100000000002",
+          "type": "text",
+          "preset": "body",
+          "html": "A scalar $\\lambda$ is an <b>eigenvalue</b> of $A \\in \\mathbb{R}^{n \\times n}$ if there exists a nonzero vector $x$ such that<br><br>$$Ax = \\lambda x$$<br><br>The vector $x$ is the corresponding <b>eigenvector</b>. The set of all eigenvalues is the <b>spectrum</b> $\\sigma(A)$.<br><br>For symmetric $A = A^T$, all eigenvalues are real and the eigenvectors form an orthonormal basis:<br><br>$$A = Q \\Lambda Q^T, \\quad Q^T Q = I$$",
+          "position": {
+            "x": 80,
+            "y": 200,
+            "width": 1202,
+            "height": 752
+          }
+        },
+        {
+          "id": "b2c3d4e5-2222-4bbb-a222-100000000003",
+          "type": "text",
+          "preset": "annotation",
+          "html": "The spectral theorem guarantees this decomposition for all real symmetric matrices",
+          "position": {
+            "x": 1320,
+            "y": 600,
+            "width": 522,
+            "height": 145
+          }
+        },
+        {
+          "id": "b2c3d4e5-2222-4bbb-a222-100000000004",
+          "type": "text",
+          "preset": "footnote",
+          "html": "Trefethen and Bau, <i>Numerical Linear Algebra</i>, SIAM, 1997.",
+          "position": {
+            "x": 80,
+            "y": 1000,
+            "width": 1200,
+            "height": 50
+          }
+        }
+      ],
+      "notes": "Start with the eigenvalue definition. Emphasize the spectral theorem as the key structural result for symmetric matrices."
+    },
+    {
+      "id": "b2c3d4e5-2222-4bbb-a222-000000000002",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "b2c3d4e5-2222-4bbb-b222-100000000001",
+          "type": "text",
+          "preset": "title",
+          "html": "The Singular Value Decomposition",
+          "position": {
+            "x": 80,
+            "y": 40,
+            "width": 1760,
+            "height": 120
+          }
+        },
+        {
+          "id": "b2c3d4e5-2222-4bbb-b222-100000000002",
+          "type": "text",
+          "preset": "body",
+          "html": "Every matrix $A \\in \\mathbb{R}^{m \\times n}$ admits a factorization<br>$$A = U \\Sigma V^T$$<br>where:<br>• $U \\in \\mathbb{R}^{m \\times m}$ is orthogonal (left singular vectors)<br>• $V \\in \\mathbb{R}^{n \\times n}$ is orthogonal (right singular vectors)<br>• $\\Sigma \\in \\mathbb{R}^{m \\times n}$ is diagonal with $\\sigma_1 \\geq \\sigma_2 \\geq \\cdots \\geq 0$<br><br>The singular values satisfy $\\sigma_i = \\sqrt{\\lambda_i(A^T A)}$.",
+          "position": {
+            "x": 78,
+            "y": 198,
+            "width": 1194,
+            "height": 779
+          }
+        },
+        {
+          "id": "b2c3d4e5-2222-4bbb-b222-100000000003",
+          "type": "text",
+          "preset": "annotation",
+          "html": "Unlike eigendecomposition, SVD exists for <i>any</i> matrix, even rectangular ones",
+          "position": {
+            "x": 1320,
+            "y": 400,
+            "width": 520,
+            "height": 120
+          }
+        },
+        {
+          "id": "b2c3d4e5-2222-4bbb-b222-100000000004",
+          "type": "text",
+          "preset": "footnote",
+          "html": "The SVD was independently discovered by Beltrami (1873) and Jordan (1874).",
+          "position": {
+            "x": 80,
+            "y": 1000,
+            "width": 1200,
+            "height": 50
+          }
+        }
+      ],
+      "notes": "Introduce the SVD. Stress that it works for any matrix, not just square or symmetric ones."
+    },
+    {
+      "id": "b2c3d4e5-2222-4bbb-a222-000000000003",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "b2c3d4e5-2222-4bbb-c222-100000000001",
+          "type": "text",
+          "preset": "title",
+          "html": "Low-Rank Approximation via SVD",
+          "position": {
+            "x": 80,
+            "y": 40,
+            "width": 1760,
+            "height": 120
+          }
+        },
+        {
+          "id": "b2c3d4e5-2222-4bbb-c222-100000000002",
+          "type": "text",
+          "preset": "body",
+          "html": "The <b>Eckart-Young-Mirsky theorem</b> states that the best rank-$k$ approximation to $A$ (in either the 2-norm or Frobenius norm) is given by the truncated SVD:<br><br>$$A_k = \\sum_{i=1}^{k} \\sigma_i \\, u_i \\, v_i^T$$<br><br>The approximation error is:<br><br>$$\\|A - A_k\\|_2 = \\sigma_{k+1}, \\qquad \\|A - A_k\\|_F = \\sqrt{\\sum_{i=k+1}^{r} \\sigma_i^2}$$<br><br>where $r = \\operatorname{rank}(A)$.",
+          "position": {
+            "x": 76,
+            "y": 111,
+            "width": 1206,
+            "height": 928
+          }
+        },
+        {
+          "id": "b2c3d4e5-2222-4bbb-c222-100000000003",
+          "type": "text",
+          "preset": "annotation",
+          "html": "This is the theoretical foundation for PCA, LSI, and matrix completion",
+          "position": {
+            "x": 1320,
+            "y": 300,
+            "width": 520,
+            "height": 100
+          }
+        },
+        {
+          "id": "b2c3d4e5-2222-4bbb-c222-100000000004",
+          "type": "text",
+          "preset": "annotation",
+          "html": "Rapid singular value decay $\\Rightarrow$ effective low rank",
+          "position": {
+            "x": 1320,
+            "y": 700,
+            "width": 520,
+            "height": 80
+          }
+        },
+        {
+          "id": "b2c3d4e5-2222-4bbb-c222-100000000005",
+          "type": "text",
+          "preset": "footnote",
+          "html": "Eckart and Young, <i>Psychometrika</i>, 1936. Mirsky, <i>Quart. J. Math.</i>, 1960.",
+          "position": {
+            "x": 80,
+            "y": 1000,
+            "width": 1200,
+            "height": 50
+          }
+        }
+      ],
+      "notes": "The Eckart-Young theorem is one of the most important results in applied linear algebra. Mention applications in data science."
+    },
+    {
+      "id": "b2c3d4e5-2222-4bbb-a222-000000000004",
+      "layout": "default",
+      "elements": [
+        {
+          "id": "b2c3d4e5-2222-4bbb-d222-100000000001",
+          "type": "text",
+          "preset": "title",
+          "html": "Computing the SVD in Practice",
+          "position": {
+            "x": 80,
+            "y": 40,
+            "width": 1760,
+            "height": 120
+          }
+        },
+        {
+          "id": "b2c3d4e5-2222-4bbb-d222-100000000002",
+          "type": "text",
+          "preset": "body",
+          "html": "<b>Full SVD</b> (dense): $O(mn \\min(m,n))$ via Golub-Kahan bidiagonalization<br><br><b>Truncated SVD</b> (top $k$ singular values):<br>• Lanczos / Arnoldi iteration: $O(mnk)$<br>• Randomized SVD (Halko, Martinsson, Tropp 2011):<br><br>$$\\tilde{U}, \\tilde{\\Sigma}, \\tilde{V} = \\text{rsvd}(A, k, p)$$<br><br>&nbsp;&nbsp;&nbsp;&nbsp;1. Form $Y = A \\Omega$ where $\\Omega \\in \\mathbb{R}^{n \\times (k+p)}$ is random<br>&nbsp;&nbsp;&nbsp;&nbsp;2. Compute QR: $Y = QR$<br>&nbsp;&nbsp;&nbsp;&nbsp;3. Form $B = Q^T A \\in \\mathbb{R}^{(k+p) \\times n}$<br>&nbsp;&nbsp;&nbsp;&nbsp;4. Compute SVD of small matrix $B$<br><br>Cost: $O(mn(k+p))$ with only two passes over $A$.",
+          "position": {
+            "x": 80,
+            "y": 200,
+            "width": 1200,
+            "height": 700
+          }
+        },
+        {
+          "id": "b2c3d4e5-2222-4bbb-d222-100000000003",
+          "type": "text",
+          "preset": "annotation",
+          "html": "The oversampling parameter $p \\approx 5{\\text{--}}10$ suffices in practice",
+          "position": {
+            "x": 1320,
+            "y": 500,
+            "width": 520,
+            "height": 100
+          }
+        },
+        {
+          "id": "b2c3d4e5-2222-4bbb-d222-100000000004",
+          "type": "text",
+          "preset": "footnote",
+          "html": "Halko, Martinsson, Tropp. <i>Finding structure with randomness</i>. SIAM Review, 2011.",
+          "position": {
+            "x": 80,
+            "y": 1000,
+            "width": 1200,
+            "height": 50
+          }
+        }
+      ],
+      "notes": "Discuss practical algorithms. The randomized SVD is the workhorse for large-scale problems. Mention that scikit-learn uses it internally."
+    }
+  ],
+  "config": {
+    "transition": "slide",
+    "backgroundTransition": "fade",
+    "width": 1920,
+    "height": 1080,
+    "showSlideNumber": true,
+    "author": "David F. Gleich",
+    "venue": "MA 514: Numerical Analysis, Purdue University"
+  }
+}

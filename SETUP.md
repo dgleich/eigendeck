@@ -172,7 +172,7 @@ npm run tauri build
 ```
 eigendeck/
   .github/workflows/    # CI and release workflows
-  example-project/      # Sample presentation with BFS demo
+  example-demos/example-project/      # Sample presentation with BFS demo
   public/fonts/         # PT Sans font files (bundled)
   src/                  # React frontend
     components/         # React components

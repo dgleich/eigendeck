@@ -875,7 +875,7 @@ cp mathjax-ptsans-bundle/tex-mml-svg-mathjax-ptsans-nosre.js public/mathjax/tex-
 
 ```bash
 node tools/bench-perf.mjs --save tools/perf-results/   # track over time
-node tools/bench-storage.mjs examples/magnetic-powers   # SQLite vs ZIP vs JSON
+node tools/bench-storage.mjs example-demos/magnetic-powers   # SQLite vs ZIP vs JSON
 node tools/test-history-integrity.mjs                   # verify temporal history
 ```
 

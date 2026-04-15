@@ -1,0 +1,60 @@
+Okay, we need some demos of the walk profile compressibility. 
+To do this, we need to compute the walk profiles for some reasonable size directed ER 
+matrix ...
+
+say n = 200, with a knob to vary average degree... 
+
+Then we want to compute the walk profiles for m = 30, and look at how well
+we approximate them.
+
+We should also do the other small networks we have here, I think they are all less than 
+500 vertices. 
+
+The goal is to see how well we approximate these walk profiles with q <= 15 frequencies.
+(Read the paper again, for more details, but we don't want to sample for these small
+scale studies.)
+
+This is on the random walk normalized version, so values stay contained. 
+e.g. the original walk counts are based on D^{-1} A and evaluate walk probabilities
+with exactly k forward edges. 
+
+---
+
+The walk profile at m is 
+m+1 n-by-n matrices. 
+Phi(m,k)_{i,j} is the number of walks of length m from i->j with exactly k forward edges.
+There is a recursive formula to compute them in the paper. 
+$\Phi(m,k) = \Phi(m-1,k-1) \mD^{-1}\mA + \Phi(m-1,k) ( \mD^{-1} \mA)^T$
+where $\mA$ is the adjacency matrix. 
+These get dense quickly, so probably best to store as a dense matrix.
+
+Then we compute approximations using the spectral reconsruction from the Q
+lowest frequencies. 
+
+q=(0/(2(m+1)), 1/(2(m+1)), 2/(2(m+1)) ... (Q-1)/(2(m+1)))
+
+Solve for the frequencies using a pseudoinverse on the lienar system from the
+paper. (Or check the slides too... it's there in the presentation.json). 
+
+Once we have the approximations
+PhiHat(m,k), we compute the different
+ApproxErr(m,k) = Phi(m,k)-PhiHat(m,k)
+This gives us m+1 n-by-n error matrices.
+
+We first find which value of k gives the highest error
+
+sum_{ij} |ApproxErr(m,k)_{ij}| (i.e. the vector 1-norm of the matrix).
+
+For the plot, we plot
+
+\sum_{ij} |ApproxErr(m,k)_ij|/n (so average over rows...)
+
+Make sense? 
+
+---
+
+
+https://doi.org/10.1073/pnas.2516664123
+We present a combinatorial interpretation that fundamentally reveals how these matrices encode local network structure. 
+
+Drop direction entirely [ ??? ] $\mG \to \mA = \max(\mG, \mG^T)$ Explicitly symmetrize the matrix [ ??? ] $\mG \to \mA = \mG + \mG^T$ Use singular values instead of eigenvalues [Dhillon ’??, Bin Yu ??? probably even earlier] $\mG \to \mA = \bmat{0 & \mG \\ \mG^T & 0}$ Use directed graph directly [ … many attempts … ] $\mG \to \mA = \mG \mD^{-1}$ and things like hitting times, etc. Flow-based circulation [Chung 2005] $\mG \to \mA = \text{Diag}(\vpi(\mG)) \mD^{-1} \mG + \mG^T \mD^{-1} \text{Diag}(\vpi(\mG)) \mG^T$

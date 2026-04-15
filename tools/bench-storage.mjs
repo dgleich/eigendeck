@@ -21,7 +21,7 @@ const archiver = require('archiver');
 const { createWriteStream } = await import('node:fs');
 const { pipeline } = await import('node:stream/promises');
 
-const projectDir = resolve(process.argv[2] || '/work/examples/magnetic-powers');
+const projectDir = resolve(process.argv[2] || '/work/example-demos/magnetic-powers');
 const tmpDir = '/tmp/bench-storage';
 if (!existsSync(tmpDir)) mkdirSync(tmpDir, { recursive: true });
 
