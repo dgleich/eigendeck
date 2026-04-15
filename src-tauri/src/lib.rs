@@ -451,7 +451,7 @@ pub fn run() {
             }
 
             // Build menu bar (shared function — also used by update_recent_menu)
-            let menu = build_app_menu(&app.handle(), None)
+            let menu = build_app_menu(app.handle(), None)
                 .map_err(|e| e.to_string())?;
             app.set_menu(menu)?;
 
