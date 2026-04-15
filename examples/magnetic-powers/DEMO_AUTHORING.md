@@ -275,9 +275,10 @@ Use `linkId` to animate pieces between slides. Use `syncId` to keep pieces in sy
 - Add `console.log('[piece-name]', ...)` in your demo for tracing
 - Check that `BroadcastChannel` messages are flowing between controller and viewports
 
-## Validation
+## Testing
 
-Run the Python linter to check your demo HTML:
+Export and test your demo in a standalone HTML file:
 ```bash
-python3 tools/lint-demo.py demos/my-demo.html
+node tools/export-eigendeck.mjs project.eigendeck test.html
+open test.html
 ```

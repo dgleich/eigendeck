@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "tauri": "tauri",
-    "eigendeck": "node tools/eigendeck.mjs"
+    "export": "node tools/export-eigendeck.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
