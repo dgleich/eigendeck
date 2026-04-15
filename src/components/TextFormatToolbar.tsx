@@ -44,7 +44,7 @@ export function TextFormatToolbar(_props: Props) {
   };
 
   return (
-    <div className="text-format-toolbar" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+    <div className="text-format-toolbar">
       <button onMouseDown={execOnMouseDown('bold')} title="Bold (Cmd+B)">
         <b>B</b>
       </button>
