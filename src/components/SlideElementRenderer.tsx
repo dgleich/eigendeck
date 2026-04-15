@@ -408,7 +408,9 @@ function TextContent({
         } : undefined}
         onKeyDown={editing ? (e) => {
           if (e.key === 'Escape') commitAndClose();
-          e.stopPropagation();
+          // Let Cmd+key shortcuts bubble for document-level handling,
+          // but stop regular keys from triggering slide shortcuts (delete, etc.)
+          if (!(e.metaKey || e.ctrlKey)) e.stopPropagation();
         } : undefined}
       />
     </div>
