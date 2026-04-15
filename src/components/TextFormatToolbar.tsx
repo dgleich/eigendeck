@@ -35,6 +35,11 @@ export function TextFormatToolbar(_props: Props) {
   };
 
   const exec = (cmd: string, value?: string) => {
+    // Ensure the contentEditable has focus before executing
+    const editable = document.querySelector('[contenteditable="true"]') as HTMLElement;
+    if (editable && document.activeElement !== editable) {
+      editable.focus();
+    }
     document.execCommand(cmd, false, value);
   };
 
