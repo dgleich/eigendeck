@@ -473,6 +473,11 @@ pub fn run() {
                 .accelerator("CmdOrCtrl+Shift+D")
                 .build(app)?;
 
+            let devtools_item = MenuItemBuilder::new("Developer Tools")
+                .id("devtools")
+                .accelerator("CmdOrCtrl+Alt+I")
+                .build(app)?;
+
             let view_menu = SubmenuBuilder::new(app, "View")
                 .item(&present_item)
                 .item(&speaker_item)
@@ -480,6 +485,7 @@ pub fn run() {
                 .item(&history_item)
                 .separator()
                 .item(&debug_item)
+                .item(&devtools_item)
                 .separator()
                 .fullscreen()
                 .build()?;
@@ -506,6 +512,18 @@ pub fn run() {
             app.on_menu_event(move |app_handle, event| {
                 let id = event.id().0.as_str();
                 if let Some(window) = app_handle.get_webview_window("main") {
+                    // Handle devtools toggle on Rust side
+                    if id == "devtools" {
+                        #[cfg(debug_assertions)]
+                        {
+                            if window.is_devtools_open() {
+                                window.close_devtools();
+                            } else {
+                                window.open_devtools();
+                            }
+                        }
+                        return;
+                    }
                     // Handle recent project menu items
                     if let Some(idx_str) = id.strip_prefix("recent-") {
                         if let Ok(idx) = idx_str.parse::<usize>() {
