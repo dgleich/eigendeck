@@ -35,3 +35,6 @@ mathjax-ptsans-font/
 
 # Stray gitignore directory
 gitignore/
+
+# Website repo (separate GitHub repo, hosted on Cloudflare Pages)
+website/
