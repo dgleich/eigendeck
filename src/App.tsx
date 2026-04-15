@@ -107,9 +107,10 @@ function App() {
       if (e.key === 's' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); flushToSqlite().then(() => saveProject()); }
       if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); usePresentationStore.temporal.getState().undo(); }
       if ((e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) || (e.key === 'y' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); usePresentationStore.temporal.getState().redo(); }
-      if (e.key === 'i' && (e.ctrlKey || e.metaKey) && !(e.target as HTMLElement).closest('[contenteditable]')) { e.preventDefault(); usePresentationStore.getState().toggleProperties(); }
-      // Text editing shortcuts — only inside contentEditable
-      if ((e.target as HTMLElement).closest('[contenteditable]')) {
+      const inEditable = !!(e.target as HTMLElement).closest('[contenteditable="true"]');
+      if (e.key.toLowerCase() === 'i' && (e.ctrlKey || e.metaKey) && !inEditable) { e.preventDefault(); usePresentationStore.getState().toggleProperties(); }
+      // Text editing shortcuts — only when actively editing text
+      if (inEditable) {
         const key = e.key.toLowerCase();
         if (key === 'b' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); document.execCommand('bold'); }
         if (key === 'i' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); document.execCommand('italic'); }
