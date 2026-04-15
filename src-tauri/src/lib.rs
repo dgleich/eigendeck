@@ -10,6 +10,32 @@ use once_cell::sync::Lazy;
 // Store recent project paths so we can map menu item IDs back to paths
 static RECENT_PATHS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
+// CLI export mode: store args for the hidden webview to retrieve
+static CLI_EXPORT_ARGS: Lazy<Mutex<Option<(String, String)>>> = Lazy::new(|| Mutex::new(None));
+
+#[tauri::command]
+fn cli_export_args() -> Result<serde_json::Value, String> {
+    let args = CLI_EXPORT_ARGS.lock().unwrap();
+    match args.as_ref() {
+        Some((db, out)) => Ok(serde_json::json!({ "dbPath": db, "outputPath": out })),
+        None => Err("Not in export mode".into()),
+    }
+}
+
+#[tauri::command]
+fn cli_write_and_exit(path: String, content: String, error: Option<String>) -> Result<(), String> {
+    if let Some(e) = error {
+        eprintln!("Export failed: {}", e);
+        std::process::exit(1);
+    }
+    if path.is_empty() {
+        std::process::exit(1);
+    }
+    std::fs::write(&path, &content).map_err(|e| format!("Failed to write {}: {}", path, e))?;
+    println!("Exported to {}", path);
+    std::process::exit(0);
+}
+
 /// Set window level above the menu bar on macOS so it covers everything
 /// on the secondary monitor (including the menu bar strip).
 #[tauri::command]
@@ -388,11 +414,34 @@ pub fn run() {
             storage::db_store_asset,
             storage::db_get_asset,
             storage::db_update_presentation,
+            cli_export_args,
+            cli_write_and_exit,
         ])
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
+            // Check for --export CLI mode
+            let args: Vec<String> = std::env::args().collect();
+            if let Some(idx) = args.iter().position(|a| a == "--export") {
+                let db_path = args.get(idx + 1).cloned().unwrap_or_default();
+                let out_path = args.get(idx + 2).cloned().unwrap_or_default();
+                if db_path.is_empty() || out_path.is_empty() {
+                    eprintln!("Usage: eigendeck --export <file.eigendeck> <output.html>");
+                    std::process::exit(1);
+                }
+                // Store args for the JS export script to retrieve
+                *CLI_EXPORT_ARGS.lock().unwrap() = Some((db_path, out_path));
+
+                // Hide the default main window
+                if let Some(main_win) = app.get_webview_window("main") {
+                    let _ = main_win.hide();
+                    // Navigate to the export entry point
+                    let _ = main_win.eval("window.location.href = '/export-cli.html'");
+                }
+                return Ok(());
+            }
+
             // macOS app menu
             let app_menu = SubmenuBuilder::new(app, "Eigendeck")
                 .about(Some(AboutMetadata {

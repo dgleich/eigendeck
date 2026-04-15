@@ -14,6 +14,7 @@ export default defineConfig(async () => ({
       input: {
         main: resolve(__dirname, 'index.html'),
         presenter: resolve(__dirname, 'presenter.html'),
+        'export-cli': resolve(__dirname, 'export-cli.html'),
       },
     },
   },
