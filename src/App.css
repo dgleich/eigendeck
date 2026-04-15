@@ -1132,14 +1132,15 @@
   height: 100%;
 }
 
-/* Vertical alignment for text elements */
-.el-text[data-valign="middle"] > div > div {
+/* Vertical alignment for text elements — applied to wrapper, not content div.
+   Content div must stay block layout so inline math/text flows normally. */
+.el-text[data-valign="middle"] > div {
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
-.el-text[data-valign="bottom"] > div > div {
+.el-text[data-valign="bottom"] > div {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
