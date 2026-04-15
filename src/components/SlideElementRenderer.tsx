@@ -403,8 +403,38 @@ function TextContent({
             if (!document.activeElement?.closest('.text-format-toolbar')) commitAndClose();
           }, 100);
         } : undefined}
-        onInput={editing ? () => {
+        onInput={editing ? (e) => {
           if (ref.current) applyMathLineStyles(ref.current);
+          // Auto-replace text patterns — only trigger on the completing character
+          const inputData = (e.nativeEvent as InputEvent).data;
+          if (!inputData) return;
+          const trigger = inputData.slice(-1);
+          if (!'->= '.includes(trigger)) return;
+          const sel = window.getSelection();
+          if (sel && sel.rangeCount > 0 && sel.isCollapsed) {
+            const node = sel.anchorNode;
+            if (node?.nodeType === Node.TEXT_NODE) {
+              const text = node.textContent || '';
+              const offset = sel.anchorOffset;
+              // Ordered longest-first to match greedily
+              const replacements: [string, string][] = [
+                ['-->', '\u2192'], ['<--', '\u2190'], ['<->', '\u2194'],
+                ['<=>', '\u21D4'], ['=>', '\u21D2'],
+                ['---', '\u2014'],
+              ];
+              for (const [pattern, replacement] of replacements) {
+                if (offset >= pattern.length && text.slice(offset - pattern.length, offset) === pattern) {
+                  const range = document.createRange();
+                  range.setStart(node, offset - pattern.length);
+                  range.setEnd(node, offset);
+                  range.deleteContents();
+                  range.insertNode(document.createTextNode(replacement));
+                  sel.collapseToEnd();
+                  break;
+                }
+              }
+            }
+          }
         } : undefined}
         onKeyDown={editing ? (e) => {
           if (e.key === 'Escape') commitAndClose();
