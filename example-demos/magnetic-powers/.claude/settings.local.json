@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(open:*)",
-      "Bash(.venv/bin/python demos/precompute_layouts.py)"
-    ]
-  }
-}
