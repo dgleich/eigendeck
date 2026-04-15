@@ -171,7 +171,7 @@ export interface Presentation {
 export function createTextElement(preset: TextPreset, overrides?: Partial<ElementPosition>): TextElement {
   const defaults: Record<TextPreset, ElementPosition> = {
     title:      { x: 80,  y: 20,  width: 1760, height: 200 },
-    body:       { x: 80,  y: 180, width: 1760, height: 800 },
+    body:       { x: 80,  y: 215, width: 1760, height: 765 },
     textbox:    { x: 200, y: 300, width: 800,  height: 300 },
     annotation: { x: 200, y: 700, width: 600,  height: 150 },
     footnote:   { x: 80,  y: 1020, width: 1000, height: 44  },
