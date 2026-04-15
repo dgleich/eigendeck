@@ -350,7 +350,8 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build(app).map_err(|e| e.to_string())?;
     let speaker_item = MenuItemBuilder::new("Toggle Speaker Notes").id("speaker").accelerator("CmdOrCtrl+Shift+S")
         .build(app).map_err(|e| e.to_string())?;
-    let inspector_item = MenuItemBuilder::new("Toggle Inspector").id("inspector").accelerator("CmdOrCtrl+I")
+    // No accelerator — Cmd+I is handled in JS (italic in contentEditable, inspector otherwise)
+    let inspector_item = MenuItemBuilder::new("Toggle Inspector").id("inspector")
         .build(app).map_err(|e| e.to_string())?;
     let history_item = MenuItemBuilder::new("History").id("history").accelerator("CmdOrCtrl+Shift+H")
         .build(app).map_err(|e| e.to_string())?;
