@@ -42,53 +42,42 @@ export function TextFormatToolbar(_props: Props) {
       }
     };
     document.addEventListener('selectionchange', save);
-    // Save immediately on mount
     save();
     return () => document.removeEventListener('selectionchange', save);
   }, []);
 
-  // Restore selection, focus, then execute command
-  const exec = useCallback((cmd: string, value?: string) => {
+  // Restore focus + selection, then run action
+  const restoreSelection = useCallback(() => {
     const editable = document.querySelector('[contenteditable="true"]') as HTMLElement;
     if (editable) {
       editable.focus();
       if (savedRange.current) {
         const sel = window.getSelection();
-        if (sel) {
-          sel.removeAllRanges();
-          sel.addRange(savedRange.current);
-        }
+        if (sel) { sel.removeAllRanges(); sel.addRange(savedRange.current); }
       }
     }
-    document.execCommand(cmd, false, value);
   }, []);
 
-  const btn = (label: React.ReactNode, cmd: string, title: string, value?: string) => (
-    <button
-      onMouseDown={(e) => { e.preventDefault(); }}
-      onClick={() => exec(cmd, value)}
-      title={title}
-    >
-      {label}
-    </button>
-  );
+  const exec = useCallback((cmd: string, value?: string) => {
+    restoreSelection();
+    document.execCommand(cmd, false, value);
+  }, [restoreSelection]);
+
+  // Prevent mousedown from blurring contentEditable
+  const pd = (e: React.MouseEvent) => e.preventDefault();
 
   return (
-    <div className="text-format-toolbar" onMouseDown={(e) => e.preventDefault()}>
-      {btn(<b>B</b>, 'bold', 'Bold (Cmd+B)')}
-      {btn(<i>I</i>, 'italic', 'Italic (Cmd+I)')}
-      {btn(<s>S</s>, 'strikeThrough', 'Strikethrough')}
+    <div className="text-format-toolbar" onMouseDown={pd}>
+      <button onClick={() => exec('bold')} title="Bold (Cmd+B)"><b>B</b></button>
+      <button onClick={() => exec('italic')} title="Italic (Cmd+I)"><i>I</i></button>
+      <button onClick={() => exec('strikeThrough')} title="Strikethrough"><s>S</s></button>
       <span className="tf-divider" />
 
       {/* Text color */}
       <div className="tf-color-wrapper">
-        <button onMouseDown={(e) => e.preventDefault()} onClick={() => setColorOpen(!colorOpen)} title="Text color"
-          style={{ position: 'relative' }}>
+        <button onClick={() => setColorOpen(!colorOpen)} title="Text color" style={{ position: 'relative' }}>
           <span style={{ fontWeight: 700 }}>A</span>
-          <span style={{
-            position: 'absolute', bottom: 3, left: 4, right: 4, height: 3,
-            background: lastColor, borderRadius: 1,
-          }} />
+          <span style={{ position: 'absolute', bottom: 3, left: 4, right: 4, height: 3, background: lastColor, borderRadius: 1 }} />
         </button>
         {colorOpen && (
           <div className="tf-color-dropdown">
@@ -98,12 +87,7 @@ export function TextFormatToolbar(_props: Props) {
                 className="tf-color-swatch"
                 style={{ background: c.color, border: c.color === '#ffffff' ? '1px solid #ccc' : '1px solid transparent' }}
                 title={c.label}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  exec('foreColor', c.color);
-                  setLastColor(c.color);
-                  setColorOpen(false);
-                }}
+                onClick={() => { exec('foreColor', c.color); setLastColor(c.color); setColorOpen(false); }}
               />
             ))}
           </div>
@@ -111,9 +95,8 @@ export function TextFormatToolbar(_props: Props) {
       </div>
       <span className="tf-divider" />
 
-      <button onMouseDown={(e) => e.preventDefault()} onClick={() => {
-        const editable = document.querySelector('[contenteditable="true"]') as HTMLElement;
-        if (editable) { editable.focus(); if (savedRange.current) { const sel = window.getSelection(); if (sel) { sel.removeAllRanges(); sel.addRange(savedRange.current); } } }
+      <button onClick={() => {
+        restoreSelection();
         const sel = window.getSelection();
         if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
           const range = sel.getRangeAt(0);
@@ -125,9 +108,8 @@ export function TextFormatToolbar(_props: Props) {
       }} title="Uppercase + letter spacing">AA</button>
       <span className="tf-divider" />
 
-      <button onMouseDown={(e) => e.preventDefault()} onClick={() => {
-        const editable = document.querySelector('[contenteditable="true"]') as HTMLElement;
-        if (editable) { editable.focus(); if (savedRange.current) { const sel = window.getSelection(); if (sel) { sel.removeAllRanges(); sel.addRange(savedRange.current); } } }
+      <button onClick={() => {
+        restoreSelection();
         const sel = window.getSelection();
         if (!sel || sel.rangeCount === 0) return;
 
@@ -150,7 +132,6 @@ export function TextFormatToolbar(_props: Props) {
 
         const ok = document.execCommand('insertUnorderedList', false);
         if (ok) return;
-
         if (!sel.isCollapsed) {
           const text = sel.toString();
           const lines = text.split('\n').filter(Boolean);
@@ -162,12 +143,20 @@ export function TextFormatToolbar(_props: Props) {
       }} title="Bullet list">List</button>
       <span className="tf-divider" />
 
-      {btn(<span style={{ fontSize: 10, lineHeight: 1 }}>&#9776;</span>, 'justifyLeft', 'Align left')}
-      {btn(<span style={{ fontSize: 10, lineHeight: 1 }}>&#9779;</span>, 'justifyCenter', 'Align center')}
-      {btn(<span style={{ fontSize: 10, lineHeight: 1 }}>&#9778;</span>, 'justifyRight', 'Align right')}
+      <button onClick={() => exec('justifyLeft')} title="Align left">
+        <span style={{ fontSize: 10, lineHeight: 1 }}>&#9776;</span>
+      </button>
+      <button onClick={() => exec('justifyCenter')} title="Align center">
+        <span style={{ fontSize: 10, lineHeight: 1 }}>&#9779;</span>
+      </button>
+      <button onClick={() => exec('justifyRight')} title="Align right">
+        <span style={{ fontSize: 10, lineHeight: 1 }}>&#9778;</span>
+      </button>
       <span className="tf-divider" />
 
-      {btn(<span style={{ textDecoration: 'line-through', fontWeight: 400 }}>T</span>, 'removeFormat', 'Strip formatting')}
+      <button onClick={() => exec('removeFormat')} title="Strip formatting">
+        <span style={{ textDecoration: 'line-through', fontWeight: 400 }}>T</span>
+      </button>
     </div>
   );
 }
