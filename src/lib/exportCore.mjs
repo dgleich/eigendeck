@@ -71,8 +71,14 @@ export function injectDemoBootstrap(html, hash, channelKey) {
     this.onmessage = null;
     var self = this;
     window.addEventListener('message', function(e) {
-      if (e.data && e.data.__bc === self._name && self.onmessage) {
+      if (!e.data || !self.onmessage) return;
+      // Enveloped message from relay
+      if (e.data.__bc === self._name) {
         self.onmessage({ data: e.data.payload });
+      }
+      // Raw request-state from parent (slide navigation re-request)
+      if (e.data.type === 'request-state' && !e.data.__bc) {
+        self.onmessage({ data: e.data });
       }
     });
   };
@@ -285,16 +291,14 @@ ${slideHtml.join('\n')}
 <!-- eigendeck-source: ${sourceB64} -->
 <script>
 // BroadcastChannel relay: srcdoc iframes use postMessage to parent,
-// parent forwards to all sibling iframes on the same slide.
+// parent forwards to all iframes with matching channel names.
+// Channel keys are per-slide so cross-slide interference is impossible.
 window.addEventListener('message', function(e) {
   if (!e.data || !e.data.__bc) return;
-  // Relay to all iframes in the current active slide
-  var active = document.querySelector('.slide.active');
-  if (!active) return;
-  var iframes = active.querySelectorAll('iframe');
-  for (var i = 0; i < iframes.length; i++) {
-    if (iframes[i].contentWindow !== e.source) {
-      try { iframes[i].contentWindow.postMessage(e.data, '*'); } catch(ex) {}
+  var allIframes = document.querySelectorAll('iframe');
+  for (var i = 0; i < allIframes.length; i++) {
+    if (allIframes[i].contentWindow !== e.source) {
+      try { allIframes[i].contentWindow.postMessage(e.data, '*'); } catch(ex) {}
     }
   }
 });
@@ -306,6 +310,20 @@ function show(i) {
   slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
   resize();
   current = i;
+  // Re-request state for demo iframes on the newly shown slide.
+  // Viewports may have missed the controller's initial broadcast.
+  // Send request-state via all known channel names on this slide.
+  setTimeout(function() {
+    var active = slides[i];
+    if (!active) return;
+    var iframes = active.querySelectorAll('iframe');
+    for (var j = 0; j < iframes.length; j++) {
+      try {
+        // The iframe's BroadcastChannel shim listens for __bc-enveloped messages
+        iframes[j].contentWindow.postMessage({ type: 'request-state' }, '*');
+      } catch(ex) {}
+    }
+  }, 100);
 }
 function resize() {
   const vw = window.innerWidth, vh = window.innerHeight;
