@@ -143,7 +143,9 @@ export function TextFormatToolbar(_props: Props) {
       </button>
       <span className="tf-divider" />
 
-      <button onClick={() => exec('removeFormat')} title="Clear formatting">×</button>
+      <button onClick={() => exec('removeFormat')} title="Strip formatting from selection (removes bold, italic, color, etc.)">
+        <span style={{ textDecoration: 'line-through', fontWeight: 400 }}>T</span>
+      </button>
     </div>
   );
 }

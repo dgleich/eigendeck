@@ -290,42 +290,15 @@ fn update_recent_menu(app: tauri::AppHandle, projects: Vec<serde_json::Value>) -
 
     let recent_menu = recent_sub.build().map_err(|e| e.to_string())?;
 
-    // Rebuild the entire File menu with the updated recent submenu
-    let new_item = MenuItemBuilder::new("New Project")
-        .id("new-project")
-        .accelerator("CmdOrCtrl+N")
-        .build(&app).map_err(|e| e.to_string())?;
-    let open_item = MenuItemBuilder::new("Open Project")
-        .id("open-project")
-        .accelerator("CmdOrCtrl+O")
-        .build(&app).map_err(|e| e.to_string())?;
-    let save_item = MenuItemBuilder::new("Save")
-        .id("save")
-        .accelerator("CmdOrCtrl+S")
-        .build(&app).map_err(|e| e.to_string())?;
-    let export_item = MenuItemBuilder::new("Export to HTML")
-        .id("export")
-        .accelerator("CmdOrCtrl+E")
-        .build(&app).map_err(|e| e.to_string())?;
-    let import_item = MenuItemBuilder::new("Import from HTML...")
-        .id("import-html")
-        .build(&app).map_err(|e| e.to_string())?;
+    let menu = build_app_menu(&app, Some(recent_menu))?;
+    app.set_menu(menu).map_err(|e| e.to_string())?;
 
-    let file_menu = SubmenuBuilder::new(&app, "File")
-        .item(&new_item)
-        .item(&open_item)
-        .item(&recent_menu)
-        .separator()
-        .item(&save_item)
-        .item(&export_item)
-        .item(&import_item)
-        .separator()
-        .close_window()
-        .build()
-        .map_err(|e| e.to_string())?;
+    Ok(())
+}
 
-    // We need to rebuild the full menu bar
-    let app_menu = SubmenuBuilder::new(&app, "Eigendeck")
+/// Build the complete application menu bar. Called from both setup() and update_recent_menu().
+fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Submenu<tauri::Wry>>) -> Result<tauri::menu::Menu<tauri::Wry>, String> {
+    let app_menu = SubmenuBuilder::new(app, "Eigendeck")
         .about(Some(AboutMetadata {
             name: Some("Eigendeck".into()),
             version: Some("0.1.0".into()),
@@ -342,41 +315,75 @@ fn update_recent_menu(app: tauri::AppHandle, projects: Vec<serde_json::Value>) -
         .build()
         .map_err(|e| e.to_string())?;
 
-    let edit_menu = SubmenuBuilder::new(&app, "Edit")
+    let new_item = MenuItemBuilder::new("New Project").id("new-project").accelerator("CmdOrCtrl+N")
+        .build(app).map_err(|e| e.to_string())?;
+    let open_item = MenuItemBuilder::new("Open Project").id("open-project").accelerator("CmdOrCtrl+O")
+        .build(app).map_err(|e| e.to_string())?;
+    let save_item = MenuItemBuilder::new("Save").id("save").accelerator("CmdOrCtrl+S")
+        .build(app).map_err(|e| e.to_string())?;
+    let export_item = MenuItemBuilder::new("Export to HTML").id("export").accelerator("CmdOrCtrl+Shift+E")
+        .build(app).map_err(|e| e.to_string())?;
+    let import_item = MenuItemBuilder::new("Import from HTML...").id("import-html")
+        .build(app).map_err(|e| e.to_string())?;
+
+    let mut file_sub = SubmenuBuilder::new(app, "File")
+        .item(&new_item)
+        .item(&open_item);
+    if let Some(ref rm) = recent_menu {
+        file_sub = file_sub.item(rm);
+    }
+    let file_menu = file_sub
+        .separator()
+        .item(&save_item)
+        .item(&export_item)
+        .item(&import_item)
+        .separator()
+        .close_window()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let edit_menu = SubmenuBuilder::new(app, "Edit")
         .undo().redo().separator().cut().copy().paste().select_all()
         .build().map_err(|e| e.to_string())?;
 
     let present_item = MenuItemBuilder::new("Present Mode").id("present").accelerator("F5")
-        .build(&app).map_err(|e| e.to_string())?;
+        .build(app).map_err(|e| e.to_string())?;
+    let speaker_item = MenuItemBuilder::new("Toggle Speaker Notes").id("speaker").accelerator("CmdOrCtrl+Shift+S")
+        .build(app).map_err(|e| e.to_string())?;
     let inspector_item = MenuItemBuilder::new("Toggle Inspector").id("inspector").accelerator("CmdOrCtrl+I")
-        .build(&app).map_err(|e| e.to_string())?;
+        .build(app).map_err(|e| e.to_string())?;
     let history_item = MenuItemBuilder::new("History").id("history").accelerator("CmdOrCtrl+Shift+H")
-        .build(&app).map_err(|e| e.to_string())?;
+        .build(app).map_err(|e| e.to_string())?;
     let debug_item = MenuItemBuilder::new("Debug Console").id("debug-console").accelerator("CmdOrCtrl+Shift+D")
-        .build(&app).map_err(|e| e.to_string())?;
+        .build(app).map_err(|e| e.to_string())?;
     let devtools_item = MenuItemBuilder::new("Developer Tools").id("devtools").accelerator("CmdOrCtrl+Alt+I")
-        .build(&app).map_err(|e| e.to_string())?;
+        .build(app).map_err(|e| e.to_string())?;
 
-    let view_menu = SubmenuBuilder::new(&app, "View")
-        .item(&present_item).item(&inspector_item).item(&history_item).separator().item(&debug_item).item(&devtools_item).separator().fullscreen()
-        .build().map_err(|e| e.to_string())?;
+    let view_menu = SubmenuBuilder::new(app, "View")
+        .item(&present_item)
+        .item(&speaker_item)
+        .item(&inspector_item)
+        .item(&history_item)
+        .separator()
+        .item(&debug_item)
+        .item(&devtools_item)
+        .separator()
+        .fullscreen()
+        .build()
+        .map_err(|e| e.to_string())?;
 
-    let window_menu = SubmenuBuilder::new(&app, "Window")
+    let window_menu = SubmenuBuilder::new(app, "Window")
         .minimize().maximize().separator().close_window()
         .build().map_err(|e| e.to_string())?;
 
-    let menu = MenuBuilder::new(&app)
+    MenuBuilder::new(app)
         .item(&app_menu)
         .item(&file_menu)
         .item(&edit_menu)
         .item(&view_menu)
         .item(&window_menu)
         .build()
-        .map_err(|e| e.to_string())?;
-
-    app.set_menu(menu).map_err(|e| e.to_string())?;
-
-    Ok(())
+        .map_err(|e| e.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -442,123 +449,10 @@ pub fn run() {
                 return Ok(());
             }
 
-            // macOS app menu
-            let app_menu = SubmenuBuilder::new(app, "Eigendeck")
-                .about(Some(AboutMetadata {
-                    name: Some("Eigendeck".into()),
-                    version: Some("0.1.0".into()),
-                    ..Default::default()
-                }))
-                .separator()
-                .services()
-                .separator()
-                .hide()
-                .hide_others()
-                .show_all()
-                .separator()
-                .quit()
-                .build()?;
-
-            let new_item = MenuItemBuilder::new("New Project")
-                .id("new-project")
-                .accelerator("CmdOrCtrl+N")
-                .build(app)?;
-            let open_item = MenuItemBuilder::new("Open Project")
-                .id("open-project")
-                .accelerator("CmdOrCtrl+O")
-                .build(app)?;
-            let save_item = MenuItemBuilder::new("Save")
-                .id("save")
-                .accelerator("CmdOrCtrl+S")
-                .build(app)?;
-            let export_item = MenuItemBuilder::new("Export to HTML")
-                .id("export")
-                .accelerator("CmdOrCtrl+E")
-                .build(app)?;
-            let import_item = MenuItemBuilder::new("Import from HTML...")
-                .id("import-html")
-                .build(app)?;
-
-            let file_menu = SubmenuBuilder::new(app, "File")
-                .item(&new_item)
-                .item(&open_item)
-                .separator()
-                .item(&save_item)
-                .item(&export_item)
-                .item(&import_item)
-                .separator()
-                .close_window()
-                .build()?;
-
-            let edit_menu = SubmenuBuilder::new(app, "Edit")
-                .undo()
-                .redo()
-                .separator()
-                .cut()
-                .copy()
-                .paste()
-                .select_all()
-                .build()?;
-
-            let present_item = MenuItemBuilder::new("Present Mode")
-                .id("present")
-                .accelerator("F5")
-                .build(app)?;
-            let speaker_item = MenuItemBuilder::new("Toggle Speaker Notes")
-                .id("speaker")
-                .accelerator("CmdOrCtrl+Shift+S")
-                .build(app)?;
-
-            let inspector_item = MenuItemBuilder::new("Toggle Inspector")
-                .id("inspector")
-                .accelerator("CmdOrCtrl+I")
-                .build(app)?;
-
-            let history_item = MenuItemBuilder::new("History")
-                .id("history")
-                .accelerator("CmdOrCtrl+Shift+H")
-                .build(app)?;
-
-            let debug_item = MenuItemBuilder::new("Debug Console")
-                .id("debug-console")
-                .accelerator("CmdOrCtrl+Shift+D")
-                .build(app)?;
-
-            let devtools_item = MenuItemBuilder::new("Developer Tools")
-                .id("devtools")
-                .accelerator("CmdOrCtrl+Alt+I")
-                .build(app)?;
-
-            let view_menu = SubmenuBuilder::new(app, "View")
-                .item(&present_item)
-                .item(&speaker_item)
-                .item(&inspector_item)
-                .item(&history_item)
-                .separator()
-                .item(&debug_item)
-                .item(&devtools_item)
-                .separator()
-                .fullscreen()
-                .build()?;
-
-            let window_menu = SubmenuBuilder::new(app, "Window")
-                .minimize()
-                .maximize()
-                .separator()
-                .close_window()
-                .build()?;
-
-            let menu = MenuBuilder::new(app)
-                .item(&app_menu)
-                .item(&file_menu)
-                .item(&edit_menu)
-                .item(&view_menu)
-                .item(&window_menu)
-                .build()?;
-
+            // Build menu bar (shared function — also used by update_recent_menu)
+            let menu = build_app_menu(&app.handle(), None)
+                .map_err(|e| e.to_string())?;
             app.set_menu(menu)?;
-
-            // Devtools available via Cmd+Shift+D menu item (not opened by default)
 
             app.on_menu_event(move |app_handle, event| {
                 let id = event.id().0.as_str();

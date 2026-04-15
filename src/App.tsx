@@ -108,6 +108,12 @@ function App() {
       if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); usePresentationStore.temporal.getState().undo(); }
       if ((e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) || (e.key === 'y' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); usePresentationStore.temporal.getState().redo(); }
       if (e.key === 'i' && (e.ctrlKey || e.metaKey) && !(e.target as HTMLElement).closest('[contenteditable]')) { e.preventDefault(); usePresentationStore.getState().toggleProperties(); }
+      // Text editing shortcuts — only inside contentEditable
+      if ((e.target as HTMLElement).closest('[contenteditable]')) {
+        if (e.key === 'b' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); document.execCommand('bold'); }
+        if (e.key === 'i' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); document.execCommand('italic'); }
+        if (e.key === 'e' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); document.execCommand('justifyCenter'); }
+      }
       if (e.key === 'h' && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); usePresentationStore.getState().toggleHistory(); }
       if (e.key === 'F5') { e.preventDefault(); flushToSqlite().then(() => startPresenting()); }
       // Delete selected element
