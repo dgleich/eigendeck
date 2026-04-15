@@ -65,7 +65,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:#fff;
 var params = new URLSearchParams(location.hash.slice(1));
 var role = params.get('role');
 var piece = params.get('piece');
-var channelName = 'eigendeck-demo:' + location.pathname.split('/').pop();
+var channelName = 'eigendeck-demo:directed_layouts.html';
 var channel = new BroadcastChannel(channelName);
 
 var VIEW_W = 800, VIEW_H = 600;

@@ -50,7 +50,8 @@ const piece = params.get('piece'); // piece name or null
 All iframes from the same demo communicate via a shared `BroadcastChannel`:
 
 ```js
-const channelName = 'eigendeck-demo:' + location.pathname.split('/').pop();
+// Hardcode your demo's filename — don't use location.pathname (empty in srcdoc)
+const channelName = 'eigendeck-demo:mydemo.html';
 const channel = new BroadcastChannel(channelName);
 ```
 

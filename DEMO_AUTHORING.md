@@ -45,8 +45,8 @@ body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
   const role = params.get('role');
   const piece = params.get('piece');
 
-  // Channel name: use the filename for uniqueness
-  const channelName = 'eigendeck-demo:' + location.pathname.split('/').pop();
+  // Channel name: hardcode the filename for uniqueness (works in all contexts)
+  const channelName = 'eigendeck-demo:mydemo.html';
   const channel = new BroadcastChannel(channelName);
 
   // ============================================
@@ -176,9 +176,9 @@ For HTML export, Eigendeck injects a bootstrap `<script>` before your code that:
 **You don't need to handle this.** Just use the standard pattern:
 ```js
 const params = new URLSearchParams(location.hash.slice(1));
-const channel = new BroadcastChannel('eigendeck-demo:' + location.pathname.split('/').pop());
+const channel = new BroadcastChannel('eigendeck-demo:mydemo.html');
 ```
-The bootstrap makes both work in all contexts.
+Use a hardcoded filename for the channel name. The bootstrap patches `URLSearchParams` and adds a unique per-slide prefix to `BroadcastChannel` automatically.
 
 ## Critical Rules
 
@@ -209,10 +209,11 @@ The bootstrap makes both work in all contexts.
 
 6. **Wrap everything in an IIFE** — `(function() { ... })();` — to avoid polluting the global scope.
 
-7. **Channel name must match** — Use the same formula in all roles:
+7. **Channel name must match** — Hardcode your demo's filename:
    ```js
-   const channelName = 'eigendeck-demo:' + location.pathname.split('/').pop();
+   const channelName = 'eigendeck-demo:mydemo.html';
    ```
+   Don't use `location.pathname` — it's empty in srcdoc iframes (HTML export).
 
 8. **Controller broadcasts, viewports listen** — Never have viewports broadcast state. Only the controller owns state.
 

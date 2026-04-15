@@ -51,10 +51,8 @@ body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
 
   console.log('[graph-explorer] hash:', location.hash, 'role:', role, 'piece:', piece);
   console.log('[graph-explorer] href:', location.href);
-  console.log('[graph-explorer] pathname:', location.pathname);
-
   // Unique channel name based on demo file path
-  const channelName = 'eigendeck-demo:' + location.pathname.split('/').pop();
+  const channelName = 'eigendeck-demo:graph-explorer.html';
   console.log('[graph-explorer] channel:', channelName);
   const channel = new BroadcastChannel(channelName);
 
