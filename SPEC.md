@@ -595,13 +595,9 @@ The slide canvas is 1920×1080 and CSS-scaled to fit available space:
 - Thumbnails: same approach at ~0.086 scale
 - All pointer coordinates divided by scale for slide-space positions
 
-### Auto-Save Architecture
+### Auto-Save Architecture (replaced by SQLite write-through)
 
-- `usePresentationStore.subscribe()` watches for presentation data changes
-- 3-second debounce timer
-- Also saves on `window.blur` and before entering present mode
-- Backup files: `presentation.backup-{ISO-timestamp}.json` (max 20, auto-pruned)
-- `JSON.stringify` comparison prevents duplicate saves
+Previously used JSON file auto-save with backup rotation. Now replaced by SQLite incremental write-through — every change is persisted to SQLite within 1 second, with proper temporal versioning.
 
 ### Undo/Redo (zundo)
 
@@ -609,8 +605,123 @@ The slide canvas is 1920×1080 and CSS-scaled to fit available space:
 - `partialize` tracks only `presentation` and `currentSlideIndex`
 - `equality` check via `JSON.stringify` prevents duplicate snapshots
 - `pauseUndo()` / `resumeUndo()` bracket continuous operations (drags, typing)
-- TipTap typing debounce: 300ms idle before snapshot
 - `clear()` called on file load to reset history
+
+### SQLite Storage (April 2026)
+
+Replaced JSON directory format with a single `.eigendeck` SQLite file.
+
+**Why SQLite over JSON directories:**
+- Incremental saves (0.4ms vs rewriting entire file)
+- Temporal versioning (unlimited undo history for free)
+- Single file (no directory to manage, easy to share)
+- Assets as BLOBs (images/demos stored inside the DB)
+- Benchmarked: 400x faster than ZIP for incremental saves
+
+**Why SQLite over ZIP:**
+- ZIP requires full rewrite for any change (163ms for 50MB)
+- SQLite incremental write: 0.4ms regardless of presentation size
+- ZIP has no history capability
+
+**Why WAL mode:**
+- 48x faster writes than DELETE journal mode
+- Sidecar files (-wal, -shm) cleaned up on close via PRAGMA wal_checkpoint(TRUNCATE)
+- Rust `on_window_event(Destroyed)` ensures cleanup even on quit
+
+**Data model — junction table for sync:**
+- `elements` table: content + position (each element owns its data)
+- `slide_elements` junction: which elements appear on which slides
+- Sync = one element row, multiple slide_elements rows
+- Editing a synced element is O(1) — one write, all slides see it
+- Freeing a synced element = duplicate the element row, update the junction
+
+**Incremental write-through (not full reimport):**
+- Zustand is the interaction layer (fast, synchronous for UI)
+- Subscriber diffs previous and current state after each change
+- Only dirty items are written to SQLite (elements, slides, metadata)
+- Structural changes (add/delete slide/element) tracked explicitly
+- `db_import_json` is NEVER used in normal editing flow — only for initial creation and explicit compact
+- This preserves temporal history (each edit = new version row)
+
+**Why temporal versioning (valid_from/valid_to):**
+- Every element change creates a new row with a timestamp
+- Old version gets `valid_to` set, new version has `valid_to = NULL`
+- History query: `WHERE valid_from <= T AND (valid_to IS NULL OR valid_to > T)`
+- Exponential thinning for retention (keep recent, thin old)
+- Compact command to delete history and VACUUM
+
+**All SQLite code in Rust (`rusqlite`):**
+- No WASM, no JavaScript SQLite
+- Frontend calls Rust via Tauri `invoke()`
+- CLI binary (`eigendeck-cli`) uses the same `eigendeck_lib::storage` module
+- One storage implementation, two consumers (GUI + CLI)
+
+### Demo Pieces — Controller/Viewport Iframes (April 2026)
+
+Replaced the initial direct-DOM approach (v1) with iframe-based architecture (v2).
+
+**Why not direct DOM (v1):**
+- Demo JS running in the app context caused naming conflicts
+- Complex lifecycle management (init, destroy, re-init on slide change)
+- Required a custom demo loader to parse HTML and execute scripts
+
+**Why controller/viewport iframes (v2):**
+- Each piece is an iframe — sandboxed, isolated, no JS in app context
+- Hidden controller iframe runs simulation/logic headlessly
+- Viewport iframes render individual pieces
+- Communication via `BroadcastChannel`
+- Existing iframe infrastructure (DemoBox overlay/lock) just works
+- Demo HTML serves all roles via URL hash (#role=controller, #piece=graph)
+
+**BroadcastChannel naming in export:**
+- In `srcdoc` iframes, `location.pathname` is empty
+- All demos would collide on the same channel name
+- Fix: inject a bootstrap script that overrides `BroadcastChannel` constructor
+  to prefix every channel name with a unique per-slide-per-demo key
+
+### Multi-Monitor Presenter (April 2026)
+
+**Why not macOS fullscreen:**
+- `setFullscreen` creates a new macOS Space and hides dock/menubar globally
+- `setSimpleFullscreen` also hides menubar
+- Both affect the primary display when presenting on secondary
+
+**Solution (same as Keynote/PowerPoint):**
+- Borderless window sized to cover the secondary monitor
+- `NSWindow.setLevel_(25)` via cocoa crate (one above menu bar level 24)
+- No fullscreen API involved — just a high window level
+- Menu bar and dock on primary display stay untouched
+
+**Display mirroring:**
+- Auto-detects mirrored displays via `CGDisplayMirrorsDisplay`
+- Disables mirroring before presenting (`CGConfigureDisplayMirrorOfDisplay`)
+- Re-enables on presentation end
+- Uses `ConfigureForSession` (not `ConfigurePermanently` — that prevented sleep)
+
+### Shared Export Logic (April 2026)
+
+**Why a shared module:**
+- GUI export and CLI export were duplicated (~250 lines each)
+- Bugs fixed in one weren't fixed in the other
+- `src/lib/exportCore.mjs` is pure JS, no runtime dependencies
+
+**Architecture:**
+- `buildExportHtml(opts)` takes filesystem abstraction + optional math renderer
+- GUI provides Tauri fs + in-app MathJax (pre-renders to SVG, offline)
+- CLI provides Node fs + @mathjax/src (PT Sans font, pre-renders to SVG)
+- Both produce identical output for non-math content
+
+### HTML Entity Handling in MathJax (April 2026)
+
+**Problem:** contentEditable stores `&` as `&amp;` in innerHTML. LaTeX table delimiters like `\bmat{0 & 1}` become `\bmat{0 &amp; 1}`, rendering "amp;" in output.
+
+**Solution:** `unescapeHtml()` converts `&amp;` → `&`, `&nbsp;` → ` `, `&lt;` → `<`, etc. before passing tex to MathJax. Applied to both inline and display math extraction.
+
+### Drag/Resize Over Iframes (April 2026)
+
+**Problem:** During drag or resize, moving the pointer over an iframe causes the iframe to steal `pointermove` events. The drag becomes janky or stops.
+
+**Solution:** Create a transparent full-screen blocker div on first `pointermove` (not on `pointerdown` — that would block double-click to edit text). Remove the blocker on `pointerup`. Same technique for both element drag and resize.
 
 ---
 
@@ -677,9 +788,10 @@ This is the critical parameter for text/math size matching. Don't change `em_sca
 
 ### Known Issues
 
-- `\tilde{x}` accent too high — glyph y-coordinate 732 in SVG font data needs adjustment
+- `\tilde{x}` accent — fixed in mathjax-ptsans-bundle update (April 2026)
 - First MathJax render has a brief delay (script loading + first tex2svgPromise)
 - fontCache: 'none' means SVG paths are duplicated (slightly larger HTML export)
+- WebKit contentEditable: cursor appears left of list marker on empty new lines
 
 ---
 
