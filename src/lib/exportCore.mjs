@@ -225,10 +225,10 @@ window.MathJax = {
 @import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #000; overflow: hidden; font-family: 'PT Sans', sans-serif; }
-#viewport { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: flex-start; }
+#viewport { width: 100vw; height: 100vh; position: relative; }
 .slide {
-  width: ${W}px; height: ${H}px; background: #fff; position: relative; overflow: hidden;
-  transform-origin: top left; display: none;
+  width: ${W}px; height: ${H}px; background: #fff; position: absolute;
+  top: 50%; left: 50%; transform-origin: center center; display: none; overflow: hidden;
 }
 .slide.active { display: block; }
 ul, ol { padding-left: 0; margin: 0; list-style-type: none; }
@@ -262,11 +262,9 @@ function show(i) {
 function resize() {
   const vw = window.innerWidth, vh = window.innerHeight;
   const scale = Math.min(vw / W, vh / H);
-  const s = slides[current];
-  if (!s) return;
-  s.style.transform = 'scale(' + scale + ')';
-  const wrapper = document.getElementById('viewport');
-  wrapper.style.paddingTop = Math.max(0, (vh - H * scale) / 2) + 'px';
+  slides.forEach(function(s) {
+    s.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
+  });
 }
 show(0);
 window.addEventListener('resize', resize);
