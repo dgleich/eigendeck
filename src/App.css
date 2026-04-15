@@ -887,6 +887,11 @@
   border-color: #3b82f6;
 }
 
+.slide-element.is-synced {
+  box-shadow: 0 0 0 3px #f97316, 0 0 24px 6px rgba(249, 115, 22, 0.5);
+  border-color: #f97316;
+}
+
 .slide-element.is-selected .el-delete-btn,
 .slide-element.is-selected .el-resize-handle {
   display: flex;
@@ -1936,4 +1941,150 @@
   padding: 12px;
   background: #111;
   border-top: 1px solid #333;
+}
+
+/* ============================================
+   History panel
+   ============================================ */
+.history-panel {
+  width: 280px;
+  min-width: 280px;
+  background: #f8f8f8;
+  border-left: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #ddd;
+  font-weight: 600;
+}
+
+.history-header button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #666;
+  padding: 0 4px;
+}
+
+.history-loading, .history-empty {
+  padding: 16px 12px;
+  color: #999;
+  text-align: center;
+}
+
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.history-date {
+  padding: 6px 12px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.history-entry {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+  color: #444;
+}
+
+.history-entry:hover {
+  background: #e5e7eb;
+}
+
+.history-entry.active {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.history-time {
+  flex-shrink: 0;
+  font-family: monospace;
+  font-size: 11px;
+  color: #888;
+}
+
+.history-entry.active .history-time {
+  color: #3b82f6;
+}
+
+.history-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-preview {
+  border-top: 1px solid #ddd;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #666;
+}
+
+.history-preview-header button {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.history-preview-header button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.history-preview-canvas {
+  width: 264px;
+  height: 149px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.history-restore-btn {
+  padding: 6px 12px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.history-restore-btn:hover {
+  background: #1d4ed8;
 }

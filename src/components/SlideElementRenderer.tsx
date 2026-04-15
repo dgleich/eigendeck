@@ -547,7 +547,7 @@ function DraggableBox({
 
   return (
     <div
-      className={`slide-element ${className} ${isDragging ? 'is-dragging' : ''} ${isSelected ? 'is-selected' : ''}`}
+      className={`slide-element ${className} ${isDragging ? 'is-dragging' : ''} ${isSelected ? 'is-selected' : ''} ${isSelected && syncId ? 'is-synced' : ''}`}
       data-element-id={elementId}
       data-valign={dataValign}
       style={{
