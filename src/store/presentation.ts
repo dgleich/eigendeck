@@ -647,7 +647,9 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     await invoke('db_open', { path: dbPath });
     const json = await invoke<string>('db_export_json');
     const presentation: Presentation = JSON.parse(json);
-    sqliteDbPath = dbPath;
+    // IMPORTANT: Disable write-through while loading to prevent re-inserting
+    // all slides/elements as "new". Set sqliteDbPath AFTER setPresentation.
+    sqliteDbPath = null; // Disable subscriber during load
     // Clear any dirty state
     dirtyElements.clear();
     dirtySlides.clear();
@@ -659,6 +661,10 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     const store = usePresentationStore.getState();
     store.setPresentation(presentation);
     store.setProjectPath(dbPath.replace(/\.eigendeck$/, ''));
+    // Reset prevPresentation so subscriber doesn't diff against old state
+    prevPresentation = presentation;
+    // Now enable write-through
+    sqliteDbPath = dbPath;
   } catch (e) {
     console.error('Failed to open SQLite project:', e);
     throw e;
