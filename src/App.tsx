@@ -58,15 +58,57 @@ function App() {
     document.body.style.userSelect = 'none';
   }, [sidebarWidth]);
 
-  // Initialize: open in-memory DB so assets work before first save, sync recent menu
+  // Initialize: open in-memory DB, sync recent menu, restore window position
   useEffect(() => {
     import('@tauri-apps/api/core').then(({ invoke }) => {
       invoke('db_open_memory').catch(() => { /* may already have a DB open */ });
     }).catch(() => { /* not in Tauri */ });
     syncRecentMenu();
+    // Restore saved window position/size
+    (async () => {
+      try {
+        const saved = localStorage.getItem('eigendeck-window-bounds');
+        if (!saved) return;
+        const { x, y, width, height } = JSON.parse(saved);
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const win = getCurrentWindow();
+        await win.setPosition(new (await import('@tauri-apps/api/dpi')).LogicalPosition(x, y));
+        await win.setSize(new (await import('@tauri-apps/api/dpi')).LogicalSize(width, height));
+      } catch { /* not in Tauri or invalid saved data */ }
+    })();
   }, []);
 
   // SQLite DB is closed from Rust via on_window_event(Destroyed) — no JS handler needed.
+
+  // Save window position/size on move/resize (debounced)
+  useEffect(() => {
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
+    const saveWindowBounds = async () => {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const win = getCurrentWindow();
+        const pos = await win.outerPosition();
+        const size = await win.outerSize();
+        const factor = await win.scaleFactor();
+        localStorage.setItem('eigendeck-window-bounds', JSON.stringify({
+          x: Math.round(pos.x / factor), y: Math.round(pos.y / factor),
+          width: Math.round(size.width / factor), height: Math.round(size.height / factor),
+        }));
+      } catch { /* not in Tauri */ }
+    };
+    const debouncedSave = () => {
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(saveWindowBounds, 500);
+    };
+    window.addEventListener('resize', debouncedSave);
+    // Also save periodically in case of move without resize
+    const interval = setInterval(saveWindowBounds, 30000);
+    return () => {
+      window.removeEventListener('resize', debouncedSave);
+      clearInterval(interval);
+      if (saveTimer) clearTimeout(saveTimer);
+    };
+  }, []);
 
   // Warn before closing
   useEffect(() => {
@@ -169,7 +211,7 @@ function App() {
         }
       }
       // Copy (Cmd+C) — only when not editing text
-      if (e.key === 'c' && (e.ctrlKey || e.metaKey) && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
+      if (e.key === 'c' && (e.ctrlKey || e.metaKey) && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !inEditable) {
         const state = usePresentationStore.getState();
         const sel = state.selectedObject;
         const slide = state.presentation.slides[state.currentSlideIndex];
@@ -184,33 +226,48 @@ function App() {
           clipboardRef.current = { type: 'slide', data: JSON.parse(JSON.stringify(slide)) };
         }
       }
-      // Paste (Cmd+V) — only when not editing text (image paste handled separately)
-      if (e.key === 'v' && (e.ctrlKey || e.metaKey) && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
-        const clip = clipboardRef.current;
-        if (clip?.type === 'elements') {
-          e.preventDefault();
-          const state = usePresentationStore.getState();
-          const newIds: string[] = [];
-          for (const el of clip.data) {
-            const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID() };
-            if (newEl.type === 'arrow') {
-              newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40;
-            } else {
-              newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 };
-            }
-            state.addElement(newEl);
-            newIds.push(newEl.id);
-          }
-          if (newIds.length === 1) state.selectObject({ type: 'element', id: newIds[0] });
-          else if (newIds.length > 1) state.selectObject({ type: 'multi', ids: newIds });
-        } else if (clip?.type === 'slide') {
-          e.preventDefault();
-          usePresentationStore.getState().duplicateSlide(usePresentationStore.getState().currentSlideIndex);
-        }
-      }
+      // Paste (Cmd+V): handled by paste event listener below (not keydown)
+      // so system clipboard images take priority over internal clipboard
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // Internal element/slide paste — runs on the paste event so it doesn't
+    // block the system clipboard (image paste in SlideEditor gets first pick)
+    const handlePaste = (e: ClipboardEvent) => {
+      if ((e.target as HTMLElement).closest('[contenteditable="true"]')) return;
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+      // If system clipboard has an image, let SlideEditor handle it
+      if (e.clipboardData?.items) {
+        for (const item of Array.from(e.clipboardData.items)) {
+          if (item.type.startsWith('image/')) return;
+        }
+      }
+      const clip = clipboardRef.current;
+      if (clip?.type === 'elements') {
+        e.preventDefault();
+        const state = usePresentationStore.getState();
+        const newIds: string[] = [];
+        for (const el of clip.data) {
+          const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID() };
+          if (newEl.type === 'arrow') {
+            newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40;
+          } else {
+            newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 };
+          }
+          state.addElement(newEl);
+          newIds.push(newEl.id);
+        }
+        if (newIds.length === 1) state.selectObject({ type: 'element', id: newIds[0] });
+        else if (newIds.length > 1) state.selectObject({ type: 'multi', ids: newIds });
+      } else if (clip?.type === 'slide') {
+        e.preventDefault();
+        usePresentationStore.getState().duplicateSlide(usePresentationStore.getState().currentSlideIndex);
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('paste', handlePaste);
+    };
   }, []);
 
   // Present button event
