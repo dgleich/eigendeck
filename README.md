@@ -1,89 +1,70 @@
-# Eigendeck
+<p align="center">
+  <img src="logo-icon-light.svg" alt="Eigendeck" width="80">
+</p>
 
-*The characteristic presentation tool.*
+<h1 align="center">Eigendeck</h1>
 
-A lightweight Tauri desktop app for building reveal.js presentations with embedded interactive JavaScript demos.
+<p align="center"><em>The characteristic presentation tool.</em></p>
 
-Designed for academics and developers who want PowerPoint-like slide assembly but with native JS demos (algorithm visualizations, interactive charts, simulations) that run live during presentation.
+<p align="center">
+  A desktop presentation tool with embedded interactive demos and LaTeX math.<br>
+  Built for academics and researchers who give technical talks.
+</p>
 
-## Architecture
+<p align="center">
+  <a href="https://eigendeck.dev">Website</a> ·
+  <a href="https://github.com/dgleich/eigendeck/releases">Downloads</a> ·
+  <a href="SPEC.md">Spec</a>
+</p>
 
-- **Editor**: WYSIWYG slide assembly tool (React + TipTap + Tauri)
-- **Demos**: Standalone `.html` files in a `demos/` folder, developed externally (e.g., via Claude Code)
-- **Presentation**: Full-screen reveal.js with live interactive demos
-- **Export**: Self-contained `.html` file that works in any browser
+---
 
-## Development
+## Features
 
-### Prerequisites
+- **LaTeX math** — MathJax 4 with custom font integration (PT Sans, Lato)
+- **Embedded demos** — Drop in HTML files with D3, Canvas, WebGL visualizations that run live during your talk
+- **Freeform canvas** — 1920×1080 canvas, every element positioned freely
+- **Single-file format** — `.eigendeck` SQLite file with temporal versioning and history
+- **Self-contained export** — Export to a single HTML file that works in any browser
+- **Multi-piece demos** — Split interactive demos into independently positionable pieces
+- **Native app** — Built with Tauri v2. Fast, lightweight, macOS/Linux/Windows
 
-**Linux (Ubuntu 22.04+):**
-```bash
-sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-```
-
-**macOS:**
-```bash
-xcode-select --install
-```
-
-**All platforms:**
-```bash
-# Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Node.js 20+ (via nvm or system package)
-```
-
-### Getting started
+## Getting Started
 
 ```bash
 npm install
-npm run tauri dev
+npm run tauri dev     # Development with hot-reload
+npm run tauri build   # Release build
 ```
 
-### Build for release
+See [SETUP.md](SETUP.md) for prerequisites and [SPEC.md](SPEC.md) for architecture.
+
+## Project Format
+
+Presentations are stored as single `.eigendeck` SQLite files containing slides, elements, assets, and temporal edit history.
 
 ```bash
-npm run tauri build
+# CLI tools
+eigendeck-cli deck.eigendeck outline          # Show slide outline
+eigendeck-cli deck.eigendeck list slides      # List all slides
+eigendeck-cli deck.eigendeck search "matrix"  # Search content
+eigendeck-cli deck.eigendeck history          # View edit history
+
+# Export
+node tools/export-eigendeck.mjs deck.eigendeck output.html
 ```
 
-### CI/CD
+## Demo Development
 
-Push a git tag to trigger multi-platform builds via GitHub Actions:
+Demos are standalone HTML files stored as assets in the `.eigendeck` file. See [DEMO_AUTHORING.md](DEMO_AUTHORING.md) for the full guide.
 
 ```bash
-git tag v0.1.0
-git push --tags
+# Add a demo to an open presentation
+# Just drag an HTML file onto the slide editor
+
+# For LLM-assisted editing
+# See LLM-EDITING.md for the programmatic editing guide
 ```
-
-This builds for Linux x64, macOS x64, macOS ARM64, and Windows x64, then creates a draft GitHub Release.
-
-See [SETUP.md](SETUP.md) for detailed environment setup instructions.
-
-## Project format
-
-Presentations are stored as a directory:
-
-```
-my-presentation/
-  presentation.json       # Slide content and metadata
-  demos/
-    bfs-demo.html          # Self-contained interactive demos
-    matrix-multiply.html
-  images/
-    diagram.png
-```
-
-See `example-demos/example-project/` for a working example.
-
-## Demo development workflow
-
-1. Create a new `.html` file in `demos/`
-2. Develop it standalone — it should work when opened directly in a browser
-3. Use Claude Code or any editor to iterate on the demo
-4. In the presentation editor, add the demo to a slide and click Reload to see changes
-5. On export, demos are inlined into the final `.html` file
 
 ## License
 
