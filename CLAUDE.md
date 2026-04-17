@@ -23,12 +23,24 @@ Eigendeck is a Tauri v2 desktop app for building presentations with embedded int
 ## Build commands
 
 ```bash
-npm install          # Install dependencies (ignore audit warnings — dev deps only)
+npm install          # Install dependencies
 npm run setup        # Copy MathJax bundle (run once after clone)
 npm run build        # TypeScript check + Vite build
 npm test             # Run Vitest unit tests
 npm run tauri dev    # Full dev mode with hot-reload (occupies terminal, Cmd+Q to quit)
 npm run tauri build  # Release build → src-tauri/target/release/bundle/
+```
+
+## Rebuilding MathJax font bundle
+
+Only needed when changing the math font or updating MathJax:
+
+```bash
+cd mathjax-ptsans-bundle
+npm install          # installs @mathjax/src locally
+npm run build        # rebuilds the bundle
+cd ..
+npm run setup        # copies to public/mathjax/
 ```
 
 ## Rust check
