@@ -46,8 +46,6 @@ npm install
 npm run setup    # copies MathJax bundle (required, one-time)
 ```
 
-> **Note:** `npm install` may report 3 high-severity audit warnings — these are in dev dependencies (MathJax's speech-rule-engine → xmldom) and don't affect the app.
-
 > **Note:** `brew install node` on macOS Tahoe may print "post-install step did not complete successfully" for transitive deps. Node itself installs fine — you can ignore these warnings.
 
 ### 5. Run in development mode
