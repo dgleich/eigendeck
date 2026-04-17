@@ -9,8 +9,12 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "setup": "mkdir -p public/mathjax && cp mathjax-ptsans-bundle/tex-mml-svg-mathjax-ptsans-nosre.js public/mathjax/tex-mml-svg-mathjax-ptsans.js",
     "tauri": "tauri",
     "export": "node tools/export-eigendeck.mjs"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

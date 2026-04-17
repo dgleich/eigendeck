@@ -31,13 +31,14 @@
 
 ## Getting Started
 
+Requires Node.js 20+ and Rust 1.85+. See [SETUP.md](SETUP.md) for full setup instructions.
+
 ```bash
 npm install
+npm run setup         # Copy MathJax bundle (one-time)
 npm run tauri dev     # Development with hot-reload
 npm run tauri build   # Release build
 ```
-
-See [SETUP.md](SETUP.md) for prerequisites and [SPEC.md](SPEC.md) for architecture.
 
 ## Project Format
 

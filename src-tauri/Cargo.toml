@@ -5,6 +5,7 @@ description = "A presentation tool with embedded HTML demos"
 default-run = "eigendeck"
 authors = ["David F. Gleich"]
 edition = "2021"
+rust-version = "1.85"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

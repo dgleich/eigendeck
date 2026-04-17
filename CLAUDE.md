@@ -15,26 +15,26 @@ Eigendeck is a Tauri v2 desktop app for building presentations with embedded int
 - **Testing**: Vitest with jsdom
 - **Fonts**: PT Sans, PT Sans Narrow (bundled TTF)
 
+## Prerequisites
+
+- **Node.js 20+** (`node -v` to check; install via `brew install node` or nvm)
+- **Rust 1.85+** (`rustc --version`; `rustup update stable` to update)
+
 ## Build commands
 
 ```bash
-npm install          # Install dependencies
+npm install          # Install dependencies (ignore audit warnings — dev deps only)
+npm run setup        # Copy MathJax bundle (run once after clone)
 npm run build        # TypeScript check + Vite build
 npm test             # Run Vitest unit tests
-npm run tauri dev    # Full dev mode with hot-reload (Mac only)
-npm run tauri build  # Release build for current platform
+npm run tauri dev    # Full dev mode with hot-reload (occupies terminal, Cmd+Q to quit)
+npm run tauri build  # Release build → src-tauri/target/release/bundle/
 ```
 
 ## Rust check
 
 ```bash
 cd src-tauri && cargo check && cargo clippy -- -D warnings
-```
-
-## MathJax setup
-
-```bash
-cp mathjax-ptsans-bundle/tex-mml-svg-mathjax-ptsans-nosre.js public/mathjax/tex-mml-svg-mathjax-ptsans.js
 ```
 
 ## Project structure

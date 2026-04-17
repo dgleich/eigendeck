@@ -25,7 +25,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
 ```
 
-Verify: `rustc --version` should print 1.75+.
+Verify: `rustc --version` should print 1.85+. If you have an older version: `rustup update stable`.
 
 ### 3. Install Node.js (via nvm)
 
@@ -43,7 +43,12 @@ Verify: `node --version` should print v20+ and `npm --version` should print 10+.
 git clone git@github.com:dgleich/eigendeck.git
 cd eigendeck
 npm install
+npm run setup    # copies MathJax bundle (required, one-time)
 ```
+
+> **Note:** `npm install` may report 3 high-severity audit warnings — these are in dev dependencies (MathJax's speech-rule-engine → xmldom) and don't affect the app.
+
+> **Note:** `brew install node` on macOS Tahoe may print "post-install step did not complete successfully" for transitive deps. Node itself installs fine — you can ignore these warnings.
 
 ### 5. Run in development mode
 
@@ -51,7 +56,7 @@ npm install
 npm run tauri dev
 ```
 
-This starts the Vite dev server and opens the Tauri window with hot-reload.
+This starts the Vite dev server and opens the Tauri window with hot-reload. **The terminal stays occupied** — use Cmd+Q to quit the app, or Ctrl+C in the terminal.
 
 ### 6. Build a release binary
 
@@ -59,7 +64,7 @@ This starts the Vite dev server and opens the Tauri window with hot-reload.
 npm run tauri build
 ```
 
-Output will be in `src-tauri/target/release/bundle/`.
+Output will be in `src-tauri/target/release/bundle/macos/`.
 
 ---
 
@@ -103,6 +108,7 @@ nvm install --lts
 git clone git@github.com:dgleich/eigendeck.git
 cd eigendeck
 npm install
+npm run setup    # copies MathJax bundle (required, one-time)
 ```
 
 ### 5. Run in development mode
@@ -147,13 +153,14 @@ https://developer.microsoft.com/en-us/microsoft-edge/webview2/.
 git clone git@github.com:dgleich/eigendeck.git
 cd eigendeck
 npm install
+npm run setup    # copies MathJax bundle (required, one-time)
 ```
 
 ### 6. Run and build
 
 ```powershell
-npm run tauri dev
-npm run tauri build
+npm run tauri dev     # dev mode (occupies terminal)
+npm run tauri build   # release build
 ```
 
 ---
@@ -162,10 +169,13 @@ npm run tauri build
 
 | Command | Description |
 |---------|-------------|
+| `npm run setup` | Copy MathJax bundle (run once after clone) |
 | `npm run dev` | Start Vite dev server only (frontend) |
 | `npm run build` | TypeScript check + Vite production build |
+| `npm test` | Run Vitest unit tests (61 tests) |
 | `npm run tauri dev` | Full Tauri dev mode (frontend + native window) |
 | `npm run tauri build` | Build release binary for current platform |
+| `npm run export` | Export .eigendeck to HTML (Node.js) |
 
 ## Project structure
 
