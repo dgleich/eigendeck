@@ -3,21 +3,18 @@ import { usePresentationStore } from '../store/presentation';
 import { useDemoUrl } from '../lib/demoAssets';
 import { SlideElementRenderer } from './SlideElementRenderer';
 import { getSlideNumber, createTextElement } from '../types/presentation';
-import type { SlideLayout, SlideElement } from '../types/presentation';
+import { resolveTheme, BUILT_IN_THEMES } from '../lib/themes';
+import type { SlideElement } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
 
 export const SLIDE_WIDTH = 1920;
 export const SLIDE_HEIGHT = 1080;
 
-const LAYOUTS: { id: SlideLayout; label: string }[] = [
-  { id: 'default', label: 'Default' },
-  { id: 'centered', label: 'Centered' },
-  { id: 'two-column', label: '2 Column' },
-];
+// Layout constants moved to PropertiesPanel
 
 export function SlideEditor() {
   const {
-    presentation, currentSlideIndex, updateSlide,
+    presentation, currentSlideIndex,
     addElement, updateElement, deleteElement,
     selectObject, toggleSelectElement, selectedObject, projectPath,
   } = usePresentationStore();
@@ -169,6 +166,11 @@ export function SlideEditor() {
       { label: 'Add Arrow', onClick: () => store.addElement({ id: crypto.randomUUID(), type: 'arrow', x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: '#2563eb', strokeWidth: 4, headSize: 16 }) },
       { separator: true },
       { label: 'Paste', shortcut: '\u2318V', onClick: () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', metaKey: true })) },
+      { separator: true },
+      ...Object.entries(BUILT_IN_THEMES).map(([id, t]) => ({
+        label: `Theme: ${t.label}${slide.theme === id ? ' ✓' : (!slide.theme && presentation.theme === id ? ' ✓' : '')}`,
+        onClick: () => store.updateSlide(store.currentSlideIndex, { theme: id }),
+      })),
     ];
     window.dispatchEvent(new CustomEvent('show-context-menu', { detail: { x: e.clientX, y: e.clientY, items } }));
   }, []);
@@ -337,18 +339,14 @@ export function SlideEditor() {
 
   return (
     <div className="slide-editor">
-      <div className="editor-toolbar">
-        <select className="layout-picker" value={layout} title="Slide layout"
-          onChange={(e) => updateSlide(currentSlideIndex, { layout: e.target.value as SlideLayout })}>
-          {LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
-        </select>
-      </div>
+      {/* Layout/theme now in inspector panel (PropertiesPanel) */}
       <div className={`slide-canvas-container ${dragOver ? 'drag-over' : ''}`} ref={containerRef}
         onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
         <div
           ref={canvasRef}
           className={`slide-canvas slide-layout-${layout}`}
-          style={{ width: SLIDE_WIDTH, height: SLIDE_HEIGHT, transform: `scale(${scale})`, transformOrigin: 'top center' }}
+          style={{ width: SLIDE_WIDTH, height: SLIDE_HEIGHT, transform: `scale(${scale})`, transformOrigin: 'top center',
+            backgroundColor: resolveTheme(presentation.theme, slide.theme).background }}
           onPointerDown={handleCanvasPointerDown}
           onContextMenu={handleCanvasContextMenu}
         >

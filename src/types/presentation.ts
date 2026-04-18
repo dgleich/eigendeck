@@ -141,6 +141,7 @@ export type SlideElement =
 export interface Slide {
   id: string;
   layout?: SlideLayout;
+  theme?: string; // per-slide theme override (inherits from presentation if absent)
   elements: SlideElement[];
   notes: string;
   groupId?: string; // slides with same groupId form a group

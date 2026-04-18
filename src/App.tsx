@@ -245,13 +245,22 @@ function App() {
       if (clip?.type === 'elements') {
         e.preventDefault();
         const state = usePresentationStore.getState();
+        const slide = state.presentation.slides[state.currentSlideIndex];
         const newIds: string[] = [];
         for (const el of clip.data) {
           const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID() };
-          if (newEl.type === 'arrow') {
-            newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40;
-          } else {
-            newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 };
+          // Only offset if an element with similar position exists on this slide
+          // (i.e., pasting on the same slide). Otherwise paste in place.
+          const hasOverlap = slide.elements.some((existing) => {
+            if (newEl.type === 'arrow') return false;
+            return existing.position.x === newEl.position.x && existing.position.y === newEl.position.y;
+          });
+          if (hasOverlap) {
+            if (newEl.type === 'arrow') {
+              newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40;
+            } else {
+              newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 };
+            }
           }
           state.addElement(newEl);
           newIds.push(newEl.id);

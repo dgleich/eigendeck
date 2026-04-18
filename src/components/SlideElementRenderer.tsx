@@ -649,22 +649,29 @@ function DraggableBox({
       {isSelected && (
         <div className="el-link-badges" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
           {/* Sync badge: green = active, grey = inactive (click to toggle) */}
-          {(syncId || _syncId) && (
-            <button
-              className={`el-link-badge ${syncId ? 'el-badge-sync' : 'el-badge-off'}`}
-              title={syncId ? 'Synced — click to free position' : 'Position free — click to re-sync'}
-              onClick={() => {
-                if (syncId) {
-                  // Free position: store syncId as _syncId, clear syncId
-                  onUpdate({ syncId: undefined, _syncId: syncId } as any);
-                } else if (_syncId) {
-                  // Re-sync: restore syncId from _syncId
-                  onUpdate({ syncId: _syncId, _syncId: undefined } as any);
-                }
-              }}>
-              S
-            </button>
-          )}
+          {(syncId || _syncId) && (() => {
+            // Check if the sync partner still exists somewhere in the presentation
+            const sid = syncId || _syncId;
+            const slides = usePresentationStore.getState().presentation.slides;
+            const hasPartner = slides.some((s) =>
+              s.elements.some((el) => el.id !== elementId && (el.syncId === sid || (el as any)._syncId === sid))
+            );
+            if (!hasPartner) return null; // Partner deleted — hide badge
+            return (
+              <button
+                className={`el-link-badge ${syncId ? 'el-badge-sync' : 'el-badge-off'}`}
+                title={syncId ? 'Synced — click to free position' : 'Position free — click to re-sync'}
+                onClick={() => {
+                  if (syncId) {
+                    onUpdate({ syncId: undefined, _syncId: syncId } as any);
+                  } else if (_syncId) {
+                    onUpdate({ syncId: _syncId, _syncId: undefined } as any);
+                  }
+                }}>
+                S
+              </button>
+            );
+          })()}
           {/* Animation badge: purple = active, grey = inactive */}
           {(linkId || _linkId) && (
             <button

@@ -137,10 +137,16 @@ export const usePresentationStore = create<PresentationState>()(
               // linkId and syncId preserved from original
             })),
           };
-          slides.splice(index + 1, 0, copy);
+          // If the slide is part of a group, insert after the last slide in the group
+          let insertAt = index + 1;
+          const groupId = original.groupId;
+          if (groupId) {
+            while (insertAt < slides.length && slides[insertAt].groupId === groupId) insertAt++;
+          }
+          slides.splice(insertAt, 0, copy);
           return {
             presentation: { ...state.presentation, slides },
-            currentSlideIndex: index + 1,
+            currentSlideIndex: insertAt,
             isDirty: true,
           };
         }),

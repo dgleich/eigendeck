@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { TEXT_PRESET_STYLES } from '../types/presentation';
+import { BUILT_IN_THEMES } from '../lib/themes';
 import type { SlideLayout, VerticalAlign } from '../types/presentation';
 
 const LAYOUTS: { id: SlideLayout; label: string }[] = [
@@ -106,28 +107,25 @@ export function PropertiesPanel() {
       <div className="properties-body">
         {(!selectedObject || selectedObject.type === 'slide') && (
           <>
+            {/* ── Slide Properties ── */}
+            <div className="prop-section-header">Slide</div>
             <PropSection label="Layout">
               <select className="prop-select" value={slide.layout || 'default'}
                 onChange={(e) => updateSlide(currentSlideIndex, { layout: e.target.value as SlideLayout })}>
                 {LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
               </select>
             </PropSection>
-            <PropSection label="Author">
-              <input className="prop-input" value={presentation.config.author || ''}
-                onChange={(e) => updateConfig({ author: e.target.value })} />
-            </PropSection>
-            <PropSection label="Venue">
-              <input className="prop-input" value={presentation.config.venue || ''}
-                onChange={(e) => updateConfig({ venue: e.target.value })} />
-            </PropSection>
-            <PropSection label="LaTeX Preamble">
-              <textarea className="prop-input" value={presentation.config.mathPreamble || ''}
-                onChange={(e) => updateConfig({ mathPreamble: e.target.value })}
-                placeholder="\\newcommand{\\R}{\\mathbb{R}}"
-                style={{ fontFamily: 'monospace', fontSize: 11, minHeight: 60, resize: 'vertical' }} />
+            <PropSection label="Theme">
+              <select className="prop-select" value={slide.theme || ''}
+                onChange={(e) => updateSlide(currentSlideIndex, { theme: e.target.value || undefined })}>
+                <option value="">Inherit ({BUILT_IN_THEMES[presentation.theme]?.label || 'White'})</option>
+                {Object.entries(BUILT_IN_THEMES).map(([id, t]) => (
+                  <option key={id} value={id}>{t.label}</option>
+                ))}
+              </select>
             </PropSection>
             {slide.elements.some((el) => el.syncId || el.linkId) && (
-              <PropSection label="Slide Links">
+              <PropSection label="Links">
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                   {slide.elements.some((el) => el.syncId) && (
                     <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '3px 8px' }}
@@ -154,6 +152,31 @@ export function PropertiesPanel() {
                 </div>
               </PropSection>
             )}
+
+            {/* ── Presentation Properties ── */}
+            <div className="prop-section-header" style={{ marginTop: 12 }}>Presentation</div>
+            <PropSection label="Default Theme">
+              <select className="prop-select" value={presentation.theme || 'white'}
+                onChange={(e) => usePresentationStore.getState().setTheme(e.target.value)}>
+                {Object.entries(BUILT_IN_THEMES).map(([id, t]) => (
+                  <option key={id} value={id}>{t.label}</option>
+                ))}
+              </select>
+            </PropSection>
+            <PropSection label="Author">
+              <input className="prop-input" value={presentation.config.author || ''}
+                onChange={(e) => updateConfig({ author: e.target.value })} />
+            </PropSection>
+            <PropSection label="Venue">
+              <input className="prop-input" value={presentation.config.venue || ''}
+                onChange={(e) => updateConfig({ venue: e.target.value })} />
+            </PropSection>
+            <PropSection label="LaTeX Preamble">
+              <textarea className="prop-input" value={presentation.config.mathPreamble || ''}
+                onChange={(e) => updateConfig({ mathPreamble: e.target.value })}
+                placeholder="\\newcommand{\\R}{\\mathbb{R}}"
+                style={{ fontFamily: 'monospace', fontSize: 11, minHeight: 60, resize: 'vertical' }} />
+            </PropSection>
           </>
         )}
 

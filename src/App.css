@@ -1396,6 +1396,16 @@
   background: #f0f0f0;
 }
 
+.prop-section-header {
+  padding: 6px 12px 2px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #999;
+  border-top: 1px solid #eee;
+}
+
 .properties-body {
   padding: 8px;
 }
