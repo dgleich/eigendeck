@@ -34,7 +34,7 @@ function App() {
   const [sidebarWidth, setSidebarWidth] = useState(200);
   const resizeStartX = useRef(0);
   const resizeStartW = useRef(0);
-  const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[] } | { type: 'slide'; data: any } | null>(null);
+  const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[]; fromSlideIndex: number } | { type: 'slide'; data: any } | null>(null);
   const [linkOverlayElementId, setLinkOverlayElementId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuEntry[] } | null>(null);
   const [multiMonitorPresenting, setMultiMonitorPresenting] = useState(false);
@@ -237,11 +237,11 @@ function App() {
         const slide = state.presentation.slides[state.currentSlideIndex];
         if (sel?.type === 'element') {
           const el = slide.elements.find((el) => el.id === sel.id);
-          if (el) clipboardRef.current = { type: 'elements', data: [JSON.parse(JSON.stringify(el))] };
+          if (el) clipboardRef.current = { type: 'elements', data: [JSON.parse(JSON.stringify(el))], fromSlideIndex: state.currentSlideIndex };
         } else if (sel?.type === 'multi') {
           clipboardRef.current = { type: 'elements', data: slide.elements
             .filter((el) => sel.ids.includes(el.id))
-            .map((el) => JSON.parse(JSON.stringify(el))) };
+            .map((el) => JSON.parse(JSON.stringify(el))), fromSlideIndex: state.currentSlideIndex };
         } else if (!sel || sel.type === 'slide') {
           clipboardRef.current = { type: 'slide', data: JSON.parse(JSON.stringify(slide)) };
         }
@@ -265,17 +265,12 @@ function App() {
       if (clip?.type === 'elements') {
         e.preventDefault();
         const state = usePresentationStore.getState();
-        const slide = state.presentation.slides[state.currentSlideIndex];
         const newIds: string[] = [];
+        const sameSlide = clip.fromSlideIndex === state.currentSlideIndex;
         for (const el of clip.data) {
           const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID() };
-          // Only offset if an element with similar position exists on this slide
-          // (i.e., pasting on the same slide). Otherwise paste in place.
-          const hasOverlap = slide.elements.some((existing) => {
-            if (newEl.type === 'arrow') return false;
-            return existing.position.x === newEl.position.x && existing.position.y === newEl.position.y;
-          });
-          if (hasOverlap) {
+          // Only offset when pasting on the same slide (avoid stacking)
+          if (sameSlide) {
             if (newEl.type === 'arrow') {
               newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40;
             } else {
