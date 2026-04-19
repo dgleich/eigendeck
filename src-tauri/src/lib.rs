@@ -311,7 +311,8 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .hide_others()
         .show_all()
         .separator()
-        .quit()
+        .item(&MenuItemBuilder::new("Quit Eigendeck").id("quit").accelerator("CmdOrCtrl+Q")
+            .build(app).map_err(|e| e.to_string())?)
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -461,6 +462,11 @@ pub fn run() {
             app.on_menu_event(move |app_handle, event| {
                 let id = event.id().0.as_str();
                 if let Some(window) = app_handle.get_webview_window("main") {
+                    // Handle quit — same as close, check for unsaved changes
+                    if id == "quit" {
+                        let _ = window.emit("check-close", ());
+                        return;
+                    }
                     // Handle devtools toggle on Rust side
                     if id == "devtools" {
                         #[cfg(debug_assertions)]
