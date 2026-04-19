@@ -1,0 +1,23 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .text { font-family: "PT Sans", "PTSans", Arial, Helvetica, sans-serif; font-weight: 700; fill: #333; }
+  </style>
+  <!-- Ecru background (macOS applies squircle mask) -->
+  <rect x="0" y="0" width="1024" height="1024" rx="180" fill="#f5f0e8"/>
+
+  <!-- Centered logo (original spans ~310x260, scaled up ~2.5x and centered) -->
+  <g transform="translate(512, 512) scale(2.6) translate(-735, -485)">
+    <!-- back blue screen -->
+    <rect x="652" y="423" width="220" height="178" rx="12"
+      fill="none" stroke="#2b86b7" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- back gray screen -->
+    <rect x="630" y="401" width="220" height="178" rx="12"
+      fill="#f5f0e8" stroke="#bbb" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- front screen -->
+    <rect x="608" y="379" width="220" height="178" rx="12"
+      fill="#f5f0e8" stroke="#333" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- lambda prompt -->
+    <text x="632" y="498" class="text" style="font-size:96px">λ</text>
+    <text x="704" y="479" class="text" style="font-size:96px">_</text>
+  </g>
+</svg>
