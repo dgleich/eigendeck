@@ -111,6 +111,7 @@ function App() {
   }, []);
 
   // Handle close request — show confirmation if dirty
+  const closingRef = useRef(false);
   useEffect(() => {
     let unlisten: (() => void) | null = null;
     (async () => {
@@ -118,19 +119,19 @@ function App() {
         const { listen } = await import('@tauri-apps/api/event');
         const { getCurrentWindow } = await import('@tauri-apps/api/window');
         unlisten = await listen('check-close', async () => {
+          if (closingRef.current) return; // Already confirmed, don't loop
           const win = getCurrentWindow();
           if (usePresentationStore.getState().isDirty) {
             const { ask } = await import('@tauri-apps/plugin-dialog');
             const shouldClose = await ask('You have unsaved changes. Close without saving?', {
               title: 'Unsaved Changes',
               kind: 'warning',
-              okLabel: 'Close',
-              cancelLabel: 'Cancel',
             });
-            if (shouldClose) {
-              await win.destroy();
-            }
+            if (!shouldClose) return; // Cancel — stay open
+            closingRef.current = true;
+            await win.destroy();
           } else {
+            closingRef.current = true;
             await win.destroy();
           }
         });
