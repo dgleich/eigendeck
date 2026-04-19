@@ -14,6 +14,12 @@ static RECENT_PATHS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new
 static CLI_EXPORT_ARGS: Lazy<Mutex<Option<(String, String)>>> = Lazy::new(|| Mutex::new(None));
 
 #[tauri::command]
+fn force_quit() {
+    let _ = storage::close_db();
+    std::process::exit(0);
+}
+
+#[tauri::command]
 fn cli_export_args() -> Result<serde_json::Value, String> {
     let args = CLI_EXPORT_ARGS.lock().unwrap();
     match args.as_ref() {
@@ -426,6 +432,7 @@ pub fn run() {
             storage::db_store_asset,
             storage::db_get_asset,
             storage::db_update_presentation,
+            force_quit,
             cli_export_args,
             cli_write_and_exit,
         ])
