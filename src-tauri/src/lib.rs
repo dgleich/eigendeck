@@ -343,7 +343,10 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .map_err(|e| e.to_string())?;
 
     let edit_menu = SubmenuBuilder::new(app, "Edit")
-        .undo().redo().separator().cut().copy().paste().select_all()
+        .undo().redo().separator().cut().copy().paste()
+        .item(&MenuItemBuilder::new("Paste without Formatting").id("paste-plain")
+            .build(app).map_err(|e| e.to_string())?)
+        .select_all()
         .build().map_err(|e| e.to_string())?;
 
     let present_item = MenuItemBuilder::new("Present Mode").id("present").accelerator("F5")

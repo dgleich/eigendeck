@@ -366,6 +366,11 @@ function App() {
         case 'inspector': usePresentationStore.getState().toggleProperties(); break;
         case 'history': usePresentationStore.getState().toggleHistory(); break;
         case 'debug-console': window.dispatchEvent(new CustomEvent('toggle-debug-console')); break;
+        case 'paste-plain':
+          navigator.clipboard.readText().then((text) => {
+            document.execCommand('insertText', false, text);
+          }).catch(() => {});
+          break;
       }
     });
     const unlistenRecent = listen<string>('menu-event-recent', (event) => {
