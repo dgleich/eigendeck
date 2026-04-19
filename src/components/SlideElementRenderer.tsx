@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { useDemoUrl, useAssetUrl } from '../lib/demoAssets';
+import { resolveTheme, themeColorForPreset } from '../lib/themes';
 
 import { TEXT_PRESET_STYLES } from '../types/presentation';
 import { TextFormatToolbar } from './TextFormatToolbar';
@@ -241,6 +242,11 @@ function TextContent({
   const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0, width: 0 });
 
   const presetStyle = TEXT_PRESET_STYLES[element.preset];
+  // Resolve theme color: explicit element.color > theme color > preset default
+  const { presentation, currentSlideIndex } = usePresentationStore.getState();
+  const slide = presentation.slides[currentSlideIndex];
+  const themeColors = resolveTheme(presentation.theme, slide?.theme);
+  const themeColor = themeColorForPreset(themeColors, element.preset);
   const style: React.CSSProperties = {
     width: '100%',
     height: '100%',
@@ -248,7 +254,7 @@ function TextContent({
     fontSize: element.fontSize || presetStyle.fontSize,
     fontWeight: presetStyle.fontWeight,
     fontStyle: presetStyle.fontStyle,
-    color: element.color || presetStyle.color,
+    color: element.color || themeColor,
     lineHeight: 1.3,
     padding: '8px 12px',
     outline: 'none',
@@ -640,6 +646,10 @@ function DraggableBox({
           ...(linkId ? [
             { label: 'Unlink Animation', onClick: () => onUpdate({ linkId: undefined, _linkId: linkId } as any) },
           ] : []),
+          { separator: true },
+          { label: 'Properties', onClick: () => {
+            if (!store.showProperties) store.toggleProperties();
+          }},
         ];
         window.dispatchEvent(new CustomEvent('show-context-menu', { detail: { x: e.clientX, y: e.clientY, items } }));
       }}

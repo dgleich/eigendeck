@@ -3,7 +3,7 @@ import { usePresentationStore } from '../store/presentation';
 import { useDemoUrl } from '../lib/demoAssets';
 import { SlideElementRenderer } from './SlideElementRenderer';
 import { getSlideNumber, createTextElement } from '../types/presentation';
-import { resolveTheme, BUILT_IN_THEMES } from '../lib/themes';
+import { resolveTheme } from '../lib/themes';
 import type { SlideElement } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
 
@@ -167,10 +167,10 @@ export function SlideEditor() {
       { separator: true },
       { label: 'Paste', shortcut: '\u2318V', onClick: () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', metaKey: true })) },
       { separator: true },
-      ...Object.entries(BUILT_IN_THEMES).map(([id, t]) => ({
-        label: `Theme: ${t.label}${slide.theme === id ? ' ✓' : (!slide.theme && presentation.theme === id ? ' ✓' : '')}`,
-        onClick: () => store.updateSlide(store.currentSlideIndex, { theme: id }),
-      })),
+      { label: 'Slide Properties', onClick: () => {
+        store.selectObject({ type: 'slide' });
+        if (!store.showProperties) store.toggleProperties();
+      }},
     ];
     window.dispatchEvent(new CustomEvent('show-context-menu', { detail: { x: e.clientX, y: e.clientY, items } }));
   }, []);

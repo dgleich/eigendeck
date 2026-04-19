@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { TEXT_PRESET_STYLES, getSlideNumber, isGroupChild } from '../types/presentation';
+import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import type { MenuEntry } from './ContextMenu';
 
 const SLIDE_WIDTH = 1920;
@@ -106,7 +107,7 @@ export function SlideSidebar() {
                 style={{
                   width: SLIDE_WIDTH, height: SLIDE_HEIGHT,
                   transform: `scale(${THUMB_SCALE})`, transformOrigin: 'top left',
-                  position: 'relative', background: '#fff',
+                  position: 'relative', background: resolveTheme(presentation.theme, slide.theme).background,
                 }}
               >
                 {/* Elements */}
@@ -115,12 +116,13 @@ export function SlideSidebar() {
                   switch (el.type) {
                     case 'text': {
                       const ps = TEXT_PRESET_STYLES[el.preset];
+                      const tc = resolveTheme(presentation.theme, slide.theme);
                       return (
                         <div key={el.id} style={{
                           position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
                           fontFamily: el.fontFamily || ps.fontFamily, fontWeight: ps.fontWeight,
                           fontStyle: ps.fontStyle, fontSize: el.fontSize || ps.fontSize,
-                          color: el.color || ps.color, lineHeight: 1.3, overflow: 'hidden', padding: '8px 12px',
+                          color: el.color || themeColorForPreset(tc, el.preset), lineHeight: 1.3, overflow: 'hidden', padding: '8px 12px',
                         }} dangerouslySetInnerHTML={{ __html: el.html }} />
                       );
                     }

@@ -110,13 +110,33 @@ function App() {
     };
   }, []);
 
-  // Warn before closing
+  // Handle close request — show confirmation if dirty
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (usePresentationStore.getState().isDirty) e.preventDefault();
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    let unlisten: (() => void) | null = null;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        unlisten = await listen('check-close', async () => {
+          const win = getCurrentWindow();
+          if (usePresentationStore.getState().isDirty) {
+            const { ask } = await import('@tauri-apps/plugin-dialog');
+            const shouldClose = await ask('You have unsaved changes. Close without saving?', {
+              title: 'Unsaved Changes',
+              kind: 'warning',
+              okLabel: 'Close',
+              cancelLabel: 'Cancel',
+            });
+            if (shouldClose) {
+              await win.destroy();
+            }
+          } else {
+            await win.destroy();
+          }
+        });
+      } catch { /* not in Tauri */ }
+    })();
+    return () => { if (unlisten) unlisten(); };
   }, []);
 
   // Start presenting — try multi-monitor first, fall back to single window

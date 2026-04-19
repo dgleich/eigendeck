@@ -486,10 +486,17 @@ pub fn run() {
 
             Ok(())
         })
-        .on_window_event(|_window, event| {
-            if let tauri::WindowEvent::Destroyed = event {
-                // Checkpoint WAL and close SQLite on window close
-                let _ = storage::close_db();
+        .on_window_event(|window, event| {
+            match event {
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    // Ask the frontend if there are unsaved changes
+                    let _ = window.emit("check-close", ());
+                    api.prevent_close();
+                }
+                tauri::WindowEvent::Destroyed => {
+                    let _ = storage::close_db();
+                }
+                _ => {}
             }
         })
         .run(tauri::generate_context!())
