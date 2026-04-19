@@ -117,13 +117,20 @@ export function SlideSidebar() {
                     case 'text': {
                       const ps = TEXT_PRESET_STYLES[el.preset];
                       const tc = resolveTheme(presentation.theme, slide.theme);
+                      const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
+                      const justifyMap: Record<string, string> = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
                       return (
                         <div key={el.id} style={{
                           position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-                          fontFamily: el.fontFamily || ps.fontFamily, fontWeight: ps.fontWeight,
-                          fontStyle: ps.fontStyle, fontSize: el.fontSize || ps.fontSize,
-                          color: el.color || themeColorForPreset(tc, el.preset), lineHeight: 1.3, overflow: 'hidden', padding: '8px 12px',
-                        }} dangerouslySetInnerHTML={{ __html: el.html }} />
+                          overflow: 'hidden',
+                          ...(valign ? { display: 'flex', flexDirection: 'column', justifyContent: justifyMap[valign] || 'flex-start' } : {}),
+                        }}>
+                          <div style={{
+                            fontFamily: el.fontFamily || ps.fontFamily, fontWeight: ps.fontWeight,
+                            fontStyle: ps.fontStyle, fontSize: el.fontSize || ps.fontSize,
+                            color: el.color || themeColorForPreset(tc, el.preset), lineHeight: 1.3, padding: '8px 12px',
+                          }} dangerouslySetInnerHTML={{ __html: el.html }} />
+                        </div>
                       );
                     }
                     case 'image':
