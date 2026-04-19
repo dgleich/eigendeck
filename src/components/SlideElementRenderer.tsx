@@ -151,7 +151,9 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
   onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
   const [interacting, setInteracting] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const src = useDemoUrl(element.src);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   return (
     <DraggableBox
       elementId={element.id}
@@ -164,7 +166,7 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
       onUpdate={onUpdate}
     >
       {src ? (
-        <iframe src={src} sandbox="allow-scripts allow-same-origin" title="demo"
+        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox="allow-scripts allow-same-origin" title="demo"
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
       ) : <div style={{ padding: 20, color: '#999' }}>Demo: {element.src}</div>}
       {!interacting && (
@@ -173,11 +175,30 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'grab', zIndex: 1 }} />
       )}
       {interacting && (
-        <button className="demo-lock-btn" onClick={() => setInteracting(false)}
-          style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, padding: '2px 8px', fontSize: 11,
-            border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
-          Lock
-        </button>
+        <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, display: 'flex', gap: 4 }}>
+          <button className="demo-lock-btn" onClick={async () => {
+            // Refresh: re-read asset from disk, update SQLite, reload iframe
+            try {
+              const { invoke } = await import('@tauri-apps/api/core');
+              const projectPath = usePresentationStore.getState().projectPath;
+              if (projectPath) {
+                const { readFile } = await import('@tauri-apps/plugin-fs');
+                const bytes = await readFile(`${projectPath}/${element.src}`);
+                await invoke('db_store_asset', { path: element.src, data: Array.from(bytes), mimeType: 'text/html' });
+                const { invalidateAsset } = await import('../lib/demoAssets');
+                invalidateAsset(element.src);
+                setReloadKey((k) => k + 1);
+              }
+            } catch (e) { console.error('Refresh failed:', e); }
+          }}
+            style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
+            Refresh
+          </button>
+          <button className="demo-lock-btn" onClick={() => setInteracting(false)}
+            style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
+            Lock
+          </button>
+        </div>
       )}
     </DraggableBox>
   );
@@ -194,6 +215,7 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
   onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
   const [interacting, setInteracting] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const src = useDemoUrl(element.demoSrc, `piece=${element.piece}`);
   return (
     <DraggableBox
@@ -207,7 +229,7 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
       onUpdate={onUpdate}
     >
       {src ? (
-        <iframe src={src} sandbox="allow-scripts allow-same-origin" title={`demo-piece: ${element.piece}`}
+        <iframe key={reloadKey} src={src} sandbox="allow-scripts allow-same-origin" title={`demo-piece: ${element.piece}`}
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
       ) : <div style={{ padding: 20, color: '#999' }}>Demo piece: {element.demoSrc} #{element.piece}</div>}
       {!interacting && (
@@ -216,11 +238,29 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'grab', zIndex: 1 }} />
       )}
       {interacting && (
-        <button className="demo-lock-btn" onClick={() => setInteracting(false)}
-          style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, padding: '2px 8px', fontSize: 11,
-            border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
-          Lock
-        </button>
+        <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, display: 'flex', gap: 4 }}>
+          <button className="demo-lock-btn" onClick={async () => {
+            try {
+              const { invoke } = await import('@tauri-apps/api/core');
+              const projectPath = usePresentationStore.getState().projectPath;
+              if (projectPath) {
+                const { readFile } = await import('@tauri-apps/plugin-fs');
+                const bytes = await readFile(`${projectPath}/${element.demoSrc}`);
+                await invoke('db_store_asset', { path: element.demoSrc, data: Array.from(bytes), mimeType: 'text/html' });
+                const { invalidateAsset } = await import('../lib/demoAssets');
+                invalidateAsset(element.demoSrc);
+                setReloadKey((k) => k + 1);
+              }
+            } catch (e) { console.error('Refresh failed:', e); }
+          }}
+            style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
+            Refresh
+          </button>
+          <button className="demo-lock-btn" onClick={() => setInteracting(false)}
+            style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
+            Lock
+          </button>
+        </div>
       )}
     </DraggableBox>
   );

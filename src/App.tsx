@@ -175,6 +175,13 @@ function App() {
         if (key === 'b') { e.preventDefault(); document.execCommand('bold'); }
         if (key === 'i') { e.preventDefault(); document.execCommand('italic'); }
         if (key === 'e') { e.preventDefault(); document.execCommand('justifyCenter'); }
+        // Cmd+Shift+V: paste as plain text (strip formatting)
+        if (key === 'v' && e.shiftKey) {
+          e.preventDefault();
+          navigator.clipboard.readText().then((text) => {
+            document.execCommand('insertText', false, text);
+          }).catch(() => {});
+        }
       }
       // Cmd+I outside text: toggle inspector
       if (e.key.toLowerCase() === 'i' && (e.ctrlKey || e.metaKey) && !inEditable) { e.preventDefault(); usePresentationStore.getState().toggleProperties(); }
