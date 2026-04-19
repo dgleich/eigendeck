@@ -183,7 +183,10 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
               const projectPath = usePresentationStore.getState().projectPath;
               if (projectPath) {
                 const { readFile } = await import('@tauri-apps/plugin-fs');
-                const bytes = await readFile(`${projectPath}/${element.src}`);
+                // projectPath is /path/to/name (eigendeck minus extension)
+                // Demos are relative to the eigendeck file's directory
+                const dir = projectPath.replace(/\/[^/]+$/, '');
+                const bytes = await readFile(`${dir}/${element.src}`);
                 await invoke('db_store_asset', { path: element.src, data: Array.from(bytes), mimeType: 'text/html' });
                 const { invalidateAsset } = await import('../lib/demoAssets');
                 invalidateAsset(element.src);
@@ -245,7 +248,8 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
               const projectPath = usePresentationStore.getState().projectPath;
               if (projectPath) {
                 const { readFile } = await import('@tauri-apps/plugin-fs');
-                const bytes = await readFile(`${projectPath}/${element.demoSrc}`);
+                const dir = projectPath.replace(/\/[^/]+$/, '');
+                const bytes = await readFile(`${dir}/${element.demoSrc}`);
                 await invoke('db_store_asset', { path: element.demoSrc, data: Array.from(bytes), mimeType: 'text/html' });
                 const { invalidateAsset } = await import('../lib/demoAssets');
                 invalidateAsset(element.demoSrc);
