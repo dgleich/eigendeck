@@ -27,11 +27,11 @@ export const BUILT_IN_THEMES: Record<string, { label: string; colors: ThemeColor
   light: {
     label: 'Light',
     colors: {
-      background: '#f0f0f0',
-      text: '#111111',
-      heading: '#111111',
-      accent: '#2563eb',
-      muted: '#777777',
+      background: '#f5f0e8',
+      text: '#2c2418',
+      heading: '#2c2418',
+      accent: '#1e5c99',
+      muted: '#8c7e6a',
     },
   },
   dark: {
