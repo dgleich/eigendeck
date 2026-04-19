@@ -120,12 +120,16 @@ function App() {
         unlisten = await listen('check-close', async () => {
           if (closingRef.current) return;
           if (usePresentationStore.getState().isDirty) {
-            const { ask } = await import('@tauri-apps/plugin-dialog');
-            const shouldClose = await ask('You have unsaved changes. Close without saving?', {
+            const { message: showMessage } = await import('@tauri-apps/plugin-dialog');
+            const result = await showMessage('You have unsaved changes.', {
               title: 'Unsaved Changes',
               kind: 'warning',
+              buttons: {
+                ok: 'Close without Saving',
+                cancel: 'Cancel',
+              },
             });
-            if (!shouldClose) return;
+            if (result !== 'Ok') return;
           }
           // Force quit via Rust — avoids CloseRequested loop
           closingRef.current = true;
