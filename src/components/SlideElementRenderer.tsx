@@ -293,7 +293,6 @@ function TextContent({
   const themeColor = themeColorForPreset(themeColors, element.preset);
   const style: React.CSSProperties = {
     width: '100%',
-    height: '100%',
     fontFamily: element.fontFamily || presetStyle.fontFamily,
     fontSize: element.fontSize || presetStyle.fontSize,
     fontWeight: presetStyle.fontWeight,
