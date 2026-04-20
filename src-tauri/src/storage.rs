@@ -1028,10 +1028,11 @@ pub fn db_move_slide(slide_id: String, new_position: i32) -> Result<(), String> 
     })
 }
 
-/// Update slide metadata (layout, notes, group_id)
+/// Update slide metadata (layout, notes, group_id, position)
 #[tauri::command]
 pub fn db_update_slide(
     slide_id: String,
+    position: Option<i32>,
     layout: Option<String>,
     notes: Option<String>,
     group_id: Option<String>,
@@ -1063,7 +1064,7 @@ pub fn db_update_slide(
             "INSERT INTO slides VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
             params![
                 &slide_id,
-                cur_pos,
+                position.unwrap_or(cur_pos),
                 layout.as_deref().unwrap_or(&cur_layout),
                 notes.as_deref().unwrap_or(&cur_notes),
                 group_id.or(cur_group),

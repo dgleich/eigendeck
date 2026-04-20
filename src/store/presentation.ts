@@ -616,12 +616,14 @@ export async function flushToSqlite(): Promise<void> {
     }
     dirtyElements.clear();
 
-    // Slide metadata changes (layout, notes, groupId)
+    // Slide metadata changes (layout, notes, groupId, position, theme)
     for (const slideId of dirtySlides) {
-      const slide = state.presentation.slides.find((s) => s.id === slideId);
+      const idx = state.presentation.slides.findIndex((s) => s.id === slideId);
+      const slide = state.presentation.slides[idx];
       if (slide) {
         await invoke('db_update_slide', {
           slideId,
+          position: idx,
           layout: slide.layout || null,
           notes: slide.notes || null,
           groupId: slide.groupId || null,
@@ -782,13 +784,29 @@ usePresentationStore.subscribe((state) => {
     }
   }
 
+  // Detect slide reordering — compare position (array index) of each slide
+  let orderChanged = prev.slides.length === curr.slides.length;
+  if (orderChanged) {
+    orderChanged = false;
+    for (let i = 0; i < curr.slides.length; i++) {
+      if (prev.slides[i]?.id !== curr.slides[i]?.id) {
+        orderChanged = true;
+        break;
+      }
+    }
+  }
+  if (orderChanged) {
+    // Mark ALL slides as dirty so their positions get flushed
+    for (const cs of curr.slides) markSlideDirty(cs.id);
+  }
+
   // Detect per-slide changes (only for slides that exist in both)
   for (const cs of curr.slides) {
     const ps = prev.slides.find((s) => s.id === cs.id);
     if (!ps) continue;
 
-    // Slide metadata
-    if (ps.layout !== cs.layout || ps.notes !== cs.notes || ps.groupId !== cs.groupId) {
+    // Slide metadata (includes theme)
+    if (ps.layout !== cs.layout || ps.notes !== cs.notes || ps.groupId !== cs.groupId || ps.theme !== cs.theme) {
       markSlideDirty(cs.id);
     }
 
