@@ -122,10 +122,12 @@ export const usePresentationStore = create<PresentationState>()(
         set((state) => {
           const slides = [...state.presentation.slides];
           const original = slides[index];
-          // Ensure original elements have linkIds and syncIds
+          // Set up linkIds for animation, and syncIds for content sync.
+          // Clear _syncId/_linkId — duplicate creates a fresh sync group,
+          // severing any connection to old sync groups the user previously freed.
           const updatedOriginalElements = original.elements.map((el) => {
             const id = el.linkId || crypto.randomUUID();
-            return { ...el, linkId: id, syncId: el.syncId || id };
+            return { ...el, linkId: id, syncId: el.syncId || id, _syncId: undefined, _linkId: undefined };
           });
           slides[index] = { ...original, elements: updatedOriginalElements };
           const copy: Slide = {
