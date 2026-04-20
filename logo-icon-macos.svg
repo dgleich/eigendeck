@@ -5,8 +5,8 @@
   <!-- Ecru background (macOS applies squircle mask) -->
   <rect x="0" y="0" width="1024" height="1024" rx="180" fill="#f5f0e8"/>
 
-  <!-- Centered logo (original spans ~310x260, scaled up ~2.5x and centered) -->
-  <g transform="translate(512, 512) scale(2.6) translate(-735, -485)">
+  <!-- Centered logo — scaled to ~80% of canvas per Apple HIG -->
+  <g transform="translate(512, 512) scale(2.1) translate(-735, -485)">
     <!-- back blue screen -->
     <rect x="652" y="423" width="220" height="178" rx="12"
       fill="none" stroke="#2b86b7" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
