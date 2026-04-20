@@ -333,56 +333,43 @@ function TextContent({
     }
   }, [editing]);
 
-  // $$ line nowrap helpers
+  // $$ line height helpers — reserve space for display math during editing
+  // so text layout matches the rendered output (WYSIWYG)
   const extractDisplayTex = (text: string): string | null => {
     const match = text.trim().match(/^\$\$([\s\S]*?)\$\$/);
     return match ? match[1] : null;
   };
 
   const applyMathLineStyles = (el: HTMLElement) => {
-    const applyToNode = (node: HTMLElement) => {
-      const text = node.textContent || '';
-      if (text.trimStart().startsWith('$$')) {
-        node.style.whiteSpace = 'nowrap';
-        node.style.overflowX = 'auto';
-        const tex = extractDisplayTex(text);
+    // Only apply to direct child ELEMENTS (each <div> line in contentEditable)
+    for (const child of Array.from(el.childNodes)) {
+      if (child.nodeType !== Node.ELEMENT_NODE) continue;
+      const node = child as HTMLElement;
+      // Check if THIS node's own text (not descendants) starts with $$
+      // Use firstChild textContent to avoid picking up text from siblings
+      const ownText = node.textContent || '';
+      if (ownText.trimStart().startsWith('$$') && ownText.includes('$$', 2)) {
+        const tex = extractDisplayTex(ownText);
         if (tex) {
           const cachedHeight = getDisplayMathHeight(tex);
           if (cachedHeight) {
             node.style.minHeight = cachedHeight;
             node.style.lineHeight = 'normal';
-            node.style.display = 'flex';
-            node.style.alignItems = 'center';
           }
         }
       } else {
-        node.style.whiteSpace = '';
-        node.style.overflowX = '';
-        node.style.minHeight = '';
-        node.style.lineHeight = '';
-        node.style.display = '';
-        node.style.alignItems = '';
+        // Clear only the styles WE set
+        if (node.style.minHeight) node.style.minHeight = '';
+        if (node.style.lineHeight === 'normal') node.style.lineHeight = '';
       }
-    };
-    for (const child of Array.from(el.childNodes)) {
-      if (child.nodeType === Node.ELEMENT_NODE) applyToNode(child as HTMLElement);
     }
-    if (el.childNodes.length <= 1 && (el.textContent || '').trimStart().startsWith('$$')) {
-      applyToNode(el);
-    }
-    // NOTE: don't clear styles on the root el — that overwrites React's lineHeight: 1.3
   };
 
   const stripMathLineStyles = (el: HTMLElement) => {
-    // Only strip styles from child elements, not the root (which has React-managed styles)
     for (const child of Array.from(el.querySelectorAll('*'))) {
       const c = child as HTMLElement;
-      if (c.style.whiteSpace === 'nowrap') c.style.whiteSpace = '';
-      if (c.style.overflowX === 'auto') c.style.overflowX = '';
       if (c.style.minHeight) c.style.minHeight = '';
       if (c.style.lineHeight === 'normal') c.style.lineHeight = '';
-      if (c.style.display === 'flex') c.style.display = '';
-      if (c.style.alignItems) c.style.alignItems = '';
     }
   };
 
@@ -393,9 +380,6 @@ function TextContent({
         ref.current.innerHTML = element.html;
         applyMathLineStyles(ref.current);
         ref.current.focus();
-        requestAnimationFrame(() => {
-          if (ref.current) applyMathLineStyles(ref.current);
-        });
         const sel = window.getSelection();
         if (sel) {
           sel.selectAllChildren(ref.current);
