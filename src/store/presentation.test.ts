@@ -115,4 +115,78 @@ describe('presentation store', () => {
     usePresentationStore.getState().setPresenting(false);
     expect(usePresentationStore.getState().isPresenting).toBe(false);
   });
+
+  describe('duplicate slide sync behavior', () => {
+    it('creates sync between original and duplicate', () => {
+      const store = usePresentationStore.getState();
+      store.duplicateSlide(0);
+      const state = usePresentationStore.getState();
+      expect(state.presentation.slides).toHaveLength(2);
+      const el1 = state.presentation.slides[0].elements[0];
+      const el2 = state.presentation.slides[1].elements[0];
+      // Both should have syncId and they should match
+      expect(el1.syncId).toBeTruthy();
+      expect(el2.syncId).toBe(el1.syncId);
+    });
+
+    it('duplicating a freed-sync slide does not leak old syncId (#45)', () => {
+      const store = usePresentationStore.getState();
+      // Slide 1 → duplicate to slide 2 (synced)
+      store.duplicateSlide(0);
+      const s1 = usePresentationStore.getState();
+      const originalSyncId = s1.presentation.slides[0].elements[0].syncId;
+      expect(originalSyncId).toBeTruthy();
+
+      // Duplicate slide 2 → slide 3 (all 3 synced)
+      store.duplicateSlide(1);
+
+      // Free sync on slide 3's title
+      store.selectSlide(2);
+      const slide3El = usePresentationStore.getState().presentation.slides[2].elements[0];
+      store.updateElement(slide3El.id, { syncId: undefined, _syncId: slide3El.syncId } as any);
+
+      // Verify slide 3 title is freed
+      const freed = usePresentationStore.getState().presentation.slides[2].elements[0];
+      expect(freed.syncId).toBeUndefined();
+      expect((freed as any)._syncId).toBeTruthy();
+
+      // Now duplicate slide 3 → slide 4
+      store.duplicateSlide(2);
+      const final = usePresentationStore.getState();
+      expect(final.presentation.slides).toHaveLength(4);
+
+      const slide3Title = final.presentation.slides[2].elements[0];
+      const slide4Title = final.presentation.slides[3].elements[0];
+
+      // Slides 3 and 4 should have a NEW syncId (not the original)
+      expect(slide3Title.syncId).toBeTruthy();
+      expect(slide4Title.syncId).toBe(slide3Title.syncId);
+      expect(slide3Title.syncId).not.toBe(originalSyncId);
+
+      // _syncId should be cleared — no lingering reference to old group
+      expect((slide3Title as any)._syncId).toBeUndefined();
+      expect((slide4Title as any)._syncId).toBeUndefined();
+
+      // Original slides 1 and 2 should still have their original syncId
+      expect(final.presentation.slides[0].elements[0].syncId).toBe(originalSyncId);
+      expect(final.presentation.slides[1].elements[0].syncId).toBe(originalSyncId);
+    });
+
+    it('duplicate inserts after group when slide is in a group', () => {
+      const store = usePresentationStore.getState();
+      // Create a build (group)
+      store.addBuildSlide();
+      expect(usePresentationStore.getState().presentation.slides).toHaveLength(2);
+      const groupId = usePresentationStore.getState().presentation.slides[0].groupId;
+      expect(groupId).toBeTruthy();
+
+      // Duplicate slide 1 (in group) — should insert after the group
+      store.selectSlide(0);
+      store.duplicateSlide(0);
+      const state = usePresentationStore.getState();
+      expect(state.presentation.slides).toHaveLength(3);
+      // New slide should be at index 2 (after both group members)
+      expect(state.currentSlideIndex).toBe(2);
+    });
+  });
 });
