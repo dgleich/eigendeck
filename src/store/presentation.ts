@@ -324,6 +324,7 @@ export const usePresentationStore = create<PresentationState>()(
             if ('fontSize' in changes) (syncChanges as any).fontSize = (changes as any).fontSize;
             if ('color' in changes) (syncChanges as any).color = (changes as any).color;
             if ('fontFamily' in changes) (syncChanges as any).fontFamily = (changes as any).fontFamily;
+            if ('verticalAlign' in changes) (syncChanges as any).verticalAlign = (changes as any).verticalAlign;
             // Arrow coords
             if ('x1' in changes) (syncChanges as any).x1 = (changes as any).x1;
             if ('y1' in changes) (syncChanges as any).y1 = (changes as any).y1;
