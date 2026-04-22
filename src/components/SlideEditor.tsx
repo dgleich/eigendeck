@@ -58,7 +58,7 @@ export function SlideEditor() {
           const relativePath = `images/${fileName}`;
           const bytes = new Uint8Array(await blob.arrayBuffer());
 
-          // Store as SQLite asset
+          // Store as SQLite asset, then reference by path (not data URL)
           try {
             const { invoke } = await import('@tauri-apps/api/core');
             const mime = blob.type || `image/${ext}`;
@@ -66,17 +66,11 @@ export function SlideEditor() {
           } catch (e) {
             console.error('Failed to store pasted image:', e);
           }
-
-          // Use data URL for display (SQLite BLOBs can't be loaded via convertFileSrc)
-          const reader = new FileReader();
-          reader.onload = () => {
-            addElement({
-              id: crypto.randomUUID(), type: 'image',
-              src: reader.result as string, // data URL for display
-              position: { x: 360, y: 200, width: 1200, height: 680 },
-            });
-          };
-          reader.readAsDataURL(blob);
+          addElement({
+            id: crypto.randomUUID(), type: 'image',
+            src: relativePath,
+            position: { x: 360, y: 200, width: 1200, height: 680 },
+          });
           break;
         }
       }
