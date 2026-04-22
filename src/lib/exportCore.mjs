@@ -405,22 +405,18 @@ document.addEventListener('touchstart', function(e) {
   touchStartY = e.touches[0].clientY;
 }, { passive: true });
 document.addEventListener('touchend', function(e) {
+  // Don't swipe-navigate if the touch started inside an iframe area
+  var startEl = document.elementFromPoint(touchStartX, touchStartY);
+  if (startEl && (startEl.tagName === 'IFRAME' || startEl.closest('iframe'))) return;
   var dx = e.changedTouches[0].clientX - touchStartX;
   var dy = e.changedTouches[0].clientY - touchStartY;
-  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 2) {
+  if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 2) {
     if (dx < 0) next(); else prev();
   }
 });
 
-// Tap left/right third on mobile
-document.addEventListener('click', function(e) {
-  // Don't navigate if clicking nav bar or iframes
-  if (e.target.closest('#nav-bar, iframe')) return;
-  var x = e.clientX / window.innerWidth;
-  if (x < 0.25) prev();
-  else if (x > 0.75) next();
-  else showNav(); // Middle tap shows nav
-});
+// No click-to-navigate — it interferes with interactive demos.
+// Use swipe on mobile, keyboard/nav bar on desktop.
 
 show(0);
 window.addEventListener('resize', resize);
