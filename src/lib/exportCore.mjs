@@ -311,19 +311,16 @@ function show(i) {
   resize();
   current = i;
   // Re-request state for demo iframes on the newly shown slide.
-  // Viewports may have missed the controller's initial broadcast.
-  // Send request-state via all known channel names on this slide.
-  setTimeout(function() {
-    var active = slides[i];
-    if (!active) return;
-    var iframes = active.querySelectorAll('iframe');
+  // Iframes in display:none slides may not have loaded yet, so we
+  // retry a few times with increasing delays.
+  function requestState(slide, attempt) {
+    var iframes = slide.querySelectorAll('iframe');
     for (var j = 0; j < iframes.length; j++) {
-      try {
-        // The iframe's BroadcastChannel shim listens for __bc-enveloped messages
-        iframes[j].contentWindow.postMessage({ type: 'request-state' }, '*');
-      } catch(ex) {}
+      try { iframes[j].contentWindow.postMessage({ type: 'request-state' }, '*'); } catch(ex) {}
     }
-  }, 100);
+    if (attempt < 3) setTimeout(function() { requestState(slide, attempt + 1); }, 500);
+  }
+  setTimeout(function() { requestState(slides[i], 0); }, 200);
 }
 function resize() {
   const vw = window.innerWidth, vh = window.innerHeight;
