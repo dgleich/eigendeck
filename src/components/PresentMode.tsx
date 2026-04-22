@@ -360,21 +360,28 @@ function PresentTextElement({ element: el, zIndex, style }: { element: TextEleme
   const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
 
   return (
-    <div ref={ref} className={`el-text el-preset-${el.preset}`} data-valign={valign} style={{
+    <div className={`el-text el-preset-${el.preset}`} style={{
       position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-      fontFamily: el.fontFamily || preset.fontFamily,
-      fontSize: el.fontSize || preset.fontSize,
-      fontWeight: preset.fontWeight,
-      fontStyle: preset.fontStyle,
-      color: el.color || preset.color,
-      lineHeight: 1.3,
-      padding: '8px 12px',
       overflow: 'hidden',
       zIndex,
-      ...(valign === 'middle' ? { display: 'flex', flexDirection: 'column' as const, justifyContent: 'center' } : {}),
-      ...(valign === 'bottom' ? { display: 'flex', flexDirection: 'column' as const, justifyContent: 'flex-end' } : {}),
       ...style,
-    }} />
+    }}>
+      <div style={{
+        width: '100%', height: '100%',
+        ...(valign === 'middle' ? { display: 'flex', flexDirection: 'column' as const, justifyContent: 'center' } : {}),
+        ...(valign === 'bottom' ? { display: 'flex', flexDirection: 'column' as const, justifyContent: 'flex-end' } : {}),
+      }}>
+        <div ref={ref} style={{
+          fontFamily: el.fontFamily || preset.fontFamily,
+          fontSize: el.fontSize || preset.fontSize,
+          fontWeight: preset.fontWeight,
+          fontStyle: preset.fontStyle,
+          color: el.color || preset.color,
+          lineHeight: 1.3,
+          padding: '8px 12px',
+        }} />
+      </div>
+    </div>
   );
 }
 
