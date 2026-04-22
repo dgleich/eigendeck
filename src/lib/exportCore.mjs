@@ -175,7 +175,13 @@ export async function buildExportHtml(opts) {
           } else if (/\$[^$]+\$|\$\$[\s\S]+?\$\$/.test(textHtml)) {
             hasUnrenderedMath = true;
           }
-          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;overflow:hidden;">${textHtml}</div>`;
+          const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
+          const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
+                             valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
+          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">` +
+            `<div style="width:100%;height:100%;${valignStyle}">` +
+            `<div style="font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;">${textHtml}</div>` +
+            `</div></div>`;
           break;
         }
         case 'image': {
