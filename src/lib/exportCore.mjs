@@ -287,6 +287,29 @@ li { margin-bottom: 0.15em; list-style-position: inside; }
   font-family: 'PT Sans', sans-serif; color: #999; font-size: 18px;
 }
 .slide-footer-number { font-size: 24px; }
+/* Navigation bar */
+#nav-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  padding: 8px 20px; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+  font-family: 'PT Sans', sans-serif; font-size: 14px; color: #ccc;
+  opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  -webkit-backdrop-filter: blur(8px);
+}
+#nav-bar.visible { opacity: 1; pointer-events: auto; }
+#nav-bar button {
+  background: none; border: 1px solid rgba(255,255,255,0.2); color: #ccc;
+  border-radius: 4px; padding: 4px 12px; font-size: 14px; cursor: pointer;
+  font-family: inherit; min-width: 36px;
+}
+#nav-bar button:hover { background: rgba(255,255,255,0.1); color: #fff; }
+#nav-bar button:disabled { opacity: 0.3; cursor: default; }
+#nav-bar .nav-pos { min-width: 60px; text-align: center; }
+#nav-bar input[type=range] { width: 120px; accent-color: #888; }
+@media (max-width: 768px) {
+  #nav-bar { padding: 12px 16px; font-size: 16px; }
+  #nav-bar button { padding: 8px 16px; font-size: 16px; min-width: 44px; }
+}
 </style>
 ${mathjaxCDN}
 </head>
@@ -295,10 +318,13 @@ ${mathjaxCDN}
 ${slideHtml.join('\n')}
 </div>
 <!-- eigendeck-source: ${sourceB64} -->
+<div id="nav-bar">
+  <button id="nb-prev">&lsaquo;</button>
+  <span class="nav-pos"><span id="nb-cur">1</span> / <span id="nb-total"></span></span>
+  <button id="nb-next">&rsaquo;</button>
+</div>
 <script>
-// BroadcastChannel relay: srcdoc iframes use postMessage to parent,
-// parent forwards to all iframes with matching channel names.
-// Channel keys are per-slide so cross-slide interference is impossible.
+// BroadcastChannel relay for demo-piece iframes
 window.addEventListener('message', function(e) {
   if (!e.data || !e.data.__bc) return;
   var allIframes = document.querySelectorAll('iframe');
@@ -312,13 +338,21 @@ window.addEventListener('message', function(e) {
 const slides = document.querySelectorAll('.slide');
 let current = 0;
 const W = ${W}, H = ${H};
+const nb = document.getElementById('nav-bar');
+const nbCur = document.getElementById('nb-cur');
+const nbPrev = document.getElementById('nb-prev');
+const nbNext = document.getElementById('nb-next');
+document.getElementById('nb-total').textContent = slides.length;
+
 function show(i) {
+  i = Math.max(0, Math.min(i, slides.length - 1));
   slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
   resize();
   current = i;
-  // Re-request state for demo iframes on the newly shown slide.
-  // Iframes in display:none slides may not have loaded yet, so we
-  // retry a few times with increasing delays.
+  nbCur.textContent = i + 1;
+  nbPrev.disabled = i === 0;
+  nbNext.disabled = i === slides.length - 1;
+  // Re-request state for demo iframes (retry as they may still be loading)
   function requestState(slide, attempt) {
     var iframes = slide.querySelectorAll('iframe');
     for (var j = 0; j < iframes.length; j++) {
@@ -335,18 +369,63 @@ function resize() {
     s.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
   });
 }
-show(0);
-window.addEventListener('resize', resize);
+function next() { if (current < slides.length - 1) show(current + 1); }
+function prev() { if (current > 0) show(current - 1); }
+
+// Nav bar buttons
+nbPrev.onclick = prev;
+nbNext.onclick = next;
+
+// Keyboard
 document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'PageDown') {
-    e.preventDefault(); if (current < slides.length - 1) show(current + 1);
+    e.preventDefault(); next();
   }
   if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
-    e.preventDefault(); if (current > 0) show(current - 1);
+    e.preventDefault(); prev();
   }
   if (e.key === 'Home') { e.preventDefault(); show(0); }
   if (e.key === 'End') { e.preventDefault(); show(slides.length - 1); }
 });
+
+// Show nav bar on mouse move / touch, auto-hide after 3s
+var hideTimer = null;
+function showNav() {
+  nb.classList.add('visible');
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(function() { nb.classList.remove('visible'); }, 3000);
+}
+document.addEventListener('mousemove', showNav);
+document.addEventListener('touchstart', showNav, { passive: true });
+
+// Touch: swipe left/right to navigate
+var touchStartX = 0, touchStartY = 0;
+document.addEventListener('touchstart', function(e) {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+document.addEventListener('touchend', function(e) {
+  var dx = e.changedTouches[0].clientX - touchStartX;
+  var dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 2) {
+    if (dx < 0) next(); else prev();
+  }
+});
+
+// Tap left/right third on mobile
+document.addEventListener('click', function(e) {
+  // Don't navigate if clicking nav bar or iframes
+  if (e.target.closest('#nav-bar, iframe')) return;
+  var x = e.clientX / window.innerWidth;
+  if (x < 0.25) prev();
+  else if (x > 0.75) next();
+  else showNav(); // Middle tap shows nav
+});
+
+show(0);
+window.addEventListener('resize', resize);
+// Show nav briefly on load
+setTimeout(function() { showNav(); }, 500);
 </script>
 </body>
 </html>`;
