@@ -2,11 +2,12 @@
   <style>
     .text { font-family: "PT Sans", "PTSans", Arial, Helvetica, sans-serif; font-weight: 700; fill: #333; }
   </style>
-  <!-- Ecru background (macOS applies squircle mask) -->
-  <rect x="0" y="0" width="1024" height="1024" rx="180" fill="#f5f0e8"/>
+  <!-- Transparent canvas — macOS applies squircle mask -->
+  <!-- Background rect inset 100px per Apple HIG icon grid -->
+  <rect x="100" y="100" width="824" height="824" rx="160" fill="#f5f0e8"/>
 
-  <!-- Centered logo — scaled to ~80% of canvas per Apple HIG -->
-  <g transform="translate(512, 512) scale(2.1) translate(-735, -485)">
+  <!-- Centered logo — scaled to fit within the inset area -->
+  <g transform="translate(512, 512) scale(1.7) translate(-735, -485)">
     <!-- back blue screen -->
     <rect x="652" y="423" width="220" height="178" rx="12"
       fill="none" stroke="#2b86b7" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
