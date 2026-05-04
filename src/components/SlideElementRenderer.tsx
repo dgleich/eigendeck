@@ -392,11 +392,20 @@ function TextContent({
   const commitAndClose = useCallback(() => {
     if (ref.current) {
       stripMathLineStyles(ref.current);
-      let html = ref.current.innerHTML;
-      // Sanitize WebKit bugs before saving (not touching the DOM, just the string)
-      // text-align on <span> → <div> (justifyCenter bug)
-      html = html.replace(/<span([^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*)>/g, '<div$1>');
-      html = html.replace(/<\/div><\/span>/g, '</span></div>');
+      // Sanitize WebKit bugs: use the DOM to normalize, then read back
+      // This handles unclosed tags, mismatched nesting, text-align on spans, etc.
+      const sanitizer = document.createElement('div');
+      sanitizer.innerHTML = ref.current.innerHTML;
+      // Fix text-align on span → div (justifyCenter bug)
+      for (const span of Array.from(sanitizer.querySelectorAll('span[style]')) as HTMLElement[]) {
+        if (span.style.textAlign) {
+          const div = document.createElement('div');
+          div.style.cssText = span.style.cssText;
+          div.innerHTML = span.innerHTML;
+          span.replaceWith(div);
+        }
+      }
+      const html = sanitizer.innerHTML;
       onCommit(html);
     }
     setEditing(false);
