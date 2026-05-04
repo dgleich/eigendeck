@@ -520,6 +520,7 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null;
 // Dirty tracking: which items need to be written to SQLite
 const dirtyElements = new Set<string>();    // element IDs whose data changed
 const dirtySlides = new Set<string>();      // slide IDs whose metadata changed
+const dirtyZOrder = new Set<string>();      // slide IDs whose element z-order changed
 let dirtyPresentation = false;              // config/title changed
 
 // Structural changes tracked explicitly
@@ -633,6 +634,21 @@ export async function flushToSqlite(): Promise<void> {
     }
     dirtySlides.clear();
 
+    // Z-order changes — update all element positions on affected slides
+    for (const slideId of dirtyZOrder) {
+      const slide = state.presentation.slides.find((s) => s.id === slideId);
+      if (slide) {
+        for (let j = 0; j < slide.elements.length; j++) {
+          await invoke('db_update_z_order', {
+            slideId,
+            elementId: slide.elements[j].id,
+            newZOrder: j,
+          });
+        }
+      }
+    }
+    dirtyZOrder.clear();
+
   } catch (e) {
     console.error('SQLite flush failed:', e);
     // Don't wipe history on failure — just log and retry next flush
@@ -672,6 +688,7 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     // Clear dirty state
     dirtyElements.clear();
     dirtySlides.clear();
+    dirtyZOrder.clear();
     dirtyPresentation = false;
     addedSlides.clear();
     deletedSlides.clear();
@@ -840,6 +857,17 @@ usePresentationStore.subscribe((state) => {
           const pel = ps.elements.find((e) => e.id === cel.id);
           if (pel && pel !== cel) {
             markElementDirty(cel.id);
+          }
+        }
+      }
+
+      // Detect z-order changes (element IDs in different array positions)
+      if (ps.elements.length === cs.elements.length) {
+        for (let j = 0; j < cs.elements.length; j++) {
+          if (ps.elements[j]?.id !== cs.elements[j]?.id) {
+            dirtyZOrder.add(cs.id);
+            scheduleFlush();
+            break;
           }
         }
       }
