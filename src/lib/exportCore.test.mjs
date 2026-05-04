@@ -301,3 +301,64 @@ describe('bytesToDataUrl', () => {
     expect(url).toMatch(/^data:image\/jpeg;base64,/);
   });
 });
+
+describe('HTML well-formedness in export', () => {
+  function countTag(html, tag) {
+    const opens = (html.match(new RegExp(`<${tag}[\\s>]`, 'gi')) || []).length;
+    const closes = (html.match(new RegExp(`</${tag}>`, 'gi')) || []).length;
+    return { opens, closes };
+  }
+
+  const exportOpts = {
+    readFile: async () => new Uint8Array([0]),
+    readTextFile: async () => '<html><body>demo</body></html>',
+    renderMath: null,
+    applyMathPreamble: null,
+  };
+
+  it('export has balanced div tags overall', async () => {
+    const p = makePresentation();
+    const html = await buildExportHtml({ presentation: p, ...exportOpts });
+    const { opens, closes } = countTag(html, 'div');
+    expect(opens).toBe(closes);
+  });
+
+  it('export with vertical alignment has balanced divs', async () => {
+    const p = makePresentation({
+      slides: Array.from({ length: 3 }, (_, i) => ({
+        id: `s${i}`, layout: 'default', notes: '',
+        elements: [
+          { id: `t${i}`, type: 'text', preset: 'title', html: `Title ${i}`,
+            position: { x: 80, y: 20, width: 1760, height: 200 }, verticalAlign: 'bottom' },
+          { id: `b${i}`, type: 'text', preset: 'body', html: `Body ${i}`,
+            position: { x: 80, y: 215, width: 1760, height: 765 }, verticalAlign: 'middle' },
+        ],
+      })),
+    });
+    const html = await buildExportHtml({ presentation: p, ...exportOpts });
+    const { opens, closes } = countTag(html, 'div');
+    expect(opens).toBe(closes);
+  });
+
+  it('well-formed element HTML stays balanced in export', async () => {
+    const p = makePresentation({
+      slides: [{
+        id: 's1', layout: 'default', notes: '',
+        elements: [{
+          id: 'e1', type: 'text', preset: 'title',
+          html: '<div style="text-align: center;"><b>Centered Title</b></div>',
+          position: { x: 80, y: 20, width: 1760, height: 200 },
+        }, {
+          id: 'e2', type: 'text', preset: 'body',
+          html: 'Body must be visible',
+          position: { x: 80, y: 215, width: 1760, height: 765 },
+        }],
+      }],
+    });
+    const html = await buildExportHtml({ presentation: p, ...exportOpts });
+    expect(html).toContain('Centered Title');
+    expect(html).toContain('Body must be visible');
+    const { opens, closes } = countTag(html, 'div');
+    expect(opens).toBe(closes);
+  });
+});

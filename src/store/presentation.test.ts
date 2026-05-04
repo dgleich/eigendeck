@@ -255,4 +255,59 @@ describe('presentation store', () => {
       expect(state.currentSlideIndex).toBe(2);
     });
   });
+
+  describe('HTML well-formedness', () => {
+    function countTag(html: string, tag: string): { opens: number; closes: number } {
+      const opens = (html.match(new RegExp(`<${tag}[\\s>]`, 'gi')) || []).length;
+      const closes = (html.match(new RegExp(`</${tag}>`, 'gi')) || []).length;
+      return { opens, closes };
+    }
+
+    function isBalanced(html: string): boolean {
+      for (const tag of ['div', 'span', 'b', 'i', 'ul', 'ol', 'li']) {
+        const { opens, closes } = countTag(html, tag);
+        if (opens !== closes) return false;
+      }
+      return true;
+    }
+
+    it('element HTML with balanced tags stays balanced after updateElement', () => {
+      const store = usePresentationStore.getState();
+      store.addElement({
+        id: 'el-html', type: 'text', preset: 'body',
+        html: '<div style="text-align: center;"><b>Hello</b> world</div>',
+        position: { x: 0, y: 0, width: 100, height: 50 },
+      });
+      store.updateElement('el-html', {
+        html: '<div style="text-align: center;"><b>Updated</b> text</div>',
+      } as any);
+      const el = usePresentationStore.getState().presentation.slides[0].elements.find(e => e.id === 'el-html');
+      expect(el).toBeTruthy();
+      expect(isBalanced((el as any).html)).toBe(true);
+    });
+
+    it('detects unbalanced div tags', () => {
+      expect(isBalanced('<div>unclosed')).toBe(false);
+      expect(isBalanced('<div>closed</div>')).toBe(true);
+      expect(isBalanced('<div><div>nested</div></div>')).toBe(true);
+      expect(isBalanced('<div>extra</div></div>')).toBe(false);
+    });
+
+    it('detects unbalanced span tags', () => {
+      expect(isBalanced('<span>unclosed')).toBe(false);
+      expect(isBalanced('<span>ok</span>')).toBe(true);
+      expect(isBalanced('text</span>')).toBe(false);
+    });
+
+    it('the broken WebKit pattern is detected as unbalanced', () => {
+      // This is the exact pattern that broke exports
+      const brokenHtml = '<span style="text-align: center;"><span style="font-weight: 400;">Title</span><br></span>';
+      // The outer span has text-align (should be div), but tags are technically balanced here
+      expect(isBalanced(brokenHtml)).toBe(true); // tags balance, the bug is semantic not structural
+
+      // This is what our broken regex sanitizer produced
+      const regexBroken = '<div style="text-align: center;"><span style="font-weight: 400;">Title</span><br></span>';
+      expect(isBalanced(regexBroken)).toBe(false); // div opens, never closes; extra </span>
+    });
+  });
 });
