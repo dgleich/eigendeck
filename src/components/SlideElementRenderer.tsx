@@ -392,7 +392,13 @@ function TextContent({
   const commitAndClose = useCallback(() => {
     if (ref.current) {
       stripMathLineStyles(ref.current);
-      onCommit(ref.current.innerHTML);
+      // Fix WebKit bug: justifyCenter sometimes puts text-align on <span> instead of <div>
+      let html = ref.current.innerHTML;
+      html = html.replace(/<span([^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*)>/g, '<div$1>');
+      html = html.replace(/<\/span>(\s*<\/div>)/g, '</div>$1'); // fix if nesting got swapped
+      // Also fix </div></span> → </span></div> from broken WebKit output
+      html = html.replace(/<\/div><\/span>/g, '</span></div>');
+      onCommit(html);
     }
     setEditing(false);
   }, [onCommit]);
