@@ -1983,9 +1983,10 @@ mod tests {
 
         db_update_slide(
             "slide-1".to_string(),
+            None, // position
             Some("two-column".to_string()),
             Some("Updated notes".to_string()),
-            None,
+            None, // group_id
         )
         .unwrap();
 
