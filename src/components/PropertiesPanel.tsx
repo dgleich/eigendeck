@@ -231,6 +231,26 @@ export function PropertiesPanel() {
               </div>
             </PropSection>
 
+            {/* Position: center on slide */}
+            {selectedEl.type !== 'arrow' && (
+              <PropSection label="Position">
+                <div style={{ display: 'flex', gap: 2 }}>
+                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
+                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position, x: Math.round((1920 - selectedEl.position.width) / 2) } } as any)}
+                    title="Center horizontally on slide">Center H</button>
+                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
+                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position, y: Math.round((1080 - selectedEl.position.height) / 2) } } as any)}
+                    title="Center vertically on slide">Center V</button>
+                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
+                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position,
+                      x: Math.round((1920 - selectedEl.position.width) / 2),
+                      y: Math.round((1080 - selectedEl.position.height) / 2),
+                    } } as any)}
+                    title="Center both on slide">Center</button>
+                </div>
+              </PropSection>
+            )}
+
             {/* Link status */}
             {selectedEl.linkId && (
               <PropSection label="Linked">
