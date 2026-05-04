@@ -2016,6 +2016,45 @@ mod tests {
     }
 
     #[test]
+    fn test_z_order_round_trip() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+
+        // Initial order: el-1 (z=0), el-2 (z=1)
+        let els: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("slide-1".to_string()).unwrap()).unwrap();
+        assert_eq!(els[0]["id"], "el-1");
+        assert_eq!(els[1]["id"], "el-2");
+
+        // Reverse the order: el-2 first, el-1 second
+        db_update_z_order("slide-1".to_string(), "el-1".to_string(), 5).unwrap();
+        db_update_z_order("slide-1".to_string(), "el-2".to_string(), 0).unwrap();
+
+        // Verify via get_slide_elements
+        let els: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("slide-1".to_string()).unwrap()).unwrap();
+        assert_eq!(els[0]["id"], "el-2", "el-2 should be first (z=0)");
+        assert_eq!(els[1]["id"], "el-1", "el-1 should be second (z=5)");
+
+        // Round-trip: export to JSON and verify order is preserved
+        let json = db_export_json().unwrap();
+        let presentation: Value = serde_json::from_str(&json).unwrap();
+        let slide1 = &presentation["slides"][0];
+        let elements = slide1["elements"].as_array().unwrap();
+        assert_eq!(elements[0]["id"], "el-2", "export should preserve z-order: el-2 first");
+        assert_eq!(elements[1]["id"], "el-1", "export should preserve z-order: el-1 second");
+
+        // Re-import and verify order survives full round-trip
+        db_import_json(json).unwrap();
+        let els: Vec<Value> =
+            serde_json::from_str(&db_get_slide_elements("slide-1".to_string()).unwrap()).unwrap();
+        assert_eq!(els[0]["id"], "el-2", "re-import should preserve z-order: el-2 first");
+        assert_eq!(els[1]["id"], "el-1", "re-import should preserve z-order: el-1 second");
+
+        teardown_global_db();
+    }
+
+    #[test]
     fn test_free_element() {
         setup_global_db();
 

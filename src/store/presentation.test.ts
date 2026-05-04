@@ -116,6 +116,72 @@ describe('presentation store', () => {
     expect(usePresentationStore.getState().isPresenting).toBe(false);
   });
 
+  describe('z-order operations', () => {
+    beforeEach(() => {
+      const store = usePresentationStore.getState();
+      store.addElement({ id: 'el-a', type: 'text', preset: 'textbox', html: 'A', position: { x: 0, y: 0, width: 100, height: 50 } });
+      store.addElement({ id: 'el-b', type: 'text', preset: 'textbox', html: 'B', position: { x: 0, y: 0, width: 100, height: 50 } });
+      store.addElement({ id: 'el-c', type: 'text', preset: 'textbox', html: 'C', position: { x: 0, y: 0, width: 100, height: 50 } });
+    });
+
+    function getIds() {
+      // Default slide has a title element, we added a, b, c after it
+      return usePresentationStore.getState().presentation.slides[0].elements.map((e) => e.id);
+    }
+
+    it('bring to front moves element to end of array', () => {
+      usePresentationStore.getState().moveElementZ('el-a', 'top');
+      const ids = getIds();
+      expect(ids[ids.length - 1]).toBe('el-a');
+    });
+
+    it('send to back moves element to start of array', () => {
+      usePresentationStore.getState().moveElementZ('el-c', 'bottom');
+      const ids = getIds();
+      expect(ids[0]).toBe('el-c');
+    });
+
+    it('bring forward moves element up one position', () => {
+      const idsBefore = getIds();
+      const idxA = idsBefore.indexOf('el-a');
+      usePresentationStore.getState().moveElementZ('el-a', 'up');
+      const idsAfter = getIds();
+      expect(idsAfter.indexOf('el-a')).toBe(idxA + 1);
+    });
+
+    it('send backward moves element down one position', () => {
+      const idsBefore = getIds();
+      const idxC = idsBefore.indexOf('el-c');
+      usePresentationStore.getState().moveElementZ('el-c', 'down');
+      const idsAfter = getIds();
+      expect(idsAfter.indexOf('el-c')).toBe(idxC - 1);
+    });
+
+    it('bring to front at top is a no-op', () => {
+      const idsBefore = getIds();
+      const last = idsBefore[idsBefore.length - 1];
+      usePresentationStore.getState().moveElementZ(last, 'top');
+      expect(getIds()).toEqual(idsBefore);
+    });
+
+    it('send to back at bottom is a no-op', () => {
+      const idsBefore = getIds();
+      const first = idsBefore[0];
+      usePresentationStore.getState().moveElementZ(first, 'bottom');
+      expect(getIds()).toEqual(idsBefore);
+    });
+
+    it('z-order change preserves all elements', () => {
+      const countBefore = getIds().length;
+      usePresentationStore.getState().moveElementZ('el-b', 'top');
+      usePresentationStore.getState().moveElementZ('el-a', 'bottom');
+      expect(getIds().length).toBe(countBefore);
+      expect(getIds()).toContain('el-a');
+      expect(getIds()).toContain('el-b');
+      expect(getIds()).toContain('el-c');
+    });
+  });
+
   describe('duplicate slide sync behavior', () => {
     it('creates sync between original and duplicate', () => {
       const store = usePresentationStore.getState();
