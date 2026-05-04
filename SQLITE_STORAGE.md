@@ -1,77 +1,98 @@
-# Eigendeck — SQLite Storage Design
+# Eigendeck — SQLite Storage Format
 
 ## Overview
 
-Replace the current directory-based storage (presentation.json + images/ + demos/) with a single SQLite file (`.eigendeck`) using a temporal data model. Every change is timestamped, giving unlimited undo history and fast incremental saves.
+Every presentation is a single `.eigendeck` file — a SQLite database with WAL journaling and a temporal data model. Every change is timestamped with `valid_from`/`valid_to`, giving unlimited undo history and fast incremental saves.
 
-## Why SQLite
+## File Format
 
-Benchmarked against JSON directory and ZIP (see `tools/bench-storage.mjs`):
+`.eigendeck` = SQLite database. Can be opened by:
+- `rusqlite` (Rust, used by the app and `eigendeck-cli`)
+- `better-sqlite3` (Node.js, used by `tools/export-eigendeck.mjs`)
+- Any SQLite browser or `sqlite3` CLI
 
-| Operation (50MB presentation) | JSON dir | SQLite | ZIP |
-|---|---|---|---|
-| Incremental save (1 element) | 1.1ms | **0.4ms** | 163ms |
-| Full save | 39ms | 144ms | 148ms |
-| Read full state | 0.9ms | 1.7ms | 9ms |
-| History query | N/A | **3.7ms** | N/A |
+## Schema
 
-SQLite incremental saves are 400x faster than ZIP and give free unlimited history.
-
-## Data Model
-
-Three tables + assets. Elements own their position. Sync is just one element appearing on multiple slides via the junction table.
-
-### Schema
+### `_meta` — Schema versioning
 
 ```sql
--- Presentation-level key/value store
+CREATE TABLE _meta (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
+```
+
+Currently stores `schema_version = 1`.
+
+### `presentation` — Key/value metadata (NOT temporal)
+
+```sql
 CREATE TABLE presentation (
     key TEXT PRIMARY KEY,
     value TEXT
 );
+```
 
--- Slides (temporal)
+Keys: `title`, `theme`, `config` (JSON string with width, height, author, venue, mathPreamble, etc.)
+
+### `slides` — Slide metadata (temporal)
+
+```sql
 CREATE TABLE slides (
-    id TEXT NOT NULL,
-    position INTEGER,
-    layout TEXT,
-    notes TEXT,
-    group_id TEXT,
-    valid_from TEXT NOT NULL,
-    valid_to TEXT,
+    id TEXT NOT NULL,           -- UUID
+    position INTEGER,           -- Array index (0-based display order)
+    layout TEXT,                -- 'default', 'centered', 'two-column'
+    notes TEXT,                 -- Speaker notes
+    group_id TEXT,              -- Slides with same group_id form a build group
+    valid_from TEXT NOT NULL,   -- ISO 8601 timestamp + sequence counter
+    valid_to TEXT,              -- NULL = current version
     PRIMARY KEY (id, valid_from)
 );
+```
 
--- Elements own their content AND position (temporal)
+### `elements` — Element content and position (temporal)
+
+```sql
 CREATE TABLE elements (
-    id TEXT NOT NULL,
-    type TEXT NOT NULL,
-    data TEXT NOT NULL,         -- Full JSON: html, position, fontSize, color, etc.
-    link_id TEXT,               -- Animation link (different elements that animate between slides)
+    id TEXT NOT NULL,           -- UUID
+    type TEXT NOT NULL,         -- 'text', 'image', 'arrow', 'demo', 'demo-piece', 'cover'
+    data TEXT NOT NULL,         -- Full JSON: html, position, fontSize, color, preset, etc.
+    link_id TEXT,               -- Animation link ID (elements with same link_id animate between slides)
     valid_from TEXT NOT NULL,
-    valid_to TEXT,
+    valid_to TEXT,              -- NULL = current version
     PRIMARY KEY (id, valid_from)
 );
+```
 
--- Junction: which elements appear on which slides
--- Sync = one element, multiple rows here
+The `data` column contains ALL element properties as JSON. Position is inside `data.position`. This means a single UPDATE handles any change (text edit, move, resize, style change).
+
+### `slide_elements` — Junction table (temporal)
+
+```sql
 CREATE TABLE slide_elements (
     slide_id TEXT NOT NULL,
     element_id TEXT NOT NULL,
-    z_order INTEGER NOT NULL,
+    z_order INTEGER NOT NULL,   -- Stacking order (0 = bottom, higher = top)
     valid_from TEXT NOT NULL,
-    valid_to TEXT,
+    valid_to TEXT,              -- NULL = current version
     PRIMARY KEY (slide_id, element_id, valid_from)
 );
+```
 
--- Binary assets (images, demos) — stored once, deduped by hash
+This table maps elements to slides. An element can appear on multiple slides (sync). Z-order is per-slide.
+
+### `assets` — Binary assets (NOT temporal)
+
+```sql
 CREATE TABLE assets (
-    path TEXT PRIMARY KEY,
-    data BLOB NOT NULL,
-    mime_type TEXT,
+    path TEXT PRIMARY KEY,      -- Relative path, e.g. 'images/photo.png', 'demos/graph.html'
+    data BLOB NOT NULL,         -- File content
+    mime_type TEXT,              -- e.g. 'image/png', 'text/html'
     size INTEGER,
-    hash TEXT,
-    created_at TEXT
+    hash TEXT,                  -- For dedup (not yet implemented)
+    created_at TEXT,
+    external_path TEXT,         -- Original absolute disk path (for refresh from file)
+    external_mtime TEXT         -- Last known mtime of external file
 );
 ```
 
@@ -93,322 +114,213 @@ PRAGMA journal_mode = WAL;
 PRAGMA synchronous = NORMAL;
 ```
 
+## Temporal Model
+
+Every row in `slides`, `elements`, and `slide_elements` has:
+- `valid_from` — when this version was created
+- `valid_to` — when this version was superseded (NULL = current)
+
+**To read current state:** `WHERE valid_to IS NULL`
+
+**To read state at time T:** `WHERE valid_from <= T AND (valid_to IS NULL OR valid_to > T)`
+
+**To update:** close the current row (`SET valid_to = now`), insert a new row with the updated data.
+
+### Timestamps
+
+ISO 8601 UTC + atomic monotonic counter to guarantee uniqueness:
+
+```
+2026-04-12T14:53:01.234Z-00000042
+```
+
+The counter prevents collisions when multiple changes happen within the same millisecond. Implemented in `chrono_lite_now()` using Howard Hinnant's civil_from_days algorithm (no chrono dependency).
+
 ## How Sync Works
 
 **Synced element** = one row in `elements`, multiple rows in `slide_elements`.
 
 ```
-elements:       { id: "abc", type: "text", data: {html: "Title", position: {x:80, y:20, ...}} }
+elements:       { id: "abc", data: {html: "Title", position: ...} }
 
 slide_elements: { slide_id: "slide-1", element_id: "abc", z_order: 0 }
                 { slide_id: "slide-2", element_id: "abc", z_order: 0 }
-                { slide_id: "slide-3", element_id: "abc", z_order: 0 }
 ```
 
-- Edit text on any slide → one UPDATE to `elements`. All three slides see it instantly.
-- Move element → one UPDATE to `elements` (position is in data). All three slides move.
-- No propagation code. No syncId matching. Just relational data.
+Edit text or move → one UPDATE to `elements`. All slides see it instantly.
+
+### In the Zustand store
+
+The frontend uses a different model: each slide has its own copy of the element in the `elements[]` array, with a `syncId` field linking them. The `updateElement` action propagates changes to all elements with the same `syncId`.
+
+On export to JSON (`db_export_json`), if an element appears on multiple slides, the JSON representation gets `syncId` set to the element ID.
+
+On import from JSON (`db_import_json`), elements with the same `syncId` map to one row in `elements` with multiple `slide_elements` rows.
+
+### Freeing a synced element
+
+When you "free" an element from sync:
+1. The Zustand store sets `syncId: undefined, _syncId: oldSyncId`
+2. The Rust backend creates a new element row (copy of data) and updates the `slide_elements` row for that slide to point to the new copy
+3. The old element continues serving other slides
 
 ## How Animation Works
 
 **Animation link** = two DIFFERENT elements with the same `link_id`.
 
 ```
-elements:       { id: "abc", link_id: "L1", data: {position: {x:80, y:200}} }   -- slide 1
-                { id: "def", link_id: "L1", data: {position: {x:500, y:200}} }  -- slide 2
+elements: { id: "abc", link_id: "L1", data: {position: {x:80, y:200}} }   -- slide 1
+          { id: "def", link_id: "L1", data: {position: {x:500, y:200}} }  -- slide 2
 ```
 
-In the presenter, elements with matching `link_id` on consecutive slides animate between their positions. They're separate elements with separate content and positions.
+In the presenter, elements with matching `link_id` on consecutive slides animate between positions using CSS transitions.
 
-## Freeing a Synced Element
+## Architecture: Zustand + Write-Through
 
-When you want an element to have independent content on one slide:
+The app does NOT query SQLite on every render. Instead:
 
-1. Duplicate the element: INSERT new row in `elements` with new ID, copy of data
-2. Update the `slide_elements` row for that slide to point to the new copy
-3. Optionally set matching `link_id` on both for animation
+```
+┌──────────────────┐      ┌──────────────────┐
+│   Zustand Store  │ ───> │   SQLite (.eigendeck)
+│  (in-memory)     │      │   (on disk / in memory)
+│                  │ <─── │
+│  Source of truth  │      │  Persistence layer
+│  during editing  │      │
+└──────────────────┘      └──────────────────┘
+```
 
-Before: one element on 3 slides.
-After: original on 2 slides, copy on 1 slide. They're independent.
+### On app start
+1. `db_open_memory()` creates an in-memory SQLite DB (before first save)
+2. Zustand store initializes with a default presentation
 
-## Operations
+### On open project
+1. `db_open(path)` opens the file-backed DB
+2. `db_export_json()` reads the full presentation
+3. Zustand store is populated with the result
+4. Write-through subscriber is enabled
 
-### Load a slide
+### During editing
+1. User edits → Zustand store updates
+2. Subscriber detects changes by diffing `prevPresentation` vs current
+3. Dirty items are tracked:
+   - `dirtyElements` — element IDs whose data changed
+   - `dirtySlides` — slide IDs whose metadata/position changed
+   - `dirtyZOrder` — slide IDs whose element order changed
+   - `addedSlides`, `deletedSlides` — structural changes
+   - `addedElements`, `deletedElements` — structural changes
+4. `scheduleFlush()` debounces (1s) then writes only dirty items to SQLite
+
+### On first save (no project file yet)
+1. `db_import_json()` dumps Zustand state into the in-memory DB
+2. `db_save_to_file(path)` uses SQLite's backup API to copy memory → file
+3. Reopens from file; write-through continues to disk
+
+### On close
+1. Flush pending writes
+2. `db_close()` checkpoints WAL and closes connection
+
+### Subscriber change detection
+
+| Change | Detection | Flush action |
+|--------|-----------|--------------|
+| Element data (text, position, style) | `pel !== cel` (reference compare) | `db_update_element` |
+| Slide metadata (layout, notes, groupId, theme) | Field compare | `db_update_slide` |
+| Slide order (reordering) | Element ID array compare | `db_update_slide` (with position) |
+| Element z-order (bring to front, etc.) | Element ID array compare | `db_update_z_order` for each element |
+| Element added | New ID not in prev set | `db_add_element` + `slide_elements` INSERT |
+| Element deleted | Old ID not in curr set | `slide_elements` UPDATE valid_to |
+| Slide added | New ID not in prev set | `db_add_slide` |
+| Slide deleted | Old ID not in curr set | `db_delete_slide` |
+| Presentation config | Title/config compare | `db_update_presentation` |
+
+### Critical invariant
+
+`sqliteDbPath` is set to `null` during `openSqliteProject()` to prevent the subscriber from treating loaded slides as "new additions" (which would double everything). `prevPresentation` is reset after load.
+
+## Asset Loading
+
+Assets are stored as BLOBs in the `assets` table. The frontend loads them via:
+
+1. `invoke('db_get_asset', { path })` → returns byte array
+2. `new Blob([bytes])` → `URL.createObjectURL(blob)` → blob URL
+3. Cached in `Map<path, blobUrl>` by `src/lib/demoAssets.ts`
+
+### Images
+- Stored with relative path (e.g. `images/pasted-123.png`)
+- `ImageBox` component uses `useAssetUrl(path)` hook → blob URL
+- Data URLs (`data:image/...`) are used inline (legacy, being migrated)
+
+### Demos
+- Stored as HTML in assets table
+- `useDemoUrl(path, hash)` hook → blob URL with optional hash fragment
+- In export: inlined as srcdoc with bootstrap injection
+
+### Refresh from disk
+- Demo overlay has a "Refresh" button when interacting
+- Reads HTML from disk relative to the `.eigendeck` file's directory
+- Updates the asset in SQLite, invalidates blob cache, reloads iframe
+
+## History & Time Travel
+
+### Viewing history
+
+`db_get_history_timestamps()` collects all timestamps from temporal tables, returns a timeline of events.
+
+### Reconstructing past state
+
+`db_get_state_at(timestamp)` rebuilds the full presentation JSON at any point in time using temporal queries: `valid_from <= ts AND (valid_to IS NULL OR valid_to > ts)`.
+
+### History panel
+
+View > History (Cmd+Shift+H) shows the timeline. Click any entry to preview the state at that time. "Restore" flushes current state first (preserving it in history), then overwrites.
+
+### Compacting
+
+`db_compact(--all)` deletes all history rows and runs VACUUM:
 
 ```sql
-SELECT e.id, e.type, e.data, e.link_id, se.z_order
-FROM slide_elements se
-JOIN elements e ON e.id = se.element_id AND e.valid_to IS NULL
-WHERE se.slide_id = ? AND se.valid_to IS NULL
-ORDER BY se.z_order;
+DELETE FROM slides WHERE valid_to IS NOT NULL;
+DELETE FROM elements WHERE valid_to IS NOT NULL;
+DELETE FROM slide_elements WHERE valid_to IS NOT NULL;
+VACUUM;
 ```
 
-### Edit an element (text, position, any property)
+Exponential thinning (keep more recent history, thin older) is designed but not yet implemented.
 
-```sql
--- Close old version
-UPDATE elements SET valid_to = ? WHERE id = ? AND valid_to IS NULL;
--- Insert new version
-INSERT INTO elements (id, type, data, link_id, valid_from)
-VALUES (?, ?, ?, ?, ?);
-```
-
-One write. Every slide that references this element sees the change.
-
-### Add element to a slide
-
-```sql
-INSERT INTO elements (id, type, data, link_id, valid_from)
-VALUES (?, ?, ?, ?, ?);
-INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from)
-VALUES (?, ?, ?, ?);
-```
-
-### Delete element from one slide
-
-```sql
-UPDATE slide_elements SET valid_to = ?
-WHERE slide_id = ? AND element_id = ? AND valid_to IS NULL;
-```
-
-Element still exists on other slides.
-
-### Delete element from all slides
-
-```sql
-UPDATE slide_elements SET valid_to = ?
-WHERE element_id = ? AND valid_to IS NULL;
-```
-
-### Duplicate a slide (build step)
-
-```sql
--- New slide
-INSERT INTO slides (id, position, ...) VALUES (...);
--- Copy all element references (same elements, new z_order rows)
-INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from)
-SELECT ?, element_id, z_order, ?
-FROM slide_elements
-WHERE slide_id = ? AND valid_to IS NULL;
-```
-
-All elements are now synced between original and copy. To free one, duplicate the element.
-
-### Find which slides an element appears on
-
-```sql
-SELECT slide_id FROM slide_elements
-WHERE element_id = ? AND valid_to IS NULL;
-```
-
-### Undo: restore state at timestamp
-
-```sql
--- Elements as of time T
-SELECT e.id, e.type, e.data, e.link_id
-FROM elements e
-WHERE e.valid_from <= ? AND (e.valid_to IS NULL OR e.valid_to > ?);
-
--- Slide-element mappings as of time T
-SELECT se.slide_id, se.element_id, se.z_order
-FROM slide_elements se
-WHERE se.valid_from <= ? AND (se.valid_to IS NULL OR se.valid_to > ?);
-```
-
-## Timestamp Strategy
-
-ISO 8601 + monotonic counter to avoid collisions:
-
-```
-2026-04-12T14:53:01.234Z-00000001
-```
-
-### When to write
-
-- **Drag/resize**: write on `pointerup` only (not every frame)
-- **Text edit**: write on commit (blur / escape)
-- **Other changes**: write immediately
-- **Auto-save**: not needed — every change is persisted instantly
-
-## History Retention (Exponential Thinning)
-
-| Age | Keep |
-|---|---|
-| Last 10 minutes | Every version |
-| 10 min – 1 hour | One per minute |
-| 1 hour – 1 day | One per 10 minutes |
-| 1 day – 1 week | One per hour |
-| 1 week – 1 month | One per day |
-| > 1 month | One per week |
-
-Run thinning on app startup and periodically.
-
-## Asset Storage
-
-**SQLite is the source of truth.** All assets (images, demos) are stored as BLOBs.
-
-```sql
-CREATE TABLE assets (
-    path TEXT PRIMARY KEY,       -- e.g. "images/photo.png", "demos/graph.html"
-    data BLOB NOT NULL,
-    mime_type TEXT,
-    size INTEGER,
-    hash TEXT,                   -- SHA-256 for dedup
-    created_at TEXT,
-    external_path TEXT,          -- absolute path to watched file on disk (NULL if not unpacked)
-    external_mtime TEXT          -- last known mtime of external file (for change detection)
-);
-```
-
-- **Dedup**: hash content, skip if same hash exists
-- **No versioning**: assets are immutable (new version = new import with updated hash)
-- **Lazy load**: only read BLOB when rendering
-- **Path-based**: elements reference by relative path (e.g. `images/photo.png`)
-
-### File Watching
-
-If `external_path` is set for an asset, the app watches that file:
-
-- **File modified**: re-import BLOB into DB, update hash and external_mtime
-- **File deleted**: clear external_path (BLOB still in DB)
-- **App startup**: check all external_paths, re-import any that changed since last external_mtime
-
-File watches are on by default. Can be disabled per-asset or globally.
-
-### CLI: unpack
+## CLI Operations
 
 ```bash
-# Extract all assets to disk alongside the .eigendeck file
-eigendeck unpack myproject.eigendeck
-# Creates: myproject/images/photo.png, myproject/demos/graph.html
-# Sets external_path on each asset → app watches these files
-
-# Unpack just demos (for editing)
-eigendeck unpack myproject.eigendeck --demos
-
-# Unpack just images
-eigendeck unpack myproject.eigendeck --images
+eigendeck-cli file.eigendeck info              # Show stats
+eigendeck-cli file.eigendeck outline           # Slide outline
+eigendeck-cli file.eigendeck list slides       # List all slides
+eigendeck-cli file.eigendeck list elements 3   # Elements on slide 3
+eigendeck-cli file.eigendeck show slide 3      # Full slide JSON
+eigendeck-cli file.eigendeck search "matrix"   # Search content
+eigendeck-cli file.eigendeck history           # View edit history
+eigendeck-cli file.eigendeck validate          # Check integrity
+eigendeck-cli file.eigendeck export json out.json
+eigendeck-cli file.eigendeck import json in.json
+eigendeck-cli file.eigendeck compact --all     # Delete all history
 ```
 
-No `pack` command needed — file watches auto-reimport changes, so the DB always has the latest BLOBs. To stop watching, just delete the unpacked directory (external_path becomes stale, cleared on next startup).
+## File Size Considerations
 
-### Workflow
+| Component | Typical size | Notes |
+|-----------|-------------|-------|
+| Slides + elements | 50-200 KB | JSON text, grows with slide count |
+| Images (PNG) | 50 KB - 2 MB each | Pasted screenshots are the largest |
+| Demo HTML | 20 KB - 500 KB each | D3/interactive demos |
+| History | 0 - 50 MB | Grows with edit count, compact to clean |
+| SQLite overhead | ~300 KB | Page tables, indexes, WAL |
 
-1. **Normal use**: everything in SQLite. No files on disk. Drag-and-drop imports to BLOB.
-2. **Demo editing**: run `eigendeck unpack --demos`. Edit `demos/my-demo.html` in VS Code. App watches, auto-reimports on save.
-3. **Image editing**: run `eigendeck unpack --images`. Edit in Photoshop. App watches.
-4. **Sharing**: just send the `.eigendeck` file. All assets are already inside.
-5. **LLM editing**: run `eigendeck unpack` + `eigendeck export-json`. Edit `presentation.json`. Run `eigendeck import-json`.
+**Tip**: Run compact before sharing. A 44-slide talk went from 79 MB → 7 MB after compacting and deduplicating images.
 
-## File Format
+**Gotcha**: Image paste used to store base64 data URLs in element JSON (~2 MB per image). Fixed: now stores relative path, loads via blob URL from SQLite. Run the dedup script if you have old presentations with bloated elements.
 
-`.eigendeck` = SQLite database. Can be:
+## WAL Sidecar Files
 
-- Opened by `better-sqlite3` (Node), `rusqlite` (Rust), `sqlite3` CLI
-- Shared as a single file
-- Inspected with any SQLite browser
-
-### Migration from JSON
-
-1. Create `.eigendeck` SQLite file
-2. Each element → row in `elements` + row in `slide_elements` per slide
-3. Images/demos → rows in `assets`
-4. Keep original directory (non-destructive)
-
-### Export to JSON directory
-
-Extract current state → write presentation.json + asset files.
-
-## Architecture
-
-**All SQLite in Rust.** No Zustand in-memory store. No WASM.
-
-```
-React Component
-  → invoke('get_slide_elements', { slideId })
-  → Rust: rusqlite query
-  → returns JSON
-  → Component renders
-
-React Component (edit)
-  → invoke('update_element', { id, data })
-  → Rust: close old version + insert new
-  → returns success
-  → Component re-fetches affected data
-```
-
-- `rusqlite` in the Tauri backend
-- Frontend sends commands via `invoke()`
-- Native speed, direct file access
-- For drag (60fps): batch position updates client-side, flush on pointerup via single `invoke()`
-- File watching: Tauri watch plugin, events forwarded to frontend to trigger re-render
-
-## Implementation Plan
-
-1. Schema + migration (JSON → SQLite importer)
-2. Read path: load presentation from SQLite
-3. Write path: element updates, slide changes
-4. Asset storage: images/demos as BLOBs
-5. History UI: timeline browser, undo from DB
-6. Thinning: exponential history pruning
-7. CLI: read/write SQLite in tools/eigendeck.mjs
-8. Export: SQLite → HTML, SQLite → JSON directory
-
-## Decisions
-
-1. **No in-memory cache.** No Zustand store holding the full presentation. SQLite is fast enough (0.005ms per slide load, 0.002ms per element lookup) to be the sole source of truth. React components call Tauri `invoke()` to read/write. Eliminates two-sources-of-truth bugs.
-
-2. **WAL mode + checkpoint on close.** WAL is 48x faster for writes than DELETE mode. Sidecar files (`-wal`, `-shm`) are cleaned up on graceful close via `PRAGMA wal_checkpoint(TRUNCATE)`. They persist only on crash and are harmless (SQLite recovers on next open).
-
-3. **File watch via `@tauri-apps/plugin-fs` (already installed).** The `watch()` function in the FS plugin uses native backends (kqueue/FSEvents/inotify) with built-in debouncing. No additional plugin needed — it's part of our existing `tauri-plugin-fs` dependency.
-
-4. **Unpack creates `myproject/` directory.** `eigendeck unpack myproject.eigendeck` → creates `myproject/images/`, `myproject/demos/`. Errors if `myproject/` already exists. `--output <dir>` flag to export elsewhere.
-
-5. **Version everything.** All three temporal tables (slides, elements, slide_elements) track history. Slide reorders, layout changes, note edits — all versioned.
-
-6. **Auto-convert on open.** When opening an old `presentation.json` directory, ask the user if they want to convert to `.eigendeck`. If yes, create the SQLite file and import. Keep the original directory as-is (non-destructive).
-
-7. **Compact in app + CLI.** Both a menu item (File > Compact Presentation) and `eigendeck compact` CLI command. Deletes old history, runs VACUUM.
-
-## Keeping Things in Sync
-
-### Git hooks (`.githooks/`)
-
-Install with: `git config core.hooksPath .githooks`
-
-**pre-commit**:
-- Warns if `src/types/presentation.ts` changed without updating `LLM-EDITING.md`
-- Warns if SQL schema changed without updating `SQLITE_STORAGE.md`
-- Reminds to test both GUI and CLI export when `exportCore.mjs` changes
-
-**post-commit**:
-- Auto-runs `bench-perf.mjs` when storage-related code changes
-- Saves results to `tools/perf-results/` for tracking over time
-- Non-blocking: failures don't prevent the commit
-
-### Canonical conversion (toJSON / fromJSON)
-
-All JSON interchange uses two functions (currently in `tools/bench-json-convert.mjs`, to be moved to `src/lib/sqliteStorage.ts`):
-
-- **`toJSON(db)`**: SQLite → `Presentation` JSON object. Used by HTML export, CLI tools, LLM editing export.
-- **`fromJSON(db, presentation, timestamp)`**: `Presentation` JSON → SQLite. Used by import, migration from JSON directories.
-
-These are the ONLY bridge between the two formats. If the schema changes, update these functions and the round-trip test will catch mismatches.
-
-### Performance tracking
-
-```bash
-# Run and save results
-node tools/bench-perf.mjs --save tools/perf-results/
-
-# Compare latest vs baseline
-ls -t tools/perf-results/perf-*.json | head -2 | xargs -I{} jq '.results | to_entries[] | "\(.key): \(.value.median)ms"' {}
-```
-
-Results are JSON files with timestamps, medians, p95, p99. Check for regressions before merging schema changes.
-
-### Test coverage
-
-- `src/__tests__/llm-editing-sync.test.ts`: verifies LLM-EDITING.md covers all TypeScript types
-- `tools/bench-json-convert.mjs`: verifies round-trip SQLite → JSON → SQLite
-- `tools/bench-perf.mjs`: catches performance regressions
+SQLite WAL mode creates `-wal` and `-shm` files alongside the `.eigendeck` file. These are:
+- Normal during operation
+- Cleaned up on graceful close (`PRAGMA wal_checkpoint(TRUNCATE)`)
+- Harmless if left behind (SQLite recovers on next open)
+- Gitignored via `*.eigendeck-wal` and `*.eigendeck-shm`
