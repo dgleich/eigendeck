@@ -392,27 +392,12 @@ function TextContent({
   const commitAndClose = useCallback(() => {
     if (ref.current) {
       stripMathLineStyles(ref.current);
-      onCommit(ref.current.innerHTML);
-      // Post-commit sanitization: fix WebKit bugs in the saved HTML
-      // Runs after commit so it doesn't interfere with editing
-      setTimeout(() => {
-        const store = usePresentationStore.getState();
-        const slide = store.presentation.slides[store.currentSlideIndex];
-        const el = slide?.elements.find((e) => e.id === element.id);
-        if (el && 'html' in el) {
-          let html = (el as any).html;
-          let changed = false;
-          // text-align on <span> → <div> (WebKit justifyCenter bug)
-          const fixed = html.replace(/<span([^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*)>/g, '<div$1>');
-          if (fixed !== html) { html = fixed; changed = true; }
-          // Fix broken nesting </div></span> → </span></div>
-          const fixed2 = html.replace(/<\/div><\/span>/g, '</span></div>');
-          if (fixed2 !== html) { html = fixed2; changed = true; }
-          if (changed) {
-            store.updateElement(element.id, { html } as any);
-          }
-        }
-      }, 0);
+      let html = ref.current.innerHTML;
+      // Sanitize WebKit bugs before saving (not touching the DOM, just the string)
+      // text-align on <span> → <div> (justifyCenter bug)
+      html = html.replace(/<span([^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*)>/g, '<div$1>');
+      html = html.replace(/<\/div><\/span>/g, '</span></div>');
+      onCommit(html);
     }
     setEditing(false);
   }, [onCommit]);
