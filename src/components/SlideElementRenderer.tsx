@@ -392,13 +392,27 @@ function TextContent({
   const commitAndClose = useCallback(() => {
     if (ref.current) {
       stripMathLineStyles(ref.current);
-      // Fix WebKit bug: justifyCenter sometimes puts text-align on <span> instead of <div>
-      let html = ref.current.innerHTML;
-      html = html.replace(/<span([^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*)>/g, '<div$1>');
-      html = html.replace(/<\/span>(\s*<\/div>)/g, '</div>$1'); // fix if nesting got swapped
-      // Also fix </div></span> → </span></div> from broken WebKit output
-      html = html.replace(/<\/div><\/span>/g, '</span></div>');
-      onCommit(html);
+      onCommit(ref.current.innerHTML);
+      // Post-commit sanitization: fix WebKit bugs in the saved HTML
+      // Runs after commit so it doesn't interfere with editing
+      setTimeout(() => {
+        const store = usePresentationStore.getState();
+        const slide = store.presentation.slides[store.currentSlideIndex];
+        const el = slide?.elements.find((e) => e.id === element.id);
+        if (el && 'html' in el) {
+          let html = (el as any).html;
+          let changed = false;
+          // text-align on <span> → <div> (WebKit justifyCenter bug)
+          const fixed = html.replace(/<span([^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*)>/g, '<div$1>');
+          if (fixed !== html) { html = fixed; changed = true; }
+          // Fix broken nesting </div></span> → </span></div>
+          const fixed2 = html.replace(/<\/div><\/span>/g, '</span></div>');
+          if (fixed2 !== html) { html = fixed2; changed = true; }
+          if (changed) {
+            store.updateElement(element.id, { html } as any);
+          }
+        }
+      }, 0);
     }
     setEditing(false);
   }, [onCommit]);
