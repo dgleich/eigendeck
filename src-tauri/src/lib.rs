@@ -307,7 +307,7 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
     let app_menu = SubmenuBuilder::new(app, "Eigendeck")
         .about(Some(AboutMetadata {
             name: Some("Eigendeck".into()),
-            version: Some("0.1.0".into()),
+            version: Some(app.package_info().version.to_string()),
             ..Default::default()
         }))
         .separator()
