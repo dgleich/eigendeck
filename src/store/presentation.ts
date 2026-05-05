@@ -780,6 +780,7 @@ usePresentationStore.subscribe((state) => {
   // Detect added/deleted slides
   const prevSlideIds = new Set(prev.slides.map((s) => s.id));
   const currSlideIds = new Set(curr.slides.map((s) => s.id));
+  let structuralChange = false;
 
   for (const cs of curr.slides) {
     if (!prevSlideIds.has(cs.id)) {
@@ -790,6 +791,7 @@ usePresentationStore.subscribe((state) => {
       for (let j = 0; j < cs.elements.length; j++) {
         addedElements.set(cs.elements[j].id, { slideId: cs.id, element: cs.elements[j], zOrder: j });
       }
+      structuralChange = true;
       scheduleFlush();
     }
   }
@@ -798,14 +800,18 @@ usePresentationStore.subscribe((state) => {
     if (!currSlideIds.has(ps.id)) {
       // Slide deleted
       deletedSlides.add(ps.id);
+      structuralChange = true;
       scheduleFlush();
     }
   }
 
-  // Detect slide reordering — compare position (array index) of each slide
-  let orderChanged = prev.slides.length === curr.slides.length;
-  if (orderChanged) {
-    orderChanged = false;
+  // Detect slide reordering OR position shifts from add/delete
+  // Any change in the slide ID sequence means positions need updating
+  let orderChanged = false;
+  if (structuralChange) {
+    // Adding/deleting slides shifts positions of subsequent slides
+    orderChanged = true;
+  } else if (prev.slides.length === curr.slides.length) {
     for (let i = 0; i < curr.slides.length; i++) {
       if (prev.slides[i]?.id !== curr.slides[i]?.id) {
         orderChanged = true;
@@ -814,8 +820,10 @@ usePresentationStore.subscribe((state) => {
     }
   }
   if (orderChanged) {
-    // Mark ALL slides as dirty so their positions get flushed
-    for (const cs of curr.slides) markSlideDirty(cs.id);
+    // Mark ALL existing slides as dirty so their positions get flushed
+    for (const cs of curr.slides) {
+      if (prevSlideIds.has(cs.id)) markSlideDirty(cs.id);
+    }
   }
 
   // Detect per-slide changes (only for slides that exist in both)

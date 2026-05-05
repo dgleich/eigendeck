@@ -68,6 +68,91 @@ describe('presentation store', () => {
     expect(usePresentationStore.getState().presentation.slides[2].id).toBe(id0);
   });
 
+  describe('slide ordering', () => {
+    function getSlideIds() {
+      return usePresentationStore.getState().presentation.slides.map(s => s.id);
+    }
+
+    it('adding slides maintains correct order', () => {
+      const store = usePresentationStore.getState();
+      const id0 = getSlideIds()[0];
+      store.addSlide(); // adds after current (0), so [0, new1]
+      const id1 = getSlideIds()[1];
+      store.addSlide(); // current is 1, adds after: [0, 1, new2]
+      const id2 = getSlideIds()[2];
+      expect(getSlideIds()).toEqual([id0, id1, id2]);
+      expect(getSlideIds().length).toBe(3);
+    });
+
+    it('adding slide in the middle shifts subsequent positions', () => {
+      const store = usePresentationStore.getState();
+      store.addSlide(); store.addSlide(); // 3 slides: [0, 1, 2]
+      const ids = getSlideIds();
+      store.selectSlide(0); // select first
+      store.addSlide(); // insert after 0: [0, new, 1, 2]
+      const newIds = getSlideIds();
+      expect(newIds.length).toBe(4);
+      expect(newIds[0]).toBe(ids[0]); // first unchanged
+      expect(newIds[2]).toBe(ids[1]); // old second is now third
+      expect(newIds[3]).toBe(ids[2]); // old third is now fourth
+    });
+
+    it('deleting a slide shifts subsequent positions', () => {
+      const store = usePresentationStore.getState();
+      store.addSlide(); store.addSlide(); // 3 slides
+      const ids = getSlideIds();
+      store.selectSlide(0);
+      store.deleteSlide(0); // delete first: [1, 2]
+      const newIds = getSlideIds();
+      expect(newIds.length).toBe(2);
+      expect(newIds[0]).toBe(ids[1]);
+      expect(newIds[1]).toBe(ids[2]);
+    });
+
+    it('moving slides produces correct order', () => {
+      const store = usePresentationStore.getState();
+      store.addSlide(); store.addSlide(); // [A, B, C]
+      const [a, b, c] = getSlideIds();
+      store.moveSlide(0, 2); // A to end: [B, C, A]
+      expect(getSlideIds()).toEqual([b, c, a]);
+    });
+
+    it('duplicate + move preserves order', () => {
+      const store = usePresentationStore.getState();
+      store.addSlide(); // [A, B]
+      const [a, b] = getSlideIds();
+      store.duplicateSlide(0); // [A, A', B] (duplicate inserts after original)
+      const ids = getSlideIds();
+      expect(ids.length).toBe(3);
+      expect(ids[0]).toBe(a);
+      expect(ids[2]).toBe(b);
+      const aPrime = ids[1];
+      // Move A' to end
+      store.moveSlide(1, 2); // [A, B, A']
+      const movedIds = getSlideIds();
+      expect(movedIds[0]).toBe(a);
+      expect(movedIds[1]).toBe(b);
+      expect(movedIds[2]).toBe(aPrime);
+    });
+
+    it('slide IDs at each position are unique after many operations', () => {
+      const store = usePresentationStore.getState();
+      // Add several slides
+      for (let i = 0; i < 5; i++) store.addSlide();
+      // Move some around
+      store.moveSlide(0, 3);
+      store.moveSlide(4, 1);
+      // Delete one
+      store.deleteSlide(2);
+      // Add another
+      store.addSlide();
+
+      const ids = getSlideIds();
+      const uniqueIds = new Set(ids);
+      expect(uniqueIds.size).toBe(ids.length); // no duplicates
+    });
+  });
+
   it('adds and updates elements', () => {
     const store = usePresentationStore.getState();
     store.addElement({
