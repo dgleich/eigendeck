@@ -28,6 +28,23 @@ import {
 import { flushToSqlite } from './store/presentation';
 import './App.css';
 
+/** Compute relative path from eigendeck's directory to a file */
+export function relPath(projectPath: string | null, fullPath: string): string {
+  if (!projectPath) return fullPath.split('/').pop() || 'file';
+  const dir = projectPath.replace(/\/[^/]+$/, '');
+  const dirParts = dir.split('/');
+  const fileParts = fullPath.split('/');
+  // Find common prefix
+  let common = 0;
+  while (common < dirParts.length && common < fileParts.length && dirParts[common] === fileParts[common]) {
+    common++;
+  }
+  // Build relative path: ../ for each remaining dir part, then remaining file parts
+  const ups = dirParts.length - common;
+  const rel = [...Array(ups).fill('..'), ...fileParts.slice(common)].join('/');
+  return rel || fullPath.split('/').pop() || 'file';
+}
+
 function App() {
   const { isPresenting, showProperties, showHistory } =
     usePresentationStore();
@@ -418,11 +435,7 @@ function App() {
               const selected = await open({ title: 'Select Image', filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'] }] });
               if (!selected) return;
               const fullPath = selected as string;
-              const projectPath = store.projectPath;
-              const projectDir = projectPath ? projectPath.replace(/\/[^/]+$/, '') + '/' : '';
-              const relativePath = projectDir && fullPath.startsWith(projectDir)
-                ? fullPath.slice(projectDir.length)
-                : `images/${fullPath.split('/').pop() || 'image.png'}`;
+              const relativePath = relPath(store.projectPath, fullPath);
               try {
                 const { invoke } = await import('@tauri-apps/api/core');
                 const { readFile } = await import('@tauri-apps/plugin-fs');
@@ -438,12 +451,7 @@ function App() {
               const selected = await open({ title: 'Select Demo', filters: [{ name: 'HTML', extensions: ['html'] }] });
               if (!selected) return;
               const fullPath = selected as string;
-              // Compute path relative to the eigendeck file's directory
-              const projectPath = store.projectPath;
-              const projectDir = projectPath ? projectPath.replace(/\/[^/]+$/, '') + '/' : '';
-              const relativePath = projectDir && fullPath.startsWith(projectDir)
-                ? fullPath.slice(projectDir.length)
-                : `demos/${fullPath.split('/').pop() || 'demo.html'}`;
+              const relativePath = relPath(store.projectPath, fullPath);
 
               // Store demo HTML as SQLite asset
               try {
