@@ -418,13 +418,16 @@ function App() {
               const selected = await open({ title: 'Select Image', filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'] }] });
               if (!selected) return;
               const fullPath = selected as string;
-              const fileName = fullPath.split('/').pop() || 'image.png';
-              const relativePath = `images/${fileName}`;
+              const projectPath = store.projectPath;
+              const projectDir = projectPath ? projectPath.replace(/\/[^/]+$/, '') + '/' : '';
+              const relativePath = projectDir && fullPath.startsWith(projectDir)
+                ? fullPath.slice(projectDir.length)
+                : `images/${fullPath.split('/').pop() || 'image.png'}`;
               try {
                 const { invoke } = await import('@tauri-apps/api/core');
                 const { readFile } = await import('@tauri-apps/plugin-fs');
                 const bytes = await readFile(fullPath);
-                const ext = fileName.split('.').pop()?.toLowerCase() || 'png';
+                const ext = fullPath.split('.').pop()?.toLowerCase() || 'png';
                 const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
                 await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime });
               } catch (err) { console.error('Failed to store image:', err); }
@@ -435,8 +438,12 @@ function App() {
               const selected = await open({ title: 'Select Demo', filters: [{ name: 'HTML', extensions: ['html'] }] });
               if (!selected) return;
               const fullPath = selected as string;
-              const fileName = fullPath.split('/').pop() || 'demo.html';
-              const relativePath = `demos/${fileName}`;
+              // Compute path relative to the eigendeck file's directory
+              const projectPath = store.projectPath;
+              const projectDir = projectPath ? projectPath.replace(/\/[^/]+$/, '') + '/' : '';
+              const relativePath = projectDir && fullPath.startsWith(projectDir)
+                ? fullPath.slice(projectDir.length)
+                : `demos/${fullPath.split('/').pop() || 'demo.html'}`;
 
               // Store demo HTML as SQLite asset
               try {

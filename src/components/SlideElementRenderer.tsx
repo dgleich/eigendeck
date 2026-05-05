@@ -180,18 +180,28 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
             // Refresh: re-read asset from disk, update SQLite, reload iframe
             try {
               const { invoke } = await import('@tauri-apps/api/core');
+              const { readFile } = await import('@tauri-apps/plugin-fs');
               const projectPath = usePresentationStore.getState().projectPath;
-              if (projectPath) {
-                const { readFile } = await import('@tauri-apps/plugin-fs');
-                // projectPath is /path/to/name (eigendeck minus extension)
-                // Demos are relative to the eigendeck file's directory
-                const dir = projectPath.replace(/\/[^/]+$/, '');
-                const bytes = await readFile(`${dir}/${element.src}`);
-                await invoke('db_store_asset', { path: element.src, data: Array.from(bytes), mimeType: 'text/html' });
-                const { invalidateAsset } = await import('../lib/demoAssets');
-                invalidateAsset(element.src);
-                setReloadKey((k) => k + 1);
+              const dir = projectPath ? projectPath.replace(/\/[^/]+$/, '') : '';
+              let bytes: Uint8Array | null = null;
+              // Try reading from the expected location
+              if (dir) {
+                try { bytes = await readFile(`${dir}/${element.src}`); } catch { /* not found */ }
               }
+              // If not found, open a file picker
+              if (!bytes) {
+                const { open } = await import('@tauri-apps/plugin-dialog');
+                const selected = await open({
+                  title: `Locate ${element.src}`,
+                  filters: [{ name: 'HTML', extensions: ['html'] }],
+                });
+                if (!selected) return;
+                bytes = await readFile(selected as string);
+              }
+              await invoke('db_store_asset', { path: element.src, data: Array.from(bytes), mimeType: 'text/html' });
+              const { invalidateAsset } = await import('../lib/demoAssets');
+              invalidateAsset(element.src);
+              setReloadKey((k) => k + 1);
             } catch (e) { console.error('Refresh failed:', e); }
           }}
             style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
@@ -245,16 +255,26 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
           <button className="demo-lock-btn" onClick={async () => {
             try {
               const { invoke } = await import('@tauri-apps/api/core');
+              const { readFile } = await import('@tauri-apps/plugin-fs');
               const projectPath = usePresentationStore.getState().projectPath;
-              if (projectPath) {
-                const { readFile } = await import('@tauri-apps/plugin-fs');
-                const dir = projectPath.replace(/\/[^/]+$/, '');
-                const bytes = await readFile(`${dir}/${element.demoSrc}`);
-                await invoke('db_store_asset', { path: element.demoSrc, data: Array.from(bytes), mimeType: 'text/html' });
-                const { invalidateAsset } = await import('../lib/demoAssets');
-                invalidateAsset(element.demoSrc);
-                setReloadKey((k) => k + 1);
+              const dir = projectPath ? projectPath.replace(/\/[^/]+$/, '') : '';
+              let bytes: Uint8Array | null = null;
+              if (dir) {
+                try { bytes = await readFile(`${dir}/${element.demoSrc}`); } catch { /* not found */ }
               }
+              if (!bytes) {
+                const { open } = await import('@tauri-apps/plugin-dialog');
+                const selected = await open({
+                  title: `Locate ${element.demoSrc}`,
+                  filters: [{ name: 'HTML', extensions: ['html'] }],
+                });
+                if (!selected) return;
+                bytes = await readFile(selected as string);
+              }
+              await invoke('db_store_asset', { path: element.demoSrc, data: Array.from(bytes), mimeType: 'text/html' });
+              const { invalidateAsset } = await import('../lib/demoAssets');
+              invalidateAsset(element.demoSrc);
+              setReloadKey((k) => k + 1);
             } catch (e) { console.error('Refresh failed:', e); }
           }}
             style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>

@@ -271,7 +271,11 @@ export function SlideEditor() {
                 try {
                   const { invoke } = await import('@tauri-apps/api/core');
                   const { readFile } = await import('@tauri-apps/plugin-fs');
-                  const relativePath = `images/${name}`;
+                  const projectPath = store.projectPath;
+                  const projectDir = projectPath ? projectPath.replace(/\/[^/]+$/, '') + '/' : '';
+                  const relativePath = projectDir && fullPath.startsWith(projectDir)
+                    ? fullPath.slice(projectDir.length)
+                    : `images/${name}`;
                   const bytes = await readFile(fullPath);
                   const ext = name.split('.').pop()?.toLowerCase() || 'png';
                   const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
@@ -286,7 +290,11 @@ export function SlideEditor() {
                 try {
                   const { invoke } = await import('@tauri-apps/api/core');
                   const { readFile, readTextFile } = await import('@tauri-apps/plugin-fs');
-                  const relativePath = `demos/${name}`;
+                  const projectPath = store.projectPath;
+                  const projectDir = projectPath ? projectPath.replace(/\/[^/]+$/, '') + '/' : '';
+                  const relativePath = projectDir && fullPath.startsWith(projectDir)
+                    ? fullPath.slice(projectDir.length)
+                    : `demos/${name}`;
                   const bytes = await readFile(fullPath);
                   await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html' });
 
