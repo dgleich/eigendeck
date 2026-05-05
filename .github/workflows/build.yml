@@ -57,6 +57,9 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Setup MathJax bundle
+        run: npm run setup
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
