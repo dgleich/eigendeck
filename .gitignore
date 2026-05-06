@@ -36,5 +36,8 @@ mathjax-ptsans-font/
 # Stray gitignore directory
 gitignore/
 
+# Auth tokens
+.gh_token
+
 # Website repo (separate GitHub repo, hosted on Cloudflare Pages)
 website/
