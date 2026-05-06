@@ -210,6 +210,31 @@ def main():
     html, demo_assets = extract_srcdoc_demos(html)
     print(f'  Extracted {len(demo_assets)} demos ({sum(len(d) for _, d, _ in demo_assets) / 1024 / 1024:.1f} MB)')
 
+    # Step 2.5: Clean up eigendeck-source (strip data URLs from embedded JSON)
+    source_match = re.search(r'<!-- eigendeck-source: (.+?) -->', html)
+    if source_match and len(source_match.group(1)) > 200000:  # >200KB
+        try:
+            import json as _json
+            source_json = base64.b64decode(source_match.group(1))
+            source_str = source_json.decode('utf-8', errors='replace')
+            p = _json.loads(source_str)
+            # Strip data URL images from elements (they're already in assets/)
+            stripped = 0
+            for slide in p.get('slides', []):
+                for el in slide.get('elements', []):
+                    src = el.get('src', '')
+                    if src.startswith('data:image'):
+                        el['src'] = f'assets/{hashlib.md5(base64.b64decode(src.split(",", 1)[1]).encode() if False else base64.b64decode(src.split(",", 1)[1])).hexdigest()[:12]}.png'
+                        stripped += 1
+            if stripped:
+                new_source = base64.b64encode(_json.dumps(p).encode()).decode()
+                html = html[:source_match.start(1)] + new_source + html[source_match.end(1):]
+                old_kb = len(source_match.group(1)) / 1024
+                new_kb = len(new_source) / 1024
+                print(f'  Cleaned eigendeck-source: {old_kb:.0f} KB → {new_kb:.0f} KB ({stripped} data URLs stripped)')
+        except Exception as e:
+            print(f'  Warning: could not clean eigendeck-source: {e}')
+
     # Step 3: Write assets
     for filename, data, mime in image_assets + demo_assets:
         (assets_dir / filename).write_bytes(data)
