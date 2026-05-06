@@ -66,8 +66,12 @@ def main():
     html = input_path.read_text(encoding='utf-8')
     file_size = len(html)
 
-    # Extract source JSON
+    # Verify this is an Eigendeck export
     presentation = extract_source(html)
+    has_slides = bool(re.search(r'data-index="\d+"', html))
+    if not presentation and not has_slides:
+        print(f'Error: {input_path} is not an Eigendeck HTML export', file=sys.stderr)
+        sys.exit(1)
 
     if args.source:
         if presentation:
