@@ -485,7 +485,6 @@ export const usePresentationStore = create<PresentationState>()(
     {
       partialize: (state) => ({
         presentation: state.presentation,
-        currentSlideIndex: state.currentSlideIndex,
       }),
       limit: 100,
       equality: (past, current) =>
