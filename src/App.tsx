@@ -224,6 +224,7 @@ html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     position: relative; overflow: hidden;
     box-sizing: border-box;
     break-after: page;
+    margin-top: 1.15625in;
   }
   .slide:last-child { break-after: auto; }
 }
