@@ -111,16 +111,20 @@ body { font-family: 'PT Sans', sans-serif; }
 ${slideHtmls.join('\n')}
 </body></html>`;
 
-  // Write to a temp file and open in the default browser for printing
-  // Tauri's WebKit doesn't support window.print() reliably
+  // Save print-ready HTML — user opens in browser and prints to PDF
   try {
+    const { save } = await import('@tauri-apps/plugin-dialog');
     const { writeTextFile } = await import('@tauri-apps/plugin-fs');
     const { openPath } = await import('@tauri-apps/plugin-opener');
-    const { tempDir } = await import('@tauri-apps/api/path');
-    const dir = await tempDir();
-    const tmpPath = `${dir}eigendeck-print-${Date.now()}.html`;
-    await writeTextFile(tmpPath, printHtml);
-    await openPath(tmpPath);
+    const defaultName = `${presentation.title.replace(/[^a-zA-Z0-9]/g, '-') || 'Presentation'}-print.html`;
+    const selected = await save({
+      title: 'Export Print-Ready HTML',
+      defaultPath: defaultName,
+      filters: [{ name: 'HTML', extensions: ['html'] }],
+    });
+    if (!selected) return;
+    await writeTextFile(selected as string, printHtml);
+    await openPath(selected as string);
   } catch (e) {
     console.error('PDF export failed:', e);
   }
