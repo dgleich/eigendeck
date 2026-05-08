@@ -83,7 +83,12 @@ async function printToPdf() {
   });
   if (!selected) return;
 
-  await message('Capturing slides... This may take a moment.', { title: 'Exporting', kind: 'info' });
+  await message(
+    'Eigendeck will now capture a screenshot of each slide. ' +
+    'The view will flip through all slides — this is normal. ' +
+    'The result is a print-ready HTML file you can open in a browser and print to PDF (Cmd+P).',
+    { title: 'Export for Print', kind: 'info' }
+  );
 
   try {
     const { domToDataUrl } = await import('modern-screenshot');
