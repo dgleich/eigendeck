@@ -197,7 +197,7 @@ async function printToPdf() {
           }
         }
       }
-      return `<div class="print-slide-wrapper"><div class="print-slide" style="background:${theme.background};">${inner}</div></div>`;
+      return `<div class="print-slide"><div class="print-slide-inner" style="background:${theme.background};">${inner}</div></div>`;
     });
 
     const printHtml = `<!DOCTYPE html><html><head>
@@ -206,47 +206,29 @@ async function printToPdf() {
 <meta name="robots" content="noindex">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');
+@page { size: landscape; margin: 0; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
-body { font-family: 'PT Sans', sans-serif; }
-
-/* Screen preview */
-@media screen {
-  body { background: #e0e0e0; padding: 20px 0; }
-  .print-slide-wrapper {
-    width: 1056px; margin: 40px auto;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
-  }
-  .print-slide {
-    width: ${W}px; height: ${H}px;
-    transform: scale(0.55); transform-origin: top left;
-    overflow: hidden;
-  }
+html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: 'PT Sans', sans-serif; background: #e0e0e0; }
+.print-slide {
+  /* 960x540 = 1920x1080 at 0.5 scale = 10in x 5.625in */
+  width: 960px; height: 540px;
+  position: relative; overflow: hidden;
+  page-break-after: always;
 }
-
-/* Print layout */
+.print-slide:last-child { page-break-after: auto; }
+.print-slide-inner {
+  position: absolute; top: 0; left: 0;
+  width: ${W}px; height: ${H}px;
+  transform-origin: top left;
+  transform: scale(0.5);
+}
+@media screen {
+  .print-slide { margin: 30px auto; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+}
 @media print {
-  @page { size: 11in 8.5in; margin: 0; }
-  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-
-  .print-slide-wrapper {
-    width: 100%; height: 100%;
-    page-break-after: always;
-    page-break-inside: avoid;
-    position: relative;
-    overflow: hidden;
-  }
-  .print-slide-wrapper:last-child {
-    page-break-after: auto;
-  }
-  .print-slide {
-    width: ${W}px; height: ${H}px;
-    transform: scale(0.55);
-    transform-origin: top left;
-    position: absolute;
-    top: 111px; left: 0;
-    overflow: hidden;
-  }
+  body { background: #fff; }
+  .print-slide { margin: 0 auto; }
 }
 </style>
 </head><body>
