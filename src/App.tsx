@@ -67,43 +67,68 @@ export function renderSlideForPrint(slide: import('./types/presentation').Slide,
   return `<div class="print-slide" style="width:${W}px;height:${H}px;position:relative;overflow:hidden;background:${theme.background};page-break-after:always;">${inner}</div>`;
 }
 
-/** Print all slides to PDF via the browser's print dialog */
+/** Export slides as print-ready HTML with screenshots of each slide */
 async function printToPdf() {
   const state = usePresentationStore.getState();
   const { presentation } = state;
   const W = 1920, H = 1080;
 
-  // Load image assets as data URLs for the print window
-  const imageCache = new Map<string, string>();
-  const { invoke } = await import('@tauri-apps/api/core');
-  for (const slide of presentation.slides) {
-    for (const el of slide.elements) {
-      if (el.type === 'image' && !el.src.startsWith('data:') && !imageCache.has(el.src)) {
+  // Ask for save path first
+  const { save, message } = await import('@tauri-apps/plugin-dialog');
+  const defaultName = `${presentation.title.replace(/[^a-zA-Z0-9]/g, '-') || 'Presentation'}-print.html`;
+  const selected = await save({
+    title: 'Export Print-Ready HTML',
+    defaultPath: defaultName,
+    filters: [{ name: 'HTML', extensions: ['html'] }],
+  });
+  if (!selected) return;
+
+  await message('Capturing slides... This may take a moment.', { title: 'Exporting', kind: 'info' });
+
+  try {
+    const { domToDataUrl } = await import('modern-screenshot');
+    const originalSlideIndex = state.currentSlideIndex;
+    const slideImages: string[] = [];
+
+    // Capture each slide by navigating to it and screenshotting the canvas
+    for (let i = 0; i < presentation.slides.length; i++) {
+      usePresentationStore.getState().selectSlide(i);
+      // Wait for rendering (demos, MathJax, images)
+      await new Promise(r => setTimeout(r, 300));
+
+      const canvas = document.querySelector('.slide-canvas') as HTMLElement;
+      if (canvas) {
         try {
-          const data = await invoke<number[]>('db_get_asset', { path: el.src });
-          const bytes = new Uint8Array(data);
-          const ext = el.src.split('.').pop()?.toLowerCase() || 'png';
-          const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-          let binary = '';
-          for (let i = 0; i < bytes.length; i += 8192) {
-            binary += String.fromCharCode(...bytes.slice(i, i + 8192));
-          }
-          imageCache.set(el.src, `data:${mime};base64,${btoa(binary)}`);
-        } catch { /* skip */ }
+          const dataUrl = await domToDataUrl(canvas, {
+            width: W, height: H, scale: 1,
+            style: { transform: 'none', transformOrigin: 'top left' },
+          });
+          slideImages.push(dataUrl);
+        } catch (e) {
+          console.warn(`Failed to capture slide ${i + 1}:`, e);
+          slideImages.push(''); // fallback to static render
+        }
       }
     }
-  }
 
-  const slideHtmls = presentation.slides.map((slide) => renderSlideForPrint(slide, presentation.theme, imageCache));
+    // Restore original slide
+    usePresentationStore.getState().selectSlide(originalSlideIndex);
 
-  const printHtml = `<!DOCTYPE html><html><head>
+    // Build print HTML from screenshots
+    const slideHtmls = slideImages.map((img, i) => {
+      if (img) {
+        return `<div class="print-slide" style="width:${W}px;height:${H}px;page-break-after:always;"><img src="${img}" style="width:100%;height:100%;" /></div>`;
+      }
+      // Fallback: use renderSlideForPrint for slides that failed capture
+      return renderSlideForPrint(presentation.slides[i], presentation.theme, new Map());
+    });
+
+    const printHtml = `<!DOCTYPE html><html><head>
 <meta charset="utf-8">
-<title>${presentation.title} — PDF</title>
+<title>${presentation.title}</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');
 @page { size: ${W}px ${H}px; margin: 0; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'PT Sans', sans-serif; }
 .print-slide { break-after: page; }
 @media screen { .print-slide { margin: 20px auto; box-shadow: 0 2px 8px rgba(0,0,0,0.2); } }
 </style>
@@ -111,17 +136,7 @@ body { font-family: 'PT Sans', sans-serif; }
 ${slideHtmls.join('\n')}
 </body></html>`;
 
-  // Save print-ready HTML — user opens in browser and prints to PDF
-  try {
-    const { save } = await import('@tauri-apps/plugin-dialog');
     const { writeTextFile } = await import('@tauri-apps/plugin-fs');
-    const defaultName = `${presentation.title.replace(/[^a-zA-Z0-9]/g, '-') || 'Presentation'}-print.html`;
-    const selected = await save({
-      title: 'Export Print-Ready HTML',
-      defaultPath: defaultName,
-      filters: [{ name: 'HTML', extensions: ['html'] }],
-    });
-    if (!selected) return;
     await writeTextFile(selected as string, printHtml);
   } catch (e) {
     console.error('PDF export failed:', e);

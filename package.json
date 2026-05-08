@@ -21,6 +21,7 @@
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2.4.5",
     "@tauri-apps/plugin-opener": "^2",
+    "modern-screenshot": "^4.7.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "zundo": "^2.3.0",
