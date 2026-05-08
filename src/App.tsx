@@ -111,29 +111,16 @@ body { font-family: 'PT Sans', sans-serif; }
 ${slideHtmls.join('\n')}
 </body></html>`;
 
-  // Use a hidden iframe for printing — works in Tauri's WebKit
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;border:none;background:#fff;';
-  document.body.appendChild(iframe);
-  const doc = iframe.contentDocument || iframe.contentWindow?.document;
-  if (!doc) { iframe.remove(); return; }
-  doc.open();
-  doc.write(printHtml);
-  doc.close();
-
-  // Wait for fonts, then print
-  const triggerPrint = () => {
-    setTimeout(() => {
-      iframe.contentWindow?.print();
-      // Remove iframe after print dialog closes
-      setTimeout(() => iframe.remove(), 1000);
-    }, 500);
-  };
-
-  if (iframe.contentWindow?.document.fonts) {
-    iframe.contentWindow.document.fonts.ready.then(triggerPrint);
-  } else {
-    triggerPrint();
+  // Write to a temp file and open in the default browser for printing
+  // Tauri's WebKit doesn't support window.print() reliably
+  try {
+    const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+    const { openPath } = await import('@tauri-apps/plugin-opener');
+    const tmpPath = `/tmp/eigendeck-print-${Date.now()}.html`;
+    await writeTextFile(tmpPath, printHtml);
+    await openPath(tmpPath);
+  } catch (e) {
+    console.error('PDF export failed:', e);
   }
 }
 
