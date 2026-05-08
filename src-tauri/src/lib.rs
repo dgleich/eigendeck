@@ -370,6 +370,8 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build(app).map_err(|e| e.to_string())?;
     let debug_item = MenuItemBuilder::new("Debug Console").id("debug-console").accelerator("CmdOrCtrl+Shift+D")
         .build(app).map_err(|e| e.to_string())?;
+    let decorations_item = MenuItemBuilder::new("Hide Window Chrome").id("toggle-decorations").accelerator("CmdOrCtrl+Shift+F")
+        .build(app).map_err(|e| e.to_string())?;
     let devtools_item = MenuItemBuilder::new("Developer Tools").id("devtools").accelerator("CmdOrCtrl+Alt+I")
         .build(app).map_err(|e| e.to_string())?;
 
@@ -378,6 +380,8 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .item(&speaker_item)
         .item(&inspector_item)
         .item(&history_item)
+        .separator()
+        .item(&decorations_item)
         .separator()
         .item(&debug_item)
         .item(&devtools_item)

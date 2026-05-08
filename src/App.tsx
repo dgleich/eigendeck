@@ -704,6 +704,12 @@ function App() {
         case 'present': startPresenting(); break;
         case 'inspector': usePresentationStore.getState().toggleProperties(); break;
         case 'history': usePresentationStore.getState().toggleHistory(); break;
+        case 'toggle-decorations': (async () => {
+          const { getCurrentWindow } = await import('@tauri-apps/api/window');
+          const win = getCurrentWindow();
+          const current = await win.isDecorated();
+          await win.setDecorations(!current);
+        })(); break;
         case 'debug-console': window.dispatchEvent(new CustomEvent('toggle-debug-console')); break;
         case 'paste-plain':
           navigator.clipboard.readText().then((text) => {
