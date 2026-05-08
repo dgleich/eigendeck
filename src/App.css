@@ -2099,3 +2099,19 @@
 .history-restore-btn:hover {
   background: #1d4ed8;
 }
+
+/* PDF capture mode — hide all editor chrome */
+.pdf-capturing .slide-element {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.pdf-capturing .el-delete-btn,
+.pdf-capturing .el-resize-handle,
+.pdf-capturing .el-link-badges,
+.pdf-capturing .demo-overlay,
+.pdf-capturing .demo-lock-btn,
+.pdf-capturing .editor-toolbar,
+.pdf-capturing .slide-footer-meta,
+.pdf-capturing .slide-footer-number {
+  display: none !important;
+}

@@ -94,6 +94,12 @@ async function printToPdf() {
     const originalSlideIndex = state.currentSlideIndex;
     const slideImages: string[] = [];
 
+    // Deselect everything and hide editor UI during capture
+    usePresentationStore.getState().selectObject({ type: 'slide' });
+
+    // Add a class to hide hover/selection chrome
+    document.body.classList.add('pdf-capturing');
+
     // Capture each slide by navigating to it and screenshotting the canvas
     for (let i = 0; i < presentation.slides.length; i++) {
       usePresentationStore.getState().selectSlide(i);
@@ -115,7 +121,8 @@ async function printToPdf() {
       }
     }
 
-    // Restore original slide
+    // Restore original slide and remove capture class
+    document.body.classList.remove('pdf-capturing');
     usePresentationStore.getState().selectSlide(originalSlideIndex);
 
     // Convert data URL images to raw JPEG bytes for PDF
