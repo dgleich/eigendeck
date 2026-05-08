@@ -73,21 +73,20 @@ async function printToPdf() {
   const { presentation } = state;
   const W = 1920, H = 1080;
 
-  // Ask for save path first
   const { save, message } = await import('@tauri-apps/plugin-dialog');
-  const defaultName = `${presentation.title.replace(/[^a-zA-Z0-9]/g, '-') || 'Presentation'}-print.html`;
+  const defaultName = `${presentation.title.replace(/[^a-zA-Z0-9]/g, '-') || 'Presentation'}.pdf`;
   const selected = await save({
-    title: 'Export Print-Ready HTML',
+    title: 'Export to PDF',
     defaultPath: defaultName,
-    filters: [{ name: 'HTML', extensions: ['html'] }],
+    filters: [{ name: 'PDF', extensions: ['pdf'] }],
   });
   if (!selected) return;
 
   await message(
-    'Eigendeck will now capture a screenshot of each slide. ' +
-    'The view will flip through all slides — this is normal. ' +
-    'The result is a print-ready HTML file you can open in a browser and print to PDF (Cmd+P).',
-    { title: 'Export for Print', kind: 'info' }
+    'Eigendeck will capture a screenshot of each slide to build the PDF. ' +
+    'Interactive demos are captured as static images of their current state. ' +
+    'The view will flip through all slides briefly — this is normal.',
+    { title: 'Export to PDF', kind: 'info' }
   );
 
   try {
@@ -119,33 +118,138 @@ async function printToPdf() {
     // Restore original slide
     usePresentationStore.getState().selectSlide(originalSlideIndex);
 
-    // Build print HTML from screenshots
-    const slideHtmls = slideImages.map((img, i) => {
-      if (img) {
-        return `<div class="print-slide" style="width:${W}px;height:${H}px;page-break-after:always;"><img src="${img}" style="width:100%;height:100%;" /></div>`;
+    // Convert data URL images to raw JPEG bytes for PDF
+    const jpegImages: Uint8Array[] = [];
+    for (const dataUrl of slideImages) {
+      if (!dataUrl) {
+        // Failed capture — create a blank white image placeholder
+        jpegImages.push(new Uint8Array(0));
+        continue;
       }
-      // Fallback: use renderSlideForPrint for slides that failed capture
-      return renderSlideForPrint(presentation.slides[i], presentation.theme, new Map());
-    });
+      // Convert PNG data URL to JPEG via canvas for smaller PDF
+      const img = new Image();
+      await new Promise<void>((resolve) => {
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+        img.src = dataUrl;
+      });
+      const cvs = document.createElement('canvas');
+      cvs.width = W; cvs.height = H;
+      const ctx = cvs.getContext('2d')!;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, W, H);
+      ctx.drawImage(img, 0, 0, W, H);
+      const jpegUrl = cvs.toDataURL('image/jpeg', 0.92);
+      const b64 = jpegUrl.split(',')[1];
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let j = 0; j < binary.length; j++) bytes[j] = binary.charCodeAt(j);
+      jpegImages.push(bytes);
+    }
 
-    const printHtml = `<!DOCTYPE html><html><head>
-<meta charset="utf-8">
-<title>${presentation.title}</title>
-<style>
-@page { size: ${W}px ${H}px; margin: 0; }
-* { margin: 0; padding: 0; box-sizing: border-box; }
-.print-slide { break-after: page; }
-@media screen { .print-slide { margin: 20px auto; box-shadow: 0 2px 8px rgba(0,0,0,0.2); } }
-</style>
-</head><body>
-${slideHtmls.join('\n')}
-</body></html>`;
-
-    const { writeTextFile } = await import('@tauri-apps/plugin-fs');
-    await writeTextFile(selected as string, printHtml);
+    // Build PDF with embedded JPEG images
+    const pdf = buildPdf(jpegImages, W, H);
+    const { writeFile } = await import('@tauri-apps/plugin-fs');
+    await writeFile(selected as string, pdf);
   } catch (e) {
     console.error('PDF export failed:', e);
   }
+}
+
+/** Build a minimal PDF from JPEG images (one per page) */
+function buildPdf(images: Uint8Array[], pageW: number, pageH: number): Uint8Array {
+  // PDF uses points (72 per inch). Scale 1920x1080 to fit standard proportions.
+  const ptW = 1920 * 0.5; // 960pt = ~13.3in
+  const ptH = 1080 * 0.5; // 540pt = ~7.5in
+
+  const encoder = new TextEncoder();
+  const parts: (Uint8Array | string)[] = [];
+  const offsets: number[] = [];
+  let pos = 0;
+
+  function write(s: string) { parts.push(s); pos += encoder.encode(s).length; }
+  function writeBin(b: Uint8Array) { parts.push(b); pos += b.length; }
+  function objStart(id: number) { offsets[id] = pos; write(`${id} 0 obj\n`); }
+
+  write('%PDF-1.4\n%\xFF\xFF\xFF\xFF\n');
+
+  // Object 1: Catalog
+  objStart(1);
+  write('<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+
+  // Object 2: Pages (references all page objects)
+  const pageObjStart = 3;
+  const firstImageObj = pageObjStart + images.length;
+  objStart(2);
+  const kids = images.map((_, i) => `${pageObjStart + i} 0 R`).join(' ');
+  write(`<< /Type /Pages /Kids [${kids}] /Count ${images.length} >>\nendobj\n`);
+
+  // Page objects and image objects
+  for (let i = 0; i < images.length; i++) {
+    const pageObj = pageObjStart + i;
+    const imgObj = firstImageObj + i;
+    const imgBytes = images[i];
+
+    // Page object
+    objStart(pageObj);
+    if (imgBytes.length > 0) {
+      // Page with image
+      const contentsObj = firstImageObj + images.length + i;
+      write(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${ptW} ${ptH}] ` +
+        `/Resources << /XObject << /Img${i} ${imgObj} 0 R >> >> ` +
+        `/Contents ${contentsObj} 0 R >>\nendobj\n`);
+    } else {
+      // Blank page (failed capture)
+      write(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${ptW} ${ptH}] >>\nendobj\n`);
+    }
+  }
+
+  // Image XObjects
+  for (let i = 0; i < images.length; i++) {
+    const imgObj = firstImageObj + i;
+    const imgBytes = images[i];
+    if (imgBytes.length === 0) { objStart(imgObj); write('<< >>\nendobj\n'); continue; }
+
+    objStart(imgObj);
+    write(`<< /Type /XObject /Subtype /Image /Width ${pageW} /Height ${pageH} ` +
+      `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imgBytes.length} >>\nstream\n`);
+    writeBin(imgBytes);
+    write('\nendstream\nendobj\n');
+  }
+
+  // Content streams (draw image on each page)
+  for (let i = 0; i < images.length; i++) {
+    const contentsObj = firstImageObj + images.length + i;
+    if (images[i].length === 0) { objStart(contentsObj); write('<< /Length 0 >>\nstream\nendstream\nendobj\n'); continue; }
+    const stream = `q ${ptW} 0 0 ${ptH} 0 0 cm /Img${i} Do Q`;
+    objStart(contentsObj);
+    write(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream\nendobj\n`);
+  }
+
+  // Cross-reference table
+  const xrefPos = pos;
+  const totalObjs = firstImageObj + images.length * 2;
+  write(`xref\n0 ${totalObjs + 1}\n`);
+  write('0000000000 65535 f \n');
+  for (let i = 1; i <= totalObjs; i++) {
+    const off = offsets[i] || 0;
+    write(`${String(off).padStart(10, '0')} 00000 n \n`);
+  }
+
+  write(`trailer\n<< /Size ${totalObjs + 1} /Root 1 0 R >>\n`);
+  write(`startxref\n${xrefPos}\n%%EOF\n`);
+
+  // Concatenate all parts
+  let totalLen = 0;
+  for (const p of parts) totalLen += typeof p === 'string' ? encoder.encode(p).length : p.length;
+  const result = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const p of parts) {
+    const bytes = typeof p === 'string' ? encoder.encode(p) : p;
+    result.set(bytes, offset);
+    offset += bytes.length;
+  }
+  return result;
 }
 
 /** Compute relative path from eigendeck's directory to a file */
