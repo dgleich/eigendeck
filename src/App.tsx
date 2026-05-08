@@ -155,7 +155,12 @@ async function printToPdf() {
       usePresentationStore.getState().selectSlide(originalSlideIndex);
     }
 
-    // Build print HTML: vector text + demo screenshots
+    // Build print HTML: all positions in inches (11in wide, 6.1875in tall for 16:9)
+    // Scale factor: 11in / 1920px for positions, same ratio for font sizes
+    const S = 11 / 1920; // inches per pixel
+    const px2in = (px: number) => (px * S).toFixed(4) + 'in';
+    const px2pt = (px: number) => (px * S * 72).toFixed(1) + 'pt'; // for font sizes
+
     const slideHtmls = presentation.slides.map((slide) => {
       const theme = resolveTheme(presentation.theme, slide.theme);
       let inner = '';
@@ -167,37 +172,39 @@ async function printToPdf() {
           const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
                              valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
           const color = el.color || themeColorForPreset(theme, el.preset);
-          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">` +
+          const fontSize = el.fontSize || ps.fontSize;
+          inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};overflow:hidden;">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${color};line-height:1.3;padding:8px 12px;">${el.html || ''}</div>` +
+            `<div style="font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:1.3;padding:${px2in(8)} ${px2in(12)};">${el.html || ''}</div>` +
             `</div></div>`;
         } else if (el.type === 'image') {
           const src = imageCache.get(el.src) || el.src;
-          const styles = [`position:absolute`, `left:${p.x}px`, `top:${p.y}px`, `width:${p.width}px`, `height:${p.height}px`, `object-fit:contain`];
-          if ((el as any).shadow) styles.push('filter:drop-shadow(4px 8px 16px rgba(0,0,0,0.3))');
-          if ((el as any).borderRadius) styles.push(`border-radius:${(el as any).borderRadius}px`);
+          const styles = [`position:absolute`, `left:${px2in(p.x)}`, `top:${px2in(p.y)}`, `width:${px2in(p.width)}`, `height:${px2in(p.height)}`, `object-fit:contain`];
+          if ((el as any).shadow) styles.push('filter:drop-shadow(2px 4px 8px rgba(0,0,0,0.3))');
+          if ((el as any).borderRadius) styles.push(`border-radius:${px2in((el as any).borderRadius)}`);
           if ((el as any).opacity != null && (el as any).opacity < 1) styles.push(`opacity:${(el as any).opacity}`);
           inner += `<img src="${src}" style="${styles.join(';')};" />`;
         } else if (el.type === 'arrow') {
           const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
           const angle = Math.atan2(y2 - y1, x2 - x1);
           const ha = Math.PI / 6;
-          inner += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;">` +
+          // SVG uses viewBox in original coordinates, scaled by the container
+          inner += `<svg viewBox="0 0 ${W} ${H}" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;">` +
             `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${strokeWidth}"/>` +
             `<polygon points="${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}" fill="${color}"/>` +
             `</svg>`;
         } else if (el.type === 'cover') {
-          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:${el.color || theme.background};"></div>`;
+          inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};background:${el.color || theme.background};"></div>`;
         } else if (el.type === 'demo' || el.type === 'demo-piece') {
           const screenshot = demoScreenshots.get(`${slide.id}:${el.id}`);
           if (screenshot) {
-            inner += `<img src="${screenshot}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;" />`;
+            inner += `<img src="${screenshot}" style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};" />`;
           } else {
-            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:#f8f8f8;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#999;font-size:24px;font-family:system-ui;">Interactive Demo</div>`;
+            inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};background:#f8f8f8;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#999;font-size:${px2pt(24)};font-family:system-ui;">Interactive Demo</div>`;
           }
         }
       }
-      return `<div class="slide-page"><div class="slide-canvas" style="background:${theme.background};">${inner}</div></div>`;
+      return `<div class="slide" style="background:${theme.background};">${inner}</div>`;
     });
 
     const printHtml = `<!DOCTYPE html><html><head>
@@ -206,43 +213,37 @@ async function printToPdf() {
 <meta name="robots" content="noindex">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');
-@page { margin: 0; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { font-family: 'PT Sans', sans-serif; background: #e0e0e0; }
-.slide-page {
-  width: 100vw; height: 100vh;
-  overflow: hidden;
-  page-break-after: always;
-  display: flex; align-items: center; justify-content: center;
+body { font-family: 'PT Sans', sans-serif; }
+html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+@media print {
+  @page { size: letter landscape; margin: 0; }
+  .slide {
+    width: 11in; height: 6.1875in;
+    position: relative; overflow: hidden;
+    box-sizing: border-box;
+    break-after: page;
+  }
+  .slide:last-child { break-after: auto; }
 }
-.slide-canvas {
-  width: ${W}px; height: ${H}px;
-  position: relative;
-  overflow: hidden;
-}
-@media print { body { background: white; } }
-</style>
-</head><body>
-${slideHtmls.join('\n')}
-<script>
-function fitSlides() {
-  var pages = document.querySelectorAll('.slide-page');
-  for (var i = 0; i < pages.length; i++) {
-    var page = pages[i];
-    var canvas = page.querySelector('.slide-canvas');
-    if (!canvas) continue;
-    var scaleX = page.clientWidth / ${W};
-    var scaleY = page.clientHeight / ${H};
-    var scale = Math.min(scaleX, scaleY);
-    canvas.style.transform = 'scale(' + scale + ')';
+
+@media screen {
+  body { background: #e0e0e0; padding: 20px 0; }
+  .slide {
+    width: 11in; height: 6.1875in;
+    position: relative; overflow: hidden;
+    box-sizing: border-box;
+    margin: 20px auto;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
   }
 }
-fitSlides();
-window.addEventListener('resize', fitSlides);
-window.addEventListener('beforeprint', fitSlides);
-</script>
-</body></html>`;
+</style>
+</head>
+<body>
+${slideHtmls.join('\n')}
+</body>
+</html>`;
 
     const { writeTextFile } = await import('@tauri-apps/plugin-fs');
     await writeTextFile(selected as string, printHtml);
