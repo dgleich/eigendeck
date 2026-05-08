@@ -221,9 +221,14 @@ body { font-family: 'PT Sans', sans-serif; }
 }
 .print-slide {
   width: ${W}px; height: ${H}px;
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%) scale(0.55);
-  transform-origin: center center;
+  position: absolute;
+  /* Scale to fit 11in x 8.5in page at 96dpi (1056 x 816px)
+     Width: 1056/1920 = 0.55, Height: 816/1080 = 0.756
+     Use width (smaller) as binding constraint */
+  transform: scale(0.55);
+  transform-origin: top left;
+  /* Center: (816 - 1080*0.55) / 2 = 111px top, (1056 - 1920*0.55) / 2 = 0 left */
+  top: 111px; left: 0;
   overflow: hidden;
 }
 @media screen {
