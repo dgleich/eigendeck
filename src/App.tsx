@@ -116,7 +116,9 @@ ${slideHtmls.join('\n')}
   try {
     const { writeTextFile } = await import('@tauri-apps/plugin-fs');
     const { openPath } = await import('@tauri-apps/plugin-opener');
-    const tmpPath = `/tmp/eigendeck-print-${Date.now()}.html`;
+    const { tempDir } = await import('@tauri-apps/api/path');
+    const dir = await tempDir();
+    const tmpPath = `${dir}eigendeck-print-${Date.now()}.html`;
     await writeTextFile(tmpPath, printHtml);
     await openPath(tmpPath);
   } catch (e) {
