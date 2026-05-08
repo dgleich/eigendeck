@@ -218,7 +218,6 @@ body { font-family: 'PT Sans', sans-serif; background: #e0e0e0; }
 }
 .slide-canvas {
   width: ${W}px; height: ${H}px;
-  transform: scale(0.5);
   position: relative;
   overflow: hidden;
 }
@@ -226,6 +225,23 @@ body { font-family: 'PT Sans', sans-serif; background: #e0e0e0; }
 </style>
 </head><body>
 ${slideHtmls.join('\n')}
+<script>
+function fitSlides() {
+  var pages = document.querySelectorAll('.slide-page');
+  for (var i = 0; i < pages.length; i++) {
+    var page = pages[i];
+    var canvas = page.querySelector('.slide-canvas');
+    if (!canvas) continue;
+    var scaleX = page.clientWidth / ${W};
+    var scaleY = page.clientHeight / ${H};
+    var scale = Math.min(scaleX, scaleY);
+    canvas.style.transform = 'scale(' + scale + ')';
+  }
+}
+fitSlides();
+window.addEventListener('resize', fitSlides);
+window.addEventListener('beforeprint', fitSlides);
+</script>
 </body></html>`;
 
     const { writeTextFile } = await import('@tauri-apps/plugin-fs');
