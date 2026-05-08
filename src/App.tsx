@@ -211,29 +211,25 @@ async function printToPdf() {
 html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 body { font-family: 'PT Sans', sans-serif; }
 .print-slide-wrapper {
-  width: 11in; height: 8.5in;
-  position: relative; overflow: hidden;
   break-after: page; page-break-after: always;
   break-inside: avoid; page-break-inside: avoid;
+  /* Explicit size = scaled slide dimensions so browser doesn't clip */
+  width: 1056px; height: 594px;
+  margin: 111px auto 0 auto;
+  overflow: visible;
 }
 .print-slide-wrapper:last-child {
   break-after: auto; page-break-after: auto;
 }
 .print-slide {
   width: ${W}px; height: ${H}px;
-  position: absolute;
-  /* Scale to fit 11in x 8.5in page at 96dpi (1056 x 816px)
-     Width: 1056/1920 = 0.55, Height: 816/1080 = 0.756
-     Use width (smaller) as binding constraint */
   transform: scale(0.55);
   transform-origin: top left;
-  /* Center: (816 - 1080*0.55) / 2 = 111px top, (1056 - 1920*0.55) / 2 = 0 left */
-  top: 111px; left: 0;
   overflow: hidden;
 }
 @media screen {
   body { background: #e0e0e0; padding: 20px 0; }
-  .print-slide-wrapper { margin: 20px auto; box-shadow: 0 2px 12px rgba(0,0,0,0.3); background: #fff; }
+  .print-slide-wrapper { margin: 40px auto; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
 }
 </style>
 </head><body>
