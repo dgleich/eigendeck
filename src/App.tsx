@@ -197,7 +197,7 @@ async function printToPdf() {
           }
         }
       }
-      return `<div class="print-slide"><div class="print-slide-inner" style="background:${theme.background};overflow:hidden;">${inner}</div></div>`;
+      return `<div class="slide-page"><div class="slide-canvas" style="background:${theme.background};">${inner}</div></div>`;
     });
 
     const printHtml = `<!DOCTYPE html><html><head>
@@ -209,23 +209,20 @@ async function printToPdf() {
 @page { margin: 0; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { font-family: 'PT Sans', sans-serif; }
-.print-slide {
+body { font-family: 'PT Sans', sans-serif; background: #e0e0e0; }
+.slide-page {
   width: 100vw; height: 100vh;
   overflow: hidden;
   page-break-after: always;
   display: flex; align-items: center; justify-content: center;
 }
-.print-slide:last-child { page-break-after: auto; }
-.print-slide-inner {
+.slide-canvas {
   width: ${W}px; height: ${H}px;
   transform: scale(0.5);
   position: relative;
+  overflow: hidden;
 }
-@media screen {
-  body { background: #e0e0e0; }
-  .print-slide { box-shadow: 0 2px 12px rgba(0,0,0,0.3); margin-bottom: 20px; }
-}
+@media print { body { background: white; } }
 </style>
 </head><body>
 ${slideHtmls.join('\n')}
