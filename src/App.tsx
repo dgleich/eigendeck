@@ -206,30 +206,47 @@ async function printToPdf() {
 <meta name="robots" content="noindex">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');
-@page { size: 11in 8.5in; margin: 0; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+html, body { margin: 0; padding: 0; }
 body { font-family: 'PT Sans', sans-serif; }
-.print-slide-wrapper {
-  break-after: page; page-break-after: always;
-  break-inside: avoid; page-break-inside: avoid;
-  /* Explicit size = scaled slide dimensions so browser doesn't clip */
-  width: 1056px; height: 594px;
-  margin: 111px auto 0 auto;
-  overflow: visible;
-}
-.print-slide-wrapper:last-child {
-  break-after: auto; page-break-after: auto;
-}
-.print-slide {
-  width: ${W}px; height: ${H}px;
-  transform: scale(0.55);
-  transform-origin: top left;
-  overflow: hidden;
-}
+
+/* Screen preview */
 @media screen {
   body { background: #e0e0e0; padding: 20px 0; }
-  .print-slide-wrapper { margin: 40px auto; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+  .print-slide-wrapper {
+    width: 1056px; margin: 40px auto;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  }
+  .print-slide {
+    width: ${W}px; height: ${H}px;
+    transform: scale(0.55); transform-origin: top left;
+    overflow: hidden;
+  }
+}
+
+/* Print layout */
+@media print {
+  @page { size: 11in 8.5in; margin: 0; }
+  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .print-slide-wrapper {
+    width: 100%; height: 100%;
+    page-break-after: always;
+    page-break-inside: avoid;
+    position: relative;
+    overflow: hidden;
+  }
+  .print-slide-wrapper:last-child {
+    page-break-after: auto;
+  }
+  .print-slide {
+    width: ${W}px; height: ${H}px;
+    transform: scale(0.55);
+    transform-origin: top left;
+    position: absolute;
+    top: 111px; left: 0;
+    overflow: hidden;
+  }
 }
 </style>
 </head><body>
