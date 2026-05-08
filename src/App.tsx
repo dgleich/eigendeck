@@ -206,37 +206,29 @@ async function printToPdf() {
 <meta name="robots" content="noindex">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');
-@page { size: landscape; margin: 0; }
-/* Note: uncheck "Print headers and footers" in your browser's print dialog */
+@page { size: 11in 8.5in; margin: 0; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 body { font-family: 'PT Sans', sans-serif; }
 .print-slide-wrapper {
-  width: 100vw; height: 100vh;
-  display: flex; align-items: center; justify-content: center;
-  break-after: page; overflow: hidden;
+  width: 11in; height: 8.5in;
+  position: relative; overflow: hidden;
+  break-after: page; page-break-after: always;
+  break-inside: avoid; page-break-inside: avoid;
+}
+.print-slide-wrapper:last-child {
+  break-after: auto; page-break-after: auto;
 }
 .print-slide {
   width: ${W}px; height: ${H}px;
-  position: relative; overflow: hidden;
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.55);
   transform-origin: center center;
-}
-@media print {
-  .print-slide-wrapper { width: 100%; height: 100%; }
-  .print-slide {
-    /* Scale 1920x1080 to fit landscape page (~10in x 7.5in = 720pt x 540pt) */
-    transform: scale(0.5);
-    transform-origin: top left;
-    margin: 0;
-  }
-  .print-slide-wrapper {
-    width: 960px; height: 540px;
-    align-items: flex-start; justify-content: flex-start;
-  }
+  overflow: hidden;
 }
 @media screen {
-  .print-slide-wrapper { page-break-after: always; }
-  .print-slide { margin: 20px auto; box-shadow: 0 2px 8px rgba(0,0,0,0.2); transform: scale(0.5); transform-origin: top center; }
-  .print-slide-wrapper { height: 600px; }
+  body { background: #e0e0e0; padding: 20px 0; }
+  .print-slide-wrapper { margin: 20px auto; box-shadow: 0 2px 12px rgba(0,0,0,0.3); background: #fff; }
 }
 </style>
 </head><body>
