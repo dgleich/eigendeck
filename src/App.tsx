@@ -27,6 +27,96 @@ import {
 } from './store/fileOps';
 import { flushToSqlite } from './store/presentation';
 import './App.css';
+import { resolveTheme, themeColorForPreset } from './lib/themes';
+import { TEXT_PRESET_STYLES } from './types/presentation';
+
+/** Print all slides to PDF via the browser's print dialog */
+async function printToPdf() {
+  const state = usePresentationStore.getState();
+  const { presentation } = state;
+  const W = 1920, H = 1080;
+
+  // Load image assets as data URLs for the print window
+  const imageCache = new Map<string, string>();
+  const { invoke } = await import('@tauri-apps/api/core');
+  for (const slide of presentation.slides) {
+    for (const el of slide.elements) {
+      if (el.type === 'image' && !el.src.startsWith('data:') && !imageCache.has(el.src)) {
+        try {
+          const data = await invoke<number[]>('db_get_asset', { path: el.src });
+          const bytes = new Uint8Array(data);
+          const ext = el.src.split('.').pop()?.toLowerCase() || 'png';
+          const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+          let binary = '';
+          for (let i = 0; i < bytes.length; i += 8192) {
+            binary += String.fromCharCode(...bytes.slice(i, i + 8192));
+          }
+          imageCache.set(el.src, `data:${mime};base64,${btoa(binary)}`);
+        } catch { /* skip */ }
+      }
+    }
+  }
+
+  // Build print-ready HTML with all slides
+  const slideHtmls = presentation.slides.map((slide) => {
+    const theme = resolveTheme(presentation.theme, slide.theme);
+    let inner = '';
+    for (const el of slide.elements) {
+      const p = el.position;
+      if (el.type === 'text') {
+        const ps = TEXT_PRESET_STYLES[el.preset] || TEXT_PRESET_STYLES.body;
+        const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
+        const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
+                           valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
+        const color = el.color || themeColorForPreset(theme, el.preset);
+        inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">` +
+          `<div style="width:100%;height:100%;${valignStyle}">` +
+          `<div style="font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${color};line-height:1.3;padding:8px 12px;">${el.html || ''}</div>` +
+          `</div></div>`;
+      } else if (el.type === 'image') {
+        const src = imageCache.get(el.src) || el.src;
+        inner += `<img src="${src}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;" />`;
+      } else if (el.type === 'arrow') {
+        const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const ha = Math.PI / 6;
+        inner += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;">` +
+          `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${strokeWidth}"/>` +
+          `<polygon points="${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}" fill="${color}"/>` +
+          `</svg>`;
+      } else if (el.type === 'cover') {
+        inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:${el.color || theme.background};"></div>`;
+      } else if (el.type === 'demo' || el.type === 'demo-piece') {
+        // Static placeholder for demos in PDF
+        inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:#f8f8f8;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#999;font-size:24px;font-family:system-ui;">Interactive Demo</div>`;
+      }
+    }
+    return `<div class="print-slide" style="width:${W}px;height:${H}px;position:relative;overflow:hidden;background:${theme.background};page-break-after:always;">${inner}</div>`;
+  });
+
+  // Open print window
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
+  printWindow.document.write(`<!DOCTYPE html><html><head>
+<meta charset="utf-8">
+<title>${presentation.title} — PDF</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');
+@page { size: ${W}px ${H}px; margin: 0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'PT Sans', sans-serif; }
+.print-slide { break-after: page; }
+@media screen { .print-slide { margin: 20px auto; box-shadow: 0 2px 8px rgba(0,0,0,0.2); } }
+</style>
+</head><body>
+${slideHtmls.join('\n')}
+<script>
+// Auto-print after fonts load
+document.fonts.ready.then(() => { setTimeout(() => window.print(), 500); });
+</script>
+</body></html>`);
+  printWindow.document.close();
+}
 
 /** Compute relative path from eigendeck's directory to a file */
 export function relPath(projectPath: string | null, fullPath: string): string {
@@ -380,6 +470,7 @@ function App() {
         case 'open-project': openProject(); break;
         case 'save': saveProject(); break;
         case 'export': exportPresentation(); break;
+        case 'export-pdf': printToPdf(); break;
         case 'import-html': importFromHtml(); break;
         case 'present': startPresenting(); break;
         case 'inspector': usePresentationStore.getState().toggleProperties(); break;

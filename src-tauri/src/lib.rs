@@ -330,6 +330,8 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build(app).map_err(|e| e.to_string())?;
     let export_item = MenuItemBuilder::new("Export to HTML").id("export").accelerator("CmdOrCtrl+Shift+E")
         .build(app).map_err(|e| e.to_string())?;
+    let export_pdf_item = MenuItemBuilder::new("Export to PDF...").id("export-pdf").accelerator("CmdOrCtrl+Shift+P")
+        .build(app).map_err(|e| e.to_string())?;
     let import_item = MenuItemBuilder::new("Import from HTML...").id("import-html")
         .build(app).map_err(|e| e.to_string())?;
 
@@ -343,6 +345,7 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .separator()
         .item(&save_item)
         .item(&export_item)
+        .item(&export_pdf_item)
         .item(&import_item)
         .separator()
         .close_window()
