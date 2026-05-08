@@ -67,104 +67,164 @@ export function renderSlideForPrint(slide: import('./types/presentation').Slide,
   return `<div class="print-slide" style="width:${W}px;height:${H}px;position:relative;overflow:hidden;background:${theme.background};page-break-after:always;">${inner}</div>`;
 }
 
-/** Export slides as print-ready HTML with screenshots of each slide */
+/** Export slides as print-ready HTML: vector text + screenshots of demos */
 async function printToPdf() {
   const state = usePresentationStore.getState();
   const { presentation } = state;
   const W = 1920, H = 1080;
 
   const { save, message } = await import('@tauri-apps/plugin-dialog');
-  const defaultName = `${presentation.title.replace(/[^a-zA-Z0-9]/g, '-') || 'Presentation'}.pdf`;
+  const defaultName = `${presentation.title.replace(/[^a-zA-Z0-9]/g, '-') || 'Presentation'}-print.html`;
   const selected = await save({
-    title: 'Export to PDF',
+    title: 'Export for Print',
     defaultPath: defaultName,
-    filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    filters: [{ name: 'HTML', extensions: ['html'] }],
   });
   if (!selected) return;
 
-  await message(
-    'Eigendeck will capture a screenshot of each slide to build the PDF. ' +
-    'Interactive demos are captured as static images of their current state. ' +
-    'The view will flip through all slides briefly — this is normal.',
-    { title: 'Export to PDF', kind: 'info' }
-  );
+  // Check if any slides have demos
+  const hasDemos = presentation.slides.some(s =>
+    s.elements.some(e => e.type === 'demo' || e.type === 'demo-piece'));
+
+  if (hasDemos) {
+    await message(
+      'Interactive demos will be captured as static screenshots. ' +
+      'The view will flip through slides with demos briefly — this is normal.\n\n' +
+      'Open the exported file in a browser and use Cmd+P to save as PDF.',
+      { title: 'Export for Print', kind: 'info' }
+    );
+  }
 
   try {
-    const { domToDataUrl } = await import('modern-screenshot');
-    const originalSlideIndex = state.currentSlideIndex;
-    const slideImages: string[] = [];
-
-    // Deselect everything and hide editor UI during capture
-    usePresentationStore.getState().selectObject({ type: 'slide' });
-
-    // Add a class to hide hover/selection chrome
-    document.body.classList.add('pdf-capturing');
-
-    // Capture each slide by navigating to it and screenshotting the canvas
-    for (let i = 0; i < presentation.slides.length; i++) {
-      usePresentationStore.getState().selectSlide(i);
-      // Wait for rendering (demos, MathJax, images)
-      await new Promise(r => setTimeout(r, 300));
-
-      const canvas = document.querySelector('.slide-canvas') as HTMLElement;
-      if (canvas) {
-        try {
-          const dataUrl = await domToDataUrl(canvas, {
-            width: W, height: H, scale: 1,
-            style: { transform: 'none', transformOrigin: 'top left' },
-          });
-          slideImages.push(dataUrl);
-        } catch (e) {
-          console.warn(`Failed to capture slide ${i + 1}:`, e);
-          slideImages.push(''); // fallback to static render
+    // Load image assets as data URLs
+    const imageCache = new Map<string, string>();
+    const { invoke } = await import('@tauri-apps/api/core');
+    for (const slide of presentation.slides) {
+      for (const el of slide.elements) {
+        if (el.type === 'image' && !el.src.startsWith('data:') && !imageCache.has(el.src)) {
+          try {
+            const data = await invoke<number[]>('db_get_asset', { path: el.src });
+            const bytes = new Uint8Array(data);
+            const ext = el.src.split('.').pop()?.toLowerCase() || 'png';
+            const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+            let binary = '';
+            for (let k = 0; k < bytes.length; k += 8192) {
+              binary += String.fromCharCode(...bytes.slice(k, k + 8192));
+            }
+            imageCache.set(el.src, `data:${mime};base64,${btoa(binary)}`);
+          } catch { /* skip */ }
         }
       }
     }
 
-    // Restore original slide and remove capture class
-    document.body.classList.remove('pdf-capturing');
-    usePresentationStore.getState().selectSlide(originalSlideIndex);
+    // Capture screenshots of demo elements only
+    const demoScreenshots = new Map<string, string>(); // slideId:elementId → dataUrl
+    const slidesWithDemos = presentation.slides.filter(s =>
+      s.elements.some(e => e.type === 'demo' || e.type === 'demo-piece'));
 
-    // Convert data URL images to raw JPEG bytes for PDF
-    const jpegImages: Uint8Array[] = [];
-    for (const dataUrl of slideImages) {
-      if (!dataUrl) {
-        // Failed capture — create a blank white image placeholder
-        jpegImages.push(new Uint8Array(0));
-        continue;
+    if (slidesWithDemos.length > 0) {
+      const { domToDataUrl } = await import('modern-screenshot');
+      const originalSlideIndex = state.currentSlideIndex;
+      usePresentationStore.getState().selectObject({ type: 'slide' });
+      document.body.classList.add('pdf-capturing');
+
+      for (let i = 0; i < presentation.slides.length; i++) {
+        const slide = presentation.slides[i];
+        const demoEls = slide.elements.filter(e => e.type === 'demo' || e.type === 'demo-piece');
+        if (demoEls.length === 0) continue;
+
+        usePresentationStore.getState().selectSlide(i);
+        await new Promise(r => setTimeout(r, 500)); // Extra time for demos to render
+
+        for (const el of demoEls) {
+          const domEl = document.querySelector(`[data-element-id="${el.id}"]`) as HTMLElement;
+          if (domEl) {
+            try {
+              const dataUrl = await domToDataUrl(domEl, {
+                width: el.position.width, height: el.position.height, scale: 1,
+              });
+              demoScreenshots.set(`${slide.id}:${el.id}`, dataUrl);
+            } catch (e) {
+              console.warn(`Failed to capture demo ${el.id}:`, e);
+            }
+          }
+        }
       }
-      // Convert PNG data URL to JPEG via canvas for smaller PDF
-      const img = new Image();
-      await new Promise<void>((resolve) => {
-        img.onload = () => resolve();
-        img.onerror = () => resolve();
-        img.src = dataUrl;
-      });
-      const cvs = document.createElement('canvas');
-      cvs.width = W; cvs.height = H;
-      const ctx = cvs.getContext('2d')!;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, W, H);
-      ctx.drawImage(img, 0, 0, W, H);
-      const jpegUrl = cvs.toDataURL('image/jpeg', 0.92);
-      const b64 = jpegUrl.split(',')[1];
-      const binary = atob(b64);
-      const bytes = new Uint8Array(binary.length);
-      for (let j = 0; j < binary.length; j++) bytes[j] = binary.charCodeAt(j);
-      jpegImages.push(bytes);
+
+      document.body.classList.remove('pdf-capturing');
+      usePresentationStore.getState().selectSlide(originalSlideIndex);
     }
 
-    // Build PDF with embedded JPEG images
-    const pdf = buildPdf(jpegImages, W, H);
-    const { writeFile } = await import('@tauri-apps/plugin-fs');
-    await writeFile(selected as string, pdf);
+    // Build print HTML: vector text + demo screenshots
+    const slideHtmls = presentation.slides.map((slide) => {
+      const theme = resolveTheme(presentation.theme, slide.theme);
+      let inner = '';
+      for (const el of slide.elements) {
+        const p = el.position;
+        if (el.type === 'text') {
+          const ps = TEXT_PRESET_STYLES[el.preset] || TEXT_PRESET_STYLES.body;
+          const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
+          const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
+                             valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
+          const color = el.color || themeColorForPreset(theme, el.preset);
+          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">` +
+            `<div style="width:100%;height:100%;${valignStyle}">` +
+            `<div style="font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${color};line-height:1.3;padding:8px 12px;">${el.html || ''}</div>` +
+            `</div></div>`;
+        } else if (el.type === 'image') {
+          const src = imageCache.get(el.src) || el.src;
+          const styles = [`position:absolute`, `left:${p.x}px`, `top:${p.y}px`, `width:${p.width}px`, `height:${p.height}px`, `object-fit:contain`];
+          if ((el as any).shadow) styles.push('filter:drop-shadow(4px 8px 16px rgba(0,0,0,0.3))');
+          if ((el as any).borderRadius) styles.push(`border-radius:${(el as any).borderRadius}px`);
+          if ((el as any).opacity != null && (el as any).opacity < 1) styles.push(`opacity:${(el as any).opacity}`);
+          inner += `<img src="${src}" style="${styles.join(';')};" />`;
+        } else if (el.type === 'arrow') {
+          const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
+          const angle = Math.atan2(y2 - y1, x2 - x1);
+          const ha = Math.PI / 6;
+          inner += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;">` +
+            `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${strokeWidth}"/>` +
+            `<polygon points="${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}" fill="${color}"/>` +
+            `</svg>`;
+        } else if (el.type === 'cover') {
+          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:${el.color || theme.background};"></div>`;
+        } else if (el.type === 'demo' || el.type === 'demo-piece') {
+          const screenshot = demoScreenshots.get(`${slide.id}:${el.id}`);
+          if (screenshot) {
+            inner += `<img src="${screenshot}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;" />`;
+          } else {
+            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:#f8f8f8;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#999;font-size:24px;font-family:system-ui;">Interactive Demo</div>`;
+          }
+        }
+      }
+      return `<div class="print-slide" style="width:${W}px;height:${H}px;position:relative;overflow:hidden;background:${theme.background};page-break-after:always;">${inner}</div>`;
+    });
+
+    const printHtml = `<!DOCTYPE html><html><head>
+<meta charset="utf-8">
+<title>${presentation.title}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');
+@page { size: ${W}px ${H}px; margin: 0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'PT Sans', sans-serif; }
+.print-slide { break-after: page; }
+@media screen { .print-slide { margin: 20px auto; box-shadow: 0 2px 8px rgba(0,0,0,0.2); } }
+</style>
+</head><body>
+${slideHtmls.join('\n')}
+</body></html>`;
+
+    const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+    await writeTextFile(selected as string, printHtml);
   } catch (e) {
     console.error('PDF export failed:', e);
   }
 }
 
 /** Build a minimal PDF from JPEG images (one per page) */
-function buildPdf(images: Uint8Array[], pageW: number, pageH: number): Uint8Array {
+/** @internal — kept for future direct PDF export */
+export function buildPdf(images: Uint8Array[], pageW: number, pageH: number): Uint8Array {
   // PDF uses points (72 per inch). Scale 1920x1080 to fit standard proportions.
   const ptW = 1920 * 0.5; // 960pt = ~13.3in
   const ptH = 1080 * 0.5; // 540pt = ~7.5in
