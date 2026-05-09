@@ -7,6 +7,7 @@ import {
   fontFamilyForPreset,
   fontFaceCSSForPackage,
   allFontFacesCSS,
+  collectUsedFontIds,
   DEFAULT_FONT_ID,
 } from '../lib/fonts';
 
@@ -105,6 +106,72 @@ describe('fontFamilyForPreset', () => {
     const ptsans = FONT_PACKAGE_MAP['ptsans'];
     expect(fontFamilyForPreset(ptsans, 'title')).toBe(ptsans.family);
     expect(fontFamilyForPreset(ptsans, 'body')).toBe(ptsans.family);
+  });
+});
+
+describe('backward compatibility', () => {
+  it('resolves to ptsans for legacy presentations with no font fields', () => {
+    // Legacy slide: no titleFont/bodyFont/hypeFont
+    const legacySlide = { id: 'x', elements: [], notes: '' };
+    const legacyConfig = { transition: 'slide', backgroundTransition: 'fade', width: 1920, height: 1080 };
+    expect(fontForPreset('title', legacySlide, legacyConfig).id).toBe('ptsans');
+    expect(fontForPreset('body', legacySlide, legacyConfig).id).toBe('ptsans');
+    expect(fontForPreset('hype', legacySlide, legacyConfig).id).toBe('ptsans');
+    expect(fontForPreset('footnote', legacySlide, legacyConfig).id).toBe('ptsans');
+  });
+
+  it('handles missing slide fields gracefully', () => {
+    expect(fontForPreset('title', {}, {}).id).toBe('ptsans');
+  });
+
+  it('handles unknown font ids by falling back to ptsans', () => {
+    const slide = { titleFont: 'nonexistent-font' };
+    expect(fontForPreset('title', slide, {}).id).toBe('ptsans');
+  });
+});
+
+describe('collectUsedFontIds', () => {
+  it('always includes ptsans even if not explicitly set', () => {
+    const ids = collectUsedFontIds({ slides: [] });
+    expect(ids).toContain('ptsans');
+  });
+
+  it('includes presentation defaults', () => {
+    const ids = collectUsedFontIds({
+      config: { defaultTitleFont: 'shantell', defaultBodyFont: 'libertinus' },
+      slides: [],
+    });
+    expect(ids).toContain('shantell');
+    expect(ids).toContain('libertinus');
+  });
+
+  it('includes all per-slide overrides', () => {
+    const ids = collectUsedFontIds({
+      slides: [
+        { titleFont: 'noto-sans' },
+        { bodyFont: 'source-sans' },
+        { hypeFont: 'concrete-euler' },
+      ],
+    });
+    expect(ids).toContain('noto-sans');
+    expect(ids).toContain('source-sans');
+    expect(ids).toContain('concrete-euler');
+  });
+
+  it('deduplicates ids', () => {
+    const ids = collectUsedFontIds({
+      config: { defaultTitleFont: 'shantell', defaultBodyFont: 'shantell' },
+      slides: [{ titleFont: 'shantell' }],
+    });
+    expect(ids.filter((i) => i === 'shantell').length).toBe(1);
+  });
+
+  it('filters out unknown font ids', () => {
+    const ids = collectUsedFontIds({
+      slides: [{ titleFont: 'definitely-not-a-real-font' }],
+    });
+    expect(ids).not.toContain('definitely-not-a-real-font');
+    expect(ids).toContain('ptsans');
   });
 });
 
