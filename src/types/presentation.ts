@@ -134,8 +134,24 @@ export interface CoverElement extends BaseElement {
   color?: string;  // default white
 }
 
+/**
+ * Experimental: text rendered as SVG (via foreignObject + HTML).
+ * Same fields as TextElement; renderer wraps in <svg><foreignObject>.
+ * No math support yet — for evaluating the SVG-rendered text approach.
+ */
+export interface SvgTextElement extends BaseElement {
+  type: 'svg-text';
+  preset: TextPreset;
+  html: string;
+  fontSize?: number;
+  fontFamily?: string;
+  color?: string;
+  verticalAlign?: VerticalAlign;
+}
+
 export type SlideElement =
   | TextElement
+  | SvgTextElement
   | ImageElement
   | ArrowElement
   | DemoElement

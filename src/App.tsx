@@ -836,6 +836,15 @@ function App() {
             <button title="Add annotation (small, blue, italic)" onClick={() => store.addElement(createTextElement('annotation'))}>+ Note</button>
             <button title="Add footnote (small, grey, narrow)" onClick={() => store.addElement(createTextElement('footnote'))}>+ Footnote</button>
             <span className="divider" />
+            <button title="Add SVG-rendered body text (experimental)"
+              onClick={() => store.addElement({
+                id: crypto.randomUUID(), type: 'svg-text', preset: 'body', html: 'SVG Text',
+                position: { x: 200, y: 300, width: 1000, height: 200 },
+              })}
+              style={{ background: '#fef3c7', borderColor: '#f59e0b' }}>
+              + SVG Text
+            </button>
+            <span className="divider" />
             <button title="Add arrow" onClick={() => store.addElement({ id: crypto.randomUUID(), type: 'arrow', x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: '#2563eb', strokeWidth: 4, headSize: 16 })}>+ Arrow</button>
             <button title="Add cover-up rectangle (white)" onClick={() => {
               const sel = store.selectedObject;

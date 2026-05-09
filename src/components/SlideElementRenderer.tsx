@@ -48,6 +48,27 @@ export function SlideElementRenderer({
         </DraggableBox>
       );
 
+    case 'svg-text':
+      return (
+        <DraggableBox
+          elementId={element.id}
+          position={element.position} zIndex={zIndex} scale={scale}
+          className={`el-svg-text el-preset-${element.preset}`}
+          isSelected={isSelected}
+          linkId={element.linkId} syncId={element.syncId}
+          _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
+          onEdit={() => {
+            const el = document.querySelector(`[data-element-id="${element.id}"]`);
+            if (el) el.dispatchEvent(new CustomEvent('start-editing', { bubbles: false }));
+          }}
+          onSelect={onSelect} onDelete={onDelete}
+          onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+          onUpdate={onUpdate}
+        >
+          <SvgTextContent element={element} onCommit={(html) => onUpdate({ html } as any)} />
+        </DraggableBox>
+      );
+
     case 'image':
       return (
         <ImageBox element={element} zIndex={zIndex} scale={scale}
@@ -524,6 +545,125 @@ function TextContent({
           if (!(e.metaKey || e.ctrlKey)) e.stopPropagation();
         } : undefined}
       />
+    </div>
+  );
+}
+
+// ============================================
+// SvgTextContent — experimental: text rendered as SVG (foreignObject)
+// No math support yet. Display = SVG, edit = contentEditable HTML.
+// ============================================
+function valignToCss(valign?: string): string {
+  if (valign === 'middle') return 'display:flex;flex-direction:column;justify-content:center';
+  if (valign === 'bottom') return 'display:flex;flex-direction:column;justify-content:flex-end';
+  return '';
+}
+
+function SvgTextContent({
+  element,
+  onCommit,
+}: {
+  element: import('../types/presentation').SvgTextElement;
+  onCommit: (html: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const presetStyle = TEXT_PRESET_STYLES[element.preset];
+  const { presentation, currentSlideIndex } = usePresentationStore.getState();
+  const slide = presentation.slides[currentSlideIndex];
+  const themeColors = resolveTheme(presentation.theme, slide?.theme);
+  const themeColor = themeColorForPreset(themeColors, element.preset);
+  const presetFontPkg = fontForPreset(element.preset, slide || {}, presentation.config);
+  const presetFontFamily = fontFamilyForPreset(presetFontPkg, element.preset);
+
+  const fontFamily = element.fontFamily || presetFontFamily;
+  const fontSize = element.fontSize || presetStyle.fontSize;
+  const fontWeight = presetStyle.fontWeight;
+  const fontStyle = presetStyle.fontStyle;
+  const color = element.color || themeColor;
+
+  // SVG viewBox = the element's box. Inside, foreignObject contains a styled
+  // div with the same dimensions. The browser handles all layout inside the
+  // foreignObject, so word wrap, alignment, and flex all just work — but
+  // the result is a self-contained SVG that scales perfectly.
+  const w = element.position.width;
+  const h = element.position.height;
+  const valign = element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined);
+  const valignStyle: React.CSSProperties = valign === 'middle'
+    ? { display: 'flex', flexDirection: 'column', justifyContent: 'center' }
+    : valign === 'bottom'
+    ? { display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }
+    : {};
+
+  const startEditing = () => setEditing(true);
+  const stopEditing = () => {
+    setEditing(false);
+    if (ref.current) {
+      const html = ref.current.innerHTML;
+      if (html !== element.html) onCommit(html);
+    }
+  };
+
+  // Listen for 'start-editing' custom event
+  useEffect(() => {
+    const el = wrapperRef.current?.closest('[data-element-id]');
+    if (!el) return;
+    const handler = () => { if (!editing) startEditing(); };
+    el.addEventListener('start-editing', handler);
+    return () => el.removeEventListener('start-editing', handler);
+  });
+
+  if (editing) {
+    // Edit mode: render an editable HTML div with the same styles as the SVG
+    return (
+      <div ref={wrapperRef} style={{ width: '100%', height: '100%', ...valignStyle }}>
+        <div
+          ref={ref}
+          contentEditable
+          suppressContentEditableWarning
+          onBlur={stopEditing}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') { e.preventDefault(); stopEditing(); }
+          }}
+          dangerouslySetInnerHTML={{ __html: element.html }}
+          style={{
+            width: '100%',
+            fontFamily, fontSize, fontWeight, fontStyle, color,
+            lineHeight: 1.3, padding: '8px 12px', outline: 'none',
+            // Faint indicator we're in edit mode
+            background: 'rgba(37, 99, 235, 0.05)',
+          }}
+          autoFocus
+        />
+      </div>
+    );
+  }
+
+  // Display mode: render as SVG with foreignObject
+  return (
+    <div ref={wrapperRef} style={{ width: '100%', height: '100%' }} onDoubleClick={startEditing}>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox={`0 0 ${w} ${h}`}
+        width="100%" height="100%"
+        style={{ display: 'block', overflow: 'visible' }}
+      >
+        <foreignObject x="0" y="0" width={w} height={h}>
+          {/* xmlns inside foreignObject is correct — React strips unknown
+              attrs on HTML elements so we set it via dangerouslySetInnerHTML
+              wrapper instead, by injecting the wrapper as raw HTML. */}
+          <div
+            dangerouslySetInnerHTML={{
+              __html: `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(valign)};overflow:hidden;box-sizing:border-box;">` +
+                `<div style="width:100%;font-family:${fontFamily};font-size:${fontSize}px;font-weight:${fontWeight};font-style:${fontStyle};color:${color};line-height:1.3;padding:8px 12px;">` +
+                (element.html || '') +
+                `</div></div>`
+            }}
+          />
+        </foreignObject>
+      </svg>
     </div>
   );
 }
