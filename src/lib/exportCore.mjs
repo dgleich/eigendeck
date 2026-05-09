@@ -123,7 +123,20 @@ export function bytesToDataUrl(bytes, ext) {
  * @returns {Promise<string>} The HTML string
  */
 export async function buildExportHtml(opts) {
-  const { presentation, readFile, readTextFile, renderMath, applyMathPreamble } = opts;
+  const {
+    presentation, readFile, readTextFile, renderMath, applyMathPreamble,
+    /**
+     * Optional: per-element font resolver. Returns the CSS font-family string
+     * to use for an element on a given slide. If omitted, falls back to
+     * preset.fontFamily (PT Sans).
+     */
+    resolveFont,
+    /**
+     * Optional: pre-built @font-face CSS block (typically with data URLs)
+     * to embed in <head>. If omitted, uses Google Fonts CDN for PT Sans only.
+     */
+    fontFacesCss,
+  } = opts;
 
   const W = presentation.config?.width || 1920;
   const H = presentation.config?.height || 1080;
@@ -178,9 +191,12 @@ export async function buildExportHtml(opts) {
           const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
           const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
                              valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
+          // Resolve font: explicit element override > resolved font for preset > preset default
+          const resolvedFont = resolveFont ? resolveFont(el.preset, slide) : ps.fontFamily;
+          const fontFamily = el.fontFamily || resolvedFont;
           inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;">${textHtml}</div>` +
+            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;">${textHtml}</div>` +
             `</div></div>`;
           break;
         }
@@ -267,7 +283,7 @@ window.MathJax = {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${presentation.title || 'Presentation'}</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');
+${fontFacesCss || `@import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');`}
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #000; overflow: hidden; font-family: 'PT Sans', sans-serif; }
 #viewport { width: 100vw; height: 100vh; position: relative; }

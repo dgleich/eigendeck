@@ -16,6 +16,9 @@ import { usePresentationStore, openSqliteProject, flushToSqlite } from './presen
 import { buildExportHtml } from '../lib/exportCore.mjs';
 import { renderMathInHtml, applyMathPreamble } from '../lib/mathjax';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
+import {
+  fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS,
+} from '../lib/fonts';
 
 async function showError(msg: string) {
   await message(msg, { title: 'Error', kind: 'error' });
@@ -165,6 +168,9 @@ export async function exportPresentation(): Promise<void> {
   if (!selected) return;
 
   try {
+    // Embed @font-face data URLs for all fonts actually used.
+    const fontFacesCss = await buildEmbeddedFontFacesCSS(presentation);
+
     // Read assets from SQLite for inlining
     const html = await buildExportHtml({
       presentation,
@@ -194,6 +200,14 @@ export async function exportPresentation(): Promise<void> {
       },
       renderMath: renderMathInHtml,
       applyMathPreamble: applyMathPreamble,
+      // Resolve font for each text element: title preset uses titleFont,
+      // hype preset uses hypeFont, others use bodyFont. Falls back through
+      // slide override → presentation default → 'ptsans'.
+      resolveFont: (preset: string, slide: { titleFont?: string; bodyFont?: string; hypeFont?: string }) => {
+        const pkg = fontForPreset(preset, slide || {}, presentation.config);
+        return fontFamilyForPreset(pkg, preset);
+      },
+      fontFacesCss,
     });
 
     await writeTextFile(selected as string, html);

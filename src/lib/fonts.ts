@@ -290,6 +290,107 @@ export function allFontFacesCSS(): string {
 }
 
 /**
+ * List all font package ids actually used in a presentation
+ * (presentation defaults + all per-slide overrides + 'ptsans' as fallback).
+ */
+export function collectUsedFontIds(presentation: {
+  config?: { defaultTitleFont?: string; defaultBodyFont?: string; defaultHypeFont?: string };
+  slides?: Array<{ titleFont?: string; bodyFont?: string; hypeFont?: string }>;
+}): string[] {
+  const ids = new Set<string>(['ptsans']); // always include default fallback
+  const cfg = presentation.config || {};
+  if (cfg.defaultTitleFont) ids.add(cfg.defaultTitleFont);
+  if (cfg.defaultBodyFont) ids.add(cfg.defaultBodyFont);
+  if (cfg.defaultHypeFont) ids.add(cfg.defaultHypeFont);
+  for (const s of presentation.slides || []) {
+    if (s.titleFont) ids.add(s.titleFont);
+    if (s.bodyFont) ids.add(s.bodyFont);
+    if (s.hypeFont) ids.add(s.hypeFont);
+  }
+  // Filter to known packages
+  return [...ids].filter((id) => FONT_PACKAGE_MAP[id]);
+}
+
+/**
+ * For a font package, list the file paths (relative to /fonts/) that should
+ * be embedded as base64 in an export. Skips files that don't exist on disk
+ * (caller should resolve to actual files via the file system).
+ */
+export function fontFilesForPackage(pkg: FontPackage): Array<{ filename: string; cssAttrs: { weight: string; style: string; isNarrow?: boolean } }> {
+  const out: Array<{ filename: string; cssAttrs: { weight: string; style: string; isNarrow?: boolean } }> = [];
+  if (pkg.files.kind === 'variable') {
+    const f = pkg.files;
+    const [w0, w1] = f.weightRange;
+    out.push({ filename: f.upright, cssAttrs: { weight: `${w0} ${w1}`, style: 'normal' } });
+    if (f.italic) out.push({ filename: f.italic, cssAttrs: { weight: `${w0} ${w1}`, style: 'italic' } });
+  } else {
+    const f = pkg.files;
+    out.push({ filename: f.regular, cssAttrs: { weight: '400', style: 'normal' } });
+    if (f.bold) out.push({ filename: f.bold, cssAttrs: { weight: '700', style: 'normal' } });
+    if (f.italic) out.push({ filename: f.italic, cssAttrs: { weight: '400', style: 'italic' } });
+    if (f.boldItalic) out.push({ filename: f.boldItalic, cssAttrs: { weight: '700', style: 'italic' } });
+    if (f.narrowRegular) out.push({ filename: f.narrowRegular, cssAttrs: { weight: '400', style: 'normal', isNarrow: true } });
+    if (f.narrowBold) out.push({ filename: f.narrowBold, cssAttrs: { weight: '700', style: 'normal', isNarrow: true } });
+  }
+  return out;
+}
+
+/** Bare family name for a package (e.g. "PT Sans"), used for @font-face declarations. */
+export function bareFamilyName(pkg: FontPackage): string {
+  return pkg.family.replace(/^['"]?([^'",]+)['"]?.*$/, '$1');
+}
+
+/** Bare narrow family name, or null. */
+export function bareNarrowFamilyName(pkg: FontPackage): string | null {
+  if (!pkg.narrowFamily) return null;
+  return pkg.narrowFamily.replace(/^['"]?([^'",]+)['"]?.*$/, '$1');
+}
+
+/**
+ * Build embedded @font-face declarations as data: URLs for all fonts used
+ * by a presentation. Fetches font files via fetch() (so works in browser/
+ * Tauri contexts where /fonts/ is served).
+ *
+ * Returns the CSS string ready to drop in <style>.
+ */
+export async function buildEmbeddedFontFacesCSS(presentation: {
+  config?: { defaultTitleFont?: string; defaultBodyFont?: string; defaultHypeFont?: string };
+  slides?: Array<{ titleFont?: string; bodyFont?: string; hypeFont?: string }>;
+}): Promise<string> {
+  const usedFontIds = collectUsedFontIds(presentation);
+  const lines: string[] = [];
+  for (const id of usedFontIds) {
+    const pkg = resolveFontPackage(id);
+    const family = bareFamilyName(pkg);
+    const narrowFamily = bareNarrowFamilyName(pkg);
+    for (const { filename, cssAttrs } of fontFilesForPackage(pkg)) {
+      try {
+        const url = `/fonts/${pkg.id}/${filename}`;
+        const resp = await fetch(url);
+        if (!resp.ok) continue;
+        const buf = new Uint8Array(await resp.arrayBuffer());
+        let binary = '';
+        for (let i = 0; i < buf.length; i += 8192) {
+          binary += String.fromCharCode(...buf.slice(i, i + 8192));
+        }
+        const ext = filename.split('.').pop() || 'ttf';
+        const mime = ext === 'otf' ? 'font/otf' : 'font/ttf';
+        const fmt = ext === 'otf' ? "format('opentype')" : "format('truetype')";
+        const dataUrl = `data:${mime};base64,${btoa(binary)}`;
+        const fontFamily = cssAttrs.isNarrow && narrowFamily ? narrowFamily : family;
+        lines.push(
+          `@font-face { font-family: '${fontFamily}'; src: url('${dataUrl}') ${fmt}; ` +
+          `font-weight: ${cssAttrs.weight}; font-style: ${cssAttrs.style}; font-display: swap; }`
+        );
+      } catch (e) {
+        console.warn(`Failed to embed font ${pkg.id}/${filename}:`, e);
+      }
+    }
+  }
+  return lines.join('\n');
+}
+
+/**
  * Inject @font-face declarations for all font packages into <head>.
  * Idempotent: subsequent calls replace the existing block.
  */

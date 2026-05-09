@@ -29,11 +29,18 @@ import { flushToSqlite } from './store/presentation';
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { TEXT_PRESET_STYLES } from './types/presentation';
+import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
 
 /** Render a single slide to HTML for PDF/print export */
-export function renderSlideForPrint(slide: import('./types/presentation').Slide, presentationTheme: string, imageCache: Map<string, string>): string {
+export function renderSlideForPrint(
+  slide: import('./types/presentation').Slide,
+  presentationTheme: string,
+  imageCache: Map<string, string>,
+  presentationConfig?: import('./types/presentation').PresentationConfig
+): string {
   const W = 1920, H = 1080;
   const theme = resolveTheme(presentationTheme, slide.theme);
+  const cfg = presentationConfig || {} as import('./types/presentation').PresentationConfig;
   let inner = '';
   for (const el of slide.elements) {
     const p = el.position;
@@ -43,9 +50,10 @@ export function renderSlideForPrint(slide: import('./types/presentation').Slide,
       const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
                          valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
       const color = el.color || themeColorForPreset(theme, el.preset);
+      const presetFontFamily = fontFamilyForPreset(fontForPreset(el.preset, slide, cfg), el.preset);
       inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">` +
         `<div style="width:100%;height:100%;${valignStyle}">` +
-        `<div style="font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${color};line-height:1.3;padding:8px 12px;">${el.html || ''}</div>` +
+        `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${color};line-height:1.3;padding:8px 12px;">${el.html || ''}</div>` +
         `</div></div>`;
     } else if (el.type === 'image') {
       const src = imageCache.get(el.src) || el.src;
@@ -248,9 +256,10 @@ async function printToPdf() {
                              valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
           const color = el.color || themeColorForPreset(theme, el.preset);
           const fontSize = el.fontSize || ps.fontSize;
+          const presetFontFamily = fontFamilyForPreset(fontForPreset(el.preset, slide, presentation.config), el.preset);
           inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};overflow:hidden;">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:1.3;padding:${px2in(8)} ${px2in(12)};">${el.html || ''}</div>` +
+            `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:1.3;padding:${px2in(8)} ${px2in(12)};">${el.html || ''}</div>` +
             `</div></div>`;
         } else if (el.type === 'image') {
           const src = imageCache.get(el.src) || el.src;
@@ -282,12 +291,15 @@ async function printToPdf() {
       return `<div class="slide" style="background:${theme.background};">${inner}</div>`;
     });
 
+    // Embed @font-face data URLs for fonts used by this presentation.
+    const fontFacesCss = await buildEmbeddedFontFacesCSS(presentation);
+
     const printHtml = `<!DOCTYPE html><html><head>
 <meta charset="utf-8">
 <title>${presentation.title}</title>
 <meta name="robots" content="noindex">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');
+${fontFacesCss}
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'PT Sans', sans-serif; }
 html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
