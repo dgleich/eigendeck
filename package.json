@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "setup": "mkdir -p public/mathjax && cp mathjax-ptsans-bundle/tex-mml-svg-mathjax-ptsans-nosre.js public/mathjax/tex-mml-svg-mathjax-ptsans.js",
+    "setup": "node scripts/setup-fonts.mjs",
     "tauri": "tauri",
     "export": "node tools/export-eigendeck.mjs"
   },
