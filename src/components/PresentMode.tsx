@@ -3,6 +3,7 @@ import { usePresentationStore } from '../store/presentation';
 import { useDemoUrl, useAssetUrl } from '../lib/demoAssets';
 import { SpeakerPanel } from './SpeakerView';
 import { TEXT_PRESET_STYLES, getSlideNumber } from '../types/presentation';
+import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import { typesetElement, resetMathElement, containsMath } from '../lib/mathjax';
 import type { Slide, SlideElement, TextElement } from '../types/presentation';
 
@@ -346,16 +347,23 @@ function PresentTextElement({ element: el, zIndex, style }: { element: TextEleme
   const pos = el.position;
   const preset = TEXT_PRESET_STYLES[el.preset];
   const mathPreamble = usePresentationStore((s) => s.presentation.config.mathPreamble);
+  // Resolve fonts from the current slide + presentation defaults
+  const { presentation, currentSlideIndex } = usePresentationStore.getState();
+  const slide = presentation.slides[currentSlideIndex];
+  const presetFontPkg = fontForPreset(el.preset, slide || {}, presentation.config);
+  const presetFontFamily = fontFamilyForPreset(presetFontPkg, el.preset);
+  const bodyFontPkg = fontForPreset('body', slide || {}, presentation.config);
+  const mathBundleId = bodyFontPkg.id;
 
   useEffect(() => {
     if (ref.current) {
       // Set raw HTML first, then typeset math if present
       resetMathElement(ref.current, el.html);
       if (containsMath(el.html)) {
-        typesetElement(ref.current, mathPreamble);
+        typesetElement(ref.current, mathPreamble, mathBundleId);
       }
     }
-  }, [el.html, mathPreamble]);
+  }, [el.html, mathPreamble, mathBundleId]);
 
   const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
 
@@ -372,7 +380,7 @@ function PresentTextElement({ element: el, zIndex, style }: { element: TextEleme
         ...(valign === 'bottom' ? { display: 'flex', flexDirection: 'column' as const, justifyContent: 'flex-end' } : {}),
       }}>
         <div ref={ref} style={{
-          fontFamily: el.fontFamily || preset.fontFamily,
+          fontFamily: el.fontFamily || presetFontFamily,
           fontSize: el.fontSize || preset.fontSize,
           fontWeight: preset.fontWeight,
           fontStyle: preset.fontStyle,

@@ -5,6 +5,7 @@ import { useDemoUrl, useAssetUrl } from '../lib/demoAssets';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 
 import { TEXT_PRESET_STYLES } from '../types/presentation';
+import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import { TextFormatToolbar } from './TextFormatToolbar';
 import { typesetElement, resetMathElement, containsMath, getDisplayMathHeight } from '../lib/mathjax';
 import type { SlideElement, ElementPosition, TextElement } from '../types/presentation';
@@ -311,9 +312,13 @@ function TextContent({
   const slide = presentation.slides[currentSlideIndex];
   const themeColors = resolveTheme(presentation.theme, slide?.theme);
   const themeColor = themeColorForPreset(themeColors, element.preset);
+  // Resolve font: slide override > presentation default > 'ptsans'.
+  // Title preset uses titleFont, hype preset uses hypeFont, others use bodyFont.
+  const presetFontPkg = fontForPreset(element.preset, slide || {}, presentation.config);
+  const presetFontFamily = fontFamilyForPreset(presetFontPkg, element.preset);
   const style: React.CSSProperties = {
     width: '100%',
-    fontFamily: element.fontFamily || presetStyle.fontFamily,
+    fontFamily: element.fontFamily || presetFontFamily,
     fontSize: element.fontSize || presetStyle.fontSize,
     fontWeight: presetStyle.fontWeight,
     fontStyle: presetStyle.fontStyle,
@@ -325,16 +330,19 @@ function TextContent({
     cursor: editing ? 'text' : 'inherit',
   };
 
-  // Display mode: set innerHTML and typeset math
+  // Display mode: set innerHTML and typeset math.
+  // Math bundle = body font's bundle (singleton constraint — see mathjax.ts).
   const mathPreamble = usePresentationStore((s) => s.presentation.config.mathPreamble);
+  const bodyFontPkg = fontForPreset('body', slide || {}, presentation.config);
+  const mathBundleId = bodyFontPkg.id;
   useEffect(() => {
     if (ref.current && !editing) {
       resetMathElement(ref.current, element.html);
       if (containsMath(element.html)) {
-        typesetElement(ref.current, mathPreamble);
+        typesetElement(ref.current, mathPreamble, mathBundleId);
       }
     }
-  }, [element.html, editing, mathPreamble]);
+  }, [element.html, editing, mathPreamble, mathBundleId]);
 
   // Listen for 'start-editing' custom event from context menu
   useEffect(() => {

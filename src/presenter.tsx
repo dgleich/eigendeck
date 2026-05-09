@@ -10,6 +10,7 @@ import { listen, emitTo } from '@tauri-apps/api/event';
 import { TEXT_PRESET_STYLES, getSlideNumber } from './types/presentation';
 import { useAssetUrl, useDemoUrl } from './lib/demoAssets';
 import { typesetElement, resetMathElement, containsMath } from './lib/mathjax';
+import { fontForPreset, fontFamilyForPreset } from './lib/fonts';
 import type { Presentation, SlideElement, TextElement } from './types/presentation';
 import './App.css';
 
@@ -106,7 +107,8 @@ function PresenterApp() {
           style={{ width: slideW, height: slideH, transform: `scale(${scale})`, transformOrigin: 'top left' }}
         >
           {slide.elements.map((el, idx) => (
-            <PresenterElement key={el.id} element={el} zIndex={idx + 10} projectPath={projectPath} />
+            <PresenterElement key={el.id} element={el} zIndex={idx + 10} projectPath={projectPath}
+              slide={slide} presentationConfig={presentation.config} />
           ))}
           <div className="slide-footer" style={{ zIndex: 1000 }}>
             <span className="slide-footer-meta">{meta}</span>
@@ -118,12 +120,16 @@ function PresenterApp() {
   );
 }
 
-function PresenterElement({ element: el, zIndex }: { element: SlideElement; zIndex: number; projectPath?: string | null }) {
+function PresenterElement({ element: el, zIndex, slide, presentationConfig }: {
+  element: SlideElement; zIndex: number; projectPath?: string | null;
+  slide: import('./types/presentation').Slide;
+  presentationConfig: import('./types/presentation').PresentationConfig;
+}) {
   const pos = el.position;
 
   switch (el.type) {
     case 'text':
-      return <PresenterTextElement element={el} zIndex={zIndex} />;
+      return <PresenterTextElement element={el} zIndex={zIndex} slide={slide} presentationConfig={presentationConfig} />;
 
     case 'image':
       return <PresenterImage element={el} zIndex={zIndex} />;
@@ -156,19 +162,27 @@ function PresenterElement({ element: el, zIndex }: { element: SlideElement; zInd
   }
 }
 
-function PresenterTextElement({ element: el, zIndex }: { element: TextElement; zIndex: number }) {
+function PresenterTextElement({ element: el, zIndex, slide, presentationConfig }: {
+  element: TextElement; zIndex: number;
+  slide: import('./types/presentation').Slide;
+  presentationConfig: import('./types/presentation').PresentationConfig;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const pos = el.position;
   const preset = TEXT_PRESET_STYLES[el.preset];
+  const presetFontPkg = fontForPreset(el.preset, slide, presentationConfig);
+  const presetFontFamily = fontFamilyForPreset(presetFontPkg, el.preset);
+  const bodyFontPkg = fontForPreset('body', slide, presentationConfig);
+  const mathBundleId = bodyFontPkg.id;
 
   useEffect(() => {
     if (ref.current) {
       resetMathElement(ref.current, el.html);
       if (containsMath(el.html)) {
-        typesetElement(ref.current);
+        typesetElement(ref.current, undefined, mathBundleId);
       }
     }
-  }, [el.html]);
+  }, [el.html, mathBundleId]);
 
   const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
 
@@ -183,7 +197,7 @@ function PresenterTextElement({ element: el, zIndex }: { element: TextElement; z
         ...(valign === 'bottom' ? { display: 'flex', flexDirection: 'column' as const, justifyContent: 'flex-end' } : {}),
       }}>
         <div ref={ref} style={{
-          fontFamily: el.fontFamily || preset.fontFamily,
+          fontFamily: el.fontFamily || presetFontFamily,
           fontSize: el.fontSize || preset.fontSize,
           fontWeight: preset.fontWeight,
           fontStyle: preset.fontStyle,
