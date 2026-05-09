@@ -41,3 +41,6 @@ gitignore/
 
 # Website repo (separate GitHub repo, hosted on Cloudflare Pages)
 website/
+
+# mathjax-fonts repo (cloned as sibling at setup time)
+mathjax-fonts/
