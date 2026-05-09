@@ -11,7 +11,7 @@ export type SlideLayout = 'default' | 'centered' | 'two-column';
 // Text box presets
 // ============================================
 
-export type TextPreset = 'title' | 'body' | 'textbox' | 'annotation' | 'footnote';
+export type TextPreset = 'title' | 'body' | 'textbox' | 'annotation' | 'footnote' | 'hype';
 
 export const TEXT_PRESET_STYLES: Record<TextPreset, {
   label: string;
@@ -60,6 +60,14 @@ export const TEXT_PRESET_STYLES: Record<TextPreset, {
     fontWeight: 'normal',
     fontStyle: 'normal',
     color: '#888',
+  },
+  hype: {
+    label: 'Hype',
+    fontSize: 96,
+    fontFamily: "'PT Sans', sans-serif",
+    fontWeight: '700',
+    fontStyle: 'normal',
+    color: '#e53e3e',
   },
 };
 
@@ -145,6 +153,11 @@ export interface Slide {
   elements: SlideElement[];
   notes: string;
   groupId?: string; // slides with same groupId form a group
+  // Per-slide font overrides (font package id from src/lib/fonts.ts).
+  // Falls back to presentation.config.default*Font, then 'ptsans'.
+  titleFont?: string;
+  bodyFont?: string;
+  hypeFont?: string;
 }
 
 export interface PresentationConfig {
@@ -156,6 +169,12 @@ export interface PresentationConfig {
   author?: string;
   venue?: string;
   mathPreamble?: string;
+  // Default font package ids (see src/lib/fonts.ts FONT_PACKAGES).
+  // Slides may override via Slide.{titleFont,bodyFont,hypeFont}.
+  // Missing values resolve to 'ptsans' at render time.
+  defaultTitleFont?: string;
+  defaultBodyFont?: string;
+  defaultHypeFont?: string;
 }
 
 export interface Presentation {
@@ -176,6 +195,7 @@ export function createTextElement(preset: TextPreset, overrides?: Partial<Elemen
     textbox:    { x: 200, y: 300, width: 800,  height: 300 },
     annotation: { x: 200, y: 700, width: 600,  height: 150 },
     footnote:   { x: 80,  y: 1020, width: 1000, height: 44  },
+    hype:       { x: 200, y: 400, width: 1520, height: 280 },
   };
 
   const defaultText: Record<TextPreset, string> = {
@@ -184,6 +204,7 @@ export function createTextElement(preset: TextPreset, overrides?: Partial<Elemen
     textbox: 'Text',
     annotation: 'Annotation',
     footnote: 'Footnote',
+    hype: 'HYPE!',
   };
 
   return {

@@ -64,12 +64,16 @@ my-presentation/
     "showSlideNumber": true,
     "author": "Author Name",
     "venue": "Conference 2026",
-    "mathPreamble": "\\newcommand{\\R}{\\mathbb{R}}"
+    "mathPreamble": "\\newcommand{\\R}{\\mathbb{R}}",
+    "defaultTitleFont": "ptsans",
+    "defaultBodyFont": "ptsans",
+    "defaultHypeFont": "shantell"
   }
 }
 ```
 
 - `mathPreamble`: optional LaTeX preamble applied to all MathJax rendering (e.g. `\newcommand`, `\def`)
+- `defaultTitleFont` / `defaultBodyFont` / `defaultHypeFont`: optional default font package ids (see `src/lib/fonts.ts`). Available ids include `"ptsans"`, `"libertinus"`, `"libertinus-sans"`, `"lm-sans"`, `"noto-sans"`, `"source-sans"`, `"source-code"`, `"shantell"`, `"concrete-euler"`. Slides may override via `Slide.titleFont` / `bodyFont` / `hypeFont`. Missing values resolve to `"ptsans"`.
 
 ## Slide Structure
 
@@ -79,14 +83,20 @@ Each slide has an `elements` array. Array order = z-order (first = bottom, last 
 {
   "id": "unique-uuid",
   "layout": "default",
+  "theme": "dark",
   "elements": [ ... ],
   "notes": "Speaker notes for this slide",
-  "groupId": "optional-group-uuid"
+  "groupId": "optional-group-uuid",
+  "titleFont": "shantell",
+  "bodyFont": "ptsans",
+  "hypeFont": "concrete-euler"
 }
 ```
 
 - `layout`: `"default"`, `"centered"`, or `"two-column"`
+- `theme`: optional per-slide theme override (otherwise inherits `presentation.theme`)
 - `groupId`: optional — slides with the same groupId form a group (shared numbering, used for build animations)
+- `titleFont` / `bodyFont` / `hypeFont`: optional per-slide font package overrides. Values are font ids from `src/lib/fonts.ts` (e.g. `"ptsans"`, `"shantell"`, `"libertinus"`). Title preset uses `titleFont`, hype preset uses `hypeFont`, all others use `bodyFont`. Falls back to `presentation.config.default*Font`, then `"ptsans"`. Math always follows the same font as the surrounding preset.
 
 ## Element Types
 
@@ -123,6 +133,7 @@ All elements share these base fields:
 | `textbox`    | 48       | PT Sans             | normal     | normal    | #222    | `y:300, h:300` |
 | `annotation` | 32       | PT Sans             | normal     | italic    | #2563eb | `y:700, h:150` |
 | `footnote`   | 24       | PT Sans Narrow      | normal     | normal    | #888    | `y:1020, h:44` (bottom-aligned) |
+| `hype`       | 96       | PT Sans (or hypeFont) | bold     | normal    | #e53e3e | `y:400, h:280` (oversized callouts) |
 
 **Optional overrides** (only include if different from preset default):
 - `fontSize`: number (in slide units, 1920x1080 coordinate space)
