@@ -5,6 +5,8 @@ import {
   resolveFontPackage,
   fontForPreset,
   fontFamilyForPreset,
+  fontFaceCSSForPackage,
+  allFontFacesCSS,
   DEFAULT_FONT_ID,
 } from '../lib/fonts';
 
@@ -103,5 +105,48 @@ describe('fontFamilyForPreset', () => {
     const ptsans = FONT_PACKAGE_MAP['ptsans'];
     expect(fontFamilyForPreset(ptsans, 'title')).toBe(ptsans.family);
     expect(fontFamilyForPreset(ptsans, 'body')).toBe(ptsans.family);
+  });
+});
+
+describe('@font-face CSS generation', () => {
+  it('generates 4 declarations for static fonts with regular/bold/italic/bold-italic', () => {
+    const css = fontFaceCSSForPackage(FONT_PACKAGE_MAP['libertinus']);
+    expect((css.match(/@font-face/g) || []).length).toBe(4);
+    expect(css).toContain("font-family: 'Libertinus Serif'");
+    expect(css).toContain("/fonts/libertinus/regular.otf");
+    expect(css).toContain("font-weight: 400");
+    expect(css).toContain("font-weight: 700");
+    expect(css).toContain("font-style: italic");
+    expect(css).toContain("format('opentype')");
+  });
+
+  it('generates 2 declarations for variable fonts with upright + italic', () => {
+    const css = fontFaceCSSForPackage(FONT_PACKAGE_MAP['shantell']);
+    expect((css.match(/@font-face/g) || []).length).toBe(2);
+    expect(css).toContain("font-weight: 300 800");
+    expect(css).toContain("font-style: normal");
+    expect(css).toContain("font-style: italic");
+    expect(css).toContain("/fonts/shantell/variable.ttf");
+    expect(css).toContain("/fonts/shantell/variable-italic.ttf");
+  });
+
+  it('emits separate @font-face for narrow variant on ptsans', () => {
+    const css = fontFaceCSSForPackage(FONT_PACKAGE_MAP['ptsans']);
+    expect(css).toContain("font-family: 'PT Sans'");
+    expect(css).toContain("font-family: 'PT Sans Narrow'");
+    expect(css).toContain("/fonts/ptsans/narrow-regular.ttf");
+    expect(css).toContain("/fonts/ptsans/narrow-bold.ttf");
+  });
+
+  it('skips bold-italic for libertinus-sans (no file)', () => {
+    const css = fontFaceCSSForPackage(FONT_PACKAGE_MAP['libertinus-sans']);
+    expect((css.match(/@font-face/g) || []).length).toBe(3); // R, B, I — no BI
+  });
+
+  it('allFontFacesCSS includes all packages', () => {
+    const css = allFontFacesCSS();
+    for (const pkg of FONT_PACKAGES) {
+      expect(css).toContain(`/fonts/${pkg.id}/`);
+    }
   });
 });

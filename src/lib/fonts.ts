@@ -3,6 +3,28 @@
 
 export type FontRole = 'title' | 'body' | 'hype';
 
+/**
+ * File layout for a font package's text font(s).
+ * Files live under public/fonts/<id>/ and are referenced relative to /fonts/<id>/.
+ */
+export type FontFiles =
+  | {
+      kind: 'static';
+      ext: 'ttf' | 'otf';
+      regular: string;       // e.g. 'regular.otf'
+      bold?: string;
+      italic?: string;
+      boldItalic?: string;
+      narrowRegular?: string; // e.g. 'narrow-regular.ttf' (ptsans only)
+      narrowBold?: string;
+    }
+  | {
+      kind: 'variable';
+      upright: string;       // e.g. 'variable.ttf'
+      italic?: string;       // e.g. 'variable-italic.ttf'
+      weightRange: [number, number];
+    };
+
 export interface FontPackage {
   /** Stable identifier used in presentation/slide JSON (e.g. 'shantell') */
   id: string;
@@ -14,18 +36,14 @@ export interface FontPackage {
   narrowFamily?: string;
   /** Filename of the MathJax bundle in public/mathjax/ */
   mathjaxBundle: string;
-  /** Available weights (used for @font-face generation) */
-  weights: number[];
-  /** Available styles per weight */
-  styles: ('normal' | 'italic')[];
+  /** Files on disk, used to generate @font-face declarations */
+  files: FontFiles;
   /** License identifier (SPDX) */
   license: string;
   /** Source URL or attribution */
   source?: string;
   /** Short description shown in dropdown subtitle */
   description?: string;
-  /** Variable font axes (if applicable). Used to pick a static instance. */
-  variable?: { wght?: [number, number]; wdth?: [number, number] };
 }
 
 export const FONT_PACKAGES: FontPackage[] = [
@@ -35,8 +53,14 @@ export const FONT_PACKAGES: FontPackage[] = [
     family: "'PT Sans', sans-serif",
     narrowFamily: "'PT Sans Narrow', sans-serif",
     mathjaxBundle: 'tex-mml-svg-mathjax-ptsans.js',
-    weights: [400, 700],
-    styles: ['normal', 'italic'],
+    files: {
+      kind: 'static', ext: 'ttf',
+      regular: 'regular.ttf',
+      bold: 'bold.ttf',
+      italic: 'italic.ttf',
+      narrowRegular: 'narrow-regular.ttf',
+      narrowBold: 'narrow-bold.ttf',
+    },
     license: 'OFL-1.1',
     source: 'https://fonts.google.com/specimen/PT+Sans',
     description: 'Patched PT Sans (serifed I) + Latin Modern Math',
@@ -46,8 +70,11 @@ export const FONT_PACKAGES: FontPackage[] = [
     label: 'Libertinus Serif',
     family: "'Libertinus Serif', serif",
     mathjaxBundle: 'tex-mml-svg-mathjax-libertinus.js',
-    weights: [400, 700],
-    styles: ['normal', 'italic'],
+    files: {
+      kind: 'static', ext: 'otf',
+      regular: 'regular.otf', bold: 'bold.otf',
+      italic: 'italic.otf', boldItalic: 'bold-italic.otf',
+    },
     license: 'OFL-1.1',
     source: 'https://github.com/alerque/libertinus',
     description: 'Classical serif with matching Libertinus Math',
@@ -57,8 +84,12 @@ export const FONT_PACKAGES: FontPackage[] = [
     label: 'Libertinus Sans',
     family: "'Libertinus Sans', sans-serif",
     mathjaxBundle: 'tex-mml-svg-mathjax-libertinus-sans.js',
-    weights: [400, 700],
-    styles: ['normal', 'italic'],
+    files: {
+      kind: 'static', ext: 'otf',
+      regular: 'regular.otf', bold: 'bold.otf',
+      italic: 'italic.otf',
+      // No bold-italic in static OTF distribution
+    },
     license: 'OFL-1.1',
     source: 'https://github.com/alerque/libertinus',
     description: 'Sans companion to Libertinus + Libertinus Math',
@@ -68,8 +99,11 @@ export const FONT_PACKAGES: FontPackage[] = [
     label: 'CMU Sans',
     family: "'CMU Sans Serif', sans-serif",
     mathjaxBundle: 'tex-mml-svg-mathjax-lm-sans.js',
-    weights: [400, 700],
-    styles: ['normal', 'italic'],
+    files: {
+      kind: 'static', ext: 'otf',
+      regular: 'regular.otf', bold: 'bold.otf',
+      italic: 'italic.otf', boldItalic: 'bold-italic.otf',
+    },
     license: 'OFL-1.1',
     source: 'https://sourceforge.net/projects/cm-unicode/',
     description: 'CMU Sans Serif + NewCM Sans Math',
@@ -79,56 +113,67 @@ export const FONT_PACKAGES: FontPackage[] = [
     label: 'Noto Sans',
     family: "'Noto Sans', sans-serif",
     mathjaxBundle: 'tex-mml-svg-mathjax-noto-sans.js',
-    weights: [400, 700],
-    styles: ['normal', 'italic'],
+    files: {
+      kind: 'variable',
+      upright: 'variable.ttf', italic: 'variable-italic.ttf',
+      weightRange: [100, 900],
+    },
     license: 'OFL-1.1',
     source: 'https://fonts.google.com/noto',
     description: "Google's universal sans + Noto Sans Math",
-    variable: { wght: [100, 900], wdth: [62.5, 100] },
   },
   {
     id: 'source-sans',
     label: 'Source Sans',
     family: "'Source Sans 3', sans-serif",
     mathjaxBundle: 'tex-mml-svg-mathjax-source-sans.js',
-    weights: [400, 700],
-    styles: ['normal', 'italic'],
+    files: {
+      kind: 'variable',
+      upright: 'variable.ttf', italic: 'variable-italic.ttf',
+      weightRange: [200, 900],
+    },
     license: 'OFL-1.1',
     source: 'https://github.com/adobe-fonts/source-sans',
     description: "Adobe's Source Sans 3 + Latin Modern Math",
-    variable: { wght: [200, 900] },
   },
   {
     id: 'source-code',
     label: 'Source Code',
     family: "'Source Code Pro', monospace",
     mathjaxBundle: 'tex-mml-svg-mathjax-source-code.js',
-    weights: [400, 700],
-    styles: ['normal', 'italic'],
+    files: {
+      kind: 'variable',
+      upright: 'variable.ttf', italic: 'variable-italic.ttf',
+      weightRange: [200, 900],
+    },
     license: 'OFL-1.1',
     source: 'https://github.com/adobe-fonts/source-code-pro',
     description: 'Monospace + Latin Modern Math',
-    variable: { wght: [200, 900] },
   },
   {
     id: 'shantell',
     label: 'Shantell Sans',
     family: "'Shantell Sans', sans-serif",
     mathjaxBundle: 'tex-mml-svg-mathjax-shantell.js',
-    weights: [400, 700],
-    styles: ['normal', 'italic'],
+    files: {
+      kind: 'variable',
+      upright: 'variable.ttf', italic: 'variable-italic.ttf',
+      weightRange: [300, 800],
+    },
     license: 'OFL-1.1',
     source: 'https://fonts.google.com/specimen/Shantell+Sans',
     description: 'Hand-drawn casual + Shantell math (looks amazing!)',
-    variable: { wght: [300, 800] },
   },
   {
     id: 'concrete-euler',
     label: 'CMU Concrete + Euler',
     family: "'CMU Concrete', serif",
     mathjaxBundle: 'tex-mml-svg-mathjax-concrete-euler.js',
-    weights: [400, 700],
-    styles: ['normal', 'italic'],
+    files: {
+      kind: 'static', ext: 'otf',
+      regular: 'regular.otf', bold: 'bold.otf',
+      italic: 'italic.otf', boldItalic: 'bold-italic.otf',
+    },
     license: 'OFL-1.1',
     source: 'CMU Unicode + Euler Math (CTAN)',
     description: 'Concrete Mathematics style (Knuth/Graham/Patashnik)',
@@ -177,4 +222,85 @@ export function fontForPreset(
 export function fontFamilyForPreset(pkg: FontPackage, preset: string): string {
   if (preset === 'footnote' && pkg.narrowFamily) return pkg.narrowFamily;
   return pkg.family;
+}
+
+/** Strip quotes/sans-serif suffix from family for use as @font-face name. */
+function bareFamily(family: string): string {
+  // e.g. "'PT Sans', sans-serif" → "PT Sans"
+  return family.replace(/^['"]?([^'",]+)['"]?.*$/, '$1');
+}
+
+/**
+ * Generate @font-face CSS declarations for a single font package.
+ * URLs reference /fonts/<id>/<filename>.
+ */
+export function fontFaceCSSForPackage(pkg: FontPackage): string {
+  const name = bareFamily(pkg.family);
+  const dir = `/fonts/${pkg.id}`;
+  const lines: string[] = [];
+
+  if (pkg.files.kind === 'variable') {
+    const f = pkg.files;
+    const [w0, w1] = f.weightRange;
+    const fmt = "format('truetype-variations'), format('truetype')";
+    lines.push(
+      `@font-face { font-family: '${name}'; src: url('${dir}/${f.upright}') ${fmt}; ` +
+      `font-weight: ${w0} ${w1}; font-style: normal; font-display: swap; }`
+    );
+    if (f.italic) {
+      lines.push(
+        `@font-face { font-family: '${name}'; src: url('${dir}/${f.italic}') ${fmt}; ` +
+        `font-weight: ${w0} ${w1}; font-style: italic; font-display: swap; }`
+      );
+    }
+  } else {
+    const f = pkg.files;
+    const fmt = f.ext === 'otf' ? "format('opentype')" : "format('truetype')";
+    const decl = (file: string, weight: number, style: string) =>
+      `@font-face { font-family: '${name}'; src: url('${dir}/${file}') ${fmt}; ` +
+      `font-weight: ${weight}; font-style: ${style}; font-display: swap; }`;
+
+    lines.push(decl(f.regular, 400, 'normal'));
+    if (f.bold) lines.push(decl(f.bold, 700, 'normal'));
+    if (f.italic) lines.push(decl(f.italic, 400, 'italic'));
+    if (f.boldItalic) lines.push(decl(f.boldItalic, 700, 'italic'));
+
+    // Narrow variant gets its own family name (so e.g. footnote can target it)
+    if (pkg.narrowFamily && f.narrowRegular) {
+      const narrowName = bareFamily(pkg.narrowFamily);
+      lines.push(
+        `@font-face { font-family: '${narrowName}'; src: url('${dir}/${f.narrowRegular}') ${fmt}; ` +
+        `font-weight: 400; font-style: normal; font-display: swap; }`
+      );
+      if (f.narrowBold) {
+        lines.push(
+          `@font-face { font-family: '${narrowName}'; src: url('${dir}/${f.narrowBold}') ${fmt}; ` +
+          `font-weight: 700; font-style: normal; font-display: swap; }`
+        );
+      }
+    }
+  }
+
+  return lines.join('\n');
+}
+
+/** Generate the full @font-face block for all packages. */
+export function allFontFacesCSS(): string {
+  return FONT_PACKAGES.map(fontFaceCSSForPackage).join('\n');
+}
+
+/**
+ * Inject @font-face declarations for all font packages into <head>.
+ * Idempotent: subsequent calls replace the existing block.
+ */
+export function injectFontFaces(): void {
+  if (typeof document === 'undefined') return;
+  const STYLE_ID = 'eigendeck-font-faces';
+  let style = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
+  if (!style) {
+    style = document.createElement('style');
+    style.id = STYLE_ID;
+    document.head.appendChild(style);
+  }
+  style.textContent = allFontFacesCSS();
 }

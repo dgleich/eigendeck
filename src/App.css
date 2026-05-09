@@ -1,36 +1,6 @@
-/* PT Sans for slide content */
-@font-face {
-  font-family: 'PT Sans';
-  font-style: normal;
-  font-weight: 400;
-  src: url('/fonts/pt-sans-regular.ttf') format('truetype');
-}
-@font-face {
-  font-family: 'PT Sans';
-  font-style: normal;
-  font-weight: 700;
-  src: url('/fonts/pt-sans-bold.ttf') format('truetype');
-}
-@font-face {
-  font-family: 'PT Sans';
-  font-style: italic;
-  font-weight: 400;
-  src: url('/fonts/pt-sans-italic.ttf') format('truetype');
-}
-
-/* PT Sans Narrow */
-@font-face {
-  font-family: 'PT Sans Narrow';
-  font-style: normal;
-  font-weight: 400;
-  src: url('/fonts/pt-sans-narrow-regular.ttf') format('truetype');
-}
-@font-face {
-  font-family: 'PT Sans Narrow';
-  font-style: normal;
-  font-weight: 700;
-  src: url('/fonts/pt-sans-narrow-bold.ttf') format('truetype');
-}
+/* @font-face declarations for all bundled font packages are injected at
+   runtime by injectFontFaces() in src/lib/fonts.ts (called from main.tsx).
+   See src/lib/fonts.ts FONT_PACKAGES for the list. */
 
 /* System font for UI */
 :root {
