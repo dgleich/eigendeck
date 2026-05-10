@@ -8,6 +8,10 @@ import { TEXT_PRESET_STYLES } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import { TextFormatToolbar } from './TextFormatToolbar';
 import { typesetElement, resetMathElement, containsMath, getDisplayMathHeight } from '../lib/mathjax';
+import {
+  renderMathInHtml as renderMathInIframe,
+  containsMath as containsMathExpr,
+} from '../lib/mathjaxRenderer';
 import type { SlideElement, ElementPosition, TextElement } from '../types/presentation';
 
 interface Props {
@@ -577,12 +581,34 @@ function SvgTextContent({
   const themeColor = themeColorForPreset(themeColors, element.preset);
   const presetFontPkg = fontForPreset(element.preset, slide || {}, presentation.config);
   const presetFontFamily = fontFamilyForPreset(presetFontPkg, element.preset);
+  // The math bundle for THIS element matches the preset's font (the whole
+  // point of svg-text — per-preset math fonts via iframe isolation).
+  const mathBundleId = presetFontPkg.id;
 
   const fontFamily = element.fontFamily || presetFontFamily;
   const fontSize = element.fontSize || presetStyle.fontSize;
   const fontWeight = presetStyle.fontWeight;
   const fontStyle = presetStyle.fontStyle;
   const color = element.color || themeColor;
+
+  // Async-render math from element.html into a "rendered HTML" string with
+  // SVG markup in place of $..$. While that's pending, fall back to the raw
+  // HTML so the element shows something rather than going blank.
+  const [renderedHtml, setRenderedHtml] = useState<string>(element.html || '');
+  useEffect(() => {
+    let cancelled = false;
+    if (!containsMathExpr(element.html)) {
+      setRenderedHtml(element.html || '');
+      return () => { cancelled = true; };
+    }
+    renderMathInIframe(element.html, mathBundleId).then((html) => {
+      if (!cancelled) setRenderedHtml(html);
+    }).catch((err) => {
+      console.warn('svg-text math render failed:', err);
+      if (!cancelled) setRenderedHtml(element.html || '');
+    });
+    return () => { cancelled = true; };
+  }, [element.html, mathBundleId]);
 
   // SVG viewBox = the element's box. Inside, foreignObject contains a styled
   // div with the same dimensions. The browser handles all layout inside the
@@ -689,7 +715,7 @@ function SvgTextContent({
       `<foreignObject x="0" y="0" width="${w}" height="${h}">` +
         `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(valign)};overflow:hidden;box-sizing:border-box;">` +
           `<div style="width:100%;font-family:${fontFamily};font-size:${fontSize}px;font-weight:${fontWeight};font-style:${fontStyle};color:${color};line-height:1.3;padding:8px 12px;">` +
-            (element.html || '') +
+            (renderedHtml || '') +
           `</div>` +
         `</div>` +
       `</foreignObject>` +
