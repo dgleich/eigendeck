@@ -682,10 +682,10 @@ function SvgTextContent({
   // Display mode: render the whole SVG as raw HTML so the browser parses
   // namespaces correctly (React's SVG context breaks foreignObject HTML).
   const svgMarkup =
-    // preserveAspectRatio="none" + width=100% height=100% makes the SVG
-    // stretch to exactly the parent's box (the DraggableBox is sized to
-    // match element.position W×H, so no distortion in practice).
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible;">` +
+    // Use explicit pixel dimensions (not 100%) so the SVG canvas matches
+    // the foreignObject and the parent box exactly — avoids subpixel
+    // rounding that was making the rendered text drift slightly up/left.
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="${w}" height="${h}" style="display:block;overflow:visible;">` +
       `<foreignObject x="0" y="0" width="${w}" height="${h}">` +
         `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(valign)};overflow:hidden;box-sizing:border-box;">` +
           `<div style="width:100%;font-family:${fontFamily};font-size:${fontSize}px;font-weight:${fontWeight};font-style:${fontStyle};color:${color};line-height:1.3;padding:8px 12px;">` +
