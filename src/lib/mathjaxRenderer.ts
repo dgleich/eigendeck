@@ -73,6 +73,8 @@ function getOrCreatePool(bundleId: string): Pool {
 
   installMessageListener();
 
+  console.log('[mathjaxRenderer] creating iframe pool for bundle:', bundleId);
+
   const iframe = document.createElement('iframe');
   iframe.src = `/mathjax-renderer.html?bundle=${encodeURIComponent(bundleId)}`;
   iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:0;visibility:hidden;';
@@ -84,15 +86,22 @@ function getOrCreatePool(bundleId: string): Pool {
       const msg = ev.data;
       if (!msg || typeof msg !== 'object') return;
       if (msg.type === 'ready' && msg.bundle === bundleId) {
+        console.log('[mathjaxRenderer] bundle ready:', bundleId);
         window.removeEventListener('message', readyHandler);
         resolve();
       } else if (msg.type === 'error' && !msg.id) {
-        // Bundle-load error (no request id)
+        console.warn('[mathjaxRenderer] bundle error:', bundleId, msg.message);
         window.removeEventListener('message', readyHandler);
         reject(new Error(msg.message || 'bundle load failed'));
       }
     };
     window.addEventListener('message', readyHandler);
+    iframe.addEventListener('load', () => {
+      console.log('[mathjaxRenderer] iframe loaded:', bundleId);
+    });
+    iframe.addEventListener('error', (e) => {
+      console.warn('[mathjaxRenderer] iframe error:', bundleId, e);
+    });
     setTimeout(() => {
       window.removeEventListener('message', readyHandler);
       reject(new Error(`MathJax bundle '${bundleId}' load timed out`));
@@ -119,7 +128,9 @@ export async function renderMath(
   const hit = pool.cache.get(cacheKey);
   if (hit) return hit;
 
+  console.log('[mathjaxRenderer] awaiting ready for:', bundleId, tex.slice(0, 30));
   await pool.ready;
+  console.log('[mathjaxRenderer] sending render:', bundleId, tex.slice(0, 30));
 
   const id = `r${++nextRequestId}`;
   const result = await new Promise<RenderResult>((resolve, reject) => {
@@ -133,6 +144,7 @@ export async function renderMath(
     }, 5000);
   });
 
+  console.log('[mathjaxRenderer] got SVG for:', bundleId, tex.slice(0, 30), result.svg.length, 'chars');
   pool.cache.set(cacheKey, result);
   return result;
 }
