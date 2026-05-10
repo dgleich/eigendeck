@@ -42,20 +42,13 @@
   };
 
   // Configure MathJax before loading the bundle script.
-  // The mathjax-fonts test pages disable SRE enrichment/explorer/speech —
-  // those try to load async resources that hang inside iframes. Disabling
-  // them lets the bundle complete startup AND render synchronously.
+  // fontCache: 'none' inlines glyph paths in EVERY rendered <svg> — required
+  // because we extract the SVG from the iframe and inject it into the parent
+  // page; a 'global' or 'local' cache would put glyph defs elsewhere in the
+  // iframe's document and the references would break in the destination.
   window.MathJax = {
     tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
-    svg: { fontCache: 'global' },
-    options: {
-      enableEnrichment: false,
-      enableComplexity: false,
-      enableExplorer: false,
-      enableSpeech: false,
-      enableBraille: false,
-      menuOptions: { settings: { explorer: false, assistiveMml: false } },
-    },
+    svg: { fontCache: 'none' },
     startup: {
       typeset: false,
       ready: function () {
