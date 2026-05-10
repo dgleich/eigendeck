@@ -599,11 +599,13 @@ function SvgTextContent({
 
   const startEditing = () => setEditing(true);
   const stopEditing = () => {
-    setEditing(false);
+    // Capture innerHTML BEFORE setEditing(false) — otherwise React can
+    // unmount the contentEditable div and ref.current goes null.
     if (ref.current) {
       const html = ref.current.innerHTML;
       if (html !== element.html) onCommit(html);
     }
+    setEditing(false);
   };
 
   // Listen for 'start-editing' custom event
