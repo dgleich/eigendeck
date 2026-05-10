@@ -617,8 +617,43 @@ function SvgTextContent({
     return () => el.removeEventListener('start-editing', handler);
   });
 
+  // Set initial innerHTML once on entering edit mode. Don't use
+  // dangerouslySetInnerHTML in render — it re-applies on every render and
+  // wipes the user's in-DOM edits if anything triggers a re-render while
+  // the contentEditable still has focus.
+  useEffect(() => {
+    if (editing && ref.current) {
+      ref.current.innerHTML = element.html;
+      ref.current.focus();
+      // Move cursor to end
+      const range = document.createRange();
+      range.selectNodeContents(ref.current);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
+  // We intentionally only want to seed once when entering edit mode.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
+
+  // While editing, also listen for clicks outside this element so we commit
+  // even if the click target doesn't trigger a focus blur (e.g. clicking on
+  // the slide canvas which isn't focusable).
+  useEffect(() => {
+    if (!editing) return;
+    const onDocPointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (ref.current && (target === ref.current || ref.current.contains(target))) return;
+      stopEditing();
+    };
+    document.addEventListener('pointerdown', onDocPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onDocPointerDown, true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
+
   if (editing) {
-    // Edit mode: render an editable HTML div with the same styles as the SVG
     return (
       <div ref={wrapperRef} style={{ width: '100%', height: '100%', ...valignStyle }}>
         <div
@@ -629,15 +664,11 @@ function SvgTextContent({
           onKeyDown={(e) => {
             if (e.key === 'Escape') { e.preventDefault(); stopEditing(); }
           }}
-          dangerouslySetInnerHTML={{ __html: element.html }}
           style={{
             width: '100%',
             fontFamily, fontSize, fontWeight, fontStyle, color,
             lineHeight: 1.3, padding: '8px 12px', outline: 'none',
-            // Faint indicator we're in edit mode
-            background: 'rgba(37, 99, 235, 0.05)',
           }}
-          autoFocus
         />
       </div>
     );
