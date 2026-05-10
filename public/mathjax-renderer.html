@@ -38,16 +38,31 @@
     return new OrigWorker(url);
   };
 
-  // Configure MathJax before loading the bundle script
+  // Configure MathJax before loading the bundle script.
+  // The mathjax-fonts test pages disable SRE enrichment/explorer/speech —
+  // those try to load async resources that hang inside iframes. Disabling
+  // them lets the bundle complete startup AND render synchronously.
   window.MathJax = {
     tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
-    svg: { fontCache: 'none' },
+    svg: { fontCache: 'global' },
+    options: {
+      enableEnrichment: false,
+      enableComplexity: false,
+      enableExplorer: false,
+      enableSpeech: false,
+      enableBraille: false,
+      menuOptions: { settings: { explorer: false, assistiveMml: false } },
+    },
     startup: {
       typeset: false,
       ready: function () {
         const MJ = window.MathJax;
         MJ.startup.defaultReady();
         MJ.startup.promise.then(function () {
+          parent.postMessage({ type: 'ready', bundle: bundle }, '*');
+        }).catch(function (e) {
+          parent.postMessage({ type: 'log', bundle: bundle, msg: 'startup.promise rejected: ' + String(e && e.message || e) }, '*');
+          // Still send ready — render will fail per-call if MathJax broken
           parent.postMessage({ type: 'ready', bundle: bundle }, '*');
         });
       },
