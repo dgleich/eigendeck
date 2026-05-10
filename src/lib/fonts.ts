@@ -69,7 +69,7 @@ export const FONT_PACKAGES: FontPackage[] = [
     id: 'libertinus',
     label: 'Libertinus Serif',
     family: "'Libertinus Serif', serif",
-    mathjaxBundle: 'tex-mml-svg-mathjax-libertinus.js',
+    mathjaxBundle: 'tex-mml-svg-mathjax-libertinus-nosre.js',
     files: {
       kind: 'static', ext: 'otf',
       regular: 'regular.otf', bold: 'bold.otf',
@@ -83,7 +83,7 @@ export const FONT_PACKAGES: FontPackage[] = [
     id: 'libertinus-sans',
     label: 'Libertinus Sans',
     family: "'Libertinus Sans', sans-serif",
-    mathjaxBundle: 'tex-mml-svg-mathjax-libertinus-sans.js',
+    mathjaxBundle: 'tex-mml-svg-mathjax-libertinus-sans-nosre.js',
     files: {
       kind: 'static', ext: 'otf',
       regular: 'regular.otf', bold: 'bold.otf',
@@ -98,7 +98,7 @@ export const FONT_PACKAGES: FontPackage[] = [
     id: 'lm-sans',
     label: 'CMU Sans',
     family: "'CMU Sans Serif', sans-serif",
-    mathjaxBundle: 'tex-mml-svg-mathjax-lm-sans.js',
+    mathjaxBundle: 'tex-mml-svg-mathjax-lm-sans-nosre.js',
     files: {
       kind: 'static', ext: 'otf',
       regular: 'regular.otf', bold: 'bold.otf',
@@ -112,7 +112,7 @@ export const FONT_PACKAGES: FontPackage[] = [
     id: 'noto-sans',
     label: 'Noto Sans',
     family: "'Noto Sans', sans-serif",
-    mathjaxBundle: 'tex-mml-svg-mathjax-noto-sans.js',
+    mathjaxBundle: 'tex-mml-svg-mathjax-noto-sans-nosre.js',
     files: {
       kind: 'variable',
       upright: 'variable.ttf', italic: 'variable-italic.ttf',
@@ -126,7 +126,7 @@ export const FONT_PACKAGES: FontPackage[] = [
     id: 'source-sans',
     label: 'Source Sans',
     family: "'Source Sans 3', sans-serif",
-    mathjaxBundle: 'tex-mml-svg-mathjax-source-sans.js',
+    mathjaxBundle: 'tex-mml-svg-mathjax-source-sans-nosre.js',
     files: {
       kind: 'variable',
       upright: 'variable.ttf', italic: 'variable-italic.ttf',
@@ -140,7 +140,7 @@ export const FONT_PACKAGES: FontPackage[] = [
     id: 'source-code',
     label: 'Source Code',
     family: "'Source Code Pro', monospace",
-    mathjaxBundle: 'tex-mml-svg-mathjax-source-code.js',
+    mathjaxBundle: 'tex-mml-svg-mathjax-source-code-nosre.js',
     files: {
       kind: 'variable',
       upright: 'variable.ttf', italic: 'variable-italic.ttf',
@@ -154,7 +154,7 @@ export const FONT_PACKAGES: FontPackage[] = [
     id: 'shantell',
     label: 'Shantell Sans',
     family: "'Shantell Sans', sans-serif",
-    mathjaxBundle: 'tex-mml-svg-mathjax-shantell.js',
+    mathjaxBundle: 'tex-mml-svg-mathjax-shantell-nosre.js',
     files: {
       kind: 'variable',
       upright: 'variable.ttf', italic: 'variable-italic.ttf',
@@ -168,7 +168,7 @@ export const FONT_PACKAGES: FontPackage[] = [
     id: 'concrete-euler',
     label: 'CMU Concrete + Euler',
     family: "'CMU Concrete', serif",
-    mathjaxBundle: 'tex-mml-svg-mathjax-concrete-euler.js',
+    mathjaxBundle: 'tex-mml-svg-mathjax-concrete-euler-nosre.js',
     files: {
       kind: 'static', ext: 'otf',
       regular: 'regular.otf', bold: 'bold.otf',

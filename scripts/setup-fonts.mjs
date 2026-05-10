@@ -87,15 +87,18 @@ function main() {
     'ptsans (local nosre → tex-mml-svg-mathjax-ptsans.js)'
   );
 
-  // 2) mathjax-fonts packages — use the SRE bundles at package root (pre-built).
-  // The -nosre versions are webpack source only and would need building. The
-  // Worker stub in src/lib/mathjax.ts handles SRE's blob Worker creation in Tauri.
+  // 2) mathjax-fonts packages — use the -nosre bundles. The full SRE
+  // bundles' SpeechRuleEngine startup hangs in iframes (and times out
+  // tex2svgPromise calls in the main page too) because it tries to load
+  // async resources that the Worker stub can't provide. The nosre builds
+  // omit a11y/sre/explorer/menu entirely. They must be built first via:
+  //   node mathjax-fonts/mathjax-shantell/build/build-all-nosre.cjs
   if (ensureMathjaxFontsRepo()) {
     for (const id of MATHJAX_FONTS_PACKAGES) {
-      const filename = `tex-mml-svg-mathjax-${id}.js`;
+      const filename = `tex-mml-svg-mathjax-${id}-nosre.js`;
       const src = join(MATHJAX_FONTS_DIR, `mathjax-${id}`, filename);
       if (!existsSync(src)) {
-        log(`WARN: missing ${id} bundle at ${src}`);
+        log(`WARN: missing ${id} nosre bundle at ${src} (run build-all-nosre.cjs)`);
         continue;
       }
       copyBundle(src, join(PUBLIC_MATHJAX, filename), id);
