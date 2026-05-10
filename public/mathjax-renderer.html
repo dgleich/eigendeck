@@ -95,12 +95,15 @@
       return;
     }
     try {
-      MJ.texReset();
       const cleanTex = unescapeHtml(String(tex || ''));
+      dbg('about to texReset');
+      try { MJ.texReset(); } catch (e) { dbg('texReset threw: ' + String(e && e.message || e)); }
       dbg('calling tex2svgPromise: "' + cleanTex.slice(0, 30) + '"');
+      // Try diagnostic call WITHOUT braces first to see if the brace wrapping
+      // is the issue; then with braces if needed.
       Promise.race([
-        MJ.tex2svgPromise('{' + cleanTex + '}', { display: !!display }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('iframe-internal render timeout')), 4000)),
+        MJ.tex2svgPromise(cleanTex, { display: !!display }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('iframe-internal render timeout')), 8000)),
       ]).then(function (container) {
         dbg('tex2svgPromise resolved, container=' + (container && container.tagName));
         const svg = container && container.querySelector && container.querySelector('svg');
