@@ -685,7 +685,7 @@ function SvgTextContent({
     return (
       <div
         ref={wrapperRef}
-        style={{ width: w, height: h, ...valignStyle, overflow: 'hidden', boxSizing: 'border-box' }}
+        style={{ width: w, height: h, ...valignStyle, overflow: 'visible', boxSizing: 'border-box' }}
       >
         <div
           ref={ref}
@@ -713,7 +713,7 @@ function SvgTextContent({
     // rounding that was making the rendered text drift slightly up/left.
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="${w}" height="${h}" style="display:block;overflow:visible;">` +
       `<foreignObject x="0" y="0" width="${w}" height="${h}">` +
-        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(valign)};overflow:hidden;box-sizing:border-box;">` +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(valign)};overflow:visible;box-sizing:border-box;">` +
           `<div style="width:100%;font-family:${fontFamily};font-size:${fontSize}px;font-weight:${fontWeight};font-style:${fontStyle};color:${color};line-height:1.3;padding:8px 12px;">` +
             (renderedHtml || '') +
           `</div>` +
