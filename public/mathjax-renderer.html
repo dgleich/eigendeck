@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>MathJax Renderer</title>
+<style>
+  /* This page is loaded in a hidden iframe. Nothing renders visually here —
+     it just receives tex strings via postMessage and returns SVG markup. */
+  html, body { margin: 0; padding: 0; visibility: hidden; }
+</style>
+<script>
+// Bundle id is passed as ?bundle=<id>. We load that MathJax bundle and
+// then listen for tex2svg requests via postMessage from the parent window.
+//
+// Protocol:
+//   parent → iframe: { id, type: 'render', tex, display }
+//   iframe → parent: { id, type: 'rendered', svg } | { id, type: 'error', message }
+//   iframe → parent: { type: 'ready' }   (when bundle is loaded)
+(function () {
+  const params = new URLSearchParams(location.search);
+  const bundle = params.get('bundle') || 'ptsans';
+
+  // Same Worker-stub trick we use in the main app — Tauri/WebKit blocks
+  // blob: URL workers, which the SRE component creates for accessibility.
+  window.addEventListener('error', (e) => {
+    if (e.filename && e.filename.indexOf('blob:') === 0) e.preventDefault();
+  });
+  const OrigWorker = window.Worker;
+  window.Worker = function FakeWorker(url) {
+    if (typeof url === 'string' && url.indexOf('blob:') === 0) {
+      const fake = {
+        postMessage(data) { setTimeout(() => { if (fake.onmessage) fake.onmessage({ data: { id: data && data.id, result: '' } }); }, 0); },
+        terminate() {}, onmessage: null, onerror: null,
+        addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; },
+      };
+      return fake;
+    }
+    return new OrigWorker(url);
+  };
+
+  // Configure MathJax before loading the bundle script
+  window.MathJax = {
+    tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+    svg: { fontCache: 'none' },
+    startup: {
+      typeset: false,
+      ready: function () {
+        const MJ = window.MathJax;
+        MJ.startup.defaultReady();
+        MJ.startup.promise.then(function () {
+          parent.postMessage({ type: 'ready', bundle: bundle }, '*');
+        });
+      },
+    },
+  };
+
+  function unescapeHtml(s) {
+    return s.replace(/&nbsp;/g, ' ').replace(/ /g, ' ').replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  }
+
+  window.addEventListener('message', function (event) {
+    const msg = event.data;
+    if (!msg || msg.type !== 'render') return;
+    const { id, tex, display } = msg;
+    const MJ = window.MathJax;
+    if (!MJ || !MJ.tex2svgPromise) {
+      parent.postMessage({ id: id, type: 'error', message: 'MathJax not ready' }, '*');
+      return;
+    }
+    try {
+      MJ.texReset();
+      const cleanTex = unescapeHtml(String(tex || ''));
+      Promise.race([
+        MJ.tex2svgPromise('{' + cleanTex + '}', { display: !!display }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('render timeout')), 3000)),
+      ]).then(function (container) {
+        // container is an mjx-container; pull out the inner <svg>
+        const svg = container.querySelector('svg');
+        if (!svg) {
+          parent.postMessage({ id: id, type: 'error', message: 'no SVG produced' }, '*');
+          return;
+        }
+        // Capture useful metadata for callers
+        const width = svg.getAttribute('width') || '';
+        const height = svg.getAttribute('height') || '';
+        const valign = svg.style.verticalAlign || '';
+        parent.postMessage({
+          id: id, type: 'rendered',
+          svg: svg.outerHTML, width: width, height: height, valign: valign,
+        }, '*');
+      }).catch(function (err) {
+        parent.postMessage({ id: id, type: 'error', message: String(err && err.message || err) }, '*');
+      });
+    } catch (err) {
+      parent.postMessage({ id: id, type: 'error', message: String(err && err.message || err) }, '*');
+    }
+  });
+
+  // Load the bundle (matches src/lib/fonts.ts mathjaxBundle filenames)
+  const script = document.createElement('script');
+  script.src = '/mathjax/tex-mml-svg-mathjax-' + bundle + '.js';
+  script.async = true;
+  script.onerror = function () {
+    parent.postMessage({ type: 'error', message: 'failed to load bundle: ' + bundle }, '*');
+  };
+  document.head.appendChild(script);
+})();
+</script>
+</head>
+<body></body>
+</html>
