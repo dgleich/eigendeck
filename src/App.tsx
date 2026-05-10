@@ -836,13 +836,29 @@ function App() {
             <button title="Add annotation (small, blue, italic)" onClick={() => store.addElement(createTextElement('annotation'))}>+ Note</button>
             <button title="Add footnote (small, grey, narrow)" onClick={() => store.addElement(createTextElement('footnote'))}>+ Footnote</button>
             <span className="divider" />
-            <button title="Add SVG-rendered body text (experimental)"
+            <button title="Add SVG-rendered title (experimental)"
               onClick={() => store.addElement({
-                id: crypto.randomUUID(), type: 'svg-text', preset: 'body', html: 'SVG Text',
-                position: { x: 200, y: 300, width: 1000, height: 200 },
+                id: crypto.randomUUID(), type: 'svg-text', preset: 'title', html: 'SVG Title $\\alpha$',
+                position: { x: 80, y: 20, width: 1760, height: 200 },
               })}
               style={{ background: '#fef3c7', borderColor: '#f59e0b' }}>
-              + SVG Text
+              + SVG Title
+            </button>
+            <button title="Add SVG-rendered body text (experimental)"
+              onClick={() => store.addElement({
+                id: crypto.randomUUID(), type: 'svg-text', preset: 'body', html: 'SVG Body $\\beta = \\sum_i x_i$',
+                position: { x: 200, y: 300, width: 1500, height: 200 },
+              })}
+              style={{ background: '#fef3c7', borderColor: '#f59e0b' }}>
+              + SVG Body
+            </button>
+            <button title="Add SVG-rendered hype text (experimental)"
+              onClick={() => store.addElement({
+                id: crypto.randomUUID(), type: 'svg-text', preset: 'hype', html: 'HYPE! $\\Omega$',
+                position: { x: 200, y: 600, width: 1500, height: 280 },
+              })}
+              style={{ background: '#fef3c7', borderColor: '#f59e0b' }}>
+              + SVG Hype
             </button>
             <span className="divider" />
             <button title="Add arrow" onClick={() => store.addElement({ id: crypto.randomUUID(), type: 'arrow', x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: '#2563eb', strokeWidth: 4, headSize: 16 })}>+ Arrow</button>
