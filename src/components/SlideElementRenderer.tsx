@@ -707,12 +707,16 @@ function SvgTextContent({
 
   // Display mode: render the whole SVG as raw HTML so the browser parses
   // namespaces correctly (React's SVG context breaks foreignObject HTML).
+  // Math glyphs (italics, integrals) have ink that extends past the
+  // typographic bounding box. foreignObject hard-clips at its width/height
+  // even when inner content has overflow:visible. So we make the
+  // foreignObject larger than the layout div, giving the overhang room.
+  // The inner div remains W×H so word wrap/alignment uses the element's
+  // actual dimensions; only the visual paint area is expanded.
+  const overhang = 80; // px of room on right/bottom for math ink overflow
   const svgMarkup =
-    // Use explicit pixel dimensions (not 100%) so the SVG canvas matches
-    // the foreignObject and the parent box exactly — avoids subpixel
-    // rounding that was making the rendered text drift slightly up/left.
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="${w}" height="${h}" style="display:block;overflow:visible;">` +
-      `<foreignObject x="0" y="0" width="${w}" height="${h}">` +
+      `<foreignObject x="0" y="0" width="${w + overhang}" height="${h + overhang}">` +
         `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(valign)};overflow:visible;box-sizing:border-box;">` +
           `<div style="width:100%;font-family:${fontFamily};font-size:${fontSize}px;font-weight:${fontWeight};font-style:${fontStyle};color:${color};line-height:1.3;padding:8px 12px;">` +
             (renderedHtml || '') +
