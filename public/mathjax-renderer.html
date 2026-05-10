@@ -59,11 +59,22 @@
       .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
   }
 
+  function dbg(msg) { parent.postMessage({ type: 'log', bundle: bundle, msg: String(msg) }, '*'); }
+
+  // Catch any unhandled errors inside the iframe and report them up
+  window.addEventListener('error', function (e) {
+    dbg('iframe error: ' + (e.message || 'unknown') + ' at ' + (e.filename || '?') + ':' + (e.lineno || '?'));
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    dbg('iframe unhandled rejection: ' + String(e.reason && e.reason.message || e.reason));
+  });
+
   window.addEventListener('message', function (event) {
     const msg = event.data;
     if (!msg || msg.type !== 'render') return;
     const { id, tex, display } = msg;
     const MJ = window.MathJax;
+    dbg('got render request id=' + id + ' tex="' + String(tex).slice(0, 30) + '" hasMJ=' + !!MJ + ' hasTex2svg=' + !!(MJ && MJ.tex2svgPromise));
     if (!MJ || !MJ.tex2svgPromise) {
       parent.postMessage({ id: id, type: 'error', message: 'MathJax not ready' }, '*');
       return;
@@ -71,28 +82,32 @@
     try {
       MJ.texReset();
       const cleanTex = unescapeHtml(String(tex || ''));
+      dbg('calling tex2svgPromise: "' + cleanTex.slice(0, 30) + '"');
       Promise.race([
         MJ.tex2svgPromise('{' + cleanTex + '}', { display: !!display }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('render timeout')), 3000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('iframe-internal render timeout')), 4000)),
       ]).then(function (container) {
-        // container is an mjx-container; pull out the inner <svg>
-        const svg = container.querySelector('svg');
+        dbg('tex2svgPromise resolved, container=' + (container && container.tagName));
+        const svg = container && container.querySelector && container.querySelector('svg');
         if (!svg) {
+          dbg('no SVG in container');
           parent.postMessage({ id: id, type: 'error', message: 'no SVG produced' }, '*');
           return;
         }
-        // Capture useful metadata for callers
         const width = svg.getAttribute('width') || '';
         const height = svg.getAttribute('height') || '';
         const valign = svg.style.verticalAlign || '';
+        dbg('posting rendered, svg length=' + svg.outerHTML.length);
         parent.postMessage({
           id: id, type: 'rendered',
           svg: svg.outerHTML, width: width, height: height, valign: valign,
         }, '*');
       }).catch(function (err) {
+        dbg('tex2svgPromise caught: ' + String(err && err.message || err));
         parent.postMessage({ id: id, type: 'error', message: String(err && err.message || err) }, '*');
       });
     } catch (err) {
+      dbg('synchronous throw: ' + String(err && err.message || err));
       parent.postMessage({ id: id, type: 'error', message: String(err && err.message || err) }, '*');
     }
   });

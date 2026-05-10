@@ -42,6 +42,11 @@ function installMessageListener() {
   window.addEventListener('message', (ev) => {
     const msg = ev.data;
     if (!msg || typeof msg !== 'object') return;
+    if (msg.type === 'log') {
+      // Echo iframe-side debug logs
+      console.log(`[mathjaxRenderer/iframe ${msg.bundle}]`, msg.msg);
+      return;
+    }
     if (msg.type !== 'rendered' && msg.type !== 'error') return;
     const id = msg.id as string | undefined;
     if (!id) return;
