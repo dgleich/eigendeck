@@ -209,10 +209,11 @@ export async function renderMathInHtml(html: string, bundleId: string): Promise<
           // Match the inline-math styling from the existing renderer
           // (vertical-align baseline tweak so it sits on the text line)
           const valign = r.valign || '-0.025ex';
-          // Inject style="display:inline;vertical-align:..." into the <svg> tag
+          // Inject inline display styles + overflow="visible" attribute so
+          // italic-glyph ink (e.g. \gamma) isn't clipped at the SVG box.
           const svg = r.svg.replace(
             /^<svg/,
-            `<svg style="display:inline;vertical-align:${valign}"`
+            `<svg overflow="visible" style="display:inline;vertical-align:${valign};overflow:visible"`
           );
           parts.push(svg);
         } catch (e) {
