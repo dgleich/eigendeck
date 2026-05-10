@@ -19,6 +19,9 @@
 (function () {
   const params = new URLSearchParams(location.search);
   const bundle = params.get('bundle') || 'ptsans';
+  // Allow caller to specify the full bundle filename so we can use the
+  // -nosre variant (without SRE) without baking the convention here.
+  const file = params.get('file') || ('tex-mml-svg-mathjax-' + bundle + '.js');
 
   // Same Worker-stub trick we use in the main app — Tauri/WebKit blocks
   // blob: URL workers, which the SRE component creates for accessibility.
@@ -130,12 +133,12 @@
     }
   });
 
-  // Load the bundle (matches src/lib/fonts.ts mathjaxBundle filenames)
+  // Load the bundle (filename comes from the registry via ?file= param)
   const script = document.createElement('script');
-  script.src = '/mathjax/tex-mml-svg-mathjax-' + bundle + '.js';
+  script.src = '/mathjax/' + file;
   script.async = true;
   script.onerror = function () {
-    parent.postMessage({ type: 'error', message: 'failed to load bundle: ' + bundle }, '*');
+    parent.postMessage({ type: 'error', message: 'failed to load bundle: ' + file }, '*');
   };
   document.head.appendChild(script);
 })();

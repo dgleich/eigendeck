@@ -13,6 +13,8 @@
  * are ~free. First load of each bundle takes ~1-2s.
  */
 
+import { resolveFontPackage } from './fonts';
+
 interface PendingRequest {
   resolve: (svg: RenderResult) => void;
   reject: (err: Error) => void;
@@ -80,8 +82,9 @@ function getOrCreatePool(bundleId: string): Pool {
 
   console.log('[mathjaxRenderer] creating iframe pool for bundle:', bundleId);
 
+  const pkg = resolveFontPackage(bundleId);
   const iframe = document.createElement('iframe');
-  iframe.src = `/mathjax-renderer.html?bundle=${encodeURIComponent(bundleId)}`;
+  iframe.src = `/mathjax-renderer.html?bundle=${encodeURIComponent(bundleId)}&file=${encodeURIComponent(pkg.mathjaxBundle)}`;
   iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:0;visibility:hidden;';
   iframe.setAttribute('aria-hidden', 'true');
   iframe.setAttribute('data-mathjax-bundle', bundleId);
