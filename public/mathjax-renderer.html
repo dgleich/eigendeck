@@ -95,10 +95,11 @@
       dbg('about to texReset');
       try { MJ.texReset(); } catch (e) { dbg('texReset threw: ' + String(e && e.message || e)); }
       dbg('calling tex2svgPromise: "' + cleanTex.slice(0, 30) + '"');
-      // Try diagnostic call WITHOUT braces first to see if the brace wrapping
-      // is the issue; then with braces if needed.
+      // Wrap in {} — required, else MathJax renders only the first
+      // sub-expression (CLAUDE.md note: "MathJax tex must be wrapped in
+      // braces: MJ.tex2svgPromise(`{${tex}}`)").
       Promise.race([
-        MJ.tex2svgPromise(cleanTex, { display: !!display }),
+        MJ.tex2svgPromise('{' + cleanTex + '}', { display: !!display }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('iframe-internal render timeout')), 8000)),
       ]).then(function (container) {
         dbg('tex2svgPromise resolved, container=' + (container && container.tagName));
