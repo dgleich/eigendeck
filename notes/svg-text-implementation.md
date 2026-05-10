@@ -154,3 +154,83 @@ Math support. The whole point of this experiment is to enable per-preset
 MathJax bundles via iframe-isolated renderers (each iframe loads one bundle,
 returns SVG via postMessage). With the SVG element as the host, math output
 just gets composited into the same SVG.
+
+## Math via iframe pool — bugs hit and fixes
+
+### 5. SRE blob-Worker hang in non-PT bundles
+
+**Symptom**: `tex2svgPromise` called inside the iframe returns a Promise
+that never resolves or rejects. Internal 4s timeout fires every render.
+Also affects the non-PT bundles when called from the main page (not just
+in iframes).
+
+**Cause**: The mathjax-fonts repo ships SRE-included bundles
+(`tex-mml-svg-mathjax-<id>.js`). On startup, SRE loads via a blob:
+URL Worker. Tauri's WebKit blocks blob: URLs, and our existing Worker
+stub returns empty data. SRE then waits indefinitely for properly-formed
+responses, blocking the entire MathJax startup pipeline.
+
+Setting `options: { enableExplorer: false, ... }` only prevents *using*
+SRE features — the modules are still `require()`-d at the top of the
+bundle file and load synchronously.
+
+**Fix**: build the `-nosre` variants (which omit `a11y/sre`, `a11y/explorer`,
+`a11y/menu` etc. entirely). The mathjax-fonts repo has webpack configs
+(`webpack-nosre.config.cjs`) for each but doesn't ship pre-built outputs.
+Built via `mathjax-fonts/mathjax-shantell/build/build-all-nosre.cjs` which
+calls webpack programmatically (the CLI prompts for "which CLI?" and
+hangs in non-interactive mode).
+
+### 6. Iframe loaded the wrong bundle file
+
+**Symptom**: After switching the registry's `mathjaxBundle` filenames to
+`-nosre`, the iframes still hung. Console warnings referenced the
+non-nosre files.
+
+**Cause**: The iframe page constructed its bundle URL from the `bundle`
+id parameter alone: `'/mathjax/tex-mml-svg-mathjax-' + bundle + '.js'`.
+The registry's filename change had no effect because the iframe ignored it.
+
+**Fix**: Pass the full filename via a `?file=` URL parameter from the
+broker (`pkg.mathjaxBundle`) and have the iframe load exactly that.
+
+### 7. fontCache:'global' broke cross-document SVG transplant
+
+**Symptom**: Math rendering succeeded (the broker received SVG markup),
+but the SVGs were invisible when injected into the parent page's
+foreignObject.
+
+**Cause**: `svg.fontCache: 'global'` makes MathJax store glyph paths in
+a single `<defs>` section in the rendering document. Each rendered
+`<svg>` references those defs by id. When we extracted just the inner
+`<svg>` and injected it into a different document, the id references
+couldn't resolve — SVGs rendered as blank space.
+
+**Fix**: `svg.fontCache: 'none'` inlines all glyph paths in every
+rendered `<svg>`. Each output is fully self-contained and can be moved
+across documents. Slightly larger output but the right trade for our use case.
+
+### 8. Missing `{...}` wrapping rendered only first sub-expression
+
+**Symptom**: `\alpha + \beta = \gamma` rendered as just `α`. Some
+bundles only.
+
+**Cause**: Documented in CLAUDE.md — without surrounding braces,
+MathJax may parse only the first sub-expression. Different bundles
+behave differently.
+
+**Fix**: Always wrap as `'{' + tex + '}'` before passing to
+`tex2svgPromise`. Same as the existing `src/lib/mathjax.ts`.
+
+### 9. Italic-glyph ink overflow at right edge (open)
+
+**Symptom**: `\gamma`, `\beta`, integrals etc. occasionally clip on the
+right edge of the element.
+
+**Cause**: MathJax's SVG `width` attribute is the typographic bounding
+box. Italic glyphs have ink that extends past this for kerning purposes.
+Our `overflow: hidden` on the inner foreignObject div clips the overhang.
+
+**Status**: Not yet fixed. Options: remove overflow:hidden (math
+overhangs the element bounds), add right padding, or pre-expand the
+SVG viewBox in the broker.
