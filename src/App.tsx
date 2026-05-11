@@ -18,6 +18,7 @@ import { createTextElement } from './types/presentation';
 import type { SlideElement } from './types/presentation';
 import {
   saveProject,
+  saveAsProject,
   openProject,
   createProject,
   exportPresentation,
@@ -788,6 +789,7 @@ function App() {
         case 'new-project': createProject(); break;
         case 'open-project': openProject(); break;
         case 'save': saveProject(); break;
+        case 'save-as': saveAsProject(); break;
         case 'export': exportPresentation(); break;
         case 'export-pdf': printToPdf(); break;
         case 'export-pdf-screenshots': exportPdfScreenshots(); break;

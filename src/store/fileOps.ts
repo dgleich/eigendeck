@@ -152,6 +152,40 @@ export async function saveProject(): Promise<void> {
   }
 }
 
+/**
+ * Save As: prompt for a new path, copy the current in-memory DB to that
+ * file, and switch the active project to it. The original file (if any)
+ * is left untouched on disk.
+ */
+export async function saveAsProject(): Promise<void> {
+  const store = usePresentationStore.getState();
+  const baseName = store.presentation.title.replace(/[^a-zA-Z0-9]/g, '-') || 'Untitled';
+
+  const selected = await save({
+    title: 'Save Presentation As...',
+    defaultPath: `${baseName}.eigendeck`,
+    filters: [{ name: 'Eigendeck', extensions: ['eigendeck'] }],
+  });
+  if (!selected) return;
+
+  try {
+    // Make sure the in-memory DB matches the live Zustand state before
+    // we serialize it to the new file.
+    await flushToSqlite();
+    await invoke('db_import_json', { json: JSON.stringify(store.presentation) });
+    await invoke('db_save_to_file', { path: selected });
+    // Switch the active project to the new file going forward.
+    store.setProjectPath((selected as string).replace(/\.eigendeck$/, ''));
+    const { setSqliteDbPath } = await import('./presentation');
+    setSqliteDbPath(selected as string);
+    store.markClean();
+    addRecentProject(selected as string, store.presentation.title);
+  } catch (e) {
+    console.error('Save As failed:', e);
+    await showError(`Failed to save: ${e}`);
+  }
+}
+
 // ============================================================================
 // Export
 // ============================================================================
