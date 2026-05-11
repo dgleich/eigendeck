@@ -11,6 +11,19 @@
  *
  * Each tex render is cached by (bundle, tex, display) so repeated renders
  * are ~free. First load of each bundle takes ~1-2s.
+ *
+ * # Debugging
+ *
+ * The iframe (public/mathjax-renderer.html) has a dbg(msg) function that
+ * routes log lines back to the parent via postMessage {type:'log'}. We
+ * surface those here as console.warn entries prefixed
+ * `[mathjaxRenderer/iframe <bundle>]` — so iframe-side issues are visible
+ * in the main page's devtools without context-switching.
+ *
+ * Currently dbg() is only invoked for unexpected events (errors, missing
+ * SVG, preamble failures). When debugging a regression, temporarily add
+ * dbg() calls in the success paths inside mathjax-renderer.html (look for
+ * the comments next to the existing calls).
  */
 
 import { resolveFontPackage } from './fonts';
@@ -46,8 +59,11 @@ function installMessageListener() {
     const msg = ev.data;
     if (!msg || typeof msg !== 'object') return;
     if (msg.type === 'log') {
-      // Echo iframe-side debug logs
-      console.log(`[mathjaxRenderer/iframe ${msg.bundle}]`, msg.msg);
+      // Echo iframe-side dbg() messages. Iframe only sends these for
+      // unexpected events (errors, missing SVG, preamble failures); they
+      // surface here as console warnings so they're visible without opening
+      // the iframe context in devtools.
+      console.warn(`[mathjaxRenderer/iframe ${msg.bundle}]`, msg.msg);
       return;
     }
     if (msg.type !== 'rendered' && msg.type !== 'error') return;
@@ -81,8 +97,6 @@ function getOrCreatePool(bundleId: string): Pool {
 
   installMessageListener();
 
-  console.log('[mathjaxRenderer] creating iframe pool for bundle:', bundleId);
-
   const pkg = resolveFontPackage(bundleId);
   const iframe = document.createElement('iframe');
   iframe.src = `/mathjax-renderer.html?bundle=${encodeURIComponent(bundleId)}&file=${encodeURIComponent(pkg.mathjaxBundle)}`;
@@ -95,21 +109,17 @@ function getOrCreatePool(bundleId: string): Pool {
       const msg = ev.data;
       if (!msg || typeof msg !== 'object') return;
       if (msg.type === 'ready' && msg.bundle === bundleId) {
-        console.log('[mathjaxRenderer] bundle ready:', bundleId);
         window.removeEventListener('message', readyHandler);
         resolve();
       } else if (msg.type === 'error' && !msg.id) {
-        console.warn('[mathjaxRenderer] bundle error:', bundleId, msg.message);
+        console.warn('[mathjaxRenderer] bundle load failed:', bundleId, msg.message);
         window.removeEventListener('message', readyHandler);
         reject(new Error(msg.message || 'bundle load failed'));
       }
     };
     window.addEventListener('message', readyHandler);
-    iframe.addEventListener('load', () => {
-      console.log('[mathjaxRenderer] iframe loaded:', bundleId);
-    });
     iframe.addEventListener('error', (e) => {
-      console.warn('[mathjaxRenderer] iframe error:', bundleId, e);
+      console.warn('[mathjaxRenderer] iframe load error:', bundleId, e);
     });
     setTimeout(() => {
       window.removeEventListener('message', readyHandler);
@@ -157,9 +167,7 @@ export async function renderMath(
   const hit = pool.cache.get(cacheKey);
   if (hit) return hit;
 
-  console.log('[mathjaxRenderer] awaiting ready for:', bundleId, tex.slice(0, 30));
   await pool.ready;
-  console.log('[mathjaxRenderer] sending render:', bundleId, tex.slice(0, 30));
 
   const id = `r${++nextRequestId}`;
   const result = await new Promise<RenderResult>((resolve, reject) => {
@@ -173,7 +181,6 @@ export async function renderMath(
     }, 5000);
   });
 
-  console.log('[mathjaxRenderer] got SVG for:', bundleId, tex.slice(0, 30), result.svg.length, 'chars');
   pool.cache.set(cacheKey, result);
   return result;
 }

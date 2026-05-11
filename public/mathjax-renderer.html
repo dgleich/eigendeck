@@ -70,6 +70,13 @@
       .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
   }
 
+  // dbg(msg) routes a log line back to the parent page, which echoes it to
+  // the parent's devtools console (prefixed [mathjaxRenderer/iframe <bundle>]).
+  // Use sparingly — only for unexpected events (errors, timeouts, missing
+  // SVG, preamble failures). Per-call success messages were intentionally
+  // removed once the pipeline stabilized; add them back temporarily if
+  // diagnosing a regression. Cross-iframe console.log isn't visible in the
+  // parent's devtools, hence this postMessage shim.
   function dbg(msg) { parent.postMessage({ type: 'log', bundle: bundle, msg: String(msg) }, '*'); }
 
   // Catch any unhandled errors inside the iframe and report them up
@@ -95,7 +102,6 @@
         dbg('preamble queued: MathJax not ready');
         return;
       }
-      dbg('applying preamble: "' + tex.slice(0, 30) + '..."');
       try {
         MJ.texReset();
         // Render the preamble to register \newcommand, \def, etc.
@@ -104,7 +110,6 @@
           new Promise((_, reject) => setTimeout(() => reject(new Error('preamble timeout')), 4000)),
         ]).then(function () {
           appliedPreamble = tex;
-          dbg('preamble applied');
         }).catch(function (e) {
           dbg('preamble error: ' + String(e && e.message || e));
         });
@@ -116,16 +121,13 @@
     if (msg.type !== 'render') return;
     const { id, tex, display } = msg;
     const MJ = window.MathJax;
-    dbg('got render request id=' + id + ' tex="' + String(tex).slice(0, 30) + '" hasMJ=' + !!MJ + ' hasTex2svg=' + !!(MJ && MJ.tex2svgPromise));
     if (!MJ || !MJ.tex2svgPromise) {
       parent.postMessage({ id: id, type: 'error', message: 'MathJax not ready' }, '*');
       return;
     }
     try {
       const cleanTex = unescapeHtml(String(tex || ''));
-      dbg('about to texReset');
       try { MJ.texReset(); } catch (e) { dbg('texReset threw: ' + String(e && e.message || e)); }
-      dbg('calling tex2svgPromise: "' + cleanTex.slice(0, 30) + '"');
       // Wrap in {} — required, else MathJax renders only the first
       // sub-expression (CLAUDE.md note: "MathJax tex must be wrapped in
       // braces: MJ.tex2svgPromise(`{${tex}}`)").
@@ -133,23 +135,23 @@
         MJ.tex2svgPromise('{' + cleanTex + '}', { display: !!display }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('iframe-internal render timeout')), 8000)),
       ]).then(function (container) {
-        dbg('tex2svgPromise resolved, container=' + (container && container.tagName));
         const svg = container && container.querySelector && container.querySelector('svg');
         if (!svg) {
-          dbg('no SVG in container');
+          dbg('no SVG in container for: ' + cleanTex.slice(0, 30));
           parent.postMessage({ id: id, type: 'error', message: 'no SVG produced' }, '*');
           return;
         }
         const width = svg.getAttribute('width') || '';
         const height = svg.getAttribute('height') || '';
         const valign = svg.style.verticalAlign || '';
-        dbg('posting rendered, svg length=' + svg.outerHTML.length);
         parent.postMessage({
           id: id, type: 'rendered',
           svg: svg.outerHTML, width: width, height: height, valign: valign,
         }, '*');
       }).catch(function (err) {
-        dbg('tex2svgPromise caught: ' + String(err && err.message || err));
+        // Note: per-call render failures are reported via 'error' postMessage
+        // and surfaced as Promise rejection in the broker. Adding a dbg()
+        // here too would be redundant.
         parent.postMessage({ id: id, type: 'error', message: String(err && err.message || err) }, '*');
       });
     } catch (err) {
