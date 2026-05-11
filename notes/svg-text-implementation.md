@@ -222,15 +222,52 @@ behave differently.
 **Fix**: Always wrap as `'{' + tex + '}'` before passing to
 `tex2svgPromise`. Same as the existing `src/lib/mathjax.ts`.
 
-### 9. Italic-glyph ink overflow at right edge (open)
+### 9. Italic-glyph ink overflow at right edge
 
-**Symptom**: `\gamma`, `\beta`, integrals etc. occasionally clip on the
-right edge of the element.
+**Symptom**: `\gamma`, `\beta`, integrals etc. clipped on the right
+edge of the element. The math source DOES extend past the typographic
+bounding box (verified upstream via `public/mathjax-test.html` —
+gamma's ink visible past a red marker, no clipping in plain HTML).
 
-**Cause**: MathJax's SVG `width` attribute is the typographic bounding
-box. Italic glyphs have ink that extends past this for kerning purposes.
-Our `overflow: hidden` on the inner foreignObject div clips the overhang.
+**Cause** (took several iterations to find): per the SVG spec, the UA
+stylesheet has `overflow: hidden` on `<svg>` and `<foreignObject>`,
+and **CSS `overflow:visible` does not override it in WebKit**. Only
+the SVG **presentation attribute** `overflow="visible"` lifts the
+clip. Chrome/Firefox have grown more permissive in recent years but
+Tauri's WebKit is strict per spec.
 
-**Status**: Not yet fixed. Options: remove overflow:hidden (math
-overhangs the element bounds), add right padding, or pre-expand the
-SVG viewBox in the broker.
+This explains why all our earlier fixes failed:
+- CSS `overflow:visible` on outer `<svg>` — ignored by WebKit
+- CSS `overflow:visible` on inner div — irrelevant (not the clipper)
+- Expanding foreignObject to W+80 × H+80 — the foreignObject was now
+  larger, but the SVG viewport is still W×H and *that* clips
+
+**Fix**: set `overflow="visible"` as an **SVG attribute** (not just
+CSS!) on:
+- the outer wrapping `<svg>`
+- the `<foreignObject>`
+- each MathJax-emitted inline `<svg>` (added in `mathjaxRenderer.ts`
+  by injecting `overflow="visible"` into the `<svg>` tag)
+
+```js
+const svgMarkup =
+  `<svg ... overflow="visible" style="...">` +
+    `<foreignObject ... overflow="visible">` +
+      ...
+```
+
+The `+80` foreignObject expansion was a workaround for the real cause
+and was dropped after this fix.
+
+**Diagnosis credit**: agent thought through ancestor chain, ruled out
+DraggableBox/.slide-canvas/.slide-element, identified WebKit-specific
+UA-style enforcement.
+
+## Status (2026-05-11)
+
+Working: per-preset MathJax bundles (libertinus / shantell / concrete-euler
+all coexist on the same slide via iframe pool, each rendering math in
+its own font). Text + math composited in foreignObject. No subpixel
+drift between SVG display and HTML edit. Math overhang renders fully.
+User has approved replacing all text elements with the SVG-rendered
+version.
