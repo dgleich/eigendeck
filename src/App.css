@@ -311,8 +311,10 @@
 }
 
 .slide-thumbnail.group-child {
-  margin-left: 20px;
-  transform: scale(0.9);
+  /* Indent + shrink visually via transform only — margin-left would
+     reduce the layout width and clip the right edge of the 166px
+     thumbnail clip inside our overflow:hidden box. */
+  transform: scale(0.9) translateX(22px);
   transform-origin: top left;
   opacity: 0.85;
 }
