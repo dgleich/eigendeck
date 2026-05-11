@@ -28,6 +28,85 @@ function valignToCss(valign?: string): string {
   return '';
 }
 
+/**
+ * Strip HTML tags but keep math source ($..$ / $$..$$) — produces readable
+ * alt-text for accessibility. The result preserves "text $\\alpha + 1$ more"
+ * as "text $\alpha + 1$ more" so screen readers can announce the equation
+ * source intelligibly.
+ */
+function altTextFromHtml(html: string): string {
+  if (!html) return '';
+  // Replace block tags with newlines, then strip remaining tags. Decode
+  // common entities. Collapse whitespace.
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6])>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/** Escape XML special characters for use in an attribute value. */
+function escAttr(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** Escape XML special characters for use as element text content. */
+function escText(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * Build the SVG/foreignObject markup string for a text element.
+ * Pure function — no React, no DOM. The iframe pool must already have
+ * pre-rendered math (passed in as `renderedHtml`).
+ *
+ * Used by:
+ *   - TextElementSvg (React display component)
+ *   - HTML export (fileOps.ts, via exportCore renderTextElement callback)
+ *
+ * The output is fully self-contained — math SVGs have inlined glyph paths
+ * (fontCache:'none') so they can be moved across documents.
+ *
+ * Accessibility: the SVG carries role="img" + aria-label with the source
+ * text (math marker syntax preserved), and an inner <title> element. Screen
+ * readers pick up either; sighted users don't see them as tooltips because
+ * we use aria-label instead of relying on title-as-tooltip behavior.
+ */
+export function buildTextElementSvgMarkup(
+  element: TextElement,
+  renderedHtml: string,
+  ctx: { fontFamily: string; fontSize: number; fontWeight: string; fontStyle: string; color: string; valign?: string },
+): string {
+  const w = element.position.width;
+  const h = element.position.height;
+  // Alt text comes from the SOURCE element.html (with $..$), not the
+  // post-render html (which would have lost the math source to inline SVGs).
+  const alt = altTextFromHtml(element.html);
+  // overflow="visible" attribute (not just CSS) — required for italic-glyph
+  // ink overhang. WebKit enforces UA-style overflow:hidden on <svg>/
+  // <foreignObject> per spec; only the presentation attribute lifts it.
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="${w}" height="${h}" overflow="visible" role="img" aria-label="${escAttr(alt)}" style="display:block;overflow:visible;">` +
+      `<title>${escText(alt)}</title>` +
+      `<foreignObject x="0" y="0" width="${w}" height="${h}" overflow="visible">` +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(ctx.valign)};overflow:visible;box-sizing:border-box;">` +
+          `<div style="width:100%;font-family:${ctx.fontFamily};font-size:${ctx.fontSize}px;font-weight:${ctx.fontWeight};font-style:${ctx.fontStyle};color:${ctx.color};line-height:1.3;padding:8px 12px;">` +
+            (renderedHtml || '') +
+          `</div>` +
+        `</div>` +
+      `</foreignObject>` +
+    `</svg>`
+  );
+}
+
 interface Props {
   element: TextElement;
   slide: Slide;
@@ -77,21 +156,9 @@ export function TextElementSvg({
     return () => { cancelled = true; };
   }, [element.html, mathBundleId]);
 
-  const w = element.position.width;
-  const h = element.position.height;
-
-  // overflow="visible" SVG presentation attribute (not just CSS) is required
-  // for italic-glyph ink overhang to escape the SVG/foreignObject UA-clip.
-  const svgMarkup =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="${w}" height="${h}" overflow="visible" style="display:block;overflow:visible;">` +
-      `<foreignObject x="0" y="0" width="${w}" height="${h}" overflow="visible">` +
-        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(valign)};overflow:visible;box-sizing:border-box;">` +
-          `<div style="width:100%;font-family:${fontFamily};font-size:${fontSize}px;font-weight:${fontWeight};font-style:${fontStyle};color:${color};line-height:1.3;padding:8px 12px;">` +
-            (renderedHtml || '') +
-          `</div>` +
-        `</div>` +
-      `</foreignObject>` +
-    `</svg>`;
+  const svgMarkup = buildTextElementSvgMarkup(element, renderedHtml, {
+    fontFamily, fontSize, fontWeight, fontStyle, color, valign,
+  });
 
   return (
     <div

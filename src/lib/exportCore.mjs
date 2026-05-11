@@ -132,6 +132,25 @@ export async function buildExportHtml(opts) {
      */
     resolveFont,
     /**
+     * Optional: per-element math bundle resolver. Returns the bundle id
+     * (e.g. 'shantell') to use for math in an element with the given preset
+     * on the given slide. When set, renderMath is called as
+     * `renderMath(html, bundleId)` so each element renders math in its own
+     * preset's font. If omitted, renderMath is called as `renderMath(html)`
+     * and uses whatever bundle is loaded.
+     */
+    resolveMathBundle,
+    /**
+     * Optional: per-element override that returns the COMPLETE inner HTML
+     * for a text element (typically the SVG/foreignObject markup with math
+     * pre-rendered). When set, exportCore uses it instead of building HTML
+     * divs around the element's html. The returned string is wrapped in an
+     * absolutely-positioned div at the element's coordinates.
+     *
+     * Signature: (element, slide) => Promise<string> | string
+     */
+    renderTextElement,
+    /**
      * Optional: pre-built @font-face CSS block (typically with data URLs)
      * to embed in <head>. If omitted, uses Google Fonts CDN for PT Sans only.
      */
@@ -179,11 +198,23 @@ export async function buildExportHtml(opts) {
       const p = el.position;
       switch (el.type) {
         case 'text': {
+          // Preferred path: caller pre-renders the entire SVG (math already
+          // composited via the iframe pool, per-preset font fully resolved).
+          // We just wrap it in a positioned div.
+          if (renderTextElement) {
+            const svgMarkup = await renderTextElement(el, slide);
+            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;">` +
+              svgMarkup + `</div>`;
+            break;
+          }
+          // Legacy fallback: build HTML divs in-line. Used by the CLI
+          // exporter (export-cli.ts) which doesn't have access to React/
+          // browser context and has to live with body-font math.
           const ps = TEXT_PRESET_STYLES[el.preset] || TEXT_PRESET_STYLES.body;
           let textHtml = el.html || '';
-          // Pre-render math to SVG if a renderer is available
           if (renderMath && /\$[^$]+\$|\$\$[\s\S]+?\$\$/.test(textHtml)) {
-            try { textHtml = await renderMath(textHtml); }
+            const bundleId = resolveMathBundle ? resolveMathBundle(el.preset, slide) : undefined;
+            try { textHtml = await renderMath(textHtml, bundleId); }
             catch (e) { console.warn('Math render failed:', e); hasUnrenderedMath = true; }
           } else if (/\$[^$]+\$|\$\$[\s\S]+?\$\$/.test(textHtml)) {
             hasUnrenderedMath = true;
@@ -191,7 +222,6 @@ export async function buildExportHtml(opts) {
           const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
           const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
                              valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
-          // Resolve font: explicit element override > resolved font for preset > preset default
           const resolvedFont = resolveFont ? resolveFont(el.preset, slide) : ps.fontFamily;
           const fontFamily = el.fontFamily || resolvedFont;
           inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">` +

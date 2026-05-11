@@ -28,6 +28,79 @@
 
 import { resolveFontPackage } from './fonts';
 
+/**
+ * Stable cache key for (tex, bundle, display, preamble). The same string is
+ * used both in-memory (pool.cache) and in the SQLite math_cache table, so
+ * the CLI exporter can look up SVGs the editor already produced.
+ */
+export function mathCacheKey(tex: string, bundle: string, display: boolean, preamble: string): string {
+  // FNV-1a hash — small, deterministic, good enough for cache keys (collisions
+  // are functionally fine because we'd just re-render).
+  let h = 0x811c9dc5;
+  const s = `${bundle}\x1f${display ? 'd' : 'i'}\x1f${preamble}\x1f${tex}`;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+// Tauri invoke is dynamically imported so this module also runs in non-Tauri
+// test/CLI contexts. Persistence is best-effort — failures are silenced so
+// they don't break rendering.
+type InvokeFn = <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
+let _invoke: InvokeFn | null | undefined = undefined;
+async function getInvoke(): Promise<InvokeFn | null> {
+  if (_invoke !== undefined) return _invoke;
+  try {
+    const mod = await import('@tauri-apps/api/core');
+    _invoke = mod.invoke as InvokeFn;
+  } catch { _invoke = null; }
+  return _invoke;
+}
+
+async function persistToSqlite(key: string, tex: string, bundle: string, display: boolean, preamble: string, r: RenderResult) {
+  const invoke = await getInvoke();
+  if (!invoke) return;
+  try {
+    await invoke('db_put_math_svg', {
+      key, tex, bundle, display, preamble,
+      svg: r.svg, width: r.width || null, height: r.height || null, valign: r.valign || null,
+    });
+  } catch { /* cache write failure shouldn't break rendering */ }
+}
+
+/** One-time best-effort: load all cached SVGs from SQLite into the in-memory pool caches. */
+let warmCacheLoaded = false;
+export async function warmMathCacheFromSqlite(): Promise<number> {
+  if (warmCacheLoaded) return 0;
+  warmCacheLoaded = true;
+  const invoke = await getInvoke();
+  if (!invoke) return 0;
+  try {
+    const rows = await invoke<Array<{ key: string; tex: string; bundle: string; display: boolean; preamble: string; svg: string; width: string | null; height: string | null; valign: string | null }>>(
+      'db_load_math_cache'
+    );
+    for (const row of rows) {
+      const pool = getOrCreatePool(row.bundle);
+      pool.cache.set(row.key, {
+        svg: row.svg,
+        width: row.width || '',
+        height: row.height || '',
+        valign: row.valign || '',
+      });
+    }
+    return rows.length;
+  } catch { return 0; }
+}
+
+/** Reset the warm-cache flag — call after opening a different .eigendeck file. */
+export function resetMathCacheWarmupFlag(): void {
+  warmCacheLoaded = false;
+  // Also clear in-memory pool caches so they don't bleed across files.
+  for (const pool of pools.values()) pool.cache.clear();
+}
+
 interface PendingRequest {
   resolve: (svg: RenderResult) => void;
   reject: (err: Error) => void;
@@ -163,7 +236,8 @@ export async function renderMath(
   if (preamble && pool.appliedPreamble !== preamble) {
     await setMathPreamble(preamble, bundleId);
   }
-  const cacheKey = `${display ? 'd' : 'i'}:${tex}`;
+  const effectivePreamble = preamble || '';
+  const cacheKey = mathCacheKey(tex, bundleId, display, effectivePreamble);
   const hit = pool.cache.get(cacheKey);
   if (hit) return hit;
 
@@ -182,6 +256,8 @@ export async function renderMath(
   });
 
   pool.cache.set(cacheKey, result);
+  // Write-through to SQLite so headless tools (CLI export) can find it.
+  void persistToSqlite(cacheKey, tex, bundleId, display, effectivePreamble, result);
   return result;
 }
 

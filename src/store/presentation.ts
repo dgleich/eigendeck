@@ -698,6 +698,11 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     const { clearAssetCache } = await import('../lib/demoAssets');
     clearAssetCache();
 
+    // Reset the math-cache warm-up flag so the new project's cached SVGs
+    // get loaded into the in-memory pool (and old project's are discarded).
+    const { resetMathCacheWarmupFlag } = await import('../lib/mathjaxRenderer');
+    resetMathCacheWarmupFlag();
+
     // Open new DB and load
     await invoke('db_open', { path: dbPath });
     const json = await invoke<string>('db_export_json');
@@ -713,6 +718,11 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
 
     // Enable write-through for the new project
     sqliteDbPath = dbPath;
+
+    // Warm the math-SVG cache so previously-rendered expressions don't
+    // re-render through the iframe pool on first slide paint.
+    const { warmMathCacheFromSqlite } = await import('../lib/mathjaxRenderer');
+    void warmMathCacheFromSqlite();
   } catch (e) {
     console.error('Failed to open SQLite project:', e);
     throw e;

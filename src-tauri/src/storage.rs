@@ -73,6 +73,24 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
             external_mtime TEXT
         );
 
+        -- Cached MathJax SVG renders. Not part of the temporal model
+        -- (no valid_from/valid_to) — purely a derived-output cache.
+        -- The `key` is a stable hash of (tex, bundle, display, preamble).
+        -- CLI export reads from here so headless rendering can produce
+        -- per-preset math without spinning up iframes.
+        CREATE TABLE IF NOT EXISTS math_cache (
+            key TEXT PRIMARY KEY,
+            tex TEXT NOT NULL,
+            bundle TEXT NOT NULL,
+            display INTEGER NOT NULL,
+            preamble TEXT NOT NULL,
+            svg TEXT NOT NULL,
+            width TEXT,
+            height TEXT,
+            valign TEXT,
+            rendered_at INTEGER DEFAULT (strftime('%s','now'))
+        );
+
         CREATE INDEX IF NOT EXISTS idx_el_current ON elements(valid_to) WHERE valid_to IS NULL;
         CREATE INDEX IF NOT EXISTS idx_el_id ON elements(id) WHERE valid_to IS NULL;
         CREATE INDEX IF NOT EXISTS idx_se_slide ON slide_elements(slide_id) WHERE valid_to IS NULL;
@@ -1179,6 +1197,103 @@ pub fn db_get_asset(path: String) -> Result<Vec<u8>, String> {
             |row| row.get(0),
         )?;
         Ok(data)
+    })
+}
+
+// ============================================
+// Math SVG cache (not historied)
+// ============================================
+//
+// The renderer iframe pool writes through to this cache so headless tools
+// (CLI export) can produce per-preset math without spinning up iframes
+// themselves. The `key` is computed in the TS side as a stable hash of
+// (tex, bundle, display, preamble).
+
+#[derive(serde::Serialize)]
+pub struct MathCacheEntry {
+    pub key: String,
+    pub tex: String,
+    pub bundle: String,
+    pub display: bool,
+    pub preamble: String,
+    pub svg: String,
+    pub width: Option<String>,
+    pub height: Option<String>,
+    pub valign: Option<String>,
+}
+
+/// Insert or update a cached math SVG render.
+#[tauri::command]
+pub fn db_put_math_svg(
+    key: String,
+    tex: String,
+    bundle: String,
+    display: bool,
+    preamble: String,
+    svg: String,
+    width: Option<String>,
+    height: Option<String>,
+    valign: Option<String>,
+) -> Result<(), String> {
+    with_db(|conn| {
+        conn.execute(
+            "INSERT OR REPLACE INTO math_cache (key, tex, bundle, display, preamble, svg, width, height, valign) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![&key, &tex, &bundle, display as i64, &preamble, &svg, &width, &height, &valign],
+        )?;
+        Ok(())
+    })
+}
+
+/// Look up one cached SVG by its key. Returns None if not cached.
+#[tauri::command]
+pub fn db_get_math_svg(key: String) -> Result<Option<MathCacheEntry>, String> {
+    with_db(|conn| {
+        let result: rusqlite::Result<MathCacheEntry> = conn.query_row(
+            "SELECT key, tex, bundle, display, preamble, svg, width, height, valign \
+             FROM math_cache WHERE key = ?1",
+            params![&key],
+            |row| Ok(MathCacheEntry {
+                key: row.get(0)?,
+                tex: row.get(1)?,
+                bundle: row.get(2)?,
+                display: row.get::<_, i64>(3)? != 0,
+                preamble: row.get(4)?,
+                svg: row.get(5)?,
+                width: row.get(6)?,
+                height: row.get(7)?,
+                valign: row.get(8)?,
+            }),
+        );
+        match result {
+            Ok(entry) => Ok(Some(entry)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    })
+}
+
+/// Load the entire cache (used at boot to warm the in-memory pool caches).
+#[tauri::command]
+pub fn db_load_math_cache() -> Result<Vec<MathCacheEntry>, String> {
+    with_db(|conn| {
+        let mut stmt = conn.prepare(
+            "SELECT key, tex, bundle, display, preamble, svg, width, height, valign FROM math_cache",
+        )?;
+        let rows = stmt.query_map([], |row| Ok(MathCacheEntry {
+            key: row.get(0)?,
+            tex: row.get(1)?,
+            bundle: row.get(2)?,
+            display: row.get::<_, i64>(3)? != 0,
+            preamble: row.get(4)?,
+            svg: row.get(5)?,
+            width: row.get(6)?,
+            height: row.get(7)?,
+            valign: row.get(8)?,
+        }))?;
+        let mut out = Vec::new();
+        for r in rows { out.push(r?); }
+        Ok(out)
     })
 }
 

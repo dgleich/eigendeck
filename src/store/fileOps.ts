@@ -14,11 +14,17 @@ import {
 import { usePresentationStore, openSqliteProject, flushToSqlite } from './presentation';
 // @ts-ignore — pure JS module shared with the CLI tool
 import { buildExportHtml } from '../lib/exportCore.mjs';
-import { renderMathInHtml, applyMathPreamble } from '../lib/mathjax';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import {
   fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS,
 } from '../lib/fonts';
+import {
+  renderMathInHtml as renderMathPerBundle,
+} from '../lib/mathjaxRenderer';
+import { TEXT_PRESET_STYLES } from '../types/presentation';
+import { resolveTheme, themeColorForPreset } from '../lib/themes';
+import { buildTextElementSvgMarkup } from '../components/TextElementSvg';
+import type { TextElement, Slide } from '../types/presentation';
 
 async function showError(msg: string) {
   await message(msg, { title: 'Error', kind: 'error' });
@@ -232,14 +238,32 @@ export async function exportPresentation(): Promise<void> {
           throw new Error(`Asset not found: ${path}`);
         }
       },
-      renderMath: renderMathInHtml,
-      applyMathPreamble: applyMathPreamble,
-      // Resolve font for each text element: title preset uses titleFont,
-      // hype preset uses hypeFont, others use bodyFont. Falls back through
-      // slide override → presentation default → 'ptsans'.
-      resolveFont: (preset: string, slide: { titleFont?: string; bodyFont?: string; hypeFont?: string }) => {
-        const pkg = fontForPreset(preset, slide || {}, presentation.config);
-        return fontFamilyForPreset(pkg, preset);
+      // Pre-render each text element to its own self-contained SVG via
+      // the iframe pool — math glyph paths are inlined (fontCache:'none')
+      // so the SVG can be embedded in the export without needing MathJax
+      // at view time. Each element's preset picks its own bundle, so the
+      // exported HTML has the same per-preset math as the editor.
+      renderTextElement: async (el: TextElement, slide: Slide): Promise<string> => {
+        const presetStyle = TEXT_PRESET_STYLES[el.preset];
+        const theme = resolveTheme(presentation.theme, slide.theme);
+        const presetFontPkg = fontForPreset(el.preset, slide, presentation.config);
+        const fontFamily = el.fontFamily || fontFamilyForPreset(presetFontPkg, el.preset);
+        const color = el.color || themeColorForPreset(theme, el.preset);
+        const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
+        // Pre-render math (per-preset bundle). renderMathPerBundle returns
+        // the source html when no math markers are present, so this is a
+        // no-op for plain text.
+        const renderedHtml = await renderMathPerBundle(
+          el.html || '', presetFontPkg.id, presentation.config.mathPreamble || ''
+        ).catch(() => el.html || '');
+        return buildTextElementSvgMarkup(el, renderedHtml, {
+          fontFamily,
+          fontSize: el.fontSize || presetStyle.fontSize,
+          fontWeight: presetStyle.fontWeight,
+          fontStyle: presetStyle.fontStyle,
+          color,
+          valign,
+        });
       },
       fontFacesCss,
     });

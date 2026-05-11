@@ -6,6 +6,7 @@ import { resolveTheme, themeColorForPreset } from '../lib/themes';
 
 import { TEXT_PRESET_STYLES } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
+import { buildTextElementSvgMarkup } from './TextElementSvg';
 import { TextFormatToolbar } from './TextFormatToolbar';
 import { getDisplayMathHeight } from '../lib/mathjax';
 import {
@@ -478,23 +479,13 @@ function TextContent({
   }, [editing, commitAndClose]);
 
   // Display mode: render as SVG/foreignObject so per-preset math fonts
-  // composite into one self-contained element. overflow="visible" attribute
-  // (not just CSS) is required — WebKit enforces UA-style overflow:hidden
-  // on <svg>/<foreignObject> per spec, and only the presentation attribute
-  // overrides it (was the cause of italic-glyph clipping).
+  // composite into one self-contained element. The shared builder lives
+  // in TextElementSvg.tsx so the editor, sidebar, present mode, and HTML
+  // exports all produce identical SVG markup.
   if (!editing) {
-    const w = element.position.width;
-    const h = element.position.height;
-    const svgMarkup =
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="${w}" height="${h}" overflow="visible" style="display:block;overflow:visible;">` +
-        `<foreignObject x="0" y="0" width="${w}" height="${h}" overflow="visible">` +
-          `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(valign)};overflow:visible;box-sizing:border-box;">` +
-            `<div style="width:100%;font-family:${fontFamily};font-size:${fontSize}px;font-weight:${fontWeight};font-style:${fontStyle};color:${color};line-height:1.3;padding:8px 12px;">` +
-              (renderedHtml || '') +
-            `</div>` +
-          `</div>` +
-        `</foreignObject>` +
-      `</svg>`;
+    const svgMarkup = buildTextElementSvgMarkup(element, renderedHtml, {
+      fontFamily, fontSize, fontWeight, fontStyle, color, valign,
+    });
     return (
       <div
         ref={wrapperRef}
@@ -583,14 +574,6 @@ function TextContent({
     </div>
   );
 }
-
-// CSS used by TextContent's display SVG to vertical-align the inner div.
-function valignToCss(valign?: string): string {
-  if (valign === 'middle') return 'display:flex;flex-direction:column;justify-content:center';
-  if (valign === 'bottom') return 'display:flex;flex-direction:column;justify-content:flex-end';
-  return '';
-}
-
 
 // ============================================
 // Draggable + resizable box
