@@ -7,7 +7,7 @@ import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { TEXT_PRESET_STYLES } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import { TextFormatToolbar } from './TextFormatToolbar';
-import { typesetElement, resetMathElement, containsMath, getDisplayMathHeight } from '../lib/mathjax';
+import { getDisplayMathHeight } from '../lib/mathjax';
 import {
   renderMathInHtml as renderMathInIframe,
   containsMath as containsMathExpr,
@@ -317,7 +317,11 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
 }
 
 // ============================================
-// Text content — built from the working MinimalText approach
+// Text content — display via <svg><foreignObject>, edit via contentEditable HTML.
+// The SVG/foreignObject path lets math render with the element's preset-matched
+// font (via the per-bundle iframe pool in mathjaxRenderer.ts) — multiple math
+// fonts can coexist on the same slide, which the singleton-MathJax approach in
+// src/lib/mathjax.ts can't deliver.
 // ============================================
 function TextContent({
   element,
@@ -341,13 +345,22 @@ function TextContent({
   // Title preset uses titleFont, hype preset uses hypeFont, others use bodyFont.
   const presetFontPkg = fontForPreset(element.preset, slide || {}, presentation.config);
   const presetFontFamily = fontFamilyForPreset(presetFontPkg, element.preset);
+
+  const fontFamily = element.fontFamily || presetFontFamily;
+  const fontSize = element.fontSize || presetStyle.fontSize;
+  const fontWeight = presetStyle.fontWeight;
+  const fontStyle = presetStyle.fontStyle;
+  const color = element.color || themeColor;
+  // Math bundle = THIS preset's font bundle. Title elements use title math,
+  // hype elements use hype math, others use body math. Each iframe pool stays
+  // loaded so switching slides is fast.
+  const mathBundleId = presetFontPkg.id;
+
+  const valign = element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined);
+
   const style: React.CSSProperties = {
     width: '100%',
-    fontFamily: element.fontFamily || presetFontFamily,
-    fontSize: element.fontSize || presetStyle.fontSize,
-    fontWeight: presetStyle.fontWeight,
-    fontStyle: presetStyle.fontStyle,
-    color: element.color || themeColor,
+    fontFamily, fontSize, fontWeight, fontStyle, color,
     lineHeight: 1.3,
     padding: '8px 12px',
     outline: 'none',
@@ -355,19 +368,24 @@ function TextContent({
     cursor: editing ? 'text' : 'inherit',
   };
 
-  // Display mode: set innerHTML and typeset math.
-  // Math bundle = body font's bundle (singleton constraint — see mathjax.ts).
-  const mathPreamble = usePresentationStore((s) => s.presentation.config.mathPreamble);
-  const bodyFontPkg = fontForPreset('body', slide || {}, presentation.config);
-  const mathBundleId = bodyFontPkg.id;
+  // Display: pre-render math (via iframe pool) into a string we splice into
+  // the foreignObject's HTML. Falls back to raw element.html while pending.
+  const [renderedHtml, setRenderedHtml] = useState<string>(element.html || '');
   useEffect(() => {
-    if (ref.current && !editing) {
-      resetMathElement(ref.current, element.html);
-      if (containsMath(element.html)) {
-        typesetElement(ref.current, mathPreamble, mathBundleId);
-      }
+    let cancelled = false;
+    if (editing) return;
+    if (!containsMathExpr(element.html)) {
+      setRenderedHtml(element.html || '');
+      return () => { cancelled = true; };
     }
-  }, [element.html, editing, mathPreamble, mathBundleId]);
+    renderMathInIframe(element.html, mathBundleId).then((html) => {
+      if (!cancelled) setRenderedHtml(html);
+    }).catch((err) => {
+      console.warn('TextContent math render failed:', err);
+      if (!cancelled) setRenderedHtml(element.html || '');
+    });
+    return () => { cancelled = true; };
+  }, [element.html, mathBundleId, editing]);
 
   // Listen for 'start-editing' custom event from context menu
   useEffect(() => {
@@ -479,9 +497,37 @@ function TextContent({
     return () => window.removeEventListener('pointerdown', handlePointerDown, true);
   }, [editing, commitAndClose]);
 
+  // Display mode: render as SVG/foreignObject so per-preset math fonts
+  // composite into one self-contained element. overflow="visible" attribute
+  // (not just CSS) is required — WebKit enforces UA-style overflow:hidden
+  // on <svg>/<foreignObject> per spec, and only the presentation attribute
+  // overrides it (was the cause of italic-glyph clipping).
+  if (!editing) {
+    const w = element.position.width;
+    const h = element.position.height;
+    const svgMarkup =
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="${w}" height="${h}" overflow="visible" style="display:block;overflow:visible;">` +
+        `<foreignObject x="0" y="0" width="${w}" height="${h}" overflow="visible">` +
+          `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(valign)};overflow:visible;box-sizing:border-box;">` +
+            `<div style="width:100%;font-family:${fontFamily};font-size:${fontSize}px;font-weight:${fontWeight};font-style:${fontStyle};color:${color};line-height:1.3;padding:8px 12px;">` +
+              (renderedHtml || '') +
+            `</div>` +
+          `</div>` +
+        `</foreignObject>` +
+      `</svg>`;
+    return (
+      <div
+        ref={wrapperRef}
+        style={{ width: '100%', height: '100%' }}
+        onDoubleClick={() => startEditing()}
+        dangerouslySetInnerHTML={{ __html: svgMarkup }}
+      />
+    );
+  }
+
   return (
     <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>
-      {editing && createPortal(
+      {createPortal(
         <div style={{
           position: 'fixed', top: toolbarPos.top, left: toolbarPos.left,
           width: Math.max(toolbarPos.width, 500), zIndex: 9999,
@@ -495,7 +541,6 @@ function TextContent({
         style={style}
         contentEditable={editing}
         suppressContentEditableWarning
-        onDoubleClick={() => { if (!editing) startEditing(); }}
         onBlur={editing ? (e) => {
           const related = e.relatedTarget as HTMLElement | null;
           if (related?.closest('.text-format-toolbar')) return;
