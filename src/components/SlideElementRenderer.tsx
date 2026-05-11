@@ -506,7 +506,13 @@ function TextContent({
   }
 
   return (
-    <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>
+    // overflow:hidden on the edit wrapper — without it, contentEditable
+    // text can paint past the slide-element bounds and leave ghost-text
+    // traces when we switch back to the SVG display (the area outside the
+    // wrapper isn't repainted by React's child swap, so old paint sticks
+    // until something else triggers an invalidation). Display-mode wrapper
+    // (above) keeps overflow visible so math glyph ink can overhang.
+    <div ref={wrapperRef} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
       {createPortal(
         <div style={{
           position: 'fixed', top: toolbarPos.top, left: toolbarPos.left,
