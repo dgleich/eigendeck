@@ -60,7 +60,7 @@ export function TextElementSvg({ element, slide, presentationTheme, presentation
       setRenderedHtml(element.html || '');
       return () => { cancelled = true; };
     }
-    renderMathInIframe(element.html, mathBundleId).then((html) => {
+    renderMathInIframe(element.html, mathBundleId, presentationConfig.mathPreamble).then((html) => {
       if (!cancelled) setRenderedHtml(html);
     }).catch(() => {
       if (!cancelled) setRenderedHtml(element.html || '');

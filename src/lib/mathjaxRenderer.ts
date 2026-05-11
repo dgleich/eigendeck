@@ -32,6 +32,7 @@ interface Pool {
   ready: Promise<void>;
   pending: Map<string, PendingRequest>;
   cache: Map<string, RenderResult>;  // key = `${display}:${tex}`
+  appliedPreamble: string;           // last preamble we sent to this iframe
 }
 
 const pools = new Map<string, Pool>();
@@ -116,7 +117,7 @@ function getOrCreatePool(bundleId: string): Pool {
     }, 30000);
   });
 
-  pool = { iframe, ready, pending: new Map(), cache: new Map() };
+  pool = { iframe, ready, pending: new Map(), cache: new Map(), appliedPreamble: '' };
   pools.set(bundleId, pool);
   document.body.appendChild(iframe);
   return pool;
@@ -126,12 +127,32 @@ function getOrCreatePool(bundleId: string): Pool {
  * Render a tex string with the given bundle. Returns the SVG markup.
  * Cached by (bundle, tex, display).
  */
+/**
+ * Set the math preamble for a bundle's iframe. Idempotent — only forwards
+ * if it differs from what was last applied.
+ */
+export async function setMathPreamble(preamble: string, bundleId: string): Promise<void> {
+  const pool = getOrCreatePool(bundleId);
+  if (pool.appliedPreamble === preamble) return;
+  await pool.ready;
+  pool.appliedPreamble = preamble;
+  pool.iframe.contentWindow?.postMessage({ type: 'preamble', tex: preamble }, '*');
+  // Invalidate cache: previously-rendered SVGs were rendered without (or
+  // with the previous) preamble, so commands like \R wouldn't have resolved.
+  pool.cache.clear();
+}
+
 export async function renderMath(
   tex: string,
   bundleId: string,
-  display: boolean = false
+  display: boolean = false,
+  preamble?: string,
 ): Promise<RenderResult> {
   const pool = getOrCreatePool(bundleId);
+  // Apply preamble before any render call (if needed).
+  if (preamble && pool.appliedPreamble !== preamble) {
+    await setMathPreamble(preamble, bundleId);
+  }
   const cacheKey = `${display ? 'd' : 'i'}:${tex}`;
   const hit = pool.cache.get(cacheKey);
   if (hit) return hit;
@@ -167,8 +188,11 @@ export function containsMath(text: string): boolean {
  * with the given bundle, and splice the resulting SVG markup back in.
  * Skips inside HTML tags (matching renderMathInHtml in src/lib/mathjax.ts).
  */
-export async function renderMathInHtml(html: string, bundleId: string): Promise<string> {
+export async function renderMathInHtml(html: string, bundleId: string, preamble?: string): Promise<string> {
   if (!containsMath(html)) return html;
+  if (preamble) {
+    try { await setMathPreamble(preamble, bundleId); } catch (e) { console.warn('preamble apply failed:', e); }
+  }
 
   const parts: string[] = [];
   let i = 0;

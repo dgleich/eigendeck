@@ -349,6 +349,7 @@ function TextContent({
 
   // Display: pre-render math (via iframe pool) into a string we splice into
   // the foreignObject's HTML. Falls back to raw element.html while pending.
+  const mathPreamble = presentation.config.mathPreamble || '';
   const [renderedHtml, setRenderedHtml] = useState<string>(element.html || '');
   useEffect(() => {
     let cancelled = false;
@@ -357,14 +358,14 @@ function TextContent({
       setRenderedHtml(element.html || '');
       return () => { cancelled = true; };
     }
-    renderMathInIframe(element.html, mathBundleId).then((html) => {
+    renderMathInIframe(element.html, mathBundleId, mathPreamble).then((html) => {
       if (!cancelled) setRenderedHtml(html);
     }).catch((err) => {
       console.warn('TextContent math render failed:', err);
       if (!cancelled) setRenderedHtml(element.html || '');
     });
     return () => { cancelled = true; };
-  }, [element.html, mathBundleId, editing]);
+  }, [element.html, mathBundleId, editing, mathPreamble]);
 
   // Listen for 'start-editing' custom event from context menu
   useEffect(() => {
