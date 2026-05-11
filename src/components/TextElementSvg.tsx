@@ -33,9 +33,18 @@ interface Props {
   slide: Slide;
   presentationTheme: string;
   presentationConfig: PresentationConfig;
+  /** Optional CSS class on the wrapper (for hover/preset selectors). */
+  className?: string;
+  /** Optional z-index on the wrapper (for layering in slide canvases). */
+  zIndex?: number;
+  /** Optional style override (e.g. interpolated transform from animations). */
+  styleOverride?: React.CSSProperties;
 }
 
-export function TextElementSvg({ element, slide, presentationTheme, presentationConfig }: Props) {
+export function TextElementSvg({
+  element, slide, presentationTheme, presentationConfig,
+  className, zIndex, styleOverride,
+}: Props) {
   const presetStyle = TEXT_PRESET_STYLES[element.preset];
   const theme = resolveTheme(presentationTheme, slide.theme);
   const themeColor = themeColorForPreset(theme, element.preset);
@@ -86,9 +95,12 @@ export function TextElementSvg({ element, slide, presentationTheme, presentation
 
   return (
     <div
+      className={className}
       style={{
         position: 'absolute', left: element.position.x, top: element.position.y,
         width: element.position.width, height: element.position.height,
+        ...(zIndex !== undefined ? { zIndex } : {}),
+        ...styleOverride,
       }}
       dangerouslySetInnerHTML={{ __html: svgMarkup }}
     />

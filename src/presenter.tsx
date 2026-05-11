@@ -7,11 +7,10 @@
 import { useEffect, useState, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { listen, emitTo } from '@tauri-apps/api/event';
-import { TEXT_PRESET_STYLES, getSlideNumber } from './types/presentation';
+import { getSlideNumber } from './types/presentation';
 import { useAssetUrl, useDemoUrl } from './lib/demoAssets';
-import { typesetElement, resetMathElement, containsMath } from './lib/mathjax';
-import { fontForPreset, fontFamilyForPreset } from './lib/fonts';
 import type { Presentation, SlideElement, TextElement } from './types/presentation';
+import { TextElementSvg } from './components/TextElementSvg';
 import './App.css';
 
 function PresenterApp() {
@@ -108,7 +107,7 @@ function PresenterApp() {
         >
           {slide.elements.map((el, idx) => (
             <PresenterElement key={el.id} element={el} zIndex={idx + 10} projectPath={projectPath}
-              slide={slide} presentationConfig={presentation.config} />
+              slide={slide} presentationConfig={presentation.config} presentationTheme={presentation.theme} />
           ))}
           <div className="slide-footer" style={{ zIndex: 1000 }}>
             <span className="slide-footer-meta">{meta}</span>
@@ -120,16 +119,17 @@ function PresenterApp() {
   );
 }
 
-function PresenterElement({ element: el, zIndex, slide, presentationConfig }: {
+function PresenterElement({ element: el, zIndex, slide, presentationConfig, presentationTheme }: {
   element: SlideElement; zIndex: number; projectPath?: string | null;
   slide: import('./types/presentation').Slide;
   presentationConfig: import('./types/presentation').PresentationConfig;
+  presentationTheme: string;
 }) {
   const pos = el.position;
 
   switch (el.type) {
     case 'text':
-      return <PresenterTextElement element={el} zIndex={zIndex} slide={slide} presentationConfig={presentationConfig} />;
+      return <PresenterTextElement element={el} zIndex={zIndex} slide={slide} presentationConfig={presentationConfig} presentationTheme={presentationTheme} />;
 
     case 'image':
       return <PresenterImage element={el} zIndex={zIndex} />;
@@ -162,51 +162,22 @@ function PresenterElement({ element: el, zIndex, slide, presentationConfig }: {
   }
 }
 
-function PresenterTextElement({ element: el, zIndex, slide, presentationConfig }: {
+function PresenterTextElement({ element: el, zIndex, slide, presentationConfig, presentationTheme }: {
   element: TextElement; zIndex: number;
   slide: import('./types/presentation').Slide;
   presentationConfig: import('./types/presentation').PresentationConfig;
+  presentationTheme: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const pos = el.position;
-  const preset = TEXT_PRESET_STYLES[el.preset];
-  const presetFontPkg = fontForPreset(el.preset, slide, presentationConfig);
-  const presetFontFamily = fontFamilyForPreset(presetFontPkg, el.preset);
-  const bodyFontPkg = fontForPreset('body', slide, presentationConfig);
-  const mathBundleId = bodyFontPkg.id;
-
-  useEffect(() => {
-    if (ref.current) {
-      resetMathElement(ref.current, el.html);
-      if (containsMath(el.html)) {
-        typesetElement(ref.current, undefined, mathBundleId);
-      }
-    }
-  }, [el.html, mathBundleId]);
-
-  const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
-
+  // Reuse the SVG/foreignObject + iframe-pool pipeline. Per-preset math
+  // fonts work in the secondary-monitor presenter view too.
   return (
-    <div className={`el-text el-preset-${el.preset}`} style={{
-      position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-      overflow: 'hidden', zIndex,
-    }}>
-      <div style={{
-        width: '100%', height: '100%',
-        ...(valign === 'middle' ? { display: 'flex', flexDirection: 'column' as const, justifyContent: 'center' } : {}),
-        ...(valign === 'bottom' ? { display: 'flex', flexDirection: 'column' as const, justifyContent: 'flex-end' } : {}),
-      }}>
-        <div ref={ref} style={{
-          fontFamily: el.fontFamily || presetFontFamily,
-          fontSize: el.fontSize || preset.fontSize,
-          fontWeight: preset.fontWeight,
-          fontStyle: preset.fontStyle,
-          color: el.color || preset.color,
-          lineHeight: 1.3,
-          padding: '8px 12px',
-        }} />
-      </div>
-    </div>
+    <TextElementSvg
+      element={el} slide={slide}
+      presentationTheme={presentationTheme}
+      presentationConfig={presentationConfig}
+      className={`el-text el-preset-${el.preset}`}
+      zIndex={zIndex}
+    />
   );
 }
 
