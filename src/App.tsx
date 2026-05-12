@@ -559,10 +559,21 @@ function App() {
             await invoke('force_quit');
             return;
           }
-          setUnsavedDialog({
-            title: state.presentation.title || 'Untitled',
-            hasFile: !!state.projectPath,
-          });
+          const title = state.presentation.title || 'Untitled';
+          const hasFile = !!state.projectPath;
+          // Try the native macOS NSAlert first (3-button system dialog).
+          // Falls back to the cross-platform in-app modal on non-mac.
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            const result = await invoke<string>('show_unsaved_dialog', { title, hasFile });
+            if (result === 'save') { handleUnsavedSave(); return; }
+            if (result === 'discard') { handleUnsavedDiscard(); return; }
+            if (result === 'cancel') return;
+            // 'fallback' — fall through to in-app modal below.
+          } catch (e) {
+            console.warn('Native unsaved dialog failed, using modal:', e);
+          }
+          setUnsavedDialog({ title, hasFile });
         });
       } catch { /* not in Tauri */ }
     })();

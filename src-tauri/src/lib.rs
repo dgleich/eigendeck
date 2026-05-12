@@ -19,6 +19,83 @@ fn force_quit() {
     std::process::exit(0);
 }
 
+/// Show the macOS-native unsaved-changes dialog using NSAlert.
+/// Returns "save" | "cancel" | "discard" | "fallback" (non-mac).
+///
+/// NSAlert must run on the main thread; we use AppHandle::run_on_main_thread
+/// and a oneshot channel to get the response back to the worker thread that
+/// the Tauri command runs on.
+#[tauri::command]
+fn show_unsaved_dialog(_app: tauri::AppHandle, title: String, has_file: bool) -> String {
+    #[cfg(target_os = "macos")]
+    {
+        use std::sync::mpsc;
+        let (tx, rx) = mpsc::channel::<String>();
+        let _ = _app.run_on_main_thread(move || {
+            let result = mac_show_unsaved_dialog(&title, has_file);
+            let _ = tx.send(result);
+        });
+        // Block worker thread until main thread reports back. The dialog
+        // is modal; the main thread is busy in runModal, but our channel
+        // recv is on a non-main thread so this is safe.
+        rx.recv().unwrap_or_else(|_| "cancel".into())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (title, has_file);
+        // Non-mac platforms: tell the JS to fall back to its in-app modal.
+        "fallback".into()
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn mac_show_unsaved_dialog(title: &str, has_file: bool) -> String {
+    use cocoa::base::{id, nil};
+    use cocoa::foundation::NSString;
+    use objc::{class, msg_send, sel, sel_impl};
+
+    let (heading, body, destructive_label) = if has_file {
+        (
+            format!("Do you want to save the changes you made to \u{201C}{}\u{201D}?", title),
+            "Your changes will be lost if you don\u{2019}t save them.".to_string(),
+            "Don\u{2019}t Save".to_string(),
+        )
+    } else {
+        (
+            format!("Do you want to keep this new document \u{201C}{}\u{201D}?", title),
+            "You can choose to save your changes, or delete this document immediately. You can\u{2019}t undo this action.".to_string(),
+            "Delete and Quit".to_string(),
+        )
+    };
+
+    let save_label = if has_file { "Save" } else { "Save\u{2026}" };
+
+    unsafe {
+        let alert: id = msg_send![class!(NSAlert), alloc];
+        let alert: id = msg_send![alert, init];
+        let _: () = msg_send![alert, setMessageText: NSString::alloc(nil).init_str(&heading)];
+        let _: () = msg_send![alert, setInformativeText: NSString::alloc(nil).init_str(&body)];
+        // NSAlertStyleWarning = 0
+        let _: () = msg_send![alert, setAlertStyle: 0i64];
+
+        // Order matters: addButtonWithTitle assigns return values
+        // 1000, 1001, 1002 in the order added. The FIRST button is the
+        // default (Save) — it's the one Enter activates and is rendered
+        // rightmost on macOS. Cancel/destructive come after.
+        let _: id = msg_send![alert, addButtonWithTitle: NSString::alloc(nil).init_str(save_label)];
+        let _: id = msg_send![alert, addButtonWithTitle: NSString::alloc(nil).init_str("Cancel")];
+        let _: id = msg_send![alert, addButtonWithTitle: NSString::alloc(nil).init_str(&destructive_label)];
+
+        let response: i64 = msg_send![alert, runModal];
+        match response {
+            1000 => "save".into(),
+            1001 => "cancel".into(),
+            1002 => "discard".into(),
+            _ => "cancel".into(),
+        }
+    }
+}
+
 #[tauri::command]
 fn cli_export_args() -> Result<serde_json::Value, String> {
     let args = CLI_EXPORT_ARGS.lock().unwrap();
@@ -449,6 +526,7 @@ pub fn run() {
             storage::db_load_math_cache,
             storage::db_update_presentation,
             force_quit,
+            show_unsaved_dialog,
             cli_export_args,
             cli_write_and_exit,
         ])
