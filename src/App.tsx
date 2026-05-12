@@ -12,6 +12,7 @@ import { HistoryPanel } from './components/HistoryPanel';
 import { DebugConsole } from './components/DebugConsole';
 import { LinkOverlay } from './components/LinkOverlay';
 import { ContextMenu } from './components/ContextMenu';
+import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import type { MenuEntry } from './components/ContextMenu';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
@@ -537,8 +538,12 @@ function App() {
     };
   }, []);
 
-  // Handle close/quit request — show confirmation if dirty
+  // Handle close/quit request — show in-app confirmation modal if dirty.
+  // The previous native message() dialog only supports a single OK button
+  // (the buttons:{} field was silently ignored), which is why quit appeared
+  // to do nothing — Cancel never reached the close path.
   const closingRef = useRef(false);
+  const [unsavedDialog, setUnsavedDialog] = useState<{ title: string; hasFile: boolean } | null>(null);
   useEffect(() => {
     let unlisten: (() => void) | null = null;
     (async () => {
@@ -546,26 +551,51 @@ function App() {
         const { listen } = await import('@tauri-apps/api/event');
         unlisten = await listen('check-close', async () => {
           if (closingRef.current) return;
-          if (usePresentationStore.getState().isDirty) {
-            const { message: showMessage } = await import('@tauri-apps/plugin-dialog');
-            const result = await showMessage('You have unsaved changes.', {
-              title: 'Unsaved Changes',
-              kind: 'warning',
-              buttons: {
-                ok: 'Close without Saving',
-                cancel: 'Cancel',
-              },
-            });
-            if (result !== 'Ok') return;
+          const state = usePresentationStore.getState();
+          if (!state.isDirty) {
+            // Clean — quit immediately.
+            closingRef.current = true;
+            const { invoke } = await import('@tauri-apps/api/core');
+            await invoke('force_quit');
+            return;
           }
-          // Force quit via Rust — avoids CloseRequested loop
-          closingRef.current = true;
-          const { invoke } = await import('@tauri-apps/api/core');
-          await invoke('force_quit');
+          setUnsavedDialog({
+            title: state.presentation.title || 'Untitled',
+            hasFile: !!state.projectPath,
+          });
         });
       } catch { /* not in Tauri */ }
     })();
     return () => { if (unlisten) unlisten(); };
+  }, []);
+
+  const handleUnsavedSave = useCallback(async () => {
+    setUnsavedDialog(null);
+    try {
+      await flushToSqlite();
+      await saveProject();           // prompts for path if untitled
+      // After save the store is clean; re-emit so we go through the quit path
+      if (!usePresentationStore.getState().isDirty) {
+        closingRef.current = true;
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('force_quit');
+      }
+      // If still dirty (user cancelled the Save As prompt), do nothing —
+      // user is back in the editor; let them try again.
+    } catch (e) {
+      console.error('Save before quit failed:', e);
+    }
+  }, []);
+
+  const handleUnsavedDiscard = useCallback(async () => {
+    setUnsavedDialog(null);
+    closingRef.current = true;
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('force_quit');
+  }, []);
+
+  const handleUnsavedCancel = useCallback(() => {
+    setUnsavedDialog(null);
   }, []);
 
   // Start presenting — try multi-monitor first, fall back to single window
@@ -945,6 +975,15 @@ function App() {
         <LinkOverlay
           elementId={linkOverlayElementId}
           onClose={() => setLinkOverlayElementId(null)}
+        />
+      )}
+      {unsavedDialog && (
+        <UnsavedChangesDialog
+          title={unsavedDialog.title}
+          hasFile={unsavedDialog.hasFile}
+          onSave={handleUnsavedSave}
+          onDiscard={handleUnsavedDiscard}
+          onCancel={handleUnsavedCancel}
         />
       )}
     </div>
