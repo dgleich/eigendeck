@@ -543,6 +543,7 @@ function App() {
   // (the buttons:{} field was silently ignored), which is why quit appeared
   // to do nothing — Cancel never reached the close path.
   const closingRef = useRef(false);
+  const dialogInFlightRef = useRef(false);
   const [unsavedDialog, setUnsavedDialog] = useState<{ title: string; hasFile: boolean } | null>(null);
   useEffect(() => {
     let unlisten: (() => void) | null = null;
@@ -551,29 +552,40 @@ function App() {
         const { listen } = await import('@tauri-apps/api/event');
         unlisten = await listen('check-close', async () => {
           if (closingRef.current) return;
-          const state = usePresentationStore.getState();
-          if (!state.isDirty) {
-            // Clean — quit immediately.
-            closingRef.current = true;
-            const { invoke } = await import('@tauri-apps/api/core');
-            await invoke('force_quit');
-            return;
-          }
-          const title = state.presentation.title || 'Untitled';
-          const hasFile = !!state.projectPath;
-          // Try the native macOS NSAlert first (3-button system dialog).
-          // Falls back to the cross-platform in-app modal on non-mac.
+          // Cmd+Q fires both the "quit" menu event AND a window
+          // CloseRequested — both emit check-close. Drop duplicates while
+          // we're already showing a dialog, otherwise NSAlerts stack up.
+          if (dialogInFlightRef.current) return;
+          dialogInFlightRef.current = true;
           try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            const result = await invoke<string>('show_unsaved_dialog', { title, hasFile });
-            if (result === 'save') { handleUnsavedSave(); return; }
-            if (result === 'discard') { handleUnsavedDiscard(); return; }
-            if (result === 'cancel') return;
-            // 'fallback' — fall through to in-app modal below.
-          } catch (e) {
-            console.warn('Native unsaved dialog failed, using modal:', e);
+            const state = usePresentationStore.getState();
+            if (!state.isDirty) {
+              // Clean — quit immediately.
+              closingRef.current = true;
+              const { invoke } = await import('@tauri-apps/api/core');
+              await invoke('force_quit');
+              return;
+            }
+            const title = state.presentation.title || 'Untitled';
+            const hasFile = !!state.projectPath;
+            // Try the native macOS NSAlert first (3-button system dialog).
+            // Falls back to the cross-platform in-app modal on non-mac.
+            try {
+              const { invoke } = await import('@tauri-apps/api/core');
+              const result = await invoke<string>('show_unsaved_dialog', { title, hasFile });
+              if (result === 'save') { handleUnsavedSave(); return; }
+              if (result === 'discard') { handleUnsavedDiscard(); return; }
+              if (result === 'cancel') return;
+              // 'fallback' — fall through to in-app modal below.
+            } catch (e) {
+              console.warn('Native unsaved dialog failed, using modal:', e);
+            }
+            setUnsavedDialog({ title, hasFile });
+          } finally {
+            // Always release the guard so the next quit attempt is allowed
+            // (e.g. if the user cancelled and now tries again).
+            dialogInFlightRef.current = false;
           }
-          setUnsavedDialog({ title, hasFile });
         });
       } catch { /* not in Tauri */ }
     })();
