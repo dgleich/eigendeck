@@ -49,6 +49,7 @@ fn show_unsaved_dialog(_app: tauri::AppHandle, title: String, has_file: bool) ->
 
 #[cfg(target_os = "macos")]
 fn mac_show_unsaved_dialog(title: &str, has_file: bool) -> String {
+    use objc2::MainThreadMarker;
     use objc2_app_kit::{NSAlert, NSAlertStyle};
     use objc2_foundation::NSString;
 
@@ -68,12 +69,17 @@ fn mac_show_unsaved_dialog(title: &str, has_file: bool) -> String {
 
     let save_label = if has_file { "Save" } else { "Save\u{2026}" };
 
+    // We're on the main thread (caller dispatches via run_on_main_thread),
+    // so MainThreadMarker::new() succeeds.
+    let mtm = MainThreadMarker::new()
+        .expect("show_unsaved_dialog must run on the main thread");
+
     // Order matters: addButtonWithTitle assigns return values
     // 1000, 1001, 1002 in the order added. The FIRST button is the
     // default (Save) — Enter activates it and it's rendered rightmost
     // on macOS. Cancel/destructive come after.
     unsafe {
-        let alert = NSAlert::new();
+        let alert = NSAlert::new(mtm);
         alert.setMessageText(&NSString::from_str(&heading));
         alert.setInformativeText(&NSString::from_str(&body));
         alert.setAlertStyle(NSAlertStyle::Warning);
@@ -133,7 +139,8 @@ fn set_window_above_menubar(app: tauri::AppHandle, label: String) -> Result<(), 
         let ns_win_ptr = window.ns_window().map_err(|e| e.to_string())?;
         let ns_win: &NSWindow = unsafe { &*(ns_win_ptr as *const NSWindow) };
         // kCGMainMenuWindowLevel = 24. Level 25 is above the menu bar.
-        unsafe { ns_win.setLevel(25) };
+        // setLevel is a safe property setter in objc2-app-kit.
+        ns_win.setLevel(25);
     }
 
     #[cfg(not(target_os = "macos"))]
