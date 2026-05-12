@@ -1,4 +1,3 @@
-#![allow(deprecated)] // cocoa crate deprecation warnings — TODO: migrate to objc2
 
 pub mod storage;
 
@@ -49,15 +48,9 @@ fn show_unsaved_dialog(_app: tauri::AppHandle, title: String, has_file: bool) ->
 }
 
 #[cfg(target_os = "macos")]
-// Silence rustc warnings from the unmaintained `objc` 0.2 macros, which emit
-// #[cfg(cargo-clippy)] (an unrecognized cfg in modern rustc). Migrating to
-// objc2 would also fix this — tracked under the broader cocoa→objc2 TODO at
-// the top of this file.
-#[allow(unexpected_cfgs)]
 fn mac_show_unsaved_dialog(title: &str, has_file: bool) -> String {
-    use cocoa::base::{id, nil};
-    use cocoa::foundation::NSString;
-    use objc::{class, msg_send, sel, sel_impl};
+    use objc2_app_kit::{NSAlert, NSAlertStyle};
+    use objc2_foundation::NSString;
 
     let (heading, body, destructive_label) = if has_file {
         (
@@ -75,24 +68,21 @@ fn mac_show_unsaved_dialog(title: &str, has_file: bool) -> String {
 
     let save_label = if has_file { "Save" } else { "Save\u{2026}" };
 
+    // Order matters: addButtonWithTitle assigns return values
+    // 1000, 1001, 1002 in the order added. The FIRST button is the
+    // default (Save) — Enter activates it and it's rendered rightmost
+    // on macOS. Cancel/destructive come after.
     unsafe {
-        let alert: id = msg_send![class!(NSAlert), alloc];
-        let alert: id = msg_send![alert, init];
-        let _: () = msg_send![alert, setMessageText: NSString::alloc(nil).init_str(&heading)];
-        let _: () = msg_send![alert, setInformativeText: NSString::alloc(nil).init_str(&body)];
-        // NSAlertStyleWarning = 0
-        let _: () = msg_send![alert, setAlertStyle: 0i64];
+        let alert = NSAlert::new();
+        alert.setMessageText(&NSString::from_str(&heading));
+        alert.setInformativeText(&NSString::from_str(&body));
+        alert.setAlertStyle(NSAlertStyle::Warning);
+        alert.addButtonWithTitle(&NSString::from_str(save_label));
+        alert.addButtonWithTitle(&NSString::from_str("Cancel"));
+        alert.addButtonWithTitle(&NSString::from_str(&destructive_label));
 
-        // Order matters: addButtonWithTitle assigns return values
-        // 1000, 1001, 1002 in the order added. The FIRST button is the
-        // default (Save) — it's the one Enter activates and is rendered
-        // rightmost on macOS. Cancel/destructive come after.
-        let _: id = msg_send![alert, addButtonWithTitle: NSString::alloc(nil).init_str(save_label)];
-        let _: id = msg_send![alert, addButtonWithTitle: NSString::alloc(nil).init_str("Cancel")];
-        let _: id = msg_send![alert, addButtonWithTitle: NSString::alloc(nil).init_str(&destructive_label)];
-
-        let response: i64 = msg_send![alert, runModal];
-        match response {
+        // NSModalResponse: NSAlertFirstButtonReturn = 1000, etc.
+        match alert.runModal() as i64 {
             1000 => "save".into(),
             1001 => "cancel".into(),
             1002 => "discard".into(),
@@ -134,14 +124,16 @@ fn set_window_above_menubar(app: tauri::AppHandle, label: String) -> Result<(), 
 
     #[cfg(target_os = "macos")]
     {
-        use cocoa::appkit::NSWindow;
-        use cocoa::base::id;
+        use objc2_app_kit::NSWindow;
 
-        let ns_win: id = window.ns_window().map_err(|e| e.to_string())? as id;
-        unsafe {
-            // kCGMainMenuWindowLevel = 24. Level 25 is above the menu bar.
-            ns_win.setLevel_(25);
-        }
+        // Tauri returns the NSWindow* as a raw pointer; cast to a typed
+        // objc2 reference. Safety: the pointer is non-null and points to a
+        // valid NSWindow owned by Tauri's webview for the lifetime of the
+        // window.
+        let ns_win_ptr = window.ns_window().map_err(|e| e.to_string())?;
+        let ns_win: &NSWindow = unsafe { &*(ns_win_ptr as *const NSWindow) };
+        // kCGMainMenuWindowLevel = 24. Level 25 is above the menu bar.
+        unsafe { ns_win.setLevel(25) };
     }
 
     #[cfg(not(target_os = "macos"))]
