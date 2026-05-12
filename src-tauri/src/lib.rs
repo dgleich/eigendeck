@@ -49,6 +49,11 @@ fn show_unsaved_dialog(_app: tauri::AppHandle, title: String, has_file: bool) ->
 }
 
 #[cfg(target_os = "macos")]
+// Silence rustc warnings from the unmaintained `objc` 0.2 macros, which emit
+// #[cfg(cargo-clippy)] (an unrecognized cfg in modern rustc). Migrating to
+// objc2 would also fix this — tracked under the broader cocoa→objc2 TODO at
+// the top of this file.
+#[allow(unexpected_cfgs)]
 fn mac_show_unsaved_dialog(title: &str, has_file: bool) -> String {
     use cocoa::base::{id, nil};
     use cocoa::foundation::NSString;
