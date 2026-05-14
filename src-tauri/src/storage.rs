@@ -38,11 +38,12 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
             notes TEXT,
             group_id TEXT,
             -- Per-slide overrides as a JSON blob: optional fields like
-            -- {"theme":"dark","titleFont":"shantell","bodyFont":"ptsans"}.
-            -- NULL when the slide has no overrides (the common case).
-            -- Keys are absent when not set — we never write defaults here,
-            -- so the renderer's cascade (element → slide → presentation)
-            -- works correctly.
+            -- theme, titleFont, bodyFont, hypeFont (font ids from
+            -- src/lib/fonts.ts). NULL when the slide has no overrides
+            -- (the common case). Keys are absent when not set; we never
+            -- write defaults here so the runtime cascade
+            -- (element override -> slide override -> presentation default)
+            -- resolves correctly.
             config TEXT,
             valid_from TEXT NOT NULL,
             valid_to TEXT,

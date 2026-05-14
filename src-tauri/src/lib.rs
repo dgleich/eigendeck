@@ -78,22 +78,24 @@ fn mac_show_unsaved_dialog(title: &str, has_file: bool) -> String {
     // 1000, 1001, 1002 in the order added. The FIRST button is the
     // default (Save) — Enter activates it and it's rendered rightmost
     // on macOS. Cancel/destructive come after.
-    unsafe {
-        let alert = NSAlert::new(mtm);
-        alert.setMessageText(&NSString::from_str(&heading));
-        alert.setInformativeText(&NSString::from_str(&body));
-        alert.setAlertStyle(NSAlertStyle::Warning);
-        alert.addButtonWithTitle(&NSString::from_str(save_label));
-        alert.addButtonWithTitle(&NSString::from_str("Cancel"));
-        alert.addButtonWithTitle(&NSString::from_str(&destructive_label));
+    //
+    // objc2's typed wrappers make all of these calls safe (they validate
+    // selector and argument types at compile time), so no unsafe block
+    // is needed.
+    let alert = NSAlert::new(mtm);
+    alert.setMessageText(&NSString::from_str(&heading));
+    alert.setInformativeText(&NSString::from_str(&body));
+    alert.setAlertStyle(NSAlertStyle::Warning);
+    alert.addButtonWithTitle(&NSString::from_str(save_label));
+    alert.addButtonWithTitle(&NSString::from_str("Cancel"));
+    alert.addButtonWithTitle(&NSString::from_str(&destructive_label));
 
-        // NSModalResponse: NSAlertFirstButtonReturn = 1000, etc.
-        match alert.runModal() as i64 {
-            1000 => "save".into(),
-            1001 => "cancel".into(),
-            1002 => "discard".into(),
-            _ => "cancel".into(),
-        }
+    // NSModalResponse: NSAlertFirstButtonReturn = 1000, etc.
+    match alert.runModal() as i64 {
+        1000 => "save".into(),
+        1001 => "cancel".into(),
+        1002 => "discard".into(),
+        _ => "cancel".into(),
     }
 }
 
