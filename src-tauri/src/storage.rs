@@ -13,7 +13,7 @@ use std::sync::Mutex;
 static DB: Lazy<Mutex<Option<Connection>>> = Lazy::new(|| Mutex::new(None));
 
 /// Schema version for migration tracking
-const SCHEMA_VERSION: i32 = 1;
+const SCHEMA_VERSION: i32 = 2;
 
 /// Create the schema in a new database
 pub fn create_schema(conn: &Connection) -> SqlResult<()> {
@@ -35,9 +35,15 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
         CREATE TABLE IF NOT EXISTS slides (
             id TEXT NOT NULL,
             position INTEGER,
-            layout TEXT,
             notes TEXT,
             group_id TEXT,
+            -- Per-slide overrides as a JSON blob: optional fields like
+            -- {"theme":"dark","titleFont":"shantell","bodyFont":"ptsans"}.
+            -- NULL when the slide has no overrides (the common case).
+            -- Keys are absent when not set — we never write defaults here,
+            -- so the renderer's cascade (element → slide → presentation)
+            -- works correctly.
+            config TEXT,
             valid_from TEXT NOT NULL,
             valid_to TEXT,
             PRIMARY KEY (id, valid_from)
@@ -100,6 +106,22 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
         ",
     )?;
 
+    // Migration: v1 → v2. Add `config` column (slide-scoped JSON blob,
+    // mirrors presentation.config). Drop the dead `layout` column. Both
+    // ALTER TABLE statements are idempotent in our flow: the ADD ignores
+    // errors if the column already exists, and we check for `layout`'s
+    // presence before dropping. Old slides have NULL config — they
+    // inherit everything from the presentation defaults via the runtime
+    // cascade, so no data shuffle is needed.
+    let _ = conn.execute("ALTER TABLE slides ADD COLUMN config TEXT", []);
+    let layout_exists: bool = conn
+        .prepare("SELECT 1 FROM pragma_table_info('slides') WHERE name='layout'")
+        .and_then(|mut stmt| stmt.exists([]))
+        .unwrap_or(false);
+    if layout_exists {
+        let _ = conn.execute("ALTER TABLE slides DROP COLUMN layout", []);
+    }
+
     // Set schema version
     conn.execute(
         "INSERT OR REPLACE INTO _meta VALUES ('schema_version', ?1)",
@@ -159,6 +181,42 @@ pub fn close_db() -> SqlResult<()> {
         // Connection drops and closes here
     }
     Ok(())
+}
+
+/// Build the slide.config JSON string from a Slide JSON value.
+/// Returns None if the slide has no overrides (the common case) — we
+/// never write defaults; absence is what makes the cascade work.
+///
+/// Currently extracts: theme, titleFont, bodyFont, hypeFont. New
+/// override fields can be added here without a schema change.
+fn build_slide_config_json(slide: &serde_json::Value) -> Option<String> {
+    let mut out = serde_json::Map::new();
+    for key in ["theme", "titleFont", "bodyFont", "hypeFont", "transition", "layout", "mathPreamble"] {
+        if let Some(v) = slide.get(key) {
+            // Only include if the value is meaningful (non-null, non-empty string).
+            match v {
+                serde_json::Value::Null => {}
+                serde_json::Value::String(s) if s.is_empty() => {}
+                _ => { out.insert(key.to_string(), v.clone()); }
+            }
+        }
+    }
+    if out.is_empty() {
+        None
+    } else {
+        Some(serde_json::Value::Object(out).to_string())
+    }
+}
+
+/// Splat a slide.config JSON string back onto a Slide object map.
+/// No-op when config is None or "{}" — slide stays without overrides.
+fn apply_slide_config_to_object(
+    slide_obj: &mut serde_json::Map<String, serde_json::Value>,
+    config: Option<&str>,
+) {
+    let Some(s) = config else { return };
+    let Ok(serde_json::Value::Object(map)) = serde_json::from_str::<serde_json::Value>(s) else { return };
+    for (k, v) in map { slide_obj.insert(k, v); }
 }
 
 /// Generate a high-resolution timestamp for versioning
@@ -279,16 +337,14 @@ pub fn db_import_json(json: String) -> Result<(), String> {
                     .get("id")
                     .and_then(|v| v.as_str())
                     .unwrap_or("unknown");
-                let layout = slide
-                    .get("layout")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("default");
                 let notes = slide.get("notes").and_then(|v| v.as_str()).unwrap_or("");
                 let group_id = slide.get("groupId").and_then(|v| v.as_str());
+                let config_json = build_slide_config_json(slide);
 
                 tx.execute(
-                    "INSERT INTO slides VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
-                    params![slide_id, i as i32, layout, notes, group_id, &ts],
+                    "INSERT INTO slides (id, position, notes, group_id, config, valid_from, valid_to) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+                    params![slide_id, i as i32, notes, group_id, config_json, &ts],
                 )?;
 
                 if let Some(elements) = slide.get("elements").and_then(|v| v.as_array()) {
@@ -423,7 +479,7 @@ pub fn db_export_json() -> Result<String, String> {
         // Slides
         let mut slides_json = Vec::new();
         let mut stmt = conn.prepare(
-            "SELECT id, position, layout, notes, group_id FROM slides WHERE valid_to IS NULL ORDER BY position",
+            "SELECT id, position, notes, group_id, config FROM slides WHERE valid_to IS NULL ORDER BY position",
         )?;
         let rows = stmt.query_map([], |row| {
             Ok((
@@ -435,7 +491,7 @@ pub fn db_export_json() -> Result<String, String> {
             ))
         })?;
         for row in rows {
-            let (id, _position, layout, notes, group_id) = row?;
+            let (id, _position, notes, group_id, config) = row?;
 
             let mut slide_elements = Vec::new();
             if let Some(se_rows) = se_by_slide.get(&id) {
@@ -461,16 +517,14 @@ pub fn db_export_json() -> Result<String, String> {
 
             let mut slide = serde_json::json!({
                 "id": id,
-                "layout": layout.unwrap_or_else(|| "default".to_string()),
                 "elements": slide_elements,
                 "notes": notes.unwrap_or_default(),
             });
+            let slide_obj = slide.as_object_mut().unwrap();
             if let Some(gid) = group_id {
-                slide
-                    .as_object_mut()
-                    .unwrap()
-                    .insert("groupId".to_string(), Value::String(gid));
+                slide_obj.insert("groupId".to_string(), Value::String(gid));
             }
+            apply_slide_config_to_object(slide_obj, config.as_deref());
             slides_json.push(slide);
         }
 
@@ -490,16 +544,21 @@ pub fn db_export_json() -> Result<String, String> {
 pub fn db_get_slides() -> Result<String, String> {
     with_db(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, position, layout, notes, group_id FROM slides WHERE valid_to IS NULL ORDER BY position",
+            "SELECT id, position, notes, group_id, config FROM slides WHERE valid_to IS NULL ORDER BY position",
         )?;
         let rows = stmt.query_map([], |row| {
-            Ok(serde_json::json!({
-                "id": row.get::<_, String>(0)?,
-                "position": row.get::<_, i32>(1)?,
-                "layout": row.get::<_, Option<String>>(2)?,
-                "notes": row.get::<_, Option<String>>(3)?,
-                "groupId": row.get::<_, Option<String>>(4)?,
-            }))
+            let id: String = row.get(0)?;
+            let position: i32 = row.get(1)?;
+            let notes: Option<String> = row.get(2)?;
+            let group_id: Option<String> = row.get(3)?;
+            let config: Option<String> = row.get(4)?;
+            let mut slide = serde_json::Map::new();
+            slide.insert("id".to_string(), serde_json::json!(id));
+            slide.insert("position".to_string(), serde_json::json!(position));
+            slide.insert("notes".to_string(), serde_json::json!(notes));
+            slide.insert("groupId".to_string(), serde_json::json!(group_id));
+            apply_slide_config_to_object(&mut slide, config.as_deref());
+            Ok(serde_json::Value::Object(slide))
         })?;
         let slides: Vec<Value> = rows.filter_map(|r| r.ok()).collect();
         Ok(serde_json::to_string(&slides).unwrap())
@@ -821,7 +880,7 @@ pub fn db_get_state_at(at: String) -> Result<String, String> {
         // Slides alive at `at`
         let mut slides_json = Vec::new();
         let mut stmt = conn.prepare(
-            "SELECT id, position, layout, notes, group_id FROM slides WHERE valid_from <= ?1 AND (valid_to IS NULL OR valid_to > ?1) ORDER BY position"
+            "SELECT id, position, notes, group_id, config FROM slides WHERE valid_from <= ?1 AND (valid_to IS NULL OR valid_to > ?1) ORDER BY position"
         )?;
         let rows = stmt.query_map(params![&at], |row| {
             Ok((
@@ -833,7 +892,7 @@ pub fn db_get_state_at(at: String) -> Result<String, String> {
             ))
         })?;
         for row in rows {
-            let (id, _position, layout, notes, group_id) = row?;
+            let (id, _position, notes, group_id, config) = row?;
             let mut slide_elements = Vec::new();
             if let Some(se_rows) = se_by_slide.get(&id) {
                 for (element_id, _z_order) in se_rows {
@@ -854,13 +913,14 @@ pub fn db_get_state_at(at: String) -> Result<String, String> {
 
             let mut slide = serde_json::json!({
                 "id": id,
-                "layout": layout.unwrap_or_else(|| "default".to_string()),
                 "elements": slide_elements,
                 "notes": notes.unwrap_or_default(),
             });
+            let slide_obj = slide.as_object_mut().unwrap();
             if let Some(gid) = group_id {
-                slide.as_object_mut().unwrap().insert("groupId".to_string(), Value::String(gid));
+                slide_obj.insert("groupId".to_string(), Value::String(gid));
             }
+            apply_slide_config_to_object(slide_obj, config.as_deref());
             slides_json.push(slide);
         }
 
@@ -935,14 +995,14 @@ pub fn db_compact(keep_all: bool) -> Result<String, String> {
 pub fn db_add_slide(
     id: String,
     position: i32,
-    layout: String,
     group_id: Option<String>,
 ) -> Result<(), String> {
     let ts = timestamp();
     with_db(|conn| {
         conn.execute(
-            "INSERT INTO slides VALUES (?1, ?2, ?3, '', ?4, ?5, NULL)",
-            params![&id, position, &layout, &group_id, &ts],
+            "INSERT INTO slides (id, position, notes, group_id, config, valid_from, valid_to) \
+             VALUES (?1, ?2, '', ?3, NULL, ?4, NULL)",
+            params![&id, position, &group_id, &ts],
         )?;
         Ok(())
     })
@@ -979,23 +1039,24 @@ pub fn db_duplicate_slide(
     with_db(|conn| {
         let tx = conn.unchecked_transaction()?;
 
-        // Get source slide metadata
-        let (layout, notes, src_group): (String, String, Option<String>) = tx.query_row(
-            "SELECT layout, notes, group_id FROM slides WHERE id = ?1 AND valid_to IS NULL",
+        // Get source slide metadata (notes, group_id, config carried over)
+        let (notes, src_group, config): (String, Option<String>, Option<String>) = tx.query_row(
+            "SELECT notes, group_id, config FROM slides WHERE id = ?1 AND valid_to IS NULL",
             params![&source_slide_id],
             |row| Ok((
-                row.get::<_, Option<String>>(0)?.unwrap_or_else(|| "default".to_string()),
-                row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                row.get::<_, Option<String>>(0)?.unwrap_or_default(),
+                row.get::<_, Option<String>>(1)?,
                 row.get::<_, Option<String>>(2)?,
             )),
         )?;
 
         let final_group_id = group_id.or(src_group);
 
-        // Create new slide
+        // Create new slide (carries over notes + config from source)
         tx.execute(
-            "INSERT INTO slides VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
-            params![&new_slide_id, new_position, &layout, &notes, &final_group_id, &ts],
+            "INSERT INTO slides (id, position, notes, group_id, config, valid_from, valid_to) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+            params![&new_slide_id, new_position, &notes, &final_group_id, &config, &ts],
         )?;
 
         // Copy all slide_element references (same elements = synced)
@@ -1018,13 +1079,13 @@ pub fn db_move_slide(slide_id: String, new_position: i32) -> Result<(), String> 
     with_db(|conn| {
         let tx = conn.unchecked_transaction()?;
 
-        // Get current slide data
-        let (layout, notes, group_id): (String, String, Option<String>) = tx.query_row(
-            "SELECT layout, notes, group_id FROM slides WHERE id = ?1 AND valid_to IS NULL",
+        // Carry over the rest of the slide's data unchanged
+        let (notes, group_id, config): (String, Option<String>, Option<String>) = tx.query_row(
+            "SELECT notes, group_id, config FROM slides WHERE id = ?1 AND valid_to IS NULL",
             params![&slide_id],
             |row| Ok((
-                row.get::<_, Option<String>>(0)?.unwrap_or_else(|| "default".to_string()),
-                row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                row.get::<_, Option<String>>(0)?.unwrap_or_default(),
+                row.get::<_, Option<String>>(1)?,
                 row.get::<_, Option<String>>(2)?,
             )),
         )?;
@@ -1037,8 +1098,9 @@ pub fn db_move_slide(slide_id: String, new_position: i32) -> Result<(), String> 
 
         // Insert new version with updated position
         tx.execute(
-            "INSERT INTO slides VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
-            params![&slide_id, new_position, &layout, &notes, &group_id, &ts],
+            "INSERT INTO slides (id, position, notes, group_id, config, valid_from, valid_to) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+            params![&slide_id, new_position, &notes, &group_id, &config, &ts],
         )?;
 
         tx.commit()?;
@@ -1046,27 +1108,33 @@ pub fn db_move_slide(slide_id: String, new_position: i32) -> Result<(), String> 
     })
 }
 
-/// Update slide metadata (layout, notes, group_id, position)
+/// Update slide metadata (notes, group_id, position, config).
+///
+/// `config` is an optional JSON string holding per-slide overrides like
+/// `{"theme":"dark","titleFont":"shantell"}`. Pass an empty/absent JSON
+/// to clear all overrides — the helper that builds it (see TS subscriber)
+/// returns null when no fields are set, which we store as SQL NULL so the
+/// runtime cascade fires correctly.
 #[tauri::command]
 pub fn db_update_slide(
     slide_id: String,
     position: Option<i32>,
-    layout: Option<String>,
     notes: Option<String>,
     group_id: Option<String>,
+    config: Option<String>,
 ) -> Result<(), String> {
     let ts = timestamp();
     with_db(|conn| {
         let tx = conn.unchecked_transaction()?;
 
-        // Get current
-        let (cur_pos, cur_layout, cur_notes, cur_group): (i32, String, String, Option<String>) = tx.query_row(
-            "SELECT position, layout, notes, group_id FROM slides WHERE id = ?1 AND valid_to IS NULL",
+        // Get current values to fill in fields the caller didn't pass
+        let (cur_pos, cur_notes, cur_group, cur_config): (i32, String, Option<String>, Option<String>) = tx.query_row(
+            "SELECT position, notes, group_id, config FROM slides WHERE id = ?1 AND valid_to IS NULL",
             params![&slide_id],
             |row| Ok((
                 row.get(0)?,
-                row.get::<_, Option<String>>(1)?.unwrap_or_else(|| "default".to_string()),
-                row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                row.get::<_, Option<String>>(2)?,
                 row.get::<_, Option<String>>(3)?,
             )),
         )?;
@@ -1077,15 +1145,25 @@ pub fn db_update_slide(
             params![&ts, &slide_id],
         )?;
 
+        // For config: caller passes Some(json) to set, Some("") to clear,
+        // None to leave unchanged. Treat empty string as "clear" so the
+        // TS subscriber can use it as a sentinel for "no overrides now".
+        let new_config: Option<String> = match config {
+            Some(s) if s.is_empty() => None,
+            Some(s) => Some(s),
+            None => cur_config,
+        };
+
         // Insert updated
         tx.execute(
-            "INSERT INTO slides VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+            "INSERT INTO slides (id, position, notes, group_id, config, valid_from, valid_to) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
             params![
                 &slide_id,
                 position.unwrap_or(cur_pos),
-                layout.as_deref().unwrap_or(&cur_layout),
                 notes.as_deref().unwrap_or(&cur_notes),
                 group_id.or(cur_group),
+                new_config,
                 &ts
             ],
         )?;
@@ -1481,7 +1559,8 @@ mod tests {
         assert_eq!(slides.len(), 2);
 
         assert_eq!(slides[0]["id"], "slide-1");
-        assert_eq!(slides[0]["layout"], "default");
+        // 'layout' is ignored on import (dropped in v2); it should NOT appear on output
+        assert!(slides[0].get("layout").is_none() || slides[0]["layout"].is_null());
         assert_eq!(slides[0]["notes"], "Speaker notes here");
         let els = slides[0]["elements"].as_array().unwrap();
         assert_eq!(els.len(), 2);
@@ -2014,7 +2093,7 @@ mod tests {
         setup_global_db();
         db_import_json(json!({ "slides": [] }).to_string()).unwrap();
 
-        db_add_slide("new-s".to_string(), 0, "centered".to_string(), Some("g1".to_string())).unwrap();
+        db_add_slide("new-s".to_string(), 0, Some("g1".to_string())).unwrap();
 
         let slides: Vec<Value> =
             serde_json::from_str(&db_get_slides().unwrap()).unwrap();
@@ -2099,17 +2178,19 @@ mod tests {
         db_update_slide(
             "slide-1".to_string(),
             None, // position
-            Some("two-column".to_string()),
             Some("Updated notes".to_string()),
             None, // group_id
+            Some(r#"{"theme":"dark","bodyFont":"shantell"}"#.to_string()), // config
         )
         .unwrap();
 
         let slides: Vec<Value> =
             serde_json::from_str(&db_get_slides().unwrap()).unwrap();
         let s1 = slides.iter().find(|s| s["id"] == "slide-1").unwrap();
-        assert_eq!(s1["layout"], "two-column");
         assert_eq!(s1["notes"], "Updated notes");
+        // Per-slide config round-trips:
+        assert_eq!(s1["theme"], "dark");
+        assert_eq!(s1["bodyFont"], "shantell");
 
         teardown_global_db();
     }

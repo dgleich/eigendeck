@@ -82,7 +82,6 @@ Each slide has an `elements` array. Array order = z-order (first = bottom, last 
 ```json
 {
   "id": "unique-uuid",
-  "layout": "default",
   "theme": "dark",
   "elements": [ ... ],
   "notes": "Speaker notes for this slide",
@@ -93,10 +92,11 @@ Each slide has an `elements` array. Array order = z-order (first = bottom, last 
 }
 ```
 
-- `layout`: `"default"`, `"centered"`, or `"two-column"`
 - `theme`: optional per-slide theme override (otherwise inherits `presentation.theme`)
 - `groupId`: optional — slides with the same groupId form a group (shared numbering, used for build animations)
 - `titleFont` / `bodyFont` / `hypeFont`: optional per-slide font package overrides. Values are font ids from `src/lib/fonts.ts` (e.g. `"ptsans"`, `"shantell"`, `"libertinus"`). Title preset uses `titleFont`, hype preset uses `hypeFont`, all others use `bodyFont`. Falls back to `presentation.config.default*Font`, then `"ptsans"`. Math always follows the same font as the surrounding preset.
+
+> **Storage note**: at the SQLite level, the `theme`/`titleFont`/`bodyFont`/`hypeFont` fields are bundled into a single optional `slides.config` JSON column. Absent fields = inherit. Most slides have `config = NULL` (no overrides). The runtime cascade (element override → slide override → presentation default) does the resolution.
 
 ## Element Types
 
@@ -308,7 +308,6 @@ Every `id` must be unique. Use UUID v4 format:
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
-  "layout": "default",
   "elements": [
     {
       "id": "550e8400-e29b-41d4-a716-446655440001",

@@ -3,13 +3,7 @@ import { usePresentationStore } from '../store/presentation';
 import { TEXT_PRESET_STYLES } from '../types/presentation';
 import { BUILT_IN_THEMES } from '../lib/themes';
 import { FONT_PACKAGES, type FontPackage } from '../lib/fonts';
-import type { SlideLayout, VerticalAlign } from '../types/presentation';
-
-const LAYOUTS: { id: SlideLayout; label: string }[] = [
-  { id: 'default', label: 'Default (top-left)' },
-  { id: 'centered', label: 'Centered' },
-  { id: 'two-column', label: 'Two Column' },
-];
+import type { VerticalAlign } from '../types/presentation';
 
 const ARROW_COLORS = [
   '#e53e3e', '#dc2626', '#ea580c', '#16a34a',
@@ -131,12 +125,6 @@ export function PropertiesPanel() {
           <>
             {/* ── Slide Properties ── */}
             <div className="prop-section-header">Slide</div>
-            <PropSection label="Layout">
-              <select className="prop-select" value={slide.layout || 'default'}
-                onChange={(e) => updateSlide(currentSlideIndex, { layout: e.target.value as SlideLayout })}>
-                {LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
-              </select>
-            </PropSection>
             <PropSection label="Theme">
               <select className="prop-select" value={slide.theme || ''}
                 onChange={(e) => updateSlide(currentSlideIndex, { theme: e.target.value || undefined })}>

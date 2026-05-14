@@ -328,18 +328,17 @@ export function SlideEditor() {
 
   if (!slide) return null;
 
-  const layout = slide.layout || 'default';
   const { author, venue } = presentation.config;
   const meta = [author, venue].filter(Boolean).join(' \u00B7 ');
 
   return (
     <div className="slide-editor">
-      {/* Layout/theme now in inspector panel (PropertiesPanel) */}
+      {/* Theme now in inspector panel (PropertiesPanel); layout removed in v2 schema */}
       <div className={`slide-canvas-container ${dragOver ? 'drag-over' : ''}`} ref={containerRef}
         onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
         <div
           ref={canvasRef}
-          className={`slide-canvas slide-layout-${layout}`}
+          className="slide-canvas"
           style={{ width: SLIDE_WIDTH, height: SLIDE_HEIGHT, transform: `scale(${scale})`, transformOrigin: 'top center',
             backgroundColor: resolveTheme(presentation.theme, slide.theme).background }}
           onPointerDown={handleCanvasPointerDown}

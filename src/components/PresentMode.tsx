@@ -105,7 +105,7 @@ export function PresentMode() {
       <div className="present-viewport" ref={viewportRef}>
         <div className="present-slide-wrapper" style={{ width: slideW * scale, height: slideH * scale }}>
           <div
-            className={`present-slide slide-layout-${slide.layout || 'default'}`}
+            className="present-slide"
             style={{ width: slideW, height: slideH, transform: `scale(${scale})`, transformOrigin: 'top left' }}
           >
             {/* Fading out elements (from previous slide, no match in current) */}

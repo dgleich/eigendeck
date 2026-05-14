@@ -5,7 +5,6 @@ export interface ElementPosition {
   height: number;
 }
 
-export type SlideLayout = 'default' | 'centered' | 'two-column';
 
 // ============================================
 // Text box presets
@@ -148,8 +147,10 @@ export type SlideElement =
 
 export interface Slide {
   id: string;
-  layout?: SlideLayout;
-  theme?: string; // per-slide theme override (inherits from presentation if absent)
+  // Per-slide theme + font overrides (each inherits from the
+  // presentation default if absent). On the storage side these are
+  // bundled into a single optional `config` JSON column on slides.
+  theme?: string;
   elements: SlideElement[];
   notes: string;
   groupId?: string; // slides with same groupId form a group
@@ -223,7 +224,6 @@ export function createDefaultPresentation(): Presentation {
     slides: [
       {
         id: crypto.randomUUID(),
-        layout: 'centered',
         elements: [
           createTextElement('title', { x: 160, y: 400, width: 1600, height: 140 }),
         ],
@@ -245,7 +245,6 @@ export function createDefaultPresentation(): Presentation {
 export function createBlankSlide(): Slide {
   return {
     id: crypto.randomUUID(),
-    layout: 'default',
     elements: [
       createTextElement('title'),
       createTextElement('body'),

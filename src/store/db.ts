@@ -251,10 +251,9 @@ export async function dbCompact(deleteAll: boolean = false): Promise<{ beforeByt
 export async function dbAddSlide(
   id: string,
   position: number,
-  layout: string = 'default',
   groupId?: string | null
 ): Promise<void> {
-  await invoke('db_add_slide', { id, position, layout, groupId: groupId ?? null });
+  await invoke('db_add_slide', { id, position, groupId: groupId ?? null });
   emit('slides-changed');
 }
 
@@ -285,13 +284,15 @@ export async function dbMoveSlide(slideId: string, newPosition: number): Promise
 
 export async function dbUpdateSlide(
   slideId: string,
-  changes: { layout?: string; notes?: string; groupId?: string | null }
+  changes: { notes?: string; groupId?: string | null; config?: string | null }
 ): Promise<void> {
   await invoke('db_update_slide', {
     slideId,
-    layout: changes.layout ?? null,
     notes: changes.notes ?? null,
     groupId: changes.groupId ?? null,
+    // config: pass empty string to CLEAR (storage treats empty as "no overrides"),
+    // null to leave unchanged, JSON to set.
+    config: changes.config ?? null,
   });
   emit('slides-changed');
 }

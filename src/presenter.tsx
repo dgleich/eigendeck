@@ -102,7 +102,7 @@ function PresenterApp() {
     <div style={{ width: '100vw', height: '100vh', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }} ref={viewportRef}>
       <div style={{ width: slideW * scale, height: slideH * scale }}>
         <div
-          className={`present-slide slide-layout-${slide.layout || 'default'}`}
+          className="present-slide"
           style={{ width: slideW, height: slideH, transform: `scale(${scale})`, transformOrigin: 'top left' }}
         >
           {slide.elements.map((el, idx) => (
