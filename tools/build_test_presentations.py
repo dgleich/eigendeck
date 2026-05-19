@@ -548,9 +548,13 @@ def gen_mixed_fonts_presentation() -> None:
         text_element("hype", "BIG IDEA: $E = mc^2$"),
     ]))
 
-    slides.append(make_slide(elements=[
+    # Per-slide override: body font → Source Code (title stays Libertinus).
+    # Exercises the slides.config bodyFont override path.
+    slides.append(make_slide(body_font="source-code", elements=[
         text_element("title", "Code-ish Body"),
         text_element("body",
+            "This slide overrides the body font to Source Code "
+            "(the title is still Libertinus). "
             "Define $T(n) = T(n/2) + 1$. "
             "By the master theorem $T(n) \\in \\Theta(\\log n)$."),
     ]))
