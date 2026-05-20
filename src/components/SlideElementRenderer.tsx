@@ -724,6 +724,13 @@ function DraggableBox({
       style={{
         position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
         zIndex, cursor: isDragging ? 'grabbing' : 'grab',
+        // Promote to its own compositor layer. Text SVGs use overflow="visible"
+        // (required for italic-glyph ink overhang); without layer promotion,
+        // WebKit doesn't invalidate ink painted outside the wrapper's layout
+        // box when the element moves, leaving a ghost trace at the old
+        // position. A separate compositor layer carries its full drawing
+        // rect — overflow included — and moves as a clean unit. Issue #61.
+        transform: 'translateZ(0)',
       }}
       onPointerDown={handlePointerDown}
       onClick={(e) => e.stopPropagation()}
