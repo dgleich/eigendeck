@@ -36,13 +36,16 @@ export async function renderAsset(opts: {
   maxWidth: number;
   /** Maximum height of the rendered PNG — actual output may be shorter. */
   maxHeight: number;
+  /** Optional pre-fetched source bytes (skips the db_get_asset round-trip). */
+  preFetchedBytes?: Uint8Array;
 }): Promise<string> {
-  const { sourceId, kind, variant = '_', maxWidth, maxHeight } = opts;
+  const { sourceId, kind, variant = '_', maxWidth, maxHeight, preFetchedBytes } = opts;
 
   const cached = await getAssetCache(sourceId, variant, maxWidth, maxHeight);
   if (cached) return pngBytesToBlobUrl(cached.png);
 
-  const bytes = new Uint8Array(await invoke<number[]>('db_get_asset', { path: sourceId }));
+  const bytes = preFetchedBytes
+    ?? new Uint8Array(await invoke<number[]>('db_get_asset', { path: sourceId }));
 
   let png: Uint8Array;
   switch (kind) {
@@ -127,13 +130,34 @@ export function entryToBlobUrl(entry: AssetCacheEntry): string {
 }
 
 /**
+ * SVG fast-path threshold (bytes). SVG sources under this size are served as
+ * raw blob URLs so the browser renders them natively at any CSS size
+ * (vector-perfect anti-aliasing, no pixelation in scaled-down sidebar
+ * thumbs). Above this we rasterize to the asset_cache because re-parsing
+ * a million-point path on every paint is expensive — accepting some sidebar
+ * pixelation in exchange for stable per-paint cost.
+ *
+ * 200 KB is empirically the right cutoff for our corpus: every icon / spec
+ * test / simple wikimedia diagram lands below, the only fixture above is
+ * the Inkscape About splash (~400 KB) which legitimately benefits from
+ * caching.
+ */
+export const SVG_NATIVE_THRESHOLD_BYTES = 200_000;
+
+/**
  * React hook: lazy cache-or-render an asset at the requested tier, returning
  * a blob URL the consumer can drop into <img src>. URL is revoked when the
  * component unmounts or the inputs change.
  *
- * Returns undefined while the first render is in flight. PDF sources return
- * undefined permanently until the pdfium path lands; callers should fall
- * back to raw source display in that case.
+ * - SVG (<= SVG_NATIVE_THRESHOLD_BYTES): native browser SVG render, no cache.
+ *   Crisp at any size, ideal for icons and small diagrams.
+ * - SVG (> threshold): rasterized to cache to avoid per-paint parse cost on
+ *   complex/large files.
+ * - raster: always cached at requested tier (cheap thumbs vs. re-decoding
+ *   a multi-MB JPEG every paint).
+ * - pdf: returns undefined permanently until the pdfium path lands.
+ *
+ * Returns undefined while the first render is in flight.
  */
 export function useRenderedAsset(
   sourceId: string | undefined,
@@ -148,13 +172,42 @@ export function useRenderedAsset(
     if (!sourceId || !kind) { setUrl(undefined); return; }
     let cancelled = false;
     let current: string | undefined;
-    renderAsset({ sourceId, kind, variant, maxWidth, maxHeight })
-      .then((u) => {
-        if (cancelled) { URL.revokeObjectURL(u); return; }
-        current = u;
-        setUrl(u);
-      })
-      .catch(() => { if (!cancelled) setUrl(undefined); });
+
+    if (kind === 'svg') {
+      // Fetch source bytes once; decide native vs cache by size.
+      invoke<number[]>('db_get_asset', { path: sourceId })
+        .then(async (data) => {
+          if (cancelled) return;
+          const bytes = new Uint8Array(data);
+          if (bytes.length <= SVG_NATIVE_THRESHOLD_BYTES) {
+            // Fast path: hand raw SVG to <img>; browser scales it perfectly.
+            const blob = new Blob([bytes as BlobPart], { type: 'image/svg+xml' });
+            current = URL.createObjectURL(blob);
+            setUrl(current);
+          } else {
+            // Slow path: rasterize once into asset_cache, reuse forever.
+            // preFetchedBytes avoids the second db_get_asset round-trip.
+            try {
+              const u = await renderAsset({ sourceId, kind, variant, maxWidth, maxHeight, preFetchedBytes: bytes });
+              if (cancelled) { URL.revokeObjectURL(u); return; }
+              current = u;
+              setUrl(u);
+            } catch {
+              if (!cancelled) setUrl(undefined);
+            }
+          }
+        })
+        .catch(() => { if (!cancelled) setUrl(undefined); });
+    } else {
+      renderAsset({ sourceId, kind, variant, maxWidth, maxHeight })
+        .then((u) => {
+          if (cancelled) { URL.revokeObjectURL(u); return; }
+          current = u;
+          setUrl(u);
+        })
+        .catch(() => { if (!cancelled) setUrl(undefined); });
+    }
+
     return () => {
       cancelled = true;
       if (current) URL.revokeObjectURL(current);
