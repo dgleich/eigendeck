@@ -929,8 +929,13 @@ function App() {
                 position: { x: 360, y: 200, width: 1200, height: 680 },
               });
               if (kind === 'svg' && bytes) {
-                const { warnIfSvgHasExternalRefs } = await import('./lib/assetRenderer');
-                void warnIfSvgHasExternalRefs(bytes, relativePath);
+                const { handleSvgExternalRefs, invalidateRenderedAsset } = await import('./lib/assetRenderer');
+                const updated = await handleSvgExternalRefs(bytes, relativePath, fullPath);
+                if (updated) {
+                  const { invoke } = await import('@tauri-apps/api/core');
+                  await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime });
+                  await invalidateRenderedAsset(relativePath);
+                }
               }
             }}>+ Image</button>
             <button title="Add demo HTML" onClick={async () => {

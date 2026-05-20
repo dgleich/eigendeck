@@ -6,7 +6,7 @@ import { SlideElementRenderer } from './SlideElementRenderer';
 import { getSlideNumber, createTextElement } from '../types/presentation';
 import { resolveTheme } from '../lib/themes';
 import { detectAssetKind } from '../lib/assetCache';
-import { warnIfSvgHasExternalRefs } from '../lib/assetRenderer';
+import { handleSvgExternalRefs, invalidateRenderedAsset } from '../lib/assetRenderer';
 import type { SlideElement } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
 
@@ -95,7 +95,10 @@ export function SlideEditor() {
         kind,
         position: { x: 360, y: 200, width: 1200, height: 680 },
       });
-      if (kind === 'svg') void warnIfSvgHasExternalRefs(bytes, fileName);
+      if (kind === 'svg') {
+        // Paste has no source folder — handler will just warn.
+        void handleSvgExternalRefs(bytes, fileName, null);
+      }
     };
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
@@ -251,7 +254,14 @@ export function SlideEditor() {
                     kind,
                     position: { x: 360, y: 200, width: 1200, height: 680 },
                   });
-                  if (kind === 'svg') void warnIfSvgHasExternalRefs(bytes, name);
+                  if (kind === 'svg') {
+                    // We have the original full path — handler can offer to embed.
+                    const updated = await handleSvgExternalRefs(bytes, name, fullPath);
+                    if (updated) {
+                      await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime });
+                      await invalidateRenderedAsset(relativePath);
+                    }
+                  }
                 } catch (err) { console.error('Failed to handle dropped image:', err); }
               } else if (isHtml) {
                 try {

@@ -162,29 +162,183 @@ export function findExternalImageRefs(bytes: Uint8Array): string[] {
   return out;
 }
 
+/** POSIX-style path resolution: 'base/../foo/./bar' -> '/foo/bar' (rooted on base). */
+function resolvePosixPath(baseDir: string, relative: string): string {
+  if (relative.startsWith('/')) return relative;
+  const parts = (baseDir + '/' + relative).split('/');
+  const out: string[] = [];
+  for (const p of parts) {
+    if (p === '..') out.pop();
+    else if (p !== '.' && p !== '') out.push(p);
+  }
+  return '/' + out.join('/');
+}
+
+/** Detect MIME for an embedded file from its extension. */
+function mimeFromExt(href: string): string {
+  const ext = (href.split('.').pop() || '').toLowerCase();
+  return ext === 'png' ? 'image/png'
+    : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+    : ext === 'gif' ? 'image/gif'
+    : ext === 'webp' ? 'image/webp'
+    : ext === 'svg' ? 'image/svg+xml'
+    : 'application/octet-stream';
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 8192) {
+    s += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  }
+  return btoa(s);
+}
+
 /**
- * Show a native warning dialog when an SVG references external <image>
- * subresources that won't render. Called after insertion (drag/drop,
- * paste, file picker) for SVG kind. No-op when the SVG is self-contained.
+ * Read each external <image href> in `svgBytes` from disk (resolving
+ * relative paths against the source SVG's folder), base64-encode the
+ * file, and rewrite the SVG with embedded `data:` URIs in place. HTTP(S)
+ * refs are not auto-embedded in v1 — reported in `httpUnsupported` so
+ * the caller can surface them.
  *
- * Non-blocking: the element is already added; this is just an FYI so the
- * user can decide whether to fix the source or accept the missing images.
+ * Returns null when nothing changed (no refs, or every ref failed).
  */
-export async function warnIfSvgHasExternalRefs(svgBytes: Uint8Array, filename: string): Promise<void> {
+export async function inlineSvgExternalRefsFromDisk(
+  svgBytes: Uint8Array,
+  sourceSvgPath: string,
+): Promise<{ bytes: Uint8Array; inlined: number; failed: string[]; httpUnsupported: string[] } | null> {
   const refs = findExternalImageRefs(svgBytes);
-  if (refs.length === 0) return;
-  const { message } = await import('@tauri-apps/plugin-dialog');
+  if (refs.length === 0) return null;
+  const text = new TextDecoder('utf-8', { fatal: false }).decode(svgBytes);
+  const sourceDir = sourceSvgPath.substring(0, sourceSvgPath.lastIndexOf('/'));
+
+  const { readFile } = await import('@tauri-apps/plugin-fs');
+  const replacements: Array<[string, string]> = [];
+  const failed: string[] = [];
+  const httpUnsupported: string[] = [];
+
+  for (const ref of refs) {
+    if (/^https?:\/\//i.test(ref)) { httpUnsupported.push(ref); continue; }
+    const absolute = resolvePosixPath(sourceDir, ref);
+    try {
+      const fileBytes = await readFile(absolute);
+      const dataUri = `data:${mimeFromExt(ref)};base64,${bytesToBase64(fileBytes)}`;
+      replacements.push([ref, dataUri]);
+    } catch (e) {
+      failed.push(`${ref} (${e instanceof Error ? e.message : String(e)})`);
+    }
+  }
+
+  if (replacements.length === 0) return null;
+
+  // Apply each replacement in-place. Limit to <image> tags so we don't
+  // accidentally rewrite the same string elsewhere in the SVG (CSS,
+  // comments, etc.).
+  let modified = text;
+  for (const [ref, dataUri] of replacements) {
+    const escaped = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(
+      `(<image\\b[^>]*\\b(?:xlink:href|href)\\s*=\\s*["'])${escaped}(["'])`,
+      'g',
+    );
+    modified = modified.replace(re, `$1${dataUri}$2`);
+  }
+
+  return {
+    bytes: new TextEncoder().encode(modified),
+    inlined: replacements.length,
+    failed,
+    httpUnsupported,
+  };
+}
+
+/**
+ * Notify any mounted `useRenderedAsset` hook that an asset's bytes have
+ * changed (e.g. after auto-embedding external refs). Triggers a re-fetch
+ * + re-render without requiring a manual UI refresh. Also clears the
+ * SQLite asset_cache PNG rows that were derived from the old bytes.
+ */
+export async function invalidateRenderedAsset(sourceId: string): Promise<void> {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('db_clear_asset_cache', { sourceId });
+  } catch { /* best-effort */ }
+  window.dispatchEvent(new CustomEvent('eigendeck:asset-changed', { detail: { path: sourceId } }));
+}
+
+/**
+ * Handle SVG-with-external-refs at insertion time. If the SVG has any
+ * external <image> refs:
+ *   - When `sourceSvgPath` is known (drag/drop, file picker), ask the
+ *     user whether to embed them; on yes, fetch local files and rewrite
+ *     the SVG. Returns the rewritten bytes for the caller to re-store.
+ *   - When `sourceSvgPath` is null (pasted SVG), just warn — there's no
+ *     source folder to resolve relative refs against.
+ *
+ * Returns null when nothing changed; the caller can keep the original
+ * bytes. When non-null, caller should db_store_asset(returned bytes)
+ * and call invalidateRenderedAsset(path) so the UI picks up the change.
+ */
+export async function handleSvgExternalRefs(
+  svgBytes: Uint8Array,
+  filename: string,
+  sourceSvgPath: string | null,
+): Promise<Uint8Array | null> {
+  const refs = findExternalImageRefs(svgBytes);
+  if (refs.length === 0) return null;
+  const { ask, message } = await import('@tauri-apps/plugin-dialog');
   const sample = refs.slice(0, 5).map((r) => `  • ${r}`).join('\n');
   const more = refs.length > 5 ? `\n  …and ${refs.length - 5} more` : '';
-  await message(
+
+  if (!sourceSvgPath) {
+    await message(
+      `${filename} references ${refs.length} external image${refs.length === 1 ? '' : 's'} ` +
+      `that won't load when the SVG is rendered:\n\n${sample}${more}\n\n` +
+      `Pasted SVGs can't be auto-embedded (no source folder). Save the SVG with images ` +
+      `embedded and re-paste, or drop the file in instead so we can try embedding.`,
+      { title: 'SVG references external images', kind: 'warning' },
+    );
+    return null;
+  }
+
+  const accepted = await ask(
     `${filename} references ${refs.length} external image${refs.length === 1 ? '' : 's'} ` +
-    `that won't load when the SVG is rendered in a slide:\n\n${sample}${more}\n\n` +
-    `To fix: re-export with the images embedded.\n` +
-    `  • Inkscape: File → Save As → Inkscape SVG, check "Embed images".\n` +
-    `  • Illustrator: File → Export → SVG, choose "Embed" instead of "Link" for images.\n\n` +
-    `The SVG was still added; only the external images will appear blank.`,
-    { title: 'SVG references external images', kind: 'warning' },
+    `that won't load as-is:\n\n${sample}${more}\n\n` +
+    `Embed them now? Files will be read from the SVG's folder and base64-encoded into the SVG.\n\n` +
+    `⚠ Embedding captures a SNAPSHOT of each file's current contents. The embedded copies ` +
+    `won't auto-update if you later change the source files — you'd need to re-embed.`,
+    { title: 'Embed external images?', kind: 'warning', okLabel: 'Embed snapshot', cancelLabel: 'Skip' },
   );
+  if (!accepted) return null;
+
+  const result = await inlineSvgExternalRefsFromDisk(svgBytes, sourceSvgPath);
+  if (!result) {
+    await message(
+      `Couldn't embed any of the ${refs.length} external image${refs.length === 1 ? '' : 's'}. ` +
+      `They may be HTTP refs (not auto-embeddable in v1), missing files, or outside the readable scope.`,
+      { title: 'No images embedded', kind: 'error' },
+    );
+    return null;
+  }
+
+  const lines: string[] = [
+    `Embedded ${result.inlined} of ${refs.length} image${refs.length === 1 ? '' : 's'} as ` +
+    `snapshots — the SVG no longer references the source files. ` +
+    `Re-import or re-embed if the source files change later.`,
+  ];
+  if (result.failed.length > 0) {
+    lines.push('', 'Failed:');
+    for (const f of result.failed.slice(0, 5)) lines.push(`  • ${f}`);
+    if (result.failed.length > 5) lines.push(`  …and ${result.failed.length - 5} more`);
+  }
+  if (result.httpUnsupported.length > 0) {
+    lines.push('', 'HTTP(S) refs (not auto-embeddable — download manually and re-link):');
+    for (const u of result.httpUnsupported.slice(0, 5)) lines.push(`  • ${u}`);
+  }
+  await message(lines.join('\n'), {
+    title: 'External images embedded',
+    kind: result.failed.length || result.httpUnsupported.length ? 'warning' : 'info',
+  });
+  return result.bytes;
 }
 
 /**
@@ -254,6 +408,19 @@ export function useRenderedAsset(
   variant: string = '_',
 ): string | undefined {
   const [url, setUrl] = useState<string | undefined>(undefined);
+  // Bumped by invalidateRenderedAsset() so this hook refetches after the
+  // underlying asset bytes change (e.g. embedding external SVG refs).
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (!sourceId) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { path?: string } | undefined;
+      if (detail?.path === sourceId) setRefreshKey((k) => k + 1);
+    };
+    window.addEventListener('eigendeck:asset-changed', handler);
+    return () => window.removeEventListener('eigendeck:asset-changed', handler);
+  }, [sourceId]);
 
   useEffect(() => {
     if (!sourceId || !kind) { setUrl(undefined); return; }
@@ -299,7 +466,7 @@ export function useRenderedAsset(
       cancelled = true;
       if (current) URL.revokeObjectURL(current);
     };
-  }, [sourceId, kind, variant, maxWidth, maxHeight]);
+  }, [sourceId, kind, variant, maxWidth, maxHeight, refreshKey]);
 
   return url;
 }
