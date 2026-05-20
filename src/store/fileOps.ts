@@ -196,6 +196,36 @@ export async function saveAsProject(): Promise<void> {
 // Export
 // ============================================================================
 
+/**
+ * Build the per-text-element SVG renderer used by exportPresentation (and by
+ * the Debug menu's batch HTML export, so batch tests THE SAME path).
+ *
+ * Each element's preset picks its own MathJax bundle, math is pre-rendered
+ * via the iframe pool with fontCache:'none' (inlined glyph paths → fully
+ * self-contained SVG), and the result is wrapped via buildTextElementSvgMarkup.
+ */
+export function makeTextElementRenderer(presentation: Presentation) {
+  return async (el: TextElement, slide: Slide): Promise<string> => {
+    const presetStyle = TEXT_PRESET_STYLES[el.preset];
+    const theme = resolveTheme(presentation.theme, slide.theme);
+    const presetFontPkg = fontForPreset(el.preset, slide, presentation.config);
+    const fontFamily = el.fontFamily || fontFamilyForPreset(presetFontPkg, el.preset);
+    const color = el.color || themeColorForPreset(theme, el.preset);
+    const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
+    const renderedHtml = await renderMathPerBundle(
+      el.html || '', presetFontPkg.id, presentation.config.mathPreamble || ''
+    ).catch(() => el.html || '');
+    return buildTextElementSvgMarkup(el, renderedHtml, {
+      fontFamily,
+      fontSize: el.fontSize || presetStyle.fontSize,
+      fontWeight: presetStyle.fontWeight,
+      fontStyle: presetStyle.fontStyle,
+      color,
+      valign,
+    });
+  };
+}
+
 export async function exportPresentation(): Promise<void> {
   const store = usePresentationStore.getState();
   const { presentation, projectPath } = store;
@@ -238,33 +268,9 @@ export async function exportPresentation(): Promise<void> {
           throw new Error(`Asset not found: ${path}`);
         }
       },
-      // Pre-render each text element to its own self-contained SVG via
-      // the iframe pool — math glyph paths are inlined (fontCache:'none')
-      // so the SVG can be embedded in the export without needing MathJax
-      // at view time. Each element's preset picks its own bundle, so the
-      // exported HTML has the same per-preset math as the editor.
-      renderTextElement: async (el: TextElement, slide: Slide): Promise<string> => {
-        const presetStyle = TEXT_PRESET_STYLES[el.preset];
-        const theme = resolveTheme(presentation.theme, slide.theme);
-        const presetFontPkg = fontForPreset(el.preset, slide, presentation.config);
-        const fontFamily = el.fontFamily || fontFamilyForPreset(presetFontPkg, el.preset);
-        const color = el.color || themeColorForPreset(theme, el.preset);
-        const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
-        // Pre-render math (per-preset bundle). renderMathPerBundle returns
-        // the source html when no math markers are present, so this is a
-        // no-op for plain text.
-        const renderedHtml = await renderMathPerBundle(
-          el.html || '', presetFontPkg.id, presentation.config.mathPreamble || ''
-        ).catch(() => el.html || '');
-        return buildTextElementSvgMarkup(el, renderedHtml, {
-          fontFamily,
-          fontSize: el.fontSize || presetStyle.fontSize,
-          fontWeight: presetStyle.fontWeight,
-          fontStyle: presetStyle.fontStyle,
-          color,
-          valign,
-        });
-      },
+      // Pre-render each text element to its own self-contained SVG via the
+      // iframe pool — see makeTextElementRenderer.
+      renderTextElement: makeTextElementRenderer(presentation),
       fontFacesCss,
     });
 

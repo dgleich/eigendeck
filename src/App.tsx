@@ -13,6 +13,7 @@ import { DebugConsole } from './components/DebugConsole';
 import { LinkOverlay } from './components/LinkOverlay';
 import { ContextMenu } from './components/ContextMenu';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
+import { DebugMenu } from './debug';
 import type { MenuEntry } from './components/ContextMenu';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
@@ -877,6 +878,7 @@ function App() {
 
   return (
     <div className="app">
+      <DebugMenu />
       <Toolbar />
       <div className="main-area">
         <div style={{ width: sidebarWidth, minWidth: 150, maxWidth: 400, flexShrink: 0 }}>

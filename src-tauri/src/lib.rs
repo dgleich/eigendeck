@@ -3,6 +3,8 @@ pub mod storage;
 
 use tauri::menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager};
+
+mod debug;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
@@ -483,20 +485,32 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .minimize().maximize().separator().close_window()
         .build().map_err(|e| e.to_string())?;
 
-    MenuBuilder::new(app)
+    // Debug submenu — appended ONLY when launched with --debug. The flag is
+    // read inside debug::attach_submenu_if_enabled; lib.rs never sees the bool.
+    let debug_menu = debug::attach_submenu_if_enabled(app)?;
+
+    let mut bar = MenuBuilder::new(app)
         .item(&app_menu)
         .item(&file_menu)
         .item(&edit_menu)
         .item(&view_menu)
-        .item(&window_menu)
-        .build()
-        .map_err(|e| e.to_string())
+        .item(&window_menu);
+    if let Some(ref dm) = debug_menu {
+        bar = bar.item(dm);
+    }
+    bar.build().map_err(|e| e.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Parse --debug ONCE here. Stored as managed state; only the debug module
+    // reads it. Nothing else may branch on this flag (see debug.rs).
+    let debug_flag = debug::DebugFlag(debug::parse_debug_flag());
+
     tauri::Builder::default()
+        .manage(debug_flag)
         .invoke_handler(tauri::generate_handler![
+            debug::debug_enabled,
             set_window_above_menubar,
             check_display_mirroring,
             disable_display_mirroring,
