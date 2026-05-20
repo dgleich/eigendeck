@@ -1303,6 +1303,7 @@ pub struct MathCacheEntry {
 
 /// Insert or update a cached math SVG render.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub fn db_put_math_svg(
     key: String,
     tex: String,
@@ -1347,7 +1348,7 @@ pub fn db_get_math_svg(key: String) -> Result<Option<MathCacheEntry>, String> {
         match result {
             Ok(entry) => Ok(Some(entry)),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e.into()),
+            Err(e) => Err(e),
         }
     })
 }
