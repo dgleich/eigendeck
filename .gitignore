@@ -52,3 +52,8 @@ __pycache__/
 _debug-export/
 _debug-roundtrip/
 debug-report-*.json
+
+# SVG test-deck builder artifacts (regeneratable via
+# tools/build_svg_test_deck.py)
+_svg-fixtures/
+test-presentations/svg-render-test.eigendeck
