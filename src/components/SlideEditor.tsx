@@ -202,76 +202,16 @@ export function SlideEditor() {
     setDragOver(false);
   }, []);
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    // Tauri v2 delivers file drops via win.onDragDropEvent (registered
+    // below). The webview ALSO emits a synthetic DOM drop event for the
+    // same gesture, so we must NOT process files here — doing so would
+    // create one element per handler (the duplication bug). We still
+    // preventDefault + stopPropagation so the browser doesn't try to
+    // navigate to the dropped file, and we clear the drag-over highlight.
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
-
-    const store = usePresentationStore.getState();
-    const files = Array.from(e.dataTransfer.files);
-
-    for (const file of files) {
-      const name = file.name.toLowerCase();
-      const isImage = /\.(png|jpg|jpeg|gif|svg|webp|pdf)$/i.test(name);
-      const isHtml = /\.html?$/i.test(name);
-
-      if (isImage) {
-        const kind = detectAssetKind(file.name, file.type);
-        if (store.projectPath) {
-          try {
-            const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
-            const imagesDir = `${store.projectPath}/images`;
-            if (!(await exists(imagesDir))) await mkdir(imagesDir);
-            const bytes = new Uint8Array(await file.arrayBuffer());
-            await writeFile(`${imagesDir}/${file.name}`, bytes);
-            store.addElement({
-              id: crypto.randomUUID(), type: 'image',
-              src: `images/${file.name}`,
-              kind,
-              position: { x: 360, y: 200, width: 1200, height: 680 },
-            });
-          } catch (err) {
-            console.error('Failed to save dropped image:', err);
-            // Fallback to data URL
-            const reader = new FileReader();
-            reader.onload = () => {
-              store.addElement({
-                id: crypto.randomUUID(), type: 'image',
-                src: reader.result as string,
-                kind,
-                position: { x: 360, y: 200, width: 1200, height: 680 },
-              });
-            };
-            reader.readAsDataURL(file);
-          }
-        } else {
-          const reader = new FileReader();
-          reader.onload = () => {
-            store.addElement({
-              id: crypto.randomUUID(), type: 'image',
-              src: reader.result as string,
-              kind,
-              position: { x: 360, y: 200, width: 1200, height: 680 },
-            });
-          };
-          reader.readAsDataURL(file);
-        }
-      } else if (isHtml) {
-        try {
-          const { invoke } = await import('@tauri-apps/api/core');
-          const bytes = new Uint8Array(await file.arrayBuffer());
-          const relativePath = `demos/${file.name}`;
-          await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html' });
-          store.addElement({
-            id: crypto.randomUUID(), type: 'demo',
-            src: relativePath,
-            position: { x: 80, y: 200, width: 1760, height: 700 },
-          });
-        } catch (err) {
-          console.error('Failed to store dropped HTML:', err);
-        }
-      }
-    }
   }, []);
 
   // Tauri drag-drop event (provides file paths directly)
