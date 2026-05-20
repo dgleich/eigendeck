@@ -893,33 +893,6 @@ function App() {
             <button title="Add annotation (small, blue, italic)" onClick={() => store.addElement(createTextElement('annotation'))}>+ Note</button>
             <button title="Add footnote (small, grey, narrow)" onClick={() => store.addElement(createTextElement('footnote'))}>+ Footnote</button>
             <span className="divider" />
-            <button title="Demo: set slide fonts to libertinus/shantell/concrete-euler and add three text elements with math"
-              onClick={() => {
-                const idx = store.currentSlideIndex;
-                store.updateSlide(idx, {
-                  titleFont: 'libertinus',
-                  bodyFont: 'shantell',
-                  hypeFont: 'concrete-euler',
-                });
-                store.addElement({
-                  id: crypto.randomUUID(), type: 'text', preset: 'title',
-                  html: 'Libertinus title with $\\alpha + \\beta = \\gamma$',
-                  position: { x: 80, y: 20, width: 1760, height: 200 },
-                });
-                store.addElement({
-                  id: crypto.randomUUID(), type: 'text', preset: 'body',
-                  html: 'Shantell body: $\\sum_{i=1}^{n} x_i^2 = \\int_0^1 f(t)\\,dt$',
-                  position: { x: 200, y: 300, width: 1500, height: 200 },
-                });
-                store.addElement({
-                  id: crypto.randomUUID(), type: 'text', preset: 'hype',
-                  html: 'Concrete: $\\Omega = \\mathcal{F}(\\nabla\\!\\cdot\\!\\vec{B})$',
-                  position: { x: 200, y: 600, width: 1500, height: 280 },
-                });
-              }}>
-              Demo: 3 fonts
-            </button>
-            <span className="divider" />
             <button title="Add arrow" onClick={() => store.addElement({ id: crypto.randomUUID(), type: 'arrow', x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: '#2563eb', strokeWidth: 4, headSize: 16 })}>+ Arrow</button>
             <button title="Add cover-up rectangle (white)" onClick={() => {
               const sel = store.selectedObject;

@@ -44,3 +44,11 @@ website/
 
 # mathjax-fonts repo (cloned as sibling at setup time)
 mathjax-fonts/
+
+# Python bytecode cache (tools/)
+__pycache__/
+
+# Debug-menu batch artifacts (per-run output dirs + JSON reports)
+_debug-export/
+_debug-roundtrip/
+debug-report-*.json
