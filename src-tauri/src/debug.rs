@@ -25,9 +25,21 @@ use tauri::{AppHandle, Manager, State, Wry};
 /// Managed state: was the app launched with `--debug`?
 pub struct DebugFlag(pub bool);
 
-/// Parse argv once at startup. THE ONLY env-args read for this flag.
+/// Detect the debug flag once at startup. THE ONLY env read for this flag.
+///
+/// Two paths:
+///   - `--debug` in argv — works for the released binary launched from
+///     terminal (`./Eigendeck.app/Contents/MacOS/Eigendeck --debug`).
+///   - `EIGENDECK_DEBUG=1` env var — needed for `tauri dev`, because the
+///     Tauri CLI's argv passthrough places args BEFORE cargo's `--`
+///     separator, so they reach cargo (which rejects them) instead of the
+///     binary. mac-build.sh translates its own `--debug` arg into the env
+///     var so the user only ever types `bash mac-build.sh --debug`.
 pub fn parse_debug_flag() -> bool {
-    std::env::args().any(|a| a == "--debug")
+    if std::env::args().any(|a| a == "--debug") {
+        return true;
+    }
+    matches!(std::env::var("EIGENDECK_DEBUG").as_deref(), Ok(v) if !v.is_empty() && v != "0")
 }
 
 /// Frontend mount gate. Returns the flag value verbatim.

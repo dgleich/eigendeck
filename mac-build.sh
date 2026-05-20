@@ -2,16 +2,26 @@
 # Build and run Eigendeck in Tauri dev mode on macOS.
 # Re-runs npm install to get macOS-native binaries (safe if Linux overwrote them).
 #
-# Any args are forwarded to the Tauri app binary, e.g.:
-#   bash mac-build.sh --debug    # enables the Debug menu
+# Pass --debug to enable the Debug menu:
+#   bash mac-build.sh --debug
+#
+# (We translate --debug to EIGENDECK_DEBUG=1 because Tauri's `tauri dev`
+# argv passthrough places extra args BEFORE cargo's `--` separator, so a
+# bare --debug reaches cargo and errors out instead of the app binary. The
+# released binary still accepts --debug on argv directly.)
 
 set -e
 source "$HOME/.cargo/env" 2>/dev/null || true
 cd "$(dirname "$0")"
+
+if [ "${1:-}" = "--debug" ]; then
+  export EIGENDECK_DEBUG=1
+  shift
+fi
+
 npm install
+
 if [ $# -gt 0 ]; then
-  # npm passes "$@" after the first --; tauri dev passes args after the second
-  # -- through to the built app.
   npm run tauri dev -- -- "$@"
 else
   npm run tauri dev
