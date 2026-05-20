@@ -3,8 +3,21 @@
 // the same way.
 
 import { writeTextFile } from '@tauri-apps/plugin-fs';
-import { message } from '@tauri-apps/plugin-dialog';
+import { message, ask } from '@tauri-apps/plugin-dialog';
 import type { RunMeta } from './types';
+
+/**
+ * Confirm a destructive write-in-place batch action. Returns true if user
+ * accepts. The shared phrasing makes the intent explicit (this rewrites
+ * source files; no backups; revert via git if needed).
+ */
+export async function confirmWriteInPlace(action: string, dir: string, fileCount: number): Promise<boolean> {
+  return ask(
+    `${action} will REWRITE all ${fileCount} .eigendeck file(s) in:\n${dir}\n\n` +
+    `No backups are created — commit or back up first if needed.\n\nContinue?`,
+    { title: `Debug: ${action}`, kind: 'warning', okLabel: 'Rewrite files', cancelLabel: 'Cancel' },
+  );
+}
 
 /** ISO timestamp safe for filenames. */
 function stampForFilename(): string {

@@ -3,7 +3,7 @@
 
 export interface RunMeta {
   /** Which batch action produced this report */
-  action: 'batch-html-export' | 'batch-roundtrip' | 'batch-cache-audit';
+  action: 'batch-html-export' | 'batch-roundtrip' | 'batch-cache-audit' | 'batch-warm-cache' | 'batch-strip-history';
   /** ISO 8601 timestamp */
   startedAt: string;
   /** Directory the user picked */
@@ -97,4 +97,50 @@ export interface CacheAuditFileReport {
 export interface CacheAuditReport {
   meta: RunMeta;
   files: CacheAuditFileReport[];
+}
+
+// ---- batch warm cache (write in place) ----
+
+export interface WarmCacheFileReport {
+  input: string;
+  ok: boolean;
+  error?: string;
+  /** Schema version on first open (1 = pre-migration) */
+  schemaBefore: number | null;
+  /** Schema version after — should always be 2 (db_open migrates implicitly) */
+  schemaAfter: number | null;
+  /** Total $..$ / $$..$$ expressions across all text elements */
+  expressionsFound: number;
+  /** Cache rows present before warming */
+  cacheRowsBefore: number;
+  /** Cache rows present after warming */
+  cacheRowsAfter: number;
+  /** Expressions successfully rendered + persisted this run */
+  rendered: number;
+  /** Expressions whose render failed (logged in errors) */
+  renderFailures: number;
+  errors: string[];
+  elapsedMs: number;
+}
+
+export interface WarmCacheReport {
+  meta: RunMeta;
+  files: WarmCacheFileReport[];
+}
+
+// ---- batch strip history (write in place) ----
+
+export interface StripHistoryFileReport {
+  input: string;
+  ok: boolean;
+  error?: string;
+  sizeBeforeBytes: number;
+  sizeAfterBytes: number;
+  savedBytes: number;
+  elapsedMs: number;
+}
+
+export interface StripHistoryReport {
+  meta: RunMeta;
+  files: StripHistoryFileReport[];
 }

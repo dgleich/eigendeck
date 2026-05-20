@@ -79,10 +79,21 @@ pub fn attach_submenu_if_enabled(app: &AppHandle) -> Result<Option<Submenu<Wry>>
         .id("debug-batch-cache-audit")
         .build(app)
         .map_err(|e| e.to_string())?;
+    let batch_warm = MenuItemBuilder::new("Batch Warm Math Cache (write in place)…")
+        .id("debug-batch-warm-cache")
+        .build(app)
+        .map_err(|e| e.to_string())?;
+    let batch_strip = MenuItemBuilder::new("Batch Strip History (write in place)…")
+        .id("debug-batch-strip-history")
+        .build(app)
+        .map_err(|e| e.to_string())?;
     let sub = SubmenuBuilder::new(app, "Debug")
         .item(&batch_html)
         .item(&batch_roundtrip)
         .item(&batch_cache)
+        .separator()
+        .item(&batch_warm)
+        .item(&batch_strip)
         .build()
         .map_err(|e| e.to_string())?;
     Ok(Some(sub))
