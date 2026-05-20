@@ -56,8 +56,11 @@ import build_test_presentations as btp  # noqa: E402
 
 USER_AGENT = "eigendeck-svg-test/1.0 (https://github.com/dgleich/eigendeck)"
 
-# Pin to a stable commit so URLs don't change under us.
-RESVG_COMMIT = "0252b88f2f55ab5cd5d7b9eaae45caec5f3c1c0c"  # 2024-ish, stable
+# Pin to current resvg master snapshot. The test-files directory was
+# flattened (no more elem/<category>/ subdirs), so older commit pins
+# would 404. Using master here — the corpus is fairly stable in shape;
+# if a fixture ever 404s, swap the SHA into the URL or drop the entry.
+RESVG_REF = "master"
 
 # W3C SVG 1.1 test suite has stable PNG references at this archive root.
 W3C_SVG11 = "https://www.w3.org/Graphics/SVG/Test/20110816/svg"
@@ -119,50 +122,31 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
             "license": "Public Domain",
         },
         {
-            "name": "Quadrilateral hierarchy (geometric + text labels)",
-            "svg": "https://commons.wikimedia.org/wiki/Special:FilePath/Quadrilateral_hierarchy.svg",
-            "license": "CC-BY-SA",
-        },
-        {
             "name": "Eigenvalue geometric interpretation",
             "svg": "https://commons.wikimedia.org/wiki/Special:FilePath/Eigenvalue_equation.svg",
             "license": "Public Domain",
         },
     ],
-    # ---- resvg test corpus (torture cases with paired PNG references) ----
+    # ---- resvg test corpus (torture cases — current flat layout) ----
     "resvg": [
-        {
-            "name": "Gradients (radial + linear)",
-            "svg": f"https://raw.githubusercontent.com/RazrFalcon/resvg/{RESVG_COMMIT}/crates/usvg/tests/files/elem/svg/svg-on-svg.svg",
-            "license": "MPL-2.0",
-        },
-        {
-            "name": "Path with transforms",
-            "svg": f"https://raw.githubusercontent.com/RazrFalcon/resvg/{RESVG_COMMIT}/crates/usvg/tests/files/elem/path/transform.svg",
-            "license": "MPL-2.0",
-        },
-        {
-            "name": "Filter (Gaussian blur)",
-            "svg": f"https://raw.githubusercontent.com/RazrFalcon/resvg/{RESVG_COMMIT}/crates/usvg/tests/files/elem/filter/feGaussianBlur.svg",
-            "license": "MPL-2.0",
-        },
-        {
-            "name": "Text with tspan",
-            "svg": f"https://raw.githubusercontent.com/RazrFalcon/resvg/{RESVG_COMMIT}/crates/usvg/tests/files/elem/text/tspan.svg",
-            "license": "MPL-2.0",
-        },
-        {
-            "name": "Pattern fill",
-            "svg": f"https://raw.githubusercontent.com/RazrFalcon/resvg/{RESVG_COMMIT}/crates/usvg/tests/files/elem/pattern/pattern.svg",
-            "license": "MPL-2.0",
-        },
+        {"name": f"resvg torture: {name}",
+         "svg": f"https://raw.githubusercontent.com/RazrFalcon/resvg/{RESVG_REF}/crates/usvg/tests/files/{name}.svg",
+         "license": "MPL-2.0"}
+        for name in [
+            "clip-path-with-complex-text",
+            "filter-id-with-prefix",
+            "text-with-generated-gradients",
+            "preserve-id-fe-image-with-opacity",
+            "mask-with-object-units-multi-use",
+            "preserve-id-for-clip-path-in-pattern",
+        ]
     ],
     # ---- W3C SVG 1.1 test suite (spec compliance, PNG refs in the archive) ----
     "w3c": [
         {"name": "Basic shapes (rect)",       "svg": f"{W3C_SVG11}/shapes-rect-01-t.svg",      "png": f"{W3C_SVG11_PNG}/shapes-rect-01-t.png",      "license": "W3C document license"},
         {"name": "Paths (lineto)",            "svg": f"{W3C_SVG11}/paths-data-01-t.svg",       "png": f"{W3C_SVG11_PNG}/paths-data-01-t.png",       "license": "W3C document license"},
         {"name": "Linear gradient",           "svg": f"{W3C_SVG11}/pservers-grad-01-b.svg",    "png": f"{W3C_SVG11_PNG}/pservers-grad-01-b.png",    "license": "W3C document license"},
-        {"name": "Coordinate viewport",       "svg": f"{W3C_SVG11}/coords-viewBox-01-b.svg",   "png": f"{W3C_SVG11_PNG}/coords-viewBox-01-b.png",   "license": "W3C document license"},
+        {"name": "Coordinate viewport (viewattr)", "svg": f"{W3C_SVG11}/coords-viewattr-01-b.svg", "png": f"{W3C_SVG11_PNG}/coords-viewattr-01-b.png",  "license": "W3C document license"},
         {"name": "Text basic",                "svg": f"{W3C_SVG11}/text-text-01-b.svg",        "png": f"{W3C_SVG11_PNG}/text-text-01-b.png",        "license": "W3C document license"},
         # Additional W3C spec tests for coverage.
         {"name": "Circles",                   "svg": f"{W3C_SVG11}/shapes-circle-01-t.svg",    "png": f"{W3C_SVG11_PNG}/shapes-circle-01-t.png",    "license": "W3C document license"},
@@ -176,43 +160,18 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
         {"name": "Clipping paths",            "svg": f"{W3C_SVG11}/masking-path-01-b.svg",     "png": f"{W3C_SVG11_PNG}/masking-path-01-b.png",     "license": "W3C document license"},
         {"name": "Text fonts",                "svg": f"{W3C_SVG11}/text-fonts-01-t.svg",       "png": f"{W3C_SVG11_PNG}/text-fonts-01-t.png",       "license": "W3C document license"},
     ],
-    # ---- Inkscape (real-world tool output, no paired refs) ----
+    # ---- Inkscape (real-world tool output, no paired refs).
+    # Pinned to master since the 1.3 tag paths shifted; if upstream
+    # renames a file, swap the entry. ----
     "inkscape": [
-        {
-            "name": "Inkscape About splash (1.3)",
-            "svg": "https://gitlab.com/inkscape/inkscape/-/raw/INKSCAPE_1_3/share/screens/about.svg",
-            "license": "CC-BY-SA",
-        },
-        {
-            "name": "Inkscape startup logo",
-            "svg": "https://gitlab.com/inkscape/inkscape/-/raw/INKSCAPE_1_3/share/branding/inkscape-logo.svg",
-            "license": "CC-BY-SA",
-        },
-        {
-            "name": "Inkscape default template",
-            "svg": "https://gitlab.com/inkscape/inkscape/-/raw/INKSCAPE_1_3/share/templates/default.svg",
-            "license": "CC0",
-        },
-        # The OpenClipart subset Inkscape ships also lives in their repo;
-        # adding one representative.
-        {
-            "name": "Inkscape symbol set sample",
-            "svg": "https://gitlab.com/inkscape/inkscape/-/raw/INKSCAPE_1_3/share/symbols/AIGA.svg",
-            "license": "Public Domain",
-        },
+        {"name": "Inkscape About splash",     "svg": "https://gitlab.com/inkscape/inkscape/-/raw/master/share/screens/about.svg",       "license": "CC-BY-SA"},
+        {"name": "Inkscape default template", "svg": "https://gitlab.com/inkscape/inkscape/-/raw/master/share/templates/default.svg",   "license": "CC0"},
     ],
-    # ---- "Adobe Illustrator style" — public AI-flavored files + a small
-    # set of synthesized fixtures that exercise Illustrator's typical XML
-    # quirks (xmlns:xlink, named layers, over-precise floats, embedded
-    # base64 raster). Synthetic ones land in Phase 2 below; here we list
-    # the public ones (no canonical AI test suite exists).
-    "illustrator": [
-        {
-            "name": "MDN basic SVG demo (star)",
-            "svg": "https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Introduction/star.svg",
-            "license": "CC0",
-        },
-    ],
+    # ---- "Adobe Illustrator style" — entirely synthesized fixtures in
+    # Phase 2 below. (Public AI exports are hard to source cleanly; the
+    # three synthetic variants cover the relevant Illustrator XML quirks:
+    # named layers, embedded base64 raster, stacked-opacity transforms.)
+    "illustrator": [],
     # ---- simple-icons: single-color brand logos, pure-path SVG. Stress-
     # tests the minimal-SVG path (no fills beyond currentColor, no text,
     # no nested groups). MIT licensed.
@@ -220,7 +179,7 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
         {"name": f"simple-icon: {name}",
          "svg": f"https://raw.githubusercontent.com/simple-icons/simple-icons/13.18.0/icons/{name}.svg",
          "license": "MIT"}
-        for name in ["python", "rust", "github", "macos", "latex", "matplotlib", "wikipedia"]
+        for name in ["python", "rust", "github", "macos", "latex", "plotly", "wikipedia"]
     ],
     # ---- heroicons: Tailwind's UI icon set. Different style from simple-
     # icons (24x24 viewBox, multi-path, stroke or fill variants). MIT.
