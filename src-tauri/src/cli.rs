@@ -470,7 +470,7 @@ fn cmd_add(args: &[String]) -> Result<(), String> {
             let slides: Vec<Value> = serde_json::from_str(&json_str).unwrap_or_default();
             let pos = slides.len() as i32;
             let id = uuid::Uuid::new_v4().to_string();
-            storage::db_add_slide(id.clone(), pos, "default".to_string(), None)?;
+            storage::db_add_slide(id.clone(), pos, None)?;
             println!("Added slide {} at position {}", &id[..8], pos + 1);
         }
         "text" => {
@@ -506,7 +506,7 @@ fn cmd_insert(args: &[String]) -> Result<(), String> {
     }
     let pos: i32 = args.get(1).and_then(|s| s.parse().ok()).ok_or("Usage: insert slide <N>")?;
     let id = uuid::Uuid::new_v4().to_string();
-    storage::db_add_slide(id.clone(), pos - 1, "default".to_string(), None)?;
+    storage::db_add_slide(id.clone(), pos - 1, None)?;
     println!("Inserted slide {} at position {}", &id[..8], pos);
     Ok(())
 }
