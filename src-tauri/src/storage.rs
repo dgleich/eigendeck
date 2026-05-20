@@ -13,7 +13,7 @@ use std::sync::Mutex;
 static DB: Lazy<Mutex<Option<Connection>>> = Lazy::new(|| Mutex::new(None));
 
 /// Schema version for migration tracking
-const SCHEMA_VERSION: i32 = 2;
+const SCHEMA_VERSION: i32 = 3;
 
 /// Create the schema in a new database
 pub fn create_schema(conn: &Connection) -> SqlResult<()> {
@@ -97,6 +97,26 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
             valign TEXT,
             rendered_at INTEGER DEFAULT (strftime('%s','now'))
         );
+
+        -- Cached rasterizations of SVG / PDF / (future) demo snapshots.
+        -- Like math_cache: derived-output table outside the temporal model.
+        -- Keyed by (source_id, variant, width, height) so the same source
+        -- can have multiple renders at different sizes/variants without
+        -- collision. `variant` is currently always '_' for SVG/PDF single-
+        -- page; reserved for future PDF page number ('p2') or demo
+        -- configuration name ('converged') so adding those later needs no
+        -- schema change.
+        CREATE TABLE IF NOT EXISTS asset_cache (
+            source_id TEXT NOT NULL,
+            variant TEXT NOT NULL DEFAULT '_',
+            width INTEGER NOT NULL,
+            height INTEGER NOT NULL,
+            png BLOB NOT NULL,
+            source_hash TEXT,
+            rendered_at INTEGER DEFAULT (strftime('%s','now')),
+            PRIMARY KEY (source_id, variant, width, height)
+        );
+        CREATE INDEX IF NOT EXISTS idx_asset_cache_source ON asset_cache(source_id);
 
         CREATE INDEX IF NOT EXISTS idx_el_current ON elements(valid_to) WHERE valid_to IS NULL;
         CREATE INDEX IF NOT EXISTS idx_el_id ON elements(id) WHERE valid_to IS NULL;
@@ -1377,6 +1397,114 @@ pub fn db_load_math_cache() -> Result<Vec<MathCacheEntry>, String> {
     })
 }
 
+// ============================================================================
+// Asset cache: rasterized SVG / PDF / (future) demo snapshots.
+// ============================================================================
+
+// Field names are snake_case on the wire (matches the MathCacheEntry pattern
+// already consumed by the frontend); the TS wrapper module mirrors them.
+#[derive(serde::Serialize)]
+pub struct AssetCacheEntry {
+    pub source_id: String,
+    pub variant: String,
+    pub width: i64,
+    pub height: i64,
+    /// PNG bytes — Tauri serializes Vec<u8> as a JSON number array on the wire.
+    pub png: Vec<u8>,
+    pub source_hash: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+pub struct AssetCacheVariant {
+    pub variant: String,
+    pub width: i64,
+    pub height: i64,
+    pub source_hash: Option<String>,
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub fn db_put_asset_cache(
+    source_id: String,
+    variant: String,
+    width: i64,
+    height: i64,
+    png: Vec<u8>,
+    source_hash: Option<String>,
+) -> Result<(), String> {
+    with_db(|conn| {
+        conn.execute(
+            "INSERT OR REPLACE INTO asset_cache (source_id, variant, width, height, png, source_hash) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![&source_id, &variant, width, height, &png, &source_hash],
+        )?;
+        Ok(())
+    })
+}
+
+#[tauri::command]
+pub fn db_get_asset_cache(
+    source_id: String,
+    variant: String,
+    width: i64,
+    height: i64,
+) -> Result<Option<AssetCacheEntry>, String> {
+    with_db(|conn| {
+        let result: rusqlite::Result<AssetCacheEntry> = conn.query_row(
+            "SELECT source_id, variant, width, height, png, source_hash \
+             FROM asset_cache WHERE source_id = ?1 AND variant = ?2 AND width = ?3 AND height = ?4",
+            params![&source_id, &variant, width, height],
+            |row| Ok(AssetCacheEntry {
+                source_id: row.get(0)?,
+                variant: row.get(1)?,
+                width: row.get(2)?,
+                height: row.get(3)?,
+                png: row.get(4)?,
+                source_hash: row.get(5)?,
+            }),
+        );
+        match result {
+            Ok(entry) => Ok(Some(entry)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e),
+        }
+    })
+}
+
+/// List every cached variant (with size + hash) for a source. Lets callers
+/// pick the best existing render for a requested size before triggering a
+/// fresh one.
+#[tauri::command]
+pub fn db_list_asset_cache_variants(source_id: String) -> Result<Vec<AssetCacheVariant>, String> {
+    with_db(|conn| {
+        let mut stmt = conn.prepare(
+            "SELECT variant, width, height, source_hash FROM asset_cache WHERE source_id = ?1",
+        )?;
+        let rows = stmt.query_map(params![&source_id], |row| Ok(AssetCacheVariant {
+            variant: row.get(0)?,
+            width: row.get(1)?,
+            height: row.get(2)?,
+            source_hash: row.get(3)?,
+        }))?;
+        let mut out = Vec::new();
+        for r in rows { out.push(r?); }
+        Ok(out)
+    })
+}
+
+/// Drop every cached render for a source (e.g. after the source file
+/// changed). Returns the number of rows removed.
+#[tauri::command]
+pub fn db_clear_asset_cache(source_id: String) -> Result<i64, String> {
+    with_db(|conn| {
+        let n = conn.execute(
+            "DELETE FROM asset_cache WHERE source_id = ?1",
+            params![&source_id],
+        )?;
+        Ok(n as i64)
+    })
+}
+
 /// Update presentation metadata
 #[tauri::command]
 pub fn db_update_presentation(key: String, value: String) -> Result<(), String> {
@@ -1488,7 +1616,42 @@ mod tests {
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(version, "1");
+        assert_eq!(version, "3");
+    }
+
+    #[test]
+    fn test_asset_cache_table_exists() {
+        let conn = Connection::open_in_memory().unwrap();
+        create_schema(&conn).unwrap();
+        let exists: bool = conn
+            .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='asset_cache'")
+            .unwrap()
+            .exists([])
+            .unwrap();
+        assert!(exists, "asset_cache table should exist at schema v3");
+    }
+
+    #[test]
+    fn test_asset_cache_put_get_roundtrip() {
+        let conn = Connection::open_in_memory().unwrap();
+        create_schema(&conn).unwrap();
+        let mut db = DB.lock().unwrap();
+        *db = Some(conn);
+        drop(db);
+        let png = vec![0x89u8, 0x50, 0x4E, 0x47, 1, 2, 3, 4];
+        db_put_asset_cache("a/b.svg".into(), "_".into(), 256, 128, png.clone(), Some("hash1".into())).unwrap();
+        let got = db_get_asset_cache("a/b.svg".into(), "_".into(), 256, 128).unwrap().unwrap();
+        assert_eq!(got.png, png);
+        assert_eq!(got.source_hash.as_deref(), Some("hash1"));
+        // Same source, different size — separate row.
+        let png2 = vec![0u8; 16];
+        db_put_asset_cache("a/b.svg".into(), "_".into(), 1920, 1080, png2.clone(), None).unwrap();
+        let variants = db_list_asset_cache_variants("a/b.svg".into()).unwrap();
+        assert_eq!(variants.len(), 2);
+        // Clear by source removes both.
+        let n = db_clear_asset_cache("a/b.svg".into()).unwrap();
+        assert_eq!(n, 2);
+        assert!(db_get_asset_cache("a/b.svg".into(), "_".into(), 256, 128).unwrap().is_none());
     }
 
     #[test]
