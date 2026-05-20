@@ -6,6 +6,7 @@ import { SlideElementRenderer } from './SlideElementRenderer';
 import { getSlideNumber, createTextElement } from '../types/presentation';
 import { resolveTheme } from '../lib/themes';
 import { detectAssetKind } from '../lib/assetCache';
+import { warnIfSvgHasExternalRefs } from '../lib/assetRenderer';
 import type { SlideElement } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
 
@@ -87,12 +88,14 @@ export function SlideEditor() {
       } catch (e) {
         console.error('Failed to store pasted image:', e);
       }
+      const kind = detectAssetKind(fileName, pickedMime);
       addElement({
         id: crypto.randomUUID(), type: 'image',
         src: relativePath,
-        kind: detectAssetKind(fileName, pickedMime),
+        kind,
         position: { x: 360, y: 200, width: 1200, height: 680 },
       });
+      if (kind === 'svg') void warnIfSvgHasExternalRefs(bytes, fileName);
     };
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
@@ -241,12 +244,14 @@ export function SlideEditor() {
                     : ext === 'pdf' ? 'application/pdf'
                     : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
                   await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime });
+                  const kind = detectAssetKind(name, mime);
                   store.addElement({
                     id: crypto.randomUUID(), type: 'image',
                     src: relativePath,
-                    kind: detectAssetKind(name, mime),
+                    kind,
                     position: { x: 360, y: 200, width: 1200, height: 680 },
                   });
+                  if (kind === 'svg') void warnIfSvgHasExternalRefs(bytes, name);
                 } catch (err) { console.error('Failed to handle dropped image:', err); }
               } else if (isHtml) {
                 try {

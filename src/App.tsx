@@ -914,18 +914,24 @@ function App() {
               const mime = ext === 'svg' ? 'image/svg+xml'
                 : ext === 'pdf' ? 'application/pdf'
                 : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+              let bytes: Uint8Array | null = null;
               try {
                 const { invoke } = await import('@tauri-apps/api/core');
                 const { readFile } = await import('@tauri-apps/plugin-fs');
-                const bytes = await readFile(fullPath);
+                bytes = await readFile(fullPath);
                 await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime });
               } catch (err) { console.error('Failed to store image:', err); }
               const { detectAssetKind } = await import('./lib/assetCache');
+              const kind = detectAssetKind(relativePath, mime);
               store.addElement({
                 id: crypto.randomUUID(), type: 'image', src: relativePath,
-                kind: detectAssetKind(relativePath, mime),
+                kind,
                 position: { x: 360, y: 200, width: 1200, height: 680 },
               });
+              if (kind === 'svg' && bytes) {
+                const { warnIfSvgHasExternalRefs } = await import('./lib/assetRenderer');
+                void warnIfSvgHasExternalRefs(bytes, relativePath);
+              }
             }}>+ Image</button>
             <button title="Add demo HTML" onClick={async () => {
               const { open } = await import('@tauri-apps/plugin-dialog');

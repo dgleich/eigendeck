@@ -130,6 +130,64 @@ export function entryToBlobUrl(entry: AssetCacheEntry): string {
 }
 
 /**
+ * Scan an SVG for `<image>` references that point at external resources
+ * (anything other than a `data:` URI). When the SVG is rendered as an
+ * image, the browser's secure-static mode can't fetch external sub-
+ * resources, so those references appear blank. Returns the offending
+ * href values in document order (de-duped).
+ *
+ * Catches both `href=` and the legacy `xlink:href=` forms.
+ */
+export function findExternalImageRefs(bytes: Uint8Array): string[] {
+  const head = new TextDecoder('utf-8', { fatal: false }).decode(
+    bytes.subarray(0, Math.min(bytes.length, 16384)),
+  );
+  // Fast skip when no <image> in the head and the file is small enough
+  // that there can't be one elsewhere.
+  if (!/<image\b/i.test(head) && bytes.length <= 16384) return [];
+  const text = bytes.length <= 16384
+    ? head
+    : new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const IMAGE_TAG_RE = /<image\b[^>]*>/gi;
+  const HREF_RE = /\b(?:xlink:href|href)\s*=\s*["']([^"']+)["']/i;
+  for (const m of text.matchAll(IMAGE_TAG_RE)) {
+    const h = HREF_RE.exec(m[0]);
+    if (!h) continue;
+    const href = h[1];
+    if (href.startsWith('data:') || href.startsWith('#')) continue;
+    if (!seen.has(href)) { seen.add(href); out.push(href); }
+  }
+  return out;
+}
+
+/**
+ * Show a native warning dialog when an SVG references external <image>
+ * subresources that won't render. Called after insertion (drag/drop,
+ * paste, file picker) for SVG kind. No-op when the SVG is self-contained.
+ *
+ * Non-blocking: the element is already added; this is just an FYI so the
+ * user can decide whether to fix the source or accept the missing images.
+ */
+export async function warnIfSvgHasExternalRefs(svgBytes: Uint8Array, filename: string): Promise<void> {
+  const refs = findExternalImageRefs(svgBytes);
+  if (refs.length === 0) return;
+  const { message } = await import('@tauri-apps/plugin-dialog');
+  const sample = refs.slice(0, 5).map((r) => `  • ${r}`).join('\n');
+  const more = refs.length > 5 ? `\n  …and ${refs.length - 5} more` : '';
+  await message(
+    `${filename} references ${refs.length} external image${refs.length === 1 ? '' : 's'} ` +
+    `that won't load when the SVG is rendered in a slide:\n\n${sample}${more}\n\n` +
+    `To fix: re-export with the images embedded.\n` +
+    `  • Inkscape: File → Save As → Inkscape SVG, check "Embed images".\n` +
+    `  • Illustrator: File → Export → SVG, choose "Embed" instead of "Link" for images.\n\n` +
+    `The SVG was still added; only the external images will appear blank.`,
+    { title: 'SVG references external images', kind: 'warning' },
+  );
+}
+
+/**
  * Pre-process SVG bytes before handing them to <img src=blob:>. WebKit
  * (and to a lesser extent other browsers) loads SVG-as-image in "secure
  * static mode" — embedded `<image xlink:href="data:...">` subresources
