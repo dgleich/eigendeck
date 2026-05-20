@@ -65,6 +65,11 @@ W3C_SVG11_PNG = "https://www.w3.org/Graphics/SVG/Test/20110816/png"
 
 FIXTURES: dict[str, list[dict[str, Any]]] = {
     # ---- Wikimedia Commons (real-world featured SVGs) ----
+    # Special:FilePath/<filename> redirects to the actual upload, avoiding
+    # the MD5-hash-derived bucket URLs (which we can't construct reliably
+    # without computing the hash ourselves). Thumb URLs still need the
+    # explicit bucket path, so the additions below typically skip the PNG
+    # ref. The first five (kept from original) DO have refs.
     "wikimedia": [
         {
             "name": "Tux",
@@ -94,6 +99,33 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
             "name": "Globe icon",
             "svg": "https://upload.wikimedia.org/wikipedia/commons/c/c1/Globe_icon.svg",
             "png": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Globe_icon.svg/600px-Globe_icon.svg.png",
+            "license": "Public Domain",
+        },
+        # Additional Wikimedia fixtures — academic / science / typography
+        # variety. Special:FilePath redirects to the upload bucket.
+        {
+            "name": "Caffeine molecule (chemistry diagram)",
+            "svg": "https://commons.wikimedia.org/wiki/Special:FilePath/Caffeine_structure.svg",
+            "license": "Public Domain",
+        },
+        {
+            "name": "Sine wave (math figure with axes)",
+            "svg": "https://commons.wikimedia.org/wiki/Special:FilePath/Sine_one_period.svg",
+            "license": "Public Domain",
+        },
+        {
+            "name": "Flag of France (simple rectangles)",
+            "svg": "https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_France.svg",
+            "license": "Public Domain",
+        },
+        {
+            "name": "Quadrilateral hierarchy (geometric + text labels)",
+            "svg": "https://commons.wikimedia.org/wiki/Special:FilePath/Quadrilateral_hierarchy.svg",
+            "license": "CC-BY-SA",
+        },
+        {
+            "name": "Eigenvalue geometric interpretation",
+            "svg": "https://commons.wikimedia.org/wiki/Special:FilePath/Eigenvalue_equation.svg",
             "license": "Public Domain",
         },
     ],
@@ -127,36 +159,22 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
     ],
     # ---- W3C SVG 1.1 test suite (spec compliance, PNG refs in the archive) ----
     "w3c": [
-        {
-            "name": "Basic shapes",
-            "svg": f"{W3C_SVG11}/shapes-rect-01-t.svg",
-            "png": f"{W3C_SVG11_PNG}/shapes-rect-01-t.png",
-            "license": "W3C document license",
-        },
-        {
-            "name": "Paths (lineto)",
-            "svg": f"{W3C_SVG11}/paths-data-01-t.svg",
-            "png": f"{W3C_SVG11_PNG}/paths-data-01-t.png",
-            "license": "W3C document license",
-        },
-        {
-            "name": "Linear gradient",
-            "svg": f"{W3C_SVG11}/pservers-grad-01-b.svg",
-            "png": f"{W3C_SVG11_PNG}/pservers-grad-01-b.png",
-            "license": "W3C document license",
-        },
-        {
-            "name": "Coordinate viewport",
-            "svg": f"{W3C_SVG11}/coords-viewBox-01-b.svg",
-            "png": f"{W3C_SVG11_PNG}/coords-viewBox-01-b.png",
-            "license": "W3C document license",
-        },
-        {
-            "name": "Text basic",
-            "svg": f"{W3C_SVG11}/text-text-01-b.svg",
-            "png": f"{W3C_SVG11_PNG}/text-text-01-b.png",
-            "license": "W3C document license",
-        },
+        {"name": "Basic shapes (rect)",       "svg": f"{W3C_SVG11}/shapes-rect-01-t.svg",      "png": f"{W3C_SVG11_PNG}/shapes-rect-01-t.png",      "license": "W3C document license"},
+        {"name": "Paths (lineto)",            "svg": f"{W3C_SVG11}/paths-data-01-t.svg",       "png": f"{W3C_SVG11_PNG}/paths-data-01-t.png",       "license": "W3C document license"},
+        {"name": "Linear gradient",           "svg": f"{W3C_SVG11}/pservers-grad-01-b.svg",    "png": f"{W3C_SVG11_PNG}/pservers-grad-01-b.png",    "license": "W3C document license"},
+        {"name": "Coordinate viewport",       "svg": f"{W3C_SVG11}/coords-viewBox-01-b.svg",   "png": f"{W3C_SVG11_PNG}/coords-viewBox-01-b.png",   "license": "W3C document license"},
+        {"name": "Text basic",                "svg": f"{W3C_SVG11}/text-text-01-b.svg",        "png": f"{W3C_SVG11_PNG}/text-text-01-b.png",        "license": "W3C document license"},
+        # Additional W3C spec tests for coverage.
+        {"name": "Circles",                   "svg": f"{W3C_SVG11}/shapes-circle-01-t.svg",    "png": f"{W3C_SVG11_PNG}/shapes-circle-01-t.png",    "license": "W3C document license"},
+        {"name": "Ellipses",                  "svg": f"{W3C_SVG11}/shapes-ellipse-01-t.svg",   "png": f"{W3C_SVG11_PNG}/shapes-ellipse-01-t.png",   "license": "W3C document license"},
+        {"name": "Polylines",                 "svg": f"{W3C_SVG11}/shapes-polyline-01-t.svg",  "png": f"{W3C_SVG11_PNG}/shapes-polyline-01-t.png",  "license": "W3C document license"},
+        {"name": "Bezier curves",             "svg": f"{W3C_SVG11}/paths-data-04-t.svg",       "png": f"{W3C_SVG11_PNG}/paths-data-04-t.png",       "license": "W3C document license"},
+        {"name": "Radial gradient",           "svg": f"{W3C_SVG11}/pservers-grad-02-b.svg",    "png": f"{W3C_SVG11_PNG}/pservers-grad-02-b.png",    "license": "W3C document license"},
+        {"name": "Color profiles",            "svg": f"{W3C_SVG11}/color-prop-01-b.svg",       "png": f"{W3C_SVG11_PNG}/color-prop-01-b.png",       "license": "W3C document license"},
+        {"name": "Embedded raster (image)",   "svg": f"{W3C_SVG11}/struct-image-01-t.svg",     "png": f"{W3C_SVG11_PNG}/struct-image-01-t.png",     "license": "W3C document license"},
+        {"name": "Gaussian blur filter",      "svg": f"{W3C_SVG11}/filters-gauss-01-b.svg",    "png": f"{W3C_SVG11_PNG}/filters-gauss-01-b.png",    "license": "W3C document license"},
+        {"name": "Clipping paths",            "svg": f"{W3C_SVG11}/masking-path-01-b.svg",     "png": f"{W3C_SVG11_PNG}/masking-path-01-b.png",     "license": "W3C document license"},
+        {"name": "Text fonts",                "svg": f"{W3C_SVG11}/text-fonts-01-t.svg",       "png": f"{W3C_SVG11_PNG}/text-fonts-01-t.png",       "license": "W3C document license"},
     ],
     # ---- Inkscape (real-world tool output, no paired refs) ----
     "inkscape": [
@@ -183,19 +201,34 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
             "license": "Public Domain",
         },
     ],
-    # ---- "Adobe Illustrator style" — sourced from public files known to
-    # have been authored in or exported by AI. There's no canonical AI
-    # test suite; these are real-world AI-flavored SVGs commonly cited.
+    # ---- "Adobe Illustrator style" — public AI-flavored files + a small
+    # set of synthesized fixtures that exercise Illustrator's typical XML
+    # quirks (xmlns:xlink, named layers, over-precise floats, embedded
+    # base64 raster). Synthetic ones land in Phase 2 below; here we list
+    # the public ones (no canonical AI test suite exists).
     "illustrator": [
-        # The Mozilla SVG examples are typical hand/Illustrator output;
-        # several include AI-specific metadata in the XML.
         {
-            "name": "MDN basic SVG demo",
+            "name": "MDN basic SVG demo (star)",
             "svg": "https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Introduction/star.svg",
             "license": "CC0",
         },
-        # Adobe's own public sample SVGs from the Pixabay/Wikimedia
-        # subset, or fallback to a synthetic AI-style file (created below).
+    ],
+    # ---- simple-icons: single-color brand logos, pure-path SVG. Stress-
+    # tests the minimal-SVG path (no fills beyond currentColor, no text,
+    # no nested groups). MIT licensed.
+    "simple-icons": [
+        {"name": f"simple-icon: {name}",
+         "svg": f"https://raw.githubusercontent.com/simple-icons/simple-icons/13.18.0/icons/{name}.svg",
+         "license": "MIT"}
+        for name in ["python", "rust", "github", "macos", "latex", "matplotlib", "wikipedia"]
+    ],
+    # ---- heroicons: Tailwind's UI icon set. Different style from simple-
+    # icons (24x24 viewBox, multi-path, stroke or fill variants). MIT.
+    "heroicons": [
+        {"name": f"heroicon (outline): {name}",
+         "svg": f"https://raw.githubusercontent.com/tailwindlabs/heroicons/v2.1.5/optimized/24/outline/{name}.svg",
+         "license": "MIT"}
+        for name in ["academic-cap", "beaker", "cube-transparent", "presentation-chart-line", "sparkles"]
     ],
 }
 
@@ -226,12 +259,16 @@ def fetch(url: str, dest: Path, *, max_bytes: int = 2_500_000) -> bool:
         return False
 
 
-def synthesize_ai_style_svg() -> bytes:
-    """A small synthetic SVG mimicking typical Illustrator XML quirks: explicit
-    xmlns:xlink, generated namespaces, named layers, embedded base64 raster,
-    and over-precise floats. Saves us from license-checking a real AI export
-    while still exercising those code paths."""
-    return b"""<?xml version="1.0" encoding="UTF-8"?>
+def synthesize_ai_style_svgs() -> list[tuple[str, bytes]]:
+    """Synthetic AI-flavored SVGs. Each exercises a different cluster of
+    Illustrator quirks; we ship multiple so the renderer is exposed to a
+    spread of real-world AI export patterns without license-checking
+    actual Adobe-authored files."""
+    out: list[tuple[str, bytes]] = []
+
+    # 1. Classic AI: styled groups, xmlns:xlink, named layers, over-precise
+    #    floats, ArialMT (often broken in non-Adobe renderers).
+    out.append(("Synthetic AI-style: shapes + text", b"""<?xml version="1.0" encoding="UTF-8"?>
 <!-- Generator: Adobe Illustrator 27.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
 <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg"
  xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
@@ -241,17 +278,48 @@ def synthesize_ai_style_svg() -> bytes:
     .st1{fill:#E53E3E;stroke:none;}
     .st2{font-family:'ArialMT';font-size:18px;}
 </style>
-<g id="Background">
-    <rect x="0" y="0" width="400.0000" height="300.00000" style="fill:#F8FAFC;"/>
-</g>
+<g id="Background"><rect x="0" y="0" width="400.0000" height="300.00000" style="fill:#F8FAFC;"/></g>
 <g id="Shapes">
     <circle class="st0" cx="120.5" cy="150.000" r="60.0000"/>
     <polygon class="st1" points="230,80 320.0,150 230,220 200,150"/>
 </g>
-<g id="Text">
-    <text x="50" y="270" class="st2">Illustrator-style export</text>
-</g>
-</svg>"""
+<g id="Text"><text x="50" y="270" class="st2">Illustrator-style export</text></g>
+</svg>"""))
+
+    # 2. Embedded base64 raster image (very common in real AI output when
+    #    a photo is "placed"). Stresses the asset_cache renderer to make
+    #    sure embedded data: URIs survive the canvas round-trip.
+    out.append(("Synthetic AI-style: embedded base64 raster", b"""<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generator: Adobe Illustrator 27.5.0 -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 200 120">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="200" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset="1" stop-color="#fb923c"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="120" fill="url(#bgGrad)"/>
+  <!-- 4x4 red PNG, ~106 bytes encoded -->
+  <image x="20" y="20" width="40" height="40"
+    xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAFElEQVQIW2P8z8AARAxAYHTk/wEAGwYG/zUYP7gAAAAASUVORK5CYII="/>
+  <text x="80" y="45" font-family="Helvetica" font-size="14" fill="#7c2d12">Embedded raster</text>
+</svg>"""))
+
+    # 3. Heavy opacity + transforms — common in AI when designers stack
+    #    semi-transparent shape layers. Catches blending / alpha issues.
+    out.append(("Synthetic AI-style: stacked opacity layers", b"""<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generator: Adobe Illustrator 28.0 -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">
+  <g id="Layer_1" transform="translate(20,20)">
+    <g opacity="0.7" transform="rotate(-8 80 80)"><rect x="0" y="0" width="160" height="100" fill="#0ea5e9" rx="8"/></g>
+    <g opacity="0.6" transform="rotate(4 100 80)"><rect x="40" y="20" width="160" height="100" fill="#f43f5e" rx="8"/></g>
+    <g opacity="0.55" transform="rotate(-2 120 80)"><rect x="80" y="40" width="160" height="100" fill="#22c55e" rx="8"/></g>
+    <text x="80" y="170" font-family="Helvetica" font-size="14" fill="#0f172a">stacked opacity</text>
+  </g>
+</svg>"""))
+
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -327,13 +395,32 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-download", action="store_true",
                     help="reuse cached fixtures only; do not hit the network")
+    ap.add_argument("--source", action="append", default=None,
+                    help="only build from this source category (repeatable). "
+                         "default: all. Use --list-sources to see options.")
+    ap.add_argument("--list-sources", action="store_true",
+                    help="print available source categories and exit")
     args = ap.parse_args()
+
+    if args.list_sources:
+        print(f"{'source':16s} {'count':>5s}  description")
+        total = 0
+        for cat, items in FIXTURES.items():
+            extra = 3 if cat == "illustrator" else 0  # +3 synthesized
+            n = len(items) + extra
+            total += n
+            print(f"  {cat:14s} {n:>5d}")
+        print(f"  {'TOTAL':14s} {total:>5d}")
+        return 0
 
     FIXTURE_ROOT.mkdir(parents=True, exist_ok=True)
 
     # Phase 1: download (or reuse cached) fixtures.
+    sources_filter: set[str] | None = set(args.source) if args.source else None
     downloaded: list[tuple[str, str, dict[str, Any], Path, Path | None]] = []
     for category, items in FIXTURES.items():
+        if sources_filter is not None and category not in sources_filter:
+            continue
         cat_dir = FIXTURE_ROOT / category
         for item in items:
             name = item["name"]
@@ -356,17 +443,22 @@ def main() -> int:
             print(f"  + {category}/{name}: svg={svg_path.stat().st_size}b" +
                   (f", png={png.stat().st_size}b" if png else ", no-ref"))
 
-    # Add the synthetic AI-style example (no network needed).
-    synth_path = FIXTURE_ROOT / "illustrator" / "synthetic_ai_export.svg"
-    synth_path.parent.mkdir(parents=True, exist_ok=True)
-    if not synth_path.exists():
-        synth_path.write_bytes(synthesize_ai_style_svg())
-    downloaded.append((
-        "illustrator", "Synthetic AI-style export",
-        {"license": "synthesized for testing", "svg": "in-script"},
-        synth_path, None,
-    ))
-    print(f"  + illustrator/Synthetic: svg={synth_path.stat().st_size}b")
+    # Add synthetic AI-style fixtures (no network needed). Skipped when
+    # --source filters away 'illustrator'.
+    if sources_filter is None or "illustrator" in sources_filter:
+        synth_dir = FIXTURE_ROOT / "illustrator"
+        synth_dir.mkdir(parents=True, exist_ok=True)
+        for name, body in synthesize_ai_style_svgs():
+            slug = "".join(c if c.isalnum() else "_" for c in name)
+            path = synth_dir / f"{slug}.svg"
+            if not path.exists():
+                path.write_bytes(body)
+            downloaded.append((
+                "illustrator", name,
+                {"license": "synthesized for testing", "svg": "in-script"},
+                path, None,
+            ))
+            print(f"  + illustrator/{name}: svg={path.stat().st_size}b")
 
     print(f"\nFetched {len(downloaded)} SVG fixtures.\n")
 
