@@ -130,6 +130,35 @@ export function entryToBlobUrl(entry: AssetCacheEntry): string {
 }
 
 /**
+ * Pre-process SVG bytes before handing them to <img src=blob:>. WebKit
+ * (and to a lesser extent other browsers) loads SVG-as-image in "secure
+ * static mode" — embedded `<image xlink:href="data:...">` subresources
+ * are often silently dropped, while plain `href` on the same element is
+ * honored. Adobe Illustrator exports overwhelmingly use the legacy
+ * `xlink:href`, so without this shim every Illustrator SVG with an
+ * embedded placed-photo renders without the photo.
+ *
+ * Rewrites `xlink:href=` -> `href=` only inside <image> tags (avoiding
+ * <use xlink:href=...> and other SVG idioms that may genuinely depend on
+ * the xlink namespace). Idempotent and fast: regex on the text, no DOM
+ * parse. Returns the input unchanged when no <image xlink:href> match.
+ */
+function normalizeSvgForImg(bytes: Uint8Array): Uint8Array {
+  // Only inspect the leading window — large SVGs almost never have
+  // <image> tags in the first few KB if not at all; a full UTF-8 decode
+  // for a 5 MB icon is wasteful otherwise. If the head shows xlink:href
+  // inside an <image>, fall through to the full rewrite.
+  const head = new TextDecoder('utf-8', { fatal: false }).decode(bytes.subarray(0, Math.min(bytes.length, 16384)));
+  if (!/<image\b[^>]*\bxlink:href\b/i.test(head) && bytes.length <= 16384) {
+    return bytes;
+  }
+  const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  const rewritten = text.replace(/(<image\b[^>]*?\s)xlink:href(=)/gi, '$1href$2');
+  if (rewritten === text) return bytes;
+  return new TextEncoder().encode(rewritten);
+}
+
+/**
  * SVG fast-path threshold (bytes). SVG sources under this size are served as
  * raw blob URLs so the browser renders them natively at any CSS size
  * (vector-perfect anti-aliasing, no pixelation in scaled-down sidebar
@@ -178,7 +207,7 @@ export function useRenderedAsset(
       invoke<number[]>('db_get_asset', { path: sourceId })
         .then(async (data) => {
           if (cancelled) return;
-          const bytes = new Uint8Array(data);
+          const bytes = normalizeSvgForImg(new Uint8Array(data));
           if (bytes.length <= SVG_NATIVE_THRESHOLD_BYTES) {
             // Fast path: hand raw SVG to <img>; browser scales it perfectly.
             const blob = new Blob([bytes as BlobPart], { type: 'image/svg+xml' });

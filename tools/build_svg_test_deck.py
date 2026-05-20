@@ -247,10 +247,16 @@ def synthesize_ai_style_svgs() -> list[tuple[str, bytes]]:
 
     # 2. Embedded base64 raster image (very common in real AI output when
     #    a photo is "placed"). Stresses the asset_cache renderer to make
-    #    sure embedded data: URIs survive the canvas round-trip.
+    #    sure embedded data: URIs survive the SVG-as-image render.
+    #    NOTE: uses plain SVG 2 `href` (not `xlink:href`). Real Adobe
+    #    exports almost always emit `xlink:href`, which WebKit silently
+    #    drops in <img src=blob:svg> contexts — assetRenderer.ts rewrites
+    #    xlink:href -> href on the fly so AI-style fixtures with the
+    #    legacy attribute still render. This fixture uses href directly
+    #    to keep the "happy path" test independent of that shim.
     out.append(("Synthetic AI-style: embedded base64 raster", b"""<?xml version="1.0" encoding="UTF-8"?>
 <!-- Generator: Adobe Illustrator 27.5.0 -->
-<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg"
      viewBox="0 0 200 120">
   <defs>
     <linearGradient id="bgGrad" x1="0" y1="0" x2="200" y2="0" gradientUnits="userSpaceOnUse">
@@ -261,7 +267,7 @@ def synthesize_ai_style_svgs() -> list[tuple[str, bytes]]:
   <rect width="200" height="120" fill="url(#bgGrad)"/>
   <!-- 4x4 red PNG, ~106 bytes encoded -->
   <image x="20" y="20" width="40" height="40"
-    xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAFElEQVQIW2P8z8AARAxAYHTk/wEAGwYG/zUYP7gAAAAASUVORK5CYII="/>
+    href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAFElEQVQIW2P8z8AARAxAYHTk/wEAGwYG/zUYP7gAAAAASUVORK5CYII="/>
   <text x="80" y="45" font-family="Helvetica" font-size="14" fill="#7c2d12">Embedded raster</text>
 </svg>"""))
 
