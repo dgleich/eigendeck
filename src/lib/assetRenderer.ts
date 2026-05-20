@@ -306,7 +306,12 @@ export async function handleSvgExternalRefs(
     `Embed them now? Files will be read from the SVG's folder and base64-encoded into the SVG.\n\n` +
     `⚠ Embedding captures a SNAPSHOT of each file's current contents. The embedded copies ` +
     `won't auto-update if you later change the source files — you'd need to re-embed.`,
-    { title: 'Embed external images?', kind: 'warning', okLabel: 'Embed snapshot', cancelLabel: 'Skip' },
+    {
+      title: 'Embed external images?',
+      kind: 'warning',
+      okLabel: 'Embed Snapshot of SVG and References',
+      cancelLabel: 'Insert SVG with missing References',
+    },
   );
   if (!accepted) return null;
 
