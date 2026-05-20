@@ -5,6 +5,7 @@ import { useDemoUrl } from '../lib/demoAssets';
 import { SlideElementRenderer } from './SlideElementRenderer';
 import { getSlideNumber, createTextElement } from '../types/presentation';
 import { resolveTheme } from '../lib/themes';
+import { detectAssetKind } from '../lib/assetCache';
 import type { SlideElement } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
 
@@ -48,33 +49,50 @@ export function SlideEditor() {
 
       const items = e.clipboardData?.items;
       if (!items) return;
-      for (const item of Array.from(items)) {
-        if (item.type.startsWith('image/')) {
-          e.preventDefault();
-          const blob = item.getAsFile();
-          if (!blob) continue;
 
-          const ext = blob.type.split('/')[1] || 'png';
-          const fileName = `pasted-${Date.now()}.${ext}`;
-          const relativePath = `images/${fileName}`;
-          const bytes = new Uint8Array(await blob.arrayBuffer());
-
-          // Store as SQLite asset, then reference by path (not data URL)
-          try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            const mime = blob.type || `image/${ext}`;
-            await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime });
-          } catch (e) {
-            console.error('Failed to store pasted image:', e);
-          }
-          addElement({
-            id: crypto.randomUUID(), type: 'image',
-            src: relativePath,
-            position: { x: 360, y: 200, width: 1200, height: 680 },
-          });
-          break;
-        }
+      // macOS clipboard often exposes the same content in several formats
+      // (e.g. copying from Illustrator yields application/pdf + image/svg+xml
+      // + image/png in one paste). Prefer the highest-fidelity vector form
+      // we can store; only fall through to raster as a last resort.
+      const PREFERRED_MIMES = [
+        'application/pdf',
+        'image/svg+xml',
+        'image/png',
+        'image/jpeg',
+        'image/gif',
+        'image/webp',
+      ] as const;
+      const itemList = Array.from(items);
+      let picked: DataTransferItem | null = null;
+      let pickedMime: string | null = null;
+      for (const mime of PREFERRED_MIMES) {
+        const found = itemList.find((it) => it.type === mime);
+        if (found) { picked = found; pickedMime = mime; break; }
       }
+      if (!picked || !pickedMime) return;
+      e.preventDefault();
+      const blob = picked.getAsFile();
+      if (!blob) return;
+
+      const ext = pickedMime === 'image/svg+xml' ? 'svg'
+        : pickedMime === 'application/pdf' ? 'pdf'
+        : (pickedMime.split('/')[1] || 'png');
+      const fileName = `pasted-${Date.now()}.${ext}`;
+      const relativePath = `images/${fileName}`;
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: pickedMime });
+      } catch (e) {
+        console.error('Failed to store pasted image:', e);
+      }
+      addElement({
+        id: crypto.randomUUID(), type: 'image',
+        src: relativePath,
+        kind: detectAssetKind(fileName, pickedMime),
+        position: { x: 360, y: 200, width: 1200, height: 680 },
+      });
     };
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
@@ -194,10 +212,11 @@ export function SlideEditor() {
 
     for (const file of files) {
       const name = file.name.toLowerCase();
-      const isImage = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(name);
+      const isImage = /\.(png|jpg|jpeg|gif|svg|webp|pdf)$/i.test(name);
       const isHtml = /\.html?$/i.test(name);
 
       if (isImage) {
+        const kind = detectAssetKind(file.name, file.type);
         if (store.projectPath) {
           try {
             const { writeFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
@@ -208,6 +227,7 @@ export function SlideEditor() {
             store.addElement({
               id: crypto.randomUUID(), type: 'image',
               src: `images/${file.name}`,
+              kind,
               position: { x: 360, y: 200, width: 1200, height: 680 },
             });
           } catch (err) {
@@ -218,6 +238,7 @@ export function SlideEditor() {
               store.addElement({
                 id: crypto.randomUUID(), type: 'image',
                 src: reader.result as string,
+                kind,
                 position: { x: 360, y: 200, width: 1200, height: 680 },
               });
             };
@@ -229,6 +250,7 @@ export function SlideEditor() {
             store.addElement({
               id: crypto.randomUUID(), type: 'image',
               src: reader.result as string,
+              kind,
               position: { x: 360, y: 200, width: 1200, height: 680 },
             });
           };
@@ -265,7 +287,7 @@ export function SlideEditor() {
             const store = usePresentationStore.getState();
             for (const fullPath of paths) {
               const name = fullPath.split('/').pop() || '';
-              const isImage = /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(name);
+              const isImage = /\.(png|jpg|jpeg|gif|svg|webp|pdf)$/i.test(name);
               const isHtml = /\.html?$/i.test(name);
 
               if (isImage) {
@@ -275,11 +297,14 @@ export function SlideEditor() {
                   const relativePath = relPath(store.projectPath, fullPath);
                   const bytes = await readFile(fullPath);
                   const ext = name.split('.').pop()?.toLowerCase() || 'png';
-                  const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+                  const mime = ext === 'svg' ? 'image/svg+xml'
+                    : ext === 'pdf' ? 'application/pdf'
+                    : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
                   await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime });
                   store.addElement({
                     id: crypto.randomUUID(), type: 'image',
                     src: relativePath,
+                    kind: detectAssetKind(name, mime),
                     position: { x: 360, y: 200, width: 1200, height: 680 },
                   });
                 } catch (err) { console.error('Failed to handle dropped image:', err); }

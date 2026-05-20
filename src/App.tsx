@@ -904,21 +904,28 @@ function App() {
               }
               store.addElement({ id: crypto.randomUUID(), type: 'cover' as any, position: pos });
             }}>+ Cover</button>
-            <button title="Add image from file" onClick={async () => {
+            <button title="Add image / vector / PDF from file" onClick={async () => {
               const { open } = await import('@tauri-apps/plugin-dialog');
-              const selected = await open({ title: 'Select Image', filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'] }] });
+              const selected = await open({ title: 'Select Image', filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'pdf'] }] });
               if (!selected) return;
               const fullPath = selected as string;
               const relativePath = relPath(store.projectPath, fullPath);
+              const ext = fullPath.split('.').pop()?.toLowerCase() || 'png';
+              const mime = ext === 'svg' ? 'image/svg+xml'
+                : ext === 'pdf' ? 'application/pdf'
+                : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
               try {
                 const { invoke } = await import('@tauri-apps/api/core');
                 const { readFile } = await import('@tauri-apps/plugin-fs');
                 const bytes = await readFile(fullPath);
-                const ext = fullPath.split('.').pop()?.toLowerCase() || 'png';
-                const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
                 await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime });
               } catch (err) { console.error('Failed to store image:', err); }
-              store.addElement({ id: crypto.randomUUID(), type: 'image', src: relativePath, position: { x: 360, y: 200, width: 1200, height: 680 } });
+              const { detectAssetKind } = await import('./lib/assetCache');
+              store.addElement({
+                id: crypto.randomUUID(), type: 'image', src: relativePath,
+                kind: detectAssetKind(relativePath, mime),
+                position: { x: 360, y: 200, width: 1200, height: 680 },
+              });
             }}>+ Image</button>
             <button title="Add demo HTML" onClick={async () => {
               const { open } = await import('@tauri-apps/plugin-dialog');
