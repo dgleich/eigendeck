@@ -177,6 +177,14 @@ All elements share these base fields:
 - `borderRadius`: optional number — rounded corners in pixels
 - `opacity`: optional number 0–1 — image transparency
 - `rotation`: optional number — rotation in degrees
+- `kind`: optional `'raster' | 'svg' | 'pdf'` — source format. Absent means
+  `'raster'` (PNG/JPEG/WebP/GIF used directly). `'svg'` and `'pdf'` sources
+  are rasterized on demand into the `asset_cache` SQLite table at two tiers
+  (thumb + full); the editor uses the cached PNG for display.
+- `snapshotVariant`: optional string — for sources with multiple cached
+  variants (future: PDF page number like `'p2'`, demo configuration name
+  like `'converged'`). Defaults to `'_'` (single-page / single-variant);
+  ignored for SVG and single-page PDFs.
 
 ### Cover Element
 

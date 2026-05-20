@@ -103,6 +103,22 @@ export interface ImageElement extends BaseElement {
   borderRadius?: number;
   opacity?: number;
   rotation?: number;
+  /**
+   * Source format. Auto-detected from MIME/extension on insertion.
+   *   - 'raster' (default): PNG/JPEG/WebP/GIF — used directly.
+   *   - 'svg' / 'pdf': vector sources rasterized on demand into
+   *     asset_cache so display + thumbnails are fast and can be
+   *     re-rendered at higher resolution when needed.
+   * Absent value means 'raster' (backwards-compatible with v2 files).
+   */
+  kind?: 'raster' | 'svg' | 'pdf';
+  /**
+   * For sources with multiple cached variants (PDF pages, demo snapshots),
+   * which variant should display here. Defaults to '_' (single-page /
+   * single-variant). Reserved for future demo-snapshot work; ignored for
+   * SVG and single-page PDFs.
+   */
+  snapshotVariant?: string;
 }
 
 export interface ArrowElement extends BaseElement {
