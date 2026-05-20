@@ -1,7 +1,8 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
-import { TEXT_PRESET_STYLES, getSlideNumber, isGroupChild } from '../types/presentation';
-import { resolveTheme, themeColorForPreset } from '../lib/themes';
+import { getSlideNumber, isGroupChild } from '../types/presentation';
+import { resolveTheme } from '../lib/themes';
+import { TextElementSvg } from './TextElementSvg';
 import type { MenuEntry } from './ContextMenu';
 
 const SLIDE_WIDTH = 1920;
@@ -114,25 +115,13 @@ export function SlideSidebar() {
                 {slide.elements.map((el) => {
                   const p = el.position;
                   switch (el.type) {
-                    case 'text': {
-                      const ps = TEXT_PRESET_STYLES[el.preset];
-                      const tc = resolveTheme(presentation.theme, slide.theme);
-                      const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
-                      const justifyMap: Record<string, string> = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
+                    case 'text':
                       return (
-                        <div key={el.id} style={{
-                          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-                          overflow: 'hidden',
-                          ...(valign ? { display: 'flex', flexDirection: 'column', justifyContent: justifyMap[valign] || 'flex-start' } : {}),
-                        }}>
-                          <div style={{
-                            fontFamily: el.fontFamily || ps.fontFamily, fontWeight: ps.fontWeight,
-                            fontStyle: ps.fontStyle, fontSize: el.fontSize || ps.fontSize,
-                            color: el.color || themeColorForPreset(tc, el.preset), lineHeight: 1.3, padding: '8px 12px',
-                          }} dangerouslySetInnerHTML={{ __html: el.html }} />
-                        </div>
+                        <TextElementSvg key={el.id}
+                          element={el} slide={slide}
+                          presentationTheme={presentation.theme}
+                          presentationConfig={presentation.config} />
                       );
-                    }
                     case 'image':
                       return (
                         <div key={el.id} style={{

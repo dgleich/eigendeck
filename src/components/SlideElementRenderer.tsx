@@ -5,8 +5,14 @@ import { useDemoUrl, useAssetUrl } from '../lib/demoAssets';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 
 import { TEXT_PRESET_STYLES } from '../types/presentation';
+import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
+import { buildTextElementSvgMarkup } from './TextElementSvg';
 import { TextFormatToolbar } from './TextFormatToolbar';
-import { typesetElement, resetMathElement, containsMath, getDisplayMathHeight } from '../lib/mathjax';
+import { getDisplayMathHeight } from '../lib/mathjax';
+import {
+  renderMathInHtml as renderMathInIframe,
+  containsMath as containsMathExpr,
+} from '../lib/mathjaxRenderer';
 import type { SlideElement, ElementPosition, TextElement } from '../types/presentation';
 
 interface Props {
@@ -291,7 +297,11 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
 }
 
 // ============================================
-// Text content — built from the working MinimalText approach
+// Text content — display via <svg><foreignObject>, edit via contentEditable HTML.
+// The SVG/foreignObject path lets math render with the element's preset-matched
+// font (via the per-bundle iframe pool in mathjaxRenderer.ts) — multiple math
+// fonts can coexist on the same slide, which the singleton-MathJax approach in
+// src/lib/mathjax.ts can't deliver.
 // ============================================
 function TextContent({
   element,
@@ -311,13 +321,26 @@ function TextContent({
   const slide = presentation.slides[currentSlideIndex];
   const themeColors = resolveTheme(presentation.theme, slide?.theme);
   const themeColor = themeColorForPreset(themeColors, element.preset);
+  // Resolve font: slide override > presentation default > 'ptsans'.
+  // Title preset uses titleFont, hype preset uses hypeFont, others use bodyFont.
+  const presetFontPkg = fontForPreset(element.preset, slide || {}, presentation.config);
+  const presetFontFamily = fontFamilyForPreset(presetFontPkg, element.preset);
+
+  const fontFamily = element.fontFamily || presetFontFamily;
+  const fontSize = element.fontSize || presetStyle.fontSize;
+  const fontWeight = presetStyle.fontWeight;
+  const fontStyle = presetStyle.fontStyle;
+  const color = element.color || themeColor;
+  // Math bundle = THIS preset's font bundle. Title elements use title math,
+  // hype elements use hype math, others use body math. Each iframe pool stays
+  // loaded so switching slides is fast.
+  const mathBundleId = presetFontPkg.id;
+
+  const valign = element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined);
+
   const style: React.CSSProperties = {
     width: '100%',
-    fontFamily: element.fontFamily || presetStyle.fontFamily,
-    fontSize: element.fontSize || presetStyle.fontSize,
-    fontWeight: presetStyle.fontWeight,
-    fontStyle: presetStyle.fontStyle,
-    color: element.color || themeColor,
+    fontFamily, fontSize, fontWeight, fontStyle, color,
     lineHeight: 1.3,
     padding: '8px 12px',
     outline: 'none',
@@ -325,16 +348,25 @@ function TextContent({
     cursor: editing ? 'text' : 'inherit',
   };
 
-  // Display mode: set innerHTML and typeset math
-  const mathPreamble = usePresentationStore((s) => s.presentation.config.mathPreamble);
+  // Display: pre-render math (via iframe pool) into a string we splice into
+  // the foreignObject's HTML. Falls back to raw element.html while pending.
+  const mathPreamble = presentation.config.mathPreamble || '';
+  const [renderedHtml, setRenderedHtml] = useState<string>(element.html || '');
   useEffect(() => {
-    if (ref.current && !editing) {
-      resetMathElement(ref.current, element.html);
-      if (containsMath(element.html)) {
-        typesetElement(ref.current, mathPreamble);
-      }
+    let cancelled = false;
+    if (editing) return;
+    if (!containsMathExpr(element.html)) {
+      setRenderedHtml(element.html || '');
+      return () => { cancelled = true; };
     }
-  }, [element.html, editing, mathPreamble]);
+    renderMathInIframe(element.html, mathBundleId, mathPreamble).then((html) => {
+      if (!cancelled) setRenderedHtml(html);
+    }).catch((err) => {
+      console.warn('TextContent math render failed:', err);
+      if (!cancelled) setRenderedHtml(element.html || '');
+    });
+    return () => { cancelled = true; };
+  }, [element.html, mathBundleId, editing, mathPreamble]);
 
   // Listen for 'start-editing' custom event from context menu
   useEffect(() => {
@@ -446,9 +478,33 @@ function TextContent({
     return () => window.removeEventListener('pointerdown', handlePointerDown, true);
   }, [editing, commitAndClose]);
 
+  // Display mode: render as SVG/foreignObject so per-preset math fonts
+  // composite into one self-contained element. The shared builder lives
+  // in TextElementSvg.tsx so the editor, sidebar, present mode, and HTML
+  // exports all produce identical SVG markup.
+  if (!editing) {
+    const svgMarkup = buildTextElementSvgMarkup(element, renderedHtml, {
+      fontFamily, fontSize, fontWeight, fontStyle, color, valign,
+    });
+    return (
+      <div
+        ref={wrapperRef}
+        style={{ width: '100%', height: '100%' }}
+        onDoubleClick={() => startEditing()}
+        dangerouslySetInnerHTML={{ __html: svgMarkup }}
+      />
+    );
+  }
+
   return (
-    <div ref={wrapperRef} style={{ width: '100%', height: '100%' }}>
-      {editing && createPortal(
+    // overflow:hidden on the edit wrapper — without it, contentEditable
+    // text can paint past the slide-element bounds and leave ghost-text
+    // traces when we switch back to the SVG display (the area outside the
+    // wrapper isn't repainted by React's child swap, so old paint sticks
+    // until something else triggers an invalidation). Display-mode wrapper
+    // (above) keeps overflow visible so math glyph ink can overhang.
+    <div ref={wrapperRef} style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+      {createPortal(
         <div style={{
           position: 'fixed', top: toolbarPos.top, left: toolbarPos.left,
           width: Math.max(toolbarPos.width, 500), zIndex: 9999,
@@ -462,7 +518,6 @@ function TextContent({
         style={style}
         contentEditable={editing}
         suppressContentEditableWarning
-        onDoubleClick={() => { if (!editing) startEditing(); }}
         onBlur={editing ? (e) => {
           const related = e.relatedTarget as HTMLElement | null;
           if (related?.closest('.text-format-toolbar')) return;
@@ -669,6 +724,13 @@ function DraggableBox({
       style={{
         position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
         zIndex, cursor: isDragging ? 'grabbing' : 'grab',
+        // Promote to its own compositor layer. Text SVGs use overflow="visible"
+        // (required for italic-glyph ink overhang); without layer promotion,
+        // WebKit doesn't invalidate ink painted outside the wrapper's layout
+        // box when the element moves, leaving a ghost trace at the old
+        // position. A separate compositor layer carries its full drawing
+        // rect — overflow included — and moves as a clean unit. Issue #61.
+        transform: 'translateZ(0)',
       }}
       onPointerDown={handlePointerDown}
       onClick={(e) => e.stopPropagation()}

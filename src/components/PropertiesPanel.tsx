@@ -2,13 +2,8 @@ import { useState, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { TEXT_PRESET_STYLES } from '../types/presentation';
 import { BUILT_IN_THEMES } from '../lib/themes';
-import type { SlideLayout, VerticalAlign } from '../types/presentation';
-
-const LAYOUTS: { id: SlideLayout; label: string }[] = [
-  { id: 'default', label: 'Default (top-left)' },
-  { id: 'centered', label: 'Centered' },
-  { id: 'two-column', label: 'Two Column' },
-];
+import { FONT_PACKAGES, type FontPackage } from '../lib/fonts';
+import type { VerticalAlign } from '../types/presentation';
 
 const ARROW_COLORS = [
   '#e53e3e', '#dc2626', '#ea580c', '#16a34a',
@@ -101,6 +96,27 @@ export function PropertiesPanel() {
     }
   };
 
+  // Reusable font dropdown. `inheritLabel` is shown as the empty option;
+  // when set to undefined the value falls through to the parent default.
+  const FontSelect = ({ value, onChange, inheritLabel }: {
+    value: string | undefined;
+    onChange: (v: string | undefined) => void;
+    inheritLabel?: string;
+  }) => (
+    <select className="prop-select" value={value || ''}
+      onChange={(e) => onChange(e.target.value || undefined)}>
+      {inheritLabel && <option value="">{inheritLabel}</option>}
+      {FONT_PACKAGES.map((p: FontPackage) => (
+        // Setting font-family on <option> is honored on macOS Safari/Chrome
+        // for the dropdown panel (not the closed select), giving a visual
+        // preview when the menu is open.
+        <option key={p.id} value={p.id} style={{ fontFamily: p.family }}>
+          {p.label}
+        </option>
+      ))}
+    </select>
+  );
+
   return (
     <div className="properties-panel">
       <div className="properties-header">Properties</div>
@@ -109,12 +125,6 @@ export function PropertiesPanel() {
           <>
             {/* ── Slide Properties ── */}
             <div className="prop-section-header">Slide</div>
-            <PropSection label="Layout">
-              <select className="prop-select" value={slide.layout || 'default'}
-                onChange={(e) => updateSlide(currentSlideIndex, { layout: e.target.value as SlideLayout })}>
-                {LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
-              </select>
-            </PropSection>
             <PropSection label="Theme">
               <select className="prop-select" value={slide.theme || ''}
                 onChange={(e) => updateSlide(currentSlideIndex, { theme: e.target.value || undefined })}>
@@ -123,6 +133,21 @@ export function PropertiesPanel() {
                   <option key={id} value={id}>{t.label}</option>
                 ))}
               </select>
+            </PropSection>
+            <PropSection label="Title Font">
+              <FontSelect value={slide.titleFont}
+                onChange={(v) => updateSlide(currentSlideIndex, { titleFont: v })}
+                inheritLabel="Inherit (presentation default)" />
+            </PropSection>
+            <PropSection label="Body Font">
+              <FontSelect value={slide.bodyFont}
+                onChange={(v) => updateSlide(currentSlideIndex, { bodyFont: v })}
+                inheritLabel="Inherit (presentation default)" />
+            </PropSection>
+            <PropSection label="Hype Font">
+              <FontSelect value={slide.hypeFont}
+                onChange={(v) => updateSlide(currentSlideIndex, { hypeFont: v })}
+                inheritLabel="Inherit (presentation default)" />
             </PropSection>
             {slide.elements.some((el) => el.syncId || el.linkId) && (
               <PropSection label="Links">
@@ -162,6 +187,21 @@ export function PropertiesPanel() {
                   <option key={id} value={id}>{t.label}</option>
                 ))}
               </select>
+            </PropSection>
+            <PropSection label="Default Title Font">
+              <FontSelect value={presentation.config.defaultTitleFont}
+                onChange={(v) => updateConfig({ defaultTitleFont: v })}
+                inheritLabel="PT Sans (default)" />
+            </PropSection>
+            <PropSection label="Default Body Font">
+              <FontSelect value={presentation.config.defaultBodyFont}
+                onChange={(v) => updateConfig({ defaultBodyFont: v })}
+                inheritLabel="PT Sans (default)" />
+            </PropSection>
+            <PropSection label="Default Hype Font">
+              <FontSelect value={presentation.config.defaultHypeFont}
+                onChange={(v) => updateConfig({ defaultHypeFont: v })}
+                inheritLabel="PT Sans (default)" />
             </PropSection>
             <PropSection label="Author">
               <input className="prop-input" value={presentation.config.author || ''}

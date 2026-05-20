@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>MathJax Renderer</title>
+<style>
+  /* This page is loaded in a hidden iframe. Nothing renders visually here —
+     it just receives tex strings via postMessage and returns SVG markup. */
+  html, body { margin: 0; padding: 0; visibility: hidden; }
+</style>
+<script>
+// Bundle id is passed as ?bundle=<id>. We load that MathJax bundle and
+// then listen for tex2svg requests via postMessage from the parent window.
+//
+// Protocol:
+//   parent → iframe: { id, type: 'render', tex, display }
+//   iframe → parent: { id, type: 'rendered', svg } | { id, type: 'error', message }
+//   iframe → parent: { type: 'ready' }   (when bundle is loaded)
+(function () {
+  const params = new URLSearchParams(location.search);
+  const bundle = params.get('bundle') || 'ptsans';
+  // Allow caller to specify the full bundle filename so we can use the
+  // -nosre variant (without SRE) without baking the convention here.
+  const file = params.get('file') || ('tex-mml-svg-mathjax-' + bundle + '.js');
+
+  // Same Worker-stub trick we use in the main app — Tauri/WebKit blocks
+  // blob: URL workers, which the SRE component creates for accessibility.
+  window.addEventListener('error', (e) => {
+    if (e.filename && e.filename.indexOf('blob:') === 0) e.preventDefault();
+  });
+  const OrigWorker = window.Worker;
+  window.Worker = function FakeWorker(url) {
+    if (typeof url === 'string' && url.indexOf('blob:') === 0) {
+      const fake = {
+        postMessage(data) { setTimeout(() => { if (fake.onmessage) fake.onmessage({ data: { id: data && data.id, result: '' } }); }, 0); },
+        terminate() {}, onmessage: null, onerror: null,
+        addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; },
+      };
+      return fake;
+    }
+    return new OrigWorker(url);
+  };
+
+  // Configure MathJax before loading the bundle script.
+  // fontCache: 'none' inlines glyph paths in EVERY rendered <svg> — required
+  // because we extract the SVG from the iframe and inject it into the parent
+  // page; a 'global' or 'local' cache would put glyph defs elsewhere in the
+  // iframe's document and the references would break in the destination.
+  window.MathJax = {
+    tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+    svg: { fontCache: 'none' },
+    startup: {
+      typeset: false,
+      ready: function () {
+        const MJ = window.MathJax;
+        MJ.startup.defaultReady();
+        MJ.startup.promise.then(function () {
+          parent.postMessage({ type: 'ready', bundle: bundle }, '*');
+        }).catch(function (e) {
+          parent.postMessage({ type: 'log', bundle: bundle, msg: 'startup.promise rejected: ' + String(e && e.message || e) }, '*');
+          // Still send ready — render will fail per-call if MathJax broken
+          parent.postMessage({ type: 'ready', bundle: bundle }, '*');
+        });
+      },
+    },
+  };
+
+  function unescapeHtml(s) {
+    return s.replace(/&nbsp;/g, ' ').replace(/ /g, ' ').replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  }
+
+  // dbg(msg) routes a log line back to the parent page, which echoes it to
+  // the parent's devtools console (prefixed [mathjaxRenderer/iframe <bundle>]).
+  // Use sparingly — only for unexpected events (errors, timeouts, missing
+  // SVG, preamble failures). Per-call success messages were intentionally
+  // removed once the pipeline stabilized; add them back temporarily if
+  // diagnosing a regression. Cross-iframe console.log isn't visible in the
+  // parent's devtools, hence this postMessage shim.
+  function dbg(msg) { parent.postMessage({ type: 'log', bundle: bundle, msg: String(msg) }, '*'); }
+
+  // Catch any unhandled errors inside the iframe and report them up
+  window.addEventListener('error', function (e) {
+    dbg('iframe error: ' + (e.message || 'unknown') + ' at ' + (e.filename || '?') + ':' + (e.lineno || '?'));
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    dbg('iframe unhandled rejection: ' + String(e.reason && e.reason.message || e.reason));
+  });
+
+  // Track the most-recently-applied preamble so we don't re-render it on
+  // every math call. Caller sends {type:'preamble', tex} when it changes.
+  var appliedPreamble = '';
+
+  window.addEventListener('message', function (event) {
+    const msg = event.data;
+    if (!msg) return;
+    if (msg.type === 'preamble') {
+      const tex = String(msg.tex || '');
+      if (tex === appliedPreamble) return;
+      const MJ = window.MathJax;
+      if (!MJ || !MJ.tex2svgPromise) {
+        dbg('preamble queued: MathJax not ready');
+        return;
+      }
+      try {
+        MJ.texReset();
+        // Render the preamble to register \newcommand, \def, etc.
+        Promise.race([
+          MJ.tex2svgPromise(tex, { display: false }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('preamble timeout')), 4000)),
+        ]).then(function () {
+          appliedPreamble = tex;
+        }).catch(function (e) {
+          dbg('preamble error: ' + String(e && e.message || e));
+        });
+      } catch (e) {
+        dbg('preamble sync throw: ' + String(e && e.message || e));
+      }
+      return;
+    }
+    if (msg.type !== 'render') return;
+    const { id, tex, display } = msg;
+    const MJ = window.MathJax;
+    if (!MJ || !MJ.tex2svgPromise) {
+      parent.postMessage({ id: id, type: 'error', message: 'MathJax not ready' }, '*');
+      return;
+    }
+    try {
+      const cleanTex = unescapeHtml(String(tex || ''));
+      try { MJ.texReset(); } catch (e) { dbg('texReset threw: ' + String(e && e.message || e)); }
+      // Wrap in {} — required, else MathJax renders only the first
+      // sub-expression (CLAUDE.md note: "MathJax tex must be wrapped in
+      // braces: MJ.tex2svgPromise(`{${tex}}`)").
+      Promise.race([
+        MJ.tex2svgPromise('{' + cleanTex + '}', { display: !!display }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('iframe-internal render timeout')), 8000)),
+      ]).then(function (container) {
+        const svg = container && container.querySelector && container.querySelector('svg');
+        if (!svg) {
+          dbg('no SVG in container for: ' + cleanTex.slice(0, 30));
+          parent.postMessage({ id: id, type: 'error', message: 'no SVG produced' }, '*');
+          return;
+        }
+        const width = svg.getAttribute('width') || '';
+        const height = svg.getAttribute('height') || '';
+        const valign = svg.style.verticalAlign || '';
+        parent.postMessage({
+          id: id, type: 'rendered',
+          svg: svg.outerHTML, width: width, height: height, valign: valign,
+        }, '*');
+      }).catch(function (err) {
+        // Note: per-call render failures are reported via 'error' postMessage
+        // and surfaced as Promise rejection in the broker. Adding a dbg()
+        // here too would be redundant.
+        parent.postMessage({ id: id, type: 'error', message: String(err && err.message || err) }, '*');
+      });
+    } catch (err) {
+      dbg('synchronous throw: ' + String(err && err.message || err));
+      parent.postMessage({ id: id, type: 'error', message: String(err && err.message || err) }, '*');
+    }
+  });
+
+  // Load the bundle (filename comes from the registry via ?file= param)
+  const script = document.createElement('script');
+  script.src = '/mathjax/' + file;
+  script.async = true;
+  script.onerror = function () {
+    parent.postMessage({ type: 'error', message: 'failed to load bundle: ' + file }, '*');
+  };
+  document.head.appendChild(script);
+})();
+</script>
+</head>
+<body></body>
+</html>

@@ -2,9 +2,9 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { useDemoUrl, useAssetUrl } from '../lib/demoAssets';
 import { SpeakerPanel } from './SpeakerView';
-import { TEXT_PRESET_STYLES, getSlideNumber } from '../types/presentation';
-import { typesetElement, resetMathElement, containsMath } from '../lib/mathjax';
+import { getSlideNumber } from '../types/presentation';
 import type { Slide, SlideElement, TextElement } from '../types/presentation';
+import { TextElementSvg } from './TextElementSvg';
 
 const TRANSITION_MS = 300;
 
@@ -105,7 +105,7 @@ export function PresentMode() {
       <div className="present-viewport" ref={viewportRef}>
         <div className="present-slide-wrapper" style={{ width: slideW * scale, height: slideH * scale }}>
           <div
-            className={`present-slide slide-layout-${slide.layout || 'default'}`}
+            className="present-slide"
             style={{ width: slideW, height: slideH, transform: `scale(${scale})`, transformOrigin: 'top left' }}
           >
             {/* Fading out elements (from previous slide, no match in current) */}
@@ -342,46 +342,20 @@ function PresentElement({ element: el, zIndex, style }: {
 }
 
 function PresentTextElement({ element: el, zIndex, style }: { element: TextElement; zIndex: number; style?: React.CSSProperties }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const pos = el.position;
-  const preset = TEXT_PRESET_STYLES[el.preset];
-  const mathPreamble = usePresentationStore((s) => s.presentation.config.mathPreamble);
-
-  useEffect(() => {
-    if (ref.current) {
-      // Set raw HTML first, then typeset math if present
-      resetMathElement(ref.current, el.html);
-      if (containsMath(el.html)) {
-        typesetElement(ref.current, mathPreamble);
-      }
-    }
-  }, [el.html, mathPreamble]);
-
-  const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
-
+  // Reuse the same SVG/foreignObject + iframe-pool pipeline that the
+  // editor and sidebar use. Per-preset math fonts work in present mode too.
+  const { presentation, currentSlideIndex } = usePresentationStore.getState();
+  const slide = presentation.slides[currentSlideIndex];
+  if (!slide) return null;
   return (
-    <div className={`el-text el-preset-${el.preset}`} style={{
-      position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-      overflow: 'hidden',
-      zIndex,
-      ...style,
-    }}>
-      <div style={{
-        width: '100%', height: '100%',
-        ...(valign === 'middle' ? { display: 'flex', flexDirection: 'column' as const, justifyContent: 'center' } : {}),
-        ...(valign === 'bottom' ? { display: 'flex', flexDirection: 'column' as const, justifyContent: 'flex-end' } : {}),
-      }}>
-        <div ref={ref} style={{
-          fontFamily: el.fontFamily || preset.fontFamily,
-          fontSize: el.fontSize || preset.fontSize,
-          fontWeight: preset.fontWeight,
-          fontStyle: preset.fontStyle,
-          color: el.color || preset.color,
-          lineHeight: 1.3,
-          padding: '8px 12px',
-        }} />
-      </div>
-    </div>
+    <TextElementSvg
+      element={el} slide={slide}
+      presentationTheme={presentation.theme}
+      presentationConfig={presentation.config}
+      className={`el-text el-preset-${el.preset}`}
+      zIndex={zIndex}
+      styleOverride={style}
+    />
   );
 }
 

@@ -12,12 +12,15 @@ import { HistoryPanel } from './components/HistoryPanel';
 import { DebugConsole } from './components/DebugConsole';
 import { LinkOverlay } from './components/LinkOverlay';
 import { ContextMenu } from './components/ContextMenu';
+import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
+import { DebugMenu } from './debug';
 import type { MenuEntry } from './components/ContextMenu';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
 import type { SlideElement } from './types/presentation';
 import {
   saveProject,
+  saveAsProject,
   openProject,
   createProject,
   exportPresentation,
@@ -29,11 +32,18 @@ import { flushToSqlite } from './store/presentation';
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { TEXT_PRESET_STYLES } from './types/presentation';
+import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
 
 /** Render a single slide to HTML for PDF/print export */
-export function renderSlideForPrint(slide: import('./types/presentation').Slide, presentationTheme: string, imageCache: Map<string, string>): string {
+export function renderSlideForPrint(
+  slide: import('./types/presentation').Slide,
+  presentationTheme: string,
+  imageCache: Map<string, string>,
+  presentationConfig?: import('./types/presentation').PresentationConfig
+): string {
   const W = 1920, H = 1080;
   const theme = resolveTheme(presentationTheme, slide.theme);
+  const cfg = presentationConfig || {} as import('./types/presentation').PresentationConfig;
   let inner = '';
   for (const el of slide.elements) {
     const p = el.position;
@@ -43,9 +53,10 @@ export function renderSlideForPrint(slide: import('./types/presentation').Slide,
       const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
                          valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
       const color = el.color || themeColorForPreset(theme, el.preset);
+      const presetFontFamily = fontFamilyForPreset(fontForPreset(el.preset, slide, cfg), el.preset);
       inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">` +
         `<div style="width:100%;height:100%;${valignStyle}">` +
-        `<div style="font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${color};line-height:1.3;padding:8px 12px;">${el.html || ''}</div>` +
+        `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${color};line-height:1.3;padding:8px 12px;">${el.html || ''}</div>` +
         `</div></div>`;
     } else if (el.type === 'image') {
       const src = imageCache.get(el.src) || el.src;
@@ -248,9 +259,10 @@ async function printToPdf() {
                              valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
           const color = el.color || themeColorForPreset(theme, el.preset);
           const fontSize = el.fontSize || ps.fontSize;
+          const presetFontFamily = fontFamilyForPreset(fontForPreset(el.preset, slide, presentation.config), el.preset);
           inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};overflow:hidden;">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${el.fontFamily || ps.fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:1.3;padding:${px2in(8)} ${px2in(12)};">${el.html || ''}</div>` +
+            `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:1.3;padding:${px2in(8)} ${px2in(12)};">${el.html || ''}</div>` +
             `</div></div>`;
         } else if (el.type === 'image') {
           const src = imageCache.get(el.src) || el.src;
@@ -282,12 +294,15 @@ async function printToPdf() {
       return `<div class="slide" style="background:${theme.background};">${inner}</div>`;
     });
 
+    // Embed @font-face data URLs for fonts used by this presentation.
+    const fontFacesCss = await buildEmbeddedFontFacesCSS(presentation);
+
     const printHtml = `<!DOCTYPE html><html><head>
 <meta charset="utf-8">
 <title>${presentation.title}</title>
 <meta name="robots" content="noindex">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');
+${fontFacesCss}
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'PT Sans', sans-serif; }
 html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -524,8 +539,13 @@ function App() {
     };
   }, []);
 
-  // Handle close/quit request — show confirmation if dirty
+  // Handle close/quit request — show in-app confirmation modal if dirty.
+  // The previous native message() dialog only supports a single OK button
+  // (the buttons:{} field was silently ignored), which is why quit appeared
+  // to do nothing — Cancel never reached the close path.
   const closingRef = useRef(false);
+  const dialogInFlightRef = useRef(false);
+  const [unsavedDialog, setUnsavedDialog] = useState<{ title: string; hasFile: boolean } | null>(null);
   useEffect(() => {
     let unlisten: (() => void) | null = null;
     (async () => {
@@ -533,26 +553,73 @@ function App() {
         const { listen } = await import('@tauri-apps/api/event');
         unlisten = await listen('check-close', async () => {
           if (closingRef.current) return;
-          if (usePresentationStore.getState().isDirty) {
-            const { message: showMessage } = await import('@tauri-apps/plugin-dialog');
-            const result = await showMessage('You have unsaved changes.', {
-              title: 'Unsaved Changes',
-              kind: 'warning',
-              buttons: {
-                ok: 'Close without Saving',
-                cancel: 'Cancel',
-              },
-            });
-            if (result !== 'Ok') return;
+          // Cmd+Q fires both the "quit" menu event AND a window
+          // CloseRequested — both emit check-close. Drop duplicates while
+          // we're already showing a dialog, otherwise NSAlerts stack up.
+          if (dialogInFlightRef.current) return;
+          dialogInFlightRef.current = true;
+          try {
+            const state = usePresentationStore.getState();
+            if (!state.isDirty) {
+              // Clean — quit immediately.
+              closingRef.current = true;
+              const { invoke } = await import('@tauri-apps/api/core');
+              await invoke('force_quit');
+              return;
+            }
+            const title = state.presentation.title || 'Untitled';
+            const hasFile = !!state.projectPath;
+            // Try the native macOS NSAlert first (3-button system dialog).
+            // Falls back to the cross-platform in-app modal on non-mac.
+            try {
+              const { invoke } = await import('@tauri-apps/api/core');
+              const result = await invoke<string>('show_unsaved_dialog', { title, hasFile });
+              if (result === 'save') { handleUnsavedSave(); return; }
+              if (result === 'discard') { handleUnsavedDiscard(); return; }
+              if (result === 'cancel') return;
+              // 'fallback' — fall through to in-app modal below.
+            } catch (e) {
+              console.warn('Native unsaved dialog failed, using modal:', e);
+            }
+            setUnsavedDialog({ title, hasFile });
+          } finally {
+            // Always release the guard so the next quit attempt is allowed
+            // (e.g. if the user cancelled and now tries again).
+            dialogInFlightRef.current = false;
           }
-          // Force quit via Rust — avoids CloseRequested loop
-          closingRef.current = true;
-          const { invoke } = await import('@tauri-apps/api/core');
-          await invoke('force_quit');
         });
       } catch { /* not in Tauri */ }
     })();
     return () => { if (unlisten) unlisten(); };
+  }, []);
+
+  const handleUnsavedSave = useCallback(async () => {
+    setUnsavedDialog(null);
+    try {
+      await flushToSqlite();
+      await saveProject();           // prompts for path if untitled
+      // After save the store is clean; re-emit so we go through the quit path
+      if (!usePresentationStore.getState().isDirty) {
+        closingRef.current = true;
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('force_quit');
+      }
+      // If still dirty (user cancelled the Save As prompt), do nothing —
+      // user is back in the editor; let them try again.
+    } catch (e) {
+      console.error('Save before quit failed:', e);
+    }
+  }, []);
+
+  const handleUnsavedDiscard = useCallback(async () => {
+    setUnsavedDialog(null);
+    closingRef.current = true;
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('force_quit');
+  }, []);
+
+  const handleUnsavedCancel = useCallback(() => {
+    setUnsavedDialog(null);
   }, []);
 
   // Start presenting — try multi-monitor first, fall back to single window
@@ -776,6 +843,7 @@ function App() {
         case 'new-project': createProject(); break;
         case 'open-project': openProject(); break;
         case 'save': saveProject(); break;
+        case 'save-as': saveAsProject(); break;
         case 'export': exportPresentation(); break;
         case 'export-pdf': printToPdf(); break;
         case 'export-pdf-screenshots': exportPdfScreenshots(); break;
@@ -810,6 +878,7 @@ function App() {
 
   return (
     <div className="app">
+      <DebugMenu />
       <Toolbar />
       <div className="main-area">
         <div style={{ width: sidebarWidth, minWidth: 150, maxWidth: 400, flexShrink: 0 }}>
@@ -904,6 +973,15 @@ function App() {
         <LinkOverlay
           elementId={linkOverlayElementId}
           onClose={() => setLinkOverlayElementId(null)}
+        />
+      )}
+      {unsavedDialog && (
+        <UnsavedChangesDialog
+          title={unsavedDialog.title}
+          hasFile={unsavedDialog.hasFile}
+          onSave={handleUnsavedSave}
+          onDiscard={handleUnsavedDiscard}
+          onCancel={handleUnsavedCancel}
         />
       )}
     </div>

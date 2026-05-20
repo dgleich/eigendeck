@@ -1,9 +1,10 @@
-#![allow(deprecated)] // cocoa crate deprecation warnings — TODO: migrate to objc2
 
 pub mod storage;
 
 use tauri::menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager};
+
+mod debug;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
@@ -17,6 +18,87 @@ static CLI_EXPORT_ARGS: Lazy<Mutex<Option<(String, String)>>> = Lazy::new(|| Mut
 fn force_quit() {
     let _ = storage::close_db();
     std::process::exit(0);
+}
+
+/// Show the macOS-native unsaved-changes dialog using NSAlert.
+/// Returns "save" | "cancel" | "discard" | "fallback" (non-mac).
+///
+/// NSAlert must run on the main thread; we use AppHandle::run_on_main_thread
+/// and a oneshot channel to get the response back to the worker thread that
+/// the Tauri command runs on.
+#[tauri::command]
+fn show_unsaved_dialog(_app: tauri::AppHandle, title: String, has_file: bool) -> String {
+    #[cfg(target_os = "macos")]
+    {
+        use std::sync::mpsc;
+        let (tx, rx) = mpsc::channel::<String>();
+        let _ = _app.run_on_main_thread(move || {
+            let result = mac_show_unsaved_dialog(&title, has_file);
+            let _ = tx.send(result);
+        });
+        // Block worker thread until main thread reports back. The dialog
+        // is modal; the main thread is busy in runModal, but our channel
+        // recv is on a non-main thread so this is safe.
+        rx.recv().unwrap_or_else(|_| "cancel".into())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (title, has_file);
+        // Non-mac platforms: tell the JS to fall back to its in-app modal.
+        "fallback".into()
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn mac_show_unsaved_dialog(title: &str, has_file: bool) -> String {
+    use objc2::MainThreadMarker;
+    use objc2_app_kit::{NSAlert, NSAlertStyle};
+    use objc2_foundation::NSString;
+
+    let (heading, body, destructive_label) = if has_file {
+        (
+            format!("Do you want to save the changes you made to \u{201C}{}\u{201D}?", title),
+            "Your changes will be lost if you don\u{2019}t save them.".to_string(),
+            "Don\u{2019}t Save".to_string(),
+        )
+    } else {
+        (
+            format!("Do you want to keep this new document \u{201C}{}\u{201D}?", title),
+            "You can choose to save your changes, or delete this document immediately. You can\u{2019}t undo this action.".to_string(),
+            "Delete and Quit".to_string(),
+        )
+    };
+
+    let save_label = if has_file { "Save" } else { "Save\u{2026}" };
+
+    // We're on the main thread (caller dispatches via run_on_main_thread),
+    // so MainThreadMarker::new() succeeds.
+    let mtm = MainThreadMarker::new()
+        .expect("show_unsaved_dialog must run on the main thread");
+
+    // Order matters: addButtonWithTitle assigns return values
+    // 1000, 1001, 1002 in the order added. The FIRST button is the
+    // default (Save) — Enter activates it and it's rendered rightmost
+    // on macOS. Cancel/destructive come after.
+    //
+    // objc2's typed wrappers make all of these calls safe (they validate
+    // selector and argument types at compile time), so no unsafe block
+    // is needed.
+    let alert = NSAlert::new(mtm);
+    alert.setMessageText(&NSString::from_str(&heading));
+    alert.setInformativeText(&NSString::from_str(&body));
+    alert.setAlertStyle(NSAlertStyle::Warning);
+    alert.addButtonWithTitle(&NSString::from_str(save_label));
+    alert.addButtonWithTitle(&NSString::from_str("Cancel"));
+    alert.addButtonWithTitle(&NSString::from_str(&destructive_label));
+
+    // NSModalResponse: NSAlertFirstButtonReturn = 1000, etc.
+    match alert.runModal() as i64 {
+        1000 => "save".into(),
+        1001 => "cancel".into(),
+        1002 => "discard".into(),
+        _ => "cancel".into(),
+    }
 }
 
 #[tauri::command]
@@ -52,14 +134,17 @@ fn set_window_above_menubar(app: tauri::AppHandle, label: String) -> Result<(), 
 
     #[cfg(target_os = "macos")]
     {
-        use cocoa::appkit::NSWindow;
-        use cocoa::base::id;
+        use objc2_app_kit::NSWindow;
 
-        let ns_win: id = window.ns_window().map_err(|e| e.to_string())? as id;
-        unsafe {
-            // kCGMainMenuWindowLevel = 24. Level 25 is above the menu bar.
-            ns_win.setLevel_(25);
-        }
+        // Tauri returns the NSWindow* as a raw pointer; cast to a typed
+        // objc2 reference. Safety: the pointer is non-null and points to a
+        // valid NSWindow owned by Tauri's webview for the lifetime of the
+        // window.
+        let ns_win_ptr = window.ns_window().map_err(|e| e.to_string())?;
+        let ns_win: &NSWindow = unsafe { &*(ns_win_ptr as *const NSWindow) };
+        // kCGMainMenuWindowLevel = 24. Level 25 is above the menu bar.
+        // setLevel is a safe property setter in objc2-app-kit.
+        ns_win.setLevel(25);
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -328,6 +413,8 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build(app).map_err(|e| e.to_string())?;
     let save_item = MenuItemBuilder::new("Save").id("save").accelerator("CmdOrCtrl+S")
         .build(app).map_err(|e| e.to_string())?;
+    let save_as_item = MenuItemBuilder::new("Save As...").id("save-as").accelerator("CmdOrCtrl+Shift+S")
+        .build(app).map_err(|e| e.to_string())?;
     let export_item = MenuItemBuilder::new("Export to HTML").id("export").accelerator("CmdOrCtrl+Shift+E")
         .build(app).map_err(|e| e.to_string())?;
     let export_pdf_item = MenuItemBuilder::new("Export Printable HTML...").id("export-pdf").accelerator("CmdOrCtrl+Shift+P")
@@ -346,6 +433,7 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
     let file_menu = file_sub
         .separator()
         .item(&save_item)
+        .item(&save_as_item)
         .item(&export_item)
         .item(&export_pdf_item)
         .item(&export_pdf_ss_item)
@@ -397,20 +485,32 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .minimize().maximize().separator().close_window()
         .build().map_err(|e| e.to_string())?;
 
-    MenuBuilder::new(app)
+    // Debug submenu — appended ONLY when launched with --debug. The flag is
+    // read inside debug::attach_submenu_if_enabled; lib.rs never sees the bool.
+    let debug_menu = debug::attach_submenu_if_enabled(app)?;
+
+    let mut bar = MenuBuilder::new(app)
         .item(&app_menu)
         .item(&file_menu)
         .item(&edit_menu)
         .item(&view_menu)
-        .item(&window_menu)
-        .build()
-        .map_err(|e| e.to_string())
+        .item(&window_menu);
+    if let Some(ref dm) = debug_menu {
+        bar = bar.item(dm);
+    }
+    bar.build().map_err(|e| e.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Parse --debug ONCE here. Stored as managed state; only the debug module
+    // reads it. Nothing else may branch on this flag (see debug.rs).
+    let debug_flag = debug::DebugFlag(debug::parse_debug_flag());
+
     tauri::Builder::default()
+        .manage(debug_flag)
         .invoke_handler(tauri::generate_handler![
+            debug::debug_enabled,
             set_window_above_menubar,
             check_display_mirroring,
             disable_display_mirroring,
@@ -441,8 +541,12 @@ pub fn run() {
             storage::db_free_element,
             storage::db_store_asset,
             storage::db_get_asset,
+            storage::db_put_math_svg,
+            storage::db_get_math_svg,
+            storage::db_load_math_cache,
             storage::db_update_presentation,
             force_quit,
+            show_unsaved_dialog,
             cli_export_args,
             cli_write_and_exit,
         ])

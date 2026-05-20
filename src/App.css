@@ -1,36 +1,6 @@
-/* PT Sans for slide content */
-@font-face {
-  font-family: 'PT Sans';
-  font-style: normal;
-  font-weight: 400;
-  src: url('/fonts/pt-sans-regular.ttf') format('truetype');
-}
-@font-face {
-  font-family: 'PT Sans';
-  font-style: normal;
-  font-weight: 700;
-  src: url('/fonts/pt-sans-bold.ttf') format('truetype');
-}
-@font-face {
-  font-family: 'PT Sans';
-  font-style: italic;
-  font-weight: 400;
-  src: url('/fonts/pt-sans-italic.ttf') format('truetype');
-}
-
-/* PT Sans Narrow */
-@font-face {
-  font-family: 'PT Sans Narrow';
-  font-style: normal;
-  font-weight: 400;
-  src: url('/fonts/pt-sans-narrow-regular.ttf') format('truetype');
-}
-@font-face {
-  font-family: 'PT Sans Narrow';
-  font-style: normal;
-  font-weight: 700;
-  src: url('/fonts/pt-sans-narrow-bold.ttf') format('truetype');
-}
+/* @font-face declarations for all bundled font packages are injected at
+   runtime by injectFontFaces() in src/lib/fonts.ts (called from main.tsx).
+   See src/lib/fonts.ts FONT_PACKAGES for the list. */
 
 /* System font for UI */
 :root {
@@ -341,8 +311,10 @@
 }
 
 .slide-thumbnail.group-child {
-  margin-left: 20px;
-  transform: scale(0.9);
+  /* Indent + shrink visually via transform only — margin-left would
+     reduce the layout width and clip the right edge of the 166px
+     thumbnail clip inside our overflow:hidden box. */
+  transform: scale(0.9) translateX(22px);
   transform-origin: top left;
   opacity: 0.85;
 }
@@ -621,66 +593,6 @@
   flex-shrink: 0;
 }
 
-/* TipTap editor inside the slide canvas */
-.editor-content {
-  width: 100%;
-  height: 100%;
-}
-
-.editor-content .tiptap {
-  outline: none;
-  width: 100%;
-  height: 100%;
-  font-family: 'PT Sans', sans-serif;
-  font-size: 32px;
-  font-weight: normal;
-  line-height: 1.4;
-  color: #222;
-  background: #fff;
-  padding: 60px 80px;
-}
-
-.editor-content .tiptap h1 {
-  font-family: 'PT Sans', sans-serif;
-  font-size: 56px;
-  font-weight: 700;
-  line-height: 1.2;
-  margin-bottom: 24px;
-  color: #222;
-}
-
-.editor-content .tiptap h2 {
-  font-family: 'PT Sans', sans-serif;
-  font-size: 44px;
-  font-weight: 700;
-  line-height: 1.2;
-  margin-bottom: 20px;
-  color: #222;
-}
-
-.editor-content .tiptap h3 {
-  font-family: 'PT Sans', sans-serif;
-  font-size: 36px;
-  font-weight: 700;
-  line-height: 1.2;
-  margin-bottom: 16px;
-  color: #222;
-}
-
-.editor-content .tiptap p {
-  margin-bottom: 16px;
-}
-
-.editor-content .tiptap ul,
-.editor-content .tiptap ol {
-  padding-left: 1.2em;
-  margin-bottom: 16px;
-}
-
-.editor-content .tiptap li {
-  margin-bottom: 8px;
-}
-
 /* Demo frame */
 .demo-frame-container {
   border: 2px dashed #93c5fd;
@@ -794,39 +706,6 @@
 /* ============================================
    Slide layouts
    ============================================ */
-
-/* Default: top-left aligned (already the default) */
-
-/* Centered: everything centered, bullets close to text */
-.slide-layout-centered .editor-content .tiptap {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-}
-
-.slide-layout-centered .editor-content .tiptap h1,
-.slide-layout-centered .editor-content .tiptap h2,
-.slide-layout-centered .editor-content .tiptap h3,
-.slide-layout-centered .editor-content .tiptap p {
-  text-align: center;
-  width: 100%;
-}
-
-.slide-layout-centered .editor-content .tiptap ul,
-.slide-layout-centered .editor-content .tiptap ol {
-  display: inline-block;
-  text-align: left;
-  padding-left: 1em;
-  list-style-position: inside;
-}
-
-/* Two-column: CSS columns */
-.slide-layout-two-column .editor-content .tiptap {
-  column-count: 2;
-  column-gap: 80px;
-}
 
 /* ============================================
    Image element — draggable + resizable
@@ -1586,50 +1465,8 @@
   z-index: 2;
 }
 
-.present-body {
-  position: absolute;
-  z-index: 1;
-  background: transparent;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.present-textbox {
-  font-family: 'PT Sans', sans-serif;
-  font-size: 32px;
-  line-height: 1.4;
-  color: #222;
-  padding: 12px 16px;
-  overflow: hidden;
-  z-index: 3;
-}
-
 .present-slide svg {
   z-index: 4;
-}
-
-/* Centered layout in present mode */
-.present-slide.slide-layout-centered .present-body {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-}
-
-.present-slide.slide-layout-centered .present-body ul,
-.present-slide.slide-layout-centered .present-body ol {
-  display: inline-block;
-  text-align: left;
-  padding-left: 1em;
-  list-style-position: inside;
-}
-
-.present-slide.slide-layout-two-column .present-body {
-  column-count: 2;
-  column-gap: 80px;
 }
 
 .present-mode.with-speaker .present-viewport {

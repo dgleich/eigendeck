@@ -1,47 +1,101 @@
 /**
  * MathJax integration for Eigendeck.
  *
- * Uses tex2svgPromise with the custom PT Sans math font (nosre build).
- * Renders $...$ as inline SVG and $$...$$ as display SVG.
+ * Loads one MathJax bundle at a time (window.MathJax is a singleton). The
+ * bundle id is chosen per render call based on the surrounding font. When a
+ * different bundle is requested, the loader swaps: unloads the current one
+ * and reloads the new bundle's script. Loading takes ~1-2s on cold cache.
+ *
+ * NOTE on per-preset math fonts: ideally math in a title element would use
+ * the title's math font. With the singleton constraint, achieving that
+ * requires either (a) bundle-switching per-element with caching of rendered
+ * SVGs, or (b) iframe isolation for each font. Neither is implemented yet —
+ * for now, all math on a slide uses the bundle currently loaded (effectively
+ * the body font). Per-preset rendering tracked in a future issue.
  */
 
+import { resolveFontPackage } from './fonts';
+
+let activeBundleId: string | null = null;
 let mathjaxPromise: Promise<any> | null = null;
 let mathjaxReady = false;
+let workerStubInstalled = false;
 
-export function loadMathJax(): Promise<any> {
-  if (mathjaxReady) return Promise.resolve((window as any).MathJax);
-  if (mathjaxPromise) return mathjaxPromise;
+function installWorkerStub() {
+  if (workerStubInstalled) return;
+  workerStubInstalled = true;
+
+  // Suppress blob: URL errors (BrowserAdaptor Worker)
+  window.addEventListener('error', (e) => {
+    if (e.filename?.startsWith('blob:')) e.preventDefault();
+  });
+
+  // Stub blob Workers (BrowserAdaptor / SRE creates one via blob: URL,
+  // which Tauri's WebKit blocks).
+  const OrigWorker = window.Worker;
+  (window as any).Worker = function FakeWorker(url: string | URL) {
+    if (typeof url === 'string' && url.startsWith('blob:')) {
+      const fake = {
+        postMessage(data: any) {
+          setTimeout(() => { if (fake.onmessage) fake.onmessage({ data: { id: data?.id, result: '' } } as any); }, 0);
+        },
+        terminate() {}, onmessage: null as any, onerror: null as any,
+        addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; },
+      };
+      return fake;
+    }
+    return new OrigWorker(url);
+  };
+}
+
+function unloadCurrentBundle(): void {
+  // Remove the previous bundle's <script> tag so reloads work consistently.
+  for (const s of Array.from(document.querySelectorAll('script[data-mathjax-bundle]'))) {
+    s.remove();
+  }
+  // Clear MathJax singleton so the new bundle can install fresh state.
+  delete (window as any).MathJax;
+  // Forget the old promise; next loadMathJax call starts a new one.
+  mathjaxPromise = null;
+  mathjaxReady = false;
+  activeBundleId = null;
+  // Clear preamble cache (the next bundle won't have applied it)
+  appliedPreamble = '';
+}
+
+/**
+ * Load a MathJax bundle. If `bundleId` differs from the currently loaded
+ * bundle, the previous one is unloaded and the new one is loaded.
+ *
+ * @param bundleId Font package id (see src/lib/fonts.ts). If omitted, uses
+ *   the currently-loaded bundle, or 'ptsans' if none is loaded.
+ */
+export function loadMathJax(bundleId?: string): Promise<any> {
+  const desired = bundleId ?? activeBundleId ?? 'ptsans';
+
+  if (mathjaxReady && activeBundleId === desired) {
+    return Promise.resolve((window as any).MathJax);
+  }
+  if (mathjaxPromise && activeBundleId === desired) return mathjaxPromise;
+
+  // Either no bundle loaded yet, or a different bundle is loaded — (re)load.
+  if (activeBundleId && activeBundleId !== desired) {
+    unloadCurrentBundle();
+  }
+
+  installWorkerStub();
+  activeBundleId = desired;
+
+  const pkg = resolveFontPackage(desired);
+  const bundleUrl = `/mathjax/${pkg.mathjaxBundle}`;
 
   mathjaxPromise = new Promise((resolve, reject) => {
-    // Suppress blob: URL errors (BrowserAdaptor Worker)
-    window.addEventListener('error', (e) => {
-      if (e.filename?.startsWith('blob:')) e.preventDefault();
-    });
-
-    // Stub blob Workers (BrowserAdaptor creates one)
-    const OrigWorker = window.Worker;
-    (window as any).Worker = function FakeWorker(url: string | URL) {
-      if (typeof url === 'string' && url.startsWith('blob:')) {
-        const fake = {
-          postMessage(data: any) {
-            setTimeout(() => { if (fake.onmessage) fake.onmessage({ data: { id: data?.id, result: '' } } as any); }, 0);
-          },
-          terminate() {}, onmessage: null as any, onerror: null as any,
-          addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; },
-        };
-        return fake;
-      }
-      return new OrigWorker(url);
-    };
-
     (window as any).MathJax = {
       tex: {
         inlineMath: [['$', '$']],
         displayMath: [['$$', '$$']],
       },
-      svg: {
-        fontCache: 'none',
-      },
+      svg: { fontCache: 'none' },
       startup: {
         typeset: false,
         ready: () => {
@@ -56,13 +110,19 @@ export function loadMathJax(): Promise<any> {
     };
 
     const script = document.createElement('script');
-    script.src = '/mathjax/tex-mml-svg-mathjax-ptsans.js';
+    script.src = bundleUrl;
     script.async = true;
-    script.onerror = () => reject(new Error('Failed to load MathJax'));
+    script.setAttribute('data-mathjax-bundle', desired);
+    script.onerror = () => reject(new Error(`Failed to load MathJax bundle: ${bundleUrl}`));
     document.head.appendChild(script);
   });
 
   return mathjaxPromise;
+}
+
+/** Get the id of the currently loaded MathJax bundle, or null if none. */
+export function activeMathBundleId(): string | null {
+  return activeBundleId;
 }
 
 /**
@@ -76,12 +136,12 @@ export function getDisplayMathHeight(tex: string): string | undefined {
   return displayMathHeights.get(tex);
 }
 
-// Track whether preamble has been applied
+// Track whether preamble has been applied (per loaded bundle)
 let appliedPreamble = '';
 
-export async function applyMathPreamble(preamble: string): Promise<void> {
+export async function applyMathPreamble(preamble: string, bundleId?: string): Promise<void> {
   if (!preamble || preamble === appliedPreamble) return;
-  const MJ = await loadMathJax();
+  const MJ = await loadMathJax(bundleId);
   try {
     MJ.texReset();
     // Render preamble to register \newcommand, \def, etc.
@@ -97,13 +157,13 @@ export async function applyMathPreamble(preamble: string): Promise<void> {
 
 // Unescape HTML entities in tex strings extracted from innerHTML
 function unescapeHtml(s: string): string {
-  return s.replace(/&nbsp;/g, ' ').replace(/\u00A0/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  return s.replace(/&nbsp;/g, ' ').replace(/ /g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 }
 
-export async function renderMathInHtml(html: string): Promise<string> {
+export async function renderMathInHtml(html: string, bundleId?: string): Promise<string> {
   if (!containsMath(html)) return html;
 
-  const MJ = await loadMathJax();
+  const MJ = await loadMathJax(bundleId);
   const parts: string[] = [];
   let i = 0;
 
@@ -199,8 +259,8 @@ export async function renderMathInHtml(html: string): Promise<string> {
   return parts.join('');
 }
 
-export async function typesetElement(element: HTMLElement, preamble?: string): Promise<void> {
-  if (preamble) await applyMathPreamble(preamble);
+export async function typesetElement(element: HTMLElement, preamble?: string, bundleId?: string): Promise<void> {
+  if (preamble) await applyMathPreamble(preamble, bundleId);
 
   const rawHtml = element.getAttribute('data-raw') || element.innerHTML;
   try {
@@ -210,7 +270,7 @@ export async function typesetElement(element: HTMLElement, preamble?: string): P
       .replace(/\$\$([\s\S]+?)\$\$/g, '<div style="text-align:center;color:#999;font-style:italic;white-space:nowrap;overflow:hidden;">⋯</div>')
       .replace(/\$([^\$\n]+?)\$/g, '<span style="color:#999;font-style:italic;">⋯</span>');
 
-    const rendered = await renderMathInHtml(rawHtml);
+    const rendered = await renderMathInHtml(rawHtml, bundleId);
     element.innerHTML = rendered;
   } catch (e) {
     console.error('typesetElement error:', e);

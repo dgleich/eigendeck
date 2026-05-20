@@ -523,7 +523,7 @@ const dirtyZOrder = new Set<string>();      // slide IDs whose element z-order c
 let dirtyPresentation = false;              // config/title changed
 
 // Structural changes tracked explicitly
-const addedSlides = new Map<string, { position: number; layout: string; groupId?: string }>();
+const addedSlides = new Map<string, { position: number; groupId?: string }>();
 const deletedSlides = new Set<string>();
 const addedElements = new Map<string, { slideId: string; element: any; zOrder: number }>();
 const deletedElements = new Map<string, string>();  // elementId → slideId it was removed from
@@ -566,7 +566,7 @@ export async function flushToSqlite(): Promise<void> {
 
     for (const [slideId, info] of addedSlides) {
       try {
-        await invoke('db_add_slide', { id: slideId, position: info.position, layout: info.layout, groupId: info.groupId || null });
+        await invoke('db_add_slide', { id: slideId, position: info.position, groupId: info.groupId || null });
       } catch (e) { console.warn('add slide failed:', e); }
     }
     addedSlides.clear();
@@ -617,17 +617,27 @@ export async function flushToSqlite(): Promise<void> {
     }
     dirtyElements.clear();
 
-    // Slide metadata changes (layout, notes, groupId, position, theme)
+    // Slide metadata changes (notes, groupId, position, config)
+    // The `config` JSON holds per-slide overrides (theme + per-preset
+    // font slots). Build it from the slide's override fields and pass:
+    // - JSON string when there are overrides
+    // - empty string to CLEAR overrides (storage maps to NULL column)
     for (const slideId of dirtySlides) {
       const idx = state.presentation.slides.findIndex((s) => s.id === slideId);
       const slide = state.presentation.slides[idx];
       if (slide) {
+        const cfg: Record<string, string> = {};
+        if (slide.theme)     cfg.theme     = slide.theme;
+        if (slide.titleFont) cfg.titleFont = slide.titleFont;
+        if (slide.bodyFont)  cfg.bodyFont  = slide.bodyFont;
+        if (slide.hypeFont)  cfg.hypeFont  = slide.hypeFont;
+        const config = Object.keys(cfg).length === 0 ? '' : JSON.stringify(cfg);
         await invoke('db_update_slide', {
           slideId,
           position: idx,
-          layout: slide.layout || null,
           notes: slide.notes || null,
           groupId: slide.groupId || null,
+          config,
         });
       }
     }
@@ -698,6 +708,11 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     const { clearAssetCache } = await import('../lib/demoAssets');
     clearAssetCache();
 
+    // Reset the math-cache warm-up flag so the new project's cached SVGs
+    // get loaded into the in-memory pool (and old project's are discarded).
+    const { resetMathCacheWarmupFlag } = await import('../lib/mathjaxRenderer');
+    resetMathCacheWarmupFlag();
+
     // Open new DB and load
     await invoke('db_open', { path: dbPath });
     const json = await invoke<string>('db_export_json');
@@ -713,6 +728,11 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
 
     // Enable write-through for the new project
     sqliteDbPath = dbPath;
+
+    // Warm the math-SVG cache so previously-rendered expressions don't
+    // re-render through the iframe pool on first slide paint.
+    const { warmMathCacheFromSqlite } = await import('../lib/mathjaxRenderer');
+    void warmMathCacheFromSqlite();
   } catch (e) {
     console.error('Failed to open SQLite project:', e);
     throw e;
@@ -785,7 +805,7 @@ usePresentationStore.subscribe((state) => {
     if (!prevSlideIds.has(cs.id)) {
       // New slide added
       const idx = curr.slides.indexOf(cs);
-      addedSlides.set(cs.id, { position: idx, layout: cs.layout || 'default', groupId: cs.groupId });
+      addedSlides.set(cs.id, { position: idx, groupId: cs.groupId });
       // All elements on this slide are new
       for (let j = 0; j < cs.elements.length; j++) {
         addedElements.set(cs.elements[j].id, { slideId: cs.id, element: cs.elements[j], zOrder: j });
@@ -830,8 +850,13 @@ usePresentationStore.subscribe((state) => {
     const ps = prev.slides.find((s) => s.id === cs.id);
     if (!ps) continue;
 
-    // Slide metadata (includes theme)
-    if (ps.layout !== cs.layout || ps.notes !== cs.notes || ps.groupId !== cs.groupId || ps.theme !== cs.theme) {
+    // Slide metadata (notes, groupId, theme, per-preset font overrides).
+    // Any of these → flush dirty so the slides.config JSON gets rewritten.
+    if (ps.notes !== cs.notes || ps.groupId !== cs.groupId
+      || ps.theme !== cs.theme
+      || ps.titleFont !== cs.titleFont
+      || ps.bodyFont !== cs.bodyFont
+      || ps.hypeFont !== cs.hypeFont) {
       markSlideDirty(cs.id);
     }
 
