@@ -19,85 +19,74 @@ import {
 } from './assetCache';
 
 /**
- * Render (or fetch from cache) a rasterized PNG for an asset at the
- * requested tier size. Returns a blob URL the caller can drop into <img>.
- * Caller owns the URL and should revoke when the element unmounts.
+ * Render (or fetch from cache) a rasterized PNG for an asset, fitting the
+ * source into a (maxWidth, maxHeight) box while preserving aspect ratio.
+ * Returns a blob URL the caller drops into <img>; caller owns the URL and
+ * should revoke when the element unmounts.
  *
- * Cache hit: zero re-render, just unwrap the stored PNG.
- * Cache miss: rasterize, persist, return.
+ * Cache key uses the REQUESTED max dimensions — the stored PNG's actual
+ * pixel dimensions may be smaller (aspect-preserved fit). Lookups by the
+ * same (sourceId, variant, maxWidth, maxHeight) hit consistently.
  */
 export async function renderAsset(opts: {
   sourceId: string;
   kind: AssetKind;
   variant?: string;
-  width: number;
-  height: number;
+  /** Maximum width of the rendered PNG — actual output may be narrower. */
+  maxWidth: number;
+  /** Maximum height of the rendered PNG — actual output may be shorter. */
+  maxHeight: number;
 }): Promise<string> {
-  const { sourceId, kind, variant = '_', width, height } = opts;
+  const { sourceId, kind, variant = '_', maxWidth, maxHeight } = opts;
 
-  const cached = await getAssetCache(sourceId, variant, width, height);
+  const cached = await getAssetCache(sourceId, variant, maxWidth, maxHeight);
   if (cached) return pngBytesToBlobUrl(cached.png);
 
-  // Cache miss — read source bytes from the assets table.
   const bytes = new Uint8Array(await invoke<number[]>('db_get_asset', { path: sourceId }));
 
   let png: Uint8Array;
   switch (kind) {
     case 'svg':
-      png = await rasterizeSvg(bytes, width, height);
+      png = await rasterizeAspectFit(bytes, 'image/svg+xml', maxWidth, maxHeight);
       break;
     case 'pdf':
       // pdfium-render path lands in a later commit. For now signal the
       // miss to the caller so it can show source-as-is until then.
       throw new Error('PDF rasterization not yet implemented');
-    case 'raster':
-      // Raster sources don't need caching at the asset_cache layer for
-      // display (the bytes ARE the display form), but caching at the
-      // tier size yields a smaller blob for sidebar use.
-      png = await downscaleRaster(bytes, width, height);
+    case 'raster': {
+      const mime = sniffRasterMime(bytes) || 'image/png';
+      png = await rasterizeAspectFit(bytes, mime, maxWidth, maxHeight);
       break;
+    }
   }
 
-  await putAssetCache(sourceId, variant, width, height, png, null);
+  await putAssetCache(sourceId, variant, maxWidth, maxHeight, png, null);
   return pngBytesToBlobUrl(Array.from(png) as number[]);
 }
 
 /**
- * Rasterize SVG bytes to a transparent PNG at exact (width, height).
- * The SVG's intrinsic viewBox is mapped to fill the requested box.
+ * Load source as <img>, then rasterize to PNG fitted into (maxW, maxH)
+ * preserving aspect ratio. Canvas starts transparent (no fillRect) so SVG
+ * with no background stays transparent. Used by SVG and raster paths;
+ * works identically for both modulo the blob MIME type.
  */
-async function rasterizeSvg(svgBytes: Uint8Array, width: number, height: number): Promise<Uint8Array> {
-  const blob = new Blob([svgBytes as BlobPart], { type: 'image/svg+xml' });
-  const url = URL.createObjectURL(blob);
-  try {
-    const img = await loadImage(url);
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('canvas 2d context unavailable');
-    // Transparent background: do NOT fillRect. Canvas starts transparent.
-    ctx.drawImage(img, 0, 0, width, height);
-    return canvasToPngBytes(canvas);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-/** Re-encode a raster source at a target size — used for sidebar thumbs. */
-async function downscaleRaster(bytes: Uint8Array, width: number, height: number): Promise<Uint8Array> {
-  // Detect by magic bytes for a more accurate MIME than just defaulting.
-  const mime = sniffRasterMime(bytes) || 'image/png';
+async function rasterizeAspectFit(bytes: Uint8Array, mime: string, maxW: number, maxH: number): Promise<Uint8Array> {
   const blob = new Blob([bytes as BlobPart], { type: mime });
   const url = URL.createObjectURL(blob);
   try {
     const img = await loadImage(url);
+    // naturalWidth/Height === SVG viewBox dims for SVG, intrinsic pixels for raster.
+    const nw = img.naturalWidth || maxW;
+    const nh = img.naturalHeight || maxH;
+    const scale = Math.min(maxW / nw, maxH / nh, 1);  // never upscale past natural size
+    const w = Math.max(1, Math.round(nw * scale));
+    const h = Math.max(1, Math.round(nh * scale));
     const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = w;
+    canvas.height = h;
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('canvas 2d context unavailable');
-    ctx.drawImage(img, 0, 0, width, height);
+    ctx.drawImage(img, 0, 0, w, h);
     return canvasToPngBytes(canvas);
   } finally {
     URL.revokeObjectURL(url);
@@ -149,8 +138,8 @@ export function entryToBlobUrl(entry: AssetCacheEntry): string {
 export function useRenderedAsset(
   sourceId: string | undefined,
   kind: AssetKind | undefined,
-  width: number,
-  height: number,
+  maxWidth: number,
+  maxHeight: number,
   variant: string = '_',
 ): string | undefined {
   const [url, setUrl] = useState<string | undefined>(undefined);
@@ -159,7 +148,7 @@ export function useRenderedAsset(
     if (!sourceId || !kind) { setUrl(undefined); return; }
     let cancelled = false;
     let current: string | undefined;
-    renderAsset({ sourceId, kind, variant, width, height })
+    renderAsset({ sourceId, kind, variant, maxWidth, maxHeight })
       .then((u) => {
         if (cancelled) { URL.revokeObjectURL(u); return; }
         current = u;
@@ -170,7 +159,7 @@ export function useRenderedAsset(
       cancelled = true;
       if (current) URL.revokeObjectURL(current);
     };
-  }, [sourceId, kind, variant, width, height]);
+  }, [sourceId, kind, variant, maxWidth, maxHeight]);
 
   return url;
 }

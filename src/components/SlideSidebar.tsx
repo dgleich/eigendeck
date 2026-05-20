@@ -1,9 +1,38 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
-import { getSlideNumber, isGroupChild } from '../types/presentation';
+import { getSlideNumber, isGroupChild, type SlideElement } from '../types/presentation';
 import { resolveTheme } from '../lib/themes';
 import { TextElementSvg } from './TextElementSvg';
+import { useRenderedAsset } from '../lib/assetRenderer';
+import { ASSET_TIER } from '../lib/assetCache';
 import type { MenuEntry } from './ContextMenu';
+
+/**
+ * Thumbnail-tier image cell for the sidebar. Pulls a cached 256-px PNG from
+ * asset_cache (rendering on first display); falls back to a "loading" tile
+ * while the render is in flight and a plain "IMG" placeholder if no source.
+ * Same code path serves raster + svg + (future) pdf via ImageElement.kind.
+ */
+function SidebarImageThumb({ element }: { element: Extract<SlideElement, { type: 'image' }> }) {
+  const p = element.position;
+  const kind = element.kind ?? 'raster';
+  const url = useRenderedAsset(element.src, kind, ASSET_TIER.thumb, ASSET_TIER.thumb, element.snapshotVariant);
+  return (
+    <div style={{
+      position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
+      overflow: 'hidden',
+      background: url ? 'transparent' : '#f0f0f0',
+      border: url ? 'none' : '1px solid #ddd', borderRadius: 2,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      {url ? (
+        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+      ) : (
+        <span style={{ fontSize: 24, color: '#aaa' }}>IMG</span>
+      )}
+    </div>
+  );
+}
 
 const SLIDE_WIDTH = 1920;
 const SLIDE_HEIGHT = 1080;
@@ -123,14 +152,7 @@ export function SlideSidebar() {
                           presentationConfig={presentation.config} />
                       );
                     case 'image':
-                      return (
-                        <div key={el.id} style={{
-                          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-                          background: '#f0f0f0', border: '1px solid #ddd', borderRadius: 2,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 24, color: '#aaa',
-                        }}>IMG</div>
-                      );
+                      return <SidebarImageThumb key={el.id} element={el} />;
                     case 'arrow': {
                       const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 3 } = el;
                       return (
