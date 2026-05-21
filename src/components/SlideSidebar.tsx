@@ -5,6 +5,7 @@ import { resolveTheme } from '../lib/themes';
 import { TextElementSvg } from './TextElementSvg';
 import { useRenderedAsset } from '../lib/assetRenderer';
 import { ASSET_TIER } from '../lib/assetCache';
+import { useAssetFileWatcher } from '../lib/assetWatcher';
 import type { MenuEntry } from './ContextMenu';
 
 /**
@@ -17,6 +18,10 @@ function SidebarImageThumb({ element }: { element: Extract<SlideElement, { type:
   const p = element.position;
   const kind = element.kind ?? 'raster';
   const url = useRenderedAsset(element.src, kind, ASSET_TIER.thumb, ASSET_TIER.thumb, element.snapshotVariant);
+  // Auto-reload the asset when the user re-saves its source file on disk.
+  // No-op when the asset wasn't drag/picker-inserted (no external link).
+  const mime = kind === 'svg' ? 'image/svg+xml' : kind === 'pdf' ? 'application/pdf' : 'image/png';
+  useAssetFileWatcher(element.src, mime);
   return (
     <div style={{
       position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,

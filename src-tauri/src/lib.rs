@@ -541,6 +541,7 @@ pub fn run() {
             storage::db_free_element,
             storage::db_store_asset,
             storage::db_get_asset,
+            storage::db_get_asset_external_path,
             storage::db_put_math_svg,
             storage::db_get_math_svg,
             storage::db_load_math_cache,

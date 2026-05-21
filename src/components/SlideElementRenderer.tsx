@@ -204,7 +204,7 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
                 if (!selected) return;
                 bytes = await readFile(selected as string);
               }
-              await invoke('db_store_asset', { path: element.src, data: Array.from(bytes), mimeType: 'text/html' });
+              await invoke('db_store_asset', { path: element.src, data: Array.from(bytes), mimeType: 'text/html', externalPath: null, externalMtime: null });
               const { invalidateAsset } = await import('../lib/demoAssets');
               invalidateAsset(element.src);
               setReloadKey((k) => k + 1);
@@ -277,7 +277,7 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
                 if (!selected) return;
                 bytes = await readFile(selected as string);
               }
-              await invoke('db_store_asset', { path: element.demoSrc, data: Array.from(bytes), mimeType: 'text/html' });
+              await invoke('db_store_asset', { path: element.demoSrc, data: Array.from(bytes), mimeType: 'text/html', externalPath: null, externalMtime: null });
               const { invalidateAsset } = await import('../lib/demoAssets');
               invalidateAsset(element.demoSrc);
               setReloadKey((k) => k + 1);

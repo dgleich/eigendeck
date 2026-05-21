@@ -1268,19 +1268,30 @@ pub fn db_free_element(
     })
 }
 
-/// Store an asset (image/demo) as a BLOB
+/// Store an asset (image/demo) as a BLOB.
+///
+/// `external_path` (optional) records where the asset originated relative
+/// to the .eigendeck file's directory. When present, the file-watcher
+/// hook auto-reloads the asset bytes when the source file changes on
+/// disk. Pass `None` to clear the link (e.g. after the user accepts an
+/// auto-embed snapshot — the asset is now self-contained).
+///
+/// `external_mtime` (optional) is the source file's mtime at last load,
+/// stored alongside for staleness detection in non-watch contexts.
 #[tauri::command]
 pub fn db_store_asset(
     path: String,
     data: Vec<u8>,
     mime_type: String,
+    external_path: Option<String>,
+    external_mtime: Option<String>,
 ) -> Result<(), String> {
     with_db(|conn| {
         let size = data.len() as i64;
         let now = timestamp();
         conn.execute(
-            "INSERT OR REPLACE INTO assets VALUES (?1, ?2, ?3, ?4, NULL, ?5, NULL, NULL)",
-            params![&path, &data, &mime_type, size, &now],
+            "INSERT OR REPLACE INTO assets VALUES (?1, ?2, ?3, ?4, NULL, ?5, ?6, ?7)",
+            params![&path, &data, &mime_type, size, &now, &external_path, &external_mtime],
         )?;
         Ok(())
     })
@@ -1296,6 +1307,25 @@ pub fn db_get_asset(path: String) -> Result<Vec<u8>, String> {
             |row| row.get(0),
         )?;
         Ok(data)
+    })
+}
+
+/// Return the asset's `external_path` (source link relative to the
+/// .eigendeck dir) if present, else None. Used by the file-watcher hook
+/// to know whether/where to watch.
+#[tauri::command]
+pub fn db_get_asset_external_path(path: String) -> Result<Option<String>, String> {
+    with_db(|conn| {
+        let result: rusqlite::Result<Option<String>> = conn.query_row(
+            "SELECT external_path FROM assets WHERE path = ?1",
+            params![&path],
+            |row| row.get(0),
+        );
+        match result {
+            Ok(p) => Ok(p),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e),
+        }
     })
 }
 

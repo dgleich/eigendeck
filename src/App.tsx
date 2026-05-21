@@ -919,7 +919,9 @@ function App() {
                 const { invoke } = await import('@tauri-apps/api/core');
                 const { readFile } = await import('@tauri-apps/plugin-fs');
                 bytes = await readFile(fullPath);
-                await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime });
+                // Picker insertion: track the source link so the file
+                // watcher picks up edits to the original file on disk.
+                await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime, externalPath: relativePath, externalMtime: null });
               } catch (err) { console.error('Failed to store image:', err); }
               const { detectAssetKind } = await import('./lib/assetCache');
               const kind = detectAssetKind(relativePath, mime);
@@ -933,7 +935,8 @@ function App() {
                 const updated = await handleSvgExternalRefs(bytes, relativePath, fullPath);
                 if (updated) {
                   const { invoke } = await import('@tauri-apps/api/core');
-                  await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime });
+                  // Embed snapshot clears the source link (no more watching).
+                  await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null });
                   await invalidateRenderedAsset(relativePath);
                 }
               }
@@ -950,7 +953,8 @@ function App() {
                 const { invoke } = await import('@tauri-apps/api/core');
                 const { readFile, readTextFile } = await import('@tauri-apps/plugin-fs');
                 const bytes = await readFile(fullPath);
-                await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html' });
+                // Demo HTML — not file-watched in v1.
+                await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html', externalPath: null, externalMtime: null });
 
                 // Check if this is a demo-piece demo
                 const html = await readTextFile(fullPath);

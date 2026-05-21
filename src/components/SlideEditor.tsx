@@ -84,7 +84,9 @@ export function SlideEditor() {
 
       try {
         const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: pickedMime });
+        // Paste: no source-on-disk path; pass null for externalPath so the
+        // asset isn't watched (clipboard contents have no file to watch).
+        await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: pickedMime, externalPath: null, externalMtime: null });
       } catch (e) {
         console.error('Failed to store pasted image:', e);
       }
@@ -246,7 +248,11 @@ export function SlideEditor() {
                   const mime = ext === 'svg' ? 'image/svg+xml'
                     : ext === 'pdf' ? 'application/pdf'
                     : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-                  await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime });
+                  // Drag-drop: relativePath IS the path-to-source-file from
+                  // the .eigendeck dir. Store it as externalPath so the
+                  // file-watcher can re-resolve to absolute at runtime and
+                  // notice when the source file changes on disk.
+                  await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime, externalPath: relativePath, externalMtime: null });
                   const kind = detectAssetKind(name, mime);
                   store.addElement({
                     id: crypto.randomUUID(), type: 'image',
@@ -258,7 +264,11 @@ export function SlideEditor() {
                     // We have the original full path — handler can offer to embed.
                     const updated = await handleSvgExternalRefs(bytes, name, fullPath);
                     if (updated) {
-                      await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime });
+                      // Embed snapshot intentionally breaks the source link
+                      // (matches the dialog wording — "no longer references
+                      // the source files"). Clearing externalPath stops the
+                      // file watcher.
+                      await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null });
                       await invalidateRenderedAsset(relativePath);
                     }
                   }
@@ -269,7 +279,8 @@ export function SlideEditor() {
                   const { readFile, readTextFile } = await import('@tauri-apps/plugin-fs');
                   const relativePath = relPath(store.projectPath, fullPath);
                   const bytes = await readFile(fullPath);
-                  await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html' });
+                  // Demo HTML — not file-watched in v1.
+                  await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html', externalPath: null, externalMtime: null });
 
                   // Detect demo-piece demos
                   const html = await readTextFile(fullPath);
