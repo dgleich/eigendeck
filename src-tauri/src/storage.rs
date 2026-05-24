@@ -69,16 +69,32 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
             PRIMARY KEY (slide_id, element_id, valid_from)
         );
 
+        -- Assets are temporal: PK is (asset_id, valid_from). asset_id is a
+        -- stable UUID assigned at first insert; path is a non-unique LABEL
+        -- (two assets CAN share a path — e.g. user takes two macOS
+        -- screenshots both named screenshot.png). db_store_asset is
+        -- transactional close-old + insert-new with SHA-256 hash dedup
+        -- (no-op when bytes don't actually differ). External-link fields
+        -- (external_path, external_mtime, auto_reload) describe the
+        -- source file on disk the file-watcher refreshes from; auto_reload
+        -- is an enum string ('on'/'off'/'default'='follow global pref').
         CREATE TABLE IF NOT EXISTS assets (
-            path TEXT PRIMARY KEY,
+            asset_id TEXT NOT NULL,
             data BLOB NOT NULL,
             mime_type TEXT,
             size INTEGER,
             hash TEXT,
-            created_at TEXT,
+            path TEXT,
             external_path TEXT,
-            external_mtime TEXT
+            external_mtime TEXT,
+            auto_reload TEXT,
+            created_at TEXT,
+            valid_from TEXT NOT NULL,
+            valid_to TEXT,
+            PRIMARY KEY (asset_id, valid_from)
         );
+        CREATE INDEX IF NOT EXISTS idx_assets_current ON assets(asset_id) WHERE valid_to IS NULL;
+        CREATE INDEX IF NOT EXISTS idx_assets_path ON assets(path) WHERE valid_to IS NULL;
 
         -- Cached MathJax SVG renders. Not part of the temporal model
         -- (no valid_from/valid_to) — purely a derived-output cache.
@@ -143,6 +159,52 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE slides DROP COLUMN layout", []);
     }
 
+    // Migration: pre-temporal-assets schemas had assets PK = path with no
+    // valid_from/valid_to/asset_id columns. SQLite can't ALTER PK in
+    // place, so rename + recreate + INSERT...SELECT. Each existing row
+    // becomes one current version of a new asset_id (UUID-shaped from
+    // SQLite's randomblob).
+    let assets_temporal: bool = conn
+        .prepare("SELECT 1 FROM pragma_table_info('assets') WHERE name='asset_id'")
+        .and_then(|mut stmt| stmt.exists([]))
+        .unwrap_or(false);
+    if !assets_temporal {
+        // Only run if the old-shape `assets` table actually has rows-or-table.
+        let old_exists: bool = conn
+            .prepare("SELECT 1 FROM pragma_table_info('assets') WHERE name='path'")
+            .and_then(|mut stmt| stmt.exists([]))
+            .unwrap_or(false);
+        if old_exists {
+            conn.execute_batch(
+                "BEGIN;
+                 ALTER TABLE assets RENAME TO assets_legacy;
+                 CREATE TABLE assets (
+                     asset_id TEXT NOT NULL,
+                     data BLOB NOT NULL,
+                     mime_type TEXT,
+                     size INTEGER,
+                     hash TEXT,
+                     path TEXT,
+                     external_path TEXT,
+                     external_mtime TEXT,
+                     auto_reload TEXT,
+                     created_at TEXT,
+                     valid_from TEXT NOT NULL,
+                     valid_to TEXT,
+                     PRIMARY KEY (asset_id, valid_from)
+                 );
+                 INSERT INTO assets (asset_id, data, mime_type, size, hash, path, external_path, external_mtime, auto_reload, created_at, valid_from, valid_to)
+                     SELECT lower(hex(randomblob(16))), data, mime_type, size, hash, path, external_path, external_mtime, NULL, created_at,
+                            COALESCE(created_at, strftime('%Y-%m-%dT%H:%M:%fZ','now')), NULL
+                     FROM assets_legacy;
+                 DROP TABLE assets_legacy;
+                 CREATE INDEX IF NOT EXISTS idx_assets_current ON assets(asset_id) WHERE valid_to IS NULL;
+                 CREATE INDEX IF NOT EXISTS idx_assets_path ON assets(path) WHERE valid_to IS NULL;
+                 COMMIT;"
+            )?;
+        }
+    }
+
     // Set schema version
     conn.execute(
         "INSERT OR REPLACE INTO _meta VALUES ('schema_version', ?1)",
@@ -179,6 +241,9 @@ pub fn open_memory_db() -> SqlResult<()> {
 pub fn save_to_file(path: &str) -> SqlResult<()> {
     let mut db = DB.lock().unwrap();
     let src = db.as_ref().ok_or(rusqlite::Error::InvalidQuery)?;
+    // Flush the lazily-generated project_id into _meta before backing up
+    // so the saved file has the same id this session has been using.
+    persist_pending_project_id(src)?;
     {
         let mut dest = Connection::open(path)?;
         let backup = rusqlite::backup::Backup::new(src, &mut dest)?;
@@ -201,6 +266,9 @@ pub fn close_db() -> SqlResult<()> {
         let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
         // Connection drops and closes here
     }
+    // Drop any session-only pending project_id so the next db_open gets a
+    // fresh id if its file has none.
+    *PENDING_PROJECT_ID.lock().unwrap() = None;
     Ok(())
 }
 
@@ -290,6 +358,76 @@ where
     f(conn).map_err(|e| e.to_string())
 }
 
+/// SHA-256 of bytes as lowercase hex. Used for asset content dedup
+/// (db_store_asset skips inserting a new version when the new bytes
+/// hash equals the current row's stored hash).
+fn sha256_hex(data: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(data);
+    let mut out = String::with_capacity(64);
+    for b in digest { out.push_str(&format!("{:02x}", b)); }
+    out
+}
+
+// ============================================================================
+// Project ID — stable identifier in _meta. Generated lazily: in-memory at
+// db_open if the file has none; persisted to _meta only on save. Survives
+// renames; changes on Save As (db_save_as_to_file generates fresh).
+// Used as the WatcherRegistry key on the frontend so registries are robust
+// across path changes.
+// ============================================================================
+
+static PENDING_PROJECT_ID: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
+
+/// Read the persisted project_id from _meta, or generate + park in memory.
+/// Called by db_get_project_id (and by save paths to know what to persist).
+fn read_or_generate_project_id(conn: &Connection) -> SqlResult<String> {
+    let existing: rusqlite::Result<String> = conn.query_row(
+        "SELECT value FROM _meta WHERE key = 'project_id'",
+        [],
+        |row| row.get(0),
+    );
+    match existing {
+        Ok(id) => {
+            // Already persisted; clear any stale pending value
+            *PENDING_PROJECT_ID.lock().unwrap() = None;
+            Ok(id)
+        }
+        Err(rusqlite::Error::QueryReturnedNoRows) => {
+            // Either reuse the pending value (so repeated calls during a
+            // session see the same id) or generate fresh.
+            let mut pending = PENDING_PROJECT_ID.lock().unwrap();
+            if let Some(id) = pending.as_ref() {
+                Ok(id.clone())
+            } else {
+                let id = uuid::Uuid::new_v4().to_string();
+                *pending = Some(id.clone());
+                Ok(id)
+            }
+        }
+        Err(e) => Err(e),
+    }
+}
+
+/// On save, write the pending project_id into _meta if one was generated
+/// in this session. Idempotent: no-op if _meta already has project_id.
+fn persist_pending_project_id(conn: &Connection) -> SqlResult<()> {
+    let pending = PENDING_PROJECT_ID.lock().unwrap().clone();
+    if let Some(id) = pending {
+        let already_persisted: bool = conn
+            .query_row("SELECT 1 FROM _meta WHERE key = 'project_id'", [], |_| Ok(()))
+            .is_ok();
+        if !already_persisted {
+            conn.execute(
+                "INSERT INTO _meta (key, value) VALUES ('project_id', ?1)",
+                params![&id],
+            )?;
+            *PENDING_PROJECT_ID.lock().unwrap() = None;
+        }
+    }
+    Ok(())
+}
+
 // ============================================================================
 // Tauri commands
 // ============================================================================
@@ -310,6 +448,35 @@ pub fn db_open_memory() -> Result<(), String> {
 #[tauri::command]
 pub fn db_save_to_file(path: String) -> Result<(), String> {
     save_to_file(&path).map_err(|e| e.to_string())
+}
+
+/// Save the current DB to a new file as a FORK: the saved file gets a
+/// fresh project_id (the in-memory DB also takes that fresh id, so the
+/// app's running session continues as the new project). Caller chooses
+/// whether to keep editing the new file or reopen the original.
+#[tauri::command]
+pub fn db_save_as_to_file(path: String) -> Result<String, String> {
+    let fresh_id = uuid::Uuid::new_v4().to_string();
+    with_db(|conn| {
+        conn.execute(
+            "INSERT OR REPLACE INTO _meta (key, value) VALUES ('project_id', ?1)",
+            params![&fresh_id],
+        )?;
+        Ok(())
+    })?;
+    // Clear any pending — the fresh id is now persisted in the in-memory DB
+    *PENDING_PROJECT_ID.lock().unwrap() = None;
+    save_to_file(&path).map_err(|e| e.to_string())?;
+    Ok(fresh_id)
+}
+
+/// Read the current project's stable id. If the file has none persisted,
+/// generates one (UUID v4) and parks it in memory; it'll get written to
+/// _meta on the next db_save_to_file. Survives renames (file-handle is
+/// inode-based on macOS); changes on db_save_as_to_file.
+#[tauri::command]
+pub fn db_get_project_id() -> Result<String, String> {
+    with_db(read_or_generate_project_id)
 }
 
 /// Close the current database
@@ -1278,46 +1445,121 @@ pub fn db_free_element(
 ///
 /// `external_mtime` (optional) is the source file's mtime at last load,
 /// stored alongside for staleness detection in non-watch contexts.
+/// Store an asset blob. Versioning behavior:
+///
+///   * If `asset_id` is given AND the current row at that id has the
+///     same SHA-256 as the new bytes -> no-op (dedup).
+///   * If `asset_id` is given AND hash differs -> close current
+///     (`valid_to = now`) and INSERT a new row with `valid_from = now`.
+///   * If `asset_id` is `None`, fall back to legacy path-keyed behavior:
+///     look up the current row whose `path` matches; reuse that
+///     `asset_id` if found, else generate a fresh UUID.
+///
+/// Path is a non-unique display label — two assets CAN share it (e.g.
+/// two `screenshot.png` imports the user chose to keep separate).
+/// All writes are wrapped in a transaction.
+///
+/// Returns the asset_id that was written to (whether passed-in or
+/// generated). Frontend callers should remember it on the element so
+/// subsequent reads / restores target the same identity.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub fn db_store_asset(
     path: String,
     data: Vec<u8>,
     mime_type: String,
     external_path: Option<String>,
     external_mtime: Option<String>,
-) -> Result<(), String> {
+    asset_id: Option<String>,
+    auto_reload: Option<String>,
+) -> Result<String, String> {
     with_db(|conn| {
+        let new_hash = sha256_hex(&data);
         let size = data.len() as i64;
         let now = timestamp();
-        conn.execute(
-            "INSERT OR REPLACE INTO assets VALUES (?1, ?2, ?3, ?4, NULL, ?5, ?6, ?7)",
-            params![&path, &data, &mime_type, size, &now, &external_path, &external_mtime],
+
+        // Determine asset_id: explicit > legacy-path-lookup > fresh UUID.
+        let id: String = if let Some(id) = asset_id {
+            id
+        } else {
+            let by_path: rusqlite::Result<String> = conn.query_row(
+                "SELECT asset_id FROM assets WHERE path = ?1 AND valid_to IS NULL \
+                 ORDER BY valid_from DESC LIMIT 1",
+                params![&path], |row| row.get(0),
+            );
+            match by_path {
+                Ok(id) => id,
+                Err(rusqlite::Error::QueryReturnedNoRows) => uuid::Uuid::new_v4().to_string(),
+                Err(e) => return Err(e),
+            }
+        };
+
+        // Hash dedup: if current row for this asset_id matches the new
+        // bytes, this is a no-op (covers watcher storms + redundant
+        // re-saves that don't actually change content).
+        let current_hash: rusqlite::Result<Option<String>> = conn.query_row(
+            "SELECT hash FROM assets WHERE asset_id = ?1 AND valid_to IS NULL",
+            params![&id], |row| row.get(0),
+        );
+        if let Ok(Some(h)) = current_hash {
+            if h == new_hash { return Ok(id); }
+        }
+
+        // Transactional close-old + insert-new.
+        let tx = conn.unchecked_transaction()?;
+        tx.execute(
+            "UPDATE assets SET valid_to = ?1 WHERE asset_id = ?2 AND valid_to IS NULL",
+            params![&now, &id],
         )?;
-        Ok(())
+        tx.execute(
+            "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, \
+             external_path, external_mtime, auto_reload, created_at, valid_from, valid_to) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, NULL)",
+            params![&id, &data, &mime_type, size, &new_hash, &path,
+                    &external_path, &external_mtime, &auto_reload, &now, &now],
+        )?;
+        tx.commit()?;
+        Ok(id)
     })
 }
 
-/// Read an asset BLOB
+/// Read the current bytes of an asset by its path label (legacy lookup).
+/// When two assets share the same path (allowed), returns the most
+/// recently created one. New callers should prefer `db_get_asset_by_id`.
 #[tauri::command]
 pub fn db_get_asset(path: String) -> Result<Vec<u8>, String> {
     with_db(|conn| {
-        let data: Vec<u8> = conn.query_row(
-            "SELECT data FROM assets WHERE path = ?1",
+        conn.query_row(
+            "SELECT data FROM assets WHERE path = ?1 AND valid_to IS NULL \
+             ORDER BY valid_from DESC LIMIT 1",
             params![&path],
             |row| row.get(0),
-        )?;
-        Ok(data)
+        )
+    })
+}
+
+/// Read the current bytes of a specific asset by its stable asset_id.
+#[tauri::command]
+pub fn db_get_asset_by_id(asset_id: String) -> Result<Vec<u8>, String> {
+    with_db(|conn| {
+        conn.query_row(
+            "SELECT data FROM assets WHERE asset_id = ?1 AND valid_to IS NULL",
+            params![&asset_id],
+            |row| row.get(0),
+        )
     })
 }
 
 /// Return the asset's `external_path` (source link relative to the
 /// .eigendeck dir) if present, else None. Used by the file-watcher hook
-/// to know whether/where to watch.
+/// to know whether/where to watch. Legacy path-keyed lookup; new callers
+/// should use `db_get_asset_external_path_by_id`.
 #[tauri::command]
 pub fn db_get_asset_external_path(path: String) -> Result<Option<String>, String> {
     with_db(|conn| {
         let result: rusqlite::Result<Option<String>> = conn.query_row(
-            "SELECT external_path FROM assets WHERE path = ?1",
+            "SELECT external_path FROM assets WHERE path = ?1 AND valid_to IS NULL \
+             ORDER BY valid_from DESC LIMIT 1",
             params![&path],
             |row| row.get(0),
         );
@@ -1326,6 +1568,118 @@ pub fn db_get_asset_external_path(path: String) -> Result<Option<String>, String
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
             Err(e) => Err(e),
         }
+    })
+}
+
+#[derive(serde::Serialize)]
+pub struct AssetVersion {
+    pub asset_id: String,
+    pub valid_from: String,
+    pub valid_to: Option<String>,
+    pub size: i64,
+    pub hash: Option<String>,
+    pub mime_type: Option<String>,
+    pub external_mtime: Option<String>,
+}
+
+/// Full version history for an asset_id, newest first. Used by the
+/// Properties panel to show the version timeline + Restore buttons.
+#[tauri::command]
+pub fn db_get_asset_history(asset_id: String) -> Result<Vec<AssetVersion>, String> {
+    with_db(|conn| {
+        let mut stmt = conn.prepare(
+            "SELECT asset_id, valid_from, valid_to, size, hash, mime_type, external_mtime \
+             FROM assets WHERE asset_id = ?1 ORDER BY valid_from DESC",
+        )?;
+        let rows = stmt.query_map(params![&asset_id], |row| Ok(AssetVersion {
+            asset_id: row.get(0)?,
+            valid_from: row.get(1)?,
+            valid_to: row.get(2)?,
+            size: row.get(3)?,
+            hash: row.get(4)?,
+            mime_type: row.get(5)?,
+            external_mtime: row.get(6)?,
+        }))?;
+        let mut out = Vec::new();
+        for r in rows { out.push(r?); }
+        Ok(out)
+    })
+}
+
+/// Restore an old version of an asset as the current one. Creates a new
+/// row (same asset_id) with the old bytes; closes the current. Sets
+/// auto_reload='off' on the restored version so the file watcher won't
+/// immediately overwrite the restore on the next disk-event. Transactional.
+#[tauri::command]
+pub fn db_restore_asset_version(asset_id: String, valid_from: String) -> Result<(), String> {
+    with_db(|conn| {
+        let now = timestamp();
+        let tx = conn.unchecked_transaction()?;
+        // Snapshot the target version's data + metadata.
+        let (data, mime_type, size, hash, path, external_path, external_mtime):
+            (Vec<u8>, Option<String>, i64, Option<String>, Option<String>, Option<String>, Option<String>)
+            = tx.query_row(
+                "SELECT data, mime_type, size, hash, path, external_path, external_mtime \
+                 FROM assets WHERE asset_id = ?1 AND valid_from = ?2",
+                params![&asset_id, &valid_from],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?)),
+            )?;
+        // Close any current row for this asset_id.
+        tx.execute(
+            "UPDATE assets SET valid_to = ?1 WHERE asset_id = ?2 AND valid_to IS NULL",
+            params![&now, &asset_id],
+        )?;
+        // Insert the restored version as the new current; auto_reload='off'
+        // ensures the file watcher won't trample the restore on the next
+        // disk event.
+        tx.execute(
+            "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, \
+             external_path, external_mtime, auto_reload, created_at, valid_from, valid_to) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'off', ?9, ?9, NULL)",
+            params![&asset_id, &data, &mime_type, size, &hash, &path,
+                    &external_path, &external_mtime, &now],
+        )?;
+        tx.commit()?;
+        Ok(())
+    })
+}
+
+#[derive(serde::Serialize)]
+pub struct LinkedAsset {
+    pub asset_id: String,
+    pub path: Option<String>,
+    pub external_path: String,
+    pub external_mtime: Option<String>,
+    pub auto_reload: Option<String>,
+    pub size: i64,
+    pub hash: Option<String>,
+    pub mime_type: Option<String>,
+}
+
+/// Every current asset that has a source-file link. Used by the
+/// `scanForChangedAssets` startup pass (compare disk mtime vs stored
+/// external_mtime, reload changed ones) and by the WatcherRegistry to
+/// bootstrap its watch set after a project opens.
+#[tauri::command]
+pub fn db_list_linked_assets() -> Result<Vec<LinkedAsset>, String> {
+    with_db(|conn| {
+        let mut stmt = conn.prepare(
+            "SELECT asset_id, path, external_path, external_mtime, auto_reload, size, hash, mime_type \
+             FROM assets WHERE valid_to IS NULL AND external_path IS NOT NULL",
+        )?;
+        let rows = stmt.query_map([], |row| Ok(LinkedAsset {
+            asset_id: row.get(0)?,
+            path: row.get(1)?,
+            external_path: row.get(2)?,
+            external_mtime: row.get(3)?,
+            auto_reload: row.get(4)?,
+            size: row.get(5)?,
+            hash: row.get(6)?,
+            mime_type: row.get(7)?,
+        }))?;
+        let mut out = Vec::new();
+        for r in rows { out.push(r?); }
+        Ok(out)
     })
 }
 
@@ -2517,10 +2871,40 @@ mod tests {
         setup_global_db();
 
         let data = vec![0x89, 0x50, 0x4E, 0x47]; // PNG magic bytes
-        db_store_asset("img/test.png".to_string(), data.clone(), "image/png".to_string()).unwrap();
+        let asset_id = db_store_asset(
+            "img/test.png".to_string(), data.clone(), "image/png".to_string(),
+            None, None, None, None,
+        ).unwrap();
+        assert!(!asset_id.is_empty(), "should return a generated asset_id");
 
         let retrieved = db_get_asset("img/test.png".to_string()).unwrap();
         assert_eq!(retrieved, data);
+
+        // Dedup: identical content + same asset_id should NOT create a new version.
+        let asset_id_2 = db_store_asset(
+            "img/test.png".to_string(), data.clone(), "image/png".to_string(),
+            None, None, Some(asset_id.clone()), None,
+        ).unwrap();
+        assert_eq!(asset_id, asset_id_2);
+        let history = db_get_asset_history(asset_id.clone()).unwrap();
+        assert_eq!(history.len(), 1, "no-op write shouldn't create a version");
+
+        // Real change: new bytes for same asset_id -> close-old + insert-new.
+        let new_data = vec![0x89, 0x50, 0x4E, 0x47, 0x0D];
+        db_store_asset(
+            "img/test.png".to_string(), new_data.clone(), "image/png".to_string(),
+            None, None, Some(asset_id.clone()), None,
+        ).unwrap();
+        let history = db_get_asset_history(asset_id.clone()).unwrap();
+        assert_eq!(history.len(), 2, "real change should append a version");
+        assert!(history[0].valid_to.is_none(), "newest version is current");
+        assert!(history[1].valid_to.is_some(), "older version is closed");
+
+        // Restore: bring the older version back as current.
+        let older_valid_from = history[1].valid_from.clone();
+        db_restore_asset_version(asset_id.clone(), older_valid_from).unwrap();
+        let restored = db_get_asset_by_id(asset_id.clone()).unwrap();
+        assert_eq!(restored, data, "restore should bring back original bytes");
 
         teardown_global_db();
     }

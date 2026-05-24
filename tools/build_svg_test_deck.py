@@ -27,11 +27,14 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
+import re
 import sqlite3
 import sys
+import urllib.parse
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone
@@ -341,17 +344,28 @@ def build_fixture_slide(name: str, category: str, svg_asset: str, png_asset: str
 
 
 def store_asset(conn: sqlite3.Connection, asset_path: str, file_bytes: bytes, mime: str) -> None:
-    """Insert a row into the `assets` table mirroring db_store_asset."""
+    """Insert a row into the temporal assets table.
+
+    Each call creates a brand-new asset_id (UUID-ish hex). For test
+    fixtures we don't dedup or version — each call is a fresh asset.
+    The slide elements reference by `path` (legacy lookup) since we
+    don't track assetId on the element side yet in this fixture builder.
+    """
+    import uuid
+    ts = now_iso()
     conn.execute(
-        "INSERT OR REPLACE INTO assets (path, data, mime_type, size, hash, created_at, external_path, external_mtime) "
-        "VALUES (?, ?, ?, ?, ?, ?, NULL, NULL)",
+        "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, "
+        "external_path, external_mtime, auto_reload, created_at, valid_from, valid_to) "
+        "VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, NULL)",
         (
-            asset_path,
+            uuid.uuid4().hex,
             file_bytes,
             mime,
             len(file_bytes),
             hashlib.sha256(file_bytes).hexdigest()[:16],
-            now_iso(),
+            asset_path,
+            ts,
+            ts,
         ),
     )
 

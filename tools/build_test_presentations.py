@@ -81,16 +81,25 @@ CREATE TABLE IF NOT EXISTS slide_elements (
     PRIMARY KEY (slide_id, element_id, valid_from)
 );
 
+-- Temporal assets table (see src-tauri/src/storage.rs for details).
+-- asset_id is the stable identity; path is a non-unique display label.
 CREATE TABLE IF NOT EXISTS assets (
-    path TEXT PRIMARY KEY,
+    asset_id TEXT NOT NULL,
     data BLOB NOT NULL,
     mime_type TEXT,
     size INTEGER,
     hash TEXT,
-    created_at TEXT,
+    path TEXT,
     external_path TEXT,
-    external_mtime TEXT
+    external_mtime TEXT,
+    auto_reload TEXT,
+    created_at TEXT,
+    valid_from TEXT NOT NULL,
+    valid_to TEXT,
+    PRIMARY KEY (asset_id, valid_from)
 );
+CREATE INDEX IF NOT EXISTS idx_assets_current ON assets(asset_id) WHERE valid_to IS NULL;
+CREATE INDEX IF NOT EXISTS idx_assets_path ON assets(path) WHERE valid_to IS NULL;
 
 CREATE TABLE IF NOT EXISTS math_cache (
     key TEXT PRIMARY KEY,
