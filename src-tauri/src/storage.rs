@@ -1651,6 +1651,23 @@ pub fn db_get_asset_history(asset_id: String) -> Result<Vec<AssetVersion>, Strin
 /// Restore an old version of an asset as the current one. Creates a new
 /// row (same asset_id) with the old bytes; closes the current. Sets
 /// auto_reload='off' on the restored version so the file watcher won't
+/// In-place flag flip on the current asset row — sets/clears auto_reload
+/// WITHOUT creating a new version (which would burn a row + force any
+/// listening hooks to re-fetch unnecessarily). `value` accepts 'on'
+/// (explicit watch), 'off' (explicit no-watch), or None (follow the
+/// global preference). Used by the Properties panel's auto-reload tri-
+/// state toggle.
+#[tauri::command]
+pub fn db_set_asset_auto_reload(asset_id: String, value: Option<String>) -> Result<(), String> {
+    with_db(|conn| {
+        conn.execute(
+            "UPDATE assets SET auto_reload = ?1 WHERE asset_id = ?2 AND valid_to IS NULL",
+            params![&value, &asset_id],
+        )?;
+        Ok(())
+    })
+}
+
 /// immediately overwrite the restore on the next disk-event. Transactional.
 #[tauri::command]
 pub fn db_restore_asset_version(asset_id: String, valid_from: String) -> Result<(), String> {

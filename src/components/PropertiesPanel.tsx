@@ -4,6 +4,7 @@ import { TEXT_PRESET_STYLES } from '../types/presentation';
 import { BUILT_IN_THEMES } from '../lib/themes';
 import { FONT_PACKAGES, type FontPackage } from '../lib/fonts';
 import type { VerticalAlign } from '../types/presentation';
+import { AssetSection } from './AssetSection';
 
 const ARROW_COLORS = [
   '#e53e3e', '#dc2626', '#ea580c', '#16a34a',
@@ -322,6 +323,9 @@ export function PropertiesPanel() {
             {/* Image element properties */}
             {selectedEl.type === 'image' && (
               <>
+                <PropSection label="Asset">
+                  <AssetSection srcPath={selectedEl.src} />
+                </PropSection>
                 <PropSection label="Effects">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
