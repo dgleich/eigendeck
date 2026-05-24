@@ -53,6 +53,42 @@ export function SlideEditor() {
       // Don't intercept paste if user is editing a text element
       if ((e.target as HTMLElement).closest('[contenteditable="true"]')) return;
 
+      // Native NSPasteboard path FIRST: WebKit's clipboardData /
+      // navigator.clipboard.read() filter out non-standard UTIs (notably
+      // com.microsoft.image-svg-xml from Office, com.adobe.pdf from
+      // Adobe apps). Going through the Rust pasteboard_* commands gets
+      // us the unfiltered list and can read the real bytes.
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const nativeTypes = await invoke<string[]>('pasteboard_list_types');
+        plog('native pasteboard UTIs:', nativeTypes);
+        // Preference: SVG > PDF > raster (mirrors the web-API picker).
+        // PDF will move ahead of SVG once pdfium renders.
+        const NATIVE_PREFER: Array<{ utis: string[]; ext: string; mime: string }> = [
+          { utis: ['public.svg-image', 'com.microsoft.image-svg-xml', 'image/svg+xml'], ext: 'svg', mime: 'image/svg+xml' },
+          { utis: ['com.adobe.pdf', 'application/pdf'], ext: 'pdf', mime: 'application/pdf' },
+          { utis: ['public.png', 'image/png'], ext: 'png', mime: 'image/png' },
+          { utis: ['public.jpeg', 'image/jpeg', 'public.jpg'], ext: 'jpg', mime: 'image/jpeg' },
+        ];
+        for (const pref of NATIVE_PREFER) {
+          for (const uti of pref.utis) {
+            if (!nativeTypes.includes(uti)) continue;
+            const bytesAsNumArray = await invoke<number[] | null>('pasteboard_read_type', { uti });
+            if (!bytesAsNumArray || bytesAsNumArray.length === 0) continue;
+            const bytes = new Uint8Array(bytesAsNumArray);
+            const fileName = `pasted-${Date.now()}.${pref.ext}`;
+            const relativePath = `images/${fileName}`;
+            plog(`native picked uti=${uti} → ${pref.mime} (${bytes.length} bytes) → ${fileName}`);
+            e.preventDefault();
+            await insertPastedAsset(relativePath, bytes, pref.mime, fileName);
+            return;
+          }
+        }
+        plog('native pasteboard had no preferred UTI; falling through to web clipboard');
+      } catch (err) {
+        plog('native pasteboard read failed (non-Mac or perm denied?):', err);
+      }
+
       const items = e.clipboardData?.items;
       if (!items) return;
 

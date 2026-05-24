@@ -5,6 +5,7 @@ use tauri::menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager};
 
 mod debug;
+mod pasteboard;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
@@ -511,6 +512,8 @@ pub fn run() {
         .manage(debug_flag)
         .invoke_handler(tauri::generate_handler![
             debug::debug_enabled,
+            pasteboard::pasteboard_list_types,
+            pasteboard::pasteboard_read_type,
             set_window_above_menubar,
             check_display_mirroring,
             disable_display_mirroring,
