@@ -1572,6 +1572,48 @@ pub fn db_get_asset_external_path(path: String) -> Result<Option<String>, String
 }
 
 #[derive(serde::Serialize)]
+pub struct AssetMeta {
+    pub asset_id: String,
+    pub path: Option<String>,
+    pub external_path: Option<String>,
+    pub external_mtime: Option<String>,
+    pub mime_type: Option<String>,
+    pub auto_reload: Option<String>,
+}
+
+/// Look up the current asset row matching a given path label. Returns
+/// every field the file-watcher needs (asset_id, external_path,
+/// external_mtime, mime, auto_reload) in one call so the hook can pass
+/// the REAL asset_id to db_store_asset on a disk event (not a fake
+/// path-derived placeholder, which would create orphan rows).
+///
+/// Returns None when no current asset matches the path.
+#[tauri::command]
+pub fn db_get_asset_meta_by_path(path: String) -> Result<Option<AssetMeta>, String> {
+    with_db(|conn| {
+        let result: rusqlite::Result<AssetMeta> = conn.query_row(
+            "SELECT asset_id, path, external_path, external_mtime, mime_type, auto_reload \
+             FROM assets WHERE path = ?1 AND valid_to IS NULL \
+             ORDER BY valid_from DESC LIMIT 1",
+            params![&path],
+            |row| Ok(AssetMeta {
+                asset_id: row.get(0)?,
+                path: row.get(1)?,
+                external_path: row.get(2)?,
+                external_mtime: row.get(3)?,
+                mime_type: row.get(4)?,
+                auto_reload: row.get(5)?,
+            }),
+        );
+        match result {
+            Ok(m) => Ok(Some(m)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e),
+        }
+    })
+}
+
+#[derive(serde::Serialize)]
 pub struct AssetVersion {
     pub asset_id: String,
     pub valid_from: String,

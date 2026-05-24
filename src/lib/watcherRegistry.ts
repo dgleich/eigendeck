@@ -21,10 +21,20 @@
 import { invoke } from '@tauri-apps/api/core';
 import { invalidateRenderedAsset } from './assetRenderer';
 
+interface SubscribedAsset {
+  /** Real stable asset_id from the assets table — what db_store_asset
+   *  needs to version the right row (NOT a path-derived placeholder). */
+  assetId: string;
+  /** Original path label stored on the asset row (e.g. "images/foo.svg") —
+   *  preserved so re-stores keep the same path metadata. */
+  path: string;
+}
+
 interface WatchEntry {
   unwatch: () => void;
-  /** asset_ids currently subscribed to this external_path */
-  assetIds: Set<string>;
+  /** Subscribed assets at this external_path. Multiple elements may
+   *  watch the same file; fan out the reload on disk-event. */
+  assets: Map<string, SubscribedAsset>;
   /** MIME type to use when re-storing the asset (cached per first subscriber) */
   mimeType: string;
 }
@@ -44,21 +54,26 @@ class WatcherRegistry {
   }
 
   /**
-   * Subscribe `assetId` to changes of `externalRelPath` (relative to the
-   * project dir). First subscriber for a path lazily registers fs.watch;
-   * subsequent subscribers just join the Set.
+   * Subscribe an asset to changes of `externalRelPath` (relative to the
+   * project dir). The (real, stable) `assetId` and the asset row's
+   * `path` are stored so the disk-event handler can call db_store_asset
+   * with the correct identity — passing a placeholder asset_id would
+   * create orphan rows.
+   *
+   * First subscriber for a path lazily registers fs.watch; subsequent
+   * subscribers just join the Map.
    */
-  async addRef(externalRelPath: string, assetId: string, mimeType: string): Promise<void> {
+  async addRef(externalRelPath: string, assetId: string, path: string, mimeType: string): Promise<void> {
     const absPath = resolvePosixPath(this.projectDir, externalRelPath);
     const existing = this.watchers.get(absPath);
     if (existing) {
-      existing.assetIds.add(assetId);
+      existing.assets.set(assetId, { assetId, path });
       return;
     }
     // First reference — start watching.
     const placeholder: WatchEntry = {
       unwatch: () => {},
-      assetIds: new Set([assetId]),
+      assets: new Map([[assetId, { assetId, path }]]),
       mimeType,
     };
     this.watchers.set(absPath, placeholder);
@@ -70,9 +85,6 @@ class WatcherRegistry {
         { delayMs: 100 },
       );
     } catch (e) {
-      // watch() failed (no permission, path doesn't exist, etc.). Leave
-      // the entry in place so future addRef calls don't keep retrying;
-      // disk changes simply won't trigger reloads for this path.
       console.warn(`[watcherRegistry] watch ${absPath} failed:`, e);
     }
   }
@@ -81,48 +93,43 @@ class WatcherRegistry {
     const absPath = resolvePosixPath(this.projectDir, externalRelPath);
     const entry = this.watchers.get(absPath);
     if (!entry) return;
-    entry.assetIds.delete(assetId);
-    if (entry.assetIds.size === 0) {
+    entry.assets.delete(assetId);
+    if (entry.assets.size === 0) {
       try { entry.unwatch(); } catch { /* ignore */ }
       this.watchers.delete(absPath);
     }
   }
 
   /**
-   * Disk event for `absPath`: re-read once, fan out to all subscribed
-   * asset_ids. db_store_asset hashes and dedup-skips if bytes haven't
+   * Disk event for `absPath`: re-read once, fan out to every subscribed
+   * asset. db_store_asset hashes and dedup-skips if bytes haven't
    * actually changed.
    */
   private async handleChange(absPath: string, externalRelPath: string): Promise<void> {
     const entry = this.watchers.get(absPath);
-    if (!entry || entry.assetIds.size === 0) return;
-    let bytes: Uint8Array;
+    if (!entry || entry.assets.size === 0) return;
     try {
       const { readFile, stat } = await import('@tauri-apps/plugin-fs');
-      bytes = await readFile(absPath);
-      // Capture mtime for staleness detection on the asset row.
+      const bytes = await readFile(absPath);
       const st = await stat(absPath).catch(() => null);
       const mtime = st?.mtime ? st.mtime.toISOString() : null;
-      for (const assetId of entry.assetIds) {
+      for (const { assetId, path } of entry.assets.values()) {
         try {
           await invoke('db_store_asset', {
-            path: absPath.split('/').pop() ?? assetId,
+            path,                           // ORIGINAL path label on the asset row
             data: Array.from(bytes),
             mimeType: entry.mimeType,
             externalPath: externalRelPath,
             externalMtime: mtime,
-            assetId,
+            assetId,                        // REAL stable asset_id
             autoReload: null,
           });
-          await invalidateRenderedAsset(assetId);
+          await invalidateRenderedAsset(path); // sidebar/editor look up by path label
         } catch (e) {
           console.warn(`[watcherRegistry] reload ${assetId} failed:`, e);
         }
       }
     } catch (e) {
-      // Source file deleted / moved / mid-atomic-rename. Ignore;
-      // a subsequent event will retry (or the user notices in the
-      // Properties panel via the source-missing flag).
       console.warn(`[watcherRegistry] read ${absPath} failed:`, e);
     }
   }

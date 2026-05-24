@@ -14,6 +14,15 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { getWatcherRegistry, dirname } from './watcherRegistry';
 
+interface AssetMeta {
+  asset_id: string;
+  path: string | null;
+  external_path: string | null;
+  external_mtime: string | null;
+  mime_type: string | null;
+  auto_reload: string | null;
+}
+
 /**
  * Watch the source file behind an asset (if any) and auto-reload the
  * stored bytes when it changes on disk. No-op when:
@@ -21,12 +30,11 @@ import { getWatcherRegistry, dirname } from './watcherRegistry';
  *     embedded as snapshot, or restored from history with auto_reload='off')
  *   - the presentation isn't saved yet (no project dir to resolve against)
  *
- * Idempotent across re-mounts; safely unwatches on unmount or input change.
+ * Looks up the asset's real asset_id by path label (the element's `src`)
+ * so disk-event writes target the correct row instead of orphaning into
+ * a new asset.
  *
- * NOTE: takes `assetPath` (the path label) as the lookup key for backward
- * compatibility with existing element data. The lookup
- * db_get_asset_external_path uses path; for new code paths that already
- * know the asset_id, prefer using the registry directly.
+ * Idempotent across re-mounts; safely unwatches on unmount or input change.
  */
 export function useAssetFileWatcher(assetPath: string | undefined, mimeType: string): void {
   const projectPath = usePresentationStore((s) => s.projectPath);
@@ -45,34 +53,31 @@ export function useAssetFileWatcher(assetPath: string | undefined, mimeType: str
   useEffect(() => {
     if (!assetPath || !projectPath || !projectId) return;
     let cancelled = false;
-    let registeredPath: string | null = null;
+    let registeredExternalRel: string | null = null;
     let registeredAssetId: string | null = null;
 
     (async () => {
-      // Look up the asset's external_path (relative to project dir).
-      const externalRel = await invoke<string | null>('db_get_asset_external_path', {
+      // One call returns asset_id + external_path + external_mtime + mime + auto_reload.
+      const meta = await invoke<AssetMeta | null>('db_get_asset_meta_by_path', {
         path: assetPath,
       }).catch(() => null);
-      if (!externalRel || cancelled) return;
+      if (!meta || cancelled) return;
+      if (meta.auto_reload === 'off') return;            // per-asset opt-out
+      if (!meta.external_path) return;                    // no source file to watch
 
-      // For correctness with the new registry's per-asset_id fan-out we'd
-      // want the asset_id; but the existing element data only carries
-      // path. Use path itself as the subscription key — db_store_asset
-      // will resolve to the right asset_id via its legacy path lookup.
-      // Once ImageElement.assetId lands (next commit) this can switch
-      // to the real id directly.
-      const subscriptionKey = `path:${assetPath}`;
       const registry = getWatcherRegistry(projectId, dirname(projectPath));
-      await registry.addRef(externalRel, subscriptionKey, mimeType);
-      registeredPath = externalRel;
-      registeredAssetId = subscriptionKey;
+      const origPath = meta.path ?? assetPath;
+      const effectiveMime = meta.mime_type ?? mimeType;
+      await registry.addRef(meta.external_path, meta.asset_id, origPath, effectiveMime);
+      registeredExternalRel = meta.external_path;
+      registeredAssetId = meta.asset_id;
     })();
 
     return () => {
       cancelled = true;
-      if (registeredPath && registeredAssetId && projectId) {
+      if (registeredExternalRel && registeredAssetId && projectId) {
         const registry = getWatcherRegistry(projectId, dirname(projectPath));
-        registry.removeRef(registeredPath, registeredAssetId);
+        registry.removeRef(registeredExternalRel, registeredAssetId);
       }
     };
   }, [assetPath, mimeType, projectPath, projectId]);
