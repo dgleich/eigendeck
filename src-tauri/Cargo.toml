@@ -33,7 +33,7 @@ rusqlite = { version = "0.33", features = ["bundled", "backup"] }
 uuid = { version = "1", features = ["v4"] }
 sha2 = "0.10"
 tauri-plugin-dialog = "2.6.0"
-tauri-plugin-fs = "2.4.5"
+tauri-plugin-fs = { version = "2.4.5", features = ["watch"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = "0.24"
