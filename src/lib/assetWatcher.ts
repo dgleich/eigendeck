@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { getWatcherRegistry, dirname } from './watcherRegistry';
+import { effectiveAutoReload, usePreference } from './preferences';
 
 // Logs surface in the Debug Console (View menu intercepts console.log).
 const HOOK_LOG = true;
@@ -45,6 +46,8 @@ interface AssetMeta {
 export function useAssetFileWatcher(assetPath: string | undefined, mimeType: string): void {
   const projectPath = usePresentationStore((s) => s.projectPath);
   const [projectId, setProjectId] = useState<string | null>(null);
+  // Global default; per-asset auto_reload overrides via effectiveAutoReload.
+  const [globalAutoReload] = usePreference('autoReloadAssets');
 
   // Fetch project_id once the project is loaded.
   useEffect(() => {
@@ -75,8 +78,9 @@ export function useAssetFileWatcher(assetPath: string | undefined, mimeType: str
         return;
       }
       hlog(`meta for "${assetPath}": asset_id=${meta.asset_id.slice(0, 8)} external_path=${meta.external_path} mtime=${meta.external_mtime} auto_reload=${meta.auto_reload}`);
-      if (meta.auto_reload === 'off') {
-        hlog(`skip — auto_reload=off for "${assetPath}"`);
+      const effective = effectiveAutoReload(meta.auto_reload, globalAutoReload);
+      if (!effective) {
+        hlog(`skip — auto_reload resolves to OFF (per-asset='${meta.auto_reload ?? 'default'}', global=${globalAutoReload})`);
         return;
       }
       if (!meta.external_path) {
@@ -99,5 +103,5 @@ export function useAssetFileWatcher(assetPath: string | undefined, mimeType: str
         registry.removeRef(registeredExternalRel, registeredAssetId);
       }
     };
-  }, [assetPath, mimeType, projectPath, projectId]);
+  }, [assetPath, mimeType, projectPath, projectId, globalAutoReload]);
 }

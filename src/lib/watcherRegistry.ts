@@ -20,6 +20,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { invalidateRenderedAsset } from './assetRenderer';
+import { effectiveAutoReload, getPreference } from './preferences';
 
 // Verbose logging surfaces in the in-app Debug Console (View menu)
 // because console.log is intercepted there. Prefix `[watcher]` so the
@@ -253,11 +254,15 @@ interface LinkedAssetRow {
 export async function scanForChangedAssets(projectDir: string): Promise<{ checked: number; reloaded: number }> {
   let reloaded = 0;
   const linked = await invoke<LinkedAssetRow[]>('db_list_linked_assets').catch(() => [] as LinkedAssetRow[]);
-  wlog(`scanForChangedAssets: ${linked.length} linked asset(s) in this project`);
+  const globalDefault = getPreference('autoReloadAssets');
+  wlog(`scanForChangedAssets: ${linked.length} linked asset(s), globalAutoReload=${globalDefault}`);
   if (linked.length === 0) return { checked: 0, reloaded: 0 };
   const { stat, readFile } = await import('@tauri-apps/plugin-fs');
   for (const a of linked) {
-    if (a.auto_reload === 'off') { wlog(`  skip ${a.asset_id.slice(0, 8)} — auto_reload=off`); continue; }
+    if (!effectiveAutoReload(a.auto_reload, globalDefault)) {
+      wlog(`  skip ${a.asset_id.slice(0, 8)} — auto_reload resolves to OFF (per-asset='${a.auto_reload ?? 'default'}')`);
+      continue;
+    }
     const absPath = resolvePosixPath(projectDir, a.external_path);
     try {
       const st = await stat(absPath);
