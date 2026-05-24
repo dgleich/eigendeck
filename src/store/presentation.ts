@@ -683,7 +683,8 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
   try {
     const { invoke } = await import('@tauri-apps/api/core');
 
-    // Close previous project cleanly (flush pending writes, checkpoint WAL)
+    // Close previous project cleanly (flush pending writes, checkpoint WAL,
+    // tear down its file watchers).
     if (sqliteDbPath) {
       await closeSqliteProject();
     }
@@ -733,18 +734,41 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     // re-render through the iframe pool on first slide paint.
     const { warmMathCacheFromSqlite } = await import('../lib/mathjaxRenderer');
     void warmMathCacheFromSqlite();
+
+    // Scan linked assets for disk changes that happened while the file
+    // was closed; reload any whose mtime moved. Async + non-blocking —
+    // sidebar refreshes via invalidateRenderedAsset as each one completes.
+    void (async () => {
+      try {
+        const { scanForChangedAssets, dirname } = await import('../lib/watcherRegistry');
+        const r = await scanForChangedAssets(dirname(dbPath));
+        if (r.reloaded > 0) {
+          console.log(`[openProject] scan-on-load: reloaded ${r.reloaded}/${r.checked} linked assets`);
+        }
+      } catch (e) {
+        console.warn('[openProject] scan-on-load failed:', e);
+      }
+    })();
   } catch (e) {
     console.error('Failed to open SQLite project:', e);
     throw e;
   }
 }
 
-/** Close the SQLite DB, checkpointing WAL */
+/** Close the SQLite DB, checkpointing WAL + tearing down file watchers. */
 export async function closeSqliteProject(): Promise<void> {
   if (!sqliteDbPath) return;
   try {
     await flushToSqlite();
     const { invoke } = await import('@tauri-apps/api/core');
+    // Tear down the watcher registry for the closing project. project_id
+    // is the registry key; read it before db_close clears the handle.
+    let projectId: string | null = null;
+    try { projectId = await invoke<string>('db_get_project_id'); } catch { /* ignore */ }
+    if (projectId) {
+      const { closeWatcherRegistry } = await import('../lib/watcherRegistry');
+      closeWatcherRegistry(projectId);
+    }
     await invoke('db_close');
     sqliteDbPath = null;
   } catch (e) {
