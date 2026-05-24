@@ -64,46 +64,60 @@ export function SlideEditor() {
       const syncMimes = itemList.map((it) => `${it.kind}:${it.type}`);
       plog('sync clipboard items:', syncMimes);
 
-      // macOS clipboard often exposes the same content in several formats
-      // (e.g. copying from Illustrator yields application/pdf + image/svg+xml
-      // + image/png in one paste). Prefer the highest-fidelity vector form
-      // we can store; only fall through to raster as a last resort.
-      const PREFERRED_MIMES = [
-        'application/pdf',
-        'image/svg+xml',
-        'image/png',
-        'image/jpeg',
-        'image/gif',
-        'image/webp',
-      ] as const;
+      // Each format may appear on the clipboard under several aliases:
+      // standard MIME, Apple UTI (public.*), or vendor-specific UTI
+      // (com.microsoft.image-svg-xml, com.adobe.pdf). We try them all
+      // and normalize to a canonical mime + extension for storage so the
+      // saved asset is identifiable regardless of which UTI the source
+      // app used.
+      //
+      // Priority order: SVG > PDF > raster. PDF would be higher fidelity
+      // in principle but it can't render until the pdfium path lands, so
+      // for now SVG wins when both are present (typical Office pastes).
+      // Flip SVG and PDF here once PDF display works.
+      type Format = { aliases: readonly string[]; ext: string; canonicalMime: string };
+      const PREFERRED_FORMATS: readonly Format[] = [
+        { aliases: ['image/svg+xml', 'public.svg-image', 'com.microsoft.image-svg-xml'], ext: 'svg', canonicalMime: 'image/svg+xml' },
+        { aliases: ['application/pdf', 'com.adobe.pdf'], ext: 'pdf', canonicalMime: 'application/pdf' },
+        { aliases: ['image/png', 'public.png'], ext: 'png', canonicalMime: 'image/png' },
+        { aliases: ['image/jpeg', 'public.jpeg', 'public.jpg'], ext: 'jpg', canonicalMime: 'image/jpeg' },
+        { aliases: ['image/gif', 'com.compuserve.gif'], ext: 'gif', canonicalMime: 'image/gif' },
+        { aliases: ['image/webp', 'org.webmproject.webp'], ext: 'webp', canonicalMime: 'image/webp' },
+      ];
       let picked: DataTransferItem | null = null;
-      let pickedMime: string | null = null;
-      for (const mime of PREFERRED_MIMES) {
-        const found = itemList.find((it) => it.type === mime);
-        if (found) { picked = found; pickedMime = mime; break; }
+      let pickedFormat: Format | null = null;
+      let pickedAlias: string | null = null;
+      outer: for (const format of PREFERRED_FORMATS) {
+        for (const alias of format.aliases) {
+          const found = itemList.find((it) => it.type === alias);
+          if (found) { picked = found; pickedFormat = format; pickedAlias = alias; break outer; }
+        }
       }
 
       // Fallback: try the async Clipboard API too — on macOS it sometimes
-      // exposes formats the sync API doesn't (e.g. SVG when the sync API
-      // only showed PNG). Only fire if we didn't already find SVG/PDF.
-      if ((!pickedMime || (pickedMime !== 'application/pdf' && pickedMime !== 'image/svg+xml'))
-          && typeof navigator !== 'undefined' && navigator.clipboard?.read) {
+      // exposes formats the sync API doesn't. Only fire if we didn't
+      // already find a vector format from the sync API.
+      const haveVector = pickedFormat
+        && (pickedFormat.canonicalMime === 'application/pdf' || pickedFormat.canonicalMime === 'image/svg+xml');
+      if (!haveVector && typeof navigator !== 'undefined' && navigator.clipboard?.read) {
         try {
           const items2 = await navigator.clipboard.read();
           const asyncMimes = items2.flatMap((it) => it.types);
           plog('async clipboard types:', asyncMimes);
-          // Prefer SVG/PDF from the async API over a raster from the sync one.
-          for (const mime of ['application/pdf', 'image/svg+xml'] as const) {
-            for (const item of items2) {
-              if (item.types.includes(mime)) {
-                const b = await item.getType(mime);
-                const bytes = new Uint8Array(await b.arrayBuffer());
-                const ext = mime === 'image/svg+xml' ? 'svg' : 'pdf';
-                const fileName = `pasted-${Date.now()}.${ext}`;
-                const relativePath = `images/${fileName}`;
-                plog(`async picked ${mime} (${bytes.length} bytes) → ${fileName}`);
-                await insertPastedAsset(relativePath, bytes, mime, fileName);
-                return;
+          // Walk the PREFERRED_FORMATS in priority order; first vector hit wins.
+          for (const format of PREFERRED_FORMATS.filter((f) => f.canonicalMime === 'application/pdf' || f.canonicalMime === 'image/svg+xml')) {
+            for (const alias of format.aliases) {
+              for (const item of items2) {
+                if (item.types.includes(alias)) {
+                  const b = await item.getType(alias);
+                  const bytes = new Uint8Array(await b.arrayBuffer());
+                  const fileName = `pasted-${Date.now()}.${format.ext}`;
+                  const relativePath = `images/${fileName}`;
+                  plog(`async picked alias=${alias} → ${format.canonicalMime} (${bytes.length} bytes) → ${fileName}`);
+                  e.preventDefault();
+                  await insertPastedAsset(relativePath, bytes, format.canonicalMime, fileName);
+                  return;
+                }
               }
             }
           }
@@ -112,19 +126,16 @@ export function SlideEditor() {
         }
       }
 
-      if (!picked || !pickedMime) { plog('nothing pasteable in clipboard'); return; }
+      if (!picked || !pickedFormat) { plog('nothing pasteable in clipboard'); return; }
       e.preventDefault();
       const blob = picked.getAsFile();
-      if (!blob) { plog('getAsFile() returned null for', pickedMime); return; }
+      if (!blob) { plog('getAsFile() returned null for alias', pickedAlias); return; }
 
-      const ext = pickedMime === 'image/svg+xml' ? 'svg'
-        : pickedMime === 'application/pdf' ? 'pdf'
-        : (pickedMime.split('/')[1] || 'png');
-      const fileName = `pasted-${Date.now()}.${ext}`;
+      const fileName = `pasted-${Date.now()}.${pickedFormat.ext}`;
       const relativePath = `images/${fileName}`;
       const bytes = new Uint8Array(await blob.arrayBuffer());
-      plog(`sync picked ${pickedMime} (${bytes.length} bytes) → ${fileName}`);
-      await insertPastedAsset(relativePath, bytes, pickedMime, fileName);
+      plog(`sync picked alias=${pickedAlias} → ${pickedFormat.canonicalMime} (${bytes.length} bytes) → ${fileName}`);
+      await insertPastedAsset(relativePath, bytes, pickedFormat.canonicalMime, fileName);
     };
 
     /** Shared between sync + async paste paths. */
