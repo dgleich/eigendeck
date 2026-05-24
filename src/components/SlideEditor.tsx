@@ -44,12 +44,25 @@ export function SlideEditor() {
 
   // Cmd+V image paste
   useEffect(() => {
+    const PASTE_LOG = true;
+    const plog = (...a: unknown[]): void => {
+      if (PASTE_LOG) console.log(`[paste ${new Date().toISOString().slice(11, 23)}]`, ...a);
+    };
+
     const handlePaste = async (e: ClipboardEvent) => {
       // Don't intercept paste if user is editing a text element
       if ((e.target as HTMLElement).closest('[contenteditable="true"]')) return;
 
       const items = e.clipboardData?.items;
       if (!items) return;
+
+      // Log every MIME the sync DataTransfer API offered so we can diagnose
+      // "I pasted an SVG but it came out PNG" — most apps only put the
+      // rasterized form on the clipboard; the vector source might exist
+      // elsewhere (text/plain XML, system-specific UTI) or not at all.
+      const itemList = Array.from(items);
+      const syncMimes = itemList.map((it) => `${it.kind}:${it.type}`);
+      plog('sync clipboard items:', syncMimes);
 
       // macOS clipboard often exposes the same content in several formats
       // (e.g. copying from Illustrator yields application/pdf + image/svg+xml
@@ -63,17 +76,46 @@ export function SlideEditor() {
         'image/gif',
         'image/webp',
       ] as const;
-      const itemList = Array.from(items);
       let picked: DataTransferItem | null = null;
       let pickedMime: string | null = null;
       for (const mime of PREFERRED_MIMES) {
         const found = itemList.find((it) => it.type === mime);
         if (found) { picked = found; pickedMime = mime; break; }
       }
-      if (!picked || !pickedMime) return;
+
+      // Fallback: try the async Clipboard API too — on macOS it sometimes
+      // exposes formats the sync API doesn't (e.g. SVG when the sync API
+      // only showed PNG). Only fire if we didn't already find SVG/PDF.
+      if ((!pickedMime || (pickedMime !== 'application/pdf' && pickedMime !== 'image/svg+xml'))
+          && typeof navigator !== 'undefined' && navigator.clipboard?.read) {
+        try {
+          const items2 = await navigator.clipboard.read();
+          const asyncMimes = items2.flatMap((it) => it.types);
+          plog('async clipboard types:', asyncMimes);
+          // Prefer SVG/PDF from the async API over a raster from the sync one.
+          for (const mime of ['application/pdf', 'image/svg+xml'] as const) {
+            for (const item of items2) {
+              if (item.types.includes(mime)) {
+                const b = await item.getType(mime);
+                const bytes = new Uint8Array(await b.arrayBuffer());
+                const ext = mime === 'image/svg+xml' ? 'svg' : 'pdf';
+                const fileName = `pasted-${Date.now()}.${ext}`;
+                const relativePath = `images/${fileName}`;
+                plog(`async picked ${mime} (${bytes.length} bytes) → ${fileName}`);
+                await insertPastedAsset(relativePath, bytes, mime, fileName);
+                return;
+              }
+            }
+          }
+        } catch (err) {
+          plog('async clipboard read failed:', err);
+        }
+      }
+
+      if (!picked || !pickedMime) { plog('nothing pasteable in clipboard'); return; }
       e.preventDefault();
       const blob = picked.getAsFile();
-      if (!blob) return;
+      if (!blob) { plog('getAsFile() returned null for', pickedMime); return; }
 
       const ext = pickedMime === 'image/svg+xml' ? 'svg'
         : pickedMime === 'application/pdf' ? 'pdf'
@@ -81,16 +123,23 @@ export function SlideEditor() {
       const fileName = `pasted-${Date.now()}.${ext}`;
       const relativePath = `images/${fileName}`;
       const bytes = new Uint8Array(await blob.arrayBuffer());
+      plog(`sync picked ${pickedMime} (${bytes.length} bytes) → ${fileName}`);
+      await insertPastedAsset(relativePath, bytes, pickedMime, fileName);
+    };
 
+    /** Shared between sync + async paste paths. */
+    const insertPastedAsset = async (
+      relativePath: string, bytes: Uint8Array, mime: string, fileName: string,
+    ): Promise<void> => {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         // Paste: no source-on-disk path; pass null for externalPath so the
         // asset isn't watched (clipboard contents have no file to watch).
-        await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: pickedMime, externalPath: null, externalMtime: null });
+        await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime, externalPath: null, externalMtime: null });
       } catch (e) {
         console.error('Failed to store pasted image:', e);
       }
-      const kind = detectAssetKind(fileName, pickedMime);
+      const kind = detectAssetKind(fileName, mime);
       addElement({
         id: crypto.randomUUID(), type: 'image',
         src: relativePath,
