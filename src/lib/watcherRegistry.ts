@@ -21,6 +21,15 @@
 import { invoke } from '@tauri-apps/api/core';
 import { invalidateRenderedAsset } from './assetRenderer';
 
+// Verbose logging surfaces in the in-app Debug Console (View menu)
+// because console.log is intercepted there. Prefix `[watcher]` so the
+// user can filter or scroll for them. Kept on by default while the
+// watcher's behavior is being debugged; flip the const to disable.
+const WATCHER_LOG = true;
+const wlog = (...a: unknown[]): void => {
+  if (WATCHER_LOG) console.log(`[watcher ${new Date().toISOString().slice(11, 23)}]`, ...a);
+};
+
 interface SubscribedAsset {
   /** Real stable asset_id from the assets table — what db_store_asset
    *  needs to version the right row (NOT a path-derived placeholder). */
@@ -68,9 +77,11 @@ class WatcherRegistry {
     const existing = this.watchers.get(absPath);
     if (existing) {
       existing.assets.set(assetId, { assetId, path });
+      wlog(`addRef join  asset=${assetId.slice(0, 8)} path="${path}" abs="${absPath}" (now ${existing.assets.size} subscribers)`);
       return;
     }
     // First reference — start watching.
+    wlog(`addRef new   asset=${assetId.slice(0, 8)} path="${path}" abs="${absPath}" — registering fs.watch...`);
     const placeholder: WatchEntry = {
       unwatch: () => {},
       assets: new Map([[assetId, { assetId, path }]]),
@@ -81,11 +92,12 @@ class WatcherRegistry {
       const { watch } = await import('@tauri-apps/plugin-fs');
       placeholder.unwatch = await watch(
         absPath,
-        () => { void this.handleChange(absPath, externalRelPath); },
+        () => { wlog(`fs.watch FIRED for "${absPath}"`); void this.handleChange(absPath, externalRelPath); },
         { delayMs: 100 },
       );
+      wlog(`fs.watch REGISTERED for "${absPath}"`);
     } catch (e) {
-      console.warn(`[watcherRegistry] watch ${absPath} failed:`, e);
+      console.warn(`[watcher] watch "${absPath}" FAILED:`, e);
     }
   }
 
@@ -97,6 +109,9 @@ class WatcherRegistry {
     if (entry.assets.size === 0) {
       try { entry.unwatch(); } catch { /* ignore */ }
       this.watchers.delete(absPath);
+      wlog(`removeRef last asset=${assetId.slice(0, 8)} — unwatched "${absPath}"`);
+    } else {
+      wlog(`removeRef     asset=${assetId.slice(0, 8)} (${entry.assets.size} subscribers left for "${absPath}")`);
     }
   }
 
@@ -107,30 +122,33 @@ class WatcherRegistry {
    */
   private async handleChange(absPath: string, externalRelPath: string): Promise<void> {
     const entry = this.watchers.get(absPath);
-    if (!entry || entry.assets.size === 0) return;
+    if (!entry || entry.assets.size === 0) { wlog(`handleChange no subscribers for "${absPath}"`); return; }
     try {
       const { readFile, stat } = await import('@tauri-apps/plugin-fs');
       const bytes = await readFile(absPath);
       const st = await stat(absPath).catch(() => null);
       const mtime = st?.mtime ? st.mtime.toISOString() : null;
+      wlog(`handleChange read ${bytes.length} bytes from "${absPath}" mtime=${mtime} → fanout to ${entry.assets.size} asset(s)`);
       for (const { assetId, path } of entry.assets.values()) {
         try {
-          await invoke('db_store_asset', {
-            path,                           // ORIGINAL path label on the asset row
+          const writtenId = await invoke<string>('db_store_asset', {
+            path,
             data: Array.from(bytes),
             mimeType: entry.mimeType,
             externalPath: externalRelPath,
             externalMtime: mtime,
-            assetId,                        // REAL stable asset_id
+            assetId,
             autoReload: null,
           });
-          await invalidateRenderedAsset(path); // sidebar/editor look up by path label
+          wlog(`  db_store_asset ok → assetId=${writtenId.slice(0, 8)} (expected ${assetId.slice(0, 8)})`);
+          await invalidateRenderedAsset(path);
+          wlog(`  invalidateRenderedAsset("${path}") fired`);
         } catch (e) {
-          console.warn(`[watcherRegistry] reload ${assetId} failed:`, e);
+          console.warn(`[watcher] db_store_asset for ${assetId.slice(0, 8)} FAILED:`, e);
         }
       }
     } catch (e) {
-      console.warn(`[watcherRegistry] read ${absPath} failed:`, e);
+      console.warn(`[watcher] readFile/stat "${absPath}" FAILED:`, e);
     }
   }
 
@@ -218,16 +236,17 @@ interface LinkedAssetRow {
 export async function scanForChangedAssets(projectDir: string): Promise<{ checked: number; reloaded: number }> {
   let reloaded = 0;
   const linked = await invoke<LinkedAssetRow[]>('db_list_linked_assets').catch(() => [] as LinkedAssetRow[]);
+  wlog(`scanForChangedAssets: ${linked.length} linked asset(s) in this project`);
   if (linked.length === 0) return { checked: 0, reloaded: 0 };
   const { stat, readFile } = await import('@tauri-apps/plugin-fs');
   for (const a of linked) {
-    // Honor per-asset auto_reload === 'off' (Restore sets this).
-    if (a.auto_reload === 'off') continue;
+    if (a.auto_reload === 'off') { wlog(`  skip ${a.asset_id.slice(0, 8)} — auto_reload=off`); continue; }
     const absPath = resolvePosixPath(projectDir, a.external_path);
     try {
       const st = await stat(absPath);
       const diskMtime = st?.mtime ? st.mtime.toISOString() : null;
       if (diskMtime && diskMtime !== a.external_mtime) {
+        wlog(`  reload ${a.asset_id.slice(0, 8)} path="${a.path}" disk=${diskMtime} stored=${a.external_mtime}`);
         const bytes = await readFile(absPath);
         await invoke('db_store_asset', {
           path: a.path ?? absPath.split('/').pop() ?? a.asset_id,
@@ -238,12 +257,13 @@ export async function scanForChangedAssets(projectDir: string): Promise<{ checke
           assetId: a.asset_id,
           autoReload: null,
         });
-        await invalidateRenderedAsset(a.asset_id);
+        await invalidateRenderedAsset(a.path ?? a.asset_id);
         reloaded++;
+      } else {
+        wlog(`  unchanged ${a.asset_id.slice(0, 8)} path="${a.path}" mtime=${diskMtime}`);
       }
-    } catch {
-      // Source missing or unreadable — skip. Could surface as
-      // "source-missing" flag in Properties panel later.
+    } catch (e) {
+      wlog(`  source-missing ${a.asset_id.slice(0, 8)} path="${a.path}" abs="${absPath}": ${e}`);
     }
   }
   return { checked: linked.length, reloaded };

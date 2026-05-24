@@ -14,6 +14,12 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { getWatcherRegistry, dirname } from './watcherRegistry';
 
+// Logs surface in the Debug Console (View menu intercepts console.log).
+const HOOK_LOG = true;
+const hlog = (...a: unknown[]): void => {
+  if (HOOK_LOG) console.log(`[watcher-hook ${new Date().toISOString().slice(11, 23)}]`, ...a);
+};
+
 interface AssetMeta {
   asset_id: string;
   path: string | null;
@@ -51,19 +57,32 @@ export function useAssetFileWatcher(assetPath: string | undefined, mimeType: str
   }, [projectPath]);
 
   useEffect(() => {
-    if (!assetPath || !projectPath || !projectId) return;
+    if (!assetPath || !projectPath || !projectId) {
+      if (assetPath) hlog(`skip mount for "${assetPath}" — projectPath=${!!projectPath} projectId=${!!projectId}`);
+      return;
+    }
     let cancelled = false;
     let registeredExternalRel: string | null = null;
     let registeredAssetId: string | null = null;
 
     (async () => {
-      // One call returns asset_id + external_path + external_mtime + mime + auto_reload.
       const meta = await invoke<AssetMeta | null>('db_get_asset_meta_by_path', {
         path: assetPath,
-      }).catch(() => null);
-      if (!meta || cancelled) return;
-      if (meta.auto_reload === 'off') return;            // per-asset opt-out
-      if (!meta.external_path) return;                    // no source file to watch
+      }).catch((e) => { hlog(`meta lookup FAILED for "${assetPath}":`, e); return null; });
+      if (cancelled) return;
+      if (!meta) {
+        hlog(`no asset meta for "${assetPath}" — nothing to watch (asset not yet stored, or path mismatch)`);
+        return;
+      }
+      hlog(`meta for "${assetPath}": asset_id=${meta.asset_id.slice(0, 8)} external_path=${meta.external_path} mtime=${meta.external_mtime} auto_reload=${meta.auto_reload}`);
+      if (meta.auto_reload === 'off') {
+        hlog(`skip — auto_reload=off for "${assetPath}"`);
+        return;
+      }
+      if (!meta.external_path) {
+        hlog(`skip — no external_path for "${assetPath}" (e.g. pasted, snapshot, or never linked)`);
+        return;
+      }
 
       const registry = getWatcherRegistry(projectId, dirname(projectPath));
       const origPath = meta.path ?? assetPath;
