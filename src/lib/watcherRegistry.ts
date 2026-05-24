@@ -46,7 +46,18 @@ interface WatchEntry {
   assets: Map<string, SubscribedAsset>;
   /** MIME type to use when re-storing the asset (cached per first subscriber) */
   mimeType: string;
+  /** Timestamp of the last handleChange for this path. macOS emits 3–7
+   *  raw fs events for one save (write + truncate + close + rename-from
+   *  + rename-to + ...); plugin-fs's `delayMs` doesn't actually coalesce
+   *  them. We dedup here: skip handleChange if a previous one ran less
+   *  than COALESCE_MS ago. Real edits that come in quick succession are
+   *  picked up on the next event after the window expires. */
+  lastHandledAt: number;
 }
+
+/** Min ms between handleChange calls per path. macOS atomic-save bursts
+ *  fit comfortably inside this window. */
+const COALESCE_MS = 250;
 
 class WatcherRegistry {
   /** Project dir used to resolve relative external_paths to absolute. Mutable
@@ -86,6 +97,7 @@ class WatcherRegistry {
       unwatch: () => {},
       assets: new Map([[assetId, { assetId, path }]]),
       mimeType,
+      lastHandledAt: 0,
     };
     this.watchers.set(absPath, placeholder);
     try {
@@ -123,6 +135,11 @@ class WatcherRegistry {
   private async handleChange(absPath: string, externalRelPath: string): Promise<void> {
     const entry = this.watchers.get(absPath);
     if (!entry || entry.assets.size === 0) { wlog(`handleChange no subscribers for "${absPath}"`); return; }
+    // Coalesce: macOS emits a burst of events for one save (write +
+    // truncate + close + rename). Skip if we just handled this path.
+    const sinceLast = Date.now() - entry.lastHandledAt;
+    if (sinceLast < COALESCE_MS) { wlog(`handleChange coalesced (${sinceLast}ms since last) for "${absPath}"`); return; }
+    entry.lastHandledAt = Date.now();
     try {
       const { readFile, stat } = await import('@tauri-apps/plugin-fs');
       const bytes = await readFile(absPath);

@@ -262,6 +262,14 @@ export async function invalidateRenderedAsset(sourceId: string): Promise<void> {
     const { invoke } = await import('@tauri-apps/api/core');
     await invoke('db_clear_asset_cache', { sourceId });
   } catch { /* best-effort */ }
+  // Also drop the legacy demoAssets blob cache so any consumer using
+  // useAssetUrl / getAssetUrl (editor canvas's ImageBox, etc.) re-fetches
+  // the new bytes instead of handing out the stale URL. The custom event
+  // below still fires for hook-based listeners.
+  try {
+    const { invalidateAsset } = await import('./demoAssets');
+    invalidateAsset(sourceId);
+  } catch { /* best-effort */ }
   window.dispatchEvent(new CustomEvent('eigendeck:asset-changed', { detail: { path: sourceId } }));
 }
 

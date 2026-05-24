@@ -45,18 +45,39 @@ export async function getAssetUrl(assetPath: string, hash?: string): Promise<str
   return hash ? `${blobUrl}#${hash}` : blobUrl;
 }
 
-/** React hook: load an asset from SQLite as a blob URL */
+/** React hook: load an asset from SQLite as a blob URL.
+ *
+ * Listens for `eigendeck:asset-changed` (fired by invalidateRenderedAsset
+ * after the file watcher reloads an asset) and, when the changed path
+ * matches, drops the cached blob URL and re-fetches so the live `<img>`
+ * picks up the new bytes. Same mechanism `useRenderedAsset` already
+ * uses — without this, the editor canvas keeps the stale blob URL
+ * forever even though the bytes in SQLite were updated. */
 export function useAssetUrl(assetPath: string | undefined, hash?: string): string | undefined {
   const [url, setUrl] = useState<string | undefined>(() => {
     if (!assetPath) return undefined;
     const cached = blobCache.get(assetPath);
     return cached ? (hash ? `${cached}#${hash}` : cached) : undefined;
   });
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (!assetPath) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { path?: string } | undefined;
+      if (detail?.path === assetPath) {
+        invalidateAsset(assetPath);
+        setRefreshKey((k) => k + 1);
+      }
+    };
+    window.addEventListener('eigendeck:asset-changed', handler);
+    return () => window.removeEventListener('eigendeck:asset-changed', handler);
+  }, [assetPath]);
 
   useEffect(() => {
     if (!assetPath) { setUrl(undefined); return; }
     getAssetUrl(assetPath, hash).then(setUrl);
-  }, [assetPath, hash]);
+  }, [assetPath, hash, refreshKey]);
 
   return url;
 }
