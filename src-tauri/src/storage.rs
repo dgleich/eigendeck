@@ -17,6 +17,13 @@ const SCHEMA_VERSION: i32 = 3;
 
 /// Create the schema in a new database
 pub fn create_schema(conn: &Connection) -> SqlResult<()> {
+    // NOTE: the `assets` table + its indices are NOT created here. They
+    // depend on the asset_id column existing, and old (pre-temporal) files
+    // have a different-shape `assets` table that needs to be migrated
+    // first. Creating the indices here would blow up the whole batch with
+    // "no such column: asset_id" for those files, before migration could
+    // run. Asset table + indices are created in the second execute_batch
+    // below, after the migration block.
     conn.execute_batch(
         "
         PRAGMA journal_mode = WAL;
@@ -68,33 +75,6 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
             valid_to TEXT,
             PRIMARY KEY (slide_id, element_id, valid_from)
         );
-
-        -- Assets are temporal: PK is (asset_id, valid_from). asset_id is a
-        -- stable UUID assigned at first insert; path is a non-unique LABEL
-        -- (two assets CAN share a path — e.g. user takes two macOS
-        -- screenshots both named screenshot.png). db_store_asset is
-        -- transactional close-old + insert-new with SHA-256 hash dedup
-        -- (no-op when bytes don't actually differ). External-link fields
-        -- (external_path, external_mtime, auto_reload) describe the
-        -- source file on disk the file-watcher refreshes from; auto_reload
-        -- is an enum string ('on'/'off'/'default'='follow global pref').
-        CREATE TABLE IF NOT EXISTS assets (
-            asset_id TEXT NOT NULL,
-            data BLOB NOT NULL,
-            mime_type TEXT,
-            size INTEGER,
-            hash TEXT,
-            path TEXT,
-            external_path TEXT,
-            external_mtime TEXT,
-            auto_reload TEXT,
-            created_at TEXT,
-            valid_from TEXT NOT NULL,
-            valid_to TEXT,
-            PRIMARY KEY (asset_id, valid_from)
-        );
-        CREATE INDEX IF NOT EXISTS idx_assets_current ON assets(asset_id) WHERE valid_to IS NULL;
-        CREATE INDEX IF NOT EXISTS idx_assets_path ON assets(path) WHERE valid_to IS NULL;
 
         -- Cached MathJax SVG renders. Not part of the temporal model
         -- (no valid_from/valid_to) — purely a derived-output cache.
@@ -198,12 +178,42 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
                             COALESCE(created_at, strftime('%Y-%m-%dT%H:%M:%fZ','now')), NULL
                      FROM assets_legacy;
                  DROP TABLE assets_legacy;
-                 CREATE INDEX IF NOT EXISTS idx_assets_current ON assets(asset_id) WHERE valid_to IS NULL;
-                 CREATE INDEX IF NOT EXISTS idx_assets_path ON assets(path) WHERE valid_to IS NULL;
                  COMMIT;"
             )?;
         }
     }
+
+    // Assets table + indices, post-migration so the asset_id column is
+    // guaranteed to exist (whether from migration or fresh-create).
+    //
+    // Assets are temporal: PK is (asset_id, valid_from). asset_id is a
+    // stable UUID assigned at first insert; path is a non-unique LABEL
+    // (two assets CAN share a path — e.g. user takes two macOS
+    // screenshots both named screenshot.png). db_store_asset is
+    // transactional close-old + insert-new with SHA-256 hash dedup
+    // (no-op when bytes don't actually differ). External-link fields
+    // (external_path, external_mtime, auto_reload) describe the
+    // source file on disk the file-watcher refreshes from; auto_reload
+    // is an enum string ('on'/'off'/'default'='follow global pref').
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS assets (
+             asset_id TEXT NOT NULL,
+             data BLOB NOT NULL,
+             mime_type TEXT,
+             size INTEGER,
+             hash TEXT,
+             path TEXT,
+             external_path TEXT,
+             external_mtime TEXT,
+             auto_reload TEXT,
+             created_at TEXT,
+             valid_from TEXT NOT NULL,
+             valid_to TEXT,
+             PRIMARY KEY (asset_id, valid_from)
+         );
+         CREATE INDEX IF NOT EXISTS idx_assets_current ON assets(asset_id) WHERE valid_to IS NULL;
+         CREATE INDEX IF NOT EXISTS idx_assets_path ON assets(path) WHERE valid_to IS NULL;",
+    )?;
 
     // Set schema version
     conn.execute(
