@@ -46,10 +46,34 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
         </div>
         <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <AutoReloadAssetsSetting />
+          <MathPreambleSetting />
         </div>
       </div>
     </div>,
     document.body,
+  );
+}
+
+function MathPreambleSetting() {
+  const [value, setValue] = usePreference('mathPreamble');
+  return (
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Default LaTeX preamble</div>
+      <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>
+        New presentations start with this preamble. Existing presentations can pull from it
+        via "Insert global" / "Replace with global" on the per-presentation preamble field.
+      </div>
+      <textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="\\newcommand{\\R}{\\mathbb{R}}"
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          fontFamily: 'monospace', fontSize: 12,
+          minHeight: 120, resize: 'vertical',
+          padding: 6, border: '1px solid #d1d5db', borderRadius: 4,
+        }} />
+    </div>
   );
 }
 

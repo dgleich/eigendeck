@@ -20,10 +20,16 @@ export interface PrefSchema {
    *  off). When true, assets are auto-reloaded UNLESS auto_reload='off'.
    *  See effectiveAutoReload() for the resolution. */
   autoReloadAssets: boolean;
+  /** Default LaTeX preamble used as a template for new presentations and
+   *  as the source for the per-presentation preamble's "Insert global" /
+   *  "Replace with global" buttons. Render path only uses the
+   *  per-presentation preamble; this is editing-only. */
+  mathPreamble: string;
 }
 
 const DEFAULTS: PrefSchema = {
   autoReloadAssets: true,
+  mathPreamble: '',
 };
 
 const KEY_PREFIX = 'eigendeck:pref:';

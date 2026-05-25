@@ -214,10 +214,9 @@ export function PropertiesPanel() {
                 onChange={(e) => updateConfig({ venue: e.target.value })} />
             </PropSection>
             <PropSection label="LaTeX Preamble">
-              <textarea className="prop-input" value={presentation.config.mathPreamble || ''}
-                onChange={(e) => updateConfig({ mathPreamble: e.target.value })}
-                placeholder="\\newcommand{\\R}{\\mathbb{R}}"
-                style={{ fontFamily: 'monospace', fontSize: 11, minHeight: 60, resize: 'vertical' }} />
+              <PreambleField
+                value={presentation.config.mathPreamble || ''}
+                onChange={(v) => updateConfig({ mathPreamble: v })} />
             </PropSection>
             <PropSection label="Auto-reload Assets">
               <AutoReloadAssetsControl
@@ -494,6 +493,59 @@ function PropSection({ label, children }: { label: string; children: React.React
     <div className="prop-section">
       <div className="prop-label">{label}</div>
       {children}
+    </div>
+  );
+}
+
+function PreambleField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [globalPreamble] = usePreference('mathPreamble');
+  const insertGlobal = () => {
+    if (!globalPreamble) return;
+    const sep = value && !value.endsWith('\n') ? '\n' : '';
+    onChange(globalPreamble + (globalPreamble.endsWith('\n') ? '' : '\n') + sep + value);
+  };
+  const replaceWithGlobal = () => {
+    if (value && !confirm('Replace this presentation\'s preamble with the global preamble? Current text will be lost.')) return;
+    onChange(globalPreamble);
+  };
+  return (
+    <div>
+      <textarea className="prop-input" value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="\\newcommand{\\R}{\\mathbb{R}}"
+        style={{ fontFamily: 'monospace', fontSize: 11, minHeight: 60, resize: 'vertical' }} />
+      <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+        <button
+          onClick={insertGlobal}
+          disabled={!globalPreamble}
+          title={globalPreamble ? 'Prepend the global preamble to this one' : 'Global preamble is empty (set in Settings…)'}
+          style={{
+            padding: '3px 8px', fontSize: 11,
+            background: '#f3f4f6', color: globalPreamble ? '#222' : '#999',
+            border: '1px solid #ddd', borderRadius: 3,
+            cursor: globalPreamble ? 'pointer' : 'not-allowed',
+          }}>
+          Insert global
+        </button>
+        <button
+          onClick={replaceWithGlobal}
+          disabled={!globalPreamble}
+          title={globalPreamble ? 'Replace this preamble with the global preamble' : 'Global preamble is empty (set in Settings…)'}
+          style={{
+            padding: '3px 8px', fontSize: 11,
+            background: '#f3f4f6', color: globalPreamble ? '#222' : '#999',
+            border: '1px solid #ddd', borderRadius: 3,
+            cursor: globalPreamble ? 'pointer' : 'not-allowed',
+          }}>
+          Replace with global
+        </button>
+      </div>
     </div>
   );
 }

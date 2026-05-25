@@ -12,6 +12,7 @@ import {
   createDefaultPresentation,
 } from '../types/presentation';
 import { usePresentationStore, openSqliteProject, flushToSqlite } from './presentation';
+import { getPreference } from '../lib/preferences';
 // @ts-ignore — pure JS module shared with the CLI tool
 import { buildExportHtml } from '../lib/exportCore.mjs';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
@@ -108,6 +109,13 @@ export async function createProject(): Promise<void> {
     await closeSqliteProject();
 
     const presentation = createDefaultPresentation();
+    // Seed per-presentation preamble from the global default (template,
+    // not a cascade — once initialized the per-presentation field is the
+    // sole render-time source).
+    const globalPreamble = getPreference('mathPreamble');
+    if (globalPreamble) {
+      presentation.config.mathPreamble = globalPreamble;
+    }
     await invoke('db_open', { path: selected });
     await invoke('db_import_json', { json: JSON.stringify(presentation) });
     await openSqliteProject(selected as string);
