@@ -72,15 +72,24 @@ export function usePreference<K extends keyof PrefSchema>(
 /**
  * Resolve the effective auto_reload state for an asset.
  *
- *   per-asset 'on'      -> ALWAYS reload (explicit opt-in, beats global off)
+ * Cascade (most-specific wins):
+ *   per-asset 'on'      -> ALWAYS reload (explicit opt-in, beats every layer)
  *   per-asset 'off'     -> NEVER reload  (Restore sets this; user opt-out)
- *   per-asset null/default -> follow the global pref
+ *   per-presentation 'on'  -> ALWAYS reload for assets without their own override
+ *   per-presentation 'off' -> NEVER reload  for assets without their own override
+ *   else                -> follow the global pref
+ *
+ * Pass null/undefined for any layer not set. For "would a NEW asset in this
+ * presentation auto-reload by default", pass null for perAsset.
  */
 export function effectiveAutoReload(
   perAsset: string | null | undefined,
+  perPresentation: string | null | undefined,
   globalDefault: boolean,
 ): boolean {
   if (perAsset === 'on') return true;
   if (perAsset === 'off') return false;
+  if (perPresentation === 'on') return true;
+  if (perPresentation === 'off') return false;
   return globalDefault;
 }

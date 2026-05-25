@@ -8,7 +8,7 @@ import { resolveTheme } from '../lib/themes';
 import { detectAssetKind } from '../lib/assetCache';
 import { handleSvgExternalRefs, invalidateRenderedAsset } from '../lib/assetRenderer';
 import { showToast } from '../lib/toasts';
-import { getPreference } from '../lib/preferences';
+import { getPreference, effectiveAutoReload } from '../lib/preferences';
 import type { SlideElement } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
 
@@ -333,7 +333,11 @@ export function SlideEditor() {
    */
   const maybeWarnUnsavedProject = useCallback((unsaved: boolean) => {
     if (!unsaved) return;
-    if (!getPreference('autoReloadAssets')) return;
+    // Suppress when the effective default for THIS presentation is OFF: either
+    // the user globally opted out, or this presentation overrides to 'off'.
+    const presOverride = usePresentationStore.getState().presentation?.config?.autoReloadAssets ?? null;
+    const globalDefault = getPreference('autoReloadAssets');
+    if (!effectiveAutoReload(null, presOverride, globalDefault)) return;
     showToast({
       key: 'unsaved-project-tracking',  // dedup repeat drops in same session
       kind: 'warning',

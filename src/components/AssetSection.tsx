@@ -65,6 +65,7 @@ export function AssetSection({ srcPath }: { srcPath: string }) {
   const [history, setHistory] = useState<AssetVersion[]>([]);
   const [reloading, setReloading] = useState(false);
   const [globalAutoReload] = usePreference('autoReloadAssets');
+  const presOverride = usePresentationStore((s) => s.presentation?.config?.autoReloadAssets ?? null);
 
   const fetchMeta = useCallback(async () => {
     const m = await invoke<AssetMeta | null>('db_get_asset_meta_by_path', { path: srcPath })
@@ -140,8 +141,9 @@ export function AssetSection({ srcPath }: { srcPath: string }) {
     );
   }
 
-  const effective = effectiveAutoReload(meta.auto_reload, globalAutoReload);
+  const effective = effectiveAutoReload(meta.auto_reload, presOverride, globalAutoReload);
   const triState = (meta.auto_reload ?? 'default') as 'on' | 'off' | 'default';
+  const presLabel = presOverride === 'on' ? 'always' : presOverride === 'off' ? 'never' : `follow global (${globalAutoReload ? 'on' : 'off'})`;
 
   return (
     <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -165,7 +167,7 @@ export function AssetSection({ srcPath }: { srcPath: string }) {
         <div style={{ fontSize: 11 }}>
           <div style={{ color: '#666', marginBottom: 4 }}>
             Auto-reload <span style={{ color: '#888' }}>
-              (global default: {globalAutoReload ? 'ON' : 'OFF'}; effective: <b>{effective ? 'ON' : 'OFF'}</b>)
+              (presentation: {presLabel}; effective: <b>{effective ? 'ON' : 'OFF'}</b>)
             </span>
           </div>
           <div style={{ display: 'flex', gap: 4 }}>

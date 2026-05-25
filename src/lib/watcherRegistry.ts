@@ -251,16 +251,19 @@ interface LinkedAssetRow {
  * Catches edits made while Eigendeck wasn't running. Returns the count
  * of assets actually reloaded.
  */
-export async function scanForChangedAssets(projectDir: string): Promise<{ checked: number; reloaded: number }> {
+export async function scanForChangedAssets(
+  projectDir: string,
+  presOverride: string | null,
+): Promise<{ checked: number; reloaded: number }> {
   let reloaded = 0;
   const linked = await invoke<LinkedAssetRow[]>('db_list_linked_assets').catch(() => [] as LinkedAssetRow[]);
   const globalDefault = getPreference('autoReloadAssets');
-  wlog(`scanForChangedAssets: ${linked.length} linked asset(s), globalAutoReload=${globalDefault}`);
+  wlog(`scanForChangedAssets: ${linked.length} linked asset(s), presOverride=${presOverride ?? 'default'}, globalAutoReload=${globalDefault}`);
   if (linked.length === 0) return { checked: 0, reloaded: 0 };
   const { stat, readFile } = await import('@tauri-apps/plugin-fs');
   for (const a of linked) {
-    if (!effectiveAutoReload(a.auto_reload, globalDefault)) {
-      wlog(`  skip ${a.asset_id.slice(0, 8)} — auto_reload resolves to OFF (per-asset='${a.auto_reload ?? 'default'}')`);
+    if (!effectiveAutoReload(a.auto_reload, presOverride, globalDefault)) {
+      wlog(`  skip ${a.asset_id.slice(0, 8)} — auto_reload resolves to OFF (per-asset='${a.auto_reload ?? 'default'}', per-pres='${presOverride ?? 'default'}')`);
       continue;
     }
     const absPath = resolvePosixPath(projectDir, a.external_path);

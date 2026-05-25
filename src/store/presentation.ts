@@ -741,7 +741,8 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     void (async () => {
       try {
         const { scanForChangedAssets, dirname } = await import('../lib/watcherRegistry');
-        const r = await scanForChangedAssets(dirname(dbPath));
+        const presOverride = presentation.config?.autoReloadAssets ?? null;
+        const r = await scanForChangedAssets(dirname(dbPath), presOverride);
         if (r.reloaded > 0) {
           console.log(`[openProject] scan-on-load: reloaded ${r.reloaded}/${r.checked} linked assets`);
         }

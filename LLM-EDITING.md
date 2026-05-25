@@ -67,13 +67,15 @@ my-presentation/
     "mathPreamble": "\\newcommand{\\R}{\\mathbb{R}}",
     "defaultTitleFont": "ptsans",
     "defaultBodyFont": "ptsans",
-    "defaultHypeFont": "shantell"
+    "defaultHypeFont": "shantell",
+    "autoReloadAssets": "off"
   }
 }
 ```
 
 - `mathPreamble`: optional LaTeX preamble applied to all MathJax rendering (e.g. `\newcommand`, `\def`)
 - `defaultTitleFont` / `defaultBodyFont` / `defaultHypeFont`: optional default font package ids (see `src/lib/fonts.ts`). Available ids include `"ptsans"`, `"libertinus"`, `"libertinus-sans"`, `"lm-sans"`, `"noto-sans"`, `"source-sans"`, `"source-code"`, `"shantell"`, `"concrete-euler"`. Slides may override via `Slide.titleFont` / `bodyFont` / `hypeFont`. Missing values resolve to `"ptsans"`.
+- `autoReloadAssets`: optional per-presentation override for the file-watching auto-reload behavior. `"on"` or `"off"` overrides the global preference; absent means follow the global. Per-asset overrides in `assets.auto_reload` still win.
 
 ## Slide Structure
 

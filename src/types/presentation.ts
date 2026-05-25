@@ -192,6 +192,10 @@ export interface PresentationConfig {
   defaultTitleFont?: string;
   defaultBodyFont?: string;
   defaultHypeFont?: string;
+  // Per-presentation override for the file-watching auto-reload behavior.
+  // 'on'/'off' override the global pref; absent = follow global. Per-asset
+  // assets.auto_reload still overrides this. See effectiveAutoReload().
+  autoReloadAssets?: 'on' | 'off';
 }
 
 export interface Presentation {

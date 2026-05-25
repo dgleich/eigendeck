@@ -46,8 +46,9 @@ interface AssetMeta {
 export function useAssetFileWatcher(assetPath: string | undefined, mimeType: string): void {
   const projectPath = usePresentationStore((s) => s.projectPath);
   const [projectId, setProjectId] = useState<string | null>(null);
-  // Global default; per-asset auto_reload overrides via effectiveAutoReload.
+  // 3-layer cascade: per-asset > per-presentation > global default.
   const [globalAutoReload] = usePreference('autoReloadAssets');
+  const presOverride = usePresentationStore((s) => s.presentation?.config?.autoReloadAssets ?? null);
 
   // Fetch project_id once the project is loaded.
   useEffect(() => {
@@ -78,9 +79,9 @@ export function useAssetFileWatcher(assetPath: string | undefined, mimeType: str
         return;
       }
       hlog(`meta for "${assetPath}": asset_id=${meta.asset_id.slice(0, 8)} external_path=${meta.external_path} mtime=${meta.external_mtime} auto_reload=${meta.auto_reload}`);
-      const effective = effectiveAutoReload(meta.auto_reload, globalAutoReload);
+      const effective = effectiveAutoReload(meta.auto_reload, presOverride, globalAutoReload);
       if (!effective) {
-        hlog(`skip — auto_reload resolves to OFF (per-asset='${meta.auto_reload ?? 'default'}', global=${globalAutoReload})`);
+        hlog(`skip — auto_reload resolves to OFF (per-asset='${meta.auto_reload ?? 'default'}', per-pres='${presOverride ?? 'default'}', global=${globalAutoReload})`);
         return;
       }
       if (!meta.external_path) {
@@ -103,5 +104,5 @@ export function useAssetFileWatcher(assetPath: string | undefined, mimeType: str
         registry.removeRef(registeredExternalRel, registeredAssetId);
       }
     };
-  }, [assetPath, mimeType, projectPath, projectId, globalAutoReload]);
+  }, [assetPath, mimeType, projectPath, projectId, globalAutoReload, presOverride]);
 }
