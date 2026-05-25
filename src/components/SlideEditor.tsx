@@ -7,6 +7,8 @@ import { getSlideNumber, createTextElement } from '../types/presentation';
 import { resolveTheme } from '../lib/themes';
 import { detectAssetKind } from '../lib/assetCache';
 import { handleSvgExternalRefs, invalidateRenderedAsset } from '../lib/assetRenderer';
+import { showToast } from '../lib/toasts';
+import { getPreference } from '../lib/preferences';
 import type { SlideElement } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
 
@@ -295,9 +297,25 @@ export function SlideEditor() {
   // Drag-and-drop files onto canvas
   const [dragOver, setDragOver] = useState(false);
 
+  // Diagnostic logging — surface in the Debug Console (intercepts console.log)
+  // so "drag from PowerPoint did nothing on release" is debuggable.
+  const DRAG_LOG = true;
+  const dlog = (...a: unknown[]): void => {
+    if (DRAG_LOG) console.log(`[drag-evt ${new Date().toISOString().slice(11, 23)}]`, ...a);
+  };
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dlog('dragenter target=', (e.target as Element).tagName,
+         'types=', Array.from(e.dataTransfer.types),
+         'files=', e.dataTransfer.files.length);
+  }, []);
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // Signal we accept the drop so the OS shows the right cursor.
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
     setDragOver(true);
   }, []);
 
@@ -306,7 +324,34 @@ export function SlideEditor() {
     setDragOver(false);
   }, []);
 
+  /**
+   * Shared post-insert warning for "you just added a trackable asset but
+   * the project isn't saved, so we can't watch its source file". Toast
+   * suggests Save (which then enables tracking on subsequent drops/edits).
+   * Suppressed when the user has turned auto-reload off globally — they
+   * already opted out of the feature, no point nagging.
+   */
+  const maybeWarnUnsavedProject = useCallback((unsaved: boolean) => {
+    if (!unsaved) return;
+    if (!getPreference('autoReloadAssets')) return;
+    showToast({
+      key: 'unsaved-project-tracking',  // dedup repeat drops in same session
+      kind: 'warning',
+      ttl: 12000,
+      message: 'Asset added, but file-watching is disabled until the presentation is saved. Save now, then re-add to enable live updates from the source file.',
+      action: {
+        label: 'Save…',
+        onClick: () => {
+          void import('../store/fileOps').then(({ saveProject }) => saveProject());
+        },
+      },
+    });
+  }, []);
+
   const handleDrop = useCallback(async (e: React.DragEvent) => {
+    dlog('DROP FIRED target=', (e.target as Element).tagName,
+         'types=', Array.from(e.dataTransfer.types),
+         'files=', e.dataTransfer.files.length);
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
@@ -314,7 +359,7 @@ export function SlideEditor() {
     // FILE drops are delivered by Tauri's OS-level win.onDragDropEvent
     // below; processing them here too would duplicate. Detect by
     // dataTransfer.files: non-empty => Tauri's path will handle it.
-    if (e.dataTransfer.files.length > 0) return;
+    if (e.dataTransfer.files.length > 0) { dlog('skipping in-memory path — Tauri OS event will handle the file drop'); return; }
 
     // IN-MEMORY drops (e.g. dragging a shape OUT of PowerPoint) DON'T
     // fire Tauri's file event; only the DOM gets them. Same shape as
@@ -323,7 +368,8 @@ export function SlideEditor() {
     // (only image/png + a few standard MIMEs reach JS), so we go to
     // the native NSPasteboard for the drag pasteboard to see vendor
     // UTIs like com.microsoft.image-svg-xml.
-    const dlog = (...a: unknown[]): void => console.log(`[drag ${new Date().toISOString().slice(11, 23)}]`, ...a);
+    const store = usePresentationStore.getState();
+    const unsaved = !store.projectPath;
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       const utis = await invoke<string[]>('pasteboard_list_drag_types');
@@ -351,11 +397,11 @@ export function SlideEditor() {
             path: relativePath, data: Array.from(bytes), mimeType: pref.mime,
             externalPath: null, externalMtime: null,
           });
-          const store = usePresentationStore.getState();
           store.addElement({
             id: crypto.randomUUID(), type: 'image', src: relativePath, kind,
             position: { x: 360, y: 200, width: 1200, height: 680 },
           });
+          maybeWarnUnsavedProject(unsaved);
           return;
         }
       }
@@ -384,11 +430,11 @@ export function SlideEditor() {
         path: relativePath, data: Array.from(bytes), mimeType: mime,
         externalPath: null, externalMtime: null,
       });
-      const store = usePresentationStore.getState();
       store.addElement({
         id: crypto.randomUUID(), type: 'image', src: relativePath, kind,
         position: { x: 360, y: 200, width: 1200, height: 680 },
       });
+      maybeWarnUnsavedProject(unsaved);
       return;
     }
   }, []);
@@ -431,6 +477,7 @@ export function SlideEditor() {
                     kind,
                     position: { x: 360, y: 200, width: 1200, height: 680 },
                   });
+                  maybeWarnUnsavedProject(!store.projectPath);
                   if (kind === 'svg') {
                     // We have the original full path — handler can offer to embed.
                     const updated = await handleSvgExternalRefs(bytes, name, fullPath);
@@ -497,7 +544,8 @@ export function SlideEditor() {
     <div className="slide-editor">
       {/* Theme now in inspector panel (PropertiesPanel); layout removed in v2 schema */}
       <div className={`slide-canvas-container ${dragOver ? 'drag-over' : ''}`} ref={containerRef}
-        onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+        onDragEnter={handleDragEnter} onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave} onDrop={handleDrop}>
         <div
           ref={canvasRef}
           className="slide-canvas"
