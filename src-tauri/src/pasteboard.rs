@@ -56,14 +56,17 @@ pub fn pasteboard_read_type(_app: tauri::AppHandle, uti: String) -> Result<Optio
     }
 }
 
+// generalPasteboard() in objc2-app-kit 0.3 takes no MainThreadMarker
+// (NSPasteboard read methods are thread-safe per Apple's docs). We still
+// dispatch to the main thread via Tauri's run_on_main_thread above so
+// behavior is predictable + consistent with the other AppKit calls in
+// this codebase (NSAlert in lib.rs).
+
 #[cfg(target_os = "macos")]
 fn mac_pasteboard_list_types() -> Result<Vec<String>, String> {
-    use objc2::MainThreadMarker;
     use objc2_app_kit::NSPasteboard;
 
-    let mtm = MainThreadMarker::new()
-        .ok_or("pasteboard_list_types must run on the main thread")?;
-    let pb = NSPasteboard::generalPasteboard(mtm);
+    let pb = NSPasteboard::generalPasteboard();
     match unsafe { pb.types() } {
         Some(arr) => {
             let mut out = Vec::with_capacity(arr.len());
@@ -78,13 +81,10 @@ fn mac_pasteboard_list_types() -> Result<Vec<String>, String> {
 
 #[cfg(target_os = "macos")]
 fn mac_pasteboard_read_type(uti: &str) -> Result<Option<Vec<u8>>, String> {
-    use objc2::MainThreadMarker;
     use objc2_app_kit::NSPasteboard;
     use objc2_foundation::NSString;
 
-    let mtm = MainThreadMarker::new()
-        .ok_or("pasteboard_read_type must run on the main thread")?;
-    let pb = NSPasteboard::generalPasteboard(mtm);
+    let pb = NSPasteboard::generalPasteboard();
     let ns = NSString::from_str(uti);
     let data = unsafe { pb.dataForType(&ns) };
     Ok(data.map(|d| d.to_vec()))
