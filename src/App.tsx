@@ -15,6 +15,7 @@ import { ContextMenu } from './components/ContextMenu';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import { DebugMenu } from './debug';
 import { ToastHost } from './components/ToastHost';
+import { SettingsModal } from './components/SettingsModal';
 import type { MenuEntry } from './components/ContextMenu';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
@@ -467,6 +468,7 @@ function App() {
   const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[]; fromSlideIndex: number } | { type: 'slide'; data: any } | null>(null);
   const [linkOverlayElementId, setLinkOverlayElementId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuEntry[] } | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [multiMonitorPresenting, setMultiMonitorPresenting] = useState(false);
 
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
@@ -859,6 +861,20 @@ function App() {
           await win.setDecorations(!current);
         })(); break;
         case 'debug-console': window.dispatchEvent(new CustomEvent('toggle-debug-console')); break;
+        case 'settings':
+          setSettingsOpen(true);
+          break;
+        case 'presentation-settings': {
+          const s = usePresentationStore.getState();
+          if (!s.showProperties) s.toggleProperties();
+          s.selectObject(null);
+          // Defer to next frame so the Inspector is mounted before scrolling.
+          requestAnimationFrame(() => {
+            const el = document.getElementById('presentation-prop-block');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+          break;
+        }
         case 'paste-plain':
           navigator.clipboard.readText().then((text) => {
             document.execCommand('insertText', false, text);
@@ -999,6 +1015,7 @@ function App() {
           onClose={() => setLinkOverlayElementId(null)}
         />
       )}
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       {unsavedDialog && (
         <UnsavedChangesDialog
           title={unsavedDialog.title}

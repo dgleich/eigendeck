@@ -181,7 +181,7 @@ export function PropertiesPanel() {
             )}
 
             {/* ── Presentation Properties ── */}
-            <div className="prop-section-header" style={{ marginTop: 12 }}>Presentation</div>
+            <div id="presentation-prop-block" className="prop-section-header" style={{ marginTop: 12 }}>Presentation</div>
             <PropSection label="Default Theme">
               <select className="prop-select" value={presentation.theme || 'white'}
                 onChange={(e) => usePresentationStore.getState().setTheme(e.target.value)}>

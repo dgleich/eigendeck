@@ -403,6 +403,9 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .hide_others()
         .show_all()
         .separator()
+        .item(&MenuItemBuilder::new("Settings...").id("settings").accelerator("CmdOrCtrl+,")
+            .build(app).map_err(|e| e.to_string())?)
+        .separator()
         .item(&MenuItemBuilder::new("Quit Eigendeck").id("quit").accelerator("CmdOrCtrl+Q")
             .build(app).map_err(|e| e.to_string())?)
         .build()
@@ -424,6 +427,8 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build(app).map_err(|e| e.to_string())?;
     let import_item = MenuItemBuilder::new("Import from HTML...").id("import-html")
         .build(app).map_err(|e| e.to_string())?;
+    let presentation_settings_item = MenuItemBuilder::new("Presentation Settings...").id("presentation-settings")
+        .build(app).map_err(|e| e.to_string())?;
 
     let mut file_sub = SubmenuBuilder::new(app, "File")
         .item(&new_item)
@@ -439,6 +444,8 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .item(&export_pdf_item)
         .item(&export_pdf_ss_item)
         .item(&import_item)
+        .separator()
+        .item(&presentation_settings_item)
         .separator()
         .close_window()
         .build()
