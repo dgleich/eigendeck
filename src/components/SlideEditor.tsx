@@ -306,16 +306,91 @@ export function SlideEditor() {
     setDragOver(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    // Tauri v2 delivers file drops via win.onDragDropEvent (registered
-    // below). The webview ALSO emits a synthetic DOM drop event for the
-    // same gesture, so we must NOT process files here — doing so would
-    // create one element per handler (the duplication bug). We still
-    // preventDefault + stopPropagation so the browser doesn't try to
-    // navigate to the dropped file, and we clear the drag-over highlight.
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
+
+    // FILE drops are delivered by Tauri's OS-level win.onDragDropEvent
+    // below; processing them here too would duplicate. Detect by
+    // dataTransfer.files: non-empty => Tauri's path will handle it.
+    if (e.dataTransfer.files.length > 0) return;
+
+    // IN-MEMORY drops (e.g. dragging a shape OUT of PowerPoint) DON'T
+    // fire Tauri's file event; only the DOM gets them. Same shape as
+    // a paste, just from the drag pasteboard instead of the general
+    // one — and the webview's DataTransfer is filtered the same way
+    // (only image/png + a few standard MIMEs reach JS), so we go to
+    // the native NSPasteboard for the drag pasteboard to see vendor
+    // UTIs like com.microsoft.image-svg-xml.
+    const dlog = (...a: unknown[]): void => console.log(`[drag ${new Date().toISOString().slice(11, 23)}]`, ...a);
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const utis = await invoke<string[]>('pasteboard_list_drag_types');
+      dlog('native drag pasteboard UTIs:', utis);
+      // Same priority order as paste (SVG > PDF > raster); flip SVG/PDF
+      // once pdfium displays PDFs.
+      const NATIVE_PREFER: Array<{ utis: string[]; ext: string; mime: string }> = [
+        { utis: ['public.svg-image', 'com.microsoft.image-svg-xml', 'image/svg+xml'], ext: 'svg', mime: 'image/svg+xml' },
+        { utis: ['com.adobe.pdf', 'application/pdf'], ext: 'pdf', mime: 'application/pdf' },
+        { utis: ['public.png', 'image/png'], ext: 'png', mime: 'image/png' },
+        { utis: ['public.jpeg', 'image/jpeg', 'public.jpg'], ext: 'jpg', mime: 'image/jpeg' },
+      ];
+      for (const pref of NATIVE_PREFER) {
+        for (const uti of pref.utis) {
+          if (!utis.includes(uti)) continue;
+          const bytesArr = await invoke<number[] | null>('pasteboard_read_drag_type', { uti });
+          if (!bytesArr || bytesArr.length === 0) continue;
+          const bytes = new Uint8Array(bytesArr);
+          const fileName = `dropped-${Date.now()}.${pref.ext}`;
+          const relativePath = `images/${fileName}`;
+          const kind = pref.mime === 'image/svg+xml' ? 'svg'
+            : pref.mime === 'application/pdf' ? 'pdf' : 'raster';
+          dlog(`native picked uti=${uti} → ${pref.mime} (${bytes.length} bytes) → ${fileName}`);
+          await invoke('db_store_asset', {
+            path: relativePath, data: Array.from(bytes), mimeType: pref.mime,
+            externalPath: null, externalMtime: null,
+          });
+          const store = usePresentationStore.getState();
+          store.addElement({
+            id: crypto.randomUUID(), type: 'image', src: relativePath, kind,
+            position: { x: 360, y: 200, width: 1200, height: 680 },
+          });
+          return;
+        }
+      }
+      dlog('native drag pasteboard had no preferred UTI; falling back to DataTransfer');
+    } catch (err) {
+      dlog('native drag pasteboard read failed:', err);
+    }
+
+    // Web fallback: DataTransfer.items (filtered by WebKit to standard
+    // MIMEs). Worth trying for non-Mac and as a safety net.
+    const items = Array.from(e.dataTransfer.items);
+    dlog('DataTransfer items:', items.map((it) => `${it.kind}:${it.type}`));
+    for (const mime of ['image/svg+xml', 'image/png', 'image/jpeg'] as const) {
+      const item = items.find((it) => it.type === mime);
+      if (!item) continue;
+      const blob = item.getAsFile();
+      if (!blob) continue;
+      const ext = mime === 'image/svg+xml' ? 'svg' : (mime.split('/')[1] || 'png');
+      const fileName = `dropped-${Date.now()}.${ext}`;
+      const relativePath = `images/${fileName}`;
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      const kind = mime === 'image/svg+xml' ? 'svg' : 'raster';
+      dlog(`DataTransfer picked ${mime} (${bytes.length} bytes) → ${fileName}`);
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('db_store_asset', {
+        path: relativePath, data: Array.from(bytes), mimeType: mime,
+        externalPath: null, externalMtime: null,
+      });
+      const store = usePresentationStore.getState();
+      store.addElement({
+        id: crypto.randomUUID(), type: 'image', src: relativePath, kind,
+        position: { x: 360, y: 200, width: 1200, height: 680 },
+      });
+      return;
+    }
   }, []);
 
   // Tauri drag-drop event (provides file paths directly)

@@ -514,6 +514,8 @@ pub fn run() {
             debug::debug_enabled,
             pasteboard::pasteboard_list_types,
             pasteboard::pasteboard_read_type,
+            pasteboard::pasteboard_list_drag_types,
+            pasteboard::pasteboard_read_drag_type,
             set_window_above_menubar,
             check_display_mirroring,
             disable_display_mirroring,
