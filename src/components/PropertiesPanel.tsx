@@ -5,6 +5,7 @@ import { BUILT_IN_THEMES } from '../lib/themes';
 import { FONT_PACKAGES, type FontPackage } from '../lib/fonts';
 import type { VerticalAlign } from '../types/presentation';
 import { AssetSection } from './AssetSection';
+import { usePreference } from '../lib/preferences';
 
 const ARROW_COLORS = [
   '#e53e3e', '#dc2626', '#ea580c', '#16a34a',
@@ -217,6 +218,11 @@ export function PropertiesPanel() {
                 onChange={(e) => updateConfig({ mathPreamble: e.target.value })}
                 placeholder="\\newcommand{\\R}{\\mathbb{R}}"
                 style={{ fontFamily: 'monospace', fontSize: 11, minHeight: 60, resize: 'vertical' }} />
+            </PropSection>
+            <PropSection label="Auto-reload Assets">
+              <AutoReloadAssetsControl
+                value={presentation.config.autoReloadAssets}
+                onChange={(v) => updateConfig({ autoReloadAssets: v })} />
             </PropSection>
           </>
         )}
@@ -488,6 +494,45 @@ function PropSection({ label, children }: { label: string; children: React.React
     <div className="prop-section">
       <div className="prop-label">{label}</div>
       {children}
+    </div>
+  );
+}
+
+function AutoReloadAssetsControl({
+  value,
+  onChange,
+}: {
+  value: 'on' | 'off' | undefined;
+  onChange: (v: 'on' | 'off' | undefined) => void;
+}) {
+  const [globalDefault] = usePreference('autoReloadAssets');
+  const current: 'default' | 'on' | 'off' = value ?? 'default';
+  const options: Array<{ k: 'default' | 'on' | 'off'; label: string }> = [
+    { k: 'default', label: `Follow global (${globalDefault ? 'on' : 'off'})` },
+    { k: 'on', label: 'Always' },
+    { k: 'off', label: 'Never' },
+  ];
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 4 }}>
+        {options.map(({ k, label }) => (
+          <button key={k}
+            onClick={() => onChange(k === 'default' ? undefined : k)}
+            style={{
+              padding: '3px 8px', fontSize: 11,
+              background: current === k ? '#3b82f6' : '#f3f4f6',
+              color: current === k ? '#fff' : '#222',
+              border: '1px solid #ddd', borderRadius: 3,
+              cursor: 'pointer',
+            }}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <div style={{ fontSize: 10, color: '#888', marginTop: 4 }}>
+        Reload linked SVG / image assets when their source files change on disk.
+        Per-asset settings (in Image properties) still override this.
+      </div>
     </div>
   );
 }
