@@ -180,11 +180,12 @@ export function SlideEditor() {
     const insertPastedAsset = async (
       relativePath: string, bytes: Uint8Array, mime: string, fileName: string,
     ): Promise<void> => {
+      let assetId: string | undefined;
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         // Paste: no source-on-disk path; pass null for externalPath so the
         // asset isn't watched (clipboard contents have no file to watch).
-        await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime, externalPath: null, externalMtime: null });
+        assetId = await invoke<string>('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime, externalPath: null, externalMtime: null });
       } catch (e) {
         console.error('Failed to store pasted image:', e);
       }
@@ -192,6 +193,7 @@ export function SlideEditor() {
       addElement({
         id: crypto.randomUUID(), type: 'image',
         src: relativePath,
+        assetId,
         kind,
         position: { x: 360, y: 200, width: 1200, height: 680 },
       });
@@ -397,12 +399,12 @@ export function SlideEditor() {
           const kind = pref.mime === 'image/svg+xml' ? 'svg'
             : pref.mime === 'application/pdf' ? 'pdf' : 'raster';
           dlog(`native picked uti=${uti} → ${pref.mime} (${bytes.length} bytes) → ${fileName}`);
-          await invoke('db_store_asset', {
+          const assetId = await invoke<string>('db_store_asset', {
             path: relativePath, data: Array.from(bytes), mimeType: pref.mime,
             externalPath: null, externalMtime: null,
           });
           store.addElement({
-            id: crypto.randomUUID(), type: 'image', src: relativePath, kind,
+            id: crypto.randomUUID(), type: 'image', src: relativePath, assetId, kind,
             position: { x: 360, y: 200, width: 1200, height: 680 },
           });
           maybeWarnUnsavedProject(unsaved);
@@ -430,12 +432,12 @@ export function SlideEditor() {
       const kind = mime === 'image/svg+xml' ? 'svg' : 'raster';
       dlog(`DataTransfer picked ${mime} (${bytes.length} bytes) → ${fileName}`);
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('db_store_asset', {
+      const assetId = await invoke<string>('db_store_asset', {
         path: relativePath, data: Array.from(bytes), mimeType: mime,
         externalPath: null, externalMtime: null,
       });
       store.addElement({
-        id: crypto.randomUUID(), type: 'image', src: relativePath, kind,
+        id: crypto.randomUUID(), type: 'image', src: relativePath, assetId, kind,
         position: { x: 360, y: 200, width: 1200, height: 680 },
       });
       maybeWarnUnsavedProject(unsaved);
@@ -473,11 +475,12 @@ export function SlideEditor() {
                   // the .eigendeck dir. Store it as externalPath so the
                   // file-watcher can re-resolve to absolute at runtime and
                   // notice when the source file changes on disk.
-                  await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime, externalPath: relativePath, externalMtime: null });
+                  const assetId = await invoke<string>('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime, externalPath: relativePath, externalMtime: null });
                   const kind = detectAssetKind(name, mime);
                   store.addElement({
                     id: crypto.randomUUID(), type: 'image',
                     src: relativePath,
+                    assetId,
                     kind,
                     position: { x: 360, y: 200, width: 1200, height: 680 },
                   });
@@ -489,8 +492,9 @@ export function SlideEditor() {
                       // Embed snapshot intentionally breaks the source link
                       // (matches the dialog wording — "no longer references
                       // the source files"). Clearing externalPath stops the
-                      // file watcher.
-                      await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null });
+                      // file watcher. Same assetId: the embed is a new
+                      // version of the same asset, not a new asset.
+                      await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });
                       await invalidateRenderedAsset(relativePath);
                     }
                   }
@@ -502,7 +506,7 @@ export function SlideEditor() {
                   const relativePath = relPath(store.projectPath, fullPath);
                   const bytes = await readFile(fullPath);
                   // Demo HTML — not file-watched in v1.
-                  await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html', externalPath: null, externalMtime: null });
+                  const assetId = await invoke<string>('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html', externalPath: null, externalMtime: null });
 
                   // Detect demo-piece demos
                   const html = await readTextFile(fullPath);
@@ -515,7 +519,7 @@ export function SlideEditor() {
                       const width = Math.floor((1760 - (pieces.length - 1) * 40) / pieces.length);
                       store.addElement({
                         id: crypto.randomUUID(), type: 'demo-piece' as any,
-                        demoSrc: relativePath, piece,
+                        demoSrc: relativePath, piece, assetId,
                         position: { x, y: 200, width, height: 700 },
                       });
                       x += width + 40;
@@ -524,6 +528,7 @@ export function SlideEditor() {
                     store.addElement({
                       id: crypto.randomUUID(), type: 'demo',
                       src: relativePath,
+                      assetId,
                       position: { x: 80, y: 200, width: 1760, height: 700 },
                     });
                   }

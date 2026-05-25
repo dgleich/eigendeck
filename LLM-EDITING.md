@@ -174,7 +174,8 @@ All elements share these base fields:
 }
 ```
 
-- `src`: relative path from the project directory. Images should be in `images/`.
+- `src`: relative path from the project directory (also serves as the asset's display label). Images should be in `images/`. NOT unique — two distinct assets may share a src (e.g. after Import-as-new on a collision).
+- `assetId`: optional UUID — stable binding to a specific asset in the `assets` table. Set on insertion; backfilled on project load for legacy elements. Renderer/watcher prefer this over `src` lookup when set, which is the correct behavior when multiple assets share a src.
 - `shadow`: optional boolean — adds a drop shadow
 - `borderRadius`: optional number — rounded corners in pixels
 - `opacity`: optional number 0–1 — image transparency
@@ -234,6 +235,8 @@ The `position` field is required but ignored for arrows (use x1/y1/x2/y2).
 
 Demo files must be self-contained HTML (inline CSS/JS, or CDN references).
 
+- `assetId`: optional UUID — same semantic as `ImageElement.assetId` (stable asset binding; fall back to `src` lookup when absent).
+
 ### Demo-Piece Element
 
 ```json
@@ -246,6 +249,8 @@ Demo files must be self-contained HTML (inline CSS/JS, or CDN references).
   "demoState": {}
 }
 ```
+
+- `assetId`: optional UUID — same semantic as `ImageElement.assetId` (stable asset binding for the demo HTML; the binding is to `demoSrc`'s asset, not `piece`).
 
 Demo-piece elements are viewport fragments of a multi-piece demo. The demo HTML file receives a hash fragment indicating its role:
 

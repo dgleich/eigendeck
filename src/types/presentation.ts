@@ -99,6 +99,20 @@ export interface TextElement extends BaseElement {
 export interface ImageElement extends BaseElement {
   type: 'image';
   src: string;
+  /**
+   * Stable asset_id (UUID) the element binds to. Set on insertion from
+   * db_store_asset's return value. When absent (legacy elements), the
+   * renderer / watcher falls back to looking up the most recent asset
+   * with matching `src` path label. Backfilled on project load — see
+   * backfillElementAssetIds in src/store/presentation.ts.
+   *
+   * Why this exists: `src` is just a human-readable path label and is
+   * NOT unique — two distinct assets can legitimately share a path (e.g.
+   * Import-as-new on a collision). With assetId, each element binds to
+   * one specific asset and stays correct even when other assets share
+   * its src.
+   */
+  assetId?: string;
   shadow?: boolean;
   borderRadius?: number;
   opacity?: number;
@@ -135,6 +149,9 @@ export interface ArrowElement extends BaseElement {
 export interface DemoElement extends BaseElement {
   type: 'demo';
   src: string;
+  /** Same semantic as ImageElement.assetId — stable asset_id binding;
+   *  fall back to src lookup when absent. */
+  assetId?: string;
 }
 
 export interface DemoPieceElement extends BaseElement {
@@ -142,6 +159,8 @@ export interface DemoPieceElement extends BaseElement {
   demoSrc: string;
   piece: string;
   demoState?: Record<string, unknown>;
+  /** Same semantic as ImageElement.assetId — stable asset_id binding. */
+  assetId?: string;
 }
 
 export interface CoverElement extends BaseElement {
