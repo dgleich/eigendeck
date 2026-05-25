@@ -719,6 +719,12 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     const json = await invoke<string>('db_export_json');
     const presentation: Presentation = JSON.parse(json);
 
+    // Backfill assetId for legacy image/demo elements (mutates in place
+    // before setPresentation so the load is a single state update; not
+    // persisted until the next autosave triggered by a real edit — backfill
+    // is idempotent and cheap if it has to re-run on re-open).
+    await backfillElementAssetIds(presentation);
+
     const store = usePresentationStore.getState();
     store.setPresentation(presentation);
     store.setProjectPath(dbPath.replace(/\.eigendeck$/, ''));
@@ -753,6 +759,66 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
   } catch (e) {
     console.error('Failed to open SQLite project:', e);
     throw e;
+  }
+}
+
+/**
+ * One-time per-load backfill: walk every image/demo/demo-piece element
+ * lacking an `assetId` and resolve it by `src` (or `demoSrc`) path label
+ * against the assets table. Most projects will have nothing to backfill
+ * after the first save; legacy projects (created before the assetId
+ * field landed) get their elements bound to a specific asset_id, which
+ * is what makes Import-as-new safe.
+ *
+ * Dedups by unique path so a deck with 50 instances of one logo only
+ * issues one DB lookup. Mutates `presentation` in place; intentionally
+ * does NOT mark the store dirty (next genuine edit's autosave carries
+ * the backfilled assetIds along; re-open redoes the backfill if needed).
+ */
+async function backfillElementAssetIds(presentation: Presentation): Promise<void> {
+  const paths = new Set<string>();
+  for (const slide of presentation.slides) {
+    for (const el of slide.elements) {
+      const isAsset = el.type === 'image' || el.type === 'demo' || el.type === 'demo-piece';
+      if (!isAsset) continue;
+      const e = el as { assetId?: string; src?: string; demoSrc?: string };
+      if (e.assetId) continue;
+      const path = e.demoSrc ?? e.src;
+      if (path) paths.add(path);
+    }
+  }
+  if (paths.size === 0) return;
+  const { invoke } = await import('@tauri-apps/api/core');
+  const pathToId = new Map<string, string>();
+  for (const path of paths) {
+    try {
+      const meta = await invoke<{ asset_id: string } | null>('db_get_asset_meta_by_path', { path });
+      if (meta?.asset_id) pathToId.set(path, meta.asset_id);
+    } catch (e) {
+      console.warn(`[backfill] lookup failed for "${path}":`, e);
+    }
+  }
+  let backfilled = 0;
+  let missing = 0;
+  for (const slide of presentation.slides) {
+    for (const el of slide.elements) {
+      const isAsset = el.type === 'image' || el.type === 'demo' || el.type === 'demo-piece';
+      if (!isAsset) continue;
+      const e = el as { assetId?: string; src?: string; demoSrc?: string };
+      if (e.assetId) continue;
+      const path = e.demoSrc ?? e.src;
+      if (!path) continue;
+      const id = pathToId.get(path);
+      if (id) {
+        e.assetId = id;
+        backfilled++;
+      } else {
+        missing++;
+      }
+    }
+  }
+  if (backfilled > 0 || missing > 0) {
+    console.log(`[backfill] backfilled=${backfilled} missing=${missing} (unique paths: ${paths.size})`);
   }
 }
 
