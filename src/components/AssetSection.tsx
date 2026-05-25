@@ -162,8 +162,36 @@ export function AssetSection({ srcPath }: { srcPath: string }) {
         )}
       </div>
 
-      {/* Auto-reload tri-state */}
-      {meta.external_path && (
+      {/* Asset tracking is impossible in unnamed presentations: the
+          source file path can't be resolved without a project dir on
+          disk. Replace the controls with an explanatory bar + Save
+          shortcut. */}
+      {meta.external_path && !projectPath && (
+        <div style={{
+          fontSize: 11, padding: '6px 8px',
+          background: '#fffbeb', border: '1px solid #fcd34d',
+          borderRadius: 3, color: '#92400e',
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <span style={{ flex: 1 }}>
+            Asset tracking is not available in unnamed presentations.
+            Save the presentation to enable live updates from the source file.
+          </span>
+          <button
+            onClick={() => { void import('../store/fileOps').then(({ saveProject }) => saveProject()); }}
+            style={{
+              padding: '3px 8px', fontSize: 11,
+              background: '#f59e0b', color: '#fff',
+              border: 'none', borderRadius: 3, cursor: 'pointer',
+            }}>
+            Save…
+          </button>
+        </div>
+      )}
+
+      {/* Auto-reload tri-state — only meaningful when the project has a
+          dir to resolve external_path against. */}
+      {meta.external_path && projectPath && (
         <div style={{ fontSize: 11 }}>
           <div style={{ color: '#666', marginBottom: 4 }}>
             Auto-reload <span style={{ color: '#888' }}>
@@ -188,8 +216,9 @@ export function AssetSection({ srcPath }: { srcPath: string }) {
         </div>
       )}
 
-      {/* Manual reload */}
-      {meta.external_path && (
+      {/* Manual reload — same gate; the button would no-op without
+          projectPath anyway. */}
+      {meta.external_path && projectPath && (
         <button onClick={reloadNow} disabled={reloading}
           style={{
             padding: '4px 10px', fontSize: 12, alignSelf: 'flex-start',
