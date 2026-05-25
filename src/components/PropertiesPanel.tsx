@@ -329,7 +329,7 @@ export function PropertiesPanel() {
             {selectedEl.type === 'image' && (
               <>
                 <PropSection label="Asset">
-                  <AssetSection srcPath={selectedEl.src} />
+                  <AssetSection srcPath={selectedEl.src} assetId={(selectedEl as { assetId?: string }).assetId} />
                 </PropSection>
                 <PropSection label="Effects">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

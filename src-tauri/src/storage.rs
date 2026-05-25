@@ -1588,6 +1588,8 @@ pub struct AssetMeta {
 /// path-derived placeholder, which would create orphan rows).
 ///
 /// Returns None when no current asset matches the path.
+/// Use db_get_asset_meta_by_id when the caller has an asset_id; that's
+/// the correct lookup when multiple assets may share a path label.
 #[tauri::command]
 pub fn db_get_asset_meta_by_path(path: String) -> Result<Option<AssetMeta>, String> {
     with_db(|conn| {
@@ -1596,6 +1598,33 @@ pub fn db_get_asset_meta_by_path(path: String) -> Result<Option<AssetMeta>, Stri
              FROM assets WHERE path = ?1 AND valid_to IS NULL \
              ORDER BY valid_from DESC LIMIT 1",
             params![&path],
+            |row| Ok(AssetMeta {
+                asset_id: row.get(0)?,
+                path: row.get(1)?,
+                external_path: row.get(2)?,
+                external_mtime: row.get(3)?,
+                mime_type: row.get(4)?,
+                auto_reload: row.get(5)?,
+            }),
+        );
+        match result {
+            Ok(m) => Ok(Some(m)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e),
+        }
+    })
+}
+
+/// Look up the current asset row by stable asset_id. Same shape as
+/// db_get_asset_meta_by_path but always unambiguous — preferred by the
+/// renderer/watcher hooks when the element has an assetId binding.
+#[tauri::command]
+pub fn db_get_asset_meta_by_id(asset_id: String) -> Result<Option<AssetMeta>, String> {
+    with_db(|conn| {
+        let result: rusqlite::Result<AssetMeta> = conn.query_row(
+            "SELECT asset_id, path, external_path, external_mtime, mime_type, auto_reload \
+             FROM assets WHERE asset_id = ?1 AND valid_to IS NULL",
+            params![&asset_id],
             |row| Ok(AssetMeta {
                 asset_id: row.get(0)?,
                 path: row.get(1)?,

@@ -121,7 +121,7 @@ function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
 }) {
   // data: URLs are used inline, relative paths load from SQLite
   const assetSrc = element.src.startsWith('data:') ? undefined : element.src;
-  const blobUrl = useAssetUrl(assetSrc);
+  const blobUrl = useAssetUrl(assetSrc, undefined, element.assetId);
   const src = element.src.startsWith('data:') ? element.src : (blobUrl || element.src);
   return (
     <DraggableBox
@@ -158,7 +158,7 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
 }) {
   const [interacting, setInteracting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const src = useDemoUrl(element.src);
+  const src = useDemoUrl(element.src, undefined, element.assetId);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   return (
     <DraggableBox
@@ -235,7 +235,7 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
 }) {
   const [interacting, setInteracting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const src = useDemoUrl(element.demoSrc, `piece=${element.piece}`);
+  const src = useDemoUrl(element.demoSrc, `piece=${element.piece}`, element.assetId);
   return (
     <DraggableBox
       elementId={element.id}

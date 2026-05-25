@@ -37,13 +37,19 @@ interface AssetMeta {
  *     embedded as snapshot, or restored from history with auto_reload='off')
  *   - the presentation isn't saved yet (no project dir to resolve against)
  *
- * Looks up the asset's real asset_id by path label (the element's `src`)
- * so disk-event writes target the correct row instead of orphaning into
- * a new asset.
+ * Prefers `assetId` (unambiguous) when set; falls back to `assetPath`
+ * lookup for legacy elements without a binding. The path-only fallback
+ * is wrong when multiple assets share a path label — backfill on load
+ * makes that case rare; Import-as-new always sets assetId on the new
+ * element.
  *
  * Idempotent across re-mounts; safely unwatches on unmount or input change.
  */
-export function useAssetFileWatcher(assetPath: string | undefined, mimeType: string): void {
+export function useAssetFileWatcher(
+  assetPath: string | undefined,
+  mimeType: string,
+  assetId?: string,
+): void {
   const projectPath = usePresentationStore((s) => s.projectPath);
   const [projectId, setProjectId] = useState<string | null>(null);
   // 3-layer cascade: per-asset > per-presentation > global default.
@@ -61,8 +67,8 @@ export function useAssetFileWatcher(assetPath: string | undefined, mimeType: str
   }, [projectPath]);
 
   useEffect(() => {
-    if (!assetPath || !projectPath || !projectId) {
-      if (assetPath) hlog(`skip mount for "${assetPath}" — projectPath=${!!projectPath} projectId=${!!projectId}`);
+    if ((!assetPath && !assetId) || !projectPath || !projectId) {
+      if (assetPath || assetId) hlog(`skip mount for asset=${assetId?.slice(0, 8) ?? '?'} "${assetPath ?? ''}" — projectPath=${!!projectPath} projectId=${!!projectId}`);
       return;
     }
     let cancelled = false;
@@ -70,12 +76,16 @@ export function useAssetFileWatcher(assetPath: string | undefined, mimeType: str
     let registeredAssetId: string | null = null;
 
     (async () => {
-      const meta = await invoke<AssetMeta | null>('db_get_asset_meta_by_path', {
-        path: assetPath,
-      }).catch((e) => { hlog(`meta lookup FAILED for "${assetPath}":`, e); return null; });
+      // Prefer id lookup when available; it's unambiguous even when two
+      // assets share a path label (Import-as-new outcome).
+      const meta = assetId
+        ? await invoke<AssetMeta | null>('db_get_asset_meta_by_id', { assetId })
+            .catch((e) => { hlog(`meta-by-id lookup FAILED for ${assetId.slice(0, 8)}:`, e); return null; })
+        : await invoke<AssetMeta | null>('db_get_asset_meta_by_path', { path: assetPath })
+            .catch((e) => { hlog(`meta-by-path lookup FAILED for "${assetPath}":`, e); return null; });
       if (cancelled) return;
       if (!meta) {
-        hlog(`no asset meta for "${assetPath}" — nothing to watch (asset not yet stored, or path mismatch)`);
+        hlog(`no asset meta for asset=${assetId?.slice(0, 8) ?? '?'} "${assetPath ?? ''}" — nothing to watch`);
         return;
       }
       hlog(`meta for "${assetPath}": asset_id=${meta.asset_id.slice(0, 8)} external_path=${meta.external_path} mtime=${meta.external_mtime} auto_reload=${meta.auto_reload}`);
@@ -85,12 +95,12 @@ export function useAssetFileWatcher(assetPath: string | undefined, mimeType: str
         return;
       }
       if (!meta.external_path) {
-        hlog(`skip — no external_path for "${assetPath}" (e.g. pasted, snapshot, or never linked)`);
+        hlog(`skip — no external_path for asset=${meta.asset_id.slice(0, 8)} (e.g. pasted, snapshot, or never linked)`);
         return;
       }
 
       const registry = getWatcherRegistry(projectId, dirname(projectPath));
-      const origPath = meta.path ?? assetPath;
+      const origPath = meta.path ?? assetPath ?? meta.asset_id;
       const effectiveMime = meta.mime_type ?? mimeType;
       await registry.addRef(meta.external_path, meta.asset_id, origPath, effectiveMime);
       registeredExternalRel = meta.external_path;
@@ -104,5 +114,5 @@ export function useAssetFileWatcher(assetPath: string | undefined, mimeType: str
         registry.removeRef(registeredExternalRel, registeredAssetId);
       }
     };
-  }, [assetPath, mimeType, projectPath, projectId, globalAutoReload, presOverride]);
+  }, [assetPath, assetId, mimeType, projectPath, projectId, globalAutoReload, presOverride]);
 }

@@ -135,10 +135,10 @@ function PresenterElement({ element: el, zIndex, slide, presentationConfig, pres
       return <PresenterImage element={el} zIndex={zIndex} />;
 
     case 'demo':
-      return <PresenterDemoIframe assetPath={el.src} pos={pos} zIndex={zIndex} />;
+      return <PresenterDemoIframe assetPath={el.src} assetId={el.assetId} pos={pos} zIndex={zIndex} />;
 
     case 'demo-piece':
-      return <PresenterDemoIframe assetPath={el.demoSrc} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} />;
+      return <PresenterDemoIframe assetPath={el.demoSrc} assetId={el.assetId} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} />;
 
     case 'cover':
       return (
@@ -184,7 +184,7 @@ function PresenterTextElement({ element: el, zIndex, slide, presentationConfig, 
 function PresenterImage({ element: el, zIndex }: { element: Extract<SlideElement, { type: 'image' }>; zIndex: number }) {
   const pos = el.position;
   const assetSrc = el.src.startsWith('data:') ? undefined : el.src;
-  const blobUrl = useAssetUrl(assetSrc);
+  const blobUrl = useAssetUrl(assetSrc, undefined, el.assetId);
   const src = el.src.startsWith('data:') ? el.src : (blobUrl || el.src);
   return (
     <img src={src} alt="" style={{
@@ -198,12 +198,12 @@ function PresenterImage({ element: el, zIndex }: { element: Extract<SlideElement
   );
 }
 
-function PresenterDemoIframe({ assetPath, hash, title, pos, zIndex }: {
-  assetPath: string; hash?: string; title?: string;
+function PresenterDemoIframe({ assetPath, assetId, hash, title, pos, zIndex }: {
+  assetPath: string; assetId?: string; hash?: string; title?: string;
   pos: { x: number; y: number; width: number; height: number };
   zIndex: number;
 }) {
-  const src = useDemoUrl(assetPath, hash);
+  const src = useDemoUrl(assetPath, hash, assetId);
   if (!src) return null;
   return (
     <iframe src={src} sandbox="allow-scripts allow-same-origin" title={title || 'demo'} style={{

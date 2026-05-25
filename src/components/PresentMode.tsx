@@ -203,14 +203,18 @@ export function PresentMode() {
               />
             ))}
 
-            {/* Hidden controller iframes for demo-piece elements */}
+            {/* Hidden controller iframes for demo-piece elements.
+                Dedup by assetId when set (Import-as-new safe), else
+                demoSrc path label for legacy elements. */}
             {(() => {
-              const demoSrcs = new Set<string>();
+              const controllers = new Map<string, { demoSrc: string; assetId?: string }>();
               for (const el of slide.elements) {
-                if (el.type === 'demo-piece') demoSrcs.add(el.demoSrc);
+                if (el.type !== 'demo-piece') continue;
+                const key = el.assetId ?? el.demoSrc;
+                if (!controllers.has(key)) controllers.set(key, { demoSrc: el.demoSrc, assetId: el.assetId });
               }
-              return Array.from(demoSrcs).map((demoSrc) => (
-                <PresentControllerIframe key={`controller-${demoSrc}`} assetPath={demoSrc} />
+              return Array.from(controllers.entries()).map(([key, { demoSrc, assetId }]) => (
+                <PresentControllerIframe key={`controller-${key}`} assetPath={demoSrc} assetId={assetId} />
               ));
             })()}
 
@@ -309,10 +313,10 @@ function PresentElement({ element: el, zIndex, style }: {
       return <PresentImage element={el} zIndex={zIndex} style={style} />;
 
     case 'demo':
-      return <PresentDemoIframe assetPath={el.src} pos={pos} zIndex={zIndex} style={style} />;
+      return <PresentDemoIframe assetPath={el.src} assetId={el.assetId} pos={pos} zIndex={zIndex} style={style} />;
 
     case 'demo-piece':
-      return <PresentDemoIframe assetPath={el.demoSrc} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} style={style} />;
+      return <PresentDemoIframe assetPath={el.demoSrc} assetId={el.assetId} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} style={style} />;
 
     case 'cover':
       return (
@@ -441,7 +445,7 @@ function PresentImage({ element: el, zIndex, style }: {
 }) {
   const pos = el.position;
   const assetSrc = el.src.startsWith('data:') ? undefined : el.src;
-  const blobUrl = useAssetUrl(assetSrc);
+  const blobUrl = useAssetUrl(assetSrc, undefined, el.assetId);
   const src = el.src.startsWith('data:') ? el.src : (blobUrl || el.src);
   return (
     <img src={src} alt="" style={{
@@ -456,12 +460,12 @@ function PresentImage({ element: el, zIndex, style }: {
   );
 }
 
-function PresentDemoIframe({ assetPath, hash, title, pos, zIndex, style }: {
-  assetPath: string; hash?: string; title?: string;
+function PresentDemoIframe({ assetPath, assetId, hash, title, pos, zIndex, style }: {
+  assetPath: string; assetId?: string; hash?: string; title?: string;
   pos: { x: number; y: number; width: number; height: number };
   zIndex: number; style?: React.CSSProperties;
 }) {
-  const src = useDemoUrl(assetPath, hash);
+  const src = useDemoUrl(assetPath, hash, assetId);
   if (!src) return null;
   return (
     <iframe src={src} sandbox="allow-scripts allow-same-origin" title={title || 'demo'} style={{
@@ -472,8 +476,8 @@ function PresentDemoIframe({ assetPath, hash, title, pos, zIndex, style }: {
   );
 }
 
-function PresentControllerIframe({ assetPath }: { assetPath: string }) {
-  const src = useDemoUrl(assetPath, 'role=controller');
+function PresentControllerIframe({ assetPath, assetId }: { assetPath: string; assetId?: string }) {
+  const src = useDemoUrl(assetPath, 'role=controller', assetId);
   if (!src) return null;
   return (
     <iframe

@@ -933,18 +933,20 @@ function App() {
                 : ext === 'pdf' ? 'application/pdf'
                 : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
               let bytes: Uint8Array | null = null;
+              let assetId: string | undefined;
               try {
                 const { invoke } = await import('@tauri-apps/api/core');
                 const { readFile } = await import('@tauri-apps/plugin-fs');
                 bytes = await readFile(fullPath);
                 // Picker insertion: track the source link so the file
                 // watcher picks up edits to the original file on disk.
-                await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime, externalPath: relativePath, externalMtime: null });
+                assetId = await invoke<string>('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime, externalPath: relativePath, externalMtime: null });
               } catch (err) { console.error('Failed to store image:', err); }
               const { detectAssetKind } = await import('./lib/assetCache');
               const kind = detectAssetKind(relativePath, mime);
               store.addElement({
                 id: crypto.randomUUID(), type: 'image', src: relativePath,
+                assetId,
                 kind,
                 position: { x: 360, y: 200, width: 1200, height: 680 },
               });
@@ -954,8 +956,9 @@ function App() {
                 if (updated) {
                   const { invoke } = await import('@tauri-apps/api/core');
                   // Embed snapshot clears the source link (no more watching).
-                  await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null });
-                  await invalidateRenderedAsset(relativePath);
+                  // Same assetId — embed is a new version of the same asset.
+                  await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });
+                  await invalidateRenderedAsset(relativePath, assetId);
                 }
               }
             }}>+ Image</button>
@@ -972,7 +975,7 @@ function App() {
                 const { readFile, readTextFile } = await import('@tauri-apps/plugin-fs');
                 const bytes = await readFile(fullPath);
                 // Demo HTML — not file-watched in v1.
-                await invoke('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html', externalPath: null, externalMtime: null });
+                const assetId = await invoke<string>('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html', externalPath: null, externalMtime: null });
 
                 // Check if this is a demo-piece demo
                 const html = await readTextFile(fullPath);
@@ -985,13 +988,13 @@ function App() {
                     const width = Math.floor((1760 - (pieces.length - 1) * 40) / pieces.length);
                     store.addElement({
                       id: crypto.randomUUID(), type: 'demo-piece' as any,
-                      demoSrc: relativePath, piece,
+                      demoSrc: relativePath, piece, assetId,
                       position: { x, y: 200, width, height: 700 },
                     });
                     x += width + 40;
                   }
                 } else {
-                  store.addElement({ id: crypto.randomUUID(), type: 'demo', src: relativePath, position: { x: 80, y: 200, width: 1760, height: 700 } });
+                  store.addElement({ id: crypto.randomUUID(), type: 'demo', src: relativePath, assetId, position: { x: 80, y: 200, width: 1760, height: 700 } });
                 }
               } catch (err) {
                 console.error('Failed to add demo:', err);

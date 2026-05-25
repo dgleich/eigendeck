@@ -59,7 +59,7 @@ function relativeAgo(iso: string | null | undefined): string {
   return `${Math.floor(sec / 86400)}d ago`;
 }
 
-export function AssetSection({ srcPath }: { srcPath: string }) {
+export function AssetSection({ srcPath, assetId }: { srcPath: string; assetId?: string }) {
   const projectPath = usePresentationStore((s) => s.projectPath);
   const [meta, setMeta] = useState<AssetMeta | null>(null);
   const [history, setHistory] = useState<AssetVersion[]>([]);
@@ -68,8 +68,11 @@ export function AssetSection({ srcPath }: { srcPath: string }) {
   const presOverride = usePresentationStore((s) => s.presentation?.config?.autoReloadAssets ?? null);
 
   const fetchMeta = useCallback(async () => {
-    const m = await invoke<AssetMeta | null>('db_get_asset_meta_by_path', { path: srcPath })
-      .catch(() => null);
+    // Prefer asset_id lookup when bound (unambiguous when two assets share a path);
+    // fall back to path for legacy elements without an assetId binding.
+    const m = assetId
+      ? await invoke<AssetMeta | null>('db_get_asset_meta_by_id', { assetId }).catch(() => null)
+      : await invoke<AssetMeta | null>('db_get_asset_meta_by_path', { path: srcPath }).catch(() => null);
     setMeta(m);
     if (m) {
       const hist = await invoke<AssetVersion[]>('db_get_asset_history', { assetId: m.asset_id })
@@ -78,19 +81,23 @@ export function AssetSection({ srcPath }: { srcPath: string }) {
     } else {
       setHistory([]);
     }
-  }, [srcPath]);
+  }, [srcPath, assetId]);
 
   useEffect(() => { void fetchMeta(); }, [fetchMeta]);
 
   // Refetch on asset-changed (watcher reloads, restore, manual reload).
+  // Match by assetId when both event and binding have one; else by path.
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { path?: string } | undefined;
-      if (detail?.path === srcPath) void fetchMeta();
+      const detail = (e as CustomEvent).detail as { path?: string; assetId?: string } | undefined;
+      const matches = assetId && detail?.assetId
+        ? detail.assetId === assetId
+        : detail?.path === srcPath;
+      if (matches) void fetchMeta();
     };
     window.addEventListener('eigendeck:asset-changed', handler);
     return () => window.removeEventListener('eigendeck:asset-changed', handler);
-  }, [srcPath, fetchMeta]);
+  }, [srcPath, assetId, fetchMeta]);
 
   const reloadNow = useCallback(async () => {
     if (!meta?.external_path || !projectPath) return;
@@ -110,7 +117,7 @@ export function AssetSection({ srcPath }: { srcPath: string }) {
         assetId: meta.asset_id,
         autoReload: null,
       });
-      await invalidateRenderedAsset(meta.path ?? srcPath);
+      await invalidateRenderedAsset(meta.path ?? srcPath, meta.asset_id);
     } catch (e) {
       console.warn('[AssetSection] reload failed:', e);
     } finally {
@@ -130,7 +137,7 @@ export function AssetSection({ srcPath }: { srcPath: string }) {
     await invoke('db_restore_asset_version', { assetId: meta.asset_id, validFrom: valid_from }).catch((e) => {
       console.warn('[AssetSection] restore failed:', e);
     });
-    await invalidateRenderedAsset(meta.path ?? srcPath);
+    await invalidateRenderedAsset(meta.path ?? srcPath, meta.asset_id);
   }, [meta, srcPath]);
 
   if (!meta) {

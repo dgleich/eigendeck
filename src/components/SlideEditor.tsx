@@ -495,7 +495,7 @@ export function SlideEditor() {
                       // file watcher. Same assetId: the embed is a new
                       // version of the same asset, not a new asset.
                       await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });
-                      await invalidateRenderedAsset(relativePath);
+                      await invalidateRenderedAsset(relativePath, assetId);
                     }
                   }
                 } catch (err) { console.error('Failed to handle dropped image:', err); }
@@ -583,14 +583,18 @@ export function SlideEditor() {
               />
             );
           })}
-          {/* Hidden controller iframes for demo-piece elements */}
+          {/* Hidden controller iframes for demo-piece elements.
+              Dedup by assetId when set (Import-as-new safe), else demoSrc
+              path label for legacy elements. */}
           {(() => {
-            const demoSrcs = new Set<string>();
+            const controllers = new Map<string, { demoSrc: string; assetId?: string }>();
             for (const el of slide.elements) {
-              if (el.type === 'demo-piece') demoSrcs.add(el.demoSrc);
+              if (el.type !== 'demo-piece') continue;
+              const key = el.assetId ?? el.demoSrc;
+              if (!controllers.has(key)) controllers.set(key, { demoSrc: el.demoSrc, assetId: el.assetId });
             }
-            return Array.from(demoSrcs).map((demoSrc) => (
-              <ControllerIframe key={`controller-${demoSrc}`} assetPath={demoSrc} />
+            return Array.from(controllers.entries()).map(([key, { demoSrc, assetId }]) => (
+              <ControllerIframe key={`controller-${key}`} assetPath={demoSrc} assetId={assetId} />
             ));
           })()}
           {marquee && (() => {
@@ -617,8 +621,8 @@ export function SlideEditor() {
 }
 
 /** Hidden controller iframe that loads demo HTML from SQLite */
-function ControllerIframe({ assetPath }: { assetPath: string }) {
-  const src = useDemoUrl(assetPath, 'role=controller');
+function ControllerIframe({ assetPath, assetId }: { assetPath: string; assetId?: string }) {
+  const src = useDemoUrl(assetPath, 'role=controller', assetId);
   if (!src) return null;
   return (
     <iframe

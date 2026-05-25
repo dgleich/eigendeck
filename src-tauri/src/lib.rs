@@ -558,6 +558,7 @@ pub fn run() {
             storage::db_get_asset_by_id,
             storage::db_get_asset_external_path,
             storage::db_get_asset_meta_by_path,
+            storage::db_get_asset_meta_by_id,
             storage::db_get_asset_history,
             storage::db_restore_asset_version,
             storage::db_set_asset_auto_reload,
