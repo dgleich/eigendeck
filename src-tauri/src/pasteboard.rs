@@ -105,12 +105,16 @@ pub fn pasteboard_read_type(_app: tauri::AppHandle, uti: String) -> Result<Optio
 // behavior is predictable + consistent with the other AppKit calls in
 // this codebase (NSAlert in lib.rs).
 
+// objc2-app-kit 0.3 marks the NSPasteboard accessor / read methods we
+// call below as SAFE — no `unsafe` blocks needed. Earlier I wrapped
+// them defensively; clippy under -D warnings rejects the unused unsafe.
+
 #[cfg(target_os = "macos")]
 fn mac_pasteboard_list_types() -> Result<Vec<String>, String> {
     use objc2_app_kit::NSPasteboard;
 
     let pb = NSPasteboard::generalPasteboard();
-    match unsafe { pb.types() } {
+    match pb.types() {
         Some(arr) => {
             let mut out = Vec::with_capacity(arr.len());
             for t in arr.iter() {
@@ -129,7 +133,7 @@ fn mac_pasteboard_read_type(uti: &str) -> Result<Option<Vec<u8>>, String> {
 
     let pb = NSPasteboard::generalPasteboard();
     let ns = NSString::from_str(uti);
-    let data = unsafe { pb.dataForType(&ns) };
+    let data = pb.dataForType(&ns);
     Ok(data.map(|d| d.to_vec()))
 }
 
@@ -145,8 +149,8 @@ fn mac_pasteboard_list_drag_types() -> Result<Vec<String>, String> {
     use objc2_foundation::NSString;
 
     let name = NSString::from_str(NS_PASTEBOARD_NAME_DRAG);
-    let pb = unsafe { NSPasteboard::pasteboardWithName(&name) };
-    match unsafe { pb.types() } {
+    let pb = NSPasteboard::pasteboardWithName(&name);
+    match pb.types() {
         Some(arr) => {
             let mut out = Vec::with_capacity(arr.len());
             for t in arr.iter() {
@@ -164,8 +168,8 @@ fn mac_pasteboard_read_drag_type(uti: &str) -> Result<Option<Vec<u8>>, String> {
     use objc2_foundation::NSString;
 
     let name = NSString::from_str(NS_PASTEBOARD_NAME_DRAG);
-    let pb = unsafe { NSPasteboard::pasteboardWithName(&name) };
+    let pb = NSPasteboard::pasteboardWithName(&name);
     let ns = NSString::from_str(uti);
-    let data = unsafe { pb.dataForType(&ns) };
+    let data = pb.dataForType(&ns);
     Ok(data.map(|d| d.to_vec()))
 }
