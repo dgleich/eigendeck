@@ -1,7 +1,11 @@
 // Global application preferences modal. Opened from the Eigendeck menu
-// (Settings…, Cmd+,). One section per preference; today only the asset
-// auto-reload toggle. Per-presentation and per-asset overrides live in
-// the Inspector — this is for app-wide defaults.
+// (Settings…, Cmd+,). One section per preference; today the asset
+// auto-reload toggle and the global LaTeX preamble. Per-presentation and
+// per-asset overrides live in the Inspector — this is for app-wide
+// defaults.
+//
+// This is a webview-based modal; native settings window is tracked in
+// https://github.com/dgleich/eigendeck/issues/62
 
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
