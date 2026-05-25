@@ -16,6 +16,7 @@ import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import { DebugMenu } from './debug';
 import { ToastHost } from './components/ToastHost';
 import { SettingsModal } from './components/SettingsModal';
+import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
@@ -934,14 +935,22 @@ function App() {
                 : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
               let bytes: Uint8Array | null = null;
               let assetId: string | undefined;
+              let cancelled = false;
               try {
-                const { invoke } = await import('@tauri-apps/api/core');
                 const { readFile } = await import('@tauri-apps/plugin-fs');
                 bytes = await readFile(fullPath);
                 // Picker insertion: track the source link so the file
                 // watcher picks up edits to the original file on disk.
-                assetId = await invoke<string>('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime, externalPath: relativePath, externalMtime: null });
+                // Routed through collision check; user may cancel.
+                const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
+                const r = await storeAssetWithCollisionCheck({
+                  path: relativePath, data: bytes, mimeType: mime,
+                  externalPath: relativePath, externalMtime: null,
+                });
+                if (r.cancelled) { cancelled = true; }
+                else { assetId = r.assetId; }
               } catch (err) { console.error('Failed to store image:', err); }
+              if (cancelled) return;
               const { detectAssetKind } = await import('./lib/assetCache');
               const kind = detectAssetKind(relativePath, mime);
               store.addElement({
@@ -957,6 +966,9 @@ function App() {
                   const { invoke } = await import('@tauri-apps/api/core');
                   // Embed snapshot clears the source link (no more watching).
                   // Same assetId — embed is a new version of the same asset.
+                  // Direct db_store_asset (not the collision helper): we
+                  // KNOW this is a follow-up update to the asset we just
+                  // created, so no collision dialog should fire.
                   await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });
                   await invalidateRenderedAsset(relativePath, assetId);
                 }
@@ -971,11 +983,18 @@ function App() {
 
               // Store demo HTML as SQLite asset
               try {
-                const { invoke } = await import('@tauri-apps/api/core');
                 const { readFile, readTextFile } = await import('@tauri-apps/plugin-fs');
                 const bytes = await readFile(fullPath);
                 // Demo HTML — not file-watched in v1.
-                const assetId = await invoke<string>('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html', externalPath: null, externalMtime: null });
+                // Routed through collision helper (drag-drop path counts
+                // as drag-drop semantically: user selected a real file).
+                const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
+                const r = await storeAssetWithCollisionCheck({
+                  path: relativePath, data: bytes, mimeType: 'text/html',
+                  externalPath: null, externalMtime: null,
+                });
+                if (r.cancelled) return;
+                const assetId = r.assetId;
 
                 // Check if this is a demo-piece demo
                 const html = await readTextFile(fullPath);
@@ -1019,6 +1038,7 @@ function App() {
         />
       )}
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <CollisionDialog />
       {unsavedDialog && (
         <UnsavedChangesDialog
           title={unsavedDialog.title}

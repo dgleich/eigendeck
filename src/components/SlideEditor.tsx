@@ -475,7 +475,15 @@ export function SlideEditor() {
                   // the .eigendeck dir. Store it as externalPath so the
                   // file-watcher can re-resolve to absolute at runtime and
                   // notice when the source file changes on disk.
-                  const assetId = await invoke<string>('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime, externalPath: relativePath, externalMtime: null });
+                  // Routed through collision helper: hash-differing re-add
+                  // prompts the user; same-bytes silently dedups.
+                  const { storeAssetWithCollisionCheck } = await import('../lib/assetInsert');
+                  const r = await storeAssetWithCollisionCheck({
+                    path: relativePath, data: bytes, mimeType: mime,
+                    externalPath: relativePath, externalMtime: null,
+                  });
+                  if (r.cancelled) return;
+                  const assetId = r.assetId;
                   const kind = detectAssetKind(name, mime);
                   store.addElement({
                     id: crypto.randomUUID(), type: 'image',
@@ -494,6 +502,9 @@ export function SlideEditor() {
                       // the source files"). Clearing externalPath stops the
                       // file watcher. Same assetId: the embed is a new
                       // version of the same asset, not a new asset.
+                      // Direct db_store_asset (skip collision helper): we
+                      // KNOW this is a follow-up update to the asset we
+                      // just stored, not a real collision.
                       await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });
                       await invalidateRenderedAsset(relativePath, assetId);
                     }
@@ -501,12 +512,18 @@ export function SlideEditor() {
                 } catch (err) { console.error('Failed to handle dropped image:', err); }
               } else if (isHtml) {
                 try {
-                  const { invoke } = await import('@tauri-apps/api/core');
                   const { readFile, readTextFile } = await import('@tauri-apps/plugin-fs');
                   const relativePath = relPath(store.projectPath, fullPath);
                   const bytes = await readFile(fullPath);
                   // Demo HTML — not file-watched in v1.
-                  const assetId = await invoke<string>('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: 'text/html', externalPath: null, externalMtime: null });
+                  // Routed through collision helper (real file drop).
+                  const { storeAssetWithCollisionCheck } = await import('../lib/assetInsert');
+                  const r = await storeAssetWithCollisionCheck({
+                    path: relativePath, data: bytes, mimeType: 'text/html',
+                    externalPath: null, externalMtime: null,
+                  });
+                  if (r.cancelled) return;
+                  const assetId = r.assetId;
 
                   // Detect demo-piece demos
                   const html = await readTextFile(fullPath);

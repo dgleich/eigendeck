@@ -1579,6 +1579,11 @@ pub struct AssetMeta {
     pub external_mtime: Option<String>,
     pub mime_type: Option<String>,
     pub auto_reload: Option<String>,
+    /// SHA-256 hex of the current row's bytes. Lets the JS-side
+    /// collision check skip the dialog when the new insertion has
+    /// the same bytes as the existing asset (dedup is already a
+    /// no-op in db_store_asset; the dialog would just be annoying).
+    pub hash: Option<String>,
 }
 
 /// Look up the current asset row matching a given path label. Returns
@@ -1594,7 +1599,7 @@ pub struct AssetMeta {
 pub fn db_get_asset_meta_by_path(path: String) -> Result<Option<AssetMeta>, String> {
     with_db(|conn| {
         let result: rusqlite::Result<AssetMeta> = conn.query_row(
-            "SELECT asset_id, path, external_path, external_mtime, mime_type, auto_reload \
+            "SELECT asset_id, path, external_path, external_mtime, mime_type, auto_reload, hash \
              FROM assets WHERE path = ?1 AND valid_to IS NULL \
              ORDER BY valid_from DESC LIMIT 1",
             params![&path],
@@ -1605,6 +1610,7 @@ pub fn db_get_asset_meta_by_path(path: String) -> Result<Option<AssetMeta>, Stri
                 external_mtime: row.get(3)?,
                 mime_type: row.get(4)?,
                 auto_reload: row.get(5)?,
+                hash: row.get(6)?,
             }),
         );
         match result {
@@ -1622,7 +1628,7 @@ pub fn db_get_asset_meta_by_path(path: String) -> Result<Option<AssetMeta>, Stri
 pub fn db_get_asset_meta_by_id(asset_id: String) -> Result<Option<AssetMeta>, String> {
     with_db(|conn| {
         let result: rusqlite::Result<AssetMeta> = conn.query_row(
-            "SELECT asset_id, path, external_path, external_mtime, mime_type, auto_reload \
+            "SELECT asset_id, path, external_path, external_mtime, mime_type, auto_reload, hash \
              FROM assets WHERE asset_id = ?1 AND valid_to IS NULL",
             params![&asset_id],
             |row| Ok(AssetMeta {
@@ -1632,6 +1638,7 @@ pub fn db_get_asset_meta_by_id(asset_id: String) -> Result<Option<AssetMeta>, St
                 external_mtime: row.get(3)?,
                 mime_type: row.get(4)?,
                 auto_reload: row.get(5)?,
+                hash: row.get(6)?,
             }),
         );
         match result {

@@ -123,7 +123,7 @@ assetId?, autoReload?)` semantics:
 The element gets `assetId = <returned id>` so future renders
 unambiguously target this asset.
 
-### Path collision dialog (Phase 4 — pending implementation)
+### Path collision dialog
 
 **When fired**: a new insertion's path already exists in the
 project as a current asset, AND the new bytes' hash differs from
@@ -165,6 +165,27 @@ sees it. Disambiguation is by `asset_id` only.
 **No default focus**: the dialog does not preselect a button. We
 explicitly want the user to read and choose, since both options
 have legitimate use cases.
+
+**Dialog body contents**:
+
+- Filename / path label.
+- "Used on N elements across M slides." Makes the blast radius
+  of "Update existing" concrete.
+- The existing asset's `external_path` (source file on disk) if
+  known — lets the user see whether they're re-adding from the
+  same folder or a different one.
+
+**Trigger scope**: drag-drop and file picker only. Clipboard
+paste is excluded — paste creates synthetic paths like
+`images/pasted-1748202345.svg`, so collisions are essentially
+never the user's intent. Skipping paste avoids dialog spam.
+
+**"Don't ask again this session" checkbox**: the dialog has a
+checkbox below the buttons. When checked + a choice is clicked,
+that choice becomes the session-wide default for any further
+collision until app restart. Held in a module-level variable
+(NOT persisted to `localStorage`), explicitly per-app-session so
+the user gets a fresh prompt on next launch.
 
 ### Update (in-place new version)
 
