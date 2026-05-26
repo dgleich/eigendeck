@@ -59,7 +59,7 @@ function relativeAgo(iso: string | null | undefined): string {
   return `${Math.floor(sec / 86400)}d ago`;
 }
 
-export function AssetSection({ srcPath, assetId }: { srcPath: string; assetId?: string }) {
+export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string; assetId?: string; elementId?: string }) {
   const projectPath = usePresentationStore((s) => s.projectPath);
   const [meta, setMeta] = useState<AssetMeta | null>(null);
   const [history, setHistory] = useState<AssetVersion[]>([]);
@@ -127,9 +127,52 @@ export function AssetSection({ srcPath, assetId }: { srcPath: string; assetId?: 
 
   const setAutoReload = useCallback(async (value: 'on' | 'off' | null) => {
     if (!meta) return;
-    await invoke('db_set_asset_auto_reload', { assetId: meta.asset_id, value }).catch(() => {});
+    // If this asset is bound by multiple elements (e.g. user added the
+    // same image to slides 1, 2, 3), the tri-state lives in a per-
+    // ELEMENT panel — the user expects per-element semantics. Setting
+    // auto_reload on the shared asset row would affect every bound
+    // element, not just this one. Fork in that case: create a new
+    // asset_id with current bytes + the chosen auto_reload, rebind
+    // THIS element to it; other elements stay on the original asset.
+    const pres = usePresentationStore.getState().presentation;
+    let usageCount = 0;
+    if (pres) {
+      for (const slide of pres.slides) {
+        for (const el of slide.elements) {
+          if (el.type !== 'image' && el.type !== 'demo' && el.type !== 'demo-piece') continue;
+          const e = el as { assetId?: string; src?: string; demoSrc?: string };
+          const isBound = e.assetId
+            ? e.assetId === meta.asset_id
+            : (e.demoSrc ?? e.src) === meta.path;
+          if (isBound) usageCount++;
+        }
+      }
+    }
+    if (usageCount <= 1 || !elementId) {
+      // Solo asset (or no elementId to rebind): in-place flip is correct.
+      await invoke('db_set_asset_auto_reload', { assetId: meta.asset_id, value }).catch(() => {});
+    } else {
+      // Shared asset: fork.
+      try {
+        const bytes = await invoke<number[]>('db_get_asset_by_id', { assetId: meta.asset_id });
+        const newAssetId = crypto.randomUUID();
+        await invoke('db_store_asset', {
+          path: meta.path,
+          data: bytes,
+          mimeType: meta.mime_type,
+          externalPath: meta.external_path,
+          externalMtime: meta.external_mtime,
+          assetId: newAssetId,
+          autoReload: value,
+        });
+        usePresentationStore.getState().updateElement(elementId, { assetId: newAssetId } as any);
+        console.log(`[AssetSection] forked shared asset ${meta.asset_id.slice(0, 8)} → ${newAssetId.slice(0, 8)} (${usageCount} elements shared; rebinding element ${elementId})`);
+      } catch (e) {
+        console.warn('[AssetSection] fork failed:', e);
+      }
+    }
     await fetchMeta();
-  }, [meta, fetchMeta]);
+  }, [meta, elementId, fetchMeta]);
 
   const restoreVersion = useCallback(async (valid_from: string) => {
     if (!meta) return;

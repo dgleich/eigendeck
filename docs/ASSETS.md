@@ -315,6 +315,35 @@ The watcher subscriber gate (in `useAssetFileWatcher` and
 watch, no auto-reload. Manual "Reload from disk now" ignores the
 cascade — explicit user action always works.
 
+### Per-asset tri-state on shared assets (auto-fork)
+
+The per-asset tri-state lives in Properties → Asset (per element
+selected) — but multiple elements can be bound to the same
+`asset_id` (e.g. the user dragged the same SVG onto three slides
+and accepted "Update existing" in the collision dialog, or never
+hit the dialog at all). Setting `auto_reload` on the shared row
+would affect every bound element, contradicting the per-element
+mental model of the panel.
+
+When the user changes the tri-state for a shared asset (usage
+count > 1), `AssetSection.setAutoReload` **forks** the asset:
+
+1. Read current bytes via `db_get_asset_by_id(oldAssetId)`.
+2. `db_store_asset` with a fresh `crypto.randomUUID()` assetId,
+   same path label, same external_path / mime_type, and the
+   chosen `auto_reload` value baked in.
+3. `updateElement(elementId, { assetId: newAssetId })` rebinds
+   THIS element to the new asset. Other elements stay on the
+   original asset (so the file watcher's auto-update continues
+   to affect them normally).
+
+When usage count is 1 (no other elements share the asset), the
+in-place flip via `db_set_asset_auto_reload` is correct — no fork
+needed.
+
+This makes the panel behave "per-element" from the user's POV,
+even though the underlying storage is asset-keyed.
+
 ## File watching
 
 ### Watcher registry
