@@ -747,10 +747,12 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     const presentation: Presentation = JSON.parse(json);
 
     // Backfill assetId for legacy image/demo elements (mutates in place
-    // before setPresentation so the load is a single state update; not
-    // persisted until the next autosave triggered by a real edit — backfill
-    // is idempotent and cheap if it has to re-run on re-open).
-    await backfillElementAssetIds(presentation);
+    // before setPresentation so the load is a single state update).
+    // Returns the element IDs that got assetIds — we explicitly mark
+    // them dirty below so the next save persists them. Without this
+    // every reload re-runs the backfill from scratch (DB never gets
+    // the assetIds written).
+    const backfilledElementIds = await backfillElementAssetIds(presentation);
 
     const store = usePresentationStore.getState();
     store.setPresentation(presentation);
@@ -762,6 +764,16 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
 
     // Enable write-through for the new project
     sqliteDbPath = dbPath;
+
+    // Mark backfilled elements dirty so the next save (manual Cmd+S or
+    // autosave) writes their new assetId field into the DB. The
+    // subscriber diff can't detect these — we mutated the JSON before
+    // setPresentation, and prevPresentation got set to the post-
+    // backfill state — so we must mark them explicitly.
+    if (backfilledElementIds.length > 0) {
+      for (const id of backfilledElementIds) markElementDirty(id);
+      scheduleFlush();
+    }
 
     // Warm the math-SVG cache so previously-rendered expressions don't
     // re-render through the iframe pool on first slide paint.
@@ -798,11 +810,14 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
  * is what makes Import-as-new safe.
  *
  * Dedups by unique path so a deck with 50 instances of one logo only
- * issues one DB lookup. Mutates `presentation` in place; intentionally
- * does NOT mark the store dirty (next genuine edit's autosave carries
- * the backfilled assetIds along; re-open redoes the backfill if needed).
+ * issues one DB lookup. Mutates `presentation` in place. Returns the
+ * IDs of elements that received an assetId — the caller is responsible
+ * for marking them dirty so the next flushToSqlite persists them. The
+ * subscriber diff can't detect these changes (we mutate before
+ * setPresentation, and prevPresentation gets set to the already-
+ * backfilled state).
  */
-async function backfillElementAssetIds(presentation: Presentation): Promise<void> {
+async function backfillElementAssetIds(presentation: Presentation): Promise<string[]> {
   const paths = new Set<string>();
   for (const slide of presentation.slides) {
     for (const el of slide.elements) {
@@ -814,7 +829,7 @@ async function backfillElementAssetIds(presentation: Presentation): Promise<void
       if (path) paths.add(path);
     }
   }
-  if (paths.size === 0) return;
+  if (paths.size === 0) return [];
   const { invoke } = await import('@tauri-apps/api/core');
   const pathToId = new Map<string, string>();
   for (const path of paths) {
@@ -825,7 +840,7 @@ async function backfillElementAssetIds(presentation: Presentation): Promise<void
       console.warn(`[backfill] lookup failed for "${path}":`, e);
     }
   }
-  let backfilled = 0;
+  const touched: string[] = [];
   let missing = 0;
   for (const slide of presentation.slides) {
     for (const el of slide.elements) {
@@ -838,15 +853,16 @@ async function backfillElementAssetIds(presentation: Presentation): Promise<void
       const id = pathToId.get(path);
       if (id) {
         e.assetId = id;
-        backfilled++;
+        touched.push(el.id);
       } else {
         missing++;
       }
     }
   }
-  if (backfilled > 0 || missing > 0) {
-    console.log(`[backfill] backfilled=${backfilled} missing=${missing} (unique paths: ${paths.size})`);
+  if (touched.length > 0 || missing > 0) {
+    console.log(`[backfill] backfilled=${touched.length} missing=${missing} (unique paths: ${paths.size})`);
   }
+  return touched;
 }
 
 /** Close the SQLite DB, checkpointing WAL + tearing down file watchers. */
