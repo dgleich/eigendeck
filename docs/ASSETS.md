@@ -151,6 +151,13 @@ the file changed on disk without anyone updating the asset.
 - **Per-presentation auto-reload is OFF** ("PowerPoint mode" — see
   below). The dialog premise doesn't apply when the user has
   explicitly opted out of the auto-update paradigm.
+- **User already clicked "I understand"** on the collision dialog
+  for this presentation earlier in the same app session. The
+  acceptance is per-presentation, per-app-session, held in a
+  module-level `Set<project_id>` in `assetInsert.ts` (NOT
+  persisted to localStorage / project config). Resets on app
+  restart so a returning user can still be prompted if the
+  scenario recurs in a fresh launch. See "Workflow rule" below.
 - Path is new (no existing asset at that path) — no surprise.
 - The bytes being added match the existing asset's ORIGINAL bytes
   (user is re-adding the same file they first put here) — no
@@ -159,6 +166,27 @@ the file changed on disk without anyone updating the asset.
   it (orphan) — no user to surprise.
 - Insertion is via clipboard paste — paste paths are synthetic
   (`pasted-<ts>.svg`), this scenario never applies.
+
+**Workflow rule** (the contract the user is acknowledging with each
+choice):
+
+- **"I understand and want this auto-updating behavior"** is a
+  conceptual commitment for the rest of the app session: "I'm
+  informed about how auto-updating works, don't keep asking me."
+  Subsequent inserts at ANY path in this presentation skip the
+  dialog and silently update on the existing asset. The flag
+  clears at app restart — a user returning later still gets the
+  awareness prompt if it applies.
+- **"I want to revert the contents to the previous version..."** is
+  a structural commitment for the presentation: it sets
+  `config.autoReloadAssets = 'off'` (persisted in the
+  `.eigendeck`), which puts the presentation in PowerPoint mode
+  permanently. Subsequent inserts skip the dialog AND create
+  independent assets.
+- **Esc / outside-click** is the "I'm not deciding right now"
+  escape. The insertion is cancelled (no asset stored, no element
+  added), and nothing is remembered — re-attempting the same
+  insert will re-prompt.
 
 #### PowerPoint mode: per-presentation auto-reload OFF
 

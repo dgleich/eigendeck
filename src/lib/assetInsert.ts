@@ -20,6 +20,24 @@ const ilog = (...a: unknown[]): void => {
   if (INSERT_LOG) console.log(`[insert ${new Date().toISOString().slice(11, 23)}]`, ...a);
 };
 
+// Per-presentation, per-app-session memory of "user clicked
+// 'I understand and want this auto-updating behavior' on the
+// collision dialog." Once accepted, subsequent inserts at any path in
+// that presentation skip the dialog and silently update. Cleared on
+// app restart (NOT persisted to localStorage / project config) — the
+// commitment is conceptual: "I get what's happening" — not "lock in
+// auto-update forever." Reset on next launch so a user who returns
+// later still gets the awareness prompt if it applies.
+const acceptedProjects = new Set<string>();
+
+async function currentProjectId(): Promise<string | null> {
+  try {
+    return await invoke<string>('db_get_project_id');
+  } catch {
+    return null;
+  }
+}
+
 interface StoreArgs {
   path: string;
   data: Uint8Array;
@@ -180,6 +198,19 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   }
   ilog(`DIVERGENCE detected: original_hash=${original.hash.slice(0, 8)} != new_hash=${newHash.slice(0, 8)} (current=${meta.hash?.slice(0, 8)}, history: ${history.length} versions)`);
 
+  // Session-level suppression: if the user already clicked "I understand
+  // and want this auto-updating behavior" for this presentation this
+  // session, don't re-prompt — they're informed. Silently store on the
+  // existing asset.
+  const projectId = await currentProjectId();
+  if (projectId && acceptedProjects.has(projectId)) {
+    ilog(`auto-update previously accepted for project ${projectId.slice(0, 8)} → silent store, no dialog`);
+    const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
+    await invalidateRenderedAsset(args.path, meta.asset_id);
+    maybeWarnUnsavedProject(args.externalPath);
+    return { assetId, path: args.path, cancelled: false };
+  }
+
   const slidesUsing = findSlidesUsingAsset(meta.asset_id, args.path);
   ilog(`asset used on slides: ${slidesUsing.length === 0 ? '(none — orphan)' : slidesUsing.join(', ')}`);
   if (slidesUsing.length === 0) {
@@ -202,11 +233,19 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   }
 
   if (choice === 'accept') {
-    // User opted into the auto-updating behavior. Store new bytes on
-    // the existing assetId; all elements bound to it see the new bytes.
-    // Cache invalidation is critical: other slides' main-window <img>
-    // blob URLs cached the OLD bytes via useAssetUrl; without
-    // invalidation they keep showing stale until next reload.
+    // User opted into the auto-updating behavior. Remember for the
+    // rest of this app-session: don't re-prompt on subsequent
+    // collisions in this same presentation. The understanding is a
+    // one-time commitment per session.
+    if (projectId) {
+      acceptedProjects.add(projectId);
+      ilog(`accept: recorded project ${projectId.slice(0, 8)} as session-accepted (no more collision dialogs this session)`);
+    }
+    // Store new bytes on the existing assetId; all elements bound to
+    // it see the new bytes. Cache invalidation is critical: other
+    // slides' main-window <img> blob URLs cached the OLD bytes via
+    // useAssetUrl; without invalidation they keep showing stale until
+    // next reload.
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
     await invalidateRenderedAsset(args.path, meta.asset_id);
     ilog(`accept: stored on existing asset_id=${meta.asset_id.slice(0, 8)} + invalidated cache`);
