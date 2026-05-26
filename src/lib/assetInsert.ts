@@ -1,12 +1,14 @@
-// Wraps db_store_asset with path-collision detection. Used by
-// drag-drop and file-picker insertion paths. Clipboard paste skips
-// this helper (paste paths are synthetic — collisions ~never the
-// user's intent).
+// Wraps db_store_asset with "asset has silently changed since first
+// add" detection. Used by drag-drop and file-picker insertion paths.
+// Clipboard paste skips this helper — paste creates synthetic
+// `pasted-<ts>.svg` paths, so this scenario never applies.
 //
 // See docs/ASSETS.md → "Path collision dialog" for the full design.
 
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
+import { getSlideNumber } from '../types/presentation';
+import { invalidateRenderedAsset } from './assetRenderer';
 import { showCollisionDialog } from './collisionDialog';
 
 interface StoreArgs {
@@ -21,12 +23,11 @@ interface StoreResult {
   /** Asset id under which the bytes are stored. Caller puts this on the
    *  new element so future renders bind unambiguously. */
   assetId: string;
-  /** Path label that ended up being stored. ALWAYS equals the input
-   *  `path` today (no path mutation on collision); kept as a field so a
-   *  future "Import as new and rename" option can plug in cleanly. */
+  /** Path label the new element should reference. Always equals the
+   *  input `path` today (no path mutation). */
   path: string;
-  /** True when the user cancelled the dialog. Caller should NOT add an
-   *  element to the slide in that case. */
+  /** True when the user cancelled the dialog (Esc / clicked outside).
+   *  Caller should NOT add an element to the slide in that case. */
   cancelled: boolean;
 }
 
@@ -40,64 +41,105 @@ interface AssetMeta {
   hash: string | null;
 }
 
+interface AssetVersion {
+  asset_id: string;
+  valid_from: string;
+  valid_to: string | null;
+  size: number;
+  hash: string | null;
+  mime_type: string | null;
+  external_mtime: string | null;
+}
+
 /**
- * Store an asset, prompting on path collision when the new bytes differ
- * from the existing asset's bytes. Returns the chosen asset_id (and
- * `cancelled: true` if the user backed out).
+ * Store an asset, prompting only when there's a silent-change surprise
+ * to surface. Three paths:
  *
- * Behavior:
- *   - No existing asset at that path     → db_store_asset, fresh assetId
- *   - Existing asset, same hash          → db_store_asset (it dedups
- *                                          internally), reuses existing
- *                                          assetId, no dialog
- *   - Existing asset, different hash     → dialog → user choice
+ *   No existing asset at this path
+ *     → db_store_asset, return fresh assetId.
  *
- * Caller should treat `cancelled: true` as "do nothing; the user
- * decided not to insert."
+ *   Existing asset present, its current bytes match its ORIGINAL bytes
+ *   (no silent change has ever happened)
+ *     → db_store_asset reusing existing assetId, no dialog. The new
+ *       bytes either equal current (dedup no-op) or genuinely update
+ *       the asset (rare — file diverged without the watcher running).
+ *
+ *   Existing asset present, current bytes differ from its original
+ *   bytes (file has been silently auto-reloaded since first add)
+ *     → dialog. User opts into one of two intents (see CollisionDialog).
+ *
+ * Orphan assets (path exists in `assets` but no element references the
+ * asset_id) skip the dialog — the surprise doesn't apply when nothing
+ * was using the prior version.
  */
 export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<StoreResult> {
   const meta = await invoke<AssetMeta | null>('db_get_asset_meta_by_path', { path: args.path })
     .catch(() => null);
 
   if (!meta) {
-    // No collision — straight insert.
+    // No existing asset at this path → simple insertion.
     const assetId = await invoke<string>('db_store_asset', toStoreArgs(args));
     return { assetId, path: args.path, cancelled: false };
   }
 
-  // Existing asset at this path: hash-compare before bothering the user.
-  const newHash = await sha256Hex(args.data);
-  if (meta.hash && meta.hash === newHash) {
-    // Same bytes — db_store_asset will silently dedup. No dialog.
+  // Fetch history to find the ORIGINAL bytes (oldest version). If
+  // current hash matches original hash, no silent change has occurred —
+  // store as a new version of the existing asset (will dedup if bytes
+  // match, otherwise updates explicitly).
+  const history = await invoke<AssetVersion[]>('db_get_asset_history', { assetId: meta.asset_id })
+    .catch(() => [] as AssetVersion[]);
+  const original = history[history.length - 1];
+
+  if (!original || !original.hash || !meta.hash || original.hash === meta.hash) {
+    // No history / matching hashes → no silent change. Just store.
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
     return { assetId, path: args.path, cancelled: false };
   }
 
-  // Different bytes — ask the user. Count usages first so the dialog
-  // can show "used on N elements across M slides".
-  const { usageCount, slideCount } = countAssetUsage(meta.asset_id, args.path);
+  // Silent change detected. Find which slides currently use this asset.
+  const slidesUsing = findSlidesUsingAsset(meta.asset_id, args.path);
+  if (slidesUsing.length === 0) {
+    // Orphan: asset has versions but no element references it. No
+    // surprise to surface. Just store as a new version (effectively
+    // resurrects + updates).
+    const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
+    return { assetId, path: args.path, cancelled: false };
+  }
+
   const choice = await showCollisionDialog({
     path: args.path,
-    existingExternalPath: meta.external_path,
-    usageCount,
-    slideCount,
+    slideNumbers: slidesUsing,
   });
 
   if (choice === 'cancel') {
     return { assetId: '', path: args.path, cancelled: true };
   }
 
-  if (choice === 'update') {
-    // Reuse existing asset_id; bytes become new version. Other elements
-    // bound to this asset_id also reflect the new bytes.
+  if (choice === 'accept') {
+    // User opted into the auto-updating behavior. Store new bytes
+    // (will dedup if they match the silently-updated current bytes).
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
     return { assetId, path: args.path, cancelled: false };
   }
 
-  // choice === 'new': fresh asset_id, same path label. Older elements
-  // stay bound to meta.asset_id and render their original bytes.
-  const assetId = await invoke<string>('db_store_asset', toStoreArgs(args));
-  return { assetId, path: args.path, cancelled: false };
+  // choice === 'revert': three-step transaction-ish flow.
+  //   1. Restore the existing asset to its original bytes (db_restore_
+  //      asset_version sets auto_reload='off' on the restored row so
+  //      the watcher won't immediately re-apply the change).
+  //   2. Create a NEW asset (fresh asset_id, same path label) with the
+  //      bytes the user just dragged in.
+  //   3. Disable auto-reload for the entire presentation per the user's
+  //      explicit opt-out in the dialog wording.
+  await invoke('db_restore_asset_version', {
+    assetId: meta.asset_id,
+    validFrom: original.valid_from,
+  }).catch((e) => { console.warn('[insert] revert failed:', e); });
+  await invalidateRenderedAsset(args.path, meta.asset_id);
+
+  const newAssetId = await invoke<string>('db_store_asset', toStoreArgs(args));
+  usePresentationStore.getState().updateConfig({ autoReloadAssets: 'off' });
+
+  return { assetId: newAssetId, path: args.path, cancelled: false };
 }
 
 function toStoreArgs(a: StoreArgs): Record<string, unknown> {
@@ -110,42 +152,27 @@ function toStoreArgs(a: StoreArgs): Record<string, unknown> {
   };
 }
 
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  // SubtleCrypto needs an ArrayBuffer view; bytes.buffer may be a
-  // SharedArrayBuffer-ish thing in some envs, so slice into a clean one.
-  const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-  const digest = await crypto.subtle.digest('SHA-256', buf as ArrayBuffer);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
 /**
- * Count how many elements in the current presentation are bound to a
- * given asset_id (preferred) or path label (fallback for legacy
- * elements without assetId). Returns the element count and the distinct
- * slide count.
+ * 1-based slide numbers (per getSlideNumber) of every slide that
+ * currently contains an element bound to the given asset_id, OR (for
+ * legacy elements lacking an assetId binding) an element whose
+ * src/demoSrc equals the path label. Sorted ascending.
  */
-function countAssetUsage(assetId: string, path: string): { usageCount: number; slideCount: number } {
+function findSlidesUsingAsset(assetId: string, path: string): number[] {
   const pres = usePresentationStore.getState().presentation;
-  if (!pres) return { usageCount: 0, slideCount: 0 };
-  let usageCount = 0;
-  const slidesUsing = new Set<string>();
-  for (const slide of pres.slides) {
-    let hit = false;
+  if (!pres) return [];
+  const out: number[] = [];
+  pres.slides.forEach((slide, idx) => {
     for (const el of slide.elements) {
       if (el.type !== 'image' && el.type !== 'demo' && el.type !== 'demo-piece') continue;
       const e = el as { assetId?: string; src?: string; demoSrc?: string };
       const elPath = e.demoSrc ?? e.src;
-      // Bound by assetId if both have one; else fall back to path label
-      // (catches legacy elements before backfill ran).
       const bound = e.assetId ? e.assetId === assetId : elPath === path;
       if (bound) {
-        usageCount++;
-        hit = true;
+        out.push(getSlideNumber(pres.slides, idx));
+        return; // one entry per slide is enough
       }
     }
-    if (hit) slidesUsing.add(slide.id);
-  }
-  return { usageCount, slideCount: slidesUsing.size };
+  });
+  return out;
 }

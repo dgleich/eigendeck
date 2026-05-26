@@ -123,69 +123,67 @@ assetId?, autoReload?)` semantics:
 The element gets `assetId = <returned id>` so future renders
 unambiguously target this asset.
 
-### Path collision dialog
+### Path collision dialog — "asset has silently changed since first add"
 
-**When fired**: a new insertion's path already exists in the
-project as a current asset, AND the new bytes' hash differs from
-the currently-bound asset's hash. (Hash match = silent dedup, no
-dialog.)
+**Purpose**: surface a specific surprise that file-watching's silent
+auto-update can cause. Users coming from PowerPoint don't expect
+images in a saved deck to mutate when the source file is edited
+elsewhere. Eigendeck's default behavior IS to silently auto-update
+(see the cascade resolver above), but we want to give the user a
+chance to notice and opt out when the situation comes up.
 
-**Purpose**: ask the user which of two equally-valid intents they
-have. Both options are legitimate; the dialog exists because the
-choice is consequential and the user may not realize there is one.
+**Specific scenario**: user adds `Image.svg`; later, the file is
+edited on disk and the watcher silently updates the asset; later
+still, the user re-adds the same `Image.svg`. At that re-add moment,
+we have evidence that (a) the asset existed and (b) it changed
+without explicit user action since they first added it.
 
-The two intents:
+**Trigger condition**: a new drag-drop or file-picker insertion's
+path already exists in the project, AND the existing asset's
+*current* hash differs from its *original* hash (oldest version in
+the asset's history). The new bytes don't enter the comparison —
+the surprise we're surfacing is about the existing asset, not about
+what's being added.
 
-1. *"Update everywhere"* — the user edited the source file and
-   wants every slide showing this asset to reflect the new
-   version. This is also what silent file-watching does
-   automatically when on; the dialog surfaces the same outcome
-   when triggered by a manual re-add.
-2. *"This is a separate thing now"* — the user is intentionally
-   importing a different file that happens to share a name (or
-   forking an existing one). Older slides should keep their
-   original appearance; only this new element gets the new bytes.
+**Skipped when**:
 
-**Dialog framing**: a question, not a heads-up. No preselected
-default action — the user picks. The body explains what each
-option does in concrete terms (which slides change, which stay).
+- Path is new (no existing asset at that path) — no surprise.
+- Existing asset's current hash matches its oldest-version hash
+  (never silently updated) — no surprise.
+- Existing asset has versions but no element currently references
+  it (orphan) — no user to surprise.
+- Insertion is via clipboard paste — paste paths are synthetic
+  (`pasted-<ts>.svg`), this scenario never applies.
 
-**Actions**:
+**Dialog body** (verbatim wording):
 
-| Button | Effect |
+> *Image.svg* has changed since you added it on slide(s) *N* / *N and M*.
+> The default behavior in Eigendeck is to update it to the latest
+> version when it changes, which has already happened. Both the
+> existing and new copy will now show the updated version.
+
+Slide numbers come from `getSlideNumber` (same numbering as the
+sidebar).
+
+**Two explicit choices** — no default-focused button, user must
+opt in to one. Esc / clicking-outside abandons the insertion (no
+visible Cancel button — the dialog is paternalistic about needing
+a choice, but Esc remains as a safety net since users expect it).
+
+| Choice | Effect |
 |---|---|
-| **Update existing asset** | Call `db_store_asset` with the existing `asset_id`. Every element bound to that id (this slide AND others) shows the new bytes. Old version goes to history. Same outcome as silent file-watching, made explicit. |
-| **Add as a new asset** | Call `db_store_asset` with no `assetId`, forcing a fresh UUID. The new element binds to the new asset. Both assets keep `path = 'chart.svg'`; older elements stay bound to the original asset and render their original bytes. Watcher behavior: the new asset has its own `external_path` link; the old asset's watcher continues independently. |
-| **Cancel** | Abort the insertion entirely. No asset stored, no element added. |
+| **I understand and want this auto-updating behavior** | `db_store_asset` reusing existing `asset_id`. New bytes either dedup against the silently-updated current (typical) or genuinely update again. The new element binds to the existing asset. Same end state as if the dialog hadn't appeared — this option is opt-in awareness. |
+| **I want to revert the contents of slide(s) X to the previous version and add this as a new version. I don't want the auto-updating behavior. (This will disable it for this presentation.)** | Three actions: (1) `db_restore_asset_version` on the existing asset using its oldest version's `valid_from` — restores the original bytes and sets `auto_reload='off'` on the restored row; (2) `db_store_asset` with no `assetId` — creates a fresh asset_id with the just-dragged bytes; new element binds to it; (3) `presentation.config.autoReloadAssets = 'off'` — disables auto-reload presentation-wide. Effectively splits: existing slides show their original appearance; the new slide gets the new bytes. |
 
-**No path mutation**: "Add as a new asset" does NOT rename the new
-asset's path (e.g. `chart-2.svg`). The path stays as the user
-sees it. Disambiguation is by `asset_id` only.
+**No path mutation**: "Revert and add as new version" does NOT
+rename the new asset's path. The path stays as the user sees it.
+Two assets at the same path label, disambiguated by `asset_id`.
 
-**No default focus**: the dialog does not preselect a button. We
-explicitly want the user to read and choose, since both options
-have legitimate use cases.
-
-**Dialog body contents**:
-
-- Filename / path label.
-- "Used on N elements across M slides." Makes the blast radius
-  of "Update existing" concrete.
-- The existing asset's `external_path` (source file on disk) if
-  known — lets the user see whether they're re-adding from the
-  same folder or a different one.
-
-**Trigger scope**: drag-drop and file picker only. Clipboard
-paste is excluded — paste creates synthetic paths like
-`images/pasted-1748202345.svg`, so collisions are essentially
-never the user's intent. Skipping paste avoids dialog spam.
-
-**"Don't ask again this session" checkbox**: the dialog has a
-checkbox below the buttons. When checked + a choice is clicked,
-that choice becomes the session-wide default for any further
-collision until app restart. Held in a module-level variable
-(NOT persisted to `localStorage`), explicitly per-app-session so
-the user gets a fresh prompt on next launch.
+**No session memory / "Don't ask again"**: deliberately omitted.
+The dialog is rare (only fires on a real silent-change scenario)
+and the choice is consequential (one option reverts content and
+flips a presentation-wide preference). User must reckon with each
+occurrence freshly.
 
 ### Update (in-place new version)
 
