@@ -344,6 +344,17 @@ needed.
 This makes the panel behave "per-element" from the user's POV,
 even though the underlying storage is asset-keyed.
 
+The **Restore** button in the version history follows the same
+pattern: restoring a historical version on a shared asset would
+otherwise affect every bound element. On shared assets, Restore
+forks: fetch the target version's bytes via
+`db_get_asset_version(asset_id, valid_from)`, create a new asset
+with those bytes + `auto_reload='off'`, rebind the current
+element to the new asset. The confirm dialog text adapts: solo
+asset says "Restore this version?", shared asset says "Restore
+this version on THIS element only? (... will fork it — other
+elements stay at their current version.)".
+
 ## File watching
 
 ### Watcher registry

@@ -202,12 +202,62 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
 
   const restoreVersion = useCallback(async (valid_from: string) => {
     if (!meta) return;
-    if (!confirm('Restore this version? Current bytes will be moved to history; auto-reload will be turned off so the watcher doesn\'t overwrite the restore.')) return;
-    await invoke('db_restore_asset_version', { assetId: meta.asset_id, validFrom: valid_from }).catch((e) => {
-      console.warn('[AssetSection] restore failed:', e);
-    });
-    await invalidateRenderedAsset(meta.path ?? srcPath, meta.asset_id);
-  }, [meta, srcPath]);
+    // Same shared-asset issue as the tri-state: restoring an asset
+    // row affects every element bound to it. To get per-element
+    // semantics on shared assets, fork — create a new asset with the
+    // restored version's bytes, rebind THIS element to it. Other
+    // elements stay on the original asset, unchanged.
+    const pres = usePresentationStore.getState().presentation;
+    let usageCount = 0;
+    if (pres) {
+      for (const slide of pres.slides) {
+        for (const el of slide.elements) {
+          if (el.type !== 'image' && el.type !== 'demo' && el.type !== 'demo-piece') continue;
+          const e = el as { assetId?: string; src?: string; demoSrc?: string };
+          const isBound = e.assetId
+            ? e.assetId === meta.asset_id
+            : (e.demoSrc ?? e.src) === meta.path;
+          if (isBound) usageCount++;
+        }
+      }
+    }
+    const isShared = usageCount > 1 && !!elementId;
+    const msg = isShared
+      ? `Restore this version on THIS element only? (The asset is used on ${usageCount} elements; this will fork it — other elements stay at their current version.)`
+      : 'Restore this version? Current bytes will be moved to history; auto-reload will be turned off so the watcher doesn\'t overwrite the restore.';
+    if (!confirm(msg)) return;
+
+    if (!isShared) {
+      // Solo asset: in-place restore (writes new current row with old
+      // bytes; sets auto_reload='off' on the restored row).
+      await invoke('db_restore_asset_version', { assetId: meta.asset_id, validFrom: valid_from }).catch((e) => {
+        console.warn('[AssetSection] restore failed:', e);
+      });
+      await invalidateRenderedAsset(meta.path ?? srcPath, meta.asset_id);
+      return;
+    }
+
+    // Shared asset: fork.
+    try {
+      const bytes = await invoke<number[]>('db_get_asset_version', {
+        assetId: meta.asset_id, validFrom: valid_from,
+      });
+      const newAssetId = crypto.randomUUID();
+      await invoke('db_store_asset', {
+        path: meta.path,
+        data: bytes,
+        mimeType: meta.mime_type,
+        externalPath: meta.external_path,
+        externalMtime: meta.external_mtime,
+        assetId: newAssetId,
+        autoReload: 'off',  // match the in-place restore's semantic: don't auto-overwrite the restore
+      });
+      usePresentationStore.getState().updateElement(elementId!, { assetId: newAssetId } as any);
+      console.log(`[AssetSection] forked shared asset ${meta.asset_id.slice(0, 8)} → ${newAssetId.slice(0, 8)} on restore (${usageCount} elements shared; rebinding element ${elementId})`);
+    } catch (e) {
+      console.warn('[AssetSection] fork-on-restore failed:', e);
+    }
+  }, [meta, srcPath, elementId]);
 
   if (!meta) {
     return (
