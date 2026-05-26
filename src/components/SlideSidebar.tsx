@@ -21,7 +21,7 @@ function SidebarImageThumb({ element }: { element: Extract<SlideElement, { type:
   // Auto-reload the asset when the user re-saves its source file on disk.
   // No-op when the asset wasn't drag/picker-inserted (no external link).
   const mime = kind === 'svg' ? 'image/svg+xml' : kind === 'pdf' ? 'application/pdf' : 'image/png';
-  useAssetFileWatcher(element.src, mime, element.assetId);
+  useAssetFileWatcher(element.src, mime, element.assetId, element.id);
   return (
     <div style={{
       position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,

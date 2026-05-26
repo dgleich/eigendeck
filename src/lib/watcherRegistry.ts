@@ -38,12 +38,19 @@ interface SubscribedAsset {
   /** Original path label stored on the asset row (e.g. "images/foo.svg") —
    *  preserved so re-stores keep the same path metadata. */
   path: string;
+  /** Element ids currently subscribed to this asset. Multiple elements
+   *  may be bound to the same asset_id (e.g. user drags the same image
+   *  onto 3 slides). Tracking per-element lets removeRef be ref-counted:
+   *  the asset entry is dropped only when the LAST element using it
+   *  unsubscribes. Without this, slide 2's removeRef would wipe the
+   *  whole entry and silently kill the watcher for slides 1+3. */
+  subscribers: Set<string>;
 }
 
 interface WatchEntry {
   unwatch: () => void;
-  /** Subscribed assets at this external_path. Multiple elements may
-   *  watch the same file; fan out the reload on disk-event. */
+  /** Subscribed assets at this external_path, keyed by asset_id. Each
+   *  asset entry tracks its own element subscribers (see SubscribedAsset). */
   assets: Map<string, SubscribedAsset>;
   /** MIME type to use when re-storing the asset (cached per first subscriber) */
   mimeType: string;
@@ -84,19 +91,28 @@ class WatcherRegistry {
    * First subscriber for a path lazily registers fs.watch; subsequent
    * subscribers just join the Map.
    */
-  async addRef(externalRelPath: string, assetId: string, path: string, mimeType: string): Promise<void> {
+  async addRef(externalRelPath: string, assetId: string, elementId: string, path: string, mimeType: string): Promise<void> {
     const absPath = resolvePosixPath(this.projectDir, externalRelPath);
     const existing = this.watchers.get(absPath);
     if (existing) {
-      existing.assets.set(assetId, { assetId, path });
-      wlog(`addRef join  asset=${assetId.slice(0, 8)} path="${path}" abs="${absPath}" (now ${existing.assets.size} subscribers)`);
+      const assetEntry = existing.assets.get(assetId);
+      if (assetEntry) {
+        // Asset already in registry — just add this element as another
+        // subscriber. Set semantics keep idempotent re-mounts safe.
+        assetEntry.subscribers.add(elementId);
+        wlog(`addRef join  asset=${assetId.slice(0, 8)} element=${elementId.slice(0, 8)} path="${path}" (now ${assetEntry.subscribers.size} elements on this asset, ${existing.assets.size} assets on this path)`);
+      } else {
+        // First subscriber for this asset on this already-watched path.
+        existing.assets.set(assetId, { assetId, path, subscribers: new Set([elementId]) });
+        wlog(`addRef join+ asset=${assetId.slice(0, 8)} element=${elementId.slice(0, 8)} path="${path}" (first element on this asset, ${existing.assets.size} assets on this path)`);
+      }
       return;
     }
-    // First reference — start watching.
-    wlog(`addRef new   asset=${assetId.slice(0, 8)} path="${path}" abs="${absPath}" — registering fs.watch...`);
+    // First reference for the path — start watching.
+    wlog(`addRef new   asset=${assetId.slice(0, 8)} element=${elementId.slice(0, 8)} path="${path}" abs="${absPath}" — registering fs.watch...`);
     const placeholder: WatchEntry = {
       unwatch: () => {},
-      assets: new Map([[assetId, { assetId, path }]]),
+      assets: new Map([[assetId, { assetId, path, subscribers: new Set([elementId]) }]]),
       mimeType,
       lastHandledAt: 0,
     };
@@ -114,17 +130,25 @@ class WatcherRegistry {
     }
   }
 
-  removeRef(externalRelPath: string, assetId: string): void {
+  removeRef(externalRelPath: string, assetId: string, elementId: string): void {
     const absPath = resolvePosixPath(this.projectDir, externalRelPath);
     const entry = this.watchers.get(absPath);
     if (!entry) return;
+    const assetEntry = entry.assets.get(assetId);
+    if (!assetEntry) return;
+    assetEntry.subscribers.delete(elementId);
+    if (assetEntry.subscribers.size > 0) {
+      wlog(`removeRef     asset=${assetId.slice(0, 8)} element=${elementId.slice(0, 8)} (${assetEntry.subscribers.size} elements left on this asset)`);
+      return;
+    }
+    // Last element for this asset on this path — drop the asset entry.
     entry.assets.delete(assetId);
     if (entry.assets.size === 0) {
       try { entry.unwatch(); } catch { /* ignore */ }
       this.watchers.delete(absPath);
-      wlog(`removeRef last asset=${assetId.slice(0, 8)} — unwatched "${absPath}"`);
+      wlog(`removeRef last asset=${assetId.slice(0, 8)} element=${elementId.slice(0, 8)} — unwatched "${absPath}"`);
     } else {
-      wlog(`removeRef     asset=${assetId.slice(0, 8)} (${entry.assets.size} subscribers left for "${absPath}")`);
+      wlog(`removeRef drop asset=${assetId.slice(0, 8)} element=${elementId.slice(0, 8)} (${entry.assets.size} assets left on this path)`);
     }
   }
 

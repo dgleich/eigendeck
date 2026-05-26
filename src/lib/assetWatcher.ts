@@ -48,7 +48,8 @@ interface AssetMeta {
 export function useAssetFileWatcher(
   assetPath: string | undefined,
   mimeType: string,
-  assetId?: string,
+  assetId: string | undefined,
+  elementId: string,
 ): void {
   const projectPath = usePresentationStore((s) => s.projectPath);
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -102,7 +103,7 @@ export function useAssetFileWatcher(
       const registry = getWatcherRegistry(projectId, dirname(projectPath));
       const origPath = meta.path ?? assetPath ?? meta.asset_id;
       const effectiveMime = meta.mime_type ?? mimeType;
-      await registry.addRef(meta.external_path, meta.asset_id, origPath, effectiveMime);
+      await registry.addRef(meta.external_path, meta.asset_id, elementId, origPath, effectiveMime);
       registeredExternalRel = meta.external_path;
       registeredAssetId = meta.asset_id;
     })();
@@ -111,8 +112,8 @@ export function useAssetFileWatcher(
       cancelled = true;
       if (registeredExternalRel && registeredAssetId && projectId) {
         const registry = getWatcherRegistry(projectId, dirname(projectPath));
-        registry.removeRef(registeredExternalRel, registeredAssetId);
+        registry.removeRef(registeredExternalRel, registeredAssetId, elementId);
       }
     };
-  }, [assetPath, assetId, mimeType, projectPath, projectId, globalAutoReload, presOverride]);
+  }, [assetPath, assetId, elementId, mimeType, projectPath, projectId, globalAutoReload, presOverride]);
 }
