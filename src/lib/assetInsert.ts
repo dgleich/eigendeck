@@ -87,6 +87,23 @@ interface AssetVersion {
  * keep showing the old content until next reload.
  */
 export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<StoreResult> {
+  // PowerPoint mode: when per-presentation auto-reload is OFF (set
+  // explicitly by the user, or carried over from a prior "I don't want
+  // this behavior" choice in the collision dialog), every insertion is
+  // independent. No shared asset_id with prior inserts at the same
+  // path, no external_path link (so watching can never resume even if
+  // the user flips per-pres back to ON — re-import to relink), no
+  // collision dialog. This is the kindness for users who explicitly
+  // opted out of the auto-update paradigm.
+  const presOverride = usePresentationStore.getState().presentation?.config?.autoReloadAssets ?? null;
+  if (presOverride === 'off') {
+    const assetId = crypto.randomUUID();
+    const noLinkArgs = { ...toStoreArgs(args), assetId, externalPath: null, externalMtime: null };
+    await invoke('db_store_asset', noLinkArgs);
+    ilog(`per-pres auto-reload OFF: fresh independent asset ${assetId.slice(0, 8)} at "${args.path}" (no external link, no collision check)`);
+    return { assetId, path: args.path, cancelled: false };
+  }
+
   const meta = await invoke<AssetMeta | null>('db_get_asset_meta_by_path', { path: args.path })
     .catch(() => null);
 
@@ -177,8 +194,16 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   await invalidateRenderedAsset(args.path, meta.asset_id);
 
   const newAssetId = crypto.randomUUID();
-  ilog(`revert: creating NEW asset_id=${newAssetId.slice(0, 8)} at path="${args.path}" with new bytes`);
-  await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: newAssetId });
+  ilog(`revert: creating NEW asset_id=${newAssetId.slice(0, 8)} at path="${args.path}" with new bytes, NO external link`);
+  // No externalPath: revert is the user's explicit opt-out of the
+  // auto-update paradigm for this presentation. The new asset stays
+  // independent even if they later flip per-pres back to ON.
+  await invoke<string>('db_store_asset', {
+    ...toStoreArgs(args),
+    assetId: newAssetId,
+    externalPath: null,
+    externalMtime: null,
+  });
   usePresentationStore.getState().updateConfig({ autoReloadAssets: 'off' });
   ilog(`revert: per-presentation auto-reload set to OFF`);
 

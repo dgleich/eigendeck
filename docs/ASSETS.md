@@ -148,6 +148,9 @@ the file changed on disk without anyone updating the asset.
 
 **Skipped when**:
 
+- **Per-presentation auto-reload is OFF** ("PowerPoint mode" — see
+  below). The dialog premise doesn't apply when the user has
+  explicitly opted out of the auto-update paradigm.
 - Path is new (no existing asset at that path) — no surprise.
 - The bytes being added match the existing asset's ORIGINAL bytes
   (user is re-adding the same file they first put here) — no
@@ -156,6 +159,34 @@ the file changed on disk without anyone updating the asset.
   it (orphan) — no user to surprise.
 - Insertion is via clipboard paste — paste paths are synthetic
   (`pasted-<ts>.svg`), this scenario never applies.
+
+#### PowerPoint mode: per-presentation auto-reload OFF
+
+When `config.autoReloadAssets === 'off'` — either set explicitly by
+the user (Inspector → Presentation → Auto-reload Assets → Never), or
+carried over from a prior "Revert + add as new" choice in the
+collision dialog — every drag-drop / file-picker insertion creates
+an INDEPENDENT asset:
+
+- Fresh `asset_id` (UUID generated client-side, never reuses an
+  existing asset_id even if the path label matches).
+- NO `external_path` stored, so the file watcher can never subscribe
+  to it. Bytes are baked in at insert time, like a PowerPoint
+  embedded image.
+- No collision dialog (the divergence question doesn't apply).
+
+**Flipping per-presentation auto-reload back to ON** does *not*
+retroactively start watching the assets added while OFF — they have
+no `external_path` to watch against. Only assets inserted AFTER the
+flip get linked + watched. To re-enable watching for an asset added
+while OFF, re-import the file from disk.
+
+This is durable on purpose: once the user has explicitly opted out
+of auto-updates for a presentation, a casual toggle of the pref
+back to ON shouldn't bring back the very surprises they opted out
+of. The Settings modal cascade still allows the global default to
+take over if per-pres is set back to "Follow global" — but for
+existing assets that lack `external_path`, that's still a no-op.
 
 **Dialog body** (verbatim wording):
 
