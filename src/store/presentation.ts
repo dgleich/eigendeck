@@ -71,10 +71,33 @@ function updateCurrentSlide(
   };
 }
 
+/** Initial in-memory presentation on cold app start (before any
+ *  file is opened or New is invoked). Seeds the per-presentation
+ *  math preamble from the global pref so the "first presentation
+ *  the user sees" already has their default macros available —
+ *  matches createProject's seeding behavior. */
+function createInitialPresentation(): Presentation {
+  const pres = createDefaultPresentation();
+  try {
+    // Direct localStorage read to avoid importing the preferences
+    // module (which imports React); this initializer runs at module
+    // eval time, before React is mounted. Same key + JSON encoding
+    // src/lib/preferences.ts uses.
+    const v = localStorage.getItem('eigendeck:pref:mathPreamble');
+    if (v) {
+      const preamble = JSON.parse(v);
+      if (typeof preamble === 'string' && preamble) {
+        pres.config.mathPreamble = preamble;
+      }
+    }
+  } catch { /* ignore */ }
+  return pres;
+}
+
 export const usePresentationStore = create<PresentationState>()(
   temporal(
     (set) => ({
-      presentation: createDefaultPresentation(),
+      presentation: createInitialPresentation(),
       currentSlideIndex: 0,
       isPresenting: false,
       isDirty: false,
