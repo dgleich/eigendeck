@@ -202,11 +202,10 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
 
   const restoreVersion = useCallback(async (valid_from: string) => {
     if (!meta) return;
-    // Same shared-asset issue as the tri-state: restoring an asset
-    // row affects every element bound to it. To get per-element
-    // semantics on shared assets, fork — create a new asset with the
-    // restored version's bytes, rebind THIS element to it. Other
-    // elements stay on the original asset, unchanged.
+    // Count elements bound to this asset. Determines the dialog UX:
+    //   solo (1 user)  → plain confirm; in-place restore
+    //   shared (N > 1) → modal asking "this slide only" vs "all N
+    //                    slides"; per choice, fork or in-place restore
     const pres = usePresentationStore.getState().presentation;
     let usageCount = 0;
     if (pres) {
@@ -221,16 +220,28 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
         }
       }
     }
-    const isShared = usageCount > 1 && !!elementId;
     const when = relativeAgo(valid_from) || valid_from;
-    const msg = isShared
-      ? `Change this image to the version from ${when} on this slide only? Other slides using the same image won't change.`
-      : `Change this image to the version from ${when}? You can change it back from this list later.`;
-    if (!confirm(msg)) return;
 
-    if (!isShared) {
-      // Solo asset: in-place restore (writes new current row with old
-      // bytes; sets auto_reload='off' on the restored row).
+    let scope: 'this-only' | 'all' | 'cancel';
+    if (usageCount <= 1 || !elementId) {
+      // Solo asset (or no elementId): one-line confirm, no scope question.
+      const ok = confirm(`Change this image to the version from ${when}? You can change it back from this list later.`);
+      scope = ok ? 'all' : 'cancel';  // 'all' here is functionally equivalent to in-place — only one element exists
+    } else {
+      // Shared asset: ask the user what scope they want.
+      const { showRestoreVersionDialog } = await import('../lib/restoreVersionDialog');
+      scope = await showRestoreVersionDialog({
+        imageName: meta.path ?? srcPath,
+        whenLabel: when,
+        usageCount,
+      });
+    }
+    if (scope === 'cancel') return;
+
+    if (scope === 'all') {
+      // In-place restore on the shared asset; every bound element sees
+      // the change. db_restore_asset_version sets auto_reload='off' so
+      // the watcher won't immediately overwrite the restore.
       await invoke('db_restore_asset_version', { assetId: meta.asset_id, validFrom: valid_from }).catch((e) => {
         console.warn('[AssetSection] restore failed:', e);
       });
@@ -238,7 +249,7 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
       return;
     }
 
-    // Shared asset: fork.
+    // scope === 'this-only' (only possible when shared): fork.
     try {
       const bytes = await invoke<number[]>('db_get_asset_version', {
         assetId: meta.asset_id, validFrom: valid_from,
@@ -251,7 +262,7 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
         externalPath: meta.external_path,
         externalMtime: meta.external_mtime,
         assetId: newAssetId,
-        autoReload: 'off',  // match the in-place restore's semantic: don't auto-overwrite the restore
+        autoReload: 'off',
       });
       usePresentationStore.getState().updateElement(elementId!, { assetId: newAssetId } as any);
       console.log(`[AssetSection] forked shared asset ${meta.asset_id.slice(0, 8)} → ${newAssetId.slice(0, 8)} on restore (${usageCount} elements shared; rebinding element ${elementId})`);

@@ -344,16 +344,24 @@ needed.
 This makes the panel behave "per-element" from the user's POV,
 even though the underlying storage is asset-keyed.
 
-The **Restore** button in the version history follows the same
-pattern: restoring a historical version on a shared asset would
-otherwise affect every bound element. On shared assets, Restore
-forks: fetch the target version's bytes via
-`db_get_asset_version(asset_id, valid_from)`, create a new asset
-with those bytes + `auto_reload='off'`, rebind the current
-element to the new asset. The confirm dialog text adapts: solo
-asset says "Restore this version?", shared asset says "Restore
-this version on THIS element only? (... will fork it — other
-elements stay at their current version.)".
+The **Restore** button in the version history follows a similar
+pattern but asks the user about scope when the asset is shared:
+
+- **Solo asset** (one element bound): plain `confirm()`. In-place
+  restore via `db_restore_asset_version`.
+- **Shared asset** (multiple elements bound): a modal asks "this
+  slide only" vs "all N slides":
+  - **This slide only** → fork. Fetch the target version's bytes
+    via `db_get_asset_version`, create a new asset with those
+    bytes + `auto_reload='off'`, rebind the current element to
+    the new asset. Other elements stay on the original.
+  - **All N slides** → in-place restore on the shared asset.
+    Every bound element switches to the older version. Same
+    `db_restore_asset_version` path as the solo case.
+  - **Cancel** → no change.
+
+The modal (`RestoreVersionDialog`) is the same module-level
+subscribe pattern as the collision and re-enable-watching dialogs.
 
 ## File watching
 
