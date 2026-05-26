@@ -5,7 +5,9 @@ import { BUILT_IN_THEMES } from '../lib/themes';
 import { FONT_PACKAGES, type FontPackage } from '../lib/fonts';
 import type { VerticalAlign } from '../types/presentation';
 import { AssetSection } from './AssetSection';
-import { usePreference } from '../lib/preferences';
+import { usePreference, effectiveAutoReload } from '../lib/preferences';
+import { showReenableWatchingDialog } from '../lib/reenableWatchingDialog';
+import { invoke } from '@tauri-apps/api/core';
 
 const ARROW_COLORS = [
   '#e53e3e', '#dc2626', '#ea580c', '#16a34a',
@@ -564,12 +566,42 @@ function AutoReloadAssetsControl({
     { k: 'on', label: 'Always' },
     { k: 'off', label: 'Never' },
   ];
+
+  const handleClick = async (k: 'default' | 'on' | 'off') => {
+    if (k === current) return;
+    const newPres: 'on' | 'off' | null = k === 'default' ? null : k;
+    const effectiveBefore = effectiveAutoReload(null, value ?? null, globalDefault);
+    const effectiveAfter = effectiveAutoReload(null, newPres, globalDefault);
+    if (!effectiveBefore && effectiveAfter) {
+      // OFF -> ON transition for the presentation. User previously
+      // opted out (or never opted in); confirm what they want to happen
+      // to assets added during the OFF window.
+      const choice = await showReenableWatchingDialog();
+      if (choice === 'cancel') return;
+      if (choice === 'new-only') {
+        // Snapshot the current OFF state onto each existing asset that
+        // was implicitly following the cascade, so flipping per-pres to
+        // ON doesn't surprise the user by suddenly auto-updating them.
+        await disableImplicitAutoReloadForExistingAssets();
+      }
+      onChange(k === 'default' ? undefined : k);
+      if (choice === 'rescan-all') {
+        // Per-pres is now ON; trigger the scan to catch up on disk
+        // drift that accumulated while we weren't watching. Same code
+        // path that runs at project open.
+        await rescanLinkedAssets();
+      }
+      return;
+    }
+    onChange(k === 'default' ? undefined : k);
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', gap: 4 }}>
         {options.map(({ k, label }) => (
           <button key={k}
-            onClick={() => onChange(k === 'default' ? undefined : k)}
+            onClick={() => { void handleClick(k); }}
             style={{
               padding: '3px 8px', fontSize: 11,
               background: current === k ? '#3b82f6' : '#f3f4f6',
@@ -587,4 +619,36 @@ function AutoReloadAssetsControl({
       </div>
     </div>
   );
+}
+
+interface LinkedAssetRow {
+  asset_id: string;
+  path: string | null;
+  external_path: string;
+  external_mtime: string | null;
+  auto_reload: string | null;
+  mime_type: string | null;
+}
+
+/** Set per-asset auto_reload='off' on every linked asset whose
+ *  auto_reload is currently null (i.e. implicitly following the
+ *  cascade). Leaves assets the user explicitly flipped 'on' or 'off'
+ *  untouched — those choices were intentional. */
+async function disableImplicitAutoReloadForExistingAssets(): Promise<void> {
+  const linked = await invoke<LinkedAssetRow[]>('db_list_linked_assets').catch(() => [] as LinkedAssetRow[]);
+  for (const a of linked) {
+    if (a.auto_reload === null) {
+      await invoke('db_set_asset_auto_reload', { assetId: a.asset_id, value: 'off' }).catch(() => {});
+    }
+  }
+}
+
+/** Trigger the same scan-on-load behavior used at project open, so
+ *  assets that drifted on disk while watching was off get pulled now. */
+async function rescanLinkedAssets(): Promise<void> {
+  const store = usePresentationStore.getState();
+  if (!store.projectPath) return;
+  const { scanForChangedAssets, dirname } = await import('../lib/watcherRegistry');
+  const presOverride = store.presentation?.config?.autoReloadAssets ?? null;
+  await scanForChangedAssets(dirname(store.projectPath), presOverride).catch(() => {});
 }

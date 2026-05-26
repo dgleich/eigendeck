@@ -178,13 +178,31 @@ an INDEPENDENT asset:
 - No collision dialog (the divergence question doesn't apply once
   the user has opted out of the auto-update paradigm).
 
-**Flipping per-presentation auto-reload back to ON** re-enables
-the watcher cascade for every existing asset that has an
-`external_path` and no explicit per-asset `'off'`. Assets the user
-explicitly flipped to "Never" in the Asset properties tri-state
-stay opted out; everything else starts watching again. This is
-intentional: the user changing the pref back to ON is itself an
-opt-in action, so it should actually opt them in.
+**Flipping per-presentation auto-reload back to ON** prompts a
+confirmation dialog (`ReenableWatchingDialog`) — the user
+previously opted out, and a quiet toggle shouldn't suddenly start
+auto-updating every pre-existing asset. The dialog fires whenever
+the effective per-pres value transitions from `false` to `true`,
+so it catches both "Never → Always" and "Never → Follow global
+(global ON)".
+
+Two explicit choices + Esc-cancels:
+
+- **Only enable for new files**: walks every linked asset with
+  `auto_reload = NULL` (implicitly following the cascade) and
+  sets it to `'off'` per-asset, baking the current OFF behavior
+  in. The per-pres pref then flips to ON; future inserts get
+  watched, existing assets stay quiet unless the user
+  individually flips them back on via the Asset properties
+  tri-state.
+- **Re-enable and re-scan all**: per-pres flips to ON; assets
+  with `auto_reload = NULL` resume watching via the cascade;
+  `scanForChangedAssets` runs immediately to pull any drift that
+  accumulated on disk while OFF mode was active.
+
+Assets the user explicitly flipped to "Never" in the Asset
+properties tri-state stay opted out regardless of which option
+they pick — that was an intentional per-asset choice.
 
 **Dialog body** (verbatim wording):
 
