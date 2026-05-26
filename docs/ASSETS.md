@@ -481,22 +481,6 @@ repeated identical toasts.
   reserved; capture flow not built.
 - **Cross-platform clipboard** — swap `pasteboard.rs` for
   `clipboard-rs` when Windows/Linux become real targets.
-- **Watcher `[TAURI] Couldn't find callback id ...` warnings on
-  macOS atomic-save.** `WatcherRegistry.addRef` does
-  `watch(absPath, callback, { recursive: false })` — a file-level
-  watch. macOS atomic-save (write tmp + `rename(2)`) replaces the
-  inode the kernel watch was bound to, so `tauri-plugin-fs`
-  internally re-arms — but the burst of 3 events from one save
-  can include events emitted after the old callback id was
-  unregistered but before the new one took over. Functionally
-  harmless (our `handleChange` runs successfully on each event,
-  coalescing dedups them), but the warnings clutter the Debug
-  Console. Two fixes worth considering when this becomes more
-  than cosmetic: (1) watch the parent dir + filter by filename
-  (stable inode — eliminates the class of problem; bigger
-  refactor of `WatcherRegistry`'s keying), or (2) re-arm
-  explicitly on each handleChange (`unwatch(); watch();`) — less
-  invasive but 2× watcher churn per disk event.
 
 ## File-by-file index
 
