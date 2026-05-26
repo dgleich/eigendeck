@@ -223,8 +223,8 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
     }
     const isShared = usageCount > 1 && !!elementId;
     const msg = isShared
-      ? `Restore this version on THIS element only? (The asset is used on ${usageCount} elements; this will fork it — other elements stay at their current version.)`
-      : 'Restore this version? Current bytes will be moved to history; auto-reload will be turned off so the watcher doesn\'t overwrite the restore.';
+      ? 'Change this image to this version on this slide only? Other slides using the same image won\'t change.'
+      : 'Change this image to this version? You can change it back from this list later.';
     if (!confirm(msg)) return;
 
     if (!isShared) {
