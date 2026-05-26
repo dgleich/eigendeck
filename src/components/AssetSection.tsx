@@ -222,9 +222,10 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
       }
     }
     const isShared = usageCount > 1 && !!elementId;
+    const when = relativeAgo(valid_from) || valid_from;
     const msg = isShared
-      ? 'Change this image to this version on this slide only? Other slides using the same image won\'t change.'
-      : 'Change this image to this version? You can change it back from this list later.';
+      ? `Change this image to the version from ${when} on this slide only? Other slides using the same image won't change.`
+      : `Change this image to the version from ${when}? You can change it back from this list later.`;
     if (!confirm(msg)) return;
 
     if (!isShared) {
