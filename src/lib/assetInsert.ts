@@ -11,6 +11,13 @@ import { getSlideNumber } from '../types/presentation';
 import { invalidateRenderedAsset } from './assetRenderer';
 import { showCollisionDialog } from './collisionDialog';
 
+// Verbose log of insertion + collision-check decisions. Visible in the
+// in-app Debug Console (View menu). Toggle off when no longer useful.
+const INSERT_LOG = true;
+const ilog = (...a: unknown[]): void => {
+  if (INSERT_LOG) console.log(`[insert ${new Date().toISOString().slice(11, 23)}]`, ...a);
+};
+
 interface StoreArgs {
   path: string;
   data: Uint8Array;
@@ -79,8 +86,10 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   if (!meta) {
     // No existing asset at this path → simple insertion.
     const assetId = await invoke<string>('db_store_asset', toStoreArgs(args));
+    ilog(`new asset at "${args.path}" → ${assetId.slice(0, 8)}`);
     return { assetId, path: args.path, cancelled: false };
   }
+  ilog(`existing asset at "${args.path}" → asset_id=${meta.asset_id.slice(0, 8)} current_hash=${meta.hash?.slice(0, 8)}`);
 
   // Fetch history to find the ORIGINAL bytes (oldest version). If
   // current hash matches original hash, no silent change has occurred —
@@ -92,12 +101,15 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
 
   if (!original || !original.hash || !meta.hash || original.hash === meta.hash) {
     // No history / matching hashes → no silent change. Just store.
+    ilog(`no silent change (original_hash=${original?.hash?.slice(0, 8) ?? 'n/a'} == current_hash=${meta.hash?.slice(0, 8) ?? 'n/a'}) → silent store on existing asset`);
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
     return { assetId, path: args.path, cancelled: false };
   }
+  ilog(`SILENT CHANGE detected: original_hash=${original.hash.slice(0, 8)} != current_hash=${meta.hash.slice(0, 8)} (history: ${history.length} versions)`);
 
   // Silent change detected. Find which slides currently use this asset.
   const slidesUsing = findSlidesUsingAsset(meta.asset_id, args.path);
+  ilog(`asset used on slides: ${slidesUsing.length === 0 ? '(none — orphan)' : slidesUsing.join(', ')}`);
   if (slidesUsing.length === 0) {
     // Orphan: asset has versions but no element references it. No
     // surprise to surface. Just store as a new version (effectively
@@ -106,10 +118,12 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
     return { assetId, path: args.path, cancelled: false };
   }
 
+  ilog(`showing collision dialog`);
   const choice = await showCollisionDialog({
     path: args.path,
     slideNumbers: slidesUsing,
   });
+  ilog(`user chose: ${choice}`);
 
   if (choice === 'cancel') {
     return { assetId: '', path: args.path, cancelled: true };
@@ -119,25 +133,39 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
     // User opted into the auto-updating behavior. Store new bytes
     // (will dedup if they match the silently-updated current bytes).
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
+    ilog(`accept: stored on existing asset_id=${meta.asset_id.slice(0, 8)}`);
     return { assetId, path: args.path, cancelled: false };
   }
 
-  // choice === 'revert': three-step transaction-ish flow.
+  // choice === 'revert': three-step flow.
   //   1. Restore the existing asset to its original bytes (db_restore_
   //      asset_version sets auto_reload='off' on the restored row so
   //      the watcher won't immediately re-apply the change).
-  //   2. Create a NEW asset (fresh asset_id, same path label) with the
+  //   2. Create a NEW asset (FRESH asset_id, same path label) with the
   //      bytes the user just dragged in.
   //   3. Disable auto-reload for the entire presentation per the user's
   //      explicit opt-out in the dialog wording.
+  //
+  // CRITICAL: step 2 generates the UUID on the JS side and passes it
+  // explicitly. Without an explicit assetId, db_store_asset's legacy
+  // "look up asset_id by path" branch would re-find the asset we just
+  // restored (same path), reuse its asset_id, and silently overwrite
+  // the restore with the new bytes — defeating the whole revert flow.
+  // The explicit UUID forces db_store_asset's "use this asset_id"
+  // branch, which is the only way to guarantee a fresh asset at a
+  // path that's already in use.
+  ilog(`revert: restoring asset_id=${meta.asset_id.slice(0, 8)} to original valid_from=${original.valid_from}`);
   await invoke('db_restore_asset_version', {
     assetId: meta.asset_id,
     validFrom: original.valid_from,
   }).catch((e) => { console.warn('[insert] revert failed:', e); });
   await invalidateRenderedAsset(args.path, meta.asset_id);
 
-  const newAssetId = await invoke<string>('db_store_asset', toStoreArgs(args));
+  const newAssetId = crypto.randomUUID();
+  ilog(`revert: creating NEW asset_id=${newAssetId.slice(0, 8)} at path="${args.path}" with new bytes`);
+  await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: newAssetId });
   usePresentationStore.getState().updateConfig({ autoReloadAssets: 'off' });
+  ilog(`revert: per-presentation auto-reload set to OFF`);
 
   return { assetId: newAssetId, path: args.path, cancelled: false };
 }

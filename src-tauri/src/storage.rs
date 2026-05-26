@@ -1489,6 +1489,20 @@ pub fn db_store_asset(
         let now = timestamp();
 
         // Determine asset_id: explicit > legacy-path-lookup > fresh UUID.
+        //
+        // FOOTGUN: the legacy-path-lookup branch only does the "expected"
+        // thing (fresh UUID) when the path is BRAND NEW. If the path
+        // already has an asset, this branch silently REUSES that
+        // asset_id — which is wrong when the caller actually wants a
+        // separate asset at the same path (e.g. the collision-dialog
+        // 'revert + add as new version' flow). Callers that need
+        // guaranteed-fresh asset_id at an existing path MUST generate a
+        // UUID themselves (crypto.randomUUID on JS side) and pass it via
+        // the explicit branch. See src/lib/assetInsert.ts for the
+        // canonical example. Bit us once; left this branch in place
+        // because clipboard paste / drag with synthetic paths
+        // (pasted-<ts>.svg, dropped-<ts>.svg) relies on the fresh-UUID
+        // fallback for genuinely new paths.
         let id: String = if let Some(id) = asset_id {
             id
         } else {
