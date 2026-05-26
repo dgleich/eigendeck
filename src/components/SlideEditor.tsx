@@ -7,8 +7,6 @@ import { getSlideNumber, createTextElement } from '../types/presentation';
 import { resolveTheme } from '../lib/themes';
 import { detectAssetKind } from '../lib/assetCache';
 import { handleSvgExternalRefs, invalidateRenderedAsset } from '../lib/assetRenderer';
-import { showToast } from '../lib/toasts';
-import { getPreference, effectiveAutoReload } from '../lib/preferences';
 import type { SlideElement } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
 
@@ -326,34 +324,6 @@ export function SlideEditor() {
     setDragOver(false);
   }, []);
 
-  /**
-   * Shared post-insert warning for "you just added a trackable asset but
-   * the project isn't saved, so we can't watch its source file". Toast
-   * suggests Save (which then enables tracking on subsequent drops/edits).
-   * Suppressed when the user has turned auto-reload off globally — they
-   * already opted out of the feature, no point nagging.
-   */
-  const maybeWarnUnsavedProject = useCallback((unsaved: boolean) => {
-    if (!unsaved) return;
-    // Suppress when the effective default for THIS presentation is OFF: either
-    // the user globally opted out, or this presentation overrides to 'off'.
-    const presOverride = usePresentationStore.getState().presentation?.config?.autoReloadAssets ?? null;
-    const globalDefault = getPreference('autoReloadAssets');
-    if (!effectiveAutoReload(null, presOverride, globalDefault)) return;
-    showToast({
-      key: 'unsaved-project-tracking',  // dedup repeat drops in same session
-      kind: 'warning',
-      ttl: 12000,
-      message: 'Asset added, but file-watching is disabled until the presentation is saved. Save now, then re-add to enable live updates from the source file.',
-      action: {
-        label: 'Save…',
-        onClick: () => {
-          void import('../store/fileOps').then(({ saveProject }) => saveProject());
-        },
-      },
-    });
-  }, []);
-
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     dlog('DROP FIRED target=', (e.target as Element).tagName,
          'types=', Array.from(e.dataTransfer.types),
@@ -375,7 +345,6 @@ export function SlideEditor() {
     // the native NSPasteboard for the drag pasteboard to see vendor
     // UTIs like com.microsoft.image-svg-xml.
     const store = usePresentationStore.getState();
-    const unsaved = !store.projectPath;
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       const utis = await invoke<string[]>('pasteboard_list_drag_types');
@@ -407,7 +376,11 @@ export function SlideEditor() {
             id: crypto.randomUUID(), type: 'image', src: relativePath, assetId, kind,
             position: { x: 360, y: 200, width: 1200, height: 680 },
           });
-          maybeWarnUnsavedProject(unsaved);
+          // No unsaved-warning toast: native pasteboard drag stores with
+          // externalPath=null (synthetic name like dropped-<ts>.svg),
+          // so watching wouldn't apply even after Save. storeAssetWithCollisionCheck
+          // fires the warning automatically for paths that DO have an
+          // external_path — this branch doesn't go through that helper.
           return;
         }
       }
@@ -440,7 +413,8 @@ export function SlideEditor() {
         id: crypto.randomUUID(), type: 'image', src: relativePath, assetId, kind,
         position: { x: 360, y: 200, width: 1200, height: 680 },
       });
-      maybeWarnUnsavedProject(unsaved);
+      // Same as the native-pasteboard branch above: externalPath=null,
+      // no watching to warn about.
       return;
     }
   }, []);
@@ -492,7 +466,8 @@ export function SlideEditor() {
                     kind,
                     position: { x: 360, y: 200, width: 1200, height: 680 },
                   });
-                  maybeWarnUnsavedProject(!store.projectPath);
+                  // unsaved-warning toast already fired by
+                  // storeAssetWithCollisionCheck if it applies.
                   if (kind === 'svg') {
                     // We have the original full path — handler can offer to embed.
                     const updated = await handleSvgExternalRefs(bytes, name, fullPath);

@@ -10,6 +10,8 @@ import { usePresentationStore } from '../store/presentation';
 import { getSlideNumber } from '../types/presentation';
 import { invalidateRenderedAsset } from './assetRenderer';
 import { showCollisionDialog } from './collisionDialog';
+import { effectiveAutoReload, getPreference } from './preferences';
+import { showToast } from './toasts';
 
 // Verbose log of insertion + collision-check decisions. Visible in the
 // in-app Debug Console (View menu). Toggle off when no longer useful.
@@ -86,6 +88,40 @@ interface AssetVersion {
  * URLs / cached PNGs from the prior bytes; without invalidation they
  * keep showing the old content until next reload.
  */
+/** Warn the user when they're inserting a "trackable" asset (one with
+ *  an external source file we'd subscribe the watcher to) into an
+ *  unsaved presentation. Without a project dir on disk, external_path
+ *  can't be resolved — the asset still gets stored, but the watcher
+ *  won't subscribe and there's no Save…→re-add round trip the user
+ *  needs to take. Suppressed when effective auto-reload for this
+ *  presentation is OFF (user opted out — no point nagging).
+ *
+ *  Fires from the helper itself so every insertion path that passes a
+ *  non-null externalPath is covered automatically. Paste / synthetic-
+ *  name paths (which store with externalPath=null) are correctly
+ *  excluded — they'd never be watched even after Save.
+ */
+function maybeWarnUnsavedProject(externalPath: string | null): void {
+  if (!externalPath) return;
+  const store = usePresentationStore.getState();
+  if (store.projectPath) return;
+  const presOverride = store.presentation?.config?.autoReloadAssets ?? null;
+  const globalDefault = getPreference('autoReloadAssets');
+  if (!effectiveAutoReload(null, presOverride, globalDefault)) return;
+  showToast({
+    key: 'unsaved-project-tracking',  // dedup repeat inserts in same session
+    kind: 'warning',
+    ttl: 12000,
+    message: 'Asset added, but file-watching is disabled until the presentation is saved. Save now, then re-add to enable live updates from the source file.',
+    action: {
+      label: 'Save…',
+      onClick: () => {
+        void import('../store/fileOps').then(({ saveProject }) => saveProject());
+      },
+    },
+  });
+}
+
 export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<StoreResult> {
   // PowerPoint mode: when per-presentation auto-reload is OFF (set
   // explicitly by the user, or carried over from a prior "I don't want
@@ -106,6 +142,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
     // fresh version from disk via Reload-now whenever they want.
     await invoke('db_store_asset', { ...toStoreArgs(args), assetId });
     ilog(`per-pres auto-reload OFF: fresh independent asset ${assetId.slice(0, 8)} at "${args.path}" (link preserved for manual Reload-now, watcher blocked by cascade)`);
+    maybeWarnUnsavedProject(args.externalPath);
     return { assetId, path: args.path, cancelled: false };
   }
 
@@ -116,6 +153,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
     // No existing asset at this path → simple insertion.
     const assetId = await invoke<string>('db_store_asset', toStoreArgs(args));
     ilog(`new asset at "${args.path}" → ${assetId.slice(0, 8)}`);
+    maybeWarnUnsavedProject(args.externalPath);
     return { assetId, path: args.path, cancelled: false };
   }
   ilog(`existing asset at "${args.path}" → asset_id=${meta.asset_id.slice(0, 8)} current_hash=${meta.hash?.slice(0, 8)}`);
@@ -137,6 +175,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
     ilog(`new bytes match original (original_hash=${original?.hash?.slice(0, 8) ?? 'n/a'} == new_hash=${newHash.slice(0, 8)}) → silent store on existing asset`);
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
     await invalidateRenderedAsset(args.path, meta.asset_id);
+    maybeWarnUnsavedProject(args.externalPath);
     return { assetId, path: args.path, cancelled: false };
   }
   ilog(`DIVERGENCE detected: original_hash=${original.hash.slice(0, 8)} != new_hash=${newHash.slice(0, 8)} (current=${meta.hash?.slice(0, 8)}, history: ${history.length} versions)`);
@@ -171,6 +210,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
     await invalidateRenderedAsset(args.path, meta.asset_id);
     ilog(`accept: stored on existing asset_id=${meta.asset_id.slice(0, 8)} + invalidated cache`);
+    maybeWarnUnsavedProject(args.externalPath);
     return { assetId, path: args.path, cancelled: false };
   }
 
@@ -205,6 +245,11 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: newAssetId });
   usePresentationStore.getState().updateConfig({ autoReloadAssets: 'off' });
   ilog(`revert: per-presentation auto-reload set to OFF`);
+  // Revert path turns auto-reload OFF for the presentation, so the
+  // unsaved-warning suppression rule (effective autoreload off → no
+  // toast) means this call is a no-op. Included for symmetry / safety
+  // if the suppression rule changes later.
+  maybeWarnUnsavedProject(args.externalPath);
 
   return { assetId: newAssetId, path: args.path, cancelled: false };
 }
