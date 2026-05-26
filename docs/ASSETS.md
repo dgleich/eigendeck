@@ -139,17 +139,19 @@ we have evidence that (a) the asset existed and (b) it changed
 without explicit user action since they first added it.
 
 **Trigger condition**: a new drag-drop or file-picker insertion's
-path already exists in the project, AND the existing asset's
-*current* hash differs from its *original* hash (oldest version in
-the asset's history). The new bytes don't enter the comparison —
-the surprise we're surfacing is about the existing asset, not about
-what's being added.
+path already exists in the project, AND the bytes being added
+differ from the existing asset's *original* bytes (oldest version's
+hash in history). The comparison is "what the user is adding now"
+vs "what the user originally added at this path" — divergence
+catches the silent-watcher case AND the auto-reload-off case where
+the file changed on disk without anyone updating the asset.
 
 **Skipped when**:
 
 - Path is new (no existing asset at that path) — no surprise.
-- Existing asset's current hash matches its oldest-version hash
-  (never silently updated) — no surprise.
+- The bytes being added match the existing asset's ORIGINAL bytes
+  (user is re-adding the same file they first put here) — no
+  surprise.
 - Existing asset has versions but no element currently references
   it (orphan) — no user to surprise.
 - Insertion is via clipboard paste — paste paths are synthetic

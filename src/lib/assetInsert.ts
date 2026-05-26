@@ -59,25 +59,32 @@ interface AssetVersion {
 }
 
 /**
- * Store an asset, prompting only when there's a silent-change surprise
- * to surface. Three paths:
+ * Store an asset, prompting only when the bytes being added DIFFER
+ * from what the user originally added at this path.
  *
  *   No existing asset at this path
- *     → db_store_asset, return fresh assetId.
+ *     → db_store_asset, return fresh assetId. No dialog.
  *
- *   Existing asset present, its current bytes match its ORIGINAL bytes
- *   (no silent change has ever happened)
- *     → db_store_asset reusing existing assetId, no dialog. The new
- *       bytes either equal current (dedup no-op) or genuinely update
- *       the asset (rare — file diverged without the watcher running).
+ *   Existing asset, new bytes match the existing asset's ORIGINAL
+ *   bytes (oldest version's hash). User is re-adding the same file
+ *   they first added; no surprise to surface.
+ *     → db_store_asset reusing existing assetId, no dialog. Internal
+ *       hash dedup keeps it a no-op when current also equals original.
  *
- *   Existing asset present, current bytes differ from its original
- *   bytes (file has been silently auto-reloaded since first add)
+ *   Existing asset, new bytes differ from the existing asset's
+ *   original bytes. User is putting different content at a path
+ *   they already used — whether the divergence came from a silent
+ *   watcher update, an external edit with auto-reload off, or a
+ *   user-initiated change.
  *     → dialog. User opts into one of two intents (see CollisionDialog).
  *
- * Orphan assets (path exists in `assets` but no element references the
- * asset_id) skip the dialog — the surprise doesn't apply when nothing
- * was using the prior version.
+ * Orphan assets (path exists but no element references the asset_id)
+ * skip the dialog.
+ *
+ * All "store on existing assetId" paths invalidate the asset cache
+ * afterward — other slides bound to the same assetId have stale blob
+ * URLs / cached PNGs from the prior bytes; without invalidation they
+ * keep showing the old content until next reload.
  */
 export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<StoreResult> {
   const meta = await invoke<AssetMeta | null>('db_get_asset_meta_by_path', { path: args.path })
@@ -91,30 +98,34 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   }
   ilog(`existing asset at "${args.path}" → asset_id=${meta.asset_id.slice(0, 8)} current_hash=${meta.hash?.slice(0, 8)}`);
 
-  // Fetch history to find the ORIGINAL bytes (oldest version). If
-  // current hash matches original hash, no silent change has occurred —
-  // store as a new version of the existing asset (will dedup if bytes
-  // match, otherwise updates explicitly).
+  // Compare the bytes being added against the existing asset's ORIGINAL
+  // bytes (oldest version's hash). Match → user is re-adding what they
+  // originally added; no surprise. Mismatch → divergence (silent watch
+  // update, or external edit with auto-reload off, or just a different
+  // file) → dialog.
   const history = await invoke<AssetVersion[]>('db_get_asset_history', { assetId: meta.asset_id })
     .catch(() => [] as AssetVersion[]);
   const original = history[history.length - 1];
+  const newHash = await sha256Hex(args.data);
 
-  if (!original || !original.hash || !meta.hash || original.hash === meta.hash) {
-    // No history / matching hashes → no silent change. Just store.
-    ilog(`no silent change (original_hash=${original?.hash?.slice(0, 8) ?? 'n/a'} == current_hash=${meta.hash?.slice(0, 8) ?? 'n/a'}) → silent store on existing asset`);
+  if (!original || !original.hash || original.hash === newHash) {
+    // No history / new bytes match original → no surprise. Store on
+    // existing assetId (will dedup if current also matches original;
+    // otherwise effectively reverts current to original).
+    ilog(`new bytes match original (original_hash=${original?.hash?.slice(0, 8) ?? 'n/a'} == new_hash=${newHash.slice(0, 8)}) → silent store on existing asset`);
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
+    await invalidateRenderedAsset(args.path, meta.asset_id);
     return { assetId, path: args.path, cancelled: false };
   }
-  ilog(`SILENT CHANGE detected: original_hash=${original.hash.slice(0, 8)} != current_hash=${meta.hash.slice(0, 8)} (history: ${history.length} versions)`);
+  ilog(`DIVERGENCE detected: original_hash=${original.hash.slice(0, 8)} != new_hash=${newHash.slice(0, 8)} (current=${meta.hash?.slice(0, 8)}, history: ${history.length} versions)`);
 
-  // Silent change detected. Find which slides currently use this asset.
   const slidesUsing = findSlidesUsingAsset(meta.asset_id, args.path);
   ilog(`asset used on slides: ${slidesUsing.length === 0 ? '(none — orphan)' : slidesUsing.join(', ')}`);
   if (slidesUsing.length === 0) {
     // Orphan: asset has versions but no element references it. No
-    // surprise to surface. Just store as a new version (effectively
-    // resurrects + updates).
+    // surprise to surface. Store a new version of the orphan.
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
+    await invalidateRenderedAsset(args.path, meta.asset_id);
     return { assetId, path: args.path, cancelled: false };
   }
 
@@ -130,10 +141,14 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   }
 
   if (choice === 'accept') {
-    // User opted into the auto-updating behavior. Store new bytes
-    // (will dedup if they match the silently-updated current bytes).
+    // User opted into the auto-updating behavior. Store new bytes on
+    // the existing assetId; all elements bound to it see the new bytes.
+    // Cache invalidation is critical: other slides' main-window <img>
+    // blob URLs cached the OLD bytes via useAssetUrl; without
+    // invalidation they keep showing stale until next reload.
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
-    ilog(`accept: stored on existing asset_id=${meta.asset_id.slice(0, 8)}`);
+    await invalidateRenderedAsset(args.path, meta.asset_id);
+    ilog(`accept: stored on existing asset_id=${meta.asset_id.slice(0, 8)} + invalidated cache`);
     return { assetId, path: args.path, cancelled: false };
   }
 
@@ -178,6 +193,14 @@ function toStoreArgs(a: StoreArgs): Record<string, unknown> {
     externalPath: a.externalPath,
     externalMtime: a.externalMtime,
   };
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  const digest = await crypto.subtle.digest('SHA-256', buf as ArrayBuffer);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 /**
