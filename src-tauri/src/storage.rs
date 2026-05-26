@@ -1574,6 +1574,20 @@ pub fn db_get_asset_by_id(asset_id: String) -> Result<Vec<u8>, String> {
     })
 }
 
+/// Read the bytes of a specific HISTORICAL version of an asset, keyed by
+/// (asset_id, valid_from). Used by the AssetSection version-history hover
+/// preview to show what the asset looked like at a given point in time.
+#[tauri::command]
+pub fn db_get_asset_version(asset_id: String, valid_from: String) -> Result<Vec<u8>, String> {
+    with_db(|conn| {
+        conn.query_row(
+            "SELECT data FROM assets WHERE asset_id = ?1 AND valid_from = ?2",
+            params![&asset_id, &valid_from],
+            |row| row.get(0),
+        )
+    })
+}
+
 /// Return the asset's `external_path` (source link relative to the
 /// .eigendeck dir) if present, else None. Used by the file-watcher hook
 /// to know whether/where to watch. Legacy path-keyed lookup; new callers

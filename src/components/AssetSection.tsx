@@ -7,7 +7,8 @@
 // file watcher fires after each disk reload, so the history list
 // extends in place.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { invalidateRenderedAsset } from '../lib/assetRenderer';
@@ -53,10 +54,35 @@ function relativeAgo(iso: string | null | undefined): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
   const sec = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (sec < 60) return `${sec}s ago`;
-  if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
-  if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
-  return `${Math.floor(sec / 86400)}d ago`;
+  if (sec < 10) return 'just now';
+  if (sec < 60) return `${sec} seconds ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} minute${min === 1 ? '' : 's'} ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} hour${hr === 1 ? '' : 's'} ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 30) return `${day} day${day === 1 ? '' : 's'} ago`;
+  const mo = Math.floor(day / 30);
+  if (mo < 12) return `${mo} month${mo === 1 ? '' : 's'} ago`;
+  const yr = Math.floor(day / 365);
+  return `${yr} year${yr === 1 ? '' : 's'} ago`;
+}
+
+/** Guess a blob MIME type for a version's preview from its stored
+ *  mime_type or path extension. PDFs and HTML demos render as a
+ *  placeholder; everything else gets the raw blob. */
+function previewMimeFor(mimeType: string | null | undefined, path: string | null | undefined): string | null {
+  const m = (mimeType || '').toLowerCase();
+  if (m === 'image/svg+xml' || m.startsWith('image/')) return mimeType!;
+  if (m === 'application/pdf') return null;  // pdfium not wired
+  if (m === 'text/html') return null;  // demo HTML — not previewable as image
+  // Fallback: sniff from extension
+  const ext = (path || '').split('.').pop()?.toLowerCase() || '';
+  const guess: Record<string, string> = {
+    svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg',
+    jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+  };
+  return guess[ext] ?? null;
 }
 
 export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string; assetId?: string; elementId?: string }) {
@@ -288,34 +314,124 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
           {history.length === 0 && (
             <div style={{ padding: '6px 8px', color: '#999' }}>No versions yet.</div>
           )}
-          {history.map((v, i) => {
-            const isCurrent = v.valid_to === null;
-            return (
-              <div key={v.valid_from} style={{
-                padding: '6px 8px',
-                borderTop: i > 0 ? '1px solid #f0f0f0' : 'none',
-                background: isCurrent ? '#eff6ff' : '#fff',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
-              }}>
-                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                  <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#666' }}>
-                    {v.valid_from.slice(0, 19)} <span style={{ color: '#aaa' }}>({relativeAgo(v.valid_from)})</span>
-                  </div>
-                  <div style={{ color: '#888' }}>
-                    {fmtBytes(v.size)}{isCurrent ? ' · current' : ''}
-                  </div>
-                </div>
-                {!isCurrent && (
-                  <button onClick={() => restoreVersion(v.valid_from)}
-                    style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, cursor: 'pointer' }}>
-                    Restore
-                  </button>
-                )}
-              </div>
-            );
-          })}
+          {history.map((v, i) => (
+            <VersionRow key={v.valid_from} version={v} isFirst={i === 0}
+              mimeType={meta.mime_type} path={meta.path ?? srcPath}
+              onRestore={() => restoreVersion(v.valid_from)} />
+          ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * One row in the version history list. Relative-time as the primary label
+ * with the full ISO timestamp on hover via `title`. On mouseEnter, lazy-
+ * fetches that specific version's bytes (db_get_asset_version) and shows
+ * a thumbnail in a floating popover so the user can see what the asset
+ * looked like at that point in time. Blob URL is revoked on mouseLeave /
+ * unmount.
+ */
+function VersionRow({
+  version: v, isFirst, mimeType, path, onRestore,
+}: {
+  version: AssetVersion;
+  isFirst: boolean;
+  mimeType: string | null;
+  path: string;
+  onRestore: () => void;
+}) {
+  const isCurrent = v.valid_to === null;
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
+  const previewMime = previewMimeFor(mimeType, path);
+
+  // Lazy-load on first hover. Caches per-row so subsequent hovers
+  // re-show the same blob URL without re-fetching.
+  const handleEnter = useCallback(async () => {
+    setHovered(true);
+    if (rowRef.current) {
+      const r = rowRef.current.getBoundingClientRect();
+      // Position the popover to the LEFT of the inspector row, vertically
+      // anchored to the row's top. 8px gap + 160px popover width.
+      setPopoverPos({ top: r.top, left: r.left - 168 });
+    }
+    if (previewUrl !== null || previewError || !previewMime) return;
+    try {
+      const data = await invoke<number[]>('db_get_asset_version', {
+        assetId: v.asset_id, validFrom: v.valid_from,
+      });
+      const blob = new Blob([new Uint8Array(data)], { type: previewMime });
+      setPreviewUrl(URL.createObjectURL(blob));
+    } catch {
+      setPreviewError(true);
+    }
+  }, [previewUrl, previewError, previewMime, v.asset_id, v.valid_from]);
+
+  const handleLeave = useCallback(() => {
+    setHovered(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  return (
+    <div ref={rowRef}
+      onMouseEnter={handleEnter} onMouseLeave={handleLeave}
+      style={{
+        padding: '6px 8px',
+        borderTop: isFirst ? 'none' : '1px solid #f0f0f0',
+        background: isCurrent ? '#eff6ff' : '#fff',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
+      }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+        <div title={fmtTime(v.valid_from)} style={{ color: '#222' }}>
+          {relativeAgo(v.valid_from)}{isCurrent && <span style={{ color: '#3b82f6', marginLeft: 6, fontWeight: 500 }}>current</span>}
+        </div>
+        <div style={{ color: '#888', fontSize: 10 }}>{fmtBytes(v.size)}</div>
+      </div>
+      {!isCurrent && (
+        <button onClick={onRestore}
+          style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, cursor: 'pointer' }}>
+          Restore
+        </button>
+      )}
+      {hovered && popoverPos && createPortal(
+        <div style={{
+          position: 'fixed', top: popoverPos.top, left: popoverPos.left,
+          width: 160,
+          background: '#fff', border: '1px solid #ccc', borderRadius: 4,
+          boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+          padding: 6, zIndex: 10000, pointerEvents: 'none',
+        }}>
+          {!previewMime ? (
+            <div style={{ fontSize: 10, color: '#888', textAlign: 'center', padding: '20px 0' }}>
+              No preview<br />({mimeType || 'unknown type'})
+            </div>
+          ) : previewError ? (
+            <div style={{ fontSize: 10, color: '#888', textAlign: 'center', padding: '20px 0' }}>
+              Preview failed
+            </div>
+          ) : previewUrl ? (
+            <img src={previewUrl} alt="" style={{
+              maxWidth: '100%', maxHeight: 160, display: 'block', margin: '0 auto',
+              imageRendering: 'auto',
+            }} />
+          ) : (
+            <div style={{ fontSize: 10, color: '#888', textAlign: 'center', padding: '20px 0' }}>
+              Loading…
+            </div>
+          )}
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
