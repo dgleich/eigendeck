@@ -98,9 +98,14 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   const presOverride = usePresentationStore.getState().presentation?.config?.autoReloadAssets ?? null;
   if (presOverride === 'off') {
     const assetId = crypto.randomUUID();
-    const noLinkArgs = { ...toStoreArgs(args), assetId, externalPath: null, externalMtime: null };
-    await invoke('db_store_asset', noLinkArgs);
-    ilog(`per-pres auto-reload OFF: fresh independent asset ${assetId.slice(0, 8)} at "${args.path}" (no external link, no collision check)`);
+    // external_path IS preserved: the manual "Reload from disk now"
+    // button in the Asset properties section is a useful affordance
+    // even in PowerPoint mode. The cascade still blocks the watcher
+    // from subscribing (per-pres OFF wins over null per-asset), so
+    // there's no auto-update — but the user can explicitly pull a
+    // fresh version from disk via Reload-now whenever they want.
+    await invoke('db_store_asset', { ...toStoreArgs(args), assetId });
+    ilog(`per-pres auto-reload OFF: fresh independent asset ${assetId.slice(0, 8)} at "${args.path}" (link preserved for manual Reload-now, watcher blocked by cascade)`);
     return { assetId, path: args.path, cancelled: false };
   }
 
@@ -194,16 +199,10 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   await invalidateRenderedAsset(args.path, meta.asset_id);
 
   const newAssetId = crypto.randomUUID();
-  ilog(`revert: creating NEW asset_id=${newAssetId.slice(0, 8)} at path="${args.path}" with new bytes, NO external link`);
-  // No externalPath: revert is the user's explicit opt-out of the
-  // auto-update paradigm for this presentation. The new asset stays
-  // independent even if they later flip per-pres back to ON.
-  await invoke<string>('db_store_asset', {
-    ...toStoreArgs(args),
-    assetId: newAssetId,
-    externalPath: null,
-    externalMtime: null,
-  });
+  ilog(`revert: creating NEW asset_id=${newAssetId.slice(0, 8)} at path="${args.path}" with new bytes (link preserved)`);
+  // external_path IS preserved (same rationale as PowerPoint mode):
+  // Reload-now is a useful manual affordance. Cascade blocks watcher.
+  await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: newAssetId });
   usePresentationStore.getState().updateConfig({ autoReloadAssets: 'off' });
   ilog(`revert: per-presentation auto-reload set to OFF`);
 

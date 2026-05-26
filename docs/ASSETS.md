@@ -170,23 +170,21 @@ an INDEPENDENT asset:
 
 - Fresh `asset_id` (UUID generated client-side, never reuses an
   existing asset_id even if the path label matches).
-- NO `external_path` stored, so the file watcher can never subscribe
-  to it. Bytes are baked in at insert time, like a PowerPoint
-  embedded image.
-- No collision dialog (the divergence question doesn't apply).
+- `external_path` IS preserved (where one applies, i.e. drag-drop
+  or file picker). The cascade resolver blocks the watcher from
+  subscribing while per-pres is OFF — but the user can pull a
+  fresh version explicitly via Properties → Asset → Reload from
+  disk now. Manual recovery beats automatic surprise.
+- No collision dialog (the divergence question doesn't apply once
+  the user has opted out of the auto-update paradigm).
 
-**Flipping per-presentation auto-reload back to ON** does *not*
-retroactively start watching the assets added while OFF — they have
-no `external_path` to watch against. Only assets inserted AFTER the
-flip get linked + watched. To re-enable watching for an asset added
-while OFF, re-import the file from disk.
-
-This is durable on purpose: once the user has explicitly opted out
-of auto-updates for a presentation, a casual toggle of the pref
-back to ON shouldn't bring back the very surprises they opted out
-of. The Settings modal cascade still allows the global default to
-take over if per-pres is set back to "Follow global" — but for
-existing assets that lack `external_path`, that's still a no-op.
+**Flipping per-presentation auto-reload back to ON** re-enables
+the watcher cascade for every existing asset that has an
+`external_path` and no explicit per-asset `'off'`. Assets the user
+explicitly flipped to "Never" in the Asset properties tri-state
+stay opted out; everything else starts watching again. This is
+intentional: the user changing the pref back to ON is itself an
+opt-in action, so it should actually opt them in.
 
 **Dialog body** (verbatim wording):
 
