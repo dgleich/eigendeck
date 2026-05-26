@@ -7,12 +7,8 @@
 
 import { save, message } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
-import {
-  Presentation,
-  createDefaultPresentation,
-} from '../types/presentation';
-import { usePresentationStore, openSqliteProject, flushToSqlite } from './presentation';
-import { getPreference } from '../lib/preferences';
+import { Presentation } from '../types/presentation';
+import { usePresentationStore, openSqliteProject, flushToSqlite, createSeededPresentation } from './presentation';
 // @ts-ignore — pure JS module shared with the CLI tool
 import { buildExportHtml } from '../lib/exportCore.mjs';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
@@ -108,14 +104,9 @@ export async function createProject(): Promise<void> {
     const { closeSqliteProject } = await import('./presentation');
     await closeSqliteProject();
 
-    const presentation = createDefaultPresentation();
-    // Seed per-presentation preamble from the global default (template,
-    // not a cascade — once initialized the per-presentation field is the
-    // sole render-time source).
-    const globalPreamble = getPreference('mathPreamble');
-    if (globalPreamble) {
-      presentation.config.mathPreamble = globalPreamble;
-    }
+    // Same seeding helper the Zustand cold-start uses — keeps the two
+    // "fresh presentation" entry points in sync.
+    const presentation = createSeededPresentation();
     await invoke('db_open', { path: selected });
     await invoke('db_import_json', { json: JSON.stringify(presentation) });
     await openSqliteProject(selected as string);

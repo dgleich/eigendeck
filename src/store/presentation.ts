@@ -71,18 +71,22 @@ function updateCurrentSlide(
   };
 }
 
-/** Initial in-memory presentation on cold app start (before any
- *  file is opened or New is invoked). Seeds the per-presentation
- *  math preamble from the global pref so the "first presentation
- *  the user sees" already has their default macros available —
- *  matches createProject's seeding behavior. */
-function createInitialPresentation(): Presentation {
+/** Build a fresh presentation with global-pref seeding applied.
+ *  Used both by the Zustand store's cold-start initial state AND by
+ *  fileOps.createProject (Cmd+N) — they MUST stay in sync, so the
+ *  seeding logic lives in one place.
+ *
+ *  Currently seeds: presentation.config.mathPreamble (from the global
+ *  mathPreamble pref). Add new "seed from global" fields here, not at
+ *  the call sites.
+ *
+ *  Direct localStorage read (not the preferences module) because the
+ *  Zustand initializer runs at module eval time, before React is
+ *  mounted, and the preferences module is React-hook-based. Same key
+ *  + JSON encoding as src/lib/preferences.ts uses. */
+export function createSeededPresentation(): Presentation {
   const pres = createDefaultPresentation();
   try {
-    // Direct localStorage read to avoid importing the preferences
-    // module (which imports React); this initializer runs at module
-    // eval time, before React is mounted. Same key + JSON encoding
-    // src/lib/preferences.ts uses.
     const v = localStorage.getItem('eigendeck:pref:mathPreamble');
     if (v) {
       const preamble = JSON.parse(v);
@@ -97,7 +101,7 @@ function createInitialPresentation(): Presentation {
 export const usePresentationStore = create<PresentationState>()(
   temporal(
     (set) => ({
-      presentation: createInitialPresentation(),
+      presentation: createSeededPresentation(),
       currentSlideIndex: 0,
       isPresenting: false,
       isDirty: false,
