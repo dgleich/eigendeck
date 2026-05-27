@@ -165,7 +165,7 @@ All elements share these base fields:
 {
   "id": "unique-uuid",
   "type": "image",
-  "src": "images/diagram.png",
+  "assetId": "f3b8...e91",
   "position": { "x": 360, "y": 200, "width": 1200, "height": 680 },
   "shadow": true,
   "borderRadius": 12,
@@ -174,8 +174,7 @@ All elements share these base fields:
 }
 ```
 
-- `src`: relative path from the project directory (also serves as the asset's display label). Images should be in `images/`. NOT unique — two distinct assets may share a src (e.g. after Import-as-new on a collision).
-- `assetId`: optional UUID — stable binding to a specific asset in the `assets` table. Set on insertion; backfilled on project load for legacy elements. Renderer/watcher prefer this over `src` lookup when set, which is the correct behavior when multiple assets share a src.
+- `assetId`: REQUIRED UUID — stable binding to a specific row in the `assets` table. The asset owns the bytes, the path label (e.g. `images/diagram.png`), the external source-file link, and the watch settings. Elements never carry a path — display label comes from `asset.path` via lookup.
 - `shadow`: optional boolean — adds a drop shadow
 - `borderRadius`: optional number — rounded corners in pixels
 - `opacity`: optional number 0–1 — image transparency
@@ -228,14 +227,14 @@ The `position` field is required but ignored for arrows (use x1/y1/x2/y2).
 {
   "id": "unique-uuid",
   "type": "demo",
-  "src": "demos/bfs-demo.html",
+  "assetId": "a3c8...11d",
   "position": { "x": 80, "y": 200, "width": 1760, "height": 700 }
 }
 ```
 
-Demo files must be self-contained HTML (inline CSS/JS, or CDN references).
+Demo files must be self-contained HTML (inline CSS/JS, or CDN references). The asset's `path` (typically `demos/bfs-demo.html`) is its display label; the bytes live in the `assets` table.
 
-- `assetId`: optional UUID — same semantic as `ImageElement.assetId` (stable asset binding; fall back to `src` lookup when absent).
+- `assetId`: REQUIRED UUID — stable binding to the demo HTML asset.
 
 ### Demo-Piece Element
 
@@ -243,31 +242,27 @@ Demo files must be self-contained HTML (inline CSS/JS, or CDN references).
 {
   "id": "unique-uuid",
   "type": "demo-piece",
-  "demoSrc": "demos/simulation.html",
+  "assetId": "a3c8...11d",
   "piece": "graph-view",
   "position": { "x": 80, "y": 200, "width": 900, "height": 600 },
   "demoState": {}
 }
 ```
 
-- `assetId`: optional UUID — same semantic as `ImageElement.assetId` (stable asset binding for the demo HTML; the binding is to `demoSrc`'s asset, not `piece`).
+- `assetId`: REQUIRED UUID — stable binding to the demo HTML asset.
+- `piece`: string — name of the piece/viewport to render.
+- `demoState`: optional object — state passed to the demo.
 
-Demo-piece elements are viewport fragments of a multi-piece demo. The demo HTML file receives a hash fragment indicating its role:
+Demo-piece elements are viewport fragments of a multi-piece demo. The demo HTML file (loaded via the asset's bytes) receives a hash fragment indicating its role:
 
-- **Viewport iframes**: loaded with `demoSrc#piece=PIECENAME` — render one visual piece of the demo
-- **Controller iframe**: loaded with `demoSrc#role=controller` — runs the simulation/logic, hidden (zero-size)
+- **Viewport iframes**: loaded with `#piece=PIECENAME` — render one visual piece of the demo
+- **Controller iframe**: loaded with `#role=controller` — runs the simulation/logic, hidden (zero-size)
 
-The controller iframe is automatically added (one per unique `demoSrc` on the current slide). Communication between controller and viewports uses `BroadcastChannel` with a channel name derived from the demo's src path.
+The controller iframe is automatically added (one per unique `assetId` on the current slide). Communication between controller and viewports uses `BroadcastChannel`.
 
 > **Export note:** In HTML exports, demos run in `srcdoc` iframes. Eigendeck injects a bootstrap that patches `URLSearchParams` and `BroadcastChannel` so the standard `location.hash` / `location.pathname` patterns work. Demo authors don't need special handling. See `DEMO_AUTHORING.md` for the full demo authoring guide.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `demoSrc` | string | Relative path to the demo HTML file |
-| `piece` | string | Name of the piece/viewport to render |
-| `demoState` | object? | Optional state to pass to the demo |
-
-Multiple `demo-piece` elements can reference the same `demoSrc` with different `piece` names to show different views of the same simulation side by side.
+Multiple `demo-piece` elements can reference the same `assetId` with different `piece` names to show different views of the same simulation side by side.
 
 ## Linked Objects
 

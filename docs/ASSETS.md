@@ -67,11 +67,11 @@ asset_id, newest first."
 
 #### Path is NOT unique
 
-`path` is a display LABEL — it's what shows up in the inspector and
-what `element.src` references in the JSON. Two distinct assets can
+`path` is a display LABEL — it's what shows up in the inspector,
+the version history, and CLI listings. Two distinct assets can
 legitimately share a path label (e.g. two `screenshot.png` imports
 from different folders). Element-to-asset binding is therefore by
-`asset_id`, not path.
+`asset_id`, never by path.
 
 #### `asset_id` is a UUID
 
@@ -122,17 +122,11 @@ out by merging the columns back into per-element objects.
 This is the existing pattern for `link_id` (cross-slide animation
 peers); `asset_id` follows the same pattern.
 
-The `data` JSON holds only type-specific fields (e.g. `src`,
-`position`, `shadow`, `kind` for an image element; `html`,
-`fontSize`, `color` for a text element).
-
-#### `src` / `demoSrc` on elements (current state, phase 4 will remove)
-
-Today: `ImageElement.src` and `DemoElement.demoSrc` are still
-present as display labels and legacy renderer fallbacks. Phase 4
-of the refactor drops them entirely — the user-facing label will be
-derived from `asset.path` via the assetId binding. Renderer hooks
-take assetId-only (no path arg).
+The `data` JSON holds only type-specific fields (e.g. `position`,
+`shadow`, `kind` for an image element; `html`, `fontSize`, `color`
+for a text element). Bindings (`linkId`, `assetId`) live in promoted
+columns. Old `src` / `demoSrc` fields are stripped on the next write
+through `db_update_element` for forward-migrated files.
 
 ## Cascade resolver (downward-only)
 
@@ -157,37 +151,30 @@ or per-pres `'on'` values from old DBs are treated as if absent.
 
 ## Element binding
 
-Image / demo / demo-piece elements carry:
+Image / demo / demo-piece elements carry one field:
 
-- `assetId: UUID` (in the `elements.asset_id` column) — the
-  canonical binding.
-- `src` / `demoSrc: string` (in JSON) — legacy display label (phase
-  4 will drop).
+- `assetId: UUID` (required; stored in the `elements.asset_id`
+  column) — the canonical binding to a row in `assets`.
 
-Renderer resolution:
-- `assetId` present (post-backfill, post-phase-3) → DB lookup via
-  `db_get_asset_by_id`.
-- `assetId` absent (legacy elements before backfill ran) → fall back
-  to path-label lookup via `db_get_asset`.
-
-### Backfill on load
-
-Opening an `.eigendeck` runs a one-time per-load pass: every
-image/demo/demo-piece element without an `assetId` gets one resolved
-by path-label lookup against `assets`. Mutates the loaded
-presentation in place. Touched element IDs are marked dirty +
-flushed so the backfill PERSISTS to the DB on the next save (without
-this, every reopen re-backfills from scratch).
+Path label, source link, and watch settings all live on the asset.
+The renderer resolves bytes via `db_get_asset_by_id`; the inspector
+shows the display path by looking up `asset.path` via the same id.
 
 ### Schema migration to `asset_id` column
 
-For files created before the column was promoted (any v3 file
-without phase 3 having run): `create_schema` runs idempotent
-`ALTER TABLE elements ADD COLUMN asset_id TEXT` + `UPDATE elements
-SET asset_id = json_extract(data, '$.assetId')` + `CREATE INDEX
-idx_el_asset`. Same pattern as v1→v2 (`slides.config` column add).
-Existing JSON `assetId` field remains in `data` after migration
-(dead but harmless); stripped on next write through
+`create_schema` is idempotent. For files older than the column:
+
+1. `ALTER TABLE elements ADD COLUMN asset_id TEXT` (no-op if present).
+2. `UPDATE elements SET asset_id = json_extract(data, '$.assetId')`
+   for any element whose JSON had an explicit `assetId`.
+3. `UPDATE elements SET asset_id = (SELECT asset_id FROM assets WHERE
+   path = data.src OR path = data.demoSrc LIMIT 1)` for legacy
+   elements that only had `src` / `demoSrc` in the JSON. Runs after
+   the `assets` table is created.
+4. `CREATE INDEX idx_el_asset`.
+
+Same pattern as v1→v2 (`slides.config` column add). Old JSON fields
+(`src`, `demoSrc`, `assetId`) get stripped on the next write through
 `db_update_element`.
 
 ## Asset lifecycle
@@ -403,21 +390,17 @@ unsaved presentation:
 
 Two hooks resolve assets to blob URLs:
 
-- `useAssetUrl(path, hash?, assetId?)` (`src/lib/demoAssets.ts`) —
-  raw bytes via blob URL, cached. Used for HTML demos and
-  unrasterized images.
-- `useRenderedAsset(path, kind, maxW, maxH, variant?, assetId?)`
+- `useAssetUrl(assetId, hash?)` (`src/lib/demoAssets.ts`) — raw
+  bytes via blob URL, cached. Used for HTML demos and unrasterized
+  images.
+- `useRenderedAsset(assetId, kind, maxW, maxH, variant?)`
   (`src/lib/assetRenderer.ts`) — cache-or-rasterize PNG into the
   `asset_cache` SQLite table. Used by slide-sidebar thumbnails. SVG
   ≤ 200 KB takes the native fast path (raw blob URL); larger SVG
   and all raster go through the PNG cache.
 
-Both prefer `assetId` for cache identity AND DB lookup
-(`db_get_asset_by_id`); fall back to path label (`db_get_asset`)
-when `assetId` is absent. Cache key is `${assetId ?? path}`.
-
-After phase 4: hook signatures drop the path arg entirely (assetId
-is always available).
+Both key off `assetId` exclusively (`db_get_asset_by_id`); no path
+fallback. Cache key is the `assetId`.
 
 ## UI
 
@@ -581,7 +564,7 @@ known limitation; tracked separately. Paste works as a workaround.
 | `src-tauri/src/pasteboard.rs` | Native NSPasteboard reads |
 | `src/lib/watcherRegistry.ts` | Per-`project_id` watcher singleton, scan-on-load |
 | `src/lib/assetWatcher.ts` | `useAssetFileWatcher` React hook |
-| `src/lib/assetUsage.ts` | Pure helper: `computeAssetUsage(presentation, assetId, path)` |
+| `src/lib/assetUsage.ts` | Pure helper: `computeAssetUsage(presentation, assetId)` |
 | `src/lib/assetInsert.ts` | `storeAssetWithCollisionCheck` + the collision-dialog flow |
 | `src/lib/demoAssets.ts` | `useAssetUrl` / `getAssetUrl` + blob cache |
 | `src/lib/assetRenderer.ts` | `useRenderedAsset` / `renderAsset` + cache invalidation |
@@ -593,8 +576,8 @@ known limitation; tracked separately. Paste works as a workaround.
 | `src/components/SettingsModal.tsx` | Global preferences modal |
 | `src/components/ToastHost.tsx` | Toast renderer mounted in App |
 | `src/components/SlideEditor.tsx` | All insertion callsites (paste, drag, native pasteboard) |
-| `src/store/presentation.ts` | `backfillElementAssetIds` on load; `flushToSqlite` write-through |
-| `src/types/presentation.ts` | `ImageElement.assetId`, future drop of `src` / `demoSrc` |
+| `src/store/presentation.ts` | `flushToSqlite` write-through |
+| `src/types/presentation.ts` | `ImageElement.assetId` (required), no path field |
 
 ## Open questions / deferred
 
