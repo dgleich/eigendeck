@@ -86,9 +86,15 @@ fn render_page_inner(
     let pdf_page = document.pages().get(page as PdfPageIndex)
         .map_err(|e| format!("page {} get: {}", page, e))?;
 
-    // scale_page_to_display_size: aspect-fit; never upscale past natural.
+    // Aspect-fit into (max_width, max_height) WITHOUT auto-rotating
+    // landscape pages — embedded slide images should keep their source
+    // orientation. set_target_width + the two maximums together produce
+    // "fit inside the box, never upscale past natural" without
+    // scale_page_to_display_size's implicit 90° landscape rotation.
     let config = PdfRenderConfig::new()
-        .scale_page_to_display_size(max_width as Pixels, max_height as Pixels);
+        .set_target_width(max_width as Pixels)
+        .set_maximum_width(max_width as Pixels)
+        .set_maximum_height(max_height as Pixels);
 
     let bitmap = pdf_page.render_with_config(&config)
         .map_err(|e| format!("render page {}: {}", page, e))?;
