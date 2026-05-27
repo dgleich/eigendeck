@@ -236,9 +236,18 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
   // fork-on-shared, no per-element semantics. The whole asset stops or
   // resumes being watched; all bound elements are affected equally,
   // and the UI tells the user that via the "Used on N slides" caption.
+  //
+  // Fires the `eigendeck:asset-changed` event after the DB write so
+  // useAssetFileWatcher re-evaluates the cascade and subscribes /
+  // unsubscribes accordingly. Without this, the hook's existing
+  // subscription persists across the auto_reload flip — file mutation
+  // would still trigger an update even though the user just opted out.
   const setAutoReload = useCallback(async (value: 'off' | null) => {
     if (!meta) return;
     await invoke('db_set_asset_auto_reload', { assetId: meta.asset_id, value }).catch(() => {});
+    window.dispatchEvent(new CustomEvent('eigendeck:asset-changed', {
+      detail: { path: meta.path, assetId: meta.asset_id },
+    }));
     await fetchMeta();
   }, [meta, fetchMeta]);
 

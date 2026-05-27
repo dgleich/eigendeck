@@ -57,6 +57,15 @@ export function useAssetFileWatcher(
   const [globalAutoReload] = usePreference('autoReloadAssets');
   const presOverride = usePresentationStore((s) => s.presentation?.config?.autoReloadAssets ?? null);
 
+  // Bumped when an asset-changed event arrives matching this asset. The
+  // event fires when meta changes (auto_reload toggled, asset restored,
+  // watcher wrote a new version). Triggering a refetch lets us pick up
+  // auto_reload flips: if the user just unchecked Watch, the cascade
+  // re-evaluates to false and the cleanup unsubscribes us. Without this
+  // the subscription persisted across the flip — the file watcher kept
+  // firing despite the user opting out.
+  const [refetchKey, setRefetchKey] = useState(0);
+
   // Fetch project_id once the project is loaded.
   useEffect(() => {
     if (!projectPath) { setProjectId(null); return; }
@@ -66,6 +75,25 @@ export function useAssetFileWatcher(
       .catch(() => { if (!cancelled) setProjectId(null); });
     return () => { cancelled = true; };
   }, [projectPath]);
+
+  // Listen for asset-changed events that match our asset. On match,
+  // bump refetchKey to re-run the subscription effect below (which
+  // refetches meta and re-evaluates the cascade).
+  useEffect(() => {
+    if (!assetId && !assetPath) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { path?: string; assetId?: string } | undefined;
+      const matches = assetId && detail?.assetId
+        ? detail.assetId === assetId
+        : detail?.path === assetPath;
+      if (matches) {
+        hlog(`asset-changed event for asset=${assetId?.slice(0, 8) ?? '?'} path="${assetPath ?? ''}" → refetching meta + re-evaluating cascade`);
+        setRefetchKey((k) => k + 1);
+      }
+    };
+    window.addEventListener('eigendeck:asset-changed', handler);
+    return () => window.removeEventListener('eigendeck:asset-changed', handler);
+  }, [assetPath, assetId]);
 
   useEffect(() => {
     if ((!assetPath && !assetId) || !projectPath || !projectId) {
@@ -115,5 +143,5 @@ export function useAssetFileWatcher(
         registry.removeRef(registeredExternalRel, registeredAssetId, elementId);
       }
     };
-  }, [assetPath, assetId, elementId, mimeType, projectPath, projectId, globalAutoReload, presOverride]);
+  }, [assetPath, assetId, elementId, mimeType, projectPath, projectId, globalAutoReload, presOverride, refetchKey]);
 }
