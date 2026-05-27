@@ -483,35 +483,53 @@ matters. No cascade or merge with global.
 (info / warning / error / success), auto-dismiss with `ttl` (0 =
 sticky), `key` field dedupes repeats.
 
-## Asset GC (planned; not yet built)
+## Asset GC
 
 Reachability rule: a version `(asset_id, valid_from)` is reachable
 iff at least one current element references the asset_id.
-Unreferenced assets — including their current row AND all their
-history — are GC-able.
+Unreferenced assets — current row AND all their history — are
+removed by GC. History versions of *referenced* assets are NEVER
+trimmed; that's the pre-talk safety net.
 
 ```sql
--- Sketch of the future db_gc_assets query
-WITH referenced_assets AS (
-  SELECT DISTINCT asset_id
-  FROM elements
-  WHERE valid_to IS NULL AND asset_id IS NOT NULL
-)
+-- Body of gc_assets_inner (runs inside a caller-managed transaction)
 DELETE FROM assets
-WHERE asset_id NOT IN (SELECT asset_id FROM referenced_assets);
+WHERE asset_id NOT IN (
+  SELECT asset_id FROM elements
+  WHERE valid_to IS NULL AND asset_id IS NOT NULL
+);
 
 DELETE FROM asset_cache
-WHERE source_id NOT IN (SELECT asset_id FROM assets);
-
-VACUUM;
+WHERE source_id NOT IN (SELECT DISTINCT asset_id FROM assets);
 ```
 
-Retention policy: **manual GC only** in v1. History accumulates
-over time; that's the cost of supporting per-asset Restore (and
-the future project-wide rollback).
+VACUUM runs after the transaction commits, outside the SQL above
+(SQLite requires VACUUM to be top-level).
 
-Trigger: future File menu → "Compact (Free Unused Assets)" or
-extension of `db_compact`.
+### Entry points
+
+- **`db_gc_assets`** Tauri command — standalone. Returns
+  `{ removedAssets, removedVersions, removedCacheRows, beforeBytes,
+  afterBytes, bytesFreed }`. Wired to **File → "Compact (Free
+  Unused Assets)"**; the JS handler flushes pending writes first
+  (so freshly-added bindings aren't mis-classified as orphan), then
+  shows a success/no-op toast.
+- **`db_compact`** also runs `gc_assets_inner` after its history
+  trim — same transaction, single VACUUM. History trim can close
+  the last reference to an asset, so GC after the trim catches more
+  than GC before would.
+
+### Cache cascade quirk
+
+`asset_cache` was keyed by `assetId ?? path` pre-phase-4. Any
+stale path-keyed cache row never matches a UUID `asset_id`, so GC
+sweeps it up too — one-time forward-migration freebie.
+
+### Retention policy
+
+**Manual GC only** in v1. History accumulates over time; that's
+the cost of supporting per-asset Restore (and the future
+project-wide rollback). No automatic trigger.
 
 ## Project rollback (deferred; data preserved)
 
@@ -593,7 +611,5 @@ known limitation; tracked separately. Paste works as a workaround.
   `clipboard-rs` when Win/Linux become real targets.
 - **Watcher orphan-callback warnings on macOS atomic-save** (#63) —
   cosmetic; functionally harmless.
-- **Asset GC** — sketched above, not built. Deferred from the asset
-  refactor.
 - **Project rollback to time T** — deferred; data preserved so it's
   additive.
