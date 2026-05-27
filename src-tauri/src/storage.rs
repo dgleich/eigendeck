@@ -504,10 +504,31 @@ pub fn db_import_json(json: String) -> Result<(), String> {
     with_db(|conn| {
         let tx = conn.unchecked_transaction()?;
 
-        // Clear existing data
+        // Clear existing data. This includes EVERYTHING per-project, not
+        // just slide/element structure: assets (so a same-path new insert
+        // doesn't merge into the OLD asset's history), asset_cache + math
+        // cache (so derived renders aren't stale), and the project_id in
+        // _meta (so a new UUID gets generated for this fresh project —
+        // file watchers and other project-id-keyed state need to fork).
+        // Bug shape if any of these were skipped: 'New Project' overwriting
+        // an existing file inherits that file's assets/history.
+        // schema_version is preserved (other key in _meta).
         tx.execute_batch(
-            "DELETE FROM presentation; DELETE FROM slides; DELETE FROM elements; DELETE FROM slide_elements;",
+            "DELETE FROM presentation;
+             DELETE FROM slides;
+             DELETE FROM elements;
+             DELETE FROM slide_elements;
+             DELETE FROM assets;
+             DELETE FROM asset_cache;
+             DELETE FROM math_cache;
+             DELETE FROM _meta WHERE key = 'project_id';",
         )?;
+        // In-memory pending_project_id might still hold the OLD project's
+        // session-generated UUID (if the OLD project was unsaved or
+        // pending). Drop it so the next db_get_project_id either reads
+        // the persisted value (none, we just wiped it) or generates a
+        // fresh UUID.
+        *PENDING_PROJECT_ID.lock().unwrap() = None;
 
         // Presentation metadata
         if let Some(title) = presentation.get("title").and_then(|v| v.as_str()) {
