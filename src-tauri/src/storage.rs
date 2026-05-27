@@ -3400,4 +3400,218 @@ mod tests {
 
         teardown_global_db();
     }
+
+    /// Helper: read the asset_id column for the current row of an
+    /// element. Used by the phase-3 column-promotion tests.
+    fn read_element_asset_id(id: &str) -> Option<String> {
+        with_db(|conn| {
+            conn.query_row(
+                "SELECT asset_id FROM elements WHERE id = ?1 AND valid_to IS NULL",
+                params![id],
+                |row| row.get::<_, Option<String>>(0),
+            )
+        }).unwrap()
+    }
+
+    /// db_add_element writes the asset_id column when passed; the
+    /// JSON data blob does NOT contain assetId (caller strips it on
+    /// the JS side). Test the asset path explicitly.
+    #[test]
+    fn db_add_element_writes_asset_id_column() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+        let data = json!({ "id": "el-img", "type": "image", "src": "chart.svg" }).to_string();
+        db_add_element(
+            "slide-1".to_string(),
+            "el-img".to_string(),
+            "image".to_string(),
+            data,
+            None,                       // link_id
+            Some("asset-A".to_string()), // asset_id
+            5,
+        ).unwrap();
+        assert_eq!(read_element_asset_id("el-img"), Some("asset-A".to_string()));
+
+        // None passes through as NULL.
+        let data2 = json!({ "id": "el-text", "type": "text", "content": "hi" }).to_string();
+        db_add_element(
+            "slide-1".to_string(),
+            "el-text".to_string(),
+            "text".to_string(),
+            data2,
+            None, None, 6,
+        ).unwrap();
+        assert_eq!(read_element_asset_id("el-text"), None);
+
+        teardown_global_db();
+    }
+
+    /// db_update_element updates the asset_id column on each version.
+    #[test]
+    fn db_update_element_writes_asset_id_column() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+        // sample_presentation has el-1 (text) and el-2 (image src=test.png) on slide-1.
+        let new_data = json!({ "id": "el-2", "type": "image", "src": "test.png" }).to_string();
+        db_update_element(
+            "el-2".to_string(),
+            new_data,
+            None,                       // link_id
+            Some("asset-X".to_string()), // asset_id
+        ).unwrap();
+        assert_eq!(read_element_asset_id("el-2"), Some("asset-X".to_string()));
+
+        teardown_global_db();
+    }
+
+    /// Round-trip: import a presentation whose elements include
+    /// assetId in their JSON → export back out → assertion: the
+    /// exported JSON has assetId in the element objects. Verifies
+    /// db_import_json moves assetId from JSON into the column AND
+    /// db_export_json reassembles it back into the per-element JSON.
+    #[test]
+    fn assetId_round_trips_through_import_export() {
+        setup_global_db();
+        let input = json!({
+            "title": "T", "theme": "white",
+            "config": {},
+            "slides": [{
+                "id": "slide-1",
+                "elements": [
+                    { "id": "el-img", "type": "image", "src": "chart.svg",
+                      "assetId": "asset-A",
+                      "x": 0, "y": 0, "width": 100, "height": 100 },
+                    { "id": "el-no-binding", "type": "image", "src": "loose.svg",
+                      "x": 0, "y": 0, "width": 100, "height": 100 },
+                ],
+                "notes": "",
+            }],
+        }).to_string();
+        db_import_json(input).unwrap();
+
+        // Column populated from JSON for the assetId-bearing element.
+        assert_eq!(read_element_asset_id("el-img"), Some("asset-A".to_string()));
+        assert_eq!(read_element_asset_id("el-no-binding"), None);
+
+        // JSON data blob no longer has assetId (stripped on insert).
+        let stored_data: String = with_db(|conn| {
+            conn.query_row(
+                "SELECT data FROM elements WHERE id = 'el-img' AND valid_to IS NULL",
+                [], |row| row.get(0),
+            )
+        }).unwrap();
+        let parsed: Value = serde_json::from_str(&stored_data).unwrap();
+        assert!(parsed.get("assetId").is_none(),
+                "assetId should be stripped from data JSON; found in stored: {}", stored_data);
+
+        // Export reassembles assetId from the column back into the JSON.
+        let exported: Value = serde_json::from_str(&db_export_json().unwrap()).unwrap();
+        let els = exported["slides"][0]["elements"].as_array().unwrap();
+        let img = els.iter().find(|e| e["id"] == "el-img").unwrap();
+        assert_eq!(img["assetId"], "asset-A");
+        let loose = els.iter().find(|e| e["id"] == "el-no-binding").unwrap();
+        assert!(loose.get("assetId").is_none() || loose["assetId"].is_null(),
+                "elements without assetId should not gain one on export; got {:?}", loose);
+
+        teardown_global_db();
+    }
+
+    /// Migration test: simulate a pre-phase-3 elements table (no
+    /// asset_id column), populate with elements whose JSON contains
+    /// `assetId`, then run create_schema → assert the ALTER TABLE
+    /// added the column and the UPDATE backfill copied the value
+    /// from JSON. Idempotency: running create_schema twice doesn't
+    /// double-add or re-backfill.
+    #[test]
+    fn migration_promotes_assetId_from_legacy_elements_to_column() {
+        // Manual setup — bypass create_schema so we can simulate the
+        // pre-phase-3 schema shape (no asset_id column).
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE elements (
+                id TEXT NOT NULL,
+                type TEXT NOT NULL,
+                data TEXT NOT NULL,
+                link_id TEXT,
+                valid_from TEXT NOT NULL,
+                valid_to TEXT,
+                PRIMARY KEY (id, valid_from)
+            );"
+        ).unwrap();
+        let now = timestamp();
+        conn.execute(
+            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+            params![
+                "el-img",
+                "image",
+                json!({"id":"el-img","type":"image","assetId":"asset-A","src":"x.svg"}).to_string(),
+                None::<String>,
+                &now,
+            ],
+        ).unwrap();
+        conn.execute(
+            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+            params![
+                "el-text",
+                "text",
+                json!({"id":"el-text","type":"text","content":"hi"}).to_string(),
+                None::<String>,
+                &now,
+            ],
+        ).unwrap();
+
+        // Run create_schema (which includes the migration).
+        create_schema(&conn).unwrap();
+
+        // asset_id column exists and has the backfilled value.
+        let img_asset: Option<String> = conn.query_row(
+            "SELECT asset_id FROM elements WHERE id = 'el-img' AND valid_to IS NULL",
+            [], |row| row.get(0),
+        ).unwrap();
+        assert_eq!(img_asset, Some("asset-A".to_string()),
+                   "ALTER + UPDATE backfill should have populated asset_id from JSON");
+
+        let text_asset: Option<String> = conn.query_row(
+            "SELECT asset_id FROM elements WHERE id = 'el-text' AND valid_to IS NULL",
+            [], |row| row.get(0),
+        ).unwrap();
+        assert_eq!(text_asset, None, "elements without assetId in JSON should stay NULL");
+
+        // Idempotency: running create_schema again is a no-op.
+        create_schema(&conn).unwrap();
+        let img_asset_again: Option<String> = conn.query_row(
+            "SELECT asset_id FROM elements WHERE id = 'el-img' AND valid_to IS NULL",
+            [], |row| row.get(0),
+        ).unwrap();
+        assert_eq!(img_asset_again, Some("asset-A".to_string()));
+    }
+
+    /// db_free_element (duplicate-for-unsync) copies asset_id along
+    /// with the element data. A duplicate without its binding would
+    /// surface as a broken render in the slide that owned the new copy.
+    #[test]
+    fn db_free_element_preserves_asset_id() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+        // Re-write el-2 with an asset_id binding first.
+        db_update_element(
+            "el-2".to_string(),
+            json!({"id":"el-2","type":"image","src":"test.png"}).to_string(),
+            None,
+            Some("asset-bound".to_string()),
+        ).unwrap();
+        assert_eq!(read_element_asset_id("el-2"), Some("asset-bound".to_string()));
+
+        // Free it (creates a new element id).
+        db_free_element(
+            "slide-1".to_string(),
+            "el-2".to_string(),
+            "el-2-copy".to_string(),
+            None,
+        ).unwrap();
+        // The duplicate has the same asset_id binding.
+        assert_eq!(read_element_asset_id("el-2-copy"), Some("asset-bound".to_string()));
+
+        teardown_global_db();
+    }
 }
