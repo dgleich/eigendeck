@@ -213,23 +213,29 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
     }
   }, [meta, elementId]);
 
-  // How many current elements reference this asset. Reactive: re-runs
-  // when the presentation changes. Shown in the UI as "Used on N slides"
-  // and used to decide whether Restore needs a confirm.
-  const usageCount = usePresentationStore((s) => {
-    if (!meta || !s.presentation) return 0;
+  // How many current elements reference this asset, across how many
+  // distinct slides. Reactive: re-runs when the presentation changes.
+  // Shown in the UI as "Used N times across M slides" and used to
+  // phrase Restore's confirm dialog. usageCount is the element count
+  // (the actual blast radius — every copy changes); slideCount is for
+  // the user-facing label only.
+  const { usageCount, slideCount } = usePresentationStore((s) => {
+    if (!meta || !s.presentation) return { usageCount: 0, slideCount: 0 };
     let n = 0;
+    let slides = 0;
     for (const slide of s.presentation.slides) {
+      let hit = false;
       for (const el of slide.elements) {
         if (el.type !== 'image' && el.type !== 'demo' && el.type !== 'demo-piece') continue;
         const e = el as { assetId?: string; src?: string; demoSrc?: string };
         const bound = e.assetId
           ? e.assetId === meta.asset_id
           : (e.demoSrc ?? e.src) === meta.path;
-        if (bound) n++;
+        if (bound) { n++; hit = true; }
       }
+      if (hit) slides++;
     }
-    return n;
+    return { usageCount: n, slideCount: slides };
   });
 
   // Per-asset auto-reload is now a simple 2-state ('off' | null) — no
@@ -261,8 +267,11 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
     const when = relativeAgo(valid_from) || valid_from;
     if (usageCount > 1) {
       const fileName = (meta.path ?? srcPath).split('/').pop() ?? (meta.path ?? srcPath);
+      const where = slideCount === 1
+        ? 'on this slide'
+        : `across ${slideCount} slides`;
       const ok = confirm(
-        `Restore ${fileName} to the version from ${when}? This will affect all ${usageCount} slides using this image.`,
+        `Restore ${fileName} to the version from ${when}? This will affect all ${usageCount} copies of this image ${where}.`,
       );
       if (!ok) return;
     }
@@ -270,7 +279,7 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
       console.warn('[AssetSection] restore failed:', e);
     });
     await invalidateRenderedAsset(meta.path ?? srcPath, meta.asset_id);
-  }, [meta, srcPath, usageCount]);
+  }, [meta, srcPath, usageCount, slideCount]);
 
   if (!meta) {
     return (
@@ -292,9 +301,16 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
     : presOverride === 'off' ? 'presentation'
     : optedOut ? 'asset'
     : null;
-  const usageLabel = usageCount === 1
-    ? 'Used on this slide only'
-    : `Used on ${usageCount} slides`;
+  // Phrasing variations cover the 4 layout cases honestly:
+  //   1 copy, 1 slide  → "Used on this slide only"
+  //   N copies, 1 slide → "Used N times on this slide"
+  //   1 copy each, M slides → "Used on M slides"
+  //   N copies, M slides (mixed) → "Used N times across M slides"
+  const usageLabel
+    = usageCount <= 1 ? 'Used on this slide only'
+    : slideCount === 1 ? `Used ${usageCount} times on this slide`
+    : usageCount === slideCount ? `Used on ${slideCount} slides`
+    : `Used ${usageCount} times across ${slideCount} slides`;
 
   return (
     <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -369,12 +385,12 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
             )}
             {cascadeBlock === 'asset' && (
               usageCount > 1
-                ? <>Off: file changes don't update any of these {usageCount} slides.</>
+                ? <>Off: file changes don't update any of the {usageCount} copies.</>
                 : <>Off: file changes don't update this image.</>
             )}
             {cascadeBlock === null && (
               usageCount > 1
-                ? <>On: file changes update all {usageCount} slides using this image.</>
+                ? <>On: file changes update all {usageCount} copies of this image.</>
                 : <>On: file changes update this image.</>
             )}
           </div>

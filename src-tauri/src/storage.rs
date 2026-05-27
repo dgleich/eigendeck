@@ -1566,6 +1566,25 @@ pub fn db_store_asset(
             if h == new_hash { return Ok(id); }
         }
 
+        // auto_reload preservation: it's a per-ASSET configuration, not
+        // a per-version one. If the caller didn't explicitly pass a
+        // value (auto_reload is None) AND a current row exists for this
+        // asset_id, inherit that row's auto_reload. Without this, every
+        // file-watcher write or Reload-from-disk silently resets the
+        // user's per-asset opt-out back to NULL → cascade flips to ON
+        // → user's "Don't watch this file" click gets undone by the
+        // next byte change. Explicit overrides (e.g. db_restore_asset_
+        // version passing 'off') still work because they go through a
+        // different code path with the value hardcoded in the INSERT.
+        let effective_auto_reload: Option<String> = if auto_reload.is_some() {
+            auto_reload
+        } else {
+            conn.query_row(
+                "SELECT auto_reload FROM assets WHERE asset_id = ?1 AND valid_to IS NULL",
+                params![&id], |row| row.get::<_, Option<String>>(0),
+            ).unwrap_or(None)
+        };
+
         // Transactional close-old + insert-new.
         let tx = conn.unchecked_transaction()?;
         tx.execute(
@@ -1577,7 +1596,7 @@ pub fn db_store_asset(
              external_path, external_mtime, auto_reload, created_at, valid_from, valid_to) \
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, NULL)",
             params![&id, &data, &mime_type, size, &new_hash, &path,
-                    &external_path, &external_mtime, &auto_reload, &now, &now],
+                    &external_path, &external_mtime, &effective_auto_reload, &now, &now],
         )?;
         tx.commit()?;
         Ok(id)
