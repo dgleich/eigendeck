@@ -83,6 +83,36 @@ fn download_and_extract_pdfium(archive_name: &str, lib_in_archive: &str, dest_di
     println!("cargo:warning=pdfium dylib extracted to {} (tag={})", dylib_dest.display(), PDFIUM_RELEASE_TAG);
 }
 
+/// macOS Gatekeeper kills processes that dlopen a quarantined dylib
+/// (SIGKILL with no logged error). Network-downloaded files get the
+/// com.apple.quarantine xattr; cargo / ureq downloads do too. Clear
+/// xattrs, then re-sign ad-hoc so hardened runtime accepts the load.
+///
+/// Runs every build (not just after fresh download) because users may
+/// already have a cached dylib from before this fix landed — and the
+/// operations are cheap + idempotent. No-op on non-Mac targets.
+fn ensure_dylib_loadable_on_macos(dylib_path: &std::path::Path) {
+    #[cfg(target_os = "macos")]
+    {
+        use std::process::Command;
+        if !dylib_path.exists() {
+            return;
+        }
+        // Best-effort: don't fail the build if xattr/codesign aren't on
+        // PATH. Both are part of macOS's command-line tools, so missing
+        // them is unusual but not fatal.
+        let _ = Command::new("xattr").args(["-c"]).arg(dylib_path).status();
+        let _ = Command::new("codesign")
+            .args(["--force", "--sign", "-"])
+            .arg(dylib_path)
+            .status();
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = dylib_path;  // silence unused warning on non-Mac
+    }
+}
+
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
@@ -94,6 +124,9 @@ fn main() {
         let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
         let dest_dir = manifest_dir.join("resources").join("pdfium");
         download_and_extract_pdfium(archive, lib_in_archive, &dest_dir);
+        // Apply on every build: handles both fresh downloads AND any
+        // previously-cached dylib (e.g. from before this fix landed).
+        ensure_dylib_loadable_on_macos(&dest_dir.join("libpdfium.dylib"));
     } else {
         println!(
             "cargo:warning=no pdfium prebuilt configured for this target — \
