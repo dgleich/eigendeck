@@ -45,20 +45,24 @@ export async function renderAsset(opts: {
   const cached = await getAssetCache(assetId, variant, maxWidth, maxHeight);
   if (cached) return pngBytesToBlobUrl(cached.png);
 
-  const bytes = preFetchedBytes
-    ?? new Uint8Array(await invoke<number[]>('db_get_asset_by_id', { assetId }));
-
   let png: Uint8Array;
   switch (kind) {
-    case 'svg':
-      png = await rasterizeAspectFit(bytes, 'image/svg+xml', maxWidth, maxHeight);
+    case 'pdf': {
+      // Rust side does the byte fetch + render in one trip — no point
+      // marshalling multi-MB PDFs through invoke twice. v1 always
+      // renders page 0; multi-page picker is a follow-up (snapshotVariant
+      // would carry the page index when that lands).
+      const pageBytes = await invoke<number[]>('db_render_pdf_page', {
+        assetId, page: 0, maxWidth, maxHeight,
+      });
+      png = new Uint8Array(pageBytes);
       break;
-    case 'pdf':
-      // pdfium-render path lands in a later commit. For now signal the
-      // miss to the caller so it can show source-as-is until then.
-      throw new Error('PDF rasterization not yet implemented');
+    }
+    case 'svg':
     case 'raster': {
-      const mime = sniffRasterMime(bytes) || 'image/png';
+      const bytes = preFetchedBytes
+        ?? new Uint8Array(await invoke<number[]>('db_get_asset_by_id', { assetId }));
+      const mime = kind === 'svg' ? 'image/svg+xml' : (sniffRasterMime(bytes) || 'image/png');
       png = await rasterizeAspectFit(bytes, mime, maxWidth, maxHeight);
       break;
     }
