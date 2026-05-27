@@ -887,6 +887,26 @@ function App() {
             document.execCommand('insertText', false, text);
           }).catch(() => {});
           break;
+        case 'gc-assets': (async () => {
+          try {
+            // Flush any pending writes first so dirty elements don't
+            // get classified as orphan-bound before their assetId binding
+            // lands in the DB.
+            await flushToSqlite();
+            const { dbGcAssets } = await import('./store/db');
+            const { showToast } = await import('./lib/toasts');
+            const r = await dbGcAssets();
+            const mb = (r.bytesFreed / (1024 * 1024)).toFixed(2);
+            const msg = r.removedAssets === 0
+              ? 'No unused assets — nothing to free.'
+              : `Freed ${mb} MB · removed ${r.removedAssets} unused asset${r.removedAssets === 1 ? '' : 's'} (${r.removedVersions} version${r.removedVersions === 1 ? '' : 's'}).`;
+            showToast({ message: msg, kind: 'success' });
+          } catch (e) {
+            console.error('gc-assets failed:', e);
+            const { showToast } = await import('./lib/toasts');
+            showToast({ message: `Compact failed: ${e}`, kind: 'error' });
+          }
+        })(); break;
       }
     });
     const unlistenRecent = listen<string>('menu-event-recent', (event) => {

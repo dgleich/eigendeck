@@ -429,6 +429,8 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build(app).map_err(|e| e.to_string())?;
     let presentation_settings_item = MenuItemBuilder::new("Presentation Settings...").id("presentation-settings")
         .build(app).map_err(|e| e.to_string())?;
+    let gc_assets_item = MenuItemBuilder::new("Compact (Free Unused Assets)").id("gc-assets")
+        .build(app).map_err(|e| e.to_string())?;
 
     let mut file_sub = SubmenuBuilder::new(app, "File")
         .item(&new_item)
@@ -446,6 +448,7 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .item(&import_item)
         .separator()
         .item(&presentation_settings_item)
+        .item(&gc_assets_item)
         .separator()
         .close_window()
         .build()
@@ -542,6 +545,7 @@ pub fn run() {
             storage::db_add_element,
             storage::db_remove_element_from_slide,
             storage::db_compact,
+            storage::db_gc_assets,
             storage::db_get_history,
             storage::db_get_history_timestamps,
             storage::db_get_state_at,

@@ -1278,7 +1278,100 @@ pub fn db_checkpoint() -> Result<(), String> {
     })
 }
 
-/// Compact: delete old history and VACUUM
+/// Counts from a single asset-GC pass. Used by db_gc_assets and
+/// db_compact to report what was swept up.
+struct GcCounts {
+    removed_assets: i64,
+    removed_versions: i64,
+    removed_cache_rows: i64,
+}
+
+/// Inner asset-GC, intended to run inside a caller-managed transaction.
+/// Does NOT VACUUM. Both db_gc_assets (alone) and db_compact (after
+/// history trim) share this body so they apply identical reachability
+/// rules.
+fn gc_assets_inner(tx: &rusqlite::Transaction) -> SqlResult<GcCounts> {
+    // Count distinct orphan asset_ids before delete — counting after
+    // would always be 0.
+    let removed_assets: i64 = tx.query_row(
+        "SELECT COUNT(DISTINCT a.asset_id) FROM assets a
+         WHERE a.asset_id NOT IN (
+             SELECT e.asset_id FROM elements e
+             WHERE e.valid_to IS NULL AND e.asset_id IS NOT NULL
+         )",
+        [],
+        |row| row.get(0),
+    ).unwrap_or(0);
+
+    let removed_versions = tx.execute(
+        "DELETE FROM assets
+         WHERE asset_id NOT IN (
+             SELECT asset_id FROM elements
+             WHERE valid_to IS NULL AND asset_id IS NOT NULL
+         )",
+        [],
+    )? as i64;
+
+    // Cascade to asset_cache: any cache row whose source_id no longer
+    // matches a current-or-history asset row is orphan. This also
+    // sweeps legacy path-keyed cache rows from pre-phase-4 (asset_cache
+    // was keyed by `assetId ?? path` then, by assetId only now), since
+    // a path label won't ever equal a UUID asset_id.
+    let removed_cache_rows = tx.execute(
+        "DELETE FROM asset_cache
+         WHERE source_id NOT IN (SELECT DISTINCT asset_id FROM assets)",
+        [],
+    )? as i64;
+
+    Ok(GcCounts { removed_assets, removed_versions, removed_cache_rows })
+}
+
+/// Free unused asset bytes: drop every `assets` row (current + history)
+/// whose asset_id is not referenced by any current element. Cascade to
+/// `asset_cache` rows whose source_id no longer maps to an asset, then
+/// VACUUM to reclaim file space.
+///
+/// Phase 5 reachability rule (no per-element pins): an asset is
+/// reachable iff some `valid_to IS NULL` element has its `asset_id`.
+/// History versions of reachable assets always survive — that's the
+/// pre-talk safety net. Only fully-orphan assets (no element binds
+/// them) get removed; this is what "manual GC only, never auto" buys.
+///
+/// Returns counts + before/after page-size bytes so the UI can show
+/// "Freed N MB".
+#[tauri::command]
+pub fn db_gc_assets() -> Result<String, String> {
+    with_db(|conn| {
+        let before_size: i64 = {
+            let mut stmt = conn.prepare("SELECT page_count * page_size FROM pragma_page_count(), pragma_page_size()")?;
+            stmt.query_row([], |row| row.get(0)).unwrap_or(0)
+        };
+
+        let tx = conn.unchecked_transaction()?;
+        let counts = gc_assets_inner(&tx)?;
+        tx.commit()?;
+
+        // VACUUM has to run outside any transaction.
+        conn.execute_batch("VACUUM;")?;
+
+        let after_size: i64 = {
+            let mut stmt = conn.prepare("SELECT page_count * page_size FROM pragma_page_count(), pragma_page_size()")?;
+            stmt.query_row([], |row| row.get(0)).unwrap_or(0)
+        };
+
+        Ok(serde_json::json!({
+            "removedAssets": counts.removed_assets,
+            "removedVersions": counts.removed_versions,
+            "removedCacheRows": counts.removed_cache_rows,
+            "beforeBytes": before_size,
+            "afterBytes": after_size,
+            "bytesFreed": before_size - after_size,
+        }).to_string())
+    })
+}
+
+/// Compact: trim history rows AND free orphan assets (delegates to
+/// gc_assets_inner so the rules stay in one place), then VACUUM.
 #[tauri::command]
 pub fn db_compact(keep_all: bool) -> Result<String, String> {
     with_db(|conn| {
@@ -1287,9 +1380,11 @@ pub fn db_compact(keep_all: bool) -> Result<String, String> {
             stmt.query_row([], |row| row.get::<_, i64>(0)).unwrap_or(0)
         };
 
+        let tx = conn.unchecked_transaction()?;
+
         if keep_all {
             // Delete ALL history
-            conn.execute_batch(
+            tx.execute_batch(
                 "DELETE FROM elements WHERE valid_to IS NOT NULL;
                  DELETE FROM slide_elements WHERE valid_to IS NOT NULL;
                  DELETE FROM slides WHERE valid_to IS NOT NULL;",
@@ -1297,13 +1392,20 @@ pub fn db_compact(keep_all: bool) -> Result<String, String> {
         } else {
             // Exponential thinning (keep recent, thin old)
             // For now, just delete history older than 1 hour
-            conn.execute_batch(
+            tx.execute_batch(
                 "DELETE FROM elements WHERE valid_to IS NOT NULL AND valid_from < datetime('now', '-1 hour');
                  DELETE FROM slide_elements WHERE valid_to IS NOT NULL AND valid_from < datetime('now', '-1 hour');
                  DELETE FROM slides WHERE valid_to IS NOT NULL AND valid_from < datetime('now', '-1 hour');",
             )?;
         }
 
+        // History trim may have closed the last reference to an asset
+        // (e.g. wiping a closed `valid_to` element that was the lone
+        // binding). Run GC inside the same transaction so the same
+        // VACUUM reclaims their bytes.
+        let gc = gc_assets_inner(&tx)?;
+
+        tx.commit()?;
         conn.execute_batch("VACUUM;")?;
 
         let after_size = {
@@ -1315,6 +1417,9 @@ pub fn db_compact(keep_all: bool) -> Result<String, String> {
             "beforeBytes": before_size,
             "afterBytes": after_size,
             "savedBytes": before_size - after_size,
+            "removedAssets": gc.removed_assets,
+            "removedVersions": gc.removed_versions,
+            "removedCacheRows": gc.removed_cache_rows,
         })
         .to_string())
     })
@@ -3763,6 +3868,176 @@ mod tests {
         ).unwrap();
         // The duplicate has the same asset_id binding.
         assert_eq!(read_element_asset_id("el-2-copy"), Some("asset-bound".to_string()));
+
+        teardown_global_db();
+    }
+
+    // ---- Asset GC (phase 5) ----
+
+    /// Helper: count rows in assets / asset_cache for a given asset_id.
+    /// Used by the GC tests to assert what survived / what got removed.
+    fn count_asset_rows(asset_id: &str) -> i64 {
+        let db = DB.lock().unwrap();
+        let conn = db.as_ref().unwrap();
+        conn.query_row(
+            "SELECT COUNT(*) FROM assets WHERE asset_id = ?1",
+            params![asset_id], |row| row.get(0),
+        ).unwrap()
+    }
+    fn count_cache_rows(source_id: &str) -> i64 {
+        let db = DB.lock().unwrap();
+        let conn = db.as_ref().unwrap();
+        conn.query_row(
+            "SELECT COUNT(*) FROM asset_cache WHERE source_id = ?1",
+            params![source_id], |row| row.get(0),
+        ).unwrap()
+    }
+
+    /// Plant a (current + history) asset row pair so the test fixture
+    /// looks like a real asset with one prior version.
+    fn insert_asset_with_history(asset_id: &str, path: &str) {
+        let db = DB.lock().unwrap();
+        let conn = db.as_ref().unwrap();
+        let t1 = "2026-05-26T10:00:00.000Z";
+        let t2 = "2026-05-27T10:00:00.000Z";
+        // Closed history version
+        conn.execute(
+            "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, valid_from, valid_to)
+             VALUES (?1, ?2, 'image/png', 3, 'h1', ?3, ?4, ?5)",
+            params![asset_id, vec![0u8, 1, 2], path, t1, t2],
+        ).unwrap();
+        // Current version
+        conn.execute(
+            "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, valid_from, valid_to)
+             VALUES (?1, ?2, 'image/png', 3, 'h2', ?3, ?4, NULL)",
+            params![asset_id, vec![3u8, 4, 5], path, t2],
+        ).unwrap();
+    }
+
+    fn insert_cache_row(source_id: &str) {
+        db_put_asset_cache(
+            source_id.to_string(), "_".to_string(),
+            256, 128, vec![0xFFu8; 4], Some("h".to_string()),
+        ).unwrap();
+    }
+
+    /// Referenced asset (some current element binds to it) survives
+    /// GC in full: current row + all history + cache rows.
+    #[test]
+    fn db_gc_assets_preserves_referenced_asset() {
+        setup_global_db();
+        db_import_json(json!({"slides":[{"id":"s1","elements":[]}]}).to_string()).unwrap();
+        insert_asset_with_history("asset-keep", "kept.png");
+        insert_cache_row("asset-keep");
+        // Bind a current element to asset-keep.
+        db_add_element(
+            "s1".to_string(), "el-1".to_string(), "image".to_string(),
+            json!({"id":"el-1","type":"image"}).to_string(),
+            None, Some("asset-keep".to_string()), 0,
+        ).unwrap();
+
+        let result: serde_json::Value = serde_json::from_str(&db_gc_assets().unwrap()).unwrap();
+        assert_eq!(result["removedAssets"], 0, "no orphan to remove");
+        assert_eq!(result["removedVersions"], 0);
+        assert_eq!(result["removedCacheRows"], 0);
+
+        assert_eq!(count_asset_rows("asset-keep"), 2, "current + history both survive");
+        assert_eq!(count_cache_rows("asset-keep"), 1, "cache row survives");
+
+        teardown_global_db();
+    }
+
+    /// Orphan asset (no current element binds it) is removed in full
+    /// including its history; cache rows cascade.
+    #[test]
+    fn db_gc_assets_removes_orphan() {
+        setup_global_db();
+        db_import_json(json!({"slides":[{"id":"s1","elements":[]}]}).to_string()).unwrap();
+        insert_asset_with_history("asset-orphan", "orphan.png");
+        insert_cache_row("asset-orphan");
+
+        let result: serde_json::Value = serde_json::from_str(&db_gc_assets().unwrap()).unwrap();
+        assert_eq!(result["removedAssets"], 1);
+        assert_eq!(result["removedVersions"], 2, "current + 1 history version");
+        assert_eq!(result["removedCacheRows"], 1);
+
+        assert_eq!(count_asset_rows("asset-orphan"), 0);
+        assert_eq!(count_cache_rows("asset-orphan"), 0);
+
+        teardown_global_db();
+    }
+
+    /// Mixed: one referenced + one orphan. GC removes only the orphan
+    /// and reports accurate counts.
+    #[test]
+    fn db_gc_assets_distinguishes_referenced_from_orphan() {
+        setup_global_db();
+        db_import_json(json!({"slides":[{"id":"s1","elements":[]}]}).to_string()).unwrap();
+        insert_asset_with_history("asset-keep", "keep.png");
+        insert_asset_with_history("asset-orphan", "orphan.png");
+        insert_cache_row("asset-keep");
+        insert_cache_row("asset-orphan");
+        db_add_element(
+            "s1".to_string(), "el-1".to_string(), "image".to_string(),
+            json!({"id":"el-1","type":"image"}).to_string(),
+            None, Some("asset-keep".to_string()), 0,
+        ).unwrap();
+
+        let result: serde_json::Value = serde_json::from_str(&db_gc_assets().unwrap()).unwrap();
+        assert_eq!(result["removedAssets"], 1);
+        assert_eq!(result["removedVersions"], 2);
+        assert_eq!(result["removedCacheRows"], 1);
+
+        assert_eq!(count_asset_rows("asset-keep"), 2);
+        assert_eq!(count_asset_rows("asset-orphan"), 0);
+        assert_eq!(count_cache_rows("asset-keep"), 1);
+        assert_eq!(count_cache_rows("asset-orphan"), 0);
+
+        teardown_global_db();
+    }
+
+    /// Legacy path-keyed cache rows (pre-phase-4 asset_cache was keyed
+    /// by `assetId ?? path`) get swept up — path labels never equal
+    /// asset_id UUIDs, so they look like orphans.
+    #[test]
+    fn db_gc_assets_sweeps_legacy_path_keyed_cache() {
+        setup_global_db();
+        db_import_json(json!({"slides":[{"id":"s1","elements":[]}]}).to_string()).unwrap();
+        // Live asset + cache row keyed by the new (assetId) shape.
+        insert_asset_with_history("asset-A", "images/x.png");
+        insert_cache_row("asset-A");
+        db_add_element(
+            "s1".to_string(), "el-1".to_string(), "image".to_string(),
+            json!({"id":"el-1","type":"image"}).to_string(),
+            None, Some("asset-A".to_string()), 0,
+        ).unwrap();
+        // Stale cache row keyed by the OLD (path) shape — orphan now.
+        insert_cache_row("images/x.png");
+
+        let result: serde_json::Value = serde_json::from_str(&db_gc_assets().unwrap()).unwrap();
+        assert_eq!(result["removedCacheRows"], 1);
+        assert_eq!(count_cache_rows("asset-A"), 1);
+        assert_eq!(count_cache_rows("images/x.png"), 0);
+
+        teardown_global_db();
+    }
+
+    /// GC is idempotent: a second run reports zero removals and changes
+    /// no rows. Lets the user re-trigger from a menu without surprise.
+    #[test]
+    fn db_gc_assets_is_idempotent() {
+        setup_global_db();
+        db_import_json(json!({"slides":[{"id":"s1","elements":[]}]}).to_string()).unwrap();
+        insert_asset_with_history("asset-orphan", "orphan.png");
+        insert_cache_row("asset-orphan");
+
+        let first: serde_json::Value = serde_json::from_str(&db_gc_assets().unwrap()).unwrap();
+        assert_eq!(first["removedAssets"], 1);
+
+        let second: serde_json::Value = serde_json::from_str(&db_gc_assets().unwrap()).unwrap();
+        assert_eq!(second["removedAssets"], 0);
+        assert_eq!(second["removedVersions"], 0);
+        assert_eq!(second["removedCacheRows"], 0);
 
         teardown_global_db();
     }

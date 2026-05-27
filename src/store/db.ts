@@ -244,6 +244,21 @@ export async function dbCompact(deleteAll: boolean = false): Promise<{ beforeByt
   return JSON.parse(json);
 }
 
+/** Free unused asset bytes: drop every assets row (current + history)
+ *  whose asset_id is not referenced by any current element, cascade
+ *  asset_cache, VACUUM. Manual-only — no automatic trigger. */
+export async function dbGcAssets(): Promise<{
+  removedAssets: number;
+  removedVersions: number;
+  removedCacheRows: number;
+  beforeBytes: number;
+  afterBytes: number;
+  bytesFreed: number;
+}> {
+  const json = await invoke<string>('db_gc_assets');
+  return JSON.parse(json);
+}
+
 // ============================================================================
 // Slide operations
 // ============================================================================
