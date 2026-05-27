@@ -3218,4 +3218,123 @@ mod tests {
 
         teardown_global_db();
     }
+
+    /// Helper: read the current row's auto_reload for an asset_id.
+    fn read_auto_reload(asset_id: &str) -> Option<String> {
+        with_db(|conn| {
+            conn.query_row(
+                "SELECT auto_reload FROM assets WHERE asset_id = ?1 AND valid_to IS NULL",
+                params![asset_id],
+                |row| row.get::<_, Option<String>>(0),
+            )
+        }).unwrap()
+    }
+
+    /// Regression guard for the silent reset bug. db_store_asset's
+    /// auto_reload param semantics: None means "preserve" (when the
+    /// asset already exists); Some(value) means "override". Without
+    /// preservation, every file-watcher write or Reload-from-disk
+    /// silently wiped the user's per-asset opt-out back to NULL.
+    #[test]
+    fn db_store_asset_preserves_auto_reload_across_writes() {
+        setup_global_db();
+
+        // Insert an asset with auto_reload='off' (e.g. the user just
+        // unchecked "Watch this file for changes").
+        let asset_id = db_store_asset(
+            "chart.svg".into(),
+            b"first bytes".to_vec(),
+            "image/svg+xml".into(),
+            Some("images/chart.svg".into()),
+            None,
+            None,
+            Some("off".into()),  // explicit opt-out
+        ).unwrap();
+        assert_eq!(read_auto_reload(&asset_id), Some("off".into()));
+
+        // Watcher-style call: passes autoReload=None (no explicit value)
+        // because the watcher doesn't want to touch the setting. The
+        // new bytes should be written, but auto_reload must STAY 'off'.
+        db_store_asset(
+            "chart.svg".into(),
+            b"second bytes".to_vec(),
+            "image/svg+xml".into(),
+            Some("images/chart.svg".into()),
+            None,
+            Some(asset_id.clone()),
+            None,  // preserve
+        ).unwrap();
+        assert_eq!(
+            read_auto_reload(&asset_id),
+            Some("off".into()),
+            "auto_reload was silently reset; user's 'Don't watch this file' click would be undone"
+        );
+
+        // Explicit override still works: caller passes Some('off') →
+        // 'off' (no change here, but the code path differs).
+        db_store_asset(
+            "chart.svg".into(),
+            b"third bytes".to_vec(),
+            "image/svg+xml".into(),
+            Some("images/chart.svg".into()),
+            None,
+            Some(asset_id.clone()),
+            Some("off".into()),
+        ).unwrap();
+        assert_eq!(read_auto_reload(&asset_id), Some("off".into()));
+
+        teardown_global_db();
+    }
+
+    /// Fresh insert (no prior asset row): None → NULL in the new row.
+    /// Nothing to preserve from; default behavior is unchanged.
+    #[test]
+    fn db_store_asset_fresh_insert_defaults_auto_reload_to_null() {
+        setup_global_db();
+
+        let asset_id = db_store_asset(
+            "fresh.svg".into(),
+            b"some bytes".to_vec(),
+            "image/svg+xml".into(),
+            None,
+            None,
+            None,    // let it generate
+            None,    // no explicit auto_reload
+        ).unwrap();
+        assert_eq!(read_auto_reload(&asset_id), None);
+
+        teardown_global_db();
+    }
+
+    /// Inverse of the above: caller can clear an opt-out by passing
+    /// Some('on') or any non-'off' value. We test with Some('on')
+    /// since that's the only other value historically used. Under the
+    /// new cascade 'on' is treated as null, but the column still
+    /// stores the literal value.
+    #[test]
+    fn db_store_asset_explicit_override_replaces_preserved_value() {
+        setup_global_db();
+
+        let asset_id = db_store_asset(
+            "chart.svg".into(),
+            b"a".to_vec(),
+            "image/svg+xml".into(),
+            None, None, None,
+            Some("off".into()),
+        ).unwrap();
+        assert_eq!(read_auto_reload(&asset_id), Some("off".into()));
+
+        // Explicit Some('on') overrides the preserved 'off'.
+        db_store_asset(
+            "chart.svg".into(),
+            b"b".to_vec(),
+            "image/svg+xml".into(),
+            None, None,
+            Some(asset_id.clone()),
+            Some("on".into()),
+        ).unwrap();
+        assert_eq!(read_auto_reload(&asset_id), Some("on".into()));
+
+        teardown_global_db();
+    }
 }
