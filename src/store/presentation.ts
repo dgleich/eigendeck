@@ -607,13 +607,17 @@ export async function flushToSqlite(): Promise<void> {
 
     for (const [_key, info] of addedElements) {
       try {
-        const { linkId, syncId, _syncId, _linkId, ...data } = info.element as any;
+        // Strip the promoted columns (linkId, assetId) and the sync-related
+        // metadata from the JSON `data` blob — they're stored as their own
+        // columns and reassembled into the JSON by db_export_json.
+        const { linkId, syncId, _syncId, _linkId, assetId, ...data } = info.element as any;
         await invoke('db_add_element', {
           slideId: info.slideId,
           elementId: info.element.id,
           elementType: info.element.type,
           data: JSON.stringify(data),
           linkId: linkId || null,
+          assetId: assetId || null,
           zOrder: info.zOrder,
         });
       } catch (e) { console.warn('add element failed:', e); }
@@ -632,11 +636,15 @@ export async function flushToSqlite(): Promise<void> {
       for (const slide of state.presentation.slides) {
         const el = slide.elements.find((e) => e.id === elementId);
         if (el) {
-          const { linkId, syncId, _syncId, _linkId, ...data } = el as any;
+          // Same strip as the add-element path: promoted columns
+          // (linkId, assetId) and sync-related metadata don't go into
+          // the JSON blob.
+          const { linkId, syncId, _syncId, _linkId, assetId, ...data } = el as any;
           await invoke('db_update_element', {
             id: elementId,
             data: JSON.stringify(data),
             linkId: linkId || null,
+            assetId: assetId || null,
           });
           break;
         }

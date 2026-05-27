@@ -74,11 +74,18 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
             PRIMARY KEY (id, valid_from)
         );
 
+        -- elements: data is JSON of all type-specific fields EXCEPT
+        -- the promoted columns (link_id, asset_id). Promoted fields are
+        -- stripped from data before INSERT (see db_add_element /
+        -- db_update_element) and reassembled into JSON by db_export_json.
+        -- Same pattern as link_id, which got promoted earlier; asset_id
+        -- is promoted for indexing + asset-GC reachability queries.
         CREATE TABLE IF NOT EXISTS elements (
             id TEXT NOT NULL,
             type TEXT NOT NULL,
             data TEXT NOT NULL,
             link_id TEXT,
+            asset_id TEXT,
             valid_from TEXT NOT NULL,
             valid_to TEXT,
             PRIMARY KEY (id, valid_from)
@@ -137,6 +144,7 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
         CREATE INDEX IF NOT EXISTS idx_se_element ON slide_elements(element_id) WHERE valid_to IS NULL;
         CREATE INDEX IF NOT EXISTS idx_slides_current ON slides(valid_to) WHERE valid_to IS NULL;
         CREATE INDEX IF NOT EXISTS idx_el_link ON elements(link_id) WHERE valid_to IS NULL AND link_id IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_el_asset ON elements(asset_id) WHERE valid_to IS NULL AND asset_id IS NOT NULL;
         ",
     )?;
 
@@ -199,6 +207,30 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
             )?;
         }
     }
+
+    // Migration: promote element.assetId (JSON in `data`) to a real
+    // SQL column. Same pattern as link_id. Idempotent — ALTER fails
+    // silently if column exists, UPDATE/CREATE INDEX use IF NOT
+    // EXISTS-style guards.
+    //
+    // After migration, the `data` JSON still has `assetId` in it
+    // (harmless dead field); the next write through db_update_element
+    // strips it (see strip-from-data logic there). For unwritten
+    // elements, the column is populated by the UPDATE backfill below.
+    let _ = conn.execute("ALTER TABLE elements ADD COLUMN asset_id TEXT", []);
+    let _ = conn.execute(
+        "UPDATE elements
+         SET asset_id = json_extract(data, '$.assetId')
+         WHERE asset_id IS NULL
+           AND json_extract(data, '$.assetId') IS NOT NULL",
+        [],
+    );
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_el_asset
+         ON elements(asset_id)
+         WHERE valid_to IS NULL AND asset_id IS NOT NULL",
+        [],
+    );
 
     // Assets table + indices, post-migration so the asset_id column is
     // guaranteed to exist (whether from migration or fresh-create).
@@ -595,6 +627,7 @@ pub fn db_import_json(json: String) -> Result<(), String> {
                             .unwrap_or("text");
                         let sync_id = el.get("syncId").and_then(|v| v.as_str());
                         let link_id = el.get("linkId").and_then(|v| v.as_str());
+                        let asset_id = el.get("assetId").and_then(|v| v.as_str());
 
                         let element_id = el_id.clone();
 
@@ -612,18 +645,21 @@ pub fn db_import_json(json: String) -> Result<(), String> {
                         }
 
                         if !inserted_elements.contains(&element_id) {
-                            // Clean the data (strip sync/link fields — represented by schema)
+                            // Clean the data: strip the JSON-side copies of
+                            // fields that are stored as their own columns.
+                            // db_export_json reassembles them on the way out.
                             let mut data = el.clone();
                             if let Some(obj) = data.as_object_mut() {
                                 obj.remove("syncId");
                                 obj.remove("_syncId");
                                 obj.remove("_linkId");
                                 obj.remove("linkId");
+                                obj.remove("assetId");
                             }
 
                             tx.execute(
-                                "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
-                                params![&element_id, el_type, data.to_string(), link_id, &ts],
+                                "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+                                params![&element_id, el_type, data.to_string(), link_id, asset_id, &ts],
                             )?;
                             inserted_elements.insert(element_id.clone());
                         }
@@ -667,23 +703,25 @@ pub fn db_export_json() -> Result<String, String> {
             }
         }
 
-        // All current elements
-        let mut elements: std::collections::HashMap<String, (Value, Option<String>)> =
+        // All current elements. Tuple is (parsed_data_json, link_id, asset_id);
+        // promoted columns get reassembled into the per-element JSON below.
+        let mut elements: std::collections::HashMap<String, (Value, Option<String>, Option<String>)> =
             std::collections::HashMap::new();
         let mut stmt = conn.prepare(
-            "SELECT id, data, link_id FROM elements WHERE valid_to IS NULL",
+            "SELECT id, data, link_id, asset_id FROM elements WHERE valid_to IS NULL",
         )?;
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
             ))
         })?;
         for row in rows {
-            let (id, data, link_id) = row?;
+            let (id, data, link_id, asset_id) = row?;
             let parsed: Value = serde_json::from_str(&data).unwrap_or(Value::Null);
-            elements.insert(id, (parsed, link_id));
+            elements.insert(id, (parsed, link_id, asset_id));
         }
 
         // All current slide_elements + count appearances for sync detection
@@ -731,11 +769,14 @@ pub fn db_export_json() -> Result<String, String> {
             let mut slide_elements = Vec::new();
             if let Some(se_rows) = se_by_slide.get(&id) {
                 for (element_id, _z_order) in se_rows {
-                    if let Some((data, link_id)) = elements.get(element_id) {
+                    if let Some((data, link_id, asset_id)) = elements.get(element_id) {
                         let mut el = data.clone();
                         if let Some(obj) = el.as_object_mut() {
                             if let Some(lid) = link_id {
                                 obj.insert("linkId".to_string(), Value::String(lid.clone()));
+                            }
+                            if let Some(aid) = asset_id {
+                                obj.insert("assetId".to_string(), Value::String(aid.clone()));
                             }
                             // If element appears on multiple slides, mark as synced
                             if el_count.get(element_id).copied().unwrap_or(0) > 1 {
@@ -826,9 +867,17 @@ pub fn db_get_slide_elements(slide_id: String) -> Result<String, String> {
     })
 }
 
-/// Update an element (creates a new version, closes the old one)
+/// Update an element (creates a new version, closes the old one).
+/// `link_id` and `asset_id` are promoted columns — callers extract
+/// them from the typed element on the JS side, strip them from `data`
+/// before stringifying, and pass them as separate args.
 #[tauri::command]
-pub fn db_update_element(id: String, data: String, link_id: Option<String>) -> Result<(), String> {
+pub fn db_update_element(
+    id: String,
+    data: String,
+    link_id: Option<String>,
+    asset_id: Option<String>,
+) -> Result<(), String> {
     let ts = timestamp();
     with_db(|conn| {
         let tx = conn.unchecked_transaction()?;
@@ -843,32 +892,36 @@ pub fn db_update_element(id: String, data: String, link_id: Option<String>) -> R
             "UPDATE elements SET valid_to = ?1 WHERE id = ?2 AND valid_to IS NULL",
             params![&ts, &id],
         )?;
-        // Insert new version
+        // Insert new version. Column order: id, type, data, link_id,
+        // asset_id, valid_from, valid_to.
         tx.execute(
-            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
-            params![&id, &el_type, &data, &link_id, &ts],
+            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+            params![&id, &el_type, &data, &link_id, &asset_id, &ts],
         )?;
         tx.commit()?;
         Ok(())
     })
 }
 
-/// Add a new element and place it on a slide
+/// Add a new element and place it on a slide. See db_update_element
+/// for the link_id / asset_id promoted-column conventions.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub fn db_add_element(
     slide_id: String,
     element_id: String,
     element_type: String,
     data: String,
     link_id: Option<String>,
+    asset_id: Option<String>,
     z_order: i32,
 ) -> Result<(), String> {
     let ts = timestamp();
     with_db(|conn| {
         let tx = conn.unchecked_transaction()?;
         tx.execute(
-            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
-            params![&element_id, &element_type, &data, &link_id, &ts],
+            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+            params![&element_id, &element_type, &data, &link_id, &asset_id, &ts],
         )?;
         tx.execute(
             "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
@@ -1068,23 +1121,25 @@ pub fn db_get_state_at(at: String) -> Result<String, String> {
             }
         }
 
-        // Elements alive at `at`
-        let mut elements: std::collections::HashMap<String, (Value, Option<String>)> =
+        // Elements alive at `at`. Same (data, link_id, asset_id)
+        // shape as db_export_json; promoted columns reassemble below.
+        let mut elements: std::collections::HashMap<String, (Value, Option<String>, Option<String>)> =
             std::collections::HashMap::new();
         let mut stmt = conn.prepare(
-            "SELECT id, data, link_id FROM elements WHERE valid_from <= ?1 AND (valid_to IS NULL OR valid_to > ?1)"
+            "SELECT id, data, link_id, asset_id FROM elements WHERE valid_from <= ?1 AND (valid_to IS NULL OR valid_to > ?1)"
         )?;
         let rows = stmt.query_map(params![&at], |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
             ))
         })?;
         for row in rows {
-            let (id, data, link_id) = row?;
+            let (id, data, link_id, asset_id) = row?;
             let parsed: Value = serde_json::from_str(&data).unwrap_or(Value::Null);
-            elements.insert(id, (parsed, link_id));
+            elements.insert(id, (parsed, link_id, asset_id));
         }
 
         // slide_elements alive at `at`
@@ -1131,11 +1186,14 @@ pub fn db_get_state_at(at: String) -> Result<String, String> {
             let mut slide_elements = Vec::new();
             if let Some(se_rows) = se_by_slide.get(&id) {
                 for (element_id, _z_order) in se_rows {
-                    if let Some((data, link_id)) = elements.get(element_id) {
+                    if let Some((data, link_id, asset_id)) = elements.get(element_id) {
                         let mut el = data.clone();
                         if let Some(obj) = el.as_object_mut() {
                             if let Some(lid) = link_id {
                                 obj.insert("linkId".to_string(), Value::String(lid.clone()));
+                            }
+                            if let Some(aid) = asset_id {
+                                obj.insert("assetId".to_string(), Value::String(aid.clone()));
                             }
                             if el_count.get(element_id).copied().unwrap_or(0) > 1 {
                                 obj.insert("syncId".to_string(), Value::String(element_id.clone()));
@@ -1445,11 +1503,12 @@ pub fn db_free_element(
     with_db(|conn| {
         let tx = conn.unchecked_transaction()?;
 
-        // Get current element data
-        let (el_type, data): (String, String) = tx.query_row(
-            "SELECT type, data FROM elements WHERE id = ?1 AND valid_to IS NULL",
+        // Get current element data + promoted asset_id (so the
+        // duplicate keeps its binding).
+        let (el_type, data, asset_id): (String, String, Option<String>) = tx.query_row(
+            "SELECT type, data, asset_id FROM elements WHERE id = ?1 AND valid_to IS NULL",
             params![&element_id],
-            |row| Ok((row.get(0)?, row.get(1)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )?;
 
         // Get current z_order
@@ -1459,10 +1518,12 @@ pub fn db_free_element(
             |row| row.get(0),
         )?;
 
-        // Create copy of element
+        // Create copy of element. Same shape as source — including
+        // asset_id binding (per-element duplication should keep its
+        // asset reference).
         tx.execute(
-            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
-            params![&new_element_id, &el_type, &data, &link_id, &ts],
+            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+            params![&new_element_id, &el_type, &data, &link_id, &asset_id, &ts],
         )?;
 
         // Remove old reference from this slide
@@ -2440,7 +2501,7 @@ mod tests {
             "content": "Updated content"
         })
         .to_string();
-        db_update_element("el-1".to_string(), new_data, None).unwrap();
+        db_update_element("el-1".to_string(), new_data, None, None).unwrap();
 
         // Current version has new content
         let els: Vec<Value> =
@@ -2475,7 +2536,7 @@ mod tests {
         db_import_json(sample_presentation()).unwrap();
 
         let data = json!({ "id": "el-2", "src": "new.png" }).to_string();
-        db_update_element("el-2".to_string(), data, None).unwrap();
+        db_update_element("el-2".to_string(), data, None, None).unwrap();
 
         let conn = DB.lock().unwrap();
         let c = conn.as_ref().unwrap();
@@ -2505,7 +2566,8 @@ mod tests {
             "el-new".to_string(),
             "arrow".to_string(),
             data,
-            None,
+            None,    // link_id
+            None,    // asset_id
             5,
         )
         .unwrap();
@@ -2530,6 +2592,7 @@ mod tests {
             "text".to_string(),
             data,
             Some("link-xyz".to_string()),
+            None,    // asset_id
             10,
         )
         .unwrap();
@@ -2585,7 +2648,7 @@ mod tests {
                 "content": format!("Version {}", i)
             })
             .to_string();
-            db_update_element("el-1".to_string(), data, None).unwrap();
+            db_update_element("el-1".to_string(), data, None, None).unwrap();
         }
 
         // Current version is the last
@@ -2623,7 +2686,7 @@ mod tests {
 
         for i in 1..=3 {
             let data = json!({ "id": "el-1", "type": "text", "content": format!("v{}", i) }).to_string();
-            db_update_element("el-1".to_string(), data, None).unwrap();
+            db_update_element("el-1".to_string(), data, None, None).unwrap();
         }
 
         // History exists
@@ -2704,7 +2767,7 @@ mod tests {
 
         // Add element to slide 1
         let data = json!({ "id": "shared", "type": "text", "content": "on both" }).to_string();
-        db_add_element("s1".to_string(), "shared".to_string(), "text".to_string(), data, None, 0).unwrap();
+        db_add_element("s1".to_string(), "shared".to_string(), "text".to_string(), data, None, None, 0).unwrap();
 
         // Add junction for slide 2
         {
