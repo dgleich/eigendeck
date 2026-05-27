@@ -270,6 +270,36 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
          CREATE INDEX IF NOT EXISTS idx_assets_path ON assets(path) WHERE valid_to IS NULL;",
     )?;
 
+    // Migration: legacy elements (pre-assetId era) have $.src or
+    // $.demoSrc in `data` but no $.assetId — the earlier ALTER+UPDATE
+    // can't backfill them (nothing to extract). Now that `assets` is
+    // guaranteed to exist, resolve by path-label and set asset_id.
+    //
+    // Two distinct assets can share a path label (Import-as-new). We
+    // pick one arbitrarily here — that's the same ambiguity the prior
+    // runtime JS backfill had, and the only safe fallback when the
+    // element's JSON has no asset_id field. Newer elements always carry
+    // assetId at insert, so they don't hit this path.
+    let _ = conn.execute(
+        "UPDATE elements
+         SET asset_id = (
+             SELECT a.asset_id FROM assets a
+             WHERE a.valid_to IS NULL
+               AND a.path = COALESCE(
+                   json_extract(elements.data, '$.src'),
+                   json_extract(elements.data, '$.demoSrc')
+               )
+             LIMIT 1
+         )
+         WHERE valid_to IS NULL
+           AND asset_id IS NULL
+           AND (
+               json_extract(data, '$.src') IS NOT NULL
+               OR json_extract(data, '$.demoSrc') IS NOT NULL
+           )",
+        [],
+    );
+
     // Set schema version
     conn.execute(
         "INSERT OR REPLACE INTO _meta VALUES ('schema_version', ?1)",
@@ -3588,6 +3618,119 @@ mod tests {
             [], |row| row.get(0),
         ).unwrap();
         assert_eq!(img_asset_again, Some("asset-A".to_string()));
+    }
+
+    /// Pre-assetId-era elements have $.src (or $.demoSrc) in data
+    /// but no $.assetId — the JSON-extract backfill can't help them.
+    /// After the assets table is built, a second migration step looks
+    /// up each orphaned element's path in assets and writes asset_id.
+    #[test]
+    fn migration_backfills_asset_id_from_src_path_lookup() {
+        let conn = Connection::open_in_memory().unwrap();
+        // Pre-phase-3 element table shape (no asset_id column).
+        conn.execute_batch(
+            "CREATE TABLE elements (
+                id TEXT NOT NULL,
+                type TEXT NOT NULL,
+                data TEXT NOT NULL,
+                link_id TEXT,
+                valid_from TEXT NOT NULL,
+                valid_to TEXT,
+                PRIMARY KEY (id, valid_from)
+            );
+             CREATE TABLE assets (
+                 asset_id TEXT NOT NULL,
+                 data BLOB NOT NULL,
+                 mime_type TEXT,
+                 size INTEGER,
+                 hash TEXT,
+                 path TEXT,
+                 external_path TEXT,
+                 external_mtime TEXT,
+                 auto_reload TEXT,
+                 created_at TEXT,
+                 valid_from TEXT NOT NULL,
+                 valid_to TEXT,
+                 PRIMARY KEY (asset_id, valid_from)
+             );"
+        ).unwrap();
+        let now = timestamp();
+        // An asset at path 'logo.png' — the binding target.
+        conn.execute(
+            "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, valid_from, valid_to)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL)",
+            params!["asset-logo", vec![0u8, 1, 2], "image/png", 3i64, "h", "logo.png", &now],
+        ).unwrap();
+        // Image element with src but no assetId.
+        conn.execute(
+            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+            params![
+                "el-img",
+                "image",
+                json!({"id":"el-img","type":"image","src":"logo.png"}).to_string(),
+                None::<String>,
+                &now,
+            ],
+        ).unwrap();
+        // Demo-piece element with demoSrc but no assetId.
+        conn.execute(
+            "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, valid_from, valid_to)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL)",
+            params!["asset-demo", vec![1u8], "text/html", 1i64, "h2", "demos/x.html", &now],
+        ).unwrap();
+        conn.execute(
+            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+            params![
+                "el-demo",
+                "demo-piece",
+                json!({"id":"el-demo","type":"demo-piece","demoSrc":"demos/x.html","piece":"a"}).to_string(),
+                None::<String>,
+                &now,
+            ],
+        ).unwrap();
+        // Element with src that has no matching asset row.
+        conn.execute(
+            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+            params![
+                "el-orphan",
+                "image",
+                json!({"id":"el-orphan","type":"image","src":"missing.png"}).to_string(),
+                None::<String>,
+                &now,
+            ],
+        ).unwrap();
+
+        // Run create_schema; the path-lookup backfill runs after the
+        // assets table is guaranteed to exist.
+        create_schema(&conn).unwrap();
+
+        let img_asset: Option<String> = conn.query_row(
+            "SELECT asset_id FROM elements WHERE id = 'el-img' AND valid_to IS NULL",
+            [], |row| row.get(0),
+        ).unwrap();
+        assert_eq!(img_asset, Some("asset-logo".to_string()),
+                   "path-lookup backfill should bind el-img → asset-logo");
+
+        let demo_asset: Option<String> = conn.query_row(
+            "SELECT asset_id FROM elements WHERE id = 'el-demo' AND valid_to IS NULL",
+            [], |row| row.get(0),
+        ).unwrap();
+        assert_eq!(demo_asset, Some("asset-demo".to_string()),
+                   "demoSrc path lookup should also work");
+
+        let orphan_asset: Option<String> = conn.query_row(
+            "SELECT asset_id FROM elements WHERE id = 'el-orphan' AND valid_to IS NULL",
+            [], |row| row.get(0),
+        ).unwrap();
+        assert_eq!(orphan_asset, None, "no matching asset → asset_id stays NULL");
+
+        // Idempotent: re-running create_schema doesn't disturb anything.
+        create_schema(&conn).unwrap();
+        let img_again: Option<String> = conn.query_row(
+            "SELECT asset_id FROM elements WHERE id = 'el-img' AND valid_to IS NULL",
+            [], |row| row.get(0),
+        ).unwrap();
+        assert_eq!(img_again, Some("asset-logo".to_string()));
     }
 
     /// db_free_element (duplicate-for-unsync) copies asset_id along
