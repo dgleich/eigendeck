@@ -151,6 +151,68 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
     }
   }, [meta, projectPath, srcPath]);
 
+  /** "Resize to asset" — tighten the element's bounding box around the
+   *  currently-rendered image so the box matches the asset's natural
+   *  dimensions (within the current zoom). Keeps the rendered image
+   *  exactly where it is on the slide — only the selectable rectangle
+   *  changes.
+   *
+   *  Math: <img> uses object-fit: contain (see ImageBox in
+   *  SlideElementRenderer). The rendered region is the asset scaled
+   *  to fit the box, centered. After resize: new box = that rendered
+   *  region exactly. */
+  const resizeToAsset = useCallback(async () => {
+    if (!meta || !elementId) return;
+    const pres = usePresentationStore.getState().presentation;
+    if (!pres) return;
+    let elPos: { x: number; y: number; width: number; height: number } | null = null;
+    for (const slide of pres.slides) {
+      for (const el of slide.elements) {
+        if (el.id === elementId) {
+          elPos = { ...el.position };
+          break;
+        }
+      }
+      if (elPos) break;
+    }
+    if (!elPos) return;
+
+    // Load asset bytes into an Image to measure natural dimensions.
+    // Works for SVG (browser parses viewBox) and raster alike.
+    try {
+      const data = await invoke<number[]>('db_get_asset_by_id', { assetId: meta.asset_id });
+      const blob = new Blob([new Uint8Array(data)], { type: meta.mime_type || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      try {
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const i = new Image();
+          i.onload = () => resolve(i);
+          i.onerror = () => reject(new Error('image load failed'));
+          i.src = url;
+        });
+        const natW = img.naturalWidth;
+        const natH = img.naturalHeight;
+        if (!natW || !natH) {
+          console.warn('[AssetSection] resize-to-asset: no natural dimensions on image');
+          return;
+        }
+        // object-fit: contain layout inside the current box.
+        const scale = Math.min(elPos.width / natW, elPos.height / natH);
+        const renderedW = natW * scale;
+        const renderedH = natH * scale;
+        const renderedX = elPos.x + (elPos.width - renderedW) / 2;
+        const renderedY = elPos.y + (elPos.height - renderedH) / 2;
+        usePresentationStore.getState().updateElement(elementId, {
+          position: { x: renderedX, y: renderedY, width: renderedW, height: renderedH },
+        } as any);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      console.warn('[AssetSection] resize-to-asset failed:', e);
+    }
+  }, [meta, elementId]);
+
   const setAutoReload = useCallback(async (value: 'on' | 'off' | null) => {
     if (!meta) return;
     // If this asset is bound by multiple elements (e.g. user added the
@@ -354,18 +416,30 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
         </div>
       )}
 
-      {/* Manual reload — same gate; the button would no-op without
-          projectPath anyway. */}
-      {meta.external_path && projectPath && (
-        <button onClick={reloadNow} disabled={reloading}
-          style={{
-            padding: '4px 10px', fontSize: 12, alignSelf: 'flex-start',
-            border: '1px solid #ccc', borderRadius: 3, cursor: 'pointer',
-            background: reloading ? '#eee' : '#fff',
-          }}>
-          {reloading ? 'Reloading…' : 'Reload from disk now'}
-        </button>
-      )}
+      {/* Actions row */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {meta.external_path && projectPath && (
+          <button onClick={reloadNow} disabled={reloading}
+            style={{
+              padding: '4px 10px', fontSize: 12,
+              border: '1px solid #ccc', borderRadius: 3, cursor: 'pointer',
+              background: reloading ? '#eee' : '#fff',
+            }}>
+            {reloading ? 'Reloading…' : 'Reload from disk now'}
+          </button>
+        )}
+        {elementId && (
+          <button onClick={() => { void resizeToAsset(); }}
+            title="Resize the bounding box to wrap the image exactly. The image stays in place."
+            style={{
+              padding: '4px 10px', fontSize: 12,
+              border: '1px solid #ccc', borderRadius: 3, cursor: 'pointer',
+              background: '#fff',
+            }}>
+            Resize to image
+          </button>
+        )}
+      </div>
 
       {/* Version history */}
       <div style={{ fontSize: 11 }}>
