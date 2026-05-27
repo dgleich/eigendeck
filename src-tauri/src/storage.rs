@@ -15,6 +15,23 @@ static DB: Lazy<Mutex<Option<Connection>>> = Lazy::new(|| Mutex::new(None));
 /// Schema version for migration tracking
 const SCHEMA_VERSION: i32 = 3;
 
+/// Every per-project table that a "fresh import" / "new project" flow
+/// must wipe. Adding a new table to the schema? Add it here too — the
+/// `db_import_json_wipes_all_per_project_tables` test will fail if you
+/// don't, because it cross-checks this list against `sqlite_master`.
+///
+/// `_meta` is intentionally NOT in this list — it's handled separately
+/// in `reset_db_for_import` so the `schema_version` key survives.
+const PER_PROJECT_TABLES: &[&str] = &[
+    "presentation",
+    "slides",
+    "elements",
+    "slide_elements",
+    "assets",
+    "asset_cache",
+    "math_cache",
+];
+
 /// Create the schema in a new database
 pub fn create_schema(conn: &Connection) -> SqlResult<()> {
     // NOTE: the `assets` table + its indices are NOT created here. They
@@ -495,6 +512,30 @@ pub fn db_close() -> Result<(), String> {
     close_db().map_err(|e| e.to_string())
 }
 
+/// Wipe every per-project table so the open DB can absorb a fresh
+/// presentation as if newly created. Used by `db_import_json` (and any
+/// future "new project" pathway that runs against an existing file).
+///
+/// Iterates `PER_PROJECT_TABLES` for the bulk wipe, then handles `_meta`
+/// separately (preserves `schema_version`, drops `project_id`). Also
+/// resets the in-memory `PENDING_PROJECT_ID` so the next
+/// `db_get_project_id` either reads a persisted value (none — we just
+/// wiped it) or generates a fresh UUID. Without this, an OLD session-
+/// generated UUID would survive across the import.
+///
+/// The companion test `db_import_json_wipes_all_per_project_tables`
+/// cross-checks `PER_PROJECT_TABLES` against `sqlite_master` to catch
+/// new tables that get added to the schema without being added to the
+/// const.
+fn reset_db_for_import(tx: &rusqlite::Transaction) -> SqlResult<()> {
+    for table in PER_PROJECT_TABLES {
+        tx.execute(&format!("DELETE FROM \"{}\"", table), [])?;
+    }
+    tx.execute("DELETE FROM _meta WHERE key != 'schema_version'", [])?;
+    *PENDING_PROJECT_ID.lock().unwrap() = None;
+    Ok(())
+}
+
 /// Import a presentation.json into the open database
 #[tauri::command]
 pub fn db_import_json(json: String) -> Result<(), String> {
@@ -503,32 +544,7 @@ pub fn db_import_json(json: String) -> Result<(), String> {
 
     with_db(|conn| {
         let tx = conn.unchecked_transaction()?;
-
-        // Clear existing data. This includes EVERYTHING per-project, not
-        // just slide/element structure: assets (so a same-path new insert
-        // doesn't merge into the OLD asset's history), asset_cache + math
-        // cache (so derived renders aren't stale), and the project_id in
-        // _meta (so a new UUID gets generated for this fresh project —
-        // file watchers and other project-id-keyed state need to fork).
-        // Bug shape if any of these were skipped: 'New Project' overwriting
-        // an existing file inherits that file's assets/history.
-        // schema_version is preserved (other key in _meta).
-        tx.execute_batch(
-            "DELETE FROM presentation;
-             DELETE FROM slides;
-             DELETE FROM elements;
-             DELETE FROM slide_elements;
-             DELETE FROM assets;
-             DELETE FROM asset_cache;
-             DELETE FROM math_cache;
-             DELETE FROM _meta WHERE key = 'project_id';",
-        )?;
-        // In-memory pending_project_id might still hold the OLD project's
-        // session-generated UUID (if the OLD project was unsaved or
-        // pending). Drop it so the next db_get_project_id either reads
-        // the persisted value (none, we just wiped it) or generates a
-        // fresh UUID.
-        *PENDING_PROJECT_ID.lock().unwrap() = None;
+        reset_db_for_import(&tx)?;
 
         // Presentation metadata
         if let Some(title) = presentation.get("title").and_then(|v| v.as_str()) {
@@ -3073,6 +3089,113 @@ mod tests {
         let output: Value =
             serde_json::from_str(&db_export_json().unwrap()).unwrap();
         assert_eq!(output["title"], "New Title");
+
+        teardown_global_db();
+    }
+
+    /// Regression guard: db_import_json must wipe EVERY per-project
+    /// table, not just slides/elements. Bug shape if it doesn't: 'New
+    /// Project' overwriting an existing .eigendeck inherits old assets,
+    /// asset_cache, math_cache, and project_id.
+    ///
+    /// Also cross-checks PER_PROJECT_TABLES against sqlite_master: any
+    /// user-created table not in the const (and not `_meta`) fails the
+    /// test. This is the mechanism that catches future schema
+    /// additions where someone added a table but forgot to add it to
+    /// PER_PROJECT_TABLES.
+    #[test]
+    fn db_import_json_wipes_all_per_project_tables() {
+        setup_global_db();
+
+        // 1. Populate the per-project tables via various paths.
+        db_import_json(sample_presentation()).unwrap();
+        // assets: insert directly (db_store_asset works but pulls in
+        // hash/uuid plumbing not worth exercising here)
+        with_db(|conn| {
+            let now = timestamp();
+            conn.execute(
+                "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, valid_from)
+                 VALUES ('a-1', X'00', 'image/png', 1, 'h', 'p', ?1)",
+                params![&now],
+            )?;
+            conn.execute(
+                "INSERT INTO asset_cache (source_id, variant, width, height, png)
+                 VALUES ('p', '_', 100, 100, X'00')",
+                [],
+            )?;
+            conn.execute(
+                "INSERT INTO math_cache (key, tex, bundle, display, preamble, svg)
+                 VALUES ('k', 'x', 'b', 0, '', '<svg/>')",
+                [],
+            )?;
+            conn.execute(
+                "INSERT OR REPLACE INTO _meta VALUES ('project_id', 'old-uuid')",
+                [],
+            )?;
+            Ok(())
+        }).unwrap();
+        *PENDING_PROJECT_ID.lock().unwrap() = Some("session-uuid".into());
+
+        // 2. Reimport (simulates 'New Project' overwriting). Use empty
+        // slides so we can verify cleanliness without contamination.
+        db_import_json(json!({ "title": "Fresh", "slides": [] }).to_string()).unwrap();
+
+        // 3. Assert every PER_PROJECT_TABLES table is empty (or has
+        // only the new import's data; for slides/elements/etc that's
+        // empty since the new presentation has no slides).
+        with_db(|conn| {
+            for table in PER_PROJECT_TABLES {
+                let count: i64 = conn.query_row(
+                    &format!("SELECT COUNT(*) FROM \"{}\"", table),
+                    [],
+                    |r| r.get(0),
+                )?;
+                // 'presentation' will have 1-3 rows from the new import
+                // (title/theme/config), the rest should be 0.
+                if *table == "presentation" {
+                    assert!(count <= 3, "{} should have at most 3 rows post-import, got {}", table, count);
+                } else {
+                    assert_eq!(count, 0, "{} should be empty after import, got {} rows", table, count);
+                }
+            }
+            // _meta should preserve schema_version and nothing else.
+            let project_id_count: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM _meta WHERE key = 'project_id'",
+                [], |r| r.get(0),
+            )?;
+            assert_eq!(project_id_count, 0, "_meta.project_id should be wiped");
+            Ok(())
+        }).unwrap();
+
+        // 4. PENDING_PROJECT_ID should be cleared (next db_get_project_id
+        // generates fresh).
+        assert!(PENDING_PROJECT_ID.lock().unwrap().is_none(),
+                "PENDING_PROJECT_ID should be reset after import");
+
+        // 5. Cross-check: every user table in sqlite_master must be in
+        // PER_PROJECT_TABLES OR be `_meta`. If you added a new table to
+        // the schema without adding it to PER_PROJECT_TABLES, this
+        // assertion fails — go add it.
+        let all_tables: Vec<String> = with_db(|conn| {
+            let mut stmt = conn.prepare(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )?;
+            let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+            let mut out = Vec::new();
+            for r in rows { out.push(r?); }
+            Ok(out)
+        }).unwrap();
+        for table in &all_tables {
+            if table == "_meta" { continue; }
+            assert!(
+                PER_PROJECT_TABLES.contains(&table.as_str()),
+                "Table '{}' exists in the schema but is missing from PER_PROJECT_TABLES. \
+                 Add it to the const in storage.rs so db_import_json (and 'New Project') \
+                 wipes it on import — otherwise overwriting an existing .eigendeck \
+                 inherits stale data from that table.",
+                table,
+            );
+        }
 
         teardown_global_db();
     }
