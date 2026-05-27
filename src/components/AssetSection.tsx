@@ -14,6 +14,7 @@ import { usePresentationStore } from '../store/presentation';
 import { invalidateRenderedAsset } from '../lib/assetRenderer';
 import { dirname, resolvePosixPath } from '../lib/watcherRegistry';
 import { effectiveAutoReload, usePreference } from '../lib/preferences';
+import { computeAssetUsage } from '../lib/assetUsage';
 
 interface AssetMeta {
   asset_id: string;
@@ -220,41 +221,16 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
   // (the actual blast radius — every copy changes); slideCount is for
   // the user-facing label only.
   //
-  // Two separate selectors that each return a primitive — NOT one
-  // selector returning an object. Zustand defaults to Object.is for
-  // equality; a fresh object literal on every store change would
-  // never equal the previous, triggering an infinite render loop.
-  // Crashed the app on Inspector open until split.
-  const usageCount = usePresentationStore((s) => {
-    if (!meta || !s.presentation) return 0;
-    let n = 0;
-    for (const slide of s.presentation.slides) {
-      for (const el of slide.elements) {
-        if (el.type !== 'image' && el.type !== 'demo' && el.type !== 'demo-piece') continue;
-        const e = el as { assetId?: string; src?: string; demoSrc?: string };
-        const bound = e.assetId
-          ? e.assetId === meta.asset_id
-          : (e.demoSrc ?? e.src) === meta.path;
-        if (bound) n++;
-      }
-    }
-    return n;
-  });
-  const slideCount = usePresentationStore((s) => {
-    if (!meta || !s.presentation) return 0;
-    let slides = 0;
-    for (const slide of s.presentation.slides) {
-      for (const el of slide.elements) {
-        if (el.type !== 'image' && el.type !== 'demo' && el.type !== 'demo-piece') continue;
-        const e = el as { assetId?: string; src?: string; demoSrc?: string };
-        const bound = e.assetId
-          ? e.assetId === meta.asset_id
-          : (e.demoSrc ?? e.src) === meta.path;
-        if (bound) { slides++; break; }
-      }
-    }
-    return slides;
-  });
+  // Two separate primitive-returning selectors that each delegate to
+  // the pure computeAssetUsage helper. NOT one selector returning an
+  // object — Zustand defaults to Object.is for equality; a fresh
+  // object literal on every store change would never equal the
+  // previous, triggering an infinite render loop. Crashed the app on
+  // Inspector open until this was split.
+  const usageCount = usePresentationStore((s) =>
+    meta ? computeAssetUsage(s.presentation, meta.asset_id, meta.path).elementCount : 0);
+  const slideCount = usePresentationStore((s) =>
+    meta ? computeAssetUsage(s.presentation, meta.asset_id, meta.path).slideCount : 0);
 
   // Per-asset auto-reload is now a simple 2-state ('off' | null) — no
   // fork-on-shared, no per-element semantics. The whole asset stops or

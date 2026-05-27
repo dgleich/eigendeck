@@ -7,11 +7,11 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
-import { getSlideNumber } from '../types/presentation';
 import { invalidateRenderedAsset } from './assetRenderer';
 import { showCollisionDialog } from './collisionDialog';
 import { effectiveAutoReload, getPreference } from './preferences';
 import { showToast } from './toasts';
+import { computeAssetUsage } from './assetUsage';
 
 // Verbose log of insertion + collision-check decisions. Visible in the
 // in-app Debug Console (View menu). Toggle off when no longer useful.
@@ -311,27 +311,9 @@ async function sha256Hex(bytes: Uint8Array): Promise<string> {
     .join('');
 }
 
-/**
- * 1-based slide numbers (per getSlideNumber) of every slide that
- * currently contains an element bound to the given asset_id, OR (for
- * legacy elements lacking an assetId binding) an element whose
- * src/demoSrc equals the path label. Sorted ascending.
- */
+/** Thin wrapper for the old call-site: returns just the slide numbers
+ *  for showing in the collision dialog ("used on slides 2, 4, 7"). */
 function findSlidesUsingAsset(assetId: string, path: string): number[] {
   const pres = usePresentationStore.getState().presentation;
-  if (!pres) return [];
-  const out: number[] = [];
-  pres.slides.forEach((slide, idx) => {
-    for (const el of slide.elements) {
-      if (el.type !== 'image' && el.type !== 'demo' && el.type !== 'demo-piece') continue;
-      const e = el as { assetId?: string; src?: string; demoSrc?: string };
-      const elPath = e.demoSrc ?? e.src;
-      const bound = e.assetId ? e.assetId === assetId : elPath === path;
-      if (bound) {
-        out.push(getSlideNumber(pres.slides, idx));
-        return; // one entry per slide is enough
-      }
-    }
-  });
-  return out;
+  return computeAssetUsage(pres, assetId, path).slideNumbers;
 }
