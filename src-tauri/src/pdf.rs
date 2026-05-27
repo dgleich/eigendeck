@@ -68,6 +68,41 @@ fn get_pdfium(app: &tauri::AppHandle) -> Result<&'static Pdfium, String> {
     init.as_ref().map_err(|e| e.clone())
 }
 
+/// Pure render: given a Pdfium instance and PDF bytes, rasterize the
+/// requested page to PNG bytes aspect-fit into (max_width, max_height).
+/// Extracted from db_render_pdf_page so it can be tested without a
+/// Tauri AppHandle (the smoke test below does exactly that).
+fn render_page_inner(
+    pdfium: &Pdfium,
+    pdf_bytes: &[u8],
+    page: u32,
+    max_width: u32,
+    max_height: u32,
+) -> Result<Vec<u8>, String> {
+    let document = pdfium
+        .load_pdf_from_byte_slice(pdf_bytes, None)
+        .map_err(|e| format!("load_pdf_from_byte_slice: {}", e))?;
+
+    let pdf_page = document.pages().get(page as PdfPageIndex)
+        .map_err(|e| format!("page {} get: {}", page, e))?;
+
+    // scale_page_to_display_size: aspect-fit; never upscale past natural.
+    let config = PdfRenderConfig::new()
+        .scale_page_to_display_size(max_width as Pixels, max_height as Pixels);
+
+    let bitmap = pdf_page.render_with_config(&config)
+        .map_err(|e| format!("render page {}: {}", page, e))?;
+
+    let dyn_image = bitmap.as_image()
+        .map_err(|e| format!("bitmap.as_image(): {}", e))?;
+
+    let mut png_bytes: Vec<u8> = Vec::new();
+    dyn_image.write_to(&mut Cursor::new(&mut png_bytes), image::ImageFormat::Png)
+        .map_err(|e| format!("encode png: {}", e))?;
+
+    Ok(png_bytes)
+}
+
 /// Render one page of a stored PDF asset to PNG bytes, aspect-fit into
 /// (max_width, max_height). `page` is 0-indexed.
 ///
@@ -85,29 +120,8 @@ pub fn db_render_pdf_page(
 ) -> Result<Vec<u8>, String> {
     let pdfium = get_pdfium(&app)?;
     let bytes = storage::db_get_asset_by_id(asset_id.clone())?;
-
-    let document = pdfium
-        .load_pdf_from_byte_slice(&bytes, None)
-        .map_err(|e| format!("load_pdf_from_byte_slice for {}: {}", asset_id, e))?;
-
-    let pdf_page = document.pages().get(page as PdfPageIndex)
-        .map_err(|e| format!("page {} of {}: {}", page, asset_id, e))?;
-
-    // scale_page_to_display_size: aspect-fit; never upscale past natural.
-    let config = PdfRenderConfig::new()
-        .scale_page_to_display_size(max_width as Pixels, max_height as Pixels);
-
-    let bitmap = pdf_page.render_with_config(&config)
-        .map_err(|e| format!("render page {} of {}: {}", page, asset_id, e))?;
-
-    let dyn_image = bitmap.as_image()
-        .map_err(|e| format!("bitmap.as_image() for {}: {}", asset_id, e))?;
-
-    let mut png_bytes: Vec<u8> = Vec::new();
-    dyn_image.write_to(&mut Cursor::new(&mut png_bytes), image::ImageFormat::Png)
-        .map_err(|e| format!("encode png for {}: {}", asset_id, e))?;
-
-    Ok(png_bytes)
+    render_page_inner(pdfium, &bytes, page, max_width, max_height)
+        .map_err(|e| format!("{}: {}", asset_id, e))
 }
 
 /// Number of pages in a stored PDF asset. Cheap (parses header, doesn't
@@ -123,4 +137,72 @@ pub fn db_pdf_page_count(
         .load_pdf_from_byte_slice(&bytes, None)
         .map_err(|e| format!("load_pdf_from_byte_slice for {}: {}", asset_id, e))?;
     Ok(document.pages().len() as u32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Standard build.rs output location. Mac arm64 today; other targets
+    /// added per the plan as separate commits.
+    fn bundled_dylib_path() -> std::path::PathBuf {
+        let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let filename = if cfg!(target_os = "windows") {
+            "pdfium.dll"
+        } else if cfg!(target_os = "macos") {
+            "libpdfium.dylib"
+        } else {
+            "libpdfium.so"
+        };
+        manifest_dir.join("resources").join("pdfium").join(filename)
+    }
+
+    /// End-to-end pdfium smoke test: bind the bundled dylib, generate a
+    /// blank PDF in-process (no fixture file needed), run it through
+    /// render_page_inner, assert non-empty PNG output with the magic
+    /// header bytes.
+    ///
+    /// Gated `#[ignore]` because:
+    /// 1. The pdfium dylib is platform-specific (Mac/Win/Linux), and
+    ///    build.rs only downloads it for known targets.
+    /// 2. CI/sandbox builds may not have the dylib at all.
+    ///
+    /// Run on Mac with:
+    ///   cd src-tauri && cargo test --lib -- --ignored --test-threads=1
+    #[test]
+    #[ignore = "requires pdfium dylib at src-tauri/resources/pdfium/"]
+    fn render_page_inner_emits_png_from_self_generated_pdf() {
+        let dylib = bundled_dylib_path();
+        assert!(
+            dylib.exists(),
+            "pdfium dylib not present at {} — run `cargo build` first to trigger build.rs download, or check that bblanchon supports this target",
+            dylib.display(),
+        );
+
+        let bindings = Pdfium::bind_to_library(&dylib)
+            .expect("bind_to_library");
+        let pdfium = Pdfium::new(bindings);
+
+        // Generate a tiny 1-page A4 PDF in-process so the test doesn't
+        // need a binary fixture under version control.
+        let pdf_bytes = {
+            let mut doc = pdfium.create_new_pdf().expect("create_new_pdf");
+            doc.pages_mut().create_page_at_end(
+                pdfium_render::prelude::PdfPagePaperSize::a4(),
+            ).expect("create_page_at_end");
+            doc.save_to_bytes().expect("save_to_bytes")
+        };
+        assert!(pdf_bytes.len() > 100, "generated PDF should be non-trivial");
+
+        let png = render_page_inner(&pdfium, &pdf_bytes, 0, 256, 256)
+            .expect("render_page_inner");
+
+        assert!(png.len() > 100, "rendered PNG should be non-trivial");
+        // PNG file signature: 89 50 4E 47 0D 0A 1A 0A
+        assert_eq!(
+            &png[..8],
+            &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
+            "output should start with PNG magic bytes",
+        );
+    }
 }
