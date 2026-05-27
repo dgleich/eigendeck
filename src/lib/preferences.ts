@@ -78,24 +78,25 @@ export function usePreference<K extends keyof PrefSchema>(
 /**
  * Resolve the effective auto_reload state for an asset.
  *
- * Cascade (most-specific wins):
- *   per-asset 'on'      -> ALWAYS reload (explicit opt-in, beats every layer)
- *   per-asset 'off'     -> NEVER reload  (Restore sets this; user opt-out)
- *   per-presentation 'on'  -> ALWAYS reload for assets without their own override
- *   per-presentation 'off' -> NEVER reload  for assets without their own override
- *   else                -> follow the global pref
+ * Cascade is **downward-only**: any layer can refuse, no layer overrides a
+ * refusal above it. Pass null/undefined for layers without an explicit
+ * opt-out. For "would a NEW asset in this presentation auto-reload by
+ * default", pass null for perAsset.
  *
- * Pass null/undefined for any layer not set. For "would a NEW asset in this
- * presentation auto-reload by default", pass null for perAsset.
+ *   global must be true                     (else: off everywhere)
+ *   per-presentation must not be 'off'      (else: off in this deck)
+ *   per-asset must not be 'off'             (else: off for this asset)
+ *
+ * Per-asset 'on' is NOT a thing — an asset can opt out but can't opt in
+ * beyond what the presentation/global allow. Legacy 'on' values in the
+ * database (from earlier 3-state UI) are treated as if NULL.
  */
 export function effectiveAutoReload(
   perAsset: string | null | undefined,
   perPresentation: string | null | undefined,
   globalDefault: boolean,
 ): boolean {
-  if (perAsset === 'on') return true;
-  if (perAsset === 'off') return false;
-  if (perPresentation === 'on') return true;
-  if (perPresentation === 'off') return false;
-  return globalDefault;
+  return globalDefault
+    && perPresentation !== 'off'
+    && perAsset !== 'off';
 }

@@ -213,125 +213,55 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
     }
   }, [meta, elementId]);
 
-  const setAutoReload = useCallback(async (value: 'on' | 'off' | null) => {
-    if (!meta) return;
-    // If this asset is bound by multiple elements (e.g. user added the
-    // same image to slides 1, 2, 3), the tri-state lives in a per-
-    // ELEMENT panel — the user expects per-element semantics. Setting
-    // auto_reload on the shared asset row would affect every bound
-    // element, not just this one. Fork in that case: create a new
-    // asset_id with current bytes + the chosen auto_reload, rebind
-    // THIS element to it; other elements stay on the original asset.
-    const pres = usePresentationStore.getState().presentation;
-    let usageCount = 0;
-    if (pres) {
-      for (const slide of pres.slides) {
-        for (const el of slide.elements) {
-          if (el.type !== 'image' && el.type !== 'demo' && el.type !== 'demo-piece') continue;
-          const e = el as { assetId?: string; src?: string; demoSrc?: string };
-          const isBound = e.assetId
-            ? e.assetId === meta.asset_id
-            : (e.demoSrc ?? e.src) === meta.path;
-          if (isBound) usageCount++;
-        }
+  // How many current elements reference this asset. Reactive: re-runs
+  // when the presentation changes. Shown in the UI as "Used on N slides"
+  // and used to decide whether Restore needs a confirm.
+  const usageCount = usePresentationStore((s) => {
+    if (!meta || !s.presentation) return 0;
+    let n = 0;
+    for (const slide of s.presentation.slides) {
+      for (const el of slide.elements) {
+        if (el.type !== 'image' && el.type !== 'demo' && el.type !== 'demo-piece') continue;
+        const e = el as { assetId?: string; src?: string; demoSrc?: string };
+        const bound = e.assetId
+          ? e.assetId === meta.asset_id
+          : (e.demoSrc ?? e.src) === meta.path;
+        if (bound) n++;
       }
     }
-    if (usageCount <= 1 || !elementId) {
-      // Solo asset (or no elementId to rebind): in-place flip is correct.
-      await invoke('db_set_asset_auto_reload', { assetId: meta.asset_id, value }).catch(() => {});
-    } else {
-      // Shared asset: fork.
-      try {
-        const bytes = await invoke<number[]>('db_get_asset_by_id', { assetId: meta.asset_id });
-        const newAssetId = crypto.randomUUID();
-        await invoke('db_store_asset', {
-          path: meta.path,
-          data: bytes,
-          mimeType: meta.mime_type,
-          externalPath: meta.external_path,
-          externalMtime: meta.external_mtime,
-          assetId: newAssetId,
-          autoReload: value,
-        });
-        usePresentationStore.getState().updateElement(elementId, { assetId: newAssetId } as any);
-        console.log(`[AssetSection] forked shared asset ${meta.asset_id.slice(0, 8)} → ${newAssetId.slice(0, 8)} (${usageCount} elements shared; rebinding element ${elementId})`);
-      } catch (e) {
-        console.warn('[AssetSection] fork failed:', e);
-      }
-    }
-    await fetchMeta();
-  }, [meta, elementId, fetchMeta]);
+    return n;
+  });
 
+  // Per-asset auto-reload is now a simple 2-state ('off' | null) — no
+  // fork-on-shared, no per-element semantics. The whole asset stops or
+  // resumes being watched; all bound elements are affected equally,
+  // and the UI tells the user that via the "Used on N slides" caption.
+  const setAutoReload = useCallback(async (value: 'off' | null) => {
+    if (!meta) return;
+    await invoke('db_set_asset_auto_reload', { assetId: meta.asset_id, value }).catch(() => {});
+    await fetchMeta();
+  }, [meta, fetchMeta]);
+
+  // Restore writes a new asset row with the old bytes (db_restore_asset_
+  // version handles auto_reload='off' on the new row to prevent the
+  // watcher from immediately re-clobbering). Affects every element bound
+  // to this asset. Confirm only when N > 1; solo asset restores
+  // directly since no action-at-a-distance is possible.
   const restoreVersion = useCallback(async (valid_from: string) => {
     if (!meta) return;
-    // Count elements bound to this asset. Determines the dialog UX:
-    //   solo (1 user)  → plain confirm; in-place restore
-    //   shared (N > 1) → modal asking "this slide only" vs "all N
-    //                    slides"; per choice, fork or in-place restore
-    const pres = usePresentationStore.getState().presentation;
-    let usageCount = 0;
-    if (pres) {
-      for (const slide of pres.slides) {
-        for (const el of slide.elements) {
-          if (el.type !== 'image' && el.type !== 'demo' && el.type !== 'demo-piece') continue;
-          const e = el as { assetId?: string; src?: string; demoSrc?: string };
-          const isBound = e.assetId
-            ? e.assetId === meta.asset_id
-            : (e.demoSrc ?? e.src) === meta.path;
-          if (isBound) usageCount++;
-        }
-      }
-    }
     const when = relativeAgo(valid_from) || valid_from;
-
-    let scope: 'this-only' | 'all' | 'cancel';
-    if (usageCount <= 1 || !elementId) {
-      // Solo asset (or no elementId): one-line confirm, no scope question.
-      const ok = confirm(`Change this image to the version from ${when}? You can change it back from this list later.`);
-      scope = ok ? 'all' : 'cancel';  // 'all' here is functionally equivalent to in-place — only one element exists
-    } else {
-      // Shared asset: ask the user what scope they want.
-      const { showRestoreVersionDialog } = await import('../lib/restoreVersionDialog');
-      scope = await showRestoreVersionDialog({
-        imageName: meta.path ?? srcPath,
-        whenLabel: when,
-        usageCount,
-      });
+    if (usageCount > 1) {
+      const fileName = (meta.path ?? srcPath).split('/').pop() ?? (meta.path ?? srcPath);
+      const ok = confirm(
+        `Restore ${fileName} to the version from ${when}? This will affect all ${usageCount} slides using this image.`,
+      );
+      if (!ok) return;
     }
-    if (scope === 'cancel') return;
-
-    if (scope === 'all') {
-      // In-place restore on the shared asset; every bound element sees
-      // the change. db_restore_asset_version sets auto_reload='off' so
-      // the watcher won't immediately overwrite the restore.
-      await invoke('db_restore_asset_version', { assetId: meta.asset_id, validFrom: valid_from }).catch((e) => {
-        console.warn('[AssetSection] restore failed:', e);
-      });
-      await invalidateRenderedAsset(meta.path ?? srcPath, meta.asset_id);
-      return;
-    }
-
-    // scope === 'this-only' (only possible when shared): fork.
-    try {
-      const bytes = await invoke<number[]>('db_get_asset_version', {
-        assetId: meta.asset_id, validFrom: valid_from,
-      });
-      const newAssetId = crypto.randomUUID();
-      await invoke('db_store_asset', {
-        path: meta.path,
-        data: bytes,
-        mimeType: meta.mime_type,
-        externalPath: meta.external_path,
-        externalMtime: meta.external_mtime,
-        assetId: newAssetId,
-        autoReload: 'off',
-      });
-      usePresentationStore.getState().updateElement(elementId!, { assetId: newAssetId } as any);
-      console.log(`[AssetSection] forked shared asset ${meta.asset_id.slice(0, 8)} → ${newAssetId.slice(0, 8)} on restore (${usageCount} elements shared; rebinding element ${elementId})`);
-    } catch (e) {
-      console.warn('[AssetSection] fork-on-restore failed:', e);
-    }
-  }, [meta, srcPath, elementId]);
+    await invoke('db_restore_asset_version', { assetId: meta.asset_id, validFrom: valid_from }).catch((e) => {
+      console.warn('[AssetSection] restore failed:', e);
+    });
+    await invalidateRenderedAsset(meta.path ?? srcPath, meta.asset_id);
+  }, [meta, srcPath, usageCount]);
 
   if (!meta) {
     return (
@@ -341,9 +271,21 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
     );
   }
 
+  // Effective watch behavior for this asset under the new downward-only
+  // cascade. Display tells the user the result; the checkbox below is
+  // the per-asset opt-out (the only knob this UI offers).
   const effective = effectiveAutoReload(meta.auto_reload, presOverride, globalAutoReload);
-  const triState = (meta.auto_reload ?? 'default') as 'on' | 'off' | 'default';
-  const presLabel = presOverride === 'on' ? 'always' : presOverride === 'off' ? 'never' : `follow global (${globalAutoReload ? 'on' : 'off'})`;
+  const optedOut = meta.auto_reload === 'off';
+  // Why the asset isn't being watched, if it isn't. Used for the caption
+  // under the checkbox so the user knows where the off came from.
+  const cascadeBlock: 'global' | 'presentation' | 'asset' | null =
+    !globalAutoReload ? 'global'
+    : presOverride === 'off' ? 'presentation'
+    : optedOut ? 'asset'
+    : null;
+  const usageLabel = usageCount === 1
+    ? 'Used on this slide only'
+    : `Used on ${usageCount} slides`;
 
   return (
     <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -389,29 +331,43 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
         </div>
       )}
 
-      {/* Auto-reload tri-state — only meaningful when the project has a
-          dir to resolve external_path against. */}
+      {/* Usage scope caption — always visible so the user knows the
+          blast radius of any action below (Restore, Watch toggle,
+          Reload). The bug log calls this out as the key UX fix for
+          asset-scoped controls in element-scoped UI. */}
+      <div style={{ fontSize: 11, color: '#6b7280' }}>{usageLabel}</div>
+
+      {/* Per-asset 2-state Watch toggle — only meaningful when the
+          asset has a source file AND the project has a dir to resolve
+          it against. */}
       {meta.external_path && projectPath && (
         <div style={{ fontSize: 11 }}>
-          <div style={{ color: '#666', marginBottom: 4 }}>
-            Auto-reload <span style={{ color: '#888' }}>
-              (presentation: {presLabel}; effective: <b>{effective ? 'ON' : 'OFF'}</b>)
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {(['default', 'on', 'off'] as const).map((v) => (
-              <button key={v}
-                onClick={() => setAutoReload(v === 'default' ? null : v)}
-                style={{
-                  padding: '3px 8px', fontSize: 11,
-                  background: triState === v ? '#3b82f6' : '#f3f4f6',
-                  color: triState === v ? '#fff' : '#222',
-                  border: '1px solid #ddd', borderRadius: 3,
-                  cursor: 'pointer',
-                }}>
-                {v === 'default' ? 'Follow global' : v === 'on' ? 'Always' : 'Never'}
-              </button>
-            ))}
+          <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start', cursor: cascadeBlock && cascadeBlock !== 'asset' ? 'not-allowed' : 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={effective}
+              disabled={cascadeBlock !== null && cascadeBlock !== 'asset'}
+              onChange={(e) => setAutoReload(e.target.checked ? null : 'off')}
+              style={{ marginTop: 2 }} />
+            <span>Watch this file for changes</span>
+          </label>
+          <div style={{ fontSize: 10, color: '#888', marginTop: 4, marginLeft: 22 }}>
+            {cascadeBlock === 'global' && (
+              <>Disabled because the global setting (Cmd+,) is off.</>
+            )}
+            {cascadeBlock === 'presentation' && (
+              <>Disabled because watching is turned off for this presentation.</>
+            )}
+            {cascadeBlock === 'asset' && (
+              usageCount > 1
+                ? <>Off: file changes don't update any of these {usageCount} slides.</>
+                : <>Off: file changes don't update this image.</>
+            )}
+            {cascadeBlock === null && (
+              usageCount > 1
+                ? <>On: file changes update all {usageCount} slides using this image.</>
+                : <>On: file changes update this image.</>
+            )}
           </div>
         </div>
       )}

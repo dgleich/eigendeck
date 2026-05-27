@@ -17,7 +17,6 @@ import { DebugMenu } from './debug';
 import { ToastHost } from './components/ToastHost';
 import { SettingsModal } from './components/SettingsModal';
 import { CollisionDialog } from './components/CollisionDialog';
-import { ReenableWatchingDialog } from './components/ReenableWatchingDialog';
 import { RestoreVersionDialog } from './components/RestoreVersionDialog';
 import type { MenuEntry } from './components/ContextMenu';
 import { usePresentationStore } from './store/presentation';
@@ -1041,7 +1040,6 @@ function App() {
       )}
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <CollisionDialog />
-      <ReenableWatchingDialog />
       <RestoreVersionDialog />
       {unsavedDialog && (
         <UnsavedChangesDialog

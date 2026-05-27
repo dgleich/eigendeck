@@ -5,9 +5,7 @@ import { BUILT_IN_THEMES } from '../lib/themes';
 import { FONT_PACKAGES, type FontPackage } from '../lib/fonts';
 import type { VerticalAlign } from '../types/presentation';
 import { AssetSection } from './AssetSection';
-import { usePreference, effectiveAutoReload } from '../lib/preferences';
-import { showReenableWatchingDialog } from '../lib/reenableWatchingDialog';
-import { invoke } from '@tauri-apps/api/core';
+import { usePreference } from '../lib/preferences';
 
 const ARROW_COLORS = [
   '#e53e3e', '#dc2626', '#ea580c', '#16a34a',
@@ -552,6 +550,16 @@ function PreambleField({
   );
 }
 
+/** Two-state checkbox for the per-presentation "watch source files"
+ *  setting. Stored as `config.autoReloadAssets`:
+ *    undefined → follow global pref (the default; checkbox shows checked
+ *                if global is on, unchecked if off)
+ *    'off'     → opt out for this presentation regardless of global
+ *
+ *  Note the value domain is intentionally narrow: per-presentation 'on'
+ *  is functionally meaningless under the downward-only cascade (no
+ *  layer overrides a refusal above it), so we only express the opt-out.
+ */
 function AutoReloadAssetsControl({
   value,
   onChange,
@@ -560,95 +568,31 @@ function AutoReloadAssetsControl({
   onChange: (v: 'on' | 'off' | undefined) => void;
 }) {
   const [globalDefault] = usePreference('autoReloadAssets');
-  const current: 'default' | 'on' | 'off' = value ?? 'default';
-  const options: Array<{ k: 'default' | 'on' | 'off'; label: string }> = [
-    { k: 'default', label: `Follow global (${globalDefault ? 'on' : 'off'})` },
-    { k: 'on', label: 'Always' },
-    { k: 'off', label: 'Never' },
-  ];
-
-  const handleClick = async (k: 'default' | 'on' | 'off') => {
-    if (k === current) return;
-    const newPres: 'on' | 'off' | null = k === 'default' ? null : k;
-    const effectiveBefore = effectiveAutoReload(null, value ?? null, globalDefault);
-    const effectiveAfter = effectiveAutoReload(null, newPres, globalDefault);
-    if (!effectiveBefore && effectiveAfter) {
-      // OFF -> ON transition for the presentation. User previously
-      // opted out (or never opted in); confirm what they want to happen
-      // to assets added during the OFF window.
-      const choice = await showReenableWatchingDialog();
-      if (choice === 'cancel') return;
-      if (choice === 'new-only') {
-        // Snapshot the current OFF state onto each existing asset that
-        // was implicitly following the cascade, so flipping per-pres to
-        // ON doesn't surprise the user by suddenly auto-updating them.
-        await disableImplicitAutoReloadForExistingAssets();
-      }
-      onChange(k === 'default' ? undefined : k);
-      if (choice === 'rescan-all') {
-        // Per-pres is now ON; trigger the scan to catch up on disk
-        // drift that accumulated while we weren't watching. Same code
-        // path that runs at project open.
-        await rescanLinkedAssets();
-      }
-      return;
-    }
-    onChange(k === 'default' ? undefined : k);
-  };
+  // Checkbox is checked when the effective behavior for this deck is "watch."
+  // That means: not explicitly opted out, AND global is on.
+  const checked = value !== 'off' && globalDefault;
+  const optedOut = value === 'off';
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 4 }}>
-        {options.map(({ k, label }) => (
-          <button key={k}
-            onClick={() => { void handleClick(k); }}
-            style={{
-              padding: '3px 8px', fontSize: 11,
-              background: current === k ? '#3b82f6' : '#f3f4f6',
-              color: current === k ? '#fff' : '#222',
-              border: '1px solid #ddd', borderRadius: 3,
-              cursor: 'pointer',
-            }}>
-            {label}
-          </button>
-        ))}
-      </div>
-      <div style={{ fontSize: 10, color: '#888', marginTop: 4 }}>
-        Reload linked SVG / image assets when their source files change on disk.
-        Per-asset settings (in Image properties) still override this.
+      <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start', cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={checked}
+          disabled={!globalDefault && !optedOut}
+          onChange={(e) => onChange(e.target.checked ? undefined : 'off')}
+          style={{ marginTop: 2 }} />
+        <span style={{ fontSize: 11 }}>Watch source files for changes</span>
+      </label>
+      <div style={{ fontSize: 10, color: '#888', marginTop: 4, marginLeft: 22 }}>
+        {!globalDefault && !optedOut ? (
+          <>Disabled because the global setting (Cmd+,) is off.</>
+        ) : optedOut ? (
+          <>Off: nothing in this presentation auto-updates when source files change.</>
+        ) : (
+          <>On: linked SVG / image assets reload when their source files change on disk.</>
+        )}
       </div>
     </div>
   );
-}
-
-interface LinkedAssetRow {
-  asset_id: string;
-  path: string | null;
-  external_path: string;
-  external_mtime: string | null;
-  auto_reload: string | null;
-  mime_type: string | null;
-}
-
-/** Set per-asset auto_reload='off' on every linked asset whose
- *  auto_reload is currently null (i.e. implicitly following the
- *  cascade). Leaves assets the user explicitly flipped 'on' or 'off'
- *  untouched — those choices were intentional. */
-async function disableImplicitAutoReloadForExistingAssets(): Promise<void> {
-  const linked = await invoke<LinkedAssetRow[]>('db_list_linked_assets').catch(() => [] as LinkedAssetRow[]);
-  for (const a of linked) {
-    if (a.auto_reload === null) {
-      await invoke('db_set_asset_auto_reload', { assetId: a.asset_id, value: 'off' }).catch(() => {});
-    }
-  }
-}
-
-/** Trigger the same scan-on-load behavior used at project open, so
- *  assets that drifted on disk while watching was off get pulled now. */
-async function rescanLinkedAssets(): Promise<void> {
-  const store = usePresentationStore.getState();
-  if (!store.projectPath) return;
-  const { scanForChangedAssets, dirname } = await import('../lib/watcherRegistry');
-  const presOverride = store.presentation?.config?.autoReloadAssets ?? null;
-  await scanForChangedAssets(dirname(store.projectPath), presOverride).catch(() => {});
 }
