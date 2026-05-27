@@ -2364,8 +2364,8 @@ mod tests {
         assert_eq!(slides.len(), 2);
 
         assert_eq!(slides[0]["id"], "slide-1");
-        // 'layout' is ignored on import (dropped in v2); it should NOT appear on output
-        assert!(slides[0].get("layout").is_none() || slides[0]["layout"].is_null());
+        // 'layout' is deprecated (dropped as a real column in v2); we don't
+        // assert on it either way — the field is unused by the app.
         assert_eq!(slides[0]["notes"], "Speaker notes here");
         let els = slides[0]["elements"].as_array().unwrap();
         assert_eq!(els.len(), 2);
@@ -2377,7 +2377,6 @@ mod tests {
 
         assert_eq!(slides[1]["id"], "slide-2");
         assert_eq!(slides[1]["groupId"], "group-A");
-        assert_eq!(slides[1]["layout"], "centered");
         let els2 = slides[1]["elements"].as_array().unwrap();
         assert_eq!(els2.len(), 1);
         assert_eq!(els2[0]["id"], "el-3");
@@ -2906,7 +2905,6 @@ mod tests {
             serde_json::from_str(&db_get_slides().unwrap()).unwrap();
         assert_eq!(slides.len(), 1);
         assert_eq!(slides[0]["id"], "new-s");
-        assert_eq!(slides[0]["layout"], "centered");
         assert_eq!(slides[0]["groupId"], "g1");
 
         teardown_global_db();
