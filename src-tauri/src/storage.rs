@@ -144,7 +144,13 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
         CREATE INDEX IF NOT EXISTS idx_se_element ON slide_elements(element_id) WHERE valid_to IS NULL;
         CREATE INDEX IF NOT EXISTS idx_slides_current ON slides(valid_to) WHERE valid_to IS NULL;
         CREATE INDEX IF NOT EXISTS idx_el_link ON elements(link_id) WHERE valid_to IS NULL AND link_id IS NOT NULL;
-        CREATE INDEX IF NOT EXISTS idx_el_asset ON elements(asset_id) WHERE valid_to IS NULL AND asset_id IS NOT NULL;
+        -- idx_el_asset is intentionally NOT in this batch. For pre-
+        -- phase-3 element tables, asset_id doesn't exist yet (CREATE
+        -- TABLE IF NOT EXISTS no-ops because the table exists with the
+        -- old shape); creating the index on a missing column would
+        -- crash the whole batch before the migration below can ALTER
+        -- TABLE ADD COLUMN. The index is created post-migration —
+        -- same pattern as idx_assets_current / idx_assets_path.
         ",
     )?;
 
