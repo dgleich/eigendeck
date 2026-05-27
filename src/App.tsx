@@ -62,8 +62,8 @@ export function renderSlideForPrint(
         `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${color};line-height:1.3;padding:8px 12px;">${el.html || ''}</div>` +
         `</div></div>`;
     } else if (el.type === 'image') {
-      const src = imageCache.get(el.src) || el.src;
-      inner += `<img src="${src}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;" />`;
+      const src = imageCache.get(el.assetId);
+      if (src) inner += `<img src="${src}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;" />`;
     } else if (el.type === 'arrow') {
       const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
       const angle = Math.atan2(y2 - y1, x2 - x1);
@@ -185,22 +185,26 @@ async function printToPdf() {
   }
 
   try {
-    // Load image assets as data URLs
+    // Load image assets as data URLs (keyed by assetId).
     const imageCache = new Map<string, string>();
     const { invoke } = await import('@tauri-apps/api/core');
     for (const slide of presentation.slides) {
       for (const el of slide.elements) {
-        if (el.type === 'image' && !el.src.startsWith('data:') && !imageCache.has(el.src)) {
+        if (el.type === 'image' && !imageCache.has(el.assetId)) {
           try {
-            const data = await invoke<number[]>('db_get_asset', { path: el.src });
+            const meta = await invoke<{ mime_type: string | null; path: string | null } | null>(
+              'db_get_asset_meta_by_id', { assetId: el.assetId },
+            );
+            const data = await invoke<number[]>('db_get_asset_by_id', { assetId: el.assetId });
             const bytes = new Uint8Array(data);
-            const ext = el.src.split('.').pop()?.toLowerCase() || 'png';
-            const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+            const ext = (meta?.path ?? '').split('.').pop()?.toLowerCase() || 'png';
+            const mime = meta?.mime_type
+              ?? (ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`);
             let binary = '';
             for (let k = 0; k < bytes.length; k += 8192) {
               binary += String.fromCharCode(...bytes.slice(k, k + 8192));
             }
-            imageCache.set(el.src, `data:${mime};base64,${btoa(binary)}`);
+            imageCache.set(el.assetId, `data:${mime};base64,${btoa(binary)}`);
           } catch { /* skip */ }
         }
       }
@@ -268,12 +272,14 @@ async function printToPdf() {
             `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:1.3;padding:${px2in(8)} ${px2in(12)};">${el.html || ''}</div>` +
             `</div></div>`;
         } else if (el.type === 'image') {
-          const src = imageCache.get(el.src) || el.src;
-          const styles = [`position:absolute`, `left:${px2in(p.x)}`, `top:${px2in(p.y)}`, `width:${px2in(p.width)}`, `height:${px2in(p.height)}`, `object-fit:contain`];
-          if ((el as any).shadow) styles.push('filter:drop-shadow(2px 4px 8px rgba(0,0,0,0.3))');
-          if ((el as any).borderRadius) styles.push(`border-radius:${px2in((el as any).borderRadius)}`);
-          if ((el as any).opacity != null && (el as any).opacity < 1) styles.push(`opacity:${(el as any).opacity}`);
-          inner += `<img src="${src}" style="${styles.join(';')};" />`;
+          const src = imageCache.get(el.assetId);
+          if (src) {
+            const styles = [`position:absolute`, `left:${px2in(p.x)}`, `top:${px2in(p.y)}`, `width:${px2in(p.width)}`, `height:${px2in(p.height)}`, `object-fit:contain`];
+            if ((el as any).shadow) styles.push('filter:drop-shadow(2px 4px 8px rgba(0,0,0,0.3))');
+            if ((el as any).borderRadius) styles.push(`border-radius:${px2in((el as any).borderRadius)}`);
+            if ((el as any).opacity != null && (el as any).opacity < 1) styles.push(`opacity:${(el as any).opacity}`);
+            inner += `<img src="${src}" style="${styles.join(';')};" />`;
+          }
         } else if (el.type === 'arrow') {
           const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
           const angle = Math.atan2(y2 - y1, x2 - x1);
@@ -934,8 +940,7 @@ function App() {
                 : ext === 'pdf' ? 'application/pdf'
                 : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
               let bytes: Uint8Array | null = null;
-              let assetId: string | undefined;
-              let cancelled = false;
+              let assetId: string | null = null;
               try {
                 const { readFile } = await import('@tauri-apps/plugin-fs');
                 bytes = await readFile(fullPath);
@@ -947,14 +952,14 @@ function App() {
                   path: relativePath, data: bytes, mimeType: mime,
                   externalPath: relativePath, externalMtime: null,
                 });
-                if (r.cancelled) { cancelled = true; }
-                else { assetId = r.assetId; }
-              } catch (err) { console.error('Failed to store image:', err); }
-              if (cancelled) return;
+                if (r.cancelled) return;
+                assetId = r.assetId;
+              } catch (err) { console.error('Failed to store image:', err); return; }
+              if (!assetId) return;
               const { detectAssetKind } = await import('./lib/assetCache');
               const kind = detectAssetKind(relativePath, mime);
               store.addElement({
-                id: crypto.randomUUID(), type: 'image', src: relativePath,
+                id: crypto.randomUUID(), type: 'image',
                 assetId,
                 kind,
                 position: { x: 360, y: 200, width: 1200, height: 680 },
@@ -966,11 +971,8 @@ function App() {
                   const { invoke } = await import('@tauri-apps/api/core');
                   // Embed snapshot clears the source link (no more watching).
                   // Same assetId — embed is a new version of the same asset.
-                  // Direct db_store_asset (not the collision helper): we
-                  // KNOW this is a follow-up update to the asset we just
-                  // created, so no collision dialog should fire.
                   await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });
-                  await invalidateRenderedAsset(relativePath, assetId);
+                  await invalidateRenderedAsset(assetId);
                 }
               }
             }}>+ Image</button>
@@ -1007,13 +1009,13 @@ function App() {
                     const width = Math.floor((1760 - (pieces.length - 1) * 40) / pieces.length);
                     store.addElement({
                       id: crypto.randomUUID(), type: 'demo-piece' as any,
-                      demoSrc: relativePath, piece, assetId,
+                      piece, assetId,
                       position: { x, y: 200, width, height: 700 },
                     });
                     x += width + 40;
                   }
                 } else {
-                  store.addElement({ id: crypto.randomUUID(), type: 'demo', src: relativePath, assetId, position: { x: 80, y: 200, width: 1760, height: 700 } });
+                  store.addElement({ id: crypto.randomUUID(), type: 'demo', assetId, position: { x: 80, y: 200, width: 1760, height: 700 } });
                 }
               } catch (err) {
                 console.error('Failed to add demo:', err);

@@ -1,33 +1,26 @@
 // Pure helpers for "how many elements / slides currently use this asset?"
 //
-// One place to express the bound-to-asset predicate (assetId first;
-// path-label fallback for legacy elements without an assetId binding).
-// Used by AssetSection (for the "Used N times across M slides" caption,
-// for the Restore confirm wording, and for deciding whether Restore
-// needs a confirm at all) and by assetInsert (for the
+// Asset binding is exclusively through `assetId` — the path-label fallback
+// is gone (phase 4). Used by AssetSection (for the "Used N times across
+// M slides" caption, for the Restore confirm wording, and for deciding
+// whether Restore needs a confirm at all) and by assetInsert (for the
 // findSlidesUsingAsset helper). Pure functions for easy unit testing.
 
 import type { Presentation, Slide } from '../types/presentation';
 import { getSlideNumber } from '../types/presentation';
 
-type AssetBearingElement = { assetId?: string; src?: string; demoSrc?: string };
+type AssetBearingElement = { assetId?: string };
 
 function isAssetBearing(elType: string): boolean {
   return elType === 'image' || elType === 'demo' || elType === 'demo-piece';
 }
 
-/** True if the element is currently bound to (assetId, path). Prefers
- *  the asset_id link when both sides have one; falls back to src /
- *  demoSrc path-label match for legacy elements. */
 function elementBoundToAsset(
   el: { type: string } & AssetBearingElement,
   assetId: string,
-  path: string | null,
 ): boolean {
   if (!isAssetBearing(el.type)) return false;
-  if (el.assetId) return el.assetId === assetId;
-  const elPath = el.demoSrc ?? el.src;
-  return elPath != null && elPath === path;
+  return el.assetId === assetId;
 }
 
 export interface AssetUsage {
@@ -47,7 +40,6 @@ export interface AssetUsage {
 export function computeAssetUsage(
   presentation: Presentation | null | undefined,
   assetId: string,
-  path: string | null,
 ): AssetUsage {
   if (!presentation) return { elementCount: 0, slideCount: 0, slideNumbers: [] };
   let elementCount = 0;
@@ -55,7 +47,7 @@ export function computeAssetUsage(
   presentation.slides.forEach((slide: Slide, idx: number) => {
     let slideHit = false;
     for (const el of slide.elements) {
-      if (elementBoundToAsset(el as { type: string } & AssetBearingElement, assetId, path)) {
+      if (elementBoundToAsset(el as { type: string } & AssetBearingElement, assetId)) {
         elementCount++;
         slideHit = true;
       }

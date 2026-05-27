@@ -37,17 +37,9 @@ interface AssetMeta {
  *     embedded as snapshot, or restored from history with auto_reload='off')
  *   - the presentation isn't saved yet (no project dir to resolve against)
  *
- * Prefers `assetId` (unambiguous) when set; falls back to `assetPath`
- * lookup for legacy elements without a binding. The path-only fallback
- * is wrong when multiple assets share a path label — backfill on load
- * makes that case rare; Import-as-new always sets assetId on the new
- * element.
- *
  * Idempotent across re-mounts; safely unwatches on unmount or input change.
  */
 export function useAssetFileWatcher(
-  assetPath: string | undefined,
-  mimeType: string,
   assetId: string | undefined,
   elementId: string,
 ): void {
@@ -80,24 +72,21 @@ export function useAssetFileWatcher(
   // bump refetchKey to re-run the subscription effect below (which
   // refetches meta and re-evaluates the cascade).
   useEffect(() => {
-    if (!assetId && !assetPath) return;
+    if (!assetId) return;
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { path?: string; assetId?: string } | undefined;
-      const matches = assetId && detail?.assetId
-        ? detail.assetId === assetId
-        : detail?.path === assetPath;
-      if (matches) {
-        hlog(`asset-changed event for asset=${assetId?.slice(0, 8) ?? '?'} path="${assetPath ?? ''}" → refetching meta + re-evaluating cascade`);
+      const detail = (e as CustomEvent).detail as { assetId?: string } | undefined;
+      if (detail?.assetId === assetId) {
+        hlog(`asset-changed event for asset=${assetId.slice(0, 8)} → refetching meta + re-evaluating cascade`);
         setRefetchKey((k) => k + 1);
       }
     };
     window.addEventListener('eigendeck:asset-changed', handler);
     return () => window.removeEventListener('eigendeck:asset-changed', handler);
-  }, [assetPath, assetId]);
+  }, [assetId]);
 
   useEffect(() => {
-    if ((!assetPath && !assetId) || !projectPath || !projectId) {
-      if (assetPath || assetId) hlog(`skip mount for asset=${assetId?.slice(0, 8) ?? '?'} "${assetPath ?? ''}" — projectPath=${!!projectPath} projectId=${!!projectId}`);
+    if (!assetId || !projectPath || !projectId) {
+      if (assetId) hlog(`skip mount for asset=${assetId.slice(0, 8)} — projectPath=${!!projectPath} projectId=${!!projectId}`);
       return;
     }
     let cancelled = false;
@@ -105,19 +94,14 @@ export function useAssetFileWatcher(
     let registeredAssetId: string | null = null;
 
     (async () => {
-      // Prefer id lookup when available; it's unambiguous even when two
-      // assets share a path label (Import-as-new outcome).
-      const meta = assetId
-        ? await invoke<AssetMeta | null>('db_get_asset_meta_by_id', { assetId })
-            .catch((e) => { hlog(`meta-by-id lookup FAILED for ${assetId.slice(0, 8)}:`, e); return null; })
-        : await invoke<AssetMeta | null>('db_get_asset_meta_by_path', { path: assetPath })
-            .catch((e) => { hlog(`meta-by-path lookup FAILED for "${assetPath}":`, e); return null; });
+      const meta = await invoke<AssetMeta | null>('db_get_asset_meta_by_id', { assetId })
+        .catch((e) => { hlog(`meta-by-id lookup FAILED for ${assetId.slice(0, 8)}:`, e); return null; });
       if (cancelled) return;
       if (!meta) {
-        hlog(`no asset meta for asset=${assetId?.slice(0, 8) ?? '?'} "${assetPath ?? ''}" — nothing to watch`);
+        hlog(`no asset meta for asset=${assetId.slice(0, 8)} — nothing to watch`);
         return;
       }
-      hlog(`meta for "${assetPath}": asset_id=${meta.asset_id.slice(0, 8)} external_path=${meta.external_path} mtime=${meta.external_mtime} auto_reload=${meta.auto_reload}`);
+      hlog(`meta for ${assetId.slice(0, 8)}: path="${meta.path}" external_path=${meta.external_path} mtime=${meta.external_mtime} auto_reload=${meta.auto_reload}`);
       const effective = effectiveAutoReload(meta.auto_reload, presOverride, globalAutoReload);
       if (!effective) {
         hlog(`skip — auto_reload resolves to OFF (per-asset='${meta.auto_reload ?? 'default'}', per-pres='${presOverride ?? 'default'}', global=${globalAutoReload})`);
@@ -129,8 +113,8 @@ export function useAssetFileWatcher(
       }
 
       const registry = getWatcherRegistry(projectId, dirname(projectPath));
-      const origPath = meta.path ?? assetPath ?? meta.asset_id;
-      const effectiveMime = meta.mime_type ?? mimeType;
+      const origPath = meta.path ?? meta.asset_id;
+      const effectiveMime = meta.mime_type ?? 'application/octet-stream';
       await registry.addRef(meta.external_path, meta.asset_id, elementId, origPath, effectiveMime);
       registeredExternalRel = meta.external_path;
       registeredAssetId = meta.asset_id;
@@ -143,5 +127,5 @@ export function useAssetFileWatcher(
         registry.removeRef(registeredExternalRel, registeredAssetId, elementId);
       }
     };
-  }, [assetPath, assetId, elementId, mimeType, projectPath, projectId, globalAutoReload, presOverride, refetchKey]);
+  }, [assetId, elementId, projectPath, projectId, globalAutoReload, presOverride, refetchKey]);
 }

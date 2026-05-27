@@ -1,123 +1,108 @@
 /**
- * Manages blob URLs for assets stored in SQLite.
- * Loads via db_get_asset_by_id when an assetId is known (unambiguous),
- * otherwise via db_get_asset by path label (legacy + fallback). Creates
- * blob URLs so iframes/images render without filesystem access.
- *
- * Cache key is `assetId ?? path`: when two distinct assets share a path
- * label, the assetId disambiguates them. Legacy elements without an
- * assetId still resolve via path; renderer behavior matches what it was
- * before assetId existed for those.
+ * Manages blob URLs for assets stored in SQLite. Everything is keyed by
+ * `assetId` — the element type carries the binding, the renderer hooks
+ * resolve bytes via `db_get_asset_by_id`. No path-fallback lookup.
  */
 
 import { useState, useEffect } from 'react';
-import { invoke, convertFileSrc } from '@tauri-apps/api/core';
-import { usePresentationStore } from '../store/presentation';
+import { invoke } from '@tauri-apps/api/core';
 
-// Cache: `assetId ?? path` -> blob URL (without hash). Two consumers
-// holding the same asset_id share one blob URL even if they got it by
-// different paths or both lacked a path.
+// Cache: assetId -> blob URL (without hash).
 const blobCache = new Map<string, string>();
+// Cache: assetId -> MIME type, learned from db_get_asset_meta_by_id on
+// first fetch. Used so blob URLs have the right `type` and the browser
+// dispatches the right rendering pipeline.
+const mimeCache = new Map<string, string>();
 
-/** Guess MIME type from file extension */
-function mimeFromPath(path: string): string {
-  const ext = path.split('.').pop()?.toLowerCase() || '';
-  const map: Record<string, string> = {
-    html: 'text/html', htm: 'text/html',
-    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
-    gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp',
-  };
-  return map[ext] || 'application/octet-stream';
+async function fetchMime(assetId: string): Promise<string> {
+  const cached = mimeCache.get(assetId);
+  if (cached) return cached;
+  try {
+    const meta = await invoke<{ mime_type: string | null } | null>(
+      'db_get_asset_meta_by_id', { assetId },
+    );
+    const mime = meta?.mime_type || 'application/octet-stream';
+    mimeCache.set(assetId, mime);
+    return mime;
+  } catch {
+    return 'application/octet-stream';
+  }
 }
 
-/** Load an asset from SQLite and return a blob URL. Uses a cache.
- *
- * Prefers `assetId` when set (unambiguous DB lookup); falls back to
- * `assetPath` (path-label lookup) for legacy elements without a binding.
- */
-export async function getAssetUrl(assetPath: string, hash?: string, assetId?: string): Promise<string | undefined> {
-  const key = assetId ?? assetPath;
-  let blobUrl = blobCache.get(key);
+/** Load an asset from SQLite and return a blob URL. Uses a cache. */
+export async function getAssetUrl(
+  assetId: string | undefined,
+  hash?: string,
+): Promise<string | undefined> {
+  if (!assetId) return undefined;
+  let blobUrl = blobCache.get(assetId);
   if (!blobUrl) {
     try {
-      const data = assetId
-        ? await invoke<number[]>('db_get_asset_by_id', { assetId })
-        : await invoke<number[]>('db_get_asset', { path: assetPath });
-      const blob = new Blob([new Uint8Array(data)], { type: mimeFromPath(assetPath) });
+      const [data, mime] = await Promise.all([
+        invoke<number[]>('db_get_asset_by_id', { assetId }),
+        fetchMime(assetId),
+      ]);
+      const blob = new Blob([new Uint8Array(data)], { type: mime });
       blobUrl = URL.createObjectURL(blob);
-      blobCache.set(key, blobUrl);
+      blobCache.set(assetId, blobUrl);
     } catch {
-      // Fallback: try filesystem via convertFileSrc
-      const projectPath = usePresentationStore.getState().projectPath;
-      if (projectPath) {
-        try {
-          blobUrl = convertFileSrc(`${projectPath}/${assetPath}`);
-        } catch { /* ignore */ }
-      }
+      return undefined;
     }
   }
-  if (!blobUrl) return undefined;
   return hash ? `${blobUrl}#${hash}` : blobUrl;
 }
 
 /** React hook: load an asset from SQLite as a blob URL.
  *
  * Listens for `eigendeck:asset-changed` (fired by invalidateRenderedAsset
- * after the file watcher reloads an asset) and matches on assetId when
- * set, falling back to path match for legacy elements. Drops the cached
- * blob URL on match and re-fetches so the live `<img>` picks up new
- * bytes.
+ * after the file watcher reloads an asset). Drops the cached blob URL
+ * on assetId match and re-fetches so the live `<img>` picks up new bytes.
  */
-export function useAssetUrl(assetPath: string | undefined, hash?: string, assetId?: string): string | undefined {
-  const cacheKey = assetId ?? assetPath;
+export function useAssetUrl(
+  assetId: string | undefined,
+  hash?: string,
+): string | undefined {
   const [url, setUrl] = useState<string | undefined>(() => {
-    if (!cacheKey) return undefined;
-    const cached = blobCache.get(cacheKey);
+    if (!assetId) return undefined;
+    const cached = blobCache.get(assetId);
     return cached ? (hash ? `${cached}#${hash}` : cached) : undefined;
   });
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (!assetPath && !assetId) return;
+    if (!assetId) return;
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { path?: string; assetId?: string } | undefined;
-      // Prefer assetId match; fall back to path match for backwards-compat events.
-      const matches = assetId && detail?.assetId
-        ? detail.assetId === assetId
-        : detail?.path === assetPath;
-      if (matches) {
-        invalidateAsset(assetPath ?? '', assetId);
+      const detail = (e as CustomEvent).detail as { assetId?: string } | undefined;
+      if (detail?.assetId === assetId) {
+        invalidateAsset(assetId);
         setRefreshKey((k) => k + 1);
       }
     };
     window.addEventListener('eigendeck:asset-changed', handler);
     return () => window.removeEventListener('eigendeck:asset-changed', handler);
-  }, [assetPath, assetId]);
+  }, [assetId]);
 
   useEffect(() => {
-    if (!assetPath) { setUrl(undefined); return; }
-    getAssetUrl(assetPath, hash, assetId).then(setUrl);
-  }, [assetPath, hash, assetId, refreshKey]);
+    if (!assetId) { setUrl(undefined); return; }
+    getAssetUrl(assetId, hash).then(setUrl);
+  }, [assetId, hash, refreshKey]);
 
   return url;
 }
 
-// Convenience aliases
+// Convenience aliases (demos use the same machinery, just with a hash
+// for piece routing).
 export const useDemoUrl = useAssetUrl;
 export const getDemoUrl = getAssetUrl;
 
-/** Invalidate a specific cached asset (e.g. after re-import).
- *  Invalidates by both assetId and path keys so listeners using either
- *  resolution path see the change. */
-export function invalidateAsset(assetPath: string, assetId?: string) {
-  for (const key of [assetId, assetPath]) {
-    if (!key) continue;
-    const old = blobCache.get(key);
-    if (old) {
-      URL.revokeObjectURL(old);
-      blobCache.delete(key);
-    }
+/** Invalidate a specific cached asset (e.g. after re-import). */
+export function invalidateAsset(assetId: string) {
+  const old = blobCache.get(assetId);
+  if (old) {
+    URL.revokeObjectURL(old);
+    blobCache.delete(assetId);
   }
+  mimeCache.delete(assetId);
 }
 
 /** Clean up all cached blob URLs (call on project close) */
@@ -126,4 +111,5 @@ export function clearAssetCache() {
     URL.revokeObjectURL(url);
   }
   blobCache.clear();
+  mimeCache.clear();
 }

@@ -98,21 +98,14 @@ export interface TextElement extends BaseElement {
 
 export interface ImageElement extends BaseElement {
   type: 'image';
-  src: string;
   /**
-   * Stable asset_id (UUID) the element binds to. Set on insertion from
-   * db_store_asset's return value. When absent (legacy elements), the
-   * renderer / watcher falls back to looking up the most recent asset
-   * with matching `src` path label. Backfilled on project load — see
-   * backfillElementAssetIds in src/store/presentation.ts.
-   *
-   * Why this exists: `src` is just a human-readable path label and is
-   * NOT unique — two distinct assets can legitimately share a path (e.g.
-   * Import-as-new on a collision). With assetId, each element binds to
-   * one specific asset and stays correct even when other assets share
-   * its src.
+   * Stable asset_id (UUID) binding. Single source of truth for which
+   * asset this element renders — display path comes from asset.path
+   * via lookup, never lives on the element. Set at insert time from
+   * db_store_asset; legacy elements without assetId are backfilled
+   * at schema-migration time (Rust path-lookup in storage.rs).
    */
-  assetId?: string;
+  assetId: string;
   shadow?: boolean;
   borderRadius?: number;
   opacity?: number;
@@ -148,19 +141,16 @@ export interface ArrowElement extends BaseElement {
 
 export interface DemoElement extends BaseElement {
   type: 'demo';
-  src: string;
-  /** Same semantic as ImageElement.assetId — stable asset_id binding;
-   *  fall back to src lookup when absent. */
-  assetId?: string;
+  /** Stable asset_id binding — see ImageElement.assetId. */
+  assetId: string;
 }
 
 export interface DemoPieceElement extends BaseElement {
   type: 'demo-piece';
-  demoSrc: string;
   piece: string;
   demoState?: Record<string, unknown>;
-  /** Same semantic as ImageElement.assetId — stable asset_id binding. */
-  assetId?: string;
+  /** Stable asset_id binding — see ImageElement.assetId. */
+  assetId: string;
 }
 
 export interface CoverElement extends BaseElement {

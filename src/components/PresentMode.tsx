@@ -203,18 +203,16 @@ export function PresentMode() {
               />
             ))}
 
-            {/* Hidden controller iframes for demo-piece elements.
-                Dedup by assetId when set (Import-as-new safe), else
-                demoSrc path label for legacy elements. */}
+            {/* Hidden controller iframes for demo-piece elements,
+                deduped by assetId. */}
             {(() => {
-              const controllers = new Map<string, { demoSrc: string; assetId?: string }>();
+              const controllers = new Set<string>();
               for (const el of slide.elements) {
                 if (el.type !== 'demo-piece') continue;
-                const key = el.assetId ?? el.demoSrc;
-                if (!controllers.has(key)) controllers.set(key, { demoSrc: el.demoSrc, assetId: el.assetId });
+                controllers.add(el.assetId);
               }
-              return Array.from(controllers.entries()).map(([key, { demoSrc, assetId }]) => (
-                <PresentControllerIframe key={`controller-${key}`} assetPath={demoSrc} assetId={assetId} />
+              return Array.from(controllers).map((assetId) => (
+                <PresentControllerIframe key={`controller-${assetId}`} assetId={assetId} />
               ));
             })()}
 
@@ -313,10 +311,10 @@ function PresentElement({ element: el, zIndex, style }: {
       return <PresentImage element={el} zIndex={zIndex} style={style} />;
 
     case 'demo':
-      return <PresentDemoIframe assetPath={el.src} assetId={el.assetId} pos={pos} zIndex={zIndex} style={style} />;
+      return <PresentDemoIframe assetId={el.assetId} pos={pos} zIndex={zIndex} style={style} />;
 
     case 'demo-piece':
-      return <PresentDemoIframe assetPath={el.demoSrc} assetId={el.assetId} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} style={style} />;
+      return <PresentDemoIframe assetId={el.assetId} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} style={style} />;
 
     case 'cover':
       return (
@@ -444,9 +442,8 @@ function PresentImage({ element: el, zIndex, style }: {
   element: Extract<SlideElement, { type: 'image' }>; zIndex: number; style?: React.CSSProperties;
 }) {
   const pos = el.position;
-  const assetSrc = el.src.startsWith('data:') ? undefined : el.src;
-  const blobUrl = useAssetUrl(assetSrc, undefined, el.assetId);
-  const src = el.src.startsWith('data:') ? el.src : (blobUrl || el.src);
+  const src = useAssetUrl(el.assetId);
+  if (!src) return null;
   return (
     <img src={src} alt="" style={{
       position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
@@ -460,12 +457,12 @@ function PresentImage({ element: el, zIndex, style }: {
   );
 }
 
-function PresentDemoIframe({ assetPath, assetId, hash, title, pos, zIndex, style }: {
-  assetPath: string; assetId?: string; hash?: string; title?: string;
+function PresentDemoIframe({ assetId, hash, title, pos, zIndex, style }: {
+  assetId: string; hash?: string; title?: string;
   pos: { x: number; y: number; width: number; height: number };
   zIndex: number; style?: React.CSSProperties;
 }) {
-  const src = useDemoUrl(assetPath, hash, assetId);
+  const src = useDemoUrl(assetId, hash);
   if (!src) return null;
   return (
     <iframe src={src} sandbox="allow-scripts allow-same-origin" title={title || 'demo'} style={{
@@ -476,14 +473,14 @@ function PresentDemoIframe({ assetPath, assetId, hash, title, pos, zIndex, style
   );
 }
 
-function PresentControllerIframe({ assetPath, assetId }: { assetPath: string; assetId?: string }) {
-  const src = useDemoUrl(assetPath, 'role=controller', assetId);
+function PresentControllerIframe({ assetId }: { assetId: string }) {
+  const src = useDemoUrl(assetId, 'role=controller');
   if (!src) return null;
   return (
     <iframe
       src={src}
       sandbox="allow-scripts allow-same-origin"
-      title={`controller: ${assetPath}`}
+      title={`controller: ${assetId.slice(0, 8)}`}
       style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }}
     />
   );

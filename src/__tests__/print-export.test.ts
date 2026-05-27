@@ -5,7 +5,6 @@ import type { Slide } from '../types/presentation';
 function makeSlide(overrides: Partial<Slide> = {}): Slide {
   return {
     id: 'test-slide',
-    layout: 'default',
     notes: '',
     elements: [],
     ...overrides,
@@ -63,26 +62,26 @@ describe('renderSlideForPrint', () => {
     expect(html).toContain('justify-content:center');
   });
 
-  it('renders image with data URL', () => {
+  it('renders image from cache (keyed by assetId)', () => {
+    const cache = new Map([['asset-A', 'data:image/png;base64,cached']]);
     const html = renderSlideForPrint(makeSlide({
       elements: [{
-        id: 'e1', type: 'image', src: 'data:image/png;base64,abc',
-        position: { x: 100, y: 100, width: 400, height: 300 },
-      }],
-    }), 'white', emptyCache);
-    expect(html).toContain('data:image/png;base64,abc');
-    expect(html).toContain('object-fit:contain');
-  });
-
-  it('renders image from cache', () => {
-    const cache = new Map([['images/photo.png', 'data:image/png;base64,cached']]);
-    const html = renderSlideForPrint(makeSlide({
-      elements: [{
-        id: 'e1', type: 'image', src: 'images/photo.png',
+        id: 'e1', type: 'image', assetId: 'asset-A',
         position: { x: 100, y: 100, width: 400, height: 300 },
       }],
     }), 'white', cache);
     expect(html).toContain('data:image/png;base64,cached');
+    expect(html).toContain('object-fit:contain');
+  });
+
+  it('skips image with no cached entry (no element rendered)', () => {
+    const html = renderSlideForPrint(makeSlide({
+      elements: [{
+        id: 'e1', type: 'image', assetId: 'asset-missing',
+        position: { x: 100, y: 100, width: 400, height: 300 },
+      }],
+    }), 'white', emptyCache);
+    expect(html).not.toContain('<img');
   });
 
   it('renders arrow', () => {
@@ -113,7 +112,7 @@ describe('renderSlideForPrint', () => {
   it('renders demo placeholder', () => {
     const html = renderSlideForPrint(makeSlide({
       elements: [{
-        id: 'e1', type: 'demo', src: 'demos/test.html',
+        id: 'e1', type: 'demo', assetId: 'asset-demo',
         position: { x: 80, y: 200, width: 1760, height: 700 },
       }],
     }), 'white', emptyCache);
@@ -124,7 +123,7 @@ describe('renderSlideForPrint', () => {
   it('renders demo-piece placeholder', () => {
     const html = renderSlideForPrint(makeSlide({
       elements: [{
-        id: 'e1', type: 'demo-piece', demoSrc: 'demos/test.html', piece: 'graph',
+        id: 'e1', type: 'demo-piece', assetId: 'asset-demo', piece: 'graph',
         position: { x: 80, y: 200, width: 800, height: 600 },
       }],
     }), 'white', emptyCache);
@@ -132,28 +131,30 @@ describe('renderSlideForPrint', () => {
   });
 
   it('has balanced div tags', () => {
+    const cache = new Map([['asset-x', 'data:image/png;base64,x']]);
     const html = renderSlideForPrint(makeSlide({
       elements: [
         { id: 'e1', type: 'text', preset: 'title', html: '<div style="text-align:center;">Title</div>', position: { x: 80, y: 20, width: 1760, height: 200 }, verticalAlign: 'bottom' },
         { id: 'e2', type: 'text', preset: 'body', html: 'Body', position: { x: 80, y: 215, width: 1760, height: 765 }, verticalAlign: 'middle' },
-        { id: 'e3', type: 'image', src: 'data:image/png;base64,x', position: { x: 100, y: 100, width: 200, height: 200 } },
+        { id: 'e3', type: 'image', assetId: 'asset-x', position: { x: 100, y: 100, width: 200, height: 200 } },
         { id: 'e4', type: 'cover', position: { x: 0, y: 0, width: 100, height: 100 } },
-        { id: 'e5', type: 'demo', src: 'test.html', position: { x: 0, y: 0, width: 100, height: 100 } },
+        { id: 'e5', type: 'demo', assetId: 'asset-demo', position: { x: 0, y: 0, width: 100, height: 100 } },
       ],
-    }), 'white', emptyCache);
+    }), 'white', cache);
     const { opens, closes } = countTag(html, 'div');
     expect(opens).toBe(closes);
   });
 
   it('renders multiple element types without breaking HTML', () => {
+    const cache = new Map([['asset-x', 'data:image/png;base64,x']]);
     const html = renderSlideForPrint(makeSlide({
       elements: [
         { id: 'e1', type: 'text', preset: 'title', html: 'Title', position: { x: 80, y: 20, width: 1760, height: 200 } },
         { id: 'e2', type: 'text', preset: 'body', html: 'Body', position: { x: 80, y: 215, width: 1760, height: 765 } },
         { id: 'e3', type: 'arrow', x1: 100, y1: 100, x2: 500, y2: 300, position: { x: 0, y: 0, width: 0, height: 0 } },
-        { id: 'e4', type: 'image', src: 'data:image/png;base64,x', position: { x: 100, y: 500, width: 200, height: 200 } },
+        { id: 'e4', type: 'image', assetId: 'asset-x', position: { x: 100, y: 500, width: 200, height: 200 } },
       ],
-    }), 'dark', emptyCache);
+    }), 'dark', cache);
     expect(html).toContain('Title');
     expect(html).toContain('Body');
     expect(html).toContain('<svg');

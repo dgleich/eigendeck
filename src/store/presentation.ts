@@ -610,7 +610,8 @@ export async function flushToSqlite(): Promise<void> {
         // Strip the promoted columns (linkId, assetId) and the sync-related
         // metadata from the JSON `data` blob — they're stored as their own
         // columns and reassembled into the JSON by db_export_json.
-        const { linkId, syncId, _syncId, _linkId, assetId, ...data } = info.element as any;
+        const { linkId, syncId, _syncId, _linkId, assetId, src, demoSrc, ...data } = info.element as any;
+        void src; void syncId; void demoSrc;  // intentionally dropped from data JSON
         await invoke('db_add_element', {
           slideId: info.slideId,
           elementId: info.element.id,
@@ -639,7 +640,8 @@ export async function flushToSqlite(): Promise<void> {
           // Same strip as the add-element path: promoted columns
           // (linkId, assetId) and sync-related metadata don't go into
           // the JSON blob.
-          const { linkId, syncId, _syncId, _linkId, assetId, ...data } = el as any;
+          const { linkId, syncId, _syncId, _linkId, assetId, src, demoSrc, ...data } = el as any;
+          void src; void syncId; void demoSrc;  // intentionally dropped from data JSON
           await invoke('db_update_element', {
             id: elementId,
             data: JSON.stringify(data),
@@ -754,14 +756,6 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     const json = await invoke<string>('db_export_json');
     const presentation: Presentation = JSON.parse(json);
 
-    // Backfill assetId for legacy image/demo elements (mutates in place
-    // before setPresentation so the load is a single state update).
-    // Returns the element IDs that got assetIds — we explicitly mark
-    // them dirty below so the next save persists them. Without this
-    // every reload re-runs the backfill from scratch (DB never gets
-    // the assetIds written).
-    const backfilledElementIds = await backfillElementAssetIds(presentation);
-
     const store = usePresentationStore.getState();
     store.setPresentation(presentation);
     store.setProjectPath(dbPath.replace(/\.eigendeck$/, ''));
@@ -772,16 +766,6 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
 
     // Enable write-through for the new project
     sqliteDbPath = dbPath;
-
-    // Mark backfilled elements dirty so the next save (manual Cmd+S or
-    // autosave) writes their new assetId field into the DB. The
-    // subscriber diff can't detect these — we mutated the JSON before
-    // setPresentation, and prevPresentation got set to the post-
-    // backfill state — so we must mark them explicitly.
-    if (backfilledElementIds.length > 0) {
-      for (const id of backfilledElementIds) markElementDirty(id);
-      scheduleFlush();
-    }
 
     // Warm the math-SVG cache so previously-rendered expressions don't
     // re-render through the iframe pool on first slide paint.
@@ -807,70 +791,6 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     console.error('Failed to open SQLite project:', e);
     throw e;
   }
-}
-
-/**
- * One-time per-load backfill: walk every image/demo/demo-piece element
- * lacking an `assetId` and resolve it by `src` (or `demoSrc`) path label
- * against the assets table. Most projects will have nothing to backfill
- * after the first save; legacy projects (created before the assetId
- * field landed) get their elements bound to a specific asset_id, which
- * is what makes Import-as-new safe.
- *
- * Dedups by unique path so a deck with 50 instances of one logo only
- * issues one DB lookup. Mutates `presentation` in place. Returns the
- * IDs of elements that received an assetId — the caller is responsible
- * for marking them dirty so the next flushToSqlite persists them. The
- * subscriber diff can't detect these changes (we mutate before
- * setPresentation, and prevPresentation gets set to the already-
- * backfilled state).
- */
-async function backfillElementAssetIds(presentation: Presentation): Promise<string[]> {
-  const paths = new Set<string>();
-  for (const slide of presentation.slides) {
-    for (const el of slide.elements) {
-      const isAsset = el.type === 'image' || el.type === 'demo' || el.type === 'demo-piece';
-      if (!isAsset) continue;
-      const e = el as { assetId?: string; src?: string; demoSrc?: string };
-      if (e.assetId) continue;
-      const path = e.demoSrc ?? e.src;
-      if (path) paths.add(path);
-    }
-  }
-  if (paths.size === 0) return [];
-  const { invoke } = await import('@tauri-apps/api/core');
-  const pathToId = new Map<string, string>();
-  for (const path of paths) {
-    try {
-      const meta = await invoke<{ asset_id: string } | null>('db_get_asset_meta_by_path', { path });
-      if (meta?.asset_id) pathToId.set(path, meta.asset_id);
-    } catch (e) {
-      console.warn(`[backfill] lookup failed for "${path}":`, e);
-    }
-  }
-  const touched: string[] = [];
-  let missing = 0;
-  for (const slide of presentation.slides) {
-    for (const el of slide.elements) {
-      const isAsset = el.type === 'image' || el.type === 'demo' || el.type === 'demo-piece';
-      if (!isAsset) continue;
-      const e = el as { assetId?: string; src?: string; demoSrc?: string };
-      if (e.assetId) continue;
-      const path = e.demoSrc ?? e.src;
-      if (!path) continue;
-      const id = pathToId.get(path);
-      if (id) {
-        e.assetId = id;
-        touched.push(el.id);
-      } else {
-        missing++;
-      }
-    }
-  }
-  if (touched.length > 0 || missing > 0) {
-    console.log(`[backfill] backfilled=${touched.length} missing=${missing} (unique paths: ${paths.size})`);
-  }
-  return touched;
 }
 
 /** Close the SQLite DB, checkpointing WAL + tearing down file watchers. */

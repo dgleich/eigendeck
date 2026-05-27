@@ -682,8 +682,11 @@ pub fn db_import_json(json: String) -> Result<(), String> {
 
                         if !inserted_elements.contains(&element_id) {
                             // Clean the data: strip the JSON-side copies of
-                            // fields that are stored as their own columns.
-                            // db_export_json reassembles them on the way out.
+                            // fields that are stored as their own columns,
+                            // plus src/demoSrc (phase-4: dropped from the
+                            // element type — asset binding is purely via
+                            // asset_id; path comes from asset.path).
+                            // db_export_json reassembles linkId/assetId.
                             let mut data = el.clone();
                             if let Some(obj) = data.as_object_mut() {
                                 obj.remove("syncId");
@@ -691,6 +694,8 @@ pub fn db_import_json(json: String) -> Result<(), String> {
                                 obj.remove("_linkId");
                                 obj.remove("linkId");
                                 obj.remove("assetId");
+                                obj.remove("src");
+                                obj.remove("demoSrc");
                             }
 
                             tx.execute(

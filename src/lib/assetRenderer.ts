@@ -29,33 +29,24 @@ import {
  * same (sourceId, variant, maxWidth, maxHeight) hit consistently.
  */
 export async function renderAsset(opts: {
-  /** Cache identity. When the caller has an asset_id, pass it here so the
-   *  cache row is per-asset (collision-safe). Otherwise pass the path label
-   *  (legacy fallback; one cache slot per path, may be wrong when two
-   *  assets share a path label). */
-  sourceId: string;
-  /** When set, fetch source bytes via db_get_asset_by_id instead of by
-   *  path label. Required when sourceId is an asset_id (UUID), which
-   *  db_get_asset wouldn't recognize as a path. */
-  assetId?: string;
+  /** Stable asset_id binding — the cache row keys off this. */
+  assetId: string;
   kind: AssetKind;
   variant?: string;
   /** Maximum width of the rendered PNG — actual output may be narrower. */
   maxWidth: number;
   /** Maximum height of the rendered PNG — actual output may be shorter. */
   maxHeight: number;
-  /** Optional pre-fetched source bytes (skips the db_get_asset round-trip). */
+  /** Optional pre-fetched source bytes (skips the db_get_asset_by_id round-trip). */
   preFetchedBytes?: Uint8Array;
 }): Promise<string> {
-  const { sourceId, assetId, kind, variant = '_', maxWidth, maxHeight, preFetchedBytes } = opts;
+  const { assetId, kind, variant = '_', maxWidth, maxHeight, preFetchedBytes } = opts;
 
-  const cached = await getAssetCache(sourceId, variant, maxWidth, maxHeight);
+  const cached = await getAssetCache(assetId, variant, maxWidth, maxHeight);
   if (cached) return pngBytesToBlobUrl(cached.png);
 
   const bytes = preFetchedBytes
-    ?? (assetId
-      ? new Uint8Array(await invoke<number[]>('db_get_asset_by_id', { assetId }))
-      : new Uint8Array(await invoke<number[]>('db_get_asset', { path: sourceId })));
+    ?? new Uint8Array(await invoke<number[]>('db_get_asset_by_id', { assetId }));
 
   let png: Uint8Array;
   switch (kind) {
@@ -73,7 +64,7 @@ export async function renderAsset(opts: {
     }
   }
 
-  await putAssetCache(sourceId, variant, maxWidth, maxHeight, png, null);
+  await putAssetCache(assetId, variant, maxWidth, maxHeight, png, null);
   return pngBytesToBlobUrl(Array.from(png) as number[]);
 }
 
@@ -267,22 +258,19 @@ export async function inlineSvgExternalRefsFromDisk(
  * + re-render without requiring a manual UI refresh. Also clears the
  * SQLite asset_cache PNG rows that were derived from the old bytes.
  */
-export async function invalidateRenderedAsset(sourceId: string, assetId?: string): Promise<void> {
+export async function invalidateRenderedAsset(assetId: string): Promise<void> {
   try {
     const { invoke } = await import('@tauri-apps/api/core');
-    await invoke('db_clear_asset_cache', { sourceId });
+    await invoke('db_clear_asset_cache', { sourceId: assetId });
   } catch { /* best-effort */ }
-  // Also drop the legacy demoAssets blob cache so any consumer using
-  // useAssetUrl / getAssetUrl (editor canvas's ImageBox, etc.) re-fetches
-  // the new bytes instead of handing out the stale URL. The custom event
-  // below still fires for hook-based listeners.
+  // Also drop the demoAssets blob cache so any consumer using useAssetUrl
+  // / getAssetUrl re-fetches the new bytes instead of handing out a stale
+  // URL. The custom event below still fires for hook-based listeners.
   try {
     const { invalidateAsset } = await import('./demoAssets');
-    invalidateAsset(sourceId, assetId);
+    invalidateAsset(assetId);
   } catch { /* best-effort */ }
-  // Carry both keys so listeners can match by assetId (preferred when set)
-  // or by path (fallback for legacy elements without an assetId binding).
-  window.dispatchEvent(new CustomEvent('eigendeck:asset-changed', { detail: { path: sourceId, assetId } }));
+  window.dispatchEvent(new CustomEvent('eigendeck:asset-changed', { detail: { assetId } }));
 }
 
 /**
@@ -426,42 +414,34 @@ export const SVG_NATIVE_THRESHOLD_BYTES = 200_000;
  * Returns undefined while the first render is in flight.
  */
 export function useRenderedAsset(
-  sourceId: string | undefined,
+  assetId: string | undefined,
   kind: AssetKind | undefined,
   maxWidth: number,
   maxHeight: number,
   variant: string = '_',
-  assetId?: string,
 ): string | undefined {
-  // Cache identity: prefer asset_id when bound (collision-safe); else fall
-  // back to path label (legacy). Same logic as useAssetUrl in demoAssets.
-  const cacheKey = assetId ?? sourceId;
   const [url, setUrl] = useState<string | undefined>(undefined);
   // Bumped by invalidateRenderedAsset() so this hook refetches after the
   // underlying asset bytes change (e.g. embedding external SVG refs).
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (!sourceId && !assetId) return;
+    if (!assetId) return;
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { path?: string; assetId?: string } | undefined;
-      const matches = assetId && detail?.assetId
-        ? detail.assetId === assetId
-        : detail?.path === sourceId;
-      if (matches) setRefreshKey((k) => k + 1);
+      const detail = (e as CustomEvent).detail as { assetId?: string } | undefined;
+      if (detail?.assetId === assetId) setRefreshKey((k) => k + 1);
     };
     window.addEventListener('eigendeck:asset-changed', handler);
     return () => window.removeEventListener('eigendeck:asset-changed', handler);
-  }, [sourceId, assetId]);
+  }, [assetId]);
 
   useEffect(() => {
-    if (!cacheKey || !kind) { setUrl(undefined); return; }
+    if (!assetId || !kind) { setUrl(undefined); return; }
     let cancelled = false;
     let current: string | undefined;
 
-    const fetchBytes = (): Promise<number[]> => assetId
-      ? invoke<number[]>('db_get_asset_by_id', { assetId })
-      : invoke<number[]>('db_get_asset', { path: sourceId });
+    const fetchBytes = (): Promise<number[]> =>
+      invoke<number[]>('db_get_asset_by_id', { assetId });
 
     if (kind === 'svg') {
       // Fetch source bytes once; decide native vs cache by size.
@@ -476,9 +456,9 @@ export function useRenderedAsset(
             setUrl(current);
           } else {
             // Slow path: rasterize once into asset_cache, reuse forever.
-            // preFetchedBytes avoids the second db_get_asset round-trip.
+            // preFetchedBytes avoids the second db_get_asset_by_id round-trip.
             try {
-              const u = await renderAsset({ sourceId: cacheKey, assetId, kind, variant, maxWidth, maxHeight, preFetchedBytes: bytes });
+              const u = await renderAsset({ assetId, kind, variant, maxWidth, maxHeight, preFetchedBytes: bytes });
               if (cancelled) { URL.revokeObjectURL(u); return; }
               current = u;
               setUrl(u);
@@ -489,7 +469,7 @@ export function useRenderedAsset(
         })
         .catch(() => { if (!cancelled) setUrl(undefined); });
     } else {
-      renderAsset({ sourceId: cacheKey, assetId, kind, variant, maxWidth, maxHeight })
+      renderAsset({ assetId, kind, variant, maxWidth, maxHeight })
         .then((u) => {
           if (cancelled) { URL.revokeObjectURL(u); return; }
           current = u;
@@ -502,7 +482,7 @@ export function useRenderedAsset(
       cancelled = true;
       if (current) URL.revokeObjectURL(current);
     };
-  }, [cacheKey, sourceId, assetId, kind, variant, maxWidth, maxHeight, refreshKey]);
+  }, [assetId, kind, variant, maxWidth, maxHeight, refreshKey]);
 
   return url;
 }

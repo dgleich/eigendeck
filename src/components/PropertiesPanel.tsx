@@ -329,7 +329,7 @@ export function PropertiesPanel() {
             {selectedEl.type === 'image' && (
               <>
                 <PropSection label="Asset">
-                  <AssetSection srcPath={selectedEl.src} assetId={(selectedEl as { assetId?: string }).assetId} elementId={selectedEl.id} />
+                  <AssetSection assetId={selectedEl.assetId} elementId={selectedEl.id} />
                 </PropSection>
                 <PropSection label="Effects">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -428,26 +428,32 @@ export function PropertiesPanel() {
 function DemoPieceProperties({ element }: { element: Extract<import('../types/presentation').SlideElement, { type: 'demo-piece' }> }) {
   const { presentation, currentSlideIndex, addElement } = usePresentationStore();
   const [availablePieces, setAvailablePieces] = useState<string[]>([]);
+  const [demoPath, setDemoPath] = useState<string>('');
 
-  // Scan the demo HTML for available pieces (from SQLite asset)
+  // Scan the demo HTML for available pieces; lookup also gives us the
+  // path label for display. Both come from the bound asset.
   useEffect(() => {
     (async () => {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
-        const data = await invoke<number[]>('db_get_asset', { path: element.demoSrc });
+        const [data, meta] = await Promise.all([
+          invoke<number[]>('db_get_asset_by_id', { assetId: element.assetId }),
+          invoke<{ path: string | null } | null>('db_get_asset_meta_by_id', { assetId: element.assetId }),
+        ]);
+        setDemoPath(meta?.path ?? '');
         const html = new TextDecoder().decode(new Uint8Array(data));
         const matches = html.matchAll(/piece\s*===?\s*['"](\w+)['"]/g);
         const pieces = [...new Set([...matches].map((m: RegExpMatchArray) => m[1]))];
         setAvailablePieces(pieces);
       } catch { setAvailablePieces([]); }
     })();
-  }, [element.demoSrc]);
+  }, [element.assetId]);
 
   // Which pieces are already on this slide?
   const slide = presentation.slides[currentSlideIndex];
   const piecesOnSlide = new Set(
     slide.elements
-      .filter((el) => el.type === 'demo-piece' && el.demoSrc === element.demoSrc)
+      .filter((el) => el.type === 'demo-piece' && el.assetId === element.assetId)
       .map((el) => (el as typeof element).piece)
   );
 
@@ -456,7 +462,7 @@ function DemoPieceProperties({ element }: { element: Extract<import('../types/pr
   return (
     <>
       <PropSection label="Demo">
-        <span style={{ fontSize: 11, color: '#999', wordBreak: 'break-all' }}>{element.demoSrc}</span>
+        <span style={{ fontSize: 11, color: '#999', wordBreak: 'break-all' }}>{demoPath}</span>
       </PropSection>
       <PropSection label="Piece">
         <span style={{ fontSize: 12, fontWeight: 600 }}>{element.piece}</span>
@@ -471,7 +477,7 @@ function DemoPieceProperties({ element }: { element: Extract<import('../types/pr
                   addElement({
                     id: crypto.randomUUID(),
                     type: 'demo-piece' as any,
-                    demoSrc: element.demoSrc,
+                    assetId: element.assetId,
                     piece,
                     position: { x: element.position.x + element.position.width + 40, y: element.position.y, width: 500, height: element.position.height },
                   });

@@ -15,7 +15,7 @@ const mockedInvoke = vi.mocked(invoke);
 
 function img(id: string, assetId = 'A'): SlideElement {
   return {
-    id, type: 'image', assetId, src: 'chart.svg',
+    id, type: 'image', assetId,
     position: { x: 0, y: 0, width: 100, height: 100 },
   } as SlideElement;
 }
@@ -46,7 +46,6 @@ function setupHappyInvoke(meta: {
   mockedInvoke.mockImplementation(async (cmd: string) => {
     switch (cmd) {
       case 'db_get_asset_meta_by_id':
-      case 'db_get_asset_meta_by_path':
         return {
           asset_id: meta.asset_id,
           path: 'path' in meta ? meta.path : 'chart.svg',
@@ -93,7 +92,7 @@ describe('AssetSection — mount', () => {
       ]),
     });
 
-    render(<AssetSection srcPath="chart.svg" assetId="A" elementId="e2" />);
+    render(<AssetSection assetId="A" elementId="e2" />);
 
     // Wait for the async meta fetch to settle and the usage caption
     // to render. If the component infinite-loops, React eventually
@@ -112,7 +111,7 @@ describe('AssetSection — mount', () => {
       presentation: deckWith([[img('e1', 'A')]]),
     });
 
-    render(<AssetSection srcPath="chart.svg" assetId="A" elementId="e1" />);
+    render(<AssetSection assetId="A" elementId="e1" />);
 
     await waitFor(() => {
       expect(screen.getByText(/Used on this slide only/i)).toBeInTheDocument();
@@ -128,7 +127,7 @@ describe('AssetSection — mount', () => {
       ]),
     });
 
-    render(<AssetSection srcPath="chart.svg" assetId="A" elementId="e1" />);
+    render(<AssetSection assetId="A" elementId="e1" />);
 
     await waitFor(() => {
       expect(screen.getByText(/Used 3 times on this slide/i)).toBeInTheDocument();
@@ -145,7 +144,7 @@ describe('AssetSection — mount', () => {
       ]),
     });
 
-    render(<AssetSection srcPath="chart.svg" assetId="A" elementId="e1" />);
+    render(<AssetSection assetId="A" elementId="e1" />);
 
     await waitFor(() => {
       expect(screen.getByText(/Used 3 times across 2 slides/i)).toBeInTheDocument();
@@ -159,7 +158,7 @@ describe('AssetSection — mount', () => {
       presentation: deckWith([[img('e1', 'A')]]),
     });
 
-    render(<AssetSection srcPath="chart.svg" assetId="A" elementId="e1" />);
+    render(<AssetSection assetId="A" elementId="e1" />);
     await waitFor(() => {
       expect(screen.getByText('(unnamed)')).toBeInTheDocument();
     });
@@ -167,7 +166,7 @@ describe('AssetSection — mount', () => {
 
   it('does not render asset controls when meta lookup returns null', async () => {
     mockedInvoke.mockImplementation(async (cmd: string) => {
-      if (cmd === 'db_get_asset_meta_by_id' || cmd === 'db_get_asset_meta_by_path') return null;
+      if (cmd === 'db_get_asset_meta_by_id') return null;
       if (cmd === 'db_get_asset_history') return [];
       return null;
     });
@@ -176,7 +175,7 @@ describe('AssetSection — mount', () => {
       presentation: deckWith([[img('e1', 'A')]]),
     });
 
-    render(<AssetSection srcPath="chart.svg" assetId="A" elementId="e1" />);
+    render(<AssetSection assetId="A" elementId="e1" />);
 
     await waitFor(() => {
       expect(screen.getByText(/Not yet stored/i)).toBeInTheDocument();

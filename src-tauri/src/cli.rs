@@ -288,12 +288,12 @@ fn cmd_outline() -> Result<(), String> {
                         }
                     }
                     "image" => {
-                        let src = el.get("src").and_then(|v| v.as_str()).unwrap_or("?");
-                        println!("    [image: {}]", src);
+                        let label = asset_path_for_element(el);
+                        println!("    [image: {}]", label);
                     }
                     "demo" | "demo-piece" => {
-                        let src = el.get("src").or_else(|| el.get("demoSrc")).and_then(|v| v.as_str()).unwrap_or("?");
-                        println!("    [demo: {}]", src);
+                        let label = asset_path_for_element(el);
+                        println!("    [demo: {}]", label);
                     }
                     _ => {}
                 }
@@ -717,17 +717,16 @@ fn cmd_unpack(db_path: &str, args: &[String]) -> Result<(), String> {
     let json_str = storage::db_export_json()?;
     let p: Value = serde_json::from_str(&json_str).map_err(|e| e.to_string())?;
 
-    // Collect asset paths from elements
-    let mut asset_paths = std::collections::HashSet::new();
+    // Collect (asset_id, path) for every asset referenced by a current
+    // element. Phase 4: paths live on the asset, not the element — go
+    // through assetId and look up the path via storage.
+    let mut asset_ids = std::collections::HashSet::new();
     if let Some(slides) = p.get("slides").and_then(|v| v.as_array()) {
         for s in slides {
             if let Some(els) = s.get("elements").and_then(|v| v.as_array()) {
                 for el in els {
-                    if let Some(src) = el.get("src").and_then(|v| v.as_str()) {
-                        if !src.starts_with("data:") { asset_paths.insert(src.to_string()); }
-                    }
-                    if let Some(src) = el.get("demoSrc").and_then(|v| v.as_str()) {
-                        asset_paths.insert(src.to_string());
+                    if let Some(id) = el.get("assetId").and_then(|v| v.as_str()) {
+                        asset_ids.insert(id.to_string());
                     }
                 }
             }
@@ -735,13 +734,21 @@ fn cmd_unpack(db_path: &str, args: &[String]) -> Result<(), String> {
     }
 
     let mut count = 0;
-    for path in &asset_paths {
+    for asset_id in &asset_ids {
+        let meta = match storage::db_get_asset_meta_by_id(asset_id.clone()) {
+            Ok(Some(m)) => m,
+            Ok(None) => { eprintln!("  Warning: asset {} not found in DB", &asset_id[..8.min(asset_id.len())]); continue; }
+            Err(e) => { eprintln!("  Warning: asset meta lookup failed: {}", e); continue; }
+        };
+        let path = match meta.path.as_deref() {
+            Some(p) => p,
+            None => { eprintln!("  Warning: asset {} has no path label — skipping", &asset_id[..8.min(asset_id.len())]); continue; }
+        };
         let is_demo = path.starts_with("demos/");
         let is_image = path.starts_with("images/");
         if demos_only && !is_demo { continue; }
         if images_only && !is_image { continue; }
-
-        match storage::db_get_asset(path.clone()) {
+        match storage::db_get_asset_by_id(asset_id.clone()) {
             Ok(data) => {
                 let full_path = format!("{}/{}", base_dir, path);
                 let dir = std::path::Path::new(&full_path).parent().unwrap();
@@ -749,11 +756,25 @@ fn cmd_unpack(db_path: &str, args: &[String]) -> Result<(), String> {
                 std::fs::write(&full_path, &data).map_err(|e| e.to_string())?;
                 count += 1;
             }
-            Err(_) => eprintln!("  Warning: asset {} not found in DB", path),
+            Err(_) => eprintln!("  Warning: asset {} bytes not found in DB", path),
         }
     }
     println!("Unpacked {} files to {}", count, base_dir);
     Ok(())
+}
+
+/// Display label for an element's bound asset. Looks up the path via
+/// the assetId column → assets table. Falls back to the (truncated)
+/// assetId when there's no path label, and "?" when the element has
+/// no assetId at all.
+fn asset_path_for_element(el: &Value) -> String {
+    let Some(asset_id) = el.get("assetId").and_then(|v| v.as_str()) else {
+        return "?".to_string();
+    };
+    match storage::db_get_asset_meta_by_id(asset_id.to_string()) {
+        Ok(Some(m)) => m.path.unwrap_or_else(|| format!("(asset {})", &asset_id[..8.min(asset_id.len())])),
+        _ => format!("(asset {})", &asset_id[..8.min(asset_id.len())]),
+    }
 }
 
 // UUID helper (minimal, no external crate)

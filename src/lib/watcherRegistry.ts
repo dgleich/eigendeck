@@ -183,8 +183,8 @@ class WatcherRegistry {
             autoReload: null,
           });
           wlog(`  db_store_asset ok → assetId=${writtenId.slice(0, 8)} (expected ${assetId.slice(0, 8)})`);
-          await invalidateRenderedAsset(path, assetId);
-          wlog(`  invalidateRenderedAsset("${path}", ${assetId.slice(0, 8)}) fired`);
+          await invalidateRenderedAsset(assetId);
+          wlog(`  invalidateRenderedAsset(${assetId.slice(0, 8)}) fired`);
         } catch (e) {
           console.warn(`[watcher] db_store_asset for ${assetId.slice(0, 8)} FAILED:`, e);
         }
@@ -306,7 +306,7 @@ export async function scanForChangedAssets(
           assetId: a.asset_id,
           autoReload: null,
         });
-        await invalidateRenderedAsset(a.path ?? a.asset_id, a.asset_id);
+        await invalidateRenderedAsset(a.asset_id);
         reloaded++;
       } else {
         wlog(`  unchanged ${a.asset_id.slice(0, 8)} path="${a.path}" mtime=${diskMtime}`);

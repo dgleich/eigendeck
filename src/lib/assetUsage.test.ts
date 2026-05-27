@@ -5,33 +5,30 @@ import type { Presentation, Slide, SlideElement } from '../types/presentation';
 // Tiny element factories — only the fields computeAssetUsage looks at
 // matter. Type cast via `as` because the real ImageElement requires
 // more fields (position, etc.) we don't care about here.
-function image(opts: { id?: string; assetId?: string; src?: string } = {}): SlideElement {
+function image(opts: { id?: string; assetId?: string } = {}): SlideElement {
   return {
     id: opts.id ?? 'el-' + Math.random().toString(36).slice(2),
     type: 'image',
-    src: opts.src ?? 'images/x.png',
-    assetId: opts.assetId,
+    assetId: opts.assetId ?? 'A',
     position: { x: 0, y: 0, width: 100, height: 100 },
   } as SlideElement;
 }
 
-function demo(opts: { id?: string; assetId?: string; src?: string } = {}): SlideElement {
+function demo(opts: { id?: string; assetId?: string } = {}): SlideElement {
   return {
     id: opts.id ?? 'el-' + Math.random().toString(36).slice(2),
     type: 'demo',
-    src: opts.src ?? 'demos/x.html',
-    assetId: opts.assetId,
+    assetId: opts.assetId ?? 'A',
     position: { x: 0, y: 0, width: 100, height: 100 },
   } as SlideElement;
 }
 
-function demoPiece(opts: { id?: string; assetId?: string; demoSrc?: string } = {}): SlideElement {
+function demoPiece(opts: { id?: string; assetId?: string } = {}): SlideElement {
   return {
     id: opts.id ?? 'el-' + Math.random().toString(36).slice(2),
     type: 'demo-piece',
-    demoSrc: opts.demoSrc ?? 'demos/x.html',
     piece: 'piece-1',
-    assetId: opts.assetId,
+    assetId: opts.assetId ?? 'A',
     position: { x: 0, y: 0, width: 100, height: 100 },
   } as SlideElement;
 }
@@ -63,13 +60,13 @@ describe('computeAssetUsage', () => {
   // The four label-case scenarios from AssetSection.usageLabel.
 
   it('returns zeros for empty/null presentation', () => {
-    expect(computeAssetUsage(null, 'A', 'p')).toEqual({ elementCount: 0, slideCount: 0, slideNumbers: [] });
-    expect(computeAssetUsage(undefined, 'A', 'p')).toEqual({ elementCount: 0, slideCount: 0, slideNumbers: [] });
+    expect(computeAssetUsage(null, 'A')).toEqual({ elementCount: 0, slideCount: 0, slideNumbers: [] });
+    expect(computeAssetUsage(undefined, 'A')).toEqual({ elementCount: 0, slideCount: 0, slideNumbers: [] });
   });
 
   it('1 copy on 1 slide → 1/1', () => {
     const p = pres([slide([image({ assetId: 'A' })])]);
-    const u = computeAssetUsage(p, 'A', 'images/x.png');
+    const u = computeAssetUsage(p, 'A');
     expect(u.elementCount).toBe(1);
     expect(u.slideCount).toBe(1);
     expect(u.slideNumbers).toEqual([1]);
@@ -77,7 +74,7 @@ describe('computeAssetUsage', () => {
 
   it('2 copies on 1 slide → 2/1 (regression: was counting as 2 slides)', () => {
     const p = pres([slide([image({ assetId: 'A' }), image({ assetId: 'A' })])]);
-    const u = computeAssetUsage(p, 'A', 'images/x.png');
+    const u = computeAssetUsage(p, 'A');
     expect(u.elementCount).toBe(2);
     expect(u.slideCount).toBe(1);
     expect(u.slideNumbers).toEqual([1]);
@@ -88,7 +85,7 @@ describe('computeAssetUsage', () => {
       slide([image({ assetId: 'A' })]),
       slide([image({ assetId: 'A' })]),
     ]);
-    const u = computeAssetUsage(p, 'A', 'images/x.png');
+    const u = computeAssetUsage(p, 'A');
     expect(u.elementCount).toBe(2);
     expect(u.slideCount).toBe(2);
     expect(u.slideNumbers).toEqual([1, 2]);
@@ -99,7 +96,7 @@ describe('computeAssetUsage', () => {
       slide([image({ assetId: 'A' }), image({ assetId: 'A' })]),
       slide([image({ assetId: 'A' })]),
     ]);
-    const u = computeAssetUsage(p, 'A', 'images/x.png');
+    const u = computeAssetUsage(p, 'A');
     expect(u.elementCount).toBe(3);
     expect(u.slideCount).toBe(2);
     expect(u.slideNumbers).toEqual([1, 2]);
@@ -113,42 +110,26 @@ describe('computeAssetUsage', () => {
       ]),
       slide([image({ assetId: 'A' })]),
     ]);
-    const u = computeAssetUsage(p, 'A', null);
+    const u = computeAssetUsage(p, 'A');
     expect(u.elementCount).toBe(2);
     expect(u.slideCount).toBe(2);
   });
 
   it('non-asset elements (text) are ignored', () => {
     const p = pres([slide([image({ assetId: 'A' }), textEl(), textEl()])]);
-    const u = computeAssetUsage(p, 'A', 'images/x.png');
+    const u = computeAssetUsage(p, 'A');
     expect(u.elementCount).toBe(1);
   });
 
-  it('falls back to path matching for legacy elements without assetId', () => {
-    const p = pres([
-      slide([image({ src: 'chart.svg' })]),       // legacy: no assetId
-      slide([image({ assetId: 'A', src: 'chart.svg' })]),  // bound by id
-    ]);
-    const u = computeAssetUsage(p, 'A', 'chart.svg');
-    expect(u.elementCount).toBe(2);  // both count
-    expect(u.slideCount).toBe(2);
-  });
-
-  it('legacy path match does NOT trigger when paths differ', () => {
-    const p = pres([slide([image({ src: 'other.svg' })])]);
-    const u = computeAssetUsage(p, 'A', 'chart.svg');
-    expect(u.elementCount).toBe(0);
-  });
-
-  it('demo elements match via src', () => {
+  it('demo elements match by assetId', () => {
     const p = pres([slide([demo({ assetId: 'A' })])]);
-    const u = computeAssetUsage(p, 'A', 'demos/x.html');
+    const u = computeAssetUsage(p, 'A');
     expect(u.elementCount).toBe(1);
   });
 
-  it('demo-piece elements match via demoSrc (legacy path fallback)', () => {
-    const p = pres([slide([demoPiece({ demoSrc: 'demos/x.html' })])]);
-    const u = computeAssetUsage(p, 'A', 'demos/x.html');
+  it('demo-piece elements match by assetId', () => {
+    const p = pres([slide([demoPiece({ assetId: 'A' })])]);
+    const u = computeAssetUsage(p, 'A');
     expect(u.elementCount).toBe(1);
   });
 
@@ -158,18 +139,15 @@ describe('computeAssetUsage', () => {
       slide([image({ assetId: 'A' })]),  // bound
       slide([textEl()]),                  // only text
     ]);
-    const u = computeAssetUsage(p, 'A', null);
+    const u = computeAssetUsage(p, 'A');
     expect(u.elementCount).toBe(1);
     expect(u.slideCount).toBe(1);
     expect(u.slideNumbers).toEqual([2]);
   });
 
-  it('respects assetId binding even when path also matches another asset (assetId wins)', () => {
-    // Element has explicit assetId=A but src points to chart.svg.
-    // Asking about asset B with path chart.svg → should NOT match
-    // (assetId wins; doesn't fall back to path).
-    const p = pres([slide([image({ assetId: 'A', src: 'chart.svg' })])]);
-    const u = computeAssetUsage(p, 'B', 'chart.svg');
+  it('mismatched assetId never matches (no path fallback)', () => {
+    const p = pres([slide([image({ assetId: 'A' })])]);
+    const u = computeAssetUsage(p, 'B');
     expect(u.elementCount).toBe(0);
   });
 });

@@ -86,7 +86,7 @@ function previewMimeFor(mimeType: string | null | undefined, path: string | null
   return guess[ext] ?? null;
 }
 
-export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string; assetId?: string; elementId?: string }) {
+export function AssetSection({ assetId, elementId }: { assetId: string; elementId?: string }) {
   const projectPath = usePresentationStore((s) => s.projectPath);
   const [meta, setMeta] = useState<AssetMeta | null>(null);
   const [history, setHistory] = useState<AssetVersion[]>([]);
@@ -95,11 +95,7 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
   const presOverride = usePresentationStore((s) => s.presentation?.config?.autoReloadAssets ?? null);
 
   const fetchMeta = useCallback(async () => {
-    // Prefer asset_id lookup when bound (unambiguous when two assets share a path);
-    // fall back to path for legacy elements without an assetId binding.
-    const m = assetId
-      ? await invoke<AssetMeta | null>('db_get_asset_meta_by_id', { assetId }).catch(() => null)
-      : await invoke<AssetMeta | null>('db_get_asset_meta_by_path', { path: srcPath }).catch(() => null);
+    const m = await invoke<AssetMeta | null>('db_get_asset_meta_by_id', { assetId }).catch(() => null);
     setMeta(m);
     if (m) {
       const hist = await invoke<AssetVersion[]>('db_get_asset_history', { assetId: m.asset_id })
@@ -108,23 +104,19 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
     } else {
       setHistory([]);
     }
-  }, [srcPath, assetId]);
+  }, [assetId]);
 
   useEffect(() => { void fetchMeta(); }, [fetchMeta]);
 
   // Refetch on asset-changed (watcher reloads, restore, manual reload).
-  // Match by assetId when both event and binding have one; else by path.
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { path?: string; assetId?: string } | undefined;
-      const matches = assetId && detail?.assetId
-        ? detail.assetId === assetId
-        : detail?.path === srcPath;
-      if (matches) void fetchMeta();
+      const detail = (e as CustomEvent).detail as { assetId?: string } | undefined;
+      if (detail?.assetId === assetId) void fetchMeta();
     };
     window.addEventListener('eigendeck:asset-changed', handler);
     return () => window.removeEventListener('eigendeck:asset-changed', handler);
-  }, [srcPath, assetId, fetchMeta]);
+  }, [assetId, fetchMeta]);
 
   const reloadNow = useCallback(async () => {
     if (!meta?.external_path || !projectPath) return;
@@ -136,7 +128,7 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
       const st = await stat(absPath).catch(() => null);
       const mtime = st?.mtime ? st.mtime.toISOString() : null;
       await invoke('db_store_asset', {
-        path: meta.path ?? srcPath,
+        path: meta.path,
         data: Array.from(bytes),
         mimeType: meta.mime_type ?? 'application/octet-stream',
         externalPath: meta.external_path,
@@ -144,13 +136,13 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
         assetId: meta.asset_id,
         autoReload: null,
       });
-      await invalidateRenderedAsset(meta.path ?? srcPath, meta.asset_id);
+      await invalidateRenderedAsset(meta.asset_id);
     } catch (e) {
       console.warn('[AssetSection] reload failed:', e);
     } finally {
       setReloading(false);
     }
-  }, [meta, projectPath, srcPath]);
+  }, [meta, projectPath]);
 
   /** "Resize to asset" — tighten the element's bounding box around the
    *  currently-rendered image so the box matches the asset's natural
@@ -228,9 +220,9 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
   // previous, triggering an infinite render loop. Crashed the app on
   // Inspector open until this was split.
   const usageCount = usePresentationStore((s) =>
-    meta ? computeAssetUsage(s.presentation, meta.asset_id, meta.path).elementCount : 0);
+    meta ? computeAssetUsage(s.presentation, meta.asset_id).elementCount : 0);
   const slideCount = usePresentationStore((s) =>
-    meta ? computeAssetUsage(s.presentation, meta.asset_id, meta.path).slideCount : 0);
+    meta ? computeAssetUsage(s.presentation, meta.asset_id).slideCount : 0);
 
   // Per-asset auto-reload is now a simple 2-state ('off' | null) — no
   // fork-on-shared, no per-element semantics. The whole asset stops or
@@ -246,7 +238,7 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
     if (!meta) return;
     await invoke('db_set_asset_auto_reload', { assetId: meta.asset_id, value }).catch(() => {});
     window.dispatchEvent(new CustomEvent('eigendeck:asset-changed', {
-      detail: { path: meta.path, assetId: meta.asset_id },
+      detail: { assetId: meta.asset_id },
     }));
     await fetchMeta();
   }, [meta, fetchMeta]);
@@ -260,7 +252,8 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
     if (!meta) return;
     const when = relativeAgo(valid_from) || valid_from;
     if (usageCount > 1) {
-      const fileName = (meta.path ?? srcPath).split('/').pop() ?? (meta.path ?? srcPath);
+      const labelPath = meta.path ?? '(unnamed asset)';
+      const fileName = labelPath.split('/').pop() ?? labelPath;
       const where = slideCount === 1
         ? 'on this slide'
         : `across ${slideCount} slides`;
@@ -272,8 +265,8 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
     await invoke('db_restore_asset_version', { assetId: meta.asset_id, validFrom: valid_from }).catch((e) => {
       console.warn('[AssetSection] restore failed:', e);
     });
-    await invalidateRenderedAsset(meta.path ?? srcPath, meta.asset_id);
-  }, [meta, srcPath, usageCount, slideCount]);
+    await invalidateRenderedAsset(meta.asset_id);
+  }, [meta, usageCount, slideCount]);
 
   if (!meta) {
     return (
@@ -427,7 +420,7 @@ export function AssetSection({ srcPath, assetId, elementId }: { srcPath: string;
           )}
           {history.map((v, i) => (
             <VersionRow key={v.valid_from} version={v} isFirst={i === 0}
-              mimeType={meta.mime_type} path={meta.path ?? srcPath}
+              mimeType={meta.mime_type} path={meta.path ?? ''}
               onRestore={() => restoreVersion(v.valid_from)} />
           ))}
         </div>

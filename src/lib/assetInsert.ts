@@ -192,7 +192,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
     // otherwise effectively reverts current to original).
     ilog(`new bytes match original (original_hash=${original?.hash?.slice(0, 8) ?? 'n/a'} == new_hash=${newHash.slice(0, 8)}) → silent store on existing asset`);
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
-    await invalidateRenderedAsset(args.path, meta.asset_id);
+    await invalidateRenderedAsset(meta.asset_id);
     maybeWarnUnsavedProject(args.externalPath);
     return { assetId, path: args.path, cancelled: false };
   }
@@ -206,18 +206,18 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   if (projectId && acceptedProjects.has(projectId)) {
     ilog(`auto-update previously accepted for project ${projectId.slice(0, 8)} → silent store, no dialog`);
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
-    await invalidateRenderedAsset(args.path, meta.asset_id);
+    await invalidateRenderedAsset(meta.asset_id);
     maybeWarnUnsavedProject(args.externalPath);
     return { assetId, path: args.path, cancelled: false };
   }
 
-  const slidesUsing = findSlidesUsingAsset(meta.asset_id, args.path);
+  const slidesUsing = findSlidesUsingAsset(meta.asset_id);
   ilog(`asset used on slides: ${slidesUsing.length === 0 ? '(none — orphan)' : slidesUsing.join(', ')}`);
   if (slidesUsing.length === 0) {
     // Orphan: asset has versions but no element references it. No
     // surprise to surface. Store a new version of the orphan.
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
-    await invalidateRenderedAsset(args.path, meta.asset_id);
+    await invalidateRenderedAsset(meta.asset_id);
     return { assetId, path: args.path, cancelled: false };
   }
 
@@ -247,7 +247,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
     // useAssetUrl; without invalidation they keep showing stale until
     // next reload.
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
-    await invalidateRenderedAsset(args.path, meta.asset_id);
+    await invalidateRenderedAsset(meta.asset_id);
     ilog(`accept: stored on existing asset_id=${meta.asset_id.slice(0, 8)} + invalidated cache`);
     maybeWarnUnsavedProject(args.externalPath);
     return { assetId, path: args.path, cancelled: false };
@@ -275,7 +275,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
     assetId: meta.asset_id,
     validFrom: original.valid_from,
   }).catch((e) => { console.warn('[insert] revert failed:', e); });
-  await invalidateRenderedAsset(args.path, meta.asset_id);
+  await invalidateRenderedAsset(meta.asset_id);
 
   const newAssetId = crypto.randomUUID();
   ilog(`revert: creating NEW asset_id=${newAssetId.slice(0, 8)} at path="${args.path}" with new bytes (link preserved)`);
@@ -313,7 +313,7 @@ async function sha256Hex(bytes: Uint8Array): Promise<string> {
 
 /** Thin wrapper for the old call-site: returns just the slide numbers
  *  for showing in the collision dialog ("used on slides 2, 4, 7"). */
-function findSlidesUsingAsset(assetId: string, path: string): number[] {
+function findSlidesUsingAsset(assetId: string): number[] {
   const pres = usePresentationStore.getState().presentation;
-  return computeAssetUsage(pres, assetId, path).slideNumbers;
+  return computeAssetUsage(pres, assetId).slideNumbers;
 }

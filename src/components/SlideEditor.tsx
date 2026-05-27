@@ -178,7 +178,7 @@ export function SlideEditor() {
     const insertPastedAsset = async (
       relativePath: string, bytes: Uint8Array, mime: string, fileName: string,
     ): Promise<void> => {
-      let assetId: string | undefined;
+      let assetId: string;
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         // Paste: no source-on-disk path; pass null for externalPath so the
@@ -186,11 +186,11 @@ export function SlideEditor() {
         assetId = await invoke<string>('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime, externalPath: null, externalMtime: null });
       } catch (e) {
         console.error('Failed to store pasted image:', e);
+        return;
       }
       const kind = detectAssetKind(fileName, mime);
       addElement({
         id: crypto.randomUUID(), type: 'image',
-        src: relativePath,
         assetId,
         kind,
         position: { x: 360, y: 200, width: 1200, height: 680 },
@@ -373,7 +373,7 @@ export function SlideEditor() {
             externalPath: null, externalMtime: null,
           });
           store.addElement({
-            id: crypto.randomUUID(), type: 'image', src: relativePath, assetId, kind,
+            id: crypto.randomUUID(), type: 'image', assetId, kind,
             position: { x: 360, y: 200, width: 1200, height: 680 },
           });
           // No unsaved-warning toast: native pasteboard drag stores with
@@ -410,7 +410,7 @@ export function SlideEditor() {
         externalPath: null, externalMtime: null,
       });
       store.addElement({
-        id: crypto.randomUUID(), type: 'image', src: relativePath, assetId, kind,
+        id: crypto.randomUUID(), type: 'image', assetId, kind,
         position: { x: 360, y: 200, width: 1200, height: 680 },
       });
       // Same as the native-pasteboard branch above: externalPath=null,
@@ -461,7 +461,6 @@ export function SlideEditor() {
                   const kind = detectAssetKind(name, mime);
                   store.addElement({
                     id: crypto.randomUUID(), type: 'image',
-                    src: relativePath,
                     assetId,
                     kind,
                     position: { x: 360, y: 200, width: 1200, height: 680 },
@@ -481,7 +480,7 @@ export function SlideEditor() {
                       // KNOW this is a follow-up update to the asset we
                       // just stored, not a real collision.
                       await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });
-                      await invalidateRenderedAsset(relativePath, assetId);
+                      await invalidateRenderedAsset(assetId);
                     }
                   }
                 } catch (err) { console.error('Failed to handle dropped image:', err); }
@@ -511,7 +510,7 @@ export function SlideEditor() {
                       const width = Math.floor((1760 - (pieces.length - 1) * 40) / pieces.length);
                       store.addElement({
                         id: crypto.randomUUID(), type: 'demo-piece' as any,
-                        demoSrc: relativePath, piece, assetId,
+                        piece, assetId,
                         position: { x, y: 200, width, height: 700 },
                       });
                       x += width + 40;
@@ -519,7 +518,6 @@ export function SlideEditor() {
                   } else {
                     store.addElement({
                       id: crypto.randomUUID(), type: 'demo',
-                      src: relativePath,
                       assetId,
                       position: { x: 80, y: 200, width: 1760, height: 700 },
                     });
@@ -575,18 +573,16 @@ export function SlideEditor() {
               />
             );
           })}
-          {/* Hidden controller iframes for demo-piece elements.
-              Dedup by assetId when set (Import-as-new safe), else demoSrc
-              path label for legacy elements. */}
+          {/* Hidden controller iframes for demo-piece elements,
+              deduped by assetId. */}
           {(() => {
-            const controllers = new Map<string, { demoSrc: string; assetId?: string }>();
+            const controllers = new Set<string>();
             for (const el of slide.elements) {
               if (el.type !== 'demo-piece') continue;
-              const key = el.assetId ?? el.demoSrc;
-              if (!controllers.has(key)) controllers.set(key, { demoSrc: el.demoSrc, assetId: el.assetId });
+              controllers.add(el.assetId);
             }
-            return Array.from(controllers.entries()).map(([key, { demoSrc, assetId }]) => (
-              <ControllerIframe key={`controller-${key}`} assetPath={demoSrc} assetId={assetId} />
+            return Array.from(controllers).map((assetId) => (
+              <ControllerIframe key={`controller-${assetId}`} assetId={assetId} />
             ));
           })()}
           {marquee && (() => {
@@ -613,14 +609,14 @@ export function SlideEditor() {
 }
 
 /** Hidden controller iframe that loads demo HTML from SQLite */
-function ControllerIframe({ assetPath, assetId }: { assetPath: string; assetId?: string }) {
-  const src = useDemoUrl(assetPath, 'role=controller', assetId);
+function ControllerIframe({ assetId }: { assetId: string }) {
+  const src = useDemoUrl(assetId, 'role=controller');
   if (!src) return null;
   return (
     <iframe
       src={src}
       sandbox="allow-scripts allow-same-origin"
-      title={`controller: ${assetPath}`}
+      title={`controller: ${assetId.slice(0, 8)}`}
       style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }}
     />
   );

@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
-import { useDemoUrl, useAssetUrl } from '../lib/demoAssets';
+import { useDemoUrl, useAssetUrl, invalidateAsset } from '../lib/demoAssets';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 
 import { TEXT_PRESET_STYLES } from '../types/presentation';
@@ -24,6 +24,43 @@ interface Props {
   onUpdate: (changes: Partial<SlideElement>) => void;
   onDelete: () => void;
   onSelect: (e?: { shiftKey: boolean }) => void;
+}
+
+/** "Refresh demo from disk" — used by the in-place Refresh button on
+ *  DemoBox/DemoPieceBox while interacting. Locates the file via the
+ *  asset's external_path (or path) under the project dir; falls back
+ *  to a file picker. Rewrites bytes onto the same asset_id so all
+ *  bound elements update. */
+async function refreshDemoFromDisk(assetId: string): Promise<boolean> {
+  const { invoke } = await import('@tauri-apps/api/core');
+  const { readFile } = await import('@tauri-apps/plugin-fs');
+  const meta = await invoke<{ path: string | null; external_path: string | null; mime_type: string | null } | null>(
+    'db_get_asset_meta_by_id', { assetId },
+  ).catch(() => null);
+  const projectPath = usePresentationStore.getState().projectPath;
+  const dir = projectPath ? projectPath.replace(/\/[^/]+$/, '') : '';
+  let bytes: Uint8Array | null = null;
+  for (const rel of [meta?.external_path, meta?.path]) {
+    if (!rel || !dir) continue;
+    try { bytes = await readFile(`${dir}/${rel}`); break; } catch { /* try next */ }
+  }
+  if (!bytes) {
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const title = meta?.path ? `Locate ${meta.path}` : 'Locate demo file';
+    const selected = await open({ title, filters: [{ name: 'HTML', extensions: ['html'] }] });
+    if (!selected) return false;
+    bytes = await readFile(selected as string);
+  }
+  await invoke('db_store_asset', {
+    path: meta?.path ?? '',
+    data: Array.from(bytes),
+    mimeType: meta?.mime_type ?? 'text/html',
+    externalPath: meta?.external_path ?? null,
+    externalMtime: null,
+    assetId,
+  });
+  invalidateAsset(assetId);
+  return true;
 }
 
 export function SlideElementRenderer({
@@ -119,10 +156,7 @@ function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
-  // data: URLs are used inline, relative paths load from SQLite
-  const assetSrc = element.src.startsWith('data:') ? undefined : element.src;
-  const blobUrl = useAssetUrl(assetSrc, undefined, element.assetId);
-  const src = element.src.startsWith('data:') ? element.src : (blobUrl || element.src);
+  const src = useAssetUrl(element.assetId);
   return (
     <DraggableBox
       elementId={element.id}
@@ -158,7 +192,7 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
 }) {
   const [interacting, setInteracting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const src = useDemoUrl(element.src, undefined, element.assetId);
+  const src = useDemoUrl(element.assetId);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   return (
     <DraggableBox
@@ -174,7 +208,7 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
       {src ? (
         <iframe key={reloadKey} ref={iframeRef} src={src} sandbox="allow-scripts allow-same-origin" title="demo"
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
-      ) : <div style={{ padding: 20, color: '#999' }}>Demo: {element.src}</div>}
+      ) : <div style={{ padding: 20, color: '#999' }}>Demo</div>}
       {!interacting && (
         <div className="demo-overlay"
           onDoubleClick={(e) => { e.stopPropagation(); setInteracting(true); }}
@@ -183,31 +217,8 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
       {interacting && (
         <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, display: 'flex', gap: 4 }}>
           <button className="demo-lock-btn" onClick={async () => {
-            // Refresh: re-read asset from disk, update SQLite, reload iframe
             try {
-              const { invoke } = await import('@tauri-apps/api/core');
-              const { readFile } = await import('@tauri-apps/plugin-fs');
-              const projectPath = usePresentationStore.getState().projectPath;
-              const dir = projectPath ? projectPath.replace(/\/[^/]+$/, '') : '';
-              let bytes: Uint8Array | null = null;
-              // Try reading from the expected location
-              if (dir) {
-                try { bytes = await readFile(`${dir}/${element.src}`); } catch { /* not found */ }
-              }
-              // If not found, open a file picker
-              if (!bytes) {
-                const { open } = await import('@tauri-apps/plugin-dialog');
-                const selected = await open({
-                  title: `Locate ${element.src}`,
-                  filters: [{ name: 'HTML', extensions: ['html'] }],
-                });
-                if (!selected) return;
-                bytes = await readFile(selected as string);
-              }
-              await invoke('db_store_asset', { path: element.src, data: Array.from(bytes), mimeType: 'text/html', externalPath: null, externalMtime: null });
-              const { invalidateAsset } = await import('../lib/demoAssets');
-              invalidateAsset(element.src);
-              setReloadKey((k) => k + 1);
+              if (await refreshDemoFromDisk(element.assetId)) setReloadKey((k) => k + 1);
             } catch (e) { console.error('Refresh failed:', e); }
           }}
             style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
@@ -235,7 +246,7 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
 }) {
   const [interacting, setInteracting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const src = useDemoUrl(element.demoSrc, `piece=${element.piece}`, element.assetId);
+  const src = useDemoUrl(element.assetId, `piece=${element.piece}`);
   return (
     <DraggableBox
       elementId={element.id}
@@ -250,7 +261,7 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
       {src ? (
         <iframe key={reloadKey} src={src} sandbox="allow-scripts allow-same-origin" title={`demo-piece: ${element.piece}`}
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
-      ) : <div style={{ padding: 20, color: '#999' }}>Demo piece: {element.demoSrc} #{element.piece}</div>}
+      ) : <div style={{ padding: 20, color: '#999' }}>Demo piece: #{element.piece}</div>}
       {!interacting && (
         <div className="demo-overlay"
           onDoubleClick={(e) => { e.stopPropagation(); setInteracting(true); }}
@@ -260,27 +271,7 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
         <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, display: 'flex', gap: 4 }}>
           <button className="demo-lock-btn" onClick={async () => {
             try {
-              const { invoke } = await import('@tauri-apps/api/core');
-              const { readFile } = await import('@tauri-apps/plugin-fs');
-              const projectPath = usePresentationStore.getState().projectPath;
-              const dir = projectPath ? projectPath.replace(/\/[^/]+$/, '') : '';
-              let bytes: Uint8Array | null = null;
-              if (dir) {
-                try { bytes = await readFile(`${dir}/${element.demoSrc}`); } catch { /* not found */ }
-              }
-              if (!bytes) {
-                const { open } = await import('@tauri-apps/plugin-dialog');
-                const selected = await open({
-                  title: `Locate ${element.demoSrc}`,
-                  filters: [{ name: 'HTML', extensions: ['html'] }],
-                });
-                if (!selected) return;
-                bytes = await readFile(selected as string);
-              }
-              await invoke('db_store_asset', { path: element.demoSrc, data: Array.from(bytes), mimeType: 'text/html', externalPath: null, externalMtime: null });
-              const { invalidateAsset } = await import('../lib/demoAssets');
-              invalidateAsset(element.demoSrc);
-              setReloadKey((k) => k + 1);
+              if (await refreshDemoFromDisk(element.assetId)) setReloadKey((k) => k + 1);
             } catch (e) { console.error('Refresh failed:', e); }
           }}
             style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
