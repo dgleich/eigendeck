@@ -1,33 +1,48 @@
 # Asset handling — design
 
-How Eigendeck stores, watches, renders, and updates binary assets
-(images, SVGs, PDFs, demo HTML) embedded in `.eigendeck` files. This
-is the single source of truth for the *why* behind the asset code;
-schema details that change frequently live in `LLM-EDITING.md` and
-the source.
+How Eigendeck stores, watches, renders, and updates binary "asset"
+content (images, SVGs, PDFs, demo HTML) embedded in `.eigendeck` files.
 
-## Goals
+This is the single source of truth for the *why* behind the asset
+code; schema details that change frequently live in `LLM-EDITING.md`
+and the source.
 
-1. **Self-contained `.eigendeck`** — opening a presentation shows
-   every asset even if the original source files are gone. Bytes
-   live in SQLite.
-2. **Live workflow** — when you edit `chart.svg` in Inkscape, the
-   presentation reflects the new version without you re-importing.
-3. **History without bloat** — you can always recover an older
-   version of an asset, but the file size doesn't explode the way
-   inline-data-URI-per-element did in earlier versions.
-4. **No surprises** — silent behavior the user might miss surfaces
-   itself when there's a reasonable chance the user will be
-   confused (the path collision dialog).
-5. **Lightweight, native-feeling Mac tool** — system features like
-   the clipboard work the way users expect, including Office and
-   Adobe vendor formats web standards filter out.
+## The model in one paragraph
+
+**The asset table is the source of truth for the deck.** Every asset
+embedded in a presentation has its bytes stored in the project's
+SQLite file. When file watching is on, the file system stays in sync
+with assets — changes to source files on disk flow in via the
+watcher. When watching is off, the deck owns the bytes independently.
+Elements bind to assets by `asset_id`; they always render the asset's
+current bytes (there is no per-element version pinning). Restoring a
+historical version writes a new "current" row in the asset's history;
+it does NOT touch the file on disk.
+
+## Why this model
+
+**Portability.** A `.eigendeck` is self-contained. Hand it to a
+collaborator who doesn't have your `figs/` directory and every image
+still renders. They can edit text, present, save, send back. Their
+local file watcher has nothing to subscribe to (their disk has no
+source files), but nothing breaks. The Beamer-style auto-update
+workflow is just a convenience layer on top — bytes-on-disk is not a
+hard dependency.
+
+The two user mental models we accommodate:
+- **Beamer-style (primary)**: scripts (Python, R, gnuplot)
+  regenerate plots; the deck auto-updates on the next file change.
+  History exists for the pre-talk-panic case (broken script → revert
+  per-asset).
+- **PowerPoint-style (secondary)**: bytes are frozen at insert time;
+  subsequent file changes are ignored. Per-presentation auto-reload
+  off; new file inserts → new assets.
 
 ## Data model
 
-Single source of truth: the `assets` SQLite table.
+### `assets` table — temporal
 
-```
+```sql
 CREATE TABLE assets (
   asset_id        TEXT NOT NULL,       -- UUID, stable across versions
   data            BLOB NOT NULL,       -- raw bytes
@@ -35,11 +50,9 @@ CREATE TABLE assets (
   size            INTEGER,
   hash            TEXT,                -- SHA-256 hex of data
   path            TEXT,                -- DISPLAY LABEL, NOT UNIQUE
-  external_path   TEXT,                -- path relative to .eigendeck dir
-                                       -- for the source file the watcher
-                                       -- re-resolves to abs at runtime
+  external_path   TEXT,                -- source file path relative to .eigendeck dir
   external_mtime  TEXT,                -- ISO-8601, last seen on disk
-  auto_reload     TEXT,                -- 'on' | 'off' | NULL (follow pres/global)
+  auto_reload     TEXT,                -- 'off' | NULL (per-asset opt-out)
   created_at      TEXT NOT NULL,
   valid_from      TEXT NOT NULL,
   valid_to        TEXT,                -- NULL = current row for this asset_id
@@ -47,504 +60,557 @@ CREATE TABLE assets (
 );
 ```
 
-Temporal shape: every byte change creates a new row with a fresh
-`valid_from`; the prior row's `valid_to` is set to the same instant.
-"Current" rows have `valid_to IS NULL`. Version history is "every row
-with this asset_id, newest first."
+Every byte change creates a new row with a fresh `valid_from`; the
+prior row's `valid_to` is set to the same instant. "Current" rows
+have `valid_to IS NULL`. Version history is "every row with this
+asset_id, newest first."
 
-### Why path is NOT unique
+#### Path is NOT unique
 
-`path` is a human-readable LABEL — what shows up in the inspector,
+`path` is a display LABEL — it's what shows up in the inspector and
 what `element.src` references in the JSON. Two distinct assets can
-legitimately share a path:
+legitimately share a path label (e.g. two `screenshot.png` imports
+from different folders). Element-to-asset binding is therefore by
+`asset_id`, not path.
 
-- User imports `chart.svg` from `~/talks/2024/`, imports a different
-  `chart.svg` from `~/talks/2025/` — both get path "chart.svg" but
-  are separate assets.
-- "Import as new" (collision dialog, see below) explicitly creates
-  a second asset at the same path label.
-
-Element-to-asset binding is therefore by `asset_id`, not path —
-see "Element binding" below.
-
-### Why asset_id is a UUID
+#### `asset_id` is a UUID
 
 Stable across renames, copies, edits, and Save-As (which forks the
 asset history along with the project_id). Independent of file path
 on disk. Generated on first insert; never reused.
 
+#### `auto_reload` value domain
+
+Narrowed from `'on' | 'off' | NULL` to `'off' | NULL`. Per-asset
+opt-out: an asset can refuse to be watched but can't opt in beyond
+what the presentation/global allows. Legacy `'on'` values from the
+earlier tri-state UI are tolerated and treated as if NULL.
+
+#### `auto_reload` is per-ASSET, not per-version
+
+`db_store_asset` preserves the existing asset's `auto_reload` value
+when the caller passes `None`. Only an explicit `Some(value)`
+override (e.g. `db_restore_asset_version` hardcoding `'off'`)
+replaces it. Without this, every file-watcher write or Reload-from-
+disk would silently reset the user's per-asset opt-out.
+
+### `elements` table — promoted columns
+
+```sql
+CREATE TABLE elements (
+  id           TEXT NOT NULL,
+  type         TEXT NOT NULL,
+  data         TEXT NOT NULL,    -- JSON; promoted fields stripped
+  link_id      TEXT,             -- promoted (cross-slide animation peer)
+  asset_id     TEXT,             -- promoted (binding to assets row)
+  valid_from   TEXT NOT NULL,
+  valid_to     TEXT,
+  PRIMARY KEY (id, valid_from)
+);
+CREATE INDEX idx_el_asset
+  ON elements(asset_id)
+  WHERE valid_to IS NULL AND asset_id IS NOT NULL;
+```
+
+#### Promoted columns
+
+The pattern: anything that's a cross-table reference or needs SQL-
+level indexing is **stripped from the JSON `data` blob and stored as
+its own column**. `db_export_json` reassembles the JSON on the way
+out by merging the columns back into per-element objects.
+
+This is the existing pattern for `link_id` (cross-slide animation
+peers); `asset_id` follows the same pattern.
+
+The `data` JSON holds only type-specific fields (e.g. `src`,
+`position`, `shadow`, `kind` for an image element; `html`,
+`fontSize`, `color` for a text element).
+
+#### `src` / `demoSrc` on elements (current state, phase 4 will remove)
+
+Today: `ImageElement.src` and `DemoElement.demoSrc` are still
+present as display labels and legacy renderer fallbacks. Phase 4
+of the refactor drops them entirely — the user-facing label will be
+derived from `asset.path` via the assetId binding. Renderer hooks
+take assetId-only (no path arg).
+
+## Cascade resolver (downward-only)
+
+```ts
+effectiveAutoReload(perAsset, perPresentation, globalDefault) =
+  globalDefault
+  && perPresentation !== 'off'
+  && perAsset !== 'off'
+```
+
+Any layer can refuse. No layer overrides a refusal above it.
+
+| Layer | Where | UI surface |
+|---|---|---|
+| Global | `localStorage['eigendeck:pref:autoReloadAssets']` boolean | Cmd+, Settings checkbox |
+| Per-presentation | `config.autoReloadAssets` (`'off'` or absent) | Inspector → Presentation block → 2-state checkbox |
+| Per-asset | `assets.auto_reload` (`'off'` or NULL) | Inspector → Asset section → 2-state checkbox |
+
+Each non-global layer is a 2-state opt-out (`'off'` or absent). The
+old tri-state ("Always / Never / Follow global") is gone; per-asset
+or per-pres `'on'` values from old DBs are treated as if absent.
+
 ## Element binding
 
-Image / demo / demo-piece elements carry both:
+Image / demo / demo-piece elements carry:
 
-- `src` (or `demoSrc` for demo-piece): display label, also the
-  legacy resolution key for elements that predate `assetId`.
-- `assetId?: UUID`: stable binding to a specific row in `assets`.
+- `assetId: UUID` (in the `elements.asset_id` column) — the
+  canonical binding.
+- `src` / `demoSrc: string` (in JSON) — legacy display label (phase
+  4 will drop).
 
-**Resolution order**: `assetId` when set (unambiguous even when
-multiple assets share a path); fall back to "most recent asset with
-this path label" when `assetId` is absent (legacy elements).
+Renderer resolution:
+- `assetId` present (post-backfill, post-phase-3) → DB lookup via
+  `db_get_asset_by_id`.
+- `assetId` absent (legacy elements before backfill ran) → fall back
+  to path-label lookup via `db_get_asset`.
 
 ### Backfill on load
 
-Opening a `.eigendeck` runs a one-time per-load pass: every
-image/demo/demo-piece element lacking an `assetId` gets one resolved
-by path lookup against the assets table. Mutates the loaded
-presentation in place before `setPresentation`. Idempotent and
-cheap; persists when the user next saves (no force-dirty after
-backfill — see `backfillElementAssetIds` in
-`src/store/presentation.ts`).
+Opening an `.eigendeck` runs a one-time per-load pass: every
+image/demo/demo-piece element without an `assetId` gets one resolved
+by path-label lookup against `assets`. Mutates the loaded
+presentation in place. Touched element IDs are marked dirty +
+flushed so the backfill PERSISTS to the DB on the next save (without
+this, every reopen re-backfills from scratch).
+
+### Schema migration to `asset_id` column
+
+For files created before the column was promoted (any v3 file
+without phase 3 having run): `create_schema` runs idempotent
+`ALTER TABLE elements ADD COLUMN asset_id TEXT` + `UPDATE elements
+SET asset_id = json_extract(data, '$.assetId')` + `CREATE INDEX
+idx_el_asset`. Same pattern as v1→v2 (`slides.config` column add).
+Existing JSON `assetId` field remains in `data` after migration
+(dead but harmless); stripped on next write through
+`db_update_element`.
 
 ## Asset lifecycle
 
 ### Insertion
 
-Five paths, all converging on a single `db_store_asset` Tauri call
-that returns the new (or reused) `asset_id`:
+Six paths, all converging on `db_store_asset`:
 
 | Source | `externalPath` | Watcher? |
 |---|---|---|
 | Drag-drop file from Finder | rel path from .eigendeck dir | yes |
 | File picker (+Image / +Demo) | rel path | yes |
-| Clipboard paste (web `DataTransfer` or `navigator.clipboard.read`) | `null` | no |
-| Native NSPasteboard (Office SVG, PDF, etc.) | `null` | no |
+| Clipboard paste (web `DataTransfer` or `navigator.clipboard`) | `null` | no |
+| Native macOS NSPasteboard (Office SVG, PDF, etc.) | `null` | no |
 | Tauri file-drop event | rel path | yes |
+| Collision-dialog choices (rare) | varies | varies |
 
 `db_store_asset(path, data, mime, externalPath, externalMtime,
-assetId?, autoReload?)` semantics:
+assetId?, autoReload?) -> assetId`:
 
-1. Determine `asset_id`: explicit > path-lookup-most-recent >
-   fresh UUID.
+1. Determine `asset_id`: explicit (passed in) > path-lookup of most-
+   recent existing > fresh UUID.
 2. SHA-256 hash dedup: if the current row for this `asset_id` has
    the same hash as the new bytes, no-op return same id.
-3. Otherwise transactional close-old + insert-new with the same
+3. **Preserve auto_reload**: if caller passed `None` AND the asset
+   already has a current row, inherit that row's `auto_reload`. Only
+   explicit `Some(value)` overrides.
+4. Transactional close-old + insert-new with the resolved
    `asset_id`.
 
-The element gets `assetId = <returned id>` so future renders
-unambiguously target this asset.
+**Footgun**: the path-lookup-most-recent branch (step 1 fallback)
+silently reuses an existing asset_id when the path matches. Callers
+that need a guaranteed-fresh asset_id at an existing path must
+generate a UUID themselves (`crypto.randomUUID`) and pass it
+explicitly. See `src/lib/assetInsert.ts` for the canonical example.
 
-### Path collision dialog — "asset has silently changed since first add"
+### Path-collision dialog (`storeAssetWithCollisionCheck`)
 
-**Purpose**: surface a specific surprise that file-watching's silent
-auto-update can cause. Users coming from PowerPoint don't expect
-images in a saved deck to mutate when the source file is edited
-elsewhere. Eigendeck's default behavior IS to silently auto-update
-(see the cascade resolver above), but we want to give the user a
-chance to notice and opt out when the situation comes up.
+Drag-drop and file-picker insertions route through
+`storeAssetWithCollisionCheck`. Triggered when:
 
-**Specific scenario**: user adds `Image.svg`; later, the file is
-edited on disk and the watcher silently updates the asset; later
-still, the user re-adds the same `Image.svg`. At that re-add moment,
-we have evidence that (a) the asset existed and (b) it changed
-without explicit user action since they first added it.
+- The new insertion's path already exists in the project as a
+  current asset, AND
+- The new bytes' hash differs from the existing asset's *original*
+  hash (oldest version in history)
+- AND per-presentation `autoReloadAssets !== 'off'` (PowerPoint mode
+  skips the dialog entirely — every insert is independent)
+- AND this presentation hasn't been "session-accepted" for auto-
+  updating already (see Workflow rule below)
+- AND the asset has elements currently using it (orphan assets skip
+  the dialog)
 
-**Trigger condition**: a new drag-drop or file-picker insertion's
-path already exists in the project, AND the bytes being added
-differ from the existing asset's *original* bytes (oldest version's
-hash in history). The comparison is "what the user is adding now"
-vs "what the user originally added at this path" — divergence
-catches the silent-watcher case AND the auto-reload-off case where
-the file changed on disk without anyone updating the asset.
-
-**Skipped when**:
-
-- **Per-presentation auto-reload is OFF** ("PowerPoint mode" — see
-  below). The dialog premise doesn't apply when the user has
-  explicitly opted out of the auto-update paradigm.
-- **User already clicked "I understand"** on the collision dialog
-  for this presentation earlier in the same app session. The
-  acceptance is per-presentation, per-app-session, held in a
-  module-level `Set<project_id>` in `assetInsert.ts` (NOT
-  persisted to localStorage / project config). Resets on app
-  restart so a returning user can still be prompted if the
-  scenario recurs in a fresh launch. See "Workflow rule" below.
-- Path is new (no existing asset at that path) — no surprise.
-- The bytes being added match the existing asset's ORIGINAL bytes
-  (user is re-adding the same file they first put here) — no
-  surprise.
-- Existing asset has versions but no element currently references
-  it (orphan) — no user to surprise.
-- Insertion is via clipboard paste — paste paths are synthetic
-  (`pasted-<ts>.svg`), this scenario never applies.
-
-**Workflow rule** (the contract the user is acknowledging with each
-choice):
-
-- **"I understand and want this auto-updating behavior"** is a
-  conceptual commitment for the rest of the app session: "I'm
-  informed about how auto-updating works, don't keep asking me."
-  Subsequent inserts at ANY path in this presentation skip the
-  dialog and silently update on the existing asset. The flag
-  clears at app restart — a user returning later still gets the
-  awareness prompt if it applies.
-- **"I want to revert the contents to the previous version..."** is
-  a structural commitment for the presentation: it sets
-  `config.autoReloadAssets = 'off'` (persisted in the
-  `.eigendeck`), which puts the presentation in PowerPoint mode
-  permanently. Subsequent inserts skip the dialog AND create
-  independent assets.
-- **Esc / outside-click** is the "I'm not deciding right now"
-  escape. The insertion is cancelled (no asset stored, no element
-  added), and nothing is remembered — re-attempting the same
-  insert will re-prompt.
-
-#### PowerPoint mode: per-presentation auto-reload OFF
-
-When `config.autoReloadAssets === 'off'` — either set explicitly by
-the user (Inspector → Presentation → Auto-reload Assets → Never), or
-carried over from a prior "Revert + add as new" choice in the
-collision dialog — every drag-drop / file-picker insertion creates
-an INDEPENDENT asset:
-
-- Fresh `asset_id` (UUID generated client-side, never reuses an
-  existing asset_id even if the path label matches).
-- `external_path` IS preserved (where one applies, i.e. drag-drop
-  or file picker). The cascade resolver blocks the watcher from
-  subscribing while per-pres is OFF — but the user can pull a
-  fresh version explicitly via Properties → Asset → Reload from
-  disk now. Manual recovery beats automatic surprise.
-- No collision dialog (the divergence question doesn't apply once
-  the user has opted out of the auto-update paradigm).
-
-**Flipping per-presentation auto-reload back to ON** prompts a
-confirmation dialog (`ReenableWatchingDialog`) — the user
-previously opted out, and a quiet toggle shouldn't suddenly start
-auto-updating every pre-existing asset. The dialog fires whenever
-the effective per-pres value transitions from `false` to `true`,
-so it catches both "Never → Always" and "Never → Follow global
-(global ON)".
-
-Two explicit choices + Esc-cancels:
-
-- **Only enable for new files**: walks every linked asset with
-  `auto_reload = NULL` (implicitly following the cascade) and
-  sets it to `'off'` per-asset, baking the current OFF behavior
-  in. The per-pres pref then flips to ON; future inserts get
-  watched, existing assets stay quiet unless the user
-  individually flips them back on via the Asset properties
-  tri-state.
-- **Re-enable and re-scan all**: per-pres flips to ON; assets
-  with `auto_reload = NULL` resume watching via the cascade;
-  `scanForChangedAssets` runs immediately to pull any drift that
-  accumulated on disk while OFF mode was active.
-
-Assets the user explicitly flipped to "Never" in the Asset
-properties tri-state stay opted out regardless of which option
-they pick — that was an intentional per-asset choice.
-
-**Dialog body** (verbatim wording):
-
-> *Image.svg* has changed since you added it on slide(s) *N* / *N and M*.
-> The default behavior in Eigendeck is to update it to the latest
-> version when it changes, which has already happened. Both the
-> existing and new copy will now show the updated version.
-
-Slide numbers come from `getSlideNumber` (same numbering as the
-sidebar).
-
-**Two explicit choices** — no default-focused button, user must
-opt in to one. Esc / clicking-outside abandons the insertion (no
-visible Cancel button — the dialog is paternalistic about needing
-a choice, but Esc remains as a safety net since users expect it).
+Dialog choices (no default focus — user explicitly opts in):
 
 | Choice | Effect |
 |---|---|
-| **I understand and want this auto-updating behavior** | `db_store_asset` reusing existing `asset_id`. New bytes either dedup against the silently-updated current (typical) or genuinely update again. The new element binds to the existing asset. Same end state as if the dialog hadn't appeared — this option is opt-in awareness. |
-| **I want to revert the contents of slide(s) X to the previous version and add this as a new version. I don't want the auto-updating behavior. (This will disable it for this presentation.)** | Three actions: (1) `db_restore_asset_version` on the existing asset using its oldest version's `valid_from` — restores the original bytes and sets `auto_reload='off'` on the restored row; (2) `db_store_asset` with no `assetId` — creates a fresh asset_id with the just-dragged bytes; new element binds to it; (3) `presentation.config.autoReloadAssets = 'off'` — disables auto-reload presentation-wide. Effectively splits: existing slides show their original appearance; the new slide gets the new bytes. |
+| **I understand and want this auto-updating behavior** | Reuse existing asset_id. Bytes update on the asset; every bound element shows the new bytes. Session-flag set: no more dialogs for this presentation until app restart. |
+| **I want to revert ... I don't want the auto-updating behavior** | (1) Restore existing asset to its oldest version (file watcher disabled per-asset). (2) Create a NEW asset at the same path with the just-dragged bytes; new element binds to it. (3) Set per-pres `autoReloadAssets='off'` (PowerPoint mode). |
+| Esc / outside-click | Cancel insertion entirely. |
 
-**No path mutation**: "Revert and add as new version" does NOT
-rename the new asset's path. The path stays as the user sees it.
-Two assets at the same path label, disambiguated by `asset_id`.
+#### Workflow rule (the per-choice contract)
 
-**No session memory / "Don't ask again"**: deliberately omitted.
-The dialog is rare (only fires on a real silent-change scenario)
-and the choice is consequential (one option reverts content and
-flips a presentation-wide preference). User must reckon with each
-occurrence freshly.
+- **"I understand"** is a per-app-session commitment for this
+  presentation: "I'm informed about auto-updating, don't keep asking
+  me." Subsequent collisions silently update on the existing asset
+  for the rest of the app session. The flag clears on app restart.
+- **"I don't want this"** is a structural commitment for the
+  presentation: per-pres `autoReloadAssets='off'` (persisted in the
+  `.eigendeck`). Permanent PowerPoint mode.
+- **Esc** is "I'm not deciding now." Nothing remembered; re-
+  attempting the same insert re-prompts.
+
+### PowerPoint mode (per-pres auto-reload OFF)
+
+When `config.autoReloadAssets === 'off'`:
+
+- Every insertion creates an INDEPENDENT asset. Fresh `asset_id`
+  (client-generated UUID), never reuses an existing asset_id even if
+  the path label matches.
+- `external_path` IS preserved. The Reload-from-disk-now button
+  works. The cascade blocks the watcher from auto-subscribing.
+- No collision dialog ever.
+
+Flipping per-pres back to ON re-enables the watcher cascade for
+existing assets with `external_path` and no per-asset `'off'`.
+Assets the user explicitly opted out of stay opted out.
 
 ### Update (in-place new version)
 
 Triggered by:
-
 - File watcher firing on a disk change
 - Manual "Reload from disk now" in the Asset properties section
 - Open-time scan (`scanForChangedAssets`) catching disk edits made
   while the project was closed
 - SVG embed-snapshot follow-up
-- Path collision dialog "Continue & replace"
+- Collision-dialog "I understand" choice
 
-All call `db_store_asset` with the existing `asset_id`. Same
-transactional close-old + insert-new with a new `valid_from`. Old
-bytes stay in history; "current" pointer moves.
+All call `db_store_asset` with the existing `asset_id`. Transactional
+close-old + insert-new with a new `valid_from`. Old bytes stay in
+history; "current" pointer moves. `auto_reload` is preserved across
+the write (see "preservation" semantic above).
 
 ### Restore
 
 `db_restore_asset_version(asset_id, valid_from)` snapshots an old
-version's bytes + metadata, closes the current row, and inserts
-the old bytes as the new current. Sets `auto_reload = 'off'` on
-the restored row so the watcher doesn't immediately overwrite the
-restore on the next disk event.
+version's bytes + metadata and inserts them as the new current.
+Sets `auto_reload='off'` on the restored row so the watcher doesn't
+immediately overwrite.
+
+Per-element semantics under Model B: Restore is asset-scoped.
+Affects every element bound to the asset_id. The UI tells the user
+the blast radius via the "Used N times across M slides" caption and
+a single confirm dialog when more than one element is bound:
+
+- Solo asset (1 element): restore directly, no confirm.
+- Shared asset (N > 1 elements): single confirm — *"Restore
+  chart.svg to the version from 3 hours ago? This will affect all 3
+  copies of this image across 2 slides."* [Cancel] [Restore]
+
+No "this slide only" mechanism; that was the old fork-based design,
+which lost history visibility. Per-element divergence is achieved
+the PowerPoint-style way: duplicate the asset (a future "Save as
+new asset" affordance) or set per-pres to OFF.
 
 ### History display
 
 The Asset properties section shows every version newest-first via
-`db_get_asset_history(asset_id)`. Each row has size, timestamp,
+`db_get_asset_history(asset_id)`. Each row has size, friendly
+relative timestamp (e.g. "3 hours ago"), full timestamp on hover,
 "current" badge, and a "Restore" button for non-current versions.
+Hovering a row pops a floating thumbnail to the left, lazy-fetched
+via `db_get_asset_version(asset_id, valid_from)`.
 
-## Cascade resolution: file-watching auto-reload
+## Cache invalidation event
 
-Three layers, most specific wins:
+`invalidateRenderedAsset(sourceId, assetId?)`:
 
-```
-effectiveAutoReload(perAsset, perPresentation, globalDefault) =
-    perAsset === 'on'           ? true
-  : perAsset === 'off'          ? false
-  : perPresentation === 'on'    ? true
-  : perPresentation === 'off'   ? false
-  : globalDefault
-```
+1. `db_clear_asset_cache(sourceId)` — drop SQLite-cached rasterized
+   PNGs (`asset_cache` table).
+2. `invalidateAsset(path, assetId?)` — drop in-memory blob URL cache
+   in `demoAssets.ts` (both id-keyed and path-keyed entries).
+3. Dispatches `eigendeck:asset-changed` window event with
+   `{path, assetId}` detail.
 
-| Layer | Where | UI surface |
-|---|---|---|
-| Per-asset | `assets.auto_reload` (`'on'`/`'off'`/null) | Properties → Asset → Auto-reload tri-state |
-| Per-presentation | `config.autoReloadAssets` (`'on'`/`'off'`/absent) | Properties → Presentation (nothing selected) → Auto-reload Assets tri-state |
-| Global default | `localStorage['eigendeck:pref:autoReloadAssets']` boolean (default true) | Eigendeck → Settings… (Cmd+,) → Auto-reload assets checkbox |
+Subscribers:
+- `useAssetUrl`, `useRenderedAsset` (rendering hooks) — refetch on
+  match.
+- `AssetSection` — refetch meta + history.
+- **`useAssetFileWatcher`** — refetches meta and re-evaluates the
+  cascade. Critical for "unchecking Watch unsubscribes" and
+  "Restore disables the watcher" — without this re-evaluation the
+  hook's existing subscription persisted across `auto_reload` flips.
 
-The watcher subscriber gate (in `useAssetFileWatcher` and
-`scanForChangedAssets`) applies this resolution; "OFF" means no
-watch, no auto-reload. Manual "Reload from disk now" ignores the
-cascade — explicit user action always works.
-
-### Per-asset tri-state on shared assets (auto-fork)
-
-The per-asset tri-state lives in Properties → Asset (per element
-selected) — but multiple elements can be bound to the same
-`asset_id` (e.g. the user dragged the same SVG onto three slides
-and accepted "Update existing" in the collision dialog, or never
-hit the dialog at all). Setting `auto_reload` on the shared row
-would affect every bound element, contradicting the per-element
-mental model of the panel.
-
-When the user changes the tri-state for a shared asset (usage
-count > 1), `AssetSection.setAutoReload` **forks** the asset:
-
-1. Read current bytes via `db_get_asset_by_id(oldAssetId)`.
-2. `db_store_asset` with a fresh `crypto.randomUUID()` assetId,
-   same path label, same external_path / mime_type, and the
-   chosen `auto_reload` value baked in.
-3. `updateElement(elementId, { assetId: newAssetId })` rebinds
-   THIS element to the new asset. Other elements stay on the
-   original asset (so the file watcher's auto-update continues
-   to affect them normally).
-
-When usage count is 1 (no other elements share the asset), the
-in-place flip via `db_set_asset_auto_reload` is correct — no fork
-needed.
-
-This makes the panel behave "per-element" from the user's POV,
-even though the underlying storage is asset-keyed.
-
-The **Restore** button in the version history follows a similar
-pattern but asks the user about scope when the asset is shared:
-
-- **Solo asset** (one element bound): plain `confirm()`. In-place
-  restore via `db_restore_asset_version`.
-- **Shared asset** (multiple elements bound): a modal asks "this
-  slide only" vs "all N slides":
-  - **This slide only** → fork. Fetch the target version's bytes
-    via `db_get_asset_version`, create a new asset with those
-    bytes + `auto_reload='off'`, rebind the current element to
-    the new asset. Other elements stay on the original.
-  - **All N slides** → in-place restore on the shared asset.
-    Every bound element switches to the older version. Same
-    `db_restore_asset_version` path as the solo case.
-  - **Cancel** → no change.
-
-The modal (`RestoreVersionDialog`) is the same module-level
-subscribe pattern as the collision and re-enable-watching dialogs.
+Match logic: prefer `assetId` match when both sides have one, else
+fall back to `path` match.
 
 ## File watching
 
-### Watcher registry
+### `WatcherRegistry`
 
 `src/lib/watcherRegistry.ts` — singleton per `project_id` (UUID in
-`_meta`). Each registry holds `Map<external_path, {unwatch, assets:
-Set<{assetId, path}>, mimeType, lastHandledAt}>`.
+`_meta`). Maintains `Map<external_path, WatchEntry>` where
+`WatchEntry.assets: Map<asset_id, {subscribers: Set<element_id>, ...}>`.
 
-- One `fs.watch` per source file, fanning out to every subscribed
-  asset on disk change. Two elements pointing at the same source
-  file share one kernel watch.
-- 250ms coalescing window per path (`lastHandledAt`) — macOS atomic
-  saves emit 5–7 events; we collapse to one reload.
-- `project_id` keying survives in-place rename of the `.eigendeck`
-  file. Save-As writes a fresh `project_id` and forks the watcher
-  set (correct: the new file is a different project).
+Two layers of ref-counting:
+- **Per-element subscribers** (`Set<element_id>` inside each asset
+  entry). Multiple elements can share an asset; the asset entry
+  stays alive as long as ANY element references it.
+- **Per-asset entries** (Map keyed by asset_id under each watch).
+  Multiple assets can share a path (Import-as-new); the path watch
+  stays alive as long as ANY asset entry references it.
 
-### Scan-on-load
+Without per-element tracking, one element's unmount would wipe the
+asset entry that was also serving other elements — silently killing
+the watcher for everyone.
 
-`scanForChangedAssets(projectDir, presOverride)` stats every linked
-asset on project open, reloads any whose `external_mtime` moved
-since the stored value. Catches edits made while the project was
-closed. Also gated by the cascade.
+### Coalescing
+
+macOS atomic saves emit 3–7 events for one save (write + truncate +
+close + rename). The registry coalesces at 250ms per path; only the
+first event in the burst triggers `handleChange`. Subsequent events
+within the window are skipped.
 
 ### Cross-cutting Tauri requirements
 
 The watcher needs BOTH `tauri-plugin-fs`'s `watch` Cargo feature
 AND `fs:allow-watch` / `fs:allow-unwatch` capabilities in
-`src-tauri/capabilities/default.json`. Missing either causes
+`src-tauri/capabilities/default.json`. Missing either yields
 `Command watch not found` (Cargo feature) or a permission rejection
 (capability).
 
+### Scan-on-load
+
+`scanForChangedAssets(projectDir, presOverride)` stats every linked
+asset on project open and reloads any whose `external_mtime`
+differs. Catches edits made while the project was closed. Gated by
+the same cascade.
+
 ### Unsaved presentations
 
-File watching is fundamentally impossible without a project
-directory to resolve `external_path` against. When the user adds a
-trackable asset to an unsaved presentation:
+File watching is impossible without a project directory to resolve
+`external_path` against. When the user adds a trackable asset to an
+unsaved presentation:
 
-- The toast system fires a warning ("Asset added, but file-watching
-  is disabled until the presentation is saved").
-- The Properties → Asset section replaces the auto-reload tri-state
-  + Reload Now button with a yellow info bar + Save… button.
-- The toast suppression rule: don't nag if the effective auto-reload
-  is OFF for this project (user opted out, no point).
+- A toast warns: *"Asset added, but file-watching is disabled until
+  the presentation is saved."* with a Save… button.
+- The Properties → Asset section replaces the Watch toggle + Reload
+  button with a yellow info bar + Save… button.
+- Toast suppressed when effective auto-reload is OFF (user opted
+  out; no nag).
 
 ## Renderer
 
 Two hooks resolve assets to blob URLs:
 
-- `useAssetUrl(path, hash?, assetId?)` (`src/lib/demoAssets.ts`)
-  — raw bytes via blob URL, cached. Used for HTML demos and
+- `useAssetUrl(path, hash?, assetId?)` (`src/lib/demoAssets.ts`) —
+  raw bytes via blob URL, cached. Used for HTML demos and
   unrasterized images.
 - `useRenderedAsset(path, kind, maxW, maxH, variant?, assetId?)`
-  (`src/lib/assetRenderer.ts`) — cache-or-rasterize PNG into
-  `asset_cache` SQLite table at the requested dimensions. Used by
-  the slide sidebar thumbnails. SVG <200KB takes the native fast
-  path (raw blob URL); larger SVG and all raster go through the
-  PNG cache.
+  (`src/lib/assetRenderer.ts`) — cache-or-rasterize PNG into the
+  `asset_cache` SQLite table. Used by slide-sidebar thumbnails. SVG
+  ≤ 200 KB takes the native fast path (raw blob URL); larger SVG
+  and all raster go through the PNG cache.
 
-Both prefer `assetId` for cache identity AND for the DB lookup
+Both prefer `assetId` for cache identity AND DB lookup
 (`db_get_asset_by_id`); fall back to path label (`db_get_asset`)
-when `assetId` is absent. Cache key is `assetId ?? path`.
+when `assetId` is absent. Cache key is `${assetId ?? path}`.
 
-### Cache invalidation event
+After phase 4: hook signatures drop the path arg entirely (assetId
+is always available).
 
-`invalidateRenderedAsset(sourceId, assetId?)` does three things:
+## UI
 
-1. `db_clear_asset_cache(sourceId)` — drop rasterized PNGs.
-2. `invalidateAsset(path, assetId?)` — drop the in-memory blob
-   URL cache (both id-keyed and path-keyed entries).
-3. Dispatches `eigendeck:asset-changed` window event with
-   `{path, assetId}` detail.
+### AssetSection (Properties → Asset, when an image element is selected)
 
-Listening hooks (`useAssetUrl`, `useRenderedAsset`, `AssetSection`)
-filter the event by `assetId` when both sides have one, else by
-`path`. This is what makes the watcher's silent updates trigger
-re-fetches in the live UI.
+```
+─── Source file: chart.svg ───
+  Used 3 times across 2 slides         ← always visible scope caption
+  [ ] Watch this file for changes      ← 2-state per-asset opt-out
+       On: file changes update all 3 copies of this image.
 
-## Insertion sources (paste / drag-drop / pasteboard)
+  [Reload from disk now]   [Resize to image]
+
+  Versions:
+    Current (3h ago) · 42 KB
+    2 days ago · 38 KB        [Restore]
+    5 days ago · 41 KB        [Restore]
+```
+
+#### "Used N times across M slides" caption
+
+Always visible. Phrasing variants:
+
+- 1 copy / 1 slide → "Used on this slide only"
+- N copies / 1 slide → "Used N times on this slide"
+- 1 copy each / M slides → "Used on M slides"
+- N copies / M slides (mixed) → "Used N times across M slides"
+
+Computed by the pure `computeAssetUsage` helper in
+`src/lib/assetUsage.ts` (also used by collision dialog for the
+slide-numbers list). Tests in `src/lib/assetUsage.test.ts`.
+
+#### Watch checkbox states
+
+Checkbox is checked when the asset's effective auto-reload resolves
+to ON. Disabled when blocked higher in the cascade (global off, or
+per-pres off). Consequence text below explains the resolution.
+
+### PropertiesPanel (Presentation block)
+
+```
+[ ] Watch source files in this presentation
+   On: linked SVG / image assets reload when their source files change on disk.
+```
+
+Single 2-state checkbox under the existing Presentation header.
+
+### SettingsModal (Cmd+,)
+
+Global "Auto-reload assets on disk change" checkbox + global LaTeX
+preamble textarea. Webview-based; native-window version deferred to
+issue #62.
+
+## Settings surfaces summary
+
+| Setting | Storage | UI |
+|---|---|---|
+| Global `autoReloadAssets` | `localStorage` | Cmd+, Settings → checkbox |
+| Global `mathPreamble` | `localStorage` | Same Settings modal → textarea |
+| Per-presentation `autoReloadAssets` | `config.autoReloadAssets` in `.eigendeck` JSON | Inspector → Presentation → checkbox |
+| Per-presentation `mathPreamble` | `config.mathPreamble` | Inspector → Presentation → textarea + Insert/Replace global buttons |
+| Per-asset `auto_reload` | `assets.auto_reload` column | Inspector → Asset → checkbox (only when project saved) |
+
+### Math preamble semantics
+
+**Render time**: only `config.mathPreamble` (per-presentation)
+matters. No cascade or merge with global.
+
+**Editing time**: global is a template:
+- New presentations seed `config.mathPreamble` from global at
+  creation (`createSeededPresentation` in `store/presentation.ts`).
+- "Insert global" button on the per-presentation textarea prepends.
+- "Replace with global" overwrites (confirm if non-empty).
+- Both buttons disabled when global is empty.
+
+## Toasts (non-modal user warnings)
+
+`src/lib/toasts.ts` + `<ToastHost>` at bottom-center. Used for
+"asset added to unsaved presentation" warning. Color-coded by kind
+(info / warning / error / success), auto-dismiss with `ttl` (0 =
+sticky), `key` field dedupes repeats.
+
+## Asset GC (planned; not yet built)
+
+Reachability rule: a version `(asset_id, valid_from)` is reachable
+iff at least one current element references the asset_id.
+Unreferenced assets — including their current row AND all their
+history — are GC-able.
+
+```sql
+-- Sketch of the future db_gc_assets query
+WITH referenced_assets AS (
+  SELECT DISTINCT asset_id
+  FROM elements
+  WHERE valid_to IS NULL AND asset_id IS NOT NULL
+)
+DELETE FROM assets
+WHERE asset_id NOT IN (SELECT asset_id FROM referenced_assets);
+
+DELETE FROM asset_cache
+WHERE source_id NOT IN (SELECT asset_id FROM assets);
+
+VACUUM;
+```
+
+Retention policy: **manual GC only** in v1. History accumulates
+over time; that's the cost of supporting per-asset Restore (and
+the future project-wide rollback).
+
+Trigger: future File menu → "Compact (Free Unused Assets)" or
+extension of `db_compact`.
+
+## Project rollback (deferred; data preserved)
+
+Project-wide "Roll back to time T" is the Beamer pre-talk-panic
+feature: pick a timestamp, batch-restore every asset to its version
+at-or-before-T. Deferred from the asset-model refactor — the data
+is preserved by the "manual GC only" retention policy, so adding
+the UI is purely additive whenever it's prioritized.
+
+## Insertion path detail (paste / drag / pasteboard)
 
 ### Paste (Cmd+V)
 
-Priority order: SVG > PDF > raster, with vendor UTIs aliased to
-canonical MIMEs (`com.microsoft.image-svg-xml` → `image/svg+xml`,
-`com.adobe.pdf` → `application/pdf`, etc.). SVG before PDF because
-the pdfium render path isn't built yet; flip when PDF works.
+Priority order: SVG > PDF > raster. Vendor UTIs aliased to canonical
+MIMEs (`com.microsoft.image-svg-xml` → `image/svg+xml`,
+`com.adobe.pdf` → `application/pdf`).
 
-Three discovery paths in priority order:
-
-1. Native macOS `NSPasteboard` via `objc2-app-kit` (`pasteboard_list_types` / `pasteboard_read_type` Tauri commands) — the only path that sees Office/Apple/Adobe custom UTIs that WebKit filters out of JS clipboard APIs.
-2. Async `navigator.clipboard.read()` — sometimes exposes formats the sync API doesn't.
+Three discovery paths:
+1. Native macOS `NSPasteboard` via `objc2-app-kit`
+   (`pasteboard_list_types` / `pasteboard_read_type` Tauri
+   commands) — the only path that sees Office/Apple/Adobe custom
+   UTIs that WebKit filters out.
+2. Async `navigator.clipboard.read()` — sometimes exposes formats
+   the sync API doesn't.
 3. Sync `clipboardData.items` — fallback.
 
 ### Drag-drop
 
 Two paths:
-
-1. Native macOS drag pasteboard via `pasteboard_read_drag_type` — exposed during Tauri's `onDragDropEvent` handler. Sees the same Office/Adobe UTIs paste does.
-2. Web `DataTransfer.items` — fallback for non-Mac and as safety net.
+1. Native macOS drag pasteboard via `pasteboard_read_drag_type` —
+   exposed during Tauri's `onDragDropEvent` handler. Sees the same
+   Office/Adobe UTIs paste does.
+2. Web `DataTransfer.items` — fallback for non-Mac and safety net.
 
 **Unsolved**: drag-out-of-PowerPoint produces zero JS events
 because Tauri's drag-drop bridge filters at the NSWindow level
 before any custom-UTI drag reaches the webview. Documented as a
 known limitation; tracked separately. Paste works as a workaround.
 
-### File picker (+Image / +Demo buttons)
+### File picker
 
-Plain `@tauri-apps/plugin-dialog` `open()`, then file read + store.
-Same `db_store_asset` call as drag-drop.
+`@tauri-apps/plugin-dialog` `open()`, then file read + store. Same
+`db_store_asset` call.
 
-## Settings surfaces
-
-| Setting | Where it lives | UI |
-|---|---|---|
-| Global `autoReloadAssets` | `localStorage` | Eigendeck → Settings… (Cmd+,) modal |
-| Global `mathPreamble` | `localStorage` | Same Settings modal (textarea) |
-| Per-presentation `autoReloadAssets` | `config.autoReloadAssets` in `.eigendeck` JSON | Inspector → Presentation block (nothing selected) → tri-state |
-| Per-presentation `mathPreamble` | `config.mathPreamble` | Inspector → Presentation → textarea + "Insert global" / "Replace with global" buttons |
-| Per-asset `auto_reload` | `assets.auto_reload` column | Inspector → Asset section → tri-state (shown only when project is saved) |
-
-The Settings modal is webview-based today; native NSPanel is
-deferred — see GitHub issue #62.
-
-### Math preamble semantics
-
-**Render time**: only `config.mathPreamble` (per-presentation)
-matters. There is no cascade or merge with the global preamble.
-
-**Editing time**: the global preamble is a template:
-
-- New presentations seed `config.mathPreamble` from the global pref
-  at creation (in `fileOps.createProject`).
-- "Insert global" button on the per-presentation textarea: prepends
-  the current global preamble text to whatever's in the per-pres
-  field. Use case: opened someone else's deck, want your common
-  macros available.
-- "Replace with global" button: overwrites per-pres with global
-  (confirm prompt if per-pres is non-empty). Use case: updated
-  global, want this deck to use the new version.
-
-Both buttons disabled when global is empty.
-
-## Toasts (non-modal user warnings)
-
-`src/lib/toasts.ts` + `<ToastHost>` at the bottom of the window.
-Used today for the "asset added to unsaved presentation" warning
-with an inline Save… button. Replace any future "this would be
-modal but isn't critical" use case with a toast rather than a
-dialog.
-
-Color-coded by kind (info / warning / error / success), auto-
-dismiss with configurable `ttl` (0 = sticky), `key` field dedupes
-repeated identical toasts.
-
-## Open questions / future work
-
-- **Native settings window** (issue #62) — current Settings modal
-  is webview; native NSPanel scales better with future preferences.
-- **PDF render path** — `pdfium-render` integration; bytes are
-  stored today, render is placeholder.
-- **PowerPoint drag** — needs a Tauri plugin or NSView subclass to
-  bypass the webview's drag MIME filter.
-- **Demo snapshots** (issue #59) — `asset_cache.variant` column
-  reserved; capture flow not built.
-- **Cross-platform clipboard** — swap `pasteboard.rs` for
-  `clipboard-rs` when Windows/Linux become real targets.
-
-## File-by-file index
+## Files
 
 | File | Role |
 |---|---|
-| `src-tauri/src/storage.rs` | `assets` table, all `db_*` asset commands |
+| `src-tauri/src/storage.rs` | `assets` table, element columns, all `db_*` asset commands |
 | `src-tauri/src/pasteboard.rs` | Native NSPasteboard reads |
 | `src/lib/watcherRegistry.ts` | Per-`project_id` watcher singleton, scan-on-load |
 | `src/lib/assetWatcher.ts` | `useAssetFileWatcher` React hook |
+| `src/lib/assetUsage.ts` | Pure helper: `computeAssetUsage(presentation, assetId, path)` |
+| `src/lib/assetInsert.ts` | `storeAssetWithCollisionCheck` + the collision-dialog flow |
 | `src/lib/demoAssets.ts` | `useAssetUrl` / `getAssetUrl` + blob cache |
-| `src/lib/assetRenderer.ts` | `useRenderedAsset` / `renderAsset` + invalidation |
-| `src/lib/preferences.ts` | `usePreference`, `effectiveAutoReload` cascade resolver |
+| `src/lib/assetRenderer.ts` | `useRenderedAsset` / `renderAsset` + cache invalidation |
+| `src/lib/preferences.ts` | `usePreference`, `effectiveAutoReload` (cascade resolver) |
 | `src/lib/toasts.ts` | Module-level toast subscribe pattern |
+| `src/lib/collisionDialog.ts` + `src/components/CollisionDialog.tsx` | Collision-dialog plumbing |
 | `src/components/AssetSection.tsx` | Properties panel section per image element |
+| `src/components/AssetSection.test.tsx` | Mount tests — regression guard for the infinite-loop bug |
 | `src/components/SettingsModal.tsx` | Global preferences modal |
 | `src/components/ToastHost.tsx` | Toast renderer mounted in App |
 | `src/components/SlideEditor.tsx` | All insertion callsites (paste, drag, native pasteboard) |
-| `src/store/presentation.ts` | `backfillElementAssetIds` on load |
-| `src/types/presentation.ts` | `ImageElement.assetId`, `DemoElement.assetId`, `DemoPieceElement.assetId` |
+| `src/store/presentation.ts` | `backfillElementAssetIds` on load; `flushToSqlite` write-through |
+| `src/types/presentation.ts` | `ImageElement.assetId`, future drop of `src` / `demoSrc` |
+
+## Open questions / deferred
+
+- **Native settings window** (#62) — current SettingsModal is
+  webview; native NSPanel scales better with future preferences.
+- **PDF render path** — `pdfium-render` integration; bytes stored
+  today, render is placeholder.
+- **PowerPoint drag** — needs a Tauri plugin or NSView subclass to
+  bypass the webview's drag MIME filter.
+- **Demo snapshots** (#59) — `asset_cache.variant` column reserved;
+  capture flow not built.
+- **Cross-platform clipboard** — swap `pasteboard.rs` for
+  `clipboard-rs` when Win/Linux become real targets.
+- **Watcher orphan-callback warnings on macOS atomic-save** (#63) —
+  cosmetic; functionally harmless.
+- **Asset GC** — sketched above, not built. Deferred from the asset
+  refactor.
+- **Project rollback to time T** — deferred; data preserved so it's
+  additive.
