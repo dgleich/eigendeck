@@ -6,6 +6,7 @@ use tauri::{Emitter, Manager};
 
 mod debug;
 mod pasteboard;
+mod pdf;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
@@ -546,6 +547,8 @@ pub fn run() {
             storage::db_remove_element_from_slide,
             storage::db_compact,
             storage::db_gc_assets,
+            pdf::db_render_pdf_page,
+            pdf::db_pdf_page_count,
             storage::db_get_history,
             storage::db_get_history_timestamps,
             storage::db_get_state_at,

@@ -42,6 +42,10 @@ tauri-plugin-fs = { version = "2.4.5", features = ["watch"] }
 # `thread_safe` wraps the C bindings in a Mutex so the OnceLock holding
 # the Pdfium instance can be shared across Tauri command handlers.
 pdfium-render = { version = "0.9", features = ["thread_safe"] }
+# pdfium-render pulls in `image` with only the jpeg feature; we need
+# png too for encoding the rendered bitmap into the asset_cache.
+# Cargo unifies features so both crates see the merged set.
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = "0.24"

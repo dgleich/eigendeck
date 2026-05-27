@@ -54,7 +54,7 @@ fn download_and_extract_pdfium(archive_name: &str, lib_in_archive: &str, dest_di
     for entry in tar.entries().expect("read tar entries") {
         let mut entry = entry.expect("read tar entry");
         let path = entry.path().expect("entry path").to_path_buf();
-        if path == PathBuf::from(lib_in_archive) {
+        if path == std::path::Path::new(lib_in_archive) {
             let mut out = fs::File::create(&dylib_dest)
                 .expect("create dylib output file");
             std::io::copy(&mut entry, &mut out).expect("extract dylib");
