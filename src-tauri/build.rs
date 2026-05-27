@@ -42,6 +42,10 @@ fn download_and_extract_pdfium(archive_name: &str, lib_in_archive: &str, dest_di
         return;
     }
 
+    // Fresh download → invalidate the macOS-prepared sentinel so the
+    // xattr/codesign step runs once on the new bytes.
+    let _ = fs::remove_file(dest_dir.join(".macos_prepared"));
+
     fs::create_dir_all(dest_dir).expect("create pdfium resources dir");
 
     let url = format!(
@@ -88,14 +92,24 @@ fn download_and_extract_pdfium(archive_name: &str, lib_in_archive: &str, dest_di
 /// com.apple.quarantine xattr; cargo / ureq downloads do too. Clear
 /// xattrs, then re-sign ad-hoc so hardened runtime accepts the load.
 ///
-/// Runs every build (not just after fresh download) because users may
-/// already have a cached dylib from before this fix landed — and the
-/// operations are cheap + idempotent. No-op on non-Mac targets.
+/// Sentinel-gated: writes `.macos_prepared` after success so subsequent
+/// builds skip. CRITICAL — `codesign --force` rewrites the file every
+/// time, and Tauri's dev-mode watcher then fires "file changed →
+/// rebuild" in an infinite loop. The sentinel makes this idempotent.
+/// Re-download (tag bump) clears the sentinel so prep re-runs on the
+/// fresh bytes.
 fn ensure_dylib_loadable_on_macos(dylib_path: &std::path::Path) {
     #[cfg(target_os = "macos")]
     {
         use std::process::Command;
         if !dylib_path.exists() {
+            return;
+        }
+        let sentinel = dylib_path
+            .parent()
+            .unwrap()
+            .join(".macos_prepared");
+        if sentinel.exists() {
             return;
         }
         // Best-effort: don't fail the build if xattr/codesign aren't on
@@ -106,6 +120,7 @@ fn ensure_dylib_loadable_on_macos(dylib_path: &std::path::Path) {
             .args(["--force", "--sign", "-"])
             .arg(dylib_path)
             .status();
+        let _ = fs::write(&sentinel, "ok");
     }
     #[cfg(not(target_os = "macos"))]
     {
