@@ -8,7 +8,8 @@ import { useEffect, useState, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { listen, emitTo } from '@tauri-apps/api/event';
 import { getSlideNumber } from './types/presentation';
-import { useAssetUrl, useDemoUrl } from './lib/demoAssets';
+import { useDemoUrl } from './lib/demoAssets';
+import { useImageSrc } from './lib/imageSrc';
 import type { Presentation, SlideElement, TextElement } from './types/presentation';
 import { TextElementSvg } from './components/TextElementSvg';
 import './App.css';
@@ -183,7 +184,7 @@ function PresenterTextElement({ element: el, zIndex, slide, presentationConfig, 
 
 function PresenterImage({ element: el, zIndex }: { element: Extract<SlideElement, { type: 'image' }>; zIndex: number }) {
   const pos = el.position;
-  const src = useAssetUrl(el.assetId);
+  const src = useImageSrc(el.assetId, el.kind, el.snapshotVariant);
   if (!src) return null;
   return (
     <img src={src} alt="" style={{

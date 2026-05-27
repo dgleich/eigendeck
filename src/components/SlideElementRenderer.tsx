@@ -1,7 +1,8 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
-import { useDemoUrl, useAssetUrl, invalidateAsset } from '../lib/demoAssets';
+import { useDemoUrl, invalidateAsset } from '../lib/demoAssets';
+import { useImageSrc } from '../lib/imageSrc';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 
 import { TEXT_PRESET_STYLES } from '../types/presentation';
@@ -156,7 +157,7 @@ function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
-  const src = useAssetUrl(element.assetId);
+  const src = useImageSrc(element.assetId, element.kind, element.snapshotVariant);
   return (
     <DraggableBox
       elementId={element.id}

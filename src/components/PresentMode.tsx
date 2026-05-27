@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
-import { useDemoUrl, useAssetUrl } from '../lib/demoAssets';
+import { useDemoUrl } from '../lib/demoAssets';
+import { useImageSrc } from '../lib/imageSrc';
 import { SpeakerPanel } from './SpeakerView';
 import { getSlideNumber } from '../types/presentation';
 import type { Slide, SlideElement, TextElement } from '../types/presentation';
@@ -442,7 +443,7 @@ function PresentImage({ element: el, zIndex, style }: {
   element: Extract<SlideElement, { type: 'image' }>; zIndex: number; style?: React.CSSProperties;
 }) {
   const pos = el.position;
-  const src = useAssetUrl(el.assetId);
+  const src = useImageSrc(el.assetId, el.kind, el.snapshotVariant);
   if (!src) return null;
   return (
     <img src={src} alt="" style={{
