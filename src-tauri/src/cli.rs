@@ -453,7 +453,8 @@ fn cmd_set_text(args: &[String]) -> Result<(), String> {
                     obj.insert("html".to_string(), Value::String(text.clone()));
                 }
                 let link_id = el.get("linkId").and_then(|v| v.as_str()).map(|s| s.to_string());
-                storage::db_update_element(eid.to_string(), updated.to_string(), link_id)?;
+                let asset_id = el.get("assetId").and_then(|v| v.as_str()).map(|s| s.to_string());
+                storage::db_update_element(eid.to_string(), updated.to_string(), link_id, asset_id)?;
                 println!("Updated {}", &eid[..8.min(eid.len())]);
                 return Ok(());
             }
@@ -491,7 +492,7 @@ fn cmd_add(args: &[String]) -> Result<(), String> {
 
             storage::db_add_element(
                 slide_id.to_string(), el_id.clone(), "text".to_string(),
-                el_json.to_string(), None, elements.len() as i32
+                el_json.to_string(), None, None, elements.len() as i32
             )?;
             println!("Added text element {} to slide {}", &el_id[..8], slide_num);
         }
@@ -576,7 +577,8 @@ fn cmd_move(args: &[String]) -> Result<(), String> {
                             pos.insert("y".to_string(), serde_json::json!(y));
                         }
                         let link_id = el.get("linkId").and_then(|v| v.as_str()).map(|s| s.to_string());
-                        storage::db_update_element(eid.to_string(), updated.to_string(), link_id)?;
+                        let asset_id = el.get("assetId").and_then(|v| v.as_str()).map(|s| s.to_string());
+                        storage::db_update_element(eid.to_string(), updated.to_string(), link_id, asset_id)?;
                         println!("Moved {} to ({}, {})", &eid[..8.min(eid.len())], x, y);
                         return Ok(());
                     }
@@ -604,7 +606,8 @@ fn cmd_edit(args: &[String]) -> Result<(), String> {
             let eid = el.get("id").and_then(|v| v.as_str()).unwrap_or("");
             if eid.starts_with(id_prefix.as_str()) {
                 let link_id = el.get("linkId").and_then(|v| v.as_str()).map(|s| s.to_string());
-                storage::db_update_element(eid.to_string(), json_str.clone(), link_id)?;
+                let asset_id = el.get("assetId").and_then(|v| v.as_str()).map(|s| s.to_string());
+                storage::db_update_element(eid.to_string(), json_str.clone(), link_id, asset_id)?;
                 println!("Updated {}", &eid[..8.min(eid.len())]);
                 return Ok(());
             }

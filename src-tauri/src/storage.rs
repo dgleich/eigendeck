@@ -3470,7 +3470,7 @@ mod tests {
     /// db_import_json moves assetId from JSON into the column AND
     /// db_export_json reassembles it back into the per-element JSON.
     #[test]
-    fn assetId_round_trips_through_import_export() {
+    fn asset_id_round_trips_through_import_export() {
         setup_global_db();
         let input = json!({
             "title": "T", "theme": "white",
@@ -3523,7 +3523,7 @@ mod tests {
     /// from JSON. Idempotency: running create_schema twice doesn't
     /// double-add or re-backfill.
     #[test]
-    fn migration_promotes_assetId_from_legacy_elements_to_column() {
+    fn migration_promotes_asset_id_from_legacy_elements_to_column() {
         // Manual setup — bypass create_schema so we can simulate the
         // pre-phase-3 schema shape (no asset_id column).
         let conn = Connection::open_in_memory().unwrap();
