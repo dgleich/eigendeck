@@ -2,14 +2,19 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-// pdfium prebuilt release pinned here. Bumping is a one-line change;
-// keep in sync with the pdfium-render version in Cargo.toml (the
-// bblanchon releases roughly match Chromium's pdfium snapshots, and
-// pdfium-render publishes a compatibility matrix). The chromium/<num>
-// tag scheme is what bblanchon uses; pick a recent stable one.
+// pdfium prebuilt release pinned here. MUST match the pdfium-render
+// `pdfium_NNNN` API binding (default is `pdfium_latest` = whatever
+// pdfium-render's current release names — see its README). Older
+// bblanchon builds are missing newer pdfium symbols and pdfium-render
+// fails at bind time with `dlsym: symbol not found`.
+//
+// pdfium-render 0.9.1 → pdfium_7763 → bblanchon tag `chromium/7763`.
+// On bump: change the version below; the sentinel-file check next to
+// the cached dylib forces a re-download so stale dylibs from the old
+// tag don't poison the build.
 //
 // See: https://github.com/bblanchon/pdfium-binaries/releases
-const PDFIUM_RELEASE_TAG: &str = "chromium/7202";
+const PDFIUM_RELEASE_TAG: &str = "chromium/7763";
 
 /// Resolve the bblanchon release-asset name for the build's target.
 /// Returns (asset_filename, expected_dylib_path_inside_archive).
@@ -26,9 +31,14 @@ fn bblanchon_asset_for_target() -> Option<(&'static str, &'static str)> {
 
 fn download_and_extract_pdfium(archive_name: &str, lib_in_archive: &str, dest_dir: &PathBuf) {
     let dylib_dest = dest_dir.join("libpdfium.dylib");
-    if dylib_dest.exists() {
-        // Cached. Cargo's rerun-if-changed on build.rs is enough — the
-        // download is content-stable across builds for a given release tag.
+    // Sentinel: the release tag this dylib was extracted from. Mismatch
+    // (tag bump in this file) forces re-download so the dylib stays in
+    // lockstep with pdfium-render's expected symbol set.
+    let tag_sentinel = dest_dir.join("RELEASE_TAG");
+    let cached_tag = fs::read_to_string(&tag_sentinel).ok();
+    let needs_download = !dylib_dest.exists()
+        || cached_tag.as_deref().map(str::trim) != Some(PDFIUM_RELEASE_TAG);
+    if !needs_download {
         return;
     }
 
@@ -68,7 +78,9 @@ fn download_and_extract_pdfium(archive_name: &str, lib_in_archive: &str, dest_di
             lib_in_archive, archive_name,
         );
     }
-    println!("cargo:warning=pdfium dylib extracted to {}", dylib_dest.display());
+    fs::write(&tag_sentinel, PDFIUM_RELEASE_TAG)
+        .expect("write release-tag sentinel");
+    println!("cargo:warning=pdfium dylib extracted to {} (tag={})", dylib_dest.display(), PDFIUM_RELEASE_TAG);
 }
 
 fn main() {
