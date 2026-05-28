@@ -30,6 +30,40 @@ import { showToast, dismissToast } from './toasts';
 const SLOW_RENDER_TOAST_MS = 5000;
 
 /**
+ * Refcount of currently-slow renders per assetId. A single asset
+ * commonly renders at multiple tiers concurrently (sidebar thumb
+ * + slide element), and we want ONE toast per asset across all
+ * tiers — not one per (assetId, width, height) inflight key.
+ * Toast is shown when count goes 0→1 and dismissed when 1→0.
+ */
+const slowToastRefcount = new Map<string, number>();
+
+function acquireSlowToast(assetId: string, kind: AssetKind): void {
+  const key = `slow:${assetId}`;
+  const count = slowToastRefcount.get(assetId) ?? 0;
+  slowToastRefcount.set(assetId, count + 1);
+  if (count === 0) {
+    const noun = kind === 'pdf' ? 'a complex PDF' : `a complex ${kind.toUpperCase()}`;
+    showToast({
+      key,
+      message: `Rendering ${noun}… (cached after first render)`,
+      kind: 'info',
+      ttl: 0,
+    });
+  }
+}
+
+function releaseSlowToast(assetId: string): void {
+  const count = slowToastRefcount.get(assetId) ?? 0;
+  if (count <= 1) {
+    slowToastRefcount.delete(assetId);
+    dismissToast(`slow:${assetId}`);
+  } else {
+    slowToastRefcount.set(assetId, count - 1);
+  }
+}
+
+/**
  * Promote sub-FULL PDF renders to FULL when the source PDF is at least
  * this large (bytes). Rationale: pdfium's parse cost dominates for big
  * PDFs (single-digit MB+), so paying it once at FULL tier and then
@@ -116,27 +150,15 @@ export async function renderAsset(opts: {
       // SLOW_RENDER_TOAST_MS. Keyed by inflightKey so multiple callers
       // awaiting the same dedup'd promise see ONE toast, not N. Cleared
       // in finally — fires once per render, never leaks across attempts.
-      const toastKey = `slow-render:${inflightKey}`;
-      const toastSetAt = performance.now();
+      // Toast is acquired only if THIS render is still going at the
+      // threshold; refcount is keyed by assetId so the multi-tier case
+      // (256 thumb + 1920 element fired in parallel) collapses to one
+      // toast. timerFired guards the release: if the render finishes
+      // before the threshold, no acquire ever happened — no release.
+      let timerFired = false;
       const slowToastTimer = setTimeout(() => {
-        const noun = kind === 'pdf' ? 'a complex PDF' : `a complex ${kind.toUpperCase()}`;
-        // Diagnostic: confirm the timer fires and showToast is reached.
-        // If you see this line in the log but no toast appears, the
-        // issue is the toast UI layer (likely WebView compositor
-        // blocked while pdfium holds main thread). If you DON'T see
-        // this line, the JS event loop itself is blocked.
-        console.log(`[slow-toast] timer fired for ${assetId.slice(0,8)} ${kind} ${maxWidth}x${maxHeight} after ${(performance.now() - toastSetAt).toFixed(0)}ms; calling showToast`);
-        try {
-          showToast({
-            key: toastKey,
-            message: `Rendering ${noun}… (cached after first render)`,
-            kind: 'info',
-            ttl: 0,  // sticky; we dismiss in finally
-          });
-          console.log(`[slow-toast] showToast returned for ${assetId.slice(0,8)}`);
-        } catch (e) {
-          console.error('[slow-toast] showToast threw:', e);
-        }
+        timerFired = true;
+        acquireSlowToast(assetId, kind);
       }, SLOW_RENDER_TOAST_MS);
 
       try {
@@ -271,7 +293,7 @@ export async function renderAsset(opts: {
       return png;
       } finally {
         clearTimeout(slowToastTimer);
-        dismissToast(toastKey);
+        if (timerFired) releaseSlowToast(assetId);
       }
     })().finally(() => renderInflight.delete(inflightKey));
     renderInflight.set(inflightKey, pngPromise);
