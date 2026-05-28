@@ -54,10 +54,11 @@ describe('renderAsset — pdf branch', () => {
     );
 
     // Rendered PNG goes into the cache under the assetId key + default
-    // variant '_' (single-page; multi-page picker would change this).
+    // variant '_'. Bytes travel as Uint8Array (binary IPC), not
+    // an Array.from() copy.
     expect(mockedInvoke).toHaveBeenCalledWith('db_put_asset_cache', {
       sourceId: 'asset-pdf-1', variant: '_', width: 1000, height: 800,
-      png: fakePng, sourceHash: null,
+      png: new Uint8Array(fakePng), sourceHash: null,
     });
   });
 
