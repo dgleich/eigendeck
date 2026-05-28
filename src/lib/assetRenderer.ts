@@ -18,6 +18,16 @@ import {
   type AssetKind,
   type AssetCacheEntry,
 } from './assetCache';
+import { showToast, dismissToast } from './toasts';
+
+/**
+ * Show a "still rendering…" toast if a single asset render hasn't
+ * completed within this many ms. Threshold picked from stress-test
+ * data: typical PDF + SVG renders complete in <2s on release build;
+ * 5s is well into the long tail (worst pathological case 41s in
+ * pdfium.3 log). Below 5s, the toast would be noise.
+ */
+const SLOW_RENDER_TOAST_MS = 5000;
 
 /**
  * Promote sub-FULL PDF renders to FULL when the source PDF is at least
@@ -102,6 +112,22 @@ export async function renderAsset(opts: {
   let pngPromise = renderInflight.get(inflightKey);
   if (!pngPromise) {
     pngPromise = (async () => {
+      // Slow-render toast: fires if THIS render hasn't completed within
+      // SLOW_RENDER_TOAST_MS. Keyed by inflightKey so multiple callers
+      // awaiting the same dedup'd promise see ONE toast, not N. Cleared
+      // in finally — fires once per render, never leaks across attempts.
+      const toastKey = `slow-render:${inflightKey}`;
+      const slowToastTimer = setTimeout(() => {
+        const noun = kind === 'pdf' ? 'a complex PDF' : `a complex ${kind.toUpperCase()}`;
+        showToast({
+          key: toastKey,
+          message: `Rendering ${noun}… (cached after first render)`,
+          kind: 'info',
+          ttl: 0,  // sticky; we dismiss in finally
+        });
+      }, SLOW_RENDER_TOAST_MS);
+
+      try {
       let png: Uint8Array;
       // Set true when the producer (pdfium / server-side downscale) has
       // already written the target tier to cache — skips the
@@ -190,6 +216,10 @@ export async function renderAsset(opts: {
         rlog(`render TOTAL ${(performance.now() - T0).toFixed(0)}ms (cache write done server-side)`);
       }
       return png;
+      } finally {
+        clearTimeout(slowToastTimer);
+        dismissToast(toastKey);
+      }
     })().finally(() => renderInflight.delete(inflightKey));
     renderInflight.set(inflightKey, pngPromise);
   } else {
