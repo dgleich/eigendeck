@@ -237,6 +237,17 @@ export async function renderAsset(opts: {
             });
             const pageBytes = new Uint8Array(pageBuf);
             rlog(`pdfium render(${assetId.slice(0,8)} ${maxWidth}x${maxHeight}): ${(performance.now() - tPdf).toFixed(0)}ms → ${pageBytes.length}B`);
+
+            // Cache INSIDE the slot. If we returned and let the outer
+            // putAssetCache run after slot release, the NEXT slot
+            // acquirer (e.g. a 256 thumb queued behind this 1920) would
+            // re-probe an empty cache and re-render the same PDF. Race
+            // observed in pdfium.6 log: 256 IIFE re-parsed Asset 2 for
+            // 44s seconds after the 1920 IIFE had just rendered FULL.
+            const tPutInSlot = performance.now();
+            await putAssetCache(assetId, variant, maxWidth, maxHeight, pageBytes, null);
+            rlog(`putAssetCache (in-slot): ${(performance.now() - tPutInSlot).toFixed(0)}ms`);
+            skipCachePut = true;  // cache write owned by the slot
             return pageBytes;
           });
           break;
