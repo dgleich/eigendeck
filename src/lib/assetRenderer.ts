@@ -198,10 +198,14 @@ export async function renderAsset(opts: {
 
       // Per-asset slow-render toast (separate UX from the aggregate
       // batch banner). Acquired only if THIS render is still going at
-      // the threshold; refcount keyed by assetId so multi-tier renders
-      // collapse to one toast. timerFired guards the release.
+      // the threshold AND the batch banner isn't already showing — N
+      // per-asset toasts on top of "Building previews: N/M" is the
+      // same information twice. Refcount keyed by assetId so
+      // multi-tier renders collapse to one toast. timerFired guards
+      // the release.
       let timerFired = false;
       const slowToastTimer = setTimeout(() => {
+        if (renderBatchPending >= RENDER_BATCH_THRESHOLD) return;
         timerFired = true;
         acquireSlowToast(assetId, kind);
       }, SLOW_RENDER_TOAST_MS);
