@@ -577,6 +577,7 @@ pub fn run() {
             storage::db_put_asset_cache,
             storage::db_get_asset_cache,
             storage::db_get_asset_cache_bytes,
+            storage::db_downscale_asset_cache,
             storage::db_list_asset_cache_variants,
             storage::db_clear_asset_cache,
             storage::db_update_presentation,

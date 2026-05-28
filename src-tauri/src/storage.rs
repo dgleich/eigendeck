@@ -2259,6 +2259,78 @@ pub fn db_get_asset_cache_bytes(
     })
 }
 
+/// Server-side downscale of a cached render: read FULL-tier PNG,
+/// decode, resize to (target_w, target_h) preserving aspect ratio
+/// and alpha, encode back to PNG, write target tier to cache, return
+/// the bytes via Response. ONE IPC for the whole pipeline.
+///
+/// Why server-side: the JS canvas path's `canvas.toBlob('image/png')`
+/// runs PNG encode on the main thread in WebKit and is wildly variable
+/// (50-2000ms). Rust's image crate runs in the Tauri command thread
+/// pool — off the webview main thread, deterministic timing.
+///
+/// Returns empty Response when the source tier isn't cached (caller's
+/// signal to fall through to the fresh-render path).
+#[tauri::command]
+pub fn db_downscale_asset_cache(
+    source_id: String,
+    variant: String,
+    source_width: i64,
+    source_height: i64,
+    target_width: u32,
+    target_height: u32,
+) -> Result<tauri::ipc::Response, String> {
+    let src_png: Vec<u8> = match with_db(|conn| {
+        conn.query_row(
+            "SELECT png FROM asset_cache WHERE source_id = ?1 AND variant = ?2 AND width = ?3 AND height = ?4",
+            params![&source_id, &variant, source_width, source_height],
+            |row| row.get::<_, Vec<u8>>(0),
+        )
+    }) {
+        Ok(b) => b,
+        Err(e) if e.contains("no rows") || e.contains("NoRows") => {
+            return Ok(tauri::ipc::Response::new(Vec::<u8>::new()));
+        }
+        Err(e) => return Err(format!("read source tier: {}", e)),
+    };
+
+    // Decode PNG → resize (aspect-fit, never upscale) → re-encode PNG.
+    // Triangle filter is fast (bilinear under the hood); CatmullRom
+    // would be sharper but ~2x slower.
+    let img = image::load_from_memory_with_format(&src_png, image::ImageFormat::Png)
+        .map_err(|e| format!("decode source png: {}", e))?;
+    let resized = img.resize(target_width, target_height, image::imageops::FilterType::Triangle);
+    let out_w = resized.width();
+    let out_h = resized.height();
+
+    let mut out_png: Vec<u8> = Vec::new();
+    {
+        use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+        use image::ImageEncoder;
+        let rgba = resized.to_rgba8();
+        let encoder = PngEncoder::new_with_quality(
+            &mut out_png,
+            CompressionType::Default,
+            FilterType::NoFilter,
+        );
+        encoder.write_image(rgba.as_raw(), out_w, out_h, image::ExtendedColorType::Rgba8)
+            .map_err(|e| format!("encode target png: {}", e))?;
+    }
+
+    // Write target tier to cache so future hits skip the resize via
+    // the db_get_asset_cache_bytes fast path.
+    with_db(|conn| {
+        conn.execute(
+            "INSERT OR REPLACE INTO asset_cache (source_id, variant, width, height, png, source_hash) \
+             VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+            params![&source_id, &variant, target_width as i64, target_height as i64, &out_png],
+        )?;
+        Ok(())
+    })?;
+
+    Ok(tauri::ipc::Response::new(out_png))
+}
+
 /// Legacy struct-returning variant. Kept for any callers that need the
 /// metadata fields (variant/hash). New callers should prefer the
 /// bytes form — much cheaper IPC.
