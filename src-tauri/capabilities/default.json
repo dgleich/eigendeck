@@ -24,6 +24,8 @@
     "fs:scope-desktop-recursive",
     "fs:scope-download-recursive",
     "fs:scope-temp-recursive",
+    "fs:scope-applog-recursive",
+    "fs:allow-mkdir",
     "fs:allow-watch",
     "fs:allow-unwatch"
   ]

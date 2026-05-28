@@ -717,13 +717,22 @@ function scheduleFlush() {
 
 /** Open a .eigendeck SQLite file and load its contents into the store */
 export async function openSqliteProject(dbPath: string): Promise<void> {
+  const OPEN_LOG = true;  // stress-test debug
+  const T0 = performance.now();
+  const olog = (msg: string): void => {
+    if (OPEN_LOG) console.log(`[openProject +${Math.round(performance.now() - T0)}ms] ${msg}`);
+  };
+  olog(`start ${dbPath.split('/').pop()}`);
+
   try {
     const { invoke } = await import('@tauri-apps/api/core');
 
     // Close previous project cleanly (flush pending writes, checkpoint WAL,
     // tear down its file watchers).
     if (sqliteDbPath) {
+      const t = performance.now();
       await closeSqliteProject();
+      olog(`closed previous project: ${(performance.now() - t).toFixed(0)}ms`);
     }
 
     // Cancel any pending flush timer from the previous project
@@ -752,20 +761,31 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     resetMathCacheWarmupFlag();
 
     // Open new DB and load
+    let t = performance.now();
     await invoke('db_open', { path: dbPath });
-    const json = await invoke<string>('db_export_json');
-    const presentation: Presentation = JSON.parse(json);
+    olog(`db_open: ${(performance.now() - t).toFixed(0)}ms`);
 
+    t = performance.now();
+    const json = await invoke<string>('db_export_json');
+    olog(`db_export_json: ${(performance.now() - t).toFixed(0)}ms → ${(json.length / 1024).toFixed(0)}KB JSON`);
+
+    t = performance.now();
+    const presentation: Presentation = JSON.parse(json);
+    olog(`JSON.parse: ${(performance.now() - t).toFixed(0)}ms → ${presentation.slides.length} slides, ${presentation.slides.reduce((n, s) => n + s.elements.length, 0)} elements`);
+
+    t = performance.now();
     const store = usePresentationStore.getState();
     store.setPresentation(presentation);
     store.setProjectPath(dbPath.replace(/\.eigendeck$/, ''));
     store.markClean();
+    olog(`setPresentation + setProjectPath: ${(performance.now() - t).toFixed(0)}ms`);
 
     // Reset prevPresentation so subscriber doesn't diff against old state
     prevPresentation = presentation;
 
     // Enable write-through for the new project
     sqliteDbPath = dbPath;
+    olog(`load complete, kicking off async warmups`);
 
     // Warm the math-SVG cache so previously-rendered expressions don't
     // re-render through the iframe pool on first slide paint.
