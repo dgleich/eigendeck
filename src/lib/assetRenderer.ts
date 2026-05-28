@@ -42,7 +42,7 @@ export async function renderAsset(opts: {
 }): Promise<string> {
   const { assetId, kind, variant = '_', maxWidth, maxHeight, preFetchedBytes } = opts;
 
-  const RENDER_LOG = true;
+  const RENDER_LOG = false;
   const rlog = (msg: string): void => {
     if (RENDER_LOG) console.log(`[render ${new Date().toISOString().slice(11, 23)}] ${msg}`);
   };

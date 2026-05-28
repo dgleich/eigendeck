@@ -16,6 +16,14 @@ use tauri::Manager;
 
 use crate::storage;
 
+// Per-step render timings. Flip to true while tuning the pipeline; off
+// by default to keep the terminal clean for normal dev. Same pattern
+// as the JS-side PASTE_LOG / RENDER_LOG consts.
+const PDF_LOG: bool = false;
+macro_rules! plog {
+    ($($arg:tt)*) => { if PDF_LOG { eprintln!($($arg)*); } };
+}
+
 static PDFIUM: OnceLock<Result<Pdfium, String>> = OnceLock::new();
 
 /// Locate the bundled pdfium dylib. In `cargo tauri dev` this resolves
@@ -82,7 +90,7 @@ fn render_page_inner(
     let document = pdfium
         .load_pdf_from_byte_slice(pdf_bytes, None)
         .map_err(|e| format!("load_pdf_from_byte_slice: {}", e))?;
-    eprintln!("[pdf] load_pdf_from_byte_slice ({}KB): {}ms",
+    plog!("[pdf] load_pdf_from_byte_slice ({}KB): {}ms",
         pdf_bytes.len() / 1024, t_load.elapsed().as_millis());
 
     let pdf_page = document.pages().get(page as PdfPageIndex)
@@ -93,15 +101,23 @@ fn render_page_inner(
     // orientation. set_target_width + the two maximums together produce
     // "fit inside the box, never upscale past natural" without
     // scale_page_to_display_size's implicit 90° landscape rotation.
+    //
+    // Transparent clear color (alpha=0) preserves the PDF's actual
+    // background. Default pdfium-render clears to opaque white, which
+    // turns transparent-bg figure exports (Illustrator, Matplotlib,
+    // Inkscape "save selection as PDF") into white-backgrounded blocks
+    // on the slide. Pdfs with explicit white backgrounds still render
+    // white — only the implicit fill changes.
     let config = PdfRenderConfig::new()
         .set_target_width(max_width as Pixels)
         .set_maximum_width(max_width as Pixels)
-        .set_maximum_height(max_height as Pixels);
+        .set_maximum_height(max_height as Pixels)
+        .set_clear_color(PdfColor::new(0, 0, 0, 0));
 
     let t_render = std::time::Instant::now();
     let bitmap = pdf_page.render_with_config(&config)
         .map_err(|e| format!("render page {}: {}", page, e))?;
-    eprintln!("[pdf] render_with_config ({}x{}): {}ms",
+    plog!("[pdf] render_with_config ({}x{}): {}ms",
         max_width, max_height, t_render.elapsed().as_millis());
 
     // Skip the as_image() detour — pdfium already gives us RGBA bytes
@@ -110,7 +126,7 @@ fn render_page_inner(
     let t_bytes = std::time::Instant::now();
     let (w, h) = (bitmap.width() as u32, bitmap.height() as u32);
     let rgba = bitmap.as_rgba_bytes();
-    eprintln!("[pdf] as_rgba_bytes ({}KB): {}ms",
+    plog!("[pdf] as_rgba_bytes ({}KB): {}ms",
         rgba.len() / 1024, t_bytes.elapsed().as_millis());
 
     // Default zlib compression. Fast-mode produced 10MB outputs (50x
@@ -130,7 +146,7 @@ fn render_page_inner(
         encoder.write_image(&rgba, w, h, image::ExtendedColorType::Rgba8)
             .map_err(|e| format!("encode png: {}", e))?;
     }
-    eprintln!("[pdf] encode_png ({}KB out): {}ms",
+    plog!("[pdf] encode_png ({}KB out): {}ms",
         png_bytes.len() / 1024, t_png.elapsed().as_millis());
 
     Ok(png_bytes)
@@ -152,21 +168,21 @@ pub fn db_render_pdf_page(
     max_height: u32,
 ) -> Result<Vec<u8>, String> {
     let t_total = std::time::Instant::now();
-    eprintln!("[pdf] db_render_pdf_page asset={} page={} {}x{}",
+    plog!("[pdf] db_render_pdf_page asset={} page={} {}x{}",
         &asset_id[..8.min(asset_id.len())], page, max_width, max_height);
 
     let t_bind = std::time::Instant::now();
     let pdfium = get_pdfium(&app)?;
-    eprintln!("[pdf] get_pdfium (bind): {}ms", t_bind.elapsed().as_millis());
+    plog!("[pdf] get_pdfium (bind): {}ms", t_bind.elapsed().as_millis());
 
     let t_fetch = std::time::Instant::now();
     let bytes = storage::db_get_asset_by_id(asset_id.clone())?;
-    eprintln!("[pdf] db_get_asset_by_id ({}KB): {}ms",
+    plog!("[pdf] db_get_asset_by_id ({}KB): {}ms",
         bytes.len() / 1024, t_fetch.elapsed().as_millis());
 
     let result = render_page_inner(pdfium, &bytes, page, max_width, max_height)
         .map_err(|e| format!("{}: {}", asset_id, e));
-    eprintln!("[pdf] db_render_pdf_page TOTAL: {}ms", t_total.elapsed().as_millis());
+    plog!("[pdf] db_render_pdf_page TOTAL: {}ms", t_total.elapsed().as_millis());
     result
 }
 

@@ -44,7 +44,7 @@ export function SlideEditor() {
 
   // Cmd+V image paste
   useEffect(() => {
-    const PASTE_LOG = true;
+    const PASTE_LOG = false;
     const plog = (...a: unknown[]): void => {
       if (PASTE_LOG) console.log(`[paste ${new Date().toISOString().slice(11, 23)}]`, ...a);
     };
