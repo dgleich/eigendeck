@@ -166,7 +166,7 @@ pub fn db_render_pdf_page(
     page: u32,
     max_width: u32,
     max_height: u32,
-) -> Result<Vec<u8>, String> {
+) -> Result<tauri::ipc::Response, String> {
     let t_total = std::time::Instant::now();
     plog!("[pdf] db_render_pdf_page asset={} page={} {}x{}",
         &asset_id[..8.min(asset_id.len())], page, max_width, max_height);
@@ -180,10 +180,11 @@ pub fn db_render_pdf_page(
     plog!("[pdf] db_get_asset_by_id ({}KB): {}ms",
         bytes.len() / 1024, t_fetch.elapsed().as_millis());
 
-    let result = render_page_inner(pdfium, &bytes, page, max_width, max_height)
-        .map_err(|e| format!("{}: {}", asset_id, e));
-    plog!("[pdf] db_render_pdf_page TOTAL: {}ms", t_total.elapsed().as_millis());
-    result
+    let png = render_page_inner(pdfium, &bytes, page, max_width, max_height)
+        .map_err(|e| format!("{}: {}", asset_id, e))?;
+    plog!("[pdf] db_render_pdf_page TOTAL: {}ms ({}KB PNG)",
+        t_total.elapsed().as_millis(), png.len() / 1024);
+    Ok(tauri::ipc::Response::new(png))
 }
 
 /// Number of pages in a stored PDF asset. Cheap (parses header, doesn't

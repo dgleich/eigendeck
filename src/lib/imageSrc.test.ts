@@ -20,10 +20,12 @@ beforeEach(() => {
 
 describe('useImageSrc', () => {
   it('kind=pdf routes through db_render_pdf_page (pdfium path)', async () => {
-    const pdfPng = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 9, 9];
+    const pdfPng = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 9, 9]);
     mockedInvoke.mockImplementation(async (cmd: string) => {
       if (cmd === 'db_get_asset_cache_bytes') return new ArrayBuffer(0);
-      if (cmd === 'db_render_pdf_page') return pdfPng;
+      if (cmd === 'db_downscale_asset_cache') return new ArrayBuffer(0);
+      if (cmd === 'db_get_asset_meta_by_id') return { size: 1024, mime_type: 'application/pdf' };
+      if (cmd === 'db_render_pdf_page') return pdfPng.buffer.slice(0) as ArrayBuffer;
       if (cmd === 'db_put_asset_cache') return undefined;
       throw new Error(`unexpected invoke: ${cmd}`);
     });

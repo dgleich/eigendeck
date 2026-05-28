@@ -14,9 +14,43 @@ import {
   getAssetCache,
   putAssetCache,
   pngBytesToBlobUrl,
+  ASSET_TIER,
   type AssetKind,
   type AssetCacheEntry,
 } from './assetCache';
+
+/**
+ * Promote sub-FULL PDF renders to FULL when the source PDF is at least
+ * this large (bytes). Rationale: pdfium's parse cost dominates for big
+ * PDFs (single-digit MB+), so paying it once at FULL tier and then
+ * server-side downscaling to thumb is cheaper across the lifetime of
+ * the asset than two independent parses. Smaller PDFs render fast at
+ * either tier; promoting them just wastes cache and first-open latency.
+ */
+const PDF_PROMOTE_THRESHOLD_BYTES = 500 * 1024;
+
+/**
+ * Global pdfium concurrency limit. pdfium binds one process-wide
+ * instance; concurrent renders contend on it AND on the main thread
+ * through the IPC reply queue. Three at a time keeps the queue moving
+ * without starving UI / scroll / typing.
+ */
+const PDF_RENDER_CONCURRENCY = 3;
+let pdfActive = 0;
+const pdfWaiters: Array<() => void> = [];
+async function withPdfRenderSlot<T>(fn: () => Promise<T>): Promise<T> {
+  if (pdfActive >= PDF_RENDER_CONCURRENCY) {
+    await new Promise<void>((resolve) => pdfWaiters.push(resolve));
+  }
+  pdfActive++;
+  try {
+    return await fn();
+  } finally {
+    pdfActive--;
+    const next = pdfWaiters.shift();
+    if (next) next();
+  }
+}
 
 /**
  * Render (or fetch from cache) a rasterized PNG for an asset, fitting the
@@ -65,18 +99,74 @@ export async function renderAsset(opts: {
   if (!pngPromise) {
     pngPromise = (async () => {
       let png: Uint8Array;
+      // Set true when the producer (pdfium / server-side downscale) has
+      // already written the target tier to cache — skips the
+      // outer putAssetCache to avoid a redundant 1-3 MB IPC round trip.
+      let skipCachePut = false;
       switch (kind) {
         case 'pdf': {
-          // Rust side does the byte fetch + render in one trip — no point
-          // marshalling multi-MB PDFs through invoke twice. v1 always
-          // renders page 0; multi-page picker is a follow-up
-          // (snapshotVariant would carry the page index when that lands).
-          const tPdf = performance.now();
-          const pageBytes = await invoke<number[]>('db_render_pdf_page', {
-            assetId, page: 0, maxWidth, maxHeight,
+          // (A) Downscale-from-cache: if FULL is already cached and we
+          // want a smaller tier, ask Rust to decode → resize → encode →
+          // cache → return bytes in ONE invoke. Empty Response = miss,
+          // fall through to fresh render.
+          if (maxWidth < ASSET_TIER.full || maxHeight < ASSET_TIER.full) {
+            const tDS = performance.now();
+            const dsBuf = await invoke<ArrayBuffer>('db_downscale_asset_cache', {
+              sourceId: assetId, variant,
+              sourceWidth: ASSET_TIER.full, sourceHeight: ASSET_TIER.full,
+              targetWidth: maxWidth, targetHeight: maxHeight,
+            });
+            if (dsBuf.byteLength > 0) {
+              rlog(`db_downscale_asset_cache(${assetId.slice(0,8)} → ${maxWidth}x${maxHeight}): ${(performance.now() - tDS).toFixed(0)}ms HIT`);
+              png = new Uint8Array(dsBuf);
+              skipCachePut = true;  // server-side write already happened
+              break;
+            }
+            rlog(`db_downscale_asset_cache(${assetId.slice(0,8)}): ${(performance.now() - tDS).toFixed(0)}ms miss → fresh render`);
+          }
+
+          png = await withPdfRenderSlot(async () => {
+            // (B) Tier promotion: for sub-FULL requests of big PDFs,
+            // render at FULL once, cache it, then server-side downscale
+            // to the requested tier. Future requests at any tier ≤ FULL
+            // hit (A) above (cheap resize from cached PNG vs. re-parse
+            // a multi-MB PDF).
+            const meta = await invoke<{ size?: number } | null>('db_get_asset_meta_by_id', { assetId });
+            const isBig = (meta?.size ?? 0) >= PDF_PROMOTE_THRESHOLD_BYTES;
+            const promote = (maxWidth < ASSET_TIER.full || maxHeight < ASSET_TIER.full) && isBig;
+
+            if (promote) {
+              const tFull = performance.now();
+              const fullBuf = await invoke<ArrayBuffer>('db_render_pdf_page', {
+                assetId, page: 0, maxWidth: ASSET_TIER.full, maxHeight: ASSET_TIER.full,
+              });
+              const fullPng = new Uint8Array(fullBuf);
+              rlog(`pdfium render FULL(${assetId.slice(0,8)}): ${(performance.now() - tFull).toFixed(0)}ms → ${fullPng.length}B`);
+
+              const tPutFull = performance.now();
+              await putAssetCache(assetId, variant, ASSET_TIER.full, ASSET_TIER.full, fullPng, null);
+              rlog(`putAssetCache FULL: ${(performance.now() - tPutFull).toFixed(0)}ms`);
+
+              const tDS = performance.now();
+              const dsBuf = await invoke<ArrayBuffer>('db_downscale_asset_cache', {
+                sourceId: assetId, variant,
+                sourceWidth: ASSET_TIER.full, sourceHeight: ASSET_TIER.full,
+                targetWidth: maxWidth, targetHeight: maxHeight,
+              });
+              rlog(`db_downscale_asset_cache(post-promote): ${(performance.now() - tDS).toFixed(0)}ms`);
+              skipCachePut = true;  // FULL cached above; target cached server-side
+              return new Uint8Array(dsBuf);
+            }
+
+            // Direct render at requested tier (small PDF or FULL request).
+            const tPdf = performance.now();
+            const pageBuf = await invoke<ArrayBuffer>('db_render_pdf_page', {
+              assetId, page: 0, maxWidth, maxHeight,
+            });
+            const pageBytes = new Uint8Array(pageBuf);
+            rlog(`pdfium render(${assetId.slice(0,8)} ${maxWidth}x${maxHeight}): ${(performance.now() - tPdf).toFixed(0)}ms → ${pageBytes.length}B`);
+            return pageBytes;
           });
-          rlog(`db_render_pdf_page(${assetId.slice(0,8)}): ${(performance.now() - tPdf).toFixed(0)}ms → ${pageBytes.length}B PNG`);
-          png = new Uint8Array(pageBytes);
           break;
         }
         case 'svg':
@@ -88,9 +178,13 @@ export async function renderAsset(opts: {
           break;
         }
       }
-      const tPut = performance.now();
-      await putAssetCache(assetId, variant, maxWidth, maxHeight, png, null);
-      rlog(`putAssetCache: ${(performance.now() - tPut).toFixed(0)}ms · render TOTAL ${(performance.now() - T0).toFixed(0)}ms`);
+      if (!skipCachePut) {
+        const tPut = performance.now();
+        await putAssetCache(assetId, variant, maxWidth, maxHeight, png, null);
+        rlog(`putAssetCache: ${(performance.now() - tPut).toFixed(0)}ms · render TOTAL ${(performance.now() - T0).toFixed(0)}ms`);
+      } else {
+        rlog(`render TOTAL ${(performance.now() - T0).toFixed(0)}ms (cache write done server-side)`);
+      }
       return png;
     })().finally(() => renderInflight.delete(inflightKey));
     renderInflight.set(inflightKey, pngPromise);
