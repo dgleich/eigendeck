@@ -1897,6 +1897,10 @@ pub struct AssetMeta {
     /// the same bytes as the existing asset (dedup is already a
     /// no-op in db_store_asset; the dialog would just be annoying).
     pub hash: Option<String>,
+    /// Asset bytes length. Used by renderAsset's PDF tier-promotion
+    /// check (PDF_PROMOTE_THRESHOLD_BYTES). Stored as a column so this
+    /// is an indexed lookup, not a blob length scan.
+    pub size: Option<i64>,
 }
 
 /// Look up the current asset row matching a given path label. Returns
@@ -1912,7 +1916,7 @@ pub struct AssetMeta {
 pub fn db_get_asset_meta_by_path(path: String) -> Result<Option<AssetMeta>, String> {
     with_db(|conn| {
         let result: rusqlite::Result<AssetMeta> = conn.query_row(
-            "SELECT asset_id, path, external_path, external_mtime, mime_type, auto_reload, hash \
+            "SELECT asset_id, path, external_path, external_mtime, mime_type, auto_reload, hash, size \
              FROM assets WHERE path = ?1 AND valid_to IS NULL \
              ORDER BY valid_from DESC LIMIT 1",
             params![&path],
@@ -1924,6 +1928,7 @@ pub fn db_get_asset_meta_by_path(path: String) -> Result<Option<AssetMeta>, Stri
                 mime_type: row.get(4)?,
                 auto_reload: row.get(5)?,
                 hash: row.get(6)?,
+                size: row.get(7)?,
             }),
         );
         match result {
@@ -1941,7 +1946,7 @@ pub fn db_get_asset_meta_by_path(path: String) -> Result<Option<AssetMeta>, Stri
 pub fn db_get_asset_meta_by_id(asset_id: String) -> Result<Option<AssetMeta>, String> {
     with_db(|conn| {
         let result: rusqlite::Result<AssetMeta> = conn.query_row(
-            "SELECT asset_id, path, external_path, external_mtime, mime_type, auto_reload, hash \
+            "SELECT asset_id, path, external_path, external_mtime, mime_type, auto_reload, hash, size \
              FROM assets WHERE asset_id = ?1 AND valid_to IS NULL",
             params![&asset_id],
             |row| Ok(AssetMeta {
@@ -1952,6 +1957,7 @@ pub fn db_get_asset_meta_by_id(asset_id: String) -> Result<Option<AssetMeta>, St
                 mime_type: row.get(4)?,
                 auto_reload: row.get(5)?,
                 hash: row.get(6)?,
+                size: row.get(7)?,
             }),
         );
         match result {
