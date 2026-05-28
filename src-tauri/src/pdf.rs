@@ -159,31 +159,43 @@ fn render_page_inner(
 /// usual asset lifecycle (current version, no path lookup, watcher /
 /// restore-aware). Caller (assetRenderer.ts) writes the result into
 /// asset_cache under the assetId key.
+// async fn + spawn_blocking — pdfium can take 40+ seconds on pathological
+// PDFs (Form-XObject-heavy vector exports). Tauri 2 sync `pub fn` commands
+// run on the WebView main thread, which blocks the compositor — even
+// though JS keeps running (setTimeouts fire), the screen can't repaint,
+// producing a beachball + queued visual updates. spawn_blocking moves
+// the pdfium parse/render onto tokio's blocking thread pool, leaving the
+// main thread free for paint commits and IPC dispatch.
 #[tauri::command]
-pub fn db_render_pdf_page(
+pub async fn db_render_pdf_page(
     app: tauri::AppHandle,
     asset_id: String,
     page: u32,
     max_width: u32,
     max_height: u32,
 ) -> Result<tauri::ipc::Response, String> {
-    let t_total = std::time::Instant::now();
-    plog!("[pdf] db_render_pdf_page asset={} page={} {}x{}",
-        &asset_id[..8.min(asset_id.len())], page, max_width, max_height);
+    let png = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+        let t_total = std::time::Instant::now();
+        plog!("[pdf] db_render_pdf_page asset={} page={} {}x{}",
+            &asset_id[..8.min(asset_id.len())], page, max_width, max_height);
 
-    let t_bind = std::time::Instant::now();
-    let pdfium = get_pdfium(&app)?;
-    plog!("[pdf] get_pdfium (bind): {}ms", t_bind.elapsed().as_millis());
+        let t_bind = std::time::Instant::now();
+        let pdfium = get_pdfium(&app)?;
+        plog!("[pdf] get_pdfium (bind): {}ms", t_bind.elapsed().as_millis());
 
-    let t_fetch = std::time::Instant::now();
-    let bytes = storage::db_get_asset_bytes_by_id(asset_id.clone())?;
-    plog!("[pdf] db_get_asset_by_id ({}KB): {}ms",
-        bytes.len() / 1024, t_fetch.elapsed().as_millis());
+        let t_fetch = std::time::Instant::now();
+        let bytes = storage::db_get_asset_bytes_by_id(asset_id.clone())?;
+        plog!("[pdf] db_get_asset_by_id ({}KB): {}ms",
+            bytes.len() / 1024, t_fetch.elapsed().as_millis());
 
-    let png = render_page_inner(pdfium, &bytes, page, max_width, max_height)
-        .map_err(|e| format!("{}: {}", asset_id, e))?;
-    plog!("[pdf] db_render_pdf_page TOTAL: {}ms ({}KB PNG)",
-        t_total.elapsed().as_millis(), png.len() / 1024);
+        let png = render_page_inner(pdfium, &bytes, page, max_width, max_height)
+            .map_err(|e| format!("{}: {}", asset_id, e))?;
+        plog!("[pdf] db_render_pdf_page TOTAL: {}ms ({}KB PNG)",
+            t_total.elapsed().as_millis(), png.len() / 1024);
+        Ok(png)
+    })
+    .await
+    .map_err(|e| format!("spawn_blocking join: {}", e))??;
     Ok(tauri::ipc::Response::new(png))
 }
 
