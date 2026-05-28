@@ -252,15 +252,22 @@ function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
           color: '#60a5fa', pointerEvents: 'none', userSelect: 'none',
           textAlign: 'center', overflow: 'hidden',
         }}>
-          <div style={{ fontSize: 24, fontWeight: 600, lineHeight: 1.1 }}>{kindLabel}</div>
+          {/* Font sizes divided by `scale` so they render at a fixed
+              pixel size on screen regardless of the editor's zoom
+              level. The slide canvas is transform: scale(scale), which
+              shrinks everything inside it; pre-scaling-up text by
+              1/scale produces a constant on-screen size. Same trick
+              should be applied to the X/L action chips on element
+              hover — they shrink with zoom for the same reason. */}
+          <div style={{ fontSize: 28 / scale, fontWeight: 700, lineHeight: 1.0 }}>{kindLabel}</div>
           {filename && (
             <div style={{
-              marginTop: 6, fontSize: 13, fontWeight: 500,
+              marginTop: 8 / scale, fontSize: 14 / scale, fontWeight: 500,
               maxWidth: '100%',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>{filename}</div>
           )}
-          <div style={{ marginTop: 4, fontSize: 11, fontStyle: 'italic', opacity: 0.8 }}>
+          <div style={{ marginTop: 4 / scale, fontSize: 12 / scale, fontStyle: 'italic', opacity: 0.8 }}>
             rendering…
           </div>
         </div>
