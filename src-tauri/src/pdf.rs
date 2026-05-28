@@ -79,9 +79,12 @@ fn render_page_inner(
     max_width: u32,
     max_height: u32,
 ) -> Result<Vec<u8>, String> {
+    let t_load = std::time::Instant::now();
     let document = pdfium
         .load_pdf_from_byte_slice(pdf_bytes, None)
         .map_err(|e| format!("load_pdf_from_byte_slice: {}", e))?;
+    eprintln!("[pdf] load_pdf_from_byte_slice ({}KB): {}ms",
+        pdf_bytes.len() / 1024, t_load.elapsed().as_millis());
 
     let pdf_page = document.pages().get(page as PdfPageIndex)
         .map_err(|e| format!("page {} get: {}", page, e))?;
@@ -96,15 +99,23 @@ fn render_page_inner(
         .set_maximum_width(max_width as Pixels)
         .set_maximum_height(max_height as Pixels);
 
+    let t_render = std::time::Instant::now();
     let bitmap = pdf_page.render_with_config(&config)
         .map_err(|e| format!("render page {}: {}", page, e))?;
+    eprintln!("[pdf] render_with_config ({}x{}): {}ms",
+        max_width, max_height, t_render.elapsed().as_millis());
 
+    let t_image = std::time::Instant::now();
     let dyn_image = bitmap.as_image()
         .map_err(|e| format!("bitmap.as_image(): {}", e))?;
+    eprintln!("[pdf] bitmap.as_image: {}ms", t_image.elapsed().as_millis());
 
+    let t_png = std::time::Instant::now();
     let mut png_bytes: Vec<u8> = Vec::new();
     dyn_image.write_to(&mut Cursor::new(&mut png_bytes), image::ImageFormat::Png)
         .map_err(|e| format!("encode png: {}", e))?;
+    eprintln!("[pdf] encode_png ({}KB out): {}ms",
+        png_bytes.len() / 1024, t_png.elapsed().as_millis());
 
     Ok(png_bytes)
 }
@@ -124,10 +135,23 @@ pub fn db_render_pdf_page(
     max_width: u32,
     max_height: u32,
 ) -> Result<Vec<u8>, String> {
+    let t_total = std::time::Instant::now();
+    eprintln!("[pdf] db_render_pdf_page asset={} page={} {}x{}",
+        &asset_id[..8.min(asset_id.len())], page, max_width, max_height);
+
+    let t_bind = std::time::Instant::now();
     let pdfium = get_pdfium(&app)?;
+    eprintln!("[pdf] get_pdfium (bind): {}ms", t_bind.elapsed().as_millis());
+
+    let t_fetch = std::time::Instant::now();
     let bytes = storage::db_get_asset_by_id(asset_id.clone())?;
-    render_page_inner(pdfium, &bytes, page, max_width, max_height)
-        .map_err(|e| format!("{}: {}", asset_id, e))
+    eprintln!("[pdf] db_get_asset_by_id ({}KB): {}ms",
+        bytes.len() / 1024, t_fetch.elapsed().as_millis());
+
+    let result = render_page_inner(pdfium, &bytes, page, max_width, max_height)
+        .map_err(|e| format!("{}: {}", asset_id, e));
+    eprintln!("[pdf] db_render_pdf_page TOTAL: {}ms", t_total.elapsed().as_millis());
+    result
 }
 
 /// Number of pages in a stored PDF asset. Cheap (parses header, doesn't

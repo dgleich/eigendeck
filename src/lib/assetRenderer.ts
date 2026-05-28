@@ -42,7 +42,15 @@ export async function renderAsset(opts: {
 }): Promise<string> {
   const { assetId, kind, variant = '_', maxWidth, maxHeight, preFetchedBytes } = opts;
 
+  const RENDER_LOG = true;
+  const rlog = (msg: string): void => {
+    if (RENDER_LOG) console.log(`[render ${new Date().toISOString().slice(11, 23)}] ${msg}`);
+  };
+  const T0 = performance.now();
+
+  const tCache = performance.now();
   const cached = await getAssetCache(assetId, variant, maxWidth, maxHeight);
+  rlog(`getAssetCache(${assetId.slice(0,8)} ${kind} ${maxWidth}x${maxHeight}): ${(performance.now() - tCache).toFixed(0)}ms → ${cached ? 'HIT' : 'miss'}`);
   if (cached) return pngBytesToBlobUrl(cached.png);
 
   let png: Uint8Array;
@@ -52,9 +60,11 @@ export async function renderAsset(opts: {
       // marshalling multi-MB PDFs through invoke twice. v1 always
       // renders page 0; multi-page picker is a follow-up (snapshotVariant
       // would carry the page index when that lands).
+      const tPdf = performance.now();
       const pageBytes = await invoke<number[]>('db_render_pdf_page', {
         assetId, page: 0, maxWidth, maxHeight,
       });
+      rlog(`db_render_pdf_page(${assetId.slice(0,8)}): ${(performance.now() - tPdf).toFixed(0)}ms → ${pageBytes.length}B PNG`);
       png = new Uint8Array(pageBytes);
       break;
     }
@@ -68,7 +78,9 @@ export async function renderAsset(opts: {
     }
   }
 
+  const tPut = performance.now();
   await putAssetCache(assetId, variant, maxWidth, maxHeight, png, null);
+  rlog(`putAssetCache: ${(performance.now() - tPut).toFixed(0)}ms · TOTAL ${(performance.now() - T0).toFixed(0)}ms`);
   return pngBytesToBlobUrl(Array.from(png) as number[]);
 }
 

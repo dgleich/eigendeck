@@ -53,6 +53,9 @@ export function SlideEditor() {
       // Don't intercept paste if user is editing a text element
       if ((e.target as HTMLElement).closest('[contenteditable="true"]')) return;
 
+      const T_PASTE = performance.now();
+      plog('paste-handler started');
+
       // Native NSPasteboard path FIRST: WebKit's clipboardData /
       // navigator.clipboard.read() filter out non-standard UTIs (notably
       // com.microsoft.image-svg-xml from Office, com.adobe.pdf from
@@ -60,8 +63,9 @@ export function SlideEditor() {
       // us the unfiltered list and can read the real bytes.
       try {
         const { invoke } = await import('@tauri-apps/api/core');
+        const t1 = performance.now();
         const nativeTypes = await invoke<string[]>('pasteboard_list_types');
-        plog('native pasteboard UTIs:', nativeTypes);
+        plog(`pasteboard_list_types: ${(performance.now() - t1).toFixed(0)}ms (${nativeTypes.length} UTIs)`);
         // Preference: SVG > PDF > raster (mirrors the web-API picker).
         // PDF will move ahead of SVG once pdfium renders.
         const NATIVE_PREFER: Array<{ utis: string[]; ext: string; mime: string }> = [
@@ -73,14 +77,18 @@ export function SlideEditor() {
         for (const pref of NATIVE_PREFER) {
           for (const uti of pref.utis) {
             if (!nativeTypes.includes(uti)) continue;
+            const tRead = performance.now();
             const bytesAsNumArray = await invoke<number[] | null>('pasteboard_read_type', { uti });
+            plog(`pasteboard_read_type(${uti}): ${(performance.now() - tRead).toFixed(0)}ms${bytesAsNumArray ? ` → ${bytesAsNumArray.length}B` : ' → null'}`);
             if (!bytesAsNumArray || bytesAsNumArray.length === 0) continue;
             const bytes = new Uint8Array(bytesAsNumArray);
             const fileName = `pasted-${Date.now()}.${pref.ext}`;
             const relativePath = `images/${fileName}`;
             plog(`native picked uti=${uti} → ${pref.mime} (${bytes.length} bytes) → ${fileName}`);
             e.preventDefault();
+            const tInsert = performance.now();
             await insertPastedAsset(relativePath, bytes, pref.mime, fileName);
+            plog(`insertPastedAsset: ${(performance.now() - tInsert).toFixed(0)}ms · total handler: ${(performance.now() - T_PASTE).toFixed(0)}ms`);
             return;
           }
         }
@@ -183,18 +191,25 @@ export function SlideEditor() {
         const { invoke } = await import('@tauri-apps/api/core');
         // Paste: no source-on-disk path; pass null for externalPath so the
         // asset isn't watched (clipboard contents have no file to watch).
-        assetId = await invoke<string>('db_store_asset', { path: relativePath, data: Array.from(bytes), mimeType: mime, externalPath: null, externalMtime: null });
+        const tArr = performance.now();
+        const dataArr = Array.from(bytes);
+        plog(`Array.from(bytes) ${(bytes.length / 1024).toFixed(0)}KB → ${(performance.now() - tArr).toFixed(0)}ms`);
+        const tStore = performance.now();
+        assetId = await invoke<string>('db_store_asset', { path: relativePath, data: dataArr, mimeType: mime, externalPath: null, externalMtime: null });
+        plog(`db_store_asset: ${(performance.now() - tStore).toFixed(0)}ms`);
       } catch (e) {
         console.error('Failed to store pasted image:', e);
         return;
       }
       const kind = detectAssetKind(fileName, mime);
+      const tAdd = performance.now();
       addElement({
         id: crypto.randomUUID(), type: 'image',
         assetId,
         kind,
         position: { x: 360, y: 200, width: 1200, height: 680 },
       });
+      plog(`addElement: ${(performance.now() - tAdd).toFixed(0)}ms`);
       if (kind === 'svg') {
         // Paste has no source folder — handler will just warn.
         void handleSvgExternalRefs(bytes, fileName, null);
