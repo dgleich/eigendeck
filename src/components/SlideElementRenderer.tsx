@@ -173,14 +173,30 @@ function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
       onPositionChange={(pos) => onUpdate({ position: pos } as any)}
       onUpdate={onUpdate}
     >
-      <img src={src} alt="" draggable={false}
-        style={{
-          width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none',
-          ...(element.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
-          ...(element.borderRadius ? { borderRadius: element.borderRadius } : {}),
-          ...(element.opacity != null && element.opacity < 1 ? { opacity: element.opacity } : {}),
-          ...(element.rotation ? { transform: `rotate(${element.rotation}deg)` } : {}),
-        }} />
+      {src ? (
+        <img src={src} alt="" draggable={false}
+          style={{
+            width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none',
+            ...(element.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
+            ...(element.borderRadius ? { borderRadius: element.borderRadius } : {}),
+            ...(element.opacity != null && element.opacity < 1 ? { opacity: element.opacity } : {}),
+            ...(element.rotation ? { transform: `rotate(${element.rotation}deg)` } : {}),
+          }} />
+      ) : (
+        // Placeholder while the asset rasterizes. Matches the blue
+        // "DEMO" tile in the sidebar so the visual language is
+        // consistent across slot types. Label by element.kind so PDFs
+        // vs SVGs are distinguishable at a glance.
+        <div style={{
+          width: '100%', height: '100%',
+          background: '#e8f4f8', border: '1px dashed #93c5fd', borderRadius: 2,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 20, color: '#60a5fa', fontWeight: 500,
+          pointerEvents: 'none', userSelect: 'none',
+        }}>
+          {element.kind === 'pdf' ? 'PDF' : element.kind === 'svg' ? 'SVG' : 'IMG'}
+        </div>
+      )}
     </DraggableBox>
   );
 }
