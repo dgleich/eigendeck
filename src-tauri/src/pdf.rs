@@ -104,31 +104,30 @@ fn render_page_inner(
     eprintln!("[pdf] render_with_config ({}x{}): {}ms",
         max_width, max_height, t_render.elapsed().as_millis());
 
-    let t_image = std::time::Instant::now();
-    let dyn_image = bitmap.as_image()
-        .map_err(|e| format!("bitmap.as_image(): {}", e))?;
-    eprintln!("[pdf] bitmap.as_image: {}ms", t_image.elapsed().as_millis());
+    // Skip the as_image() detour — pdfium already gives us RGBA bytes
+    // directly. Going through DynamicImage adds a 14MB-class clone for
+    // a 1920² page that we don't need.
+    let t_bytes = std::time::Instant::now();
+    let (w, h) = (bitmap.width() as u32, bitmap.height() as u32);
+    let rgba = bitmap.as_rgba_bytes();
+    eprintln!("[pdf] as_rgba_bytes ({}KB): {}ms",
+        rgba.len() / 1024, t_bytes.elapsed().as_millis());
 
-    // PNG encoding dominates render time at large dims because the image
-    // crate defaults to zlib compression level 6, which spends ~500ms on
-    // a 1920x1920 RGBA buffer. We don't need small output here — bytes
-    // live in SQLite and are loaded into a Blob URL once. CompressionType::Fast
-    // (level 1) trades ~2x file size for ~5x faster encode. Filter::None
-    // skips per-row prediction (more CPU work, marginal compression help
-    // on opaque rendered pages anyway).
+    // Default zlib compression. Fast-mode produced 10MB outputs (50x
+    // bigger), which slowed the downstream SQLite write more than the
+    // encoder saved. Default (level 6) is the right balance for rendered
+    // PDF pages: ~200KB output, ~200ms encode at 1920².
     let t_png = std::time::Instant::now();
     let mut png_bytes: Vec<u8> = Vec::new();
     {
         use image::codecs::png::{CompressionType, FilterType, PngEncoder};
         use image::ImageEncoder;
-        let rgba = dyn_image.to_rgba8();
-        let (w, h) = rgba.dimensions();
         let encoder = PngEncoder::new_with_quality(
             &mut png_bytes,
-            CompressionType::Fast,
+            CompressionType::Default,
             FilterType::NoFilter,
         );
-        encoder.write_image(rgba.as_raw(), w, h, image::ExtendedColorType::Rgba8)
+        encoder.write_image(&rgba, w, h, image::ExtendedColorType::Rgba8)
             .map_err(|e| format!("encode png: {}", e))?;
     }
     eprintln!("[pdf] encode_png ({}KB out): {}ms",

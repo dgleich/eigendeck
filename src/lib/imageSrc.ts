@@ -8,20 +8,23 @@ import { useAssetUrl } from './demoAssets';
 import { useRenderedAsset } from './assetRenderer';
 import { ASSET_TIER } from './assetCache';
 
-/** Snap a display dimension up to the next power-of-2-ish render tier.
+/** Snap a display dimension up to the next render tier.
+ *
  *  Tier (not exact element dims) so the cache stays sticky during a
  *  resize-handle drag — every animation-frame size would otherwise be
- *  a fresh cache key + fresh pdfium render. */
+ *  a fresh cache key + fresh pdfium render.
+ *
+ *  2x for retina sharpness — on an Apple-Silicon display a 1200px
+ *  slide-space element is ~2400 actual pixels at 100% editor zoom,
+ *  so rendering at slide-space dims means immediate blur. 256px
+ *  step granularity keeps typical element sizes from over-shooting
+ *  the next tier (PNG encode cost is roughly quadratic). Cap at
+ *  slide width — past 1920 we'd be rendering more pixels than the
+ *  slide is ever shown at. */
 function pdfRenderTier(displayWidth: number, displayHeight: number): number {
   const max = Math.max(displayWidth, displayHeight);
-  // Tiers chosen to cover typical slide-element sizes: small inset (256),
-  // quarter-slide (512), half-slide (1024), near-full (1920). PNG encode
-  // cost is roughly quadratic in tier so picking the smallest tier that
-  // covers display dims is a real perf win.
-  if (max <= 256) return 256;
-  if (max <= 512) return 512;
-  if (max <= 1024) return 1024;
-  return ASSET_TIER.full;
+  const stepped = Math.ceil((max * 2) / 256) * 256;
+  return Math.min(stepped, ASSET_TIER.full);
 }
 
 /**
