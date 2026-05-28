@@ -2234,6 +2234,34 @@ pub fn db_put_asset_cache(
     })
 }
 
+/// Binary-IPC version of cache read. Returns just the PNG bytes via
+/// tauri::ipc::Response so a 150KB PNG is a 150KB memcpy instead of
+/// ~600KB JSON number array. Empty Response signals cache miss.
+#[tauri::command]
+pub fn db_get_asset_cache_bytes(
+    source_id: String,
+    variant: String,
+    width: i64,
+    height: i64,
+) -> Result<tauri::ipc::Response, String> {
+    with_db(|conn| {
+        let result: rusqlite::Result<Vec<u8>> = conn.query_row(
+            "SELECT png FROM asset_cache WHERE source_id = ?1 AND variant = ?2 AND width = ?3 AND height = ?4",
+            params![&source_id, &variant, width, height],
+            |row| row.get(0),
+        );
+        match result {
+            Ok(bytes) => Ok(tauri::ipc::Response::new(bytes)),
+            // Empty Response = cache miss.
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(tauri::ipc::Response::new(Vec::<u8>::new())),
+            Err(e) => Err(e),
+        }
+    })
+}
+
+/// Legacy struct-returning variant. Kept for any callers that need the
+/// metadata fields (variant/hash). New callers should prefer the
+/// bytes form — much cheaper IPC.
 #[tauri::command]
 pub fn db_get_asset_cache(
     source_id: String,

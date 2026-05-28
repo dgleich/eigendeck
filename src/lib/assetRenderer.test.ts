@@ -25,7 +25,7 @@ describe('renderAsset — pdf branch', () => {
     // Cache miss; then a fake PNG comes back from pdfium.
     const fakePng = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3];
     mockedInvoke.mockImplementation(async (cmd: string) => {
-      if (cmd === 'db_get_asset_cache') return null;        // cache miss
+      if (cmd === 'db_get_asset_cache_bytes') return new ArrayBuffer(0);  // miss
       if (cmd === 'db_render_pdf_page') return fakePng;     // pdfium output
       if (cmd === 'db_put_asset_cache') return undefined;   // store result
       throw new Error(`unexpected invoke: ${cmd}`);
@@ -62,13 +62,10 @@ describe('renderAsset — pdf branch', () => {
   });
 
   it('cache hit short-circuits — pdfium is not invoked', async () => {
-    const cachedPng = [0x89, 0x50, 0x4e, 0x47, 9, 9, 9];
+    const cachedPng = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 9, 9, 9]);
     mockedInvoke.mockImplementation(async (cmd: string) => {
-      if (cmd === 'db_get_asset_cache') {
-        return {
-          source_id: 'asset-pdf-1', variant: '_', width: 1000, height: 800,
-          png: cachedPng, source_hash: null,
-        };
+      if (cmd === 'db_get_asset_cache_bytes') {
+        return cachedPng.buffer.slice(0);
       }
       throw new Error(`unexpected invoke on cache hit: ${cmd}`);
     });
@@ -79,18 +76,16 @@ describe('renderAsset — pdf branch', () => {
     });
 
     expect(url).toMatch(/^blob:/);
-    // Hit path: only the cache lookup ran. Rendering would invoke
-    // db_render_pdf_page AND db_put_asset_cache; neither should fire.
     expect(mockedInvoke).toHaveBeenCalledTimes(1);
     expect(mockedInvoke).toHaveBeenCalledWith(
-      'db_get_asset_cache',
+      'db_get_asset_cache_bytes',
       expect.objectContaining({ sourceId: 'asset-pdf-1' }),
     );
   });
 
   it('propagates pdfium errors to the caller', async () => {
     mockedInvoke.mockImplementation(async (cmd: string) => {
-      if (cmd === 'db_get_asset_cache') return null;
+      if (cmd === 'db_get_asset_cache_bytes') return new ArrayBuffer(0);
       if (cmd === 'db_render_pdf_page') throw 'pdfium: load_pdf_from_byte_slice failed';
       throw new Error(`unexpected invoke: ${cmd}`);
     });

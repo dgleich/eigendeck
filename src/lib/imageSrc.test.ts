@@ -22,7 +22,7 @@ describe('useImageSrc', () => {
   it('kind=pdf routes through db_render_pdf_page (pdfium path)', async () => {
     const pdfPng = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 9, 9];
     mockedInvoke.mockImplementation(async (cmd: string) => {
-      if (cmd === 'db_get_asset_cache') return null;
+      if (cmd === 'db_get_asset_cache_bytes') return new ArrayBuffer(0);
       if (cmd === 'db_render_pdf_page') return pdfPng;
       if (cmd === 'db_put_asset_cache') return undefined;
       throw new Error(`unexpected invoke: ${cmd}`);
