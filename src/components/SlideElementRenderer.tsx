@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { useDemoUrl, invalidateAsset } from '../lib/demoAssets';
 import { useImageSrc } from '../lib/imageSrc';
@@ -150,6 +151,44 @@ export function SlideElementRenderer({
 // ============================================
 // Image element — loads from SQLite blob URL
 // ============================================
+// Module-level cache so the placeholder label doesn't refetch per
+// remount or per duplicate ImageBox. Path won't change for the life
+// of an assetId (db_store_asset creates a new asset_id for new bytes).
+const assetPathCache = new Map<string, string | null>();
+const assetPathInflight = new Map<string, Promise<string | null>>();
+
+function useAssetPath(assetId: string): string | null {
+  const [path, setPath] = useState<string | null>(() => assetPathCache.get(assetId) ?? null);
+  useEffect(() => {
+    if (assetPathCache.has(assetId)) {
+      setPath(assetPathCache.get(assetId) ?? null);
+      return;
+    }
+    let cancelled = false;
+    let p = assetPathInflight.get(assetId);
+    if (!p) {
+      p = invoke<{ path?: string | null } | null>('db_get_asset_meta_by_id', { assetId })
+        .then((m) => {
+          const v = m?.path ?? null;
+          assetPathCache.set(assetId, v);
+          return v;
+        })
+        .catch(() => null)
+        .finally(() => { assetPathInflight.delete(assetId); });
+      assetPathInflight.set(assetId, p);
+    }
+    p.then((v) => { if (!cancelled) setPath(v); });
+    return () => { cancelled = true; };
+  }, [assetId]);
+  return path;
+}
+
+/** Delay before showing the placeholder. Most cached renders resolve
+ *  in <50ms; the brief flash of placeholder is more annoying than a
+ *  blank gap. 500ms is the inflection — fast renders never show the
+ *  placeholder; slow ones (cache misses, big PDFs) do. */
+const PLACEHOLDER_DELAY_MS = 500;
+
 function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpdate }: {
   element: Extract<SlideElement, { type: 'image' }>;
   zIndex: number; scale: number;
@@ -162,6 +201,23 @@ function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
     displayHeight: element.position.height,
     snapshotVariant: element.snapshotVariant,
   });
+  const assetPath = useAssetPath(element.assetId);
+
+  // Delay showing the placeholder so cache-hit renders (the common
+  // case) don't flash a blue tile for 1 frame before the real image
+  // resolves. Timer is cleared if src arrives within the threshold.
+  const [showPlaceholder, setShowPlaceholder] = useState(false);
+  useEffect(() => {
+    if (src) { setShowPlaceholder(false); return; }
+    const t = setTimeout(() => setShowPlaceholder(true), PLACEHOLDER_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [src]);
+
+  const kindLabel = element.kind === 'pdf' ? 'PDF'
+    : element.kind === 'svg' ? 'SVG'
+    : 'IMG';
+  const filename = assetPath ? (assetPath.split('/').pop() || assetPath) : null;
+
   return (
     <DraggableBox
       elementId={element.id}
@@ -182,21 +238,33 @@ function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
             ...(element.opacity != null && element.opacity < 1 ? { opacity: element.opacity } : {}),
             ...(element.rotation ? { transform: `rotate(${element.rotation}deg)` } : {}),
           }} />
-      ) : (
+      ) : showPlaceholder ? (
         // Placeholder while the asset rasterizes. Matches the blue
-        // "DEMO" tile in the sidebar so the visual language is
-        // consistent across slot types. Label by element.kind so PDFs
-        // vs SVGs are distinguishable at a glance.
+        // DEMO tile in the sidebar for visual consistency. Labels by
+        // kind + filename so the user can tell which file is grinding
+        // through pdfium during a multi-asset cache build.
         <div style={{
           width: '100%', height: '100%',
           background: '#e8f4f8', border: '1px dashed #93c5fd', borderRadius: 2,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 20, color: '#60a5fa', fontWeight: 500,
-          pointerEvents: 'none', userSelect: 'none',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          padding: '8px 12px',
+          color: '#60a5fa', pointerEvents: 'none', userSelect: 'none',
+          textAlign: 'center', overflow: 'hidden',
         }}>
-          {element.kind === 'pdf' ? 'PDF' : element.kind === 'svg' ? 'SVG' : 'IMG'}
+          <div style={{ fontSize: 24, fontWeight: 600, lineHeight: 1.1 }}>{kindLabel}</div>
+          {filename && (
+            <div style={{
+              marginTop: 6, fontSize: 13, fontWeight: 500,
+              maxWidth: '100%',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>{filename}</div>
+          )}
+          <div style={{ marginTop: 4, fontSize: 11, fontStyle: 'italic', opacity: 0.8 }}>
+            rendering…
+          </div>
         </div>
-      )}
+      ) : null}
     </DraggableBox>
   );
 }
