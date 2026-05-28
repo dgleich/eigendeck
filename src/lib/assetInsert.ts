@@ -192,7 +192,12 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
     // otherwise effectively reverts current to original).
     ilog(`new bytes match original (original_hash=${original?.hash?.slice(0, 8) ?? 'n/a'} == new_hash=${newHash.slice(0, 8)}) → silent store on existing asset`);
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
-    await invalidateRenderedAsset(meta.asset_id);
+    // Only invalidate when current bytes actually CHANGE. The common
+    // case here is the user re-adding the same file they already have:
+    // db_store_asset short-circuits (newHash === current hash) and we
+    // shouldn't nuke the asset_cache for a no-op. Asset 2.pdf (40+s
+    // pdfium re-parse on miss) makes this expensive.
+    if (newHash !== meta.hash) await invalidateRenderedAsset(meta.asset_id);
     maybeWarnUnsavedProject(args.externalPath);
     return { assetId, path: args.path, cancelled: false };
   }
@@ -206,7 +211,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   if (projectId && acceptedProjects.has(projectId)) {
     ilog(`auto-update previously accepted for project ${projectId.slice(0, 8)} → silent store, no dialog`);
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
-    await invalidateRenderedAsset(meta.asset_id);
+    if (newHash !== meta.hash) await invalidateRenderedAsset(meta.asset_id);
     maybeWarnUnsavedProject(args.externalPath);
     return { assetId, path: args.path, cancelled: false };
   }
@@ -217,7 +222,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
     // Orphan: asset has versions but no element references it. No
     // surprise to surface. Store a new version of the orphan.
     const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
-    await invalidateRenderedAsset(meta.asset_id);
+    if (newHash !== meta.hash) await invalidateRenderedAsset(meta.asset_id);
     return { assetId, path: args.path, cancelled: false };
   }
 
