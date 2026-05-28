@@ -117,14 +117,26 @@ export async function renderAsset(opts: {
       // awaiting the same dedup'd promise see ONE toast, not N. Cleared
       // in finally — fires once per render, never leaks across attempts.
       const toastKey = `slow-render:${inflightKey}`;
+      const toastSetAt = performance.now();
       const slowToastTimer = setTimeout(() => {
         const noun = kind === 'pdf' ? 'a complex PDF' : `a complex ${kind.toUpperCase()}`;
-        showToast({
-          key: toastKey,
-          message: `Rendering ${noun}… (cached after first render)`,
-          kind: 'info',
-          ttl: 0,  // sticky; we dismiss in finally
-        });
+        // Diagnostic: confirm the timer fires and showToast is reached.
+        // If you see this line in the log but no toast appears, the
+        // issue is the toast UI layer (likely WebView compositor
+        // blocked while pdfium holds main thread). If you DON'T see
+        // this line, the JS event loop itself is blocked.
+        console.log(`[slow-toast] timer fired for ${assetId.slice(0,8)} ${kind} ${maxWidth}x${maxHeight} after ${(performance.now() - toastSetAt).toFixed(0)}ms; calling showToast`);
+        try {
+          showToast({
+            key: toastKey,
+            message: `Rendering ${noun}… (cached after first render)`,
+            kind: 'info',
+            ttl: 0,  // sticky; we dismiss in finally
+          });
+          console.log(`[slow-toast] showToast returned for ${assetId.slice(0,8)}`);
+        } catch (e) {
+          console.error('[slow-toast] showToast threw:', e);
+        }
       }, SLOW_RENDER_TOAST_MS);
 
       try {
@@ -156,6 +168,36 @@ export async function renderAsset(opts: {
           }
 
           png = await withPdfRenderSlot(async () => {
+            // Re-check after slot acquisition: another caller may have
+            // cached FULL while we were queued. Common race: sidebar
+            // thumb (256) and slide element (1920) request the same
+            // asset simultaneously, both miss the (A) probe above, then
+            // serialize through the slot. Whichever runs second would
+            // re-parse the PDF if we didn't recheck — for Asset 2.pdf
+            // that's a wasted 44s.
+            if (maxWidth < ASSET_TIER.full || maxHeight < ASSET_TIER.full) {
+              const tReDS = performance.now();
+              const reDsBuf = await invoke<ArrayBuffer>('db_downscale_asset_cache', {
+                sourceId: assetId, variant,
+                sourceWidth: ASSET_TIER.full, sourceHeight: ASSET_TIER.full,
+                targetWidth: maxWidth, targetHeight: maxHeight,
+              });
+              if (reDsBuf.byteLength > 0) {
+                rlog(`db_downscale_asset_cache(post-queue ${assetId.slice(0,8)} → ${maxWidth}x${maxHeight}): ${(performance.now() - tReDS).toFixed(0)}ms HIT (raced)`);
+                skipCachePut = true;
+                return new Uint8Array(reDsBuf);
+              }
+            } else {
+              // Direct-render request at FULL: a parallel caller may
+              // have just cached FULL via the tier-promotion path.
+              const cached = await getAssetCache(assetId, variant, maxWidth, maxHeight);
+              if (cached) {
+                rlog(`getAssetCache(post-queue ${assetId.slice(0,8)} ${maxWidth}x${maxHeight}): HIT (raced)`);
+                skipCachePut = true;
+                return cached.png instanceof Uint8Array ? cached.png : new Uint8Array(cached.png);
+              }
+            }
+
             // (B) Tier promotion: for sub-FULL requests of big PDFs,
             // render at FULL once, cache it, then server-side downscale
             // to the requested tier. Future requests at any tier ≤ FULL
