@@ -176,7 +176,7 @@ pub fn db_render_pdf_page(
     plog!("[pdf] get_pdfium (bind): {}ms", t_bind.elapsed().as_millis());
 
     let t_fetch = std::time::Instant::now();
-    let bytes = storage::db_get_asset_by_id(asset_id.clone())?;
+    let bytes = storage::db_get_asset_bytes_by_id(asset_id.clone())?;
     plog!("[pdf] db_get_asset_by_id ({}KB): {}ms",
         bytes.len() / 1024, t_fetch.elapsed().as_millis());
 
@@ -194,7 +194,7 @@ pub fn db_pdf_page_count(
     asset_id: String,
 ) -> Result<u32, String> {
     let pdfium = get_pdfium(&app)?;
-    let bytes = storage::db_get_asset_by_id(asset_id.clone())?;
+    let bytes = storage::db_get_asset_bytes_by_id(asset_id.clone())?;
     let document = pdfium
         .load_pdf_from_byte_slice(&bytes, None)
         .map_err(|e| format!("load_pdf_from_byte_slice for {}: {}", asset_id, e))?;

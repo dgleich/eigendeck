@@ -437,7 +437,7 @@ function DemoPieceProperties({ element }: { element: Extract<import('../types/pr
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const [data, meta] = await Promise.all([
-          invoke<number[]>('db_get_asset_by_id', { assetId: element.assetId }),
+          invoke<ArrayBuffer>('db_get_asset_by_id', { assetId: element.assetId }),
           invoke<{ path: string | null } | null>('db_get_asset_meta_by_id', { assetId: element.assetId }),
         ]);
         setDemoPath(meta?.path ?? '');

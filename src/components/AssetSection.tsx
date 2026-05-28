@@ -173,7 +173,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
     // Load asset bytes into an Image to measure natural dimensions.
     // Works for SVG (browser parses viewBox) and raster alike.
     try {
-      const data = await invoke<number[]>('db_get_asset_by_id', { assetId: meta.asset_id });
+      const data = await invoke<ArrayBuffer>('db_get_asset_by_id', { assetId: meta.asset_id });
       const blob = new Blob([new Uint8Array(data)], { type: meta.mime_type || 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       try {

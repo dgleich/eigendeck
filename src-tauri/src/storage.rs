@@ -1825,9 +1825,10 @@ pub fn db_get_asset(path: String) -> Result<Vec<u8>, String> {
     })
 }
 
-/// Read the current bytes of a specific asset by its stable asset_id.
-#[tauri::command]
-pub fn db_get_asset_by_id(asset_id: String) -> Result<Vec<u8>, String> {
+/// Inner (non-Tauri) helper used by both the Tauri command and by
+/// in-process Rust callers (cli.rs, pdf.rs render pipeline). Returns
+/// raw bytes. Wrap with `tauri::ipc::Response` for the Tauri command.
+pub fn db_get_asset_bytes_by_id(asset_id: String) -> Result<Vec<u8>, String> {
     with_db(|conn| {
         conn.query_row(
             "SELECT data FROM assets WHERE asset_id = ?1 AND valid_to IS NULL",
@@ -1835,6 +1836,17 @@ pub fn db_get_asset_by_id(asset_id: String) -> Result<Vec<u8>, String> {
             |row| row.get(0),
         )
     })
+}
+
+/// Read the current bytes of a specific asset by its stable asset_id.
+/// Returns a tauri::ipc::Response so bytes transfer as a raw
+/// ArrayBuffer on the JS side instead of being JSON-encoded as a
+/// number array. For a 94MB PDF this is the difference between a
+/// 94MB memcpy and a 376MB JSON encode/decode.
+#[tauri::command]
+pub fn db_get_asset_by_id(asset_id: String) -> Result<tauri::ipc::Response, String> {
+    let bytes = db_get_asset_bytes_by_id(asset_id)?;
+    Ok(tauri::ipc::Response::new(bytes))
 }
 
 /// Read the bytes of a specific HISTORICAL version of an asset, keyed by

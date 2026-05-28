@@ -195,7 +195,7 @@ async function printToPdf() {
             const meta = await invoke<{ mime_type: string | null; path: string | null } | null>(
               'db_get_asset_meta_by_id', { assetId: el.assetId },
             );
-            const data = await invoke<number[]>('db_get_asset_by_id', { assetId: el.assetId });
+            const data = await invoke<ArrayBuffer>('db_get_asset_by_id', { assetId: el.assetId });
             const bytes = new Uint8Array(data);
             const ext = (meta?.path ?? '').split('.').pop()?.toLowerCase() || 'png';
             const mime = meta?.mime_type

@@ -82,7 +82,7 @@ export async function renderAsset(opts: {
         case 'svg':
         case 'raster': {
           const bytes = preFetchedBytes
-            ?? new Uint8Array(await invoke<number[]>('db_get_asset_by_id', { assetId }));
+            ?? new Uint8Array(await invoke<ArrayBuffer>('db_get_asset_by_id', { assetId }));
           const mime = kind === 'svg' ? 'image/svg+xml' : (sniffRasterMime(bytes) || 'image/png');
           png = await rasterizeAspectFit(bytes, mime, maxWidth, maxHeight);
           break;
@@ -479,8 +479,8 @@ export function useRenderedAsset(
     let cancelled = false;
     let current: string | undefined;
 
-    const fetchBytes = (): Promise<number[]> =>
-      invoke<number[]>('db_get_asset_by_id', { assetId });
+    const fetchBytes = async (): Promise<Uint8Array> =>
+      new Uint8Array(await invoke<ArrayBuffer>('db_get_asset_by_id', { assetId }));
 
     if (kind === 'svg') {
       // Fetch source bytes once; decide native vs cache by size.

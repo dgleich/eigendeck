@@ -39,7 +39,7 @@ export async function getAssetUrl(
   if (!blobUrl) {
     try {
       const [data, mime] = await Promise.all([
-        invoke<number[]>('db_get_asset_by_id', { assetId }),
+        invoke<ArrayBuffer>('db_get_asset_by_id', { assetId }),
         fetchMime(assetId),
       ]);
       const blob = new Blob([new Uint8Array(data)], { type: mime });

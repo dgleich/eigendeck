@@ -748,7 +748,7 @@ fn cmd_unpack(db_path: &str, args: &[String]) -> Result<(), String> {
         let is_image = path.starts_with("images/");
         if demos_only && !is_demo { continue; }
         if images_only && !is_image { continue; }
-        match storage::db_get_asset_by_id(asset_id.clone()) {
+        match storage::db_get_asset_bytes_by_id(asset_id.clone()) {
             Ok(data) => {
                 let full_path = format!("{}/{}", base_dir, path);
                 let dir = std::path::Path::new(&full_path).parent().unwrap();
