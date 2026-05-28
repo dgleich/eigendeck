@@ -31,11 +31,15 @@ const PDF_PROMOTE_THRESHOLD_BYTES = 500 * 1024;
 
 /**
  * Global pdfium concurrency limit. pdfium binds one process-wide
- * instance; concurrent renders contend on it AND on the main thread
- * through the IPC reply queue. Three at a time keeps the queue moving
- * without starving UI / scroll / typing.
+ * instance and the SQLite write side is a single-mutex connection;
+ * three concurrent renders + their multi-MB putAssetCache writes
+ * contended badly in stress-test logs (3.5s avg, 45s tail on cache
+ * writes vs ~50ms expected). Serialized is predictable: no thundering
+ * herd on the connection mutex, no compounding tails. Total wall-time
+ * is comparable (the parallel runs lost their speed-up to contention)
+ * with a much smoother UX.
  */
-const PDF_RENDER_CONCURRENCY = 3;
+const PDF_RENDER_CONCURRENCY = 1;
 let pdfActive = 0;
 const pdfWaiters: Array<() => void> = [];
 async function withPdfRenderSlot<T>(fn: () => Promise<T>): Promise<T> {
