@@ -64,6 +64,47 @@ function releaseSlowToast(assetId: string): void {
 }
 
 /**
+ * Aggregate cache-build progress: when N renders are simultaneously
+ * waiting on pdfium / SVG rasterization (common during a cold-deck
+ * open with many uncached PDFs), show a single banner with "N of M
+ * built" instead of N individual per-asset toasts. Threshold = 2 so
+ * one-off slow renders use the per-asset toast above; batches use
+ * this aggregate.
+ */
+let renderBatchPending = 0;
+let renderBatchMax = 0;
+const RENDER_BATCH_THRESHOLD = 2;
+
+function notifyRenderBatch(): void {
+  if (renderBatchPending >= RENDER_BATCH_THRESHOLD) {
+    const done = renderBatchMax - renderBatchPending;
+    showToast({
+      key: 'render-batch',
+      message: `Building previews: ${done}/${renderBatchMax}…`,
+      kind: 'info',
+      ttl: 0,
+    });
+  } else {
+    dismissToast('render-batch');
+  }
+}
+
+function noteRenderBatchStart(): void {
+  renderBatchPending++;
+  if (renderBatchPending > renderBatchMax) renderBatchMax = renderBatchPending;
+  notifyRenderBatch();
+}
+
+function noteRenderBatchEnd(): void {
+  renderBatchPending = Math.max(0, renderBatchPending - 1);
+  // When the batch drains, reset the running max so the NEXT batch
+  // counts from 0/0 — otherwise a later "single render" would look
+  // like "0/55" if the previous batch was 55-wide.
+  if (renderBatchPending === 0) renderBatchMax = 0;
+  notifyRenderBatch();
+}
+
+/**
  * Promote sub-FULL PDF renders to FULL when the source PDF is at least
  * this large (bytes). Rationale: pdfium's parse cost dominates for big
  * PDFs (single-digit MB+), so paying it once at FULL tier and then
@@ -150,11 +191,15 @@ export async function renderAsset(opts: {
       // SLOW_RENDER_TOAST_MS. Keyed by inflightKey so multiple callers
       // awaiting the same dedup'd promise see ONE toast, not N. Cleared
       // in finally — fires once per render, never leaks across attempts.
-      // Toast is acquired only if THIS render is still going at the
-      // threshold; refcount is keyed by assetId so the multi-tier case
-      // (256 thumb + 1920 element fired in parallel) collapses to one
-      // toast. timerFired guards the release: if the render finishes
-      // before the threshold, no acquire ever happened — no release.
+      // Aggregate progress: every cache-miss render contributes to
+      // the batch counter. The banner shows immediately if there are
+      // already N in flight (typical deck-open burst).
+      noteRenderBatchStart();
+
+      // Per-asset slow-render toast (separate UX from the aggregate
+      // batch banner). Acquired only if THIS render is still going at
+      // the threshold; refcount keyed by assetId so multi-tier renders
+      // collapse to one toast. timerFired guards the release.
       let timerFired = false;
       const slowToastTimer = setTimeout(() => {
         timerFired = true;
@@ -294,6 +339,7 @@ export async function renderAsset(opts: {
       } finally {
         clearTimeout(slowToastTimer);
         if (timerFired) releaseSlowToast(assetId);
+        noteRenderBatchEnd();
       }
     })().finally(() => renderInflight.delete(inflightKey));
     renderInflight.set(inflightKey, pngPromise);
