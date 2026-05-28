@@ -8,7 +8,6 @@
 // Rendering: returns PNG bytes that the caller (frontend's renderAsset)
 // drops straight into asset_cache. Aspect-fit into (max_width, max_height).
 
-use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
@@ -110,10 +109,28 @@ fn render_page_inner(
         .map_err(|e| format!("bitmap.as_image(): {}", e))?;
     eprintln!("[pdf] bitmap.as_image: {}ms", t_image.elapsed().as_millis());
 
+    // PNG encoding dominates render time at large dims because the image
+    // crate defaults to zlib compression level 6, which spends ~500ms on
+    // a 1920x1920 RGBA buffer. We don't need small output here — bytes
+    // live in SQLite and are loaded into a Blob URL once. CompressionType::Fast
+    // (level 1) trades ~2x file size for ~5x faster encode. Filter::None
+    // skips per-row prediction (more CPU work, marginal compression help
+    // on opaque rendered pages anyway).
     let t_png = std::time::Instant::now();
     let mut png_bytes: Vec<u8> = Vec::new();
-    dyn_image.write_to(&mut Cursor::new(&mut png_bytes), image::ImageFormat::Png)
-        .map_err(|e| format!("encode png: {}", e))?;
+    {
+        use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+        use image::ImageEncoder;
+        let rgba = dyn_image.to_rgba8();
+        let (w, h) = rgba.dimensions();
+        let encoder = PngEncoder::new_with_quality(
+            &mut png_bytes,
+            CompressionType::Fast,
+            FilterType::NoFilter,
+        );
+        encoder.write_image(rgba.as_raw(), w, h, image::ExtendedColorType::Rgba8)
+            .map_err(|e| format!("encode png: {}", e))?;
+    }
     eprintln!("[pdf] encode_png ({}KB out): {}ms",
         png_bytes.len() / 1024, t_png.elapsed().as_millis());
 

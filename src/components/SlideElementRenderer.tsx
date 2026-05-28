@@ -157,7 +157,11 @@ function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
-  const src = useImageSrc(element.assetId, element.kind, element.snapshotVariant);
+  const src = useImageSrc(element.assetId, element.kind, {
+    displayWidth: element.position.width,
+    displayHeight: element.position.height,
+    snapshotVariant: element.snapshotVariant,
+  });
   return (
     <DraggableBox
       elementId={element.id}

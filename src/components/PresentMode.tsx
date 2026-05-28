@@ -443,7 +443,11 @@ function PresentImage({ element: el, zIndex, style }: {
   element: Extract<SlideElement, { type: 'image' }>; zIndex: number; style?: React.CSSProperties;
 }) {
   const pos = el.position;
-  const src = useImageSrc(el.assetId, el.kind, el.snapshotVariant);
+  const src = useImageSrc(el.assetId, el.kind, {
+    displayWidth: el.position.width,
+    displayHeight: el.position.height,
+    snapshotVariant: el.snapshotVariant,
+  });
   if (!src) return null;
   return (
     <img src={src} alt="" style={{

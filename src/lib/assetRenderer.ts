@@ -53,36 +53,59 @@ export async function renderAsset(opts: {
   rlog(`getAssetCache(${assetId.slice(0,8)} ${kind} ${maxWidth}x${maxHeight}): ${(performance.now() - tCache).toFixed(0)}ms → ${cached ? 'HIT' : 'miss'}`);
   if (cached) return pngBytesToBlobUrl(cached.png);
 
-  let png: Uint8Array;
-  switch (kind) {
-    case 'pdf': {
-      // Rust side does the byte fetch + render in one trip — no point
-      // marshalling multi-MB PDFs through invoke twice. v1 always
-      // renders page 0; multi-page picker is a follow-up (snapshotVariant
-      // would carry the page index when that lands).
-      const tPdf = performance.now();
-      const pageBytes = await invoke<number[]>('db_render_pdf_page', {
-        assetId, page: 0, maxWidth, maxHeight,
-      });
-      rlog(`db_render_pdf_page(${assetId.slice(0,8)}): ${(performance.now() - tPdf).toFixed(0)}ms → ${pageBytes.length}B PNG`);
-      png = new Uint8Array(pageBytes);
-      break;
-    }
-    case 'svg':
-    case 'raster': {
-      const bytes = preFetchedBytes
-        ?? new Uint8Array(await invoke<number[]>('db_get_asset_by_id', { assetId }));
-      const mime = kind === 'svg' ? 'image/svg+xml' : (sniffRasterMime(bytes) || 'image/png');
-      png = await rasterizeAspectFit(bytes, mime, maxWidth, maxHeight);
-      break;
-    }
+  // Cache miss — share the render+store work across concurrent callers.
+  // React.StrictMode double-invokes effects in dev; SidebarImageThumb +
+  // ImageBox routinely mount in parallel for the same asset. Without
+  // this dedup, every tier (256, 1920, ...) ran pdfium twice AND fired
+  // two contending SQLite writes. Now: one pdfium call + one cache
+  // write per (assetId, variant, w, h) key, even under StrictMode.
+  // Each caller still gets its own blob URL (independent revoke).
+  const inflightKey = `${assetId}|${variant}|${maxWidth}x${maxHeight}|${kind}`;
+  let pngPromise = renderInflight.get(inflightKey);
+  if (!pngPromise) {
+    pngPromise = (async () => {
+      let png: Uint8Array;
+      switch (kind) {
+        case 'pdf': {
+          // Rust side does the byte fetch + render in one trip — no point
+          // marshalling multi-MB PDFs through invoke twice. v1 always
+          // renders page 0; multi-page picker is a follow-up
+          // (snapshotVariant would carry the page index when that lands).
+          const tPdf = performance.now();
+          const pageBytes = await invoke<number[]>('db_render_pdf_page', {
+            assetId, page: 0, maxWidth, maxHeight,
+          });
+          rlog(`db_render_pdf_page(${assetId.slice(0,8)}): ${(performance.now() - tPdf).toFixed(0)}ms → ${pageBytes.length}B PNG`);
+          png = new Uint8Array(pageBytes);
+          break;
+        }
+        case 'svg':
+        case 'raster': {
+          const bytes = preFetchedBytes
+            ?? new Uint8Array(await invoke<number[]>('db_get_asset_by_id', { assetId }));
+          const mime = kind === 'svg' ? 'image/svg+xml' : (sniffRasterMime(bytes) || 'image/png');
+          png = await rasterizeAspectFit(bytes, mime, maxWidth, maxHeight);
+          break;
+        }
+      }
+      const tPut = performance.now();
+      await putAssetCache(assetId, variant, maxWidth, maxHeight, png, null);
+      rlog(`putAssetCache: ${(performance.now() - tPut).toFixed(0)}ms · render TOTAL ${(performance.now() - T0).toFixed(0)}ms`);
+      return png;
+    })().finally(() => renderInflight.delete(inflightKey));
+    renderInflight.set(inflightKey, pngPromise);
+  } else {
+    rlog(`render dedup HIT for ${assetId.slice(0,8)} ${maxWidth}x${maxHeight} — awaiting inflight`);
   }
 
-  const tPut = performance.now();
-  await putAssetCache(assetId, variant, maxWidth, maxHeight, png, null);
-  rlog(`putAssetCache: ${(performance.now() - tPut).toFixed(0)}ms · TOTAL ${(performance.now() - T0).toFixed(0)}ms`);
+  const png = await pngPromise;
   return pngBytesToBlobUrl(Array.from(png) as number[]);
 }
+
+// Module-level inflight tracker — keys outlive renderAsset invocations
+// so concurrent callers share one render. Promise gets deleted in finally
+// so a failed render doesn't poison subsequent attempts.
+const renderInflight = new Map<string, Promise<Uint8Array>>();
 
 /**
  * Load source as <img>, then rasterize to PNG fitted into (maxW, maxH)

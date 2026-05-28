@@ -184,7 +184,11 @@ function PresenterTextElement({ element: el, zIndex, slide, presentationConfig, 
 
 function PresenterImage({ element: el, zIndex }: { element: Extract<SlideElement, { type: 'image' }>; zIndex: number }) {
   const pos = el.position;
-  const src = useImageSrc(el.assetId, el.kind, el.snapshotVariant);
+  const src = useImageSrc(el.assetId, el.kind, {
+    displayWidth: el.position.width,
+    displayHeight: el.position.height,
+    snapshotVariant: el.snapshotVariant,
+  });
   if (!src) return null;
   return (
     <img src={src} alt="" style={{
