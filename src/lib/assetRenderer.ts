@@ -1,12 +1,16 @@
-// Render an asset (SVG today; PDF + demo snapshots in later commits) to a
-// transparent PNG at a requested size, persisting the result to the SQLite
-// asset_cache. Cache-first: existing entries are returned without re-render.
+// Render an asset (SVG, PDF, raster) to a transparent PNG at a requested
+// size, persisting the result to the SQLite asset_cache. Cache-first:
+// existing entries return without re-render.
 //
 // Source bytes live in the `assets` table (db_store_asset / db_get_asset).
-// This module reads them via Tauri invoke, rasterizes in-browser via canvas
-// for SVG, and writes the PNG back through putAssetCache. The PDF path
-// dispatches to a Rust-side renderer (pdfium) that will land in a later
-// commit; until then it throws so callers fall back to source.
+// SVG + raster: rasterize in-browser via canvas, then write the PNG back
+// through putAssetCache. PDF: dispatch to pdfium via db_render_pdf_page
+// (Rust side does the byte fetch + render + ipc::Response transfer in one
+// trip — no point marshalling multi-MB PDFs across the boundary twice).
+//
+// PDF arm also runs a tier-promotion pipeline (big PDFs render at FULL
+// once, downscale to thumb tiers from cache) — see PDF_PROMOTE_THRESHOLD_BYTES
+// and the (A) / (B) / post-queue blocks below.
 
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
@@ -128,7 +132,14 @@ const PDF_RENDER_CONCURRENCY = 1;
 let pdfActive = 0;
 const pdfWaiters: Array<() => void> = [];
 async function withPdfRenderSlot<T>(fn: () => Promise<T>): Promise<T> {
-  if (pdfActive >= PDF_RENDER_CONCURRENCY) {
+  // FIFO ordering: a fresh caller must also queue if anyone is already
+  // waiting, otherwise microtask ordering can let it jump ahead of a
+  // resumed waiter (between the previous holder's pdfActive-- and the
+  // waiter's pdfActive++, a new caller sees pdfActive=0 and proceeds).
+  // pdfium's thread_safe Mutex serializes inside Rust either way, but
+  // the correctness of the in-slot putAssetCache + post-queue re-probe
+  // depends on slot ownership being unambiguous.
+  if (pdfActive >= PDF_RENDER_CONCURRENCY || pdfWaiters.length > 0) {
     await new Promise<void>((resolve) => pdfWaiters.push(resolve));
   }
   pdfActive++;
@@ -261,11 +272,17 @@ export async function renderAsset(opts: {
             } else {
               // Direct-render request at FULL: a parallel caller may
               // have just cached FULL via the tier-promotion path.
+              // NOTE: this codepath assumes pdfRenderTier squares the
+              // request (max-dim → square FULL). If anyone ever asks
+              // for a non-square tier (e.g. 1920x1080), tier promotion
+              // and downscale-from-cache won't work — db_downscale_
+              // asset_cache always probes (ASSET_TIER.full, ASSET_TIER.
+              // full). See src/lib/imageSrc.ts pdfRenderTier.
               const cached = await getAssetCache(assetId, variant, maxWidth, maxHeight);
               if (cached) {
                 rlog(`getAssetCache(post-queue ${assetId.slice(0,8)} ${maxWidth}x${maxHeight}): HIT (raced)`);
                 skipCachePut = true;
-                return cached.png instanceof Uint8Array ? cached.png : new Uint8Array(cached.png);
+                return cached.png;
               }
             }
 
@@ -352,7 +369,7 @@ export async function renderAsset(opts: {
   }
 
   const png = await pngPromise;
-  return pngBytesToBlobUrl(Array.from(png) as number[]);
+  return pngBytesToBlobUrl(png);
 }
 
 // Module-level inflight tracker — keys outlive renderAsset invocations
@@ -551,17 +568,25 @@ export async function inlineSvgExternalRefsFromDisk(
  * SQLite asset_cache PNG rows that were derived from the old bytes.
  */
 export async function invalidateRenderedAsset(assetId: string): Promise<void> {
+  // Best-effort, but log on failure so a stale-PNG-with-no-signal bug
+  // doesn't go unnoticed. Both branches are independently optional —
+  // the event dispatch at the end fires either way so hook-based
+  // listeners still get notified.
   try {
     const { invoke } = await import('@tauri-apps/api/core');
     await invoke('db_clear_asset_cache', { sourceId: assetId });
-  } catch { /* best-effort */ }
+  } catch (e) {
+    console.warn(`[invalidateRenderedAsset] db_clear_asset_cache failed for ${assetId.slice(0, 8)}:`, e);
+  }
   // Also drop the demoAssets blob cache so any consumer using useAssetUrl
   // / getAssetUrl re-fetches the new bytes instead of handing out a stale
-  // URL. The custom event below still fires for hook-based listeners.
+  // URL.
   try {
     const { invalidateAsset } = await import('./demoAssets');
     invalidateAsset(assetId);
-  } catch { /* best-effort */ }
+  } catch (e) {
+    console.warn(`[invalidateRenderedAsset] demoAssets.invalidateAsset failed for ${assetId.slice(0, 8)}:`, e);
+  }
   window.dispatchEvent(new CustomEvent('eigendeck:asset-changed', { detail: { assetId } }));
 }
 

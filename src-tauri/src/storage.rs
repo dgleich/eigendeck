@@ -2220,9 +2220,14 @@ pub struct AssetCacheVariant {
     pub source_hash: Option<String>,
 }
 
+// async + spawn_blocking — called with 1-3 MB PNGs during cache builds.
+// The SQLite write under with_db's global Mutex serializes naturally,
+// but holding the WebView main thread for it would stutter the UI.
+// Push the (potentially-blocking) BLOB write onto tokio's blocking pool
+// for the same reason db_render_pdf_page and db_downscale_asset_cache do.
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
-pub fn db_put_asset_cache(
+pub async fn db_put_asset_cache(
     source_id: String,
     variant: String,
     width: i64,
@@ -2230,14 +2235,18 @@ pub fn db_put_asset_cache(
     png: Vec<u8>,
     source_hash: Option<String>,
 ) -> Result<(), String> {
-    with_db(|conn| {
-        conn.execute(
-            "INSERT OR REPLACE INTO asset_cache (source_id, variant, width, height, png, source_hash) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![&source_id, &variant, width, height, &png, &source_hash],
-        )?;
-        Ok(())
+    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        with_db(|conn| {
+            conn.execute(
+                "INSERT OR REPLACE INTO asset_cache (source_id, variant, width, height, png, source_hash) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![&source_id, &variant, width, height, &png, &source_hash],
+            )?;
+            Ok(())
+        })
     })
+    .await
+    .map_err(|e| format!("spawn_blocking join: {}", e))?
 }
 
 /// Binary-IPC version of cache read. Returns just the PNG bytes via
@@ -2292,18 +2301,26 @@ pub async fn db_downscale_asset_cache(
     target_height: u32,
 ) -> Result<tauri::ipc::Response, String> {
     let out_png = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
-        let src_png: Vec<u8> = match with_db(|conn| {
-            conn.query_row(
+        // Read source tier or signal miss. Pattern-match the typed
+        // QueryReturnedNoRows variant inside the closure (same shape as
+        // db_get_asset_cache_bytes above) — substring matching the
+        // stringified error worked but would silently turn cache misses
+        // into hard errors if rusqlite ever retypes the Display string.
+        let src_png: Option<Vec<u8>> = with_db(|conn| {
+            let r = conn.query_row(
                 "SELECT png FROM asset_cache WHERE source_id = ?1 AND variant = ?2 AND width = ?3 AND height = ?4",
                 params![&source_id, &variant, source_width, source_height],
                 |row| row.get::<_, Vec<u8>>(0),
-            )
-        }) {
-            Ok(b) => b,
-            Err(e) if e.contains("no rows") || e.contains("NoRows") => {
-                return Ok(Vec::<u8>::new());
+            );
+            match r {
+                Ok(b) => Ok(Some(b)),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(e) => Err(e),
             }
-            Err(e) => return Err(format!("read source tier: {}", e)),
+        }).map_err(|e| format!("read source tier: {}", e))?;
+        let src_png = match src_png {
+            Some(b) => b,
+            None => return Ok(Vec::<u8>::new()),
         };
 
         // Decode PNG → resize (aspect-fit, never upscale) → re-encode PNG.

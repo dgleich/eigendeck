@@ -24,9 +24,9 @@ import { effectiveAutoReload, getPreference } from './preferences';
 
 // Verbose logging surfaces in the in-app Debug Console (View menu)
 // because console.log is intercepted there. Prefix `[watcher]` so the
-// user can filter or scroll for them. Kept on by default while the
-// watcher's behavior is being debugged; flip the const to disable.
-const WATCHER_LOG = true;
+// user can filter or scroll for them. Off by default — flip true to
+// debug watcher subscribe/unsubscribe/event-dispatch decisions.
+const WATCHER_LOG = false;
 const wlog = (...a: unknown[]): void => {
   if (WATCHER_LOG) console.log(`[watcher ${new Date().toISOString().slice(11, 23)}]`, ...a);
 };

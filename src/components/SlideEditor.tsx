@@ -314,7 +314,7 @@ export function SlideEditor() {
 
   // Diagnostic logging — surface in the Debug Console (intercepts console.log)
   // so "drag from PowerPoint did nothing on release" is debuggable.
-  const DRAG_LOG = true;
+  const DRAG_LOG = false;  // flip true to trace drag/drop pasteboard handling
   const dlog = (...a: unknown[]): void => {
     if (DRAG_LOG) console.log(`[drag-evt ${new Date().toISOString().slice(11, 23)}]`, ...a);
   };

@@ -12,10 +12,11 @@ let intercepted = false;
 
 // Continuously append every log entry to a file on disk so a crash /
 // white-screen doesn't lose the captured timings. Buffered + flushed
-// every ~250ms to keep the per-entry overhead negligible. Default on
-// during the PDF stress-test debug work; flip off afterwards by setting
-// AUTO_WRITE = false.
-const AUTO_WRITE = true;
+// every ~250ms to keep the per-entry overhead negligible. Off by
+// default — flip true to capture every console.log to
+// ~/Library/Logs/<bundle_id>/debug.log for post-mortem analysis.
+// (Leaving on in release fills the log forever; there's no rotation.)
+const AUTO_WRITE = false;
 const pendingWrite: LogEntry[] = [];
 let writeTimer: ReturnType<typeof setTimeout> | null = null;
 
