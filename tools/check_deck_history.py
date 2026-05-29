@@ -67,14 +67,17 @@ def check_deck(path: Path) -> dict:
     cur = conn.cursor()
 
     def safe_count(sql: str) -> int:
+        # Any SQLite error here is a real signal — either the file
+        # predates the current schema (no `valid_to` column on assets,
+        # no `asset_cache` table, etc.) or it's outright corrupt.
+        # Surface it; do NOT silently return 0. A missing column with
+        # a zero-shaped answer would hide the fact that the deck
+        # needs to be opened in the app to migrate before commit.
         try:
             cur.execute(sql)
             row = cur.fetchone()
             return int(row[0]) if row and row[0] is not None else 0
         except sqlite3.Error as e:
-            # Missing table = treat as zero (legacy / pre-schema file).
-            if "no such table" in str(e):
-                return 0
             findings["errors"].append(f"{sql!r}: {e}")
             return 0
 
