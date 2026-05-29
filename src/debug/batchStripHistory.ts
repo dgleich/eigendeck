@@ -22,6 +22,12 @@ async function stripOne(input: string): Promise<StripHistoryFileReport> {
     // (vs the default exponential thinning). That's what we want here.
     const json = await invoke<string>('db_compact', { keepAll: true });
     const r = JSON.parse(json) as CompactResult;
+    // db_close runs PRAGMA wal_checkpoint(TRUNCATE) and drops the
+    // connection — without this the .eigendeck-{wal,shm} sidecars
+    // stay alongside the stripped file. (The next iteration's
+    // db_open replaces the connection in DB.lock() and rusqlite's
+    // Drop closes it, but Drop alone doesn't checkpoint.)
+    await invoke('db_close');
     return {
       input, ok: true,
       sizeBeforeBytes: r.beforeBytes,
@@ -30,6 +36,10 @@ async function stripOne(input: string): Promise<StripHistoryFileReport> {
       elapsedMs: performance.now() - start,
     };
   } catch (e) {
+    // Best-effort close so a half-failed strip still checkpoints if
+    // db_open succeeded. Ignore close errors (the original one is
+    // the useful signal).
+    try { await invoke('db_close'); } catch { /* swallow */ }
     return {
       input, ok: false, error: e instanceof Error ? e.message : String(e),
       sizeBeforeBytes: 0, sizeAfterBytes: 0, savedBytes: 0,
