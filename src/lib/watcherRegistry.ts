@@ -267,6 +267,20 @@ interface LinkedAssetRow {
   external_mtime: string | null;
   auto_reload: string | null;
   mime_type: string | null;
+  hash: string | null;  // SHA-256 hex of the asset bytes; used by scan
+                        // to decide if a stored-mtime-vs-disk-mtime
+                        // mismatch is a real byte change or just drift.
+}
+
+/** SHA-256 hex of a byte buffer. Local copy of the helper from
+ *  assetInsert.ts — same shape (slice the buffer to dodge cross-realm
+ *  ArrayBuffer issues in jsdom under tests). */
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  const digest = await crypto.subtle.digest('SHA-256', buf as ArrayBuffer);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 /**
@@ -295,8 +309,14 @@ export async function scanForChangedAssets(
       const st = await stat(absPath);
       const diskMtime = st?.mtime ? st.mtime.toISOString() : null;
       if (diskMtime && diskMtime !== a.external_mtime) {
-        wlog(`  reload ${a.asset_id.slice(0, 8)} path="${a.path}" disk=${diskMtime} stored=${a.external_mtime}`);
+        // mtime moved — read bytes and compare hash before deciding
+        // whether to invalidate the rendered cache. Common case after
+        // a fresh insertion (stored mtime is null) or a touch / save
+        // roundtrip: mtime drifted but bytes didn't change. db_store_
+        // asset's short-circuit path updates the stored mtime even
+        // when bytes match, so future scans won't loop.
         const bytes = await readFile(absPath);
+        const diskHash = await sha256Hex(bytes);
         await invoke('db_store_asset', {
           path: a.path ?? absPath.split('/').pop() ?? a.asset_id,
           data: Array.from(bytes),
@@ -306,8 +326,17 @@ export async function scanForChangedAssets(
           assetId: a.asset_id,
           autoReload: null,
         });
-        await invalidateRenderedAsset(a.asset_id);
-        reloaded++;
+        if (diskHash !== a.hash) {
+          // Bytes actually changed — invalidate rendered cache so the
+          // sidebar + canvas re-render from the new bytes.
+          wlog(`  reload ${a.asset_id.slice(0, 8)} path="${a.path}" disk=${diskMtime} stored=${a.external_mtime} (bytes changed)`);
+          await invalidateRenderedAsset(a.asset_id);
+          reloaded++;
+        } else {
+          // Just an mtime drift — bytes are identical. db_store_asset's
+          // short-circuit recorded the new mtime; nothing else to do.
+          wlog(`  mtime-only ${a.asset_id.slice(0, 8)} path="${a.path}" disk=${diskMtime} stored=${a.external_mtime} (bytes unchanged)`);
+        }
       } else {
         wlog(`  unchanged ${a.asset_id.slice(0, 8)} path="${a.path}" mtime=${diskMtime}`);
       }

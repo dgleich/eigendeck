@@ -1769,14 +1769,27 @@ pub fn db_store_asset(
         };
 
         // Hash dedup: if current row for this asset_id matches the new
-        // bytes, this is a no-op (covers watcher storms + redundant
-        // re-saves that don't actually change content).
+        // bytes, no new version is needed (covers watcher storms +
+        // redundant re-saves that don't actually change content). But
+        // the disk-side metadata (external_mtime, external_path) may
+        // still have moved — e.g. user opened a file with `touch`'d
+        // mtime, or scan-on-load is recording the new mtime after a
+        // round-trip save. Update those in place so scan-on-load
+        // doesn't loop forever comparing stored-null to disk-mtime.
         let current_hash: rusqlite::Result<Option<String>> = conn.query_row(
             "SELECT hash FROM assets WHERE asset_id = ?1 AND valid_to IS NULL",
             params![&id], |row| row.get(0),
         );
         if let Ok(Some(h)) = current_hash {
-            if h == new_hash { return Ok(id); }
+            if h == new_hash {
+                conn.execute(
+                    "UPDATE assets SET external_mtime = ?2, \
+                     external_path = COALESCE(?3, external_path) \
+                     WHERE asset_id = ?1 AND valid_to IS NULL",
+                    params![&id, &external_mtime, &external_path],
+                )?;
+                return Ok(id);
+            }
         }
 
         // auto_reload preservation: it's a per-ASSET configuration, not
