@@ -15,7 +15,7 @@ import { computeAssetUsage } from './assetUsage';
 
 // Verbose log of insertion + collision-check decisions. Visible in the
 // in-app Debug Console (View menu). Toggle off when no longer useful.
-const INSERT_LOG = true;
+const INSERT_LOG = false;  // flip true to trace insertion + collision-check decisions
 const ilog = (...a: unknown[]): void => {
   if (INSERT_LOG) console.log(`[insert ${new Date().toISOString().slice(11, 23)}]`, ...a);
 };

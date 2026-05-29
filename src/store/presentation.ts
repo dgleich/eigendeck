@@ -717,7 +717,7 @@ function scheduleFlush() {
 
 /** Open a .eigendeck SQLite file and load its contents into the store */
 export async function openSqliteProject(dbPath: string): Promise<void> {
-  const OPEN_LOG = true;  // stress-test debug
+  const OPEN_LOG = false;  // flip true for openProject phase timings
   const T0 = performance.now();
   const olog = (msg: string): void => {
     if (OPEN_LOG) console.log(`[openProject +${Math.round(performance.now() - T0)}ms] ${msg}`);

@@ -165,7 +165,7 @@ export async function renderAsset(opts: {
 }): Promise<string> {
   const { assetId, kind, variant = '_', maxWidth, maxHeight, preFetchedBytes } = opts;
 
-  const RENDER_LOG = true;  // perf-parity comparison — every render emits timing lines
+  const RENDER_LOG = false;  // flip true for per-render timing breakdown
   const rlog = (msg: string): void => {
     if (RENDER_LOG) console.log(`[render ${new Date().toISOString().slice(11, 23)}] ${msg}`);
   };

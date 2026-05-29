@@ -16,7 +16,7 @@ import { getWatcherRegistry, dirname } from './watcherRegistry';
 import { effectiveAutoReload, usePreference } from './preferences';
 
 // Logs surface in the Debug Console (View menu intercepts console.log).
-const HOOK_LOG = true;
+const HOOK_LOG = false;  // flip true to debug watcher mount/skip decisions
 const hlog = (...a: unknown[]): void => {
   if (HOOK_LOG) console.log(`[watcher-hook ${new Date().toISOString().slice(11, 23)}]`, ...a);
 };
