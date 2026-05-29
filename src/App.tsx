@@ -1013,13 +1013,16 @@ function App() {
               try {
                 const { readFile, readTextFile } = await import('@tauri-apps/plugin-fs');
                 const bytes = await readFile(fullPath);
-                // Demo HTML — not file-watched in v1.
-                // Routed through collision helper (drag-drop path counts
-                // as drag-drop semantically: user selected a real file).
+                // Demo HTML — pass externalPath so the file watcher
+                // subscribes and the inspector's Watch toggle is
+                // meaningful. Same pattern as image file-picker
+                // insertion. externalMtime stays null at insertion;
+                // scan-on-load records it without re-rendering
+                // (watcher does a hash check before invalidating).
                 const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
                 const r = await storeAssetWithCollisionCheck({
                   path: relativePath, data: bytes, mimeType: 'text/html',
-                  externalPath: null, externalMtime: null,
+                  externalPath: relativePath, externalMtime: null,
                 });
                 if (r.cancelled) return;
                 const assetId = r.assetId;

@@ -41,19 +41,28 @@ function fmtBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(2)} MB`;
 }
 
+/** Strip the `-NNNNNNNN` monotonic counter suffix that storage's
+ *  `chrono_lite_now()` appends after the ISO Z. JavaScript's Date
+ *  doesn't parse that and silently returns NaN; without this strip
+ *  the entire version-history list renders blank. */
+function parseTimestamp(iso: string | null | undefined): Date | null {
+  if (!iso) return null;
+  const stripped = iso.replace(/-\d{8}$/, '');
+  const d = new Date(stripped);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function fmtTime(iso: string | null | undefined): string {
   if (!iso) return '—';
-  try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return iso;
-    return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' });
-  } catch { return iso; }
+  const d = parseTimestamp(iso);
+  if (!d) return iso;
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' });
 }
 
 function relativeAgo(iso: string | null | undefined): string {
   if (!iso) return '';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '';
+  const d = parseTimestamp(iso);
+  if (!d) return '';
   const sec = Math.floor((Date.now() - d.getTime()) / 1000);
   if (sec < 10) return 'just now';
   if (sec < 60) return `${sec} seconds ago`;

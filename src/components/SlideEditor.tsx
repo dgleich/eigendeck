@@ -504,12 +504,16 @@ export function SlideEditor() {
                   const { readFile, readTextFile } = await import('@tauri-apps/plugin-fs');
                   const relativePath = relPath(store.projectPath, fullPath);
                   const bytes = await readFile(fullPath);
-                  // Demo HTML — not file-watched in v1.
-                  // Routed through collision helper (real file drop).
+                  // Demo HTML — pass externalPath so the file watcher
+                  // can subscribe (auto-reload on disk edits). Same
+                  // pattern as image drag-drop above. externalMtime
+                  // stays null at insertion; scan-on-load will record
+                  // it without invalidating (post-fix watcher checks
+                  // hash before invalidating cache).
                   const { storeAssetWithCollisionCheck } = await import('../lib/assetInsert');
                   const r = await storeAssetWithCollisionCheck({
                     path: relativePath, data: bytes, mimeType: 'text/html',
-                    externalPath: null, externalMtime: null,
+                    externalPath: relativePath, externalMtime: null,
                   });
                   if (r.cancelled) return;
                   const assetId = r.assetId;
