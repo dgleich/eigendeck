@@ -131,6 +131,10 @@ export async function saveProject(): Promise<void> {
     if (!selected) return;
 
     try {
+      // Self-heal in case boot-time db_open_memory hasn't completed
+      // yet (App.tsx fires it unawaited). db_open_memory is a no-op
+      // when a DB is already open, so this is safe to call always.
+      await invoke('db_open_memory');
       // Ensure the in-memory DB has the current Zustand state
       await invoke('db_import_json', { json: JSON.stringify(store.presentation) });
       // Backup in-memory DB to file, then reopen from file
@@ -174,6 +178,9 @@ export async function saveAsProject(): Promise<void> {
   if (!selected) return;
 
   try {
+    // Self-heal in case boot-time db_open_memory hasn't completed
+    // yet — no-op if a DB is already open.
+    await invoke('db_open_memory');
     // Make sure the in-memory DB matches the live Zustand state before
     // we serialize it to the new file.
     await flushToSqlite();

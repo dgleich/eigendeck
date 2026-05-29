@@ -500,8 +500,14 @@ function App() {
   // Initialize: open in-memory DB, sync recent menu, restore window position
   useEffect(() => {
     import('@tauri-apps/api/core').then(({ invoke }) => {
-      invoke('db_open_memory').catch(() => { /* may already have a DB open */ });
-    }).catch(() => { /* not in Tauri */ });
+      // db_open_memory is a no-op when a DB is already open, so it's
+      // safe even if a file was opened first. Log on actual failure
+      // (was previously swallowed) — silent failure here causes a
+      // confusing "No database open" later when saveProject runs.
+      invoke('db_open_memory').catch((e) => {
+        console.error('[boot] db_open_memory failed:', e);
+      });
+    }).catch((e) => { console.error('[boot] tauri core import failed:', e); });
     syncRecentMenu();
     // Restore saved window position/size
     (async () => {
