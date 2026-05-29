@@ -38,6 +38,38 @@ function SidebarImageThumb({ element }: { element: Extract<SlideElement, { type:
   );
 }
 
+/** Demo placeholder in the sidebar. Renders a labeled tile and
+ *  ALSO subscribes the file watcher for the demo's external_path.
+ *  Without the hook call, demo assets with external_path set would
+ *  never get watched — useAssetFileWatcher subscriptions live in
+ *  the components that mount the element. */
+function SidebarDemoTile({ element }: { element: Extract<SlideElement, { type: 'demo' }> }) {
+  const p = element.position;
+  useAssetFileWatcher(element.assetId, element.id);
+  return (
+    <div style={{
+      position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
+      background: '#e8f4f8', border: '1px dashed #93c5fd', borderRadius: 2,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 20, color: '#60a5fa',
+    }}>DEMO</div>
+  );
+}
+
+/** Demo-piece placeholder — same subscribe-then-render pattern. */
+function SidebarDemoPieceTile({ element }: { element: Extract<SlideElement, { type: 'demo-piece' }> }) {
+  const p = element.position;
+  useAssetFileWatcher(element.assetId, element.id);
+  return (
+    <div style={{
+      position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
+      background: '#f0e8f8', border: '1px dashed #a78bfa', borderRadius: 2,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 16, color: '#7c3aed',
+    }}>{element.piece}</div>
+  );
+}
+
 const SLIDE_WIDTH = 1920;
 const SLIDE_HEIGHT = 1080;
 const THUMB_WIDTH = 166;
@@ -166,23 +198,9 @@ export function SlideSidebar() {
                       );
                     }
                     case 'demo':
-                      return (
-                        <div key={el.id} style={{
-                          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-                          background: '#e8f4f8', border: '1px dashed #93c5fd', borderRadius: 2,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 20, color: '#60a5fa',
-                        }}>DEMO</div>
-                      );
+                      return <SidebarDemoTile key={el.id} element={el} />;
                     case 'demo-piece':
-                      return (
-                        <div key={el.id} style={{
-                          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-                          background: '#f0e8f8', border: '1px dashed #a78bfa', borderRadius: 2,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 16, color: '#7c3aed',
-                        }}>{el.piece}</div>
-                      );
+                      return <SidebarDemoPieceTile key={el.id} element={el} />;
                     case 'cover':
                       return (
                         <div key={el.id} style={{
