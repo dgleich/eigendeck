@@ -1383,11 +1383,17 @@ pub fn db_compact(keep_all: bool) -> Result<String, String> {
         let tx = conn.unchecked_transaction()?;
 
         if keep_all {
-            // Delete ALL history
+            // Delete ALL history + cached renders. asset_cache rows are
+            // pure derived state (sidebar thumbnails, downscaled tiers);
+            // a "strip everything" call should leave a clean slate that
+            // fresh opens can repopulate cheaply. Without this line, the
+            // cache survives the strip and shows up as un-stripped state
+            // in tools/check_deck_history.py.
             tx.execute_batch(
                 "DELETE FROM elements WHERE valid_to IS NOT NULL;
                  DELETE FROM slide_elements WHERE valid_to IS NOT NULL;
-                 DELETE FROM slides WHERE valid_to IS NOT NULL;",
+                 DELETE FROM slides WHERE valid_to IS NOT NULL;
+                 DELETE FROM asset_cache;",
             )?;
         } else {
             // Exponential thinning (keep recent, thin old)
