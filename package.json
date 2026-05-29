@@ -1,7 +1,7 @@
 {
   "name": "eigendeck",
   "private": true,
-  "version": "2026.5.6",
+  "version": "2026.5.29",
   "type": "module",
   "scripts": {
     "dev": "vite",
