@@ -436,12 +436,20 @@ export function SlideEditor() {
 
   // Tauri drag-drop event (provides file paths directly)
   useEffect(() => {
+    // Async-effect cleanup race: if the cleanup runs before the
+    // await for onDragDropEvent resolves (StrictMode double-invoke
+    // in dev, or fast remount under HMR), the first listener leaks
+    // and the next mount registers a SECOND one → every drop fires
+    // both handlers → N copies of the asset get added. Track a
+    // `cancelled` flag and immediately unsubscribe if we were torn
+    // down during the await.
     let unlisten: (() => void) | null = null;
+    let cancelled = false;
     (async () => {
       try {
         const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
         const win = getCurrentWebviewWindow();
-        unlisten = await win.onDragDropEvent(async (event) => {
+        const u = await win.onDragDropEvent(async (event) => {
           if (event.payload.type === 'drop') {
             const paths: string[] = event.payload.paths;
             const store = usePresentationStore.getState();
@@ -546,11 +554,21 @@ export function SlideEditor() {
             }
           }
         });
+        // If the effect was cleaned up while we were awaiting the
+        // subscribe, immediately undo it.
+        if (cancelled) {
+          u();
+        } else {
+          unlisten = u;
+        }
       } catch {
         // Not in Tauri — HTML5 drag events will handle it
       }
     })();
-    return () => { if (unlisten) unlisten(); };
+    return () => {
+      cancelled = true;
+      if (unlisten) unlisten();
+    };
   }, []);
 
   if (!slide) return null;
