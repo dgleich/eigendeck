@@ -2220,6 +2220,26 @@ pub struct AssetCacheVariant {
     pub source_hash: Option<String>,
 }
 
+/// Synchronous core of [`db_put_asset_cache`]. Exposed `pub(crate)` so
+/// unit tests can hit the SQLite path without going through tokio.
+pub(crate) fn db_put_asset_cache_inner(
+    source_id: String,
+    variant: String,
+    width: i64,
+    height: i64,
+    png: Vec<u8>,
+    source_hash: Option<String>,
+) -> Result<(), String> {
+    with_db(|conn| {
+        conn.execute(
+            "INSERT OR REPLACE INTO asset_cache (source_id, variant, width, height, png, source_hash) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![&source_id, &variant, width, height, &png, &source_hash],
+        )?;
+        Ok(())
+    })
+}
+
 // async + spawn_blocking — called with 1-3 MB PNGs during cache builds.
 // The SQLite write under with_db's global Mutex serializes naturally,
 // but holding the WebView main thread for it would stutter the UI.
@@ -2235,15 +2255,8 @@ pub async fn db_put_asset_cache(
     png: Vec<u8>,
     source_hash: Option<String>,
 ) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
-        with_db(|conn| {
-            conn.execute(
-                "INSERT OR REPLACE INTO asset_cache (source_id, variant, width, height, png, source_hash) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                params![&source_id, &variant, width, height, &png, &source_hash],
-            )?;
-            Ok(())
-        })
+    tauri::async_runtime::spawn_blocking(move || {
+        db_put_asset_cache_inner(source_id, variant, width, height, png, source_hash)
     })
     .await
     .map_err(|e| format!("spawn_blocking join: {}", e))?
@@ -2287,6 +2300,76 @@ pub fn db_get_asset_cache_bytes(
 /// Returns empty Response when the source tier isn't cached (caller's
 /// signal to fall through to the fresh-render path).
 ///
+/// Synchronous core of [`db_downscale_asset_cache`]. Returns the
+/// re-encoded PNG (empty Vec on cache miss). Exposed `pub(crate)`
+/// so unit tests can drive the SQLite + image pipeline directly.
+pub(crate) fn db_downscale_asset_cache_inner(
+    source_id: String,
+    variant: String,
+    source_width: i64,
+    source_height: i64,
+    target_width: u32,
+    target_height: u32,
+) -> Result<Vec<u8>, String> {
+    // Read source tier or signal miss. Pattern-match the typed
+    // QueryReturnedNoRows variant inside the closure (same shape as
+    // db_get_asset_cache_bytes above) — substring matching the
+    // stringified error worked but would silently turn cache misses
+    // into hard errors if rusqlite ever retypes the Display string.
+    let src_png: Option<Vec<u8>> = with_db(|conn| {
+        let r = conn.query_row(
+            "SELECT png FROM asset_cache WHERE source_id = ?1 AND variant = ?2 AND width = ?3 AND height = ?4",
+            params![&source_id, &variant, source_width, source_height],
+            |row| row.get::<_, Vec<u8>>(0),
+        );
+        match r {
+            Ok(b) => Ok(Some(b)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }).map_err(|e| format!("read source tier: {}", e))?;
+    let src_png = match src_png {
+        Some(b) => b,
+        None => return Ok(Vec::<u8>::new()),
+    };
+
+    // Decode PNG → resize (aspect-fit, never upscale) → re-encode PNG.
+    // Triangle filter is fast (bilinear under the hood); CatmullRom
+    // would be sharper but ~2x slower.
+    let img = image::load_from_memory_with_format(&src_png, image::ImageFormat::Png)
+        .map_err(|e| format!("decode source png: {}", e))?;
+    let resized = img.resize(target_width, target_height, image::imageops::FilterType::Triangle);
+    let out_w = resized.width();
+    let out_h = resized.height();
+
+    let mut out_png: Vec<u8> = Vec::new();
+    {
+        use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+        use image::ImageEncoder;
+        let rgba = resized.to_rgba8();
+        let encoder = PngEncoder::new_with_quality(
+            &mut out_png,
+            CompressionType::Default,
+            FilterType::NoFilter,
+        );
+        encoder.write_image(rgba.as_raw(), out_w, out_h, image::ExtendedColorType::Rgba8)
+            .map_err(|e| format!("encode target png: {}", e))?;
+    }
+
+    // Write target tier to cache so future hits skip the resize via
+    // the db_get_asset_cache_bytes fast path.
+    with_db(|conn| {
+        conn.execute(
+            "INSERT OR REPLACE INTO asset_cache (source_id, variant, width, height, png, source_hash) \
+             VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+            params![&source_id, &variant, target_width as i64, target_height as i64, &out_png],
+        )?;
+        Ok(())
+    })?;
+
+    Ok(out_png)
+}
+
 /// async + spawn_blocking: the image-crate decode + Triangle resize +
 /// PNG encode together can run hundreds of ms on a 1920² source.
 /// Tauri 2 sync commands block the WebView main thread, so the
@@ -2300,64 +2383,8 @@ pub async fn db_downscale_asset_cache(
     target_width: u32,
     target_height: u32,
 ) -> Result<tauri::ipc::Response, String> {
-    let out_png = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
-        // Read source tier or signal miss. Pattern-match the typed
-        // QueryReturnedNoRows variant inside the closure (same shape as
-        // db_get_asset_cache_bytes above) — substring matching the
-        // stringified error worked but would silently turn cache misses
-        // into hard errors if rusqlite ever retypes the Display string.
-        let src_png: Option<Vec<u8>> = with_db(|conn| {
-            let r = conn.query_row(
-                "SELECT png FROM asset_cache WHERE source_id = ?1 AND variant = ?2 AND width = ?3 AND height = ?4",
-                params![&source_id, &variant, source_width, source_height],
-                |row| row.get::<_, Vec<u8>>(0),
-            );
-            match r {
-                Ok(b) => Ok(Some(b)),
-                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-                Err(e) => Err(e),
-            }
-        }).map_err(|e| format!("read source tier: {}", e))?;
-        let src_png = match src_png {
-            Some(b) => b,
-            None => return Ok(Vec::<u8>::new()),
-        };
-
-        // Decode PNG → resize (aspect-fit, never upscale) → re-encode PNG.
-        // Triangle filter is fast (bilinear under the hood); CatmullRom
-        // would be sharper but ~2x slower.
-        let img = image::load_from_memory_with_format(&src_png, image::ImageFormat::Png)
-            .map_err(|e| format!("decode source png: {}", e))?;
-        let resized = img.resize(target_width, target_height, image::imageops::FilterType::Triangle);
-        let out_w = resized.width();
-        let out_h = resized.height();
-
-        let mut out_png: Vec<u8> = Vec::new();
-        {
-            use image::codecs::png::{CompressionType, FilterType, PngEncoder};
-            use image::ImageEncoder;
-            let rgba = resized.to_rgba8();
-            let encoder = PngEncoder::new_with_quality(
-                &mut out_png,
-                CompressionType::Default,
-                FilterType::NoFilter,
-            );
-            encoder.write_image(rgba.as_raw(), out_w, out_h, image::ExtendedColorType::Rgba8)
-                .map_err(|e| format!("encode target png: {}", e))?;
-        }
-
-        // Write target tier to cache so future hits skip the resize via
-        // the db_get_asset_cache_bytes fast path.
-        with_db(|conn| {
-            conn.execute(
-                "INSERT OR REPLACE INTO asset_cache (source_id, variant, width, height, png, source_hash) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
-                params![&source_id, &variant, target_width as i64, target_height as i64, &out_png],
-            )?;
-            Ok(())
-        })?;
-
-        Ok(out_png)
+    let out_png = tauri::async_runtime::spawn_blocking(move || {
+        db_downscale_asset_cache_inner(source_id, variant, source_width, source_height, target_width, target_height)
     })
     .await
     .map_err(|e| format!("spawn_blocking join: {}", e))??;
@@ -2565,19 +2592,89 @@ mod tests {
         *db = Some(conn);
         drop(db);
         let png = vec![0x89u8, 0x50, 0x4E, 0x47, 1, 2, 3, 4];
-        db_put_asset_cache("a/b.svg".into(), "_".into(), 256, 128, png.clone(), Some("hash1".into())).unwrap();
+        db_put_asset_cache_inner("a/b.svg".into(), "_".into(), 256, 128, png.clone(), Some("hash1".into())).unwrap();
         let got = db_get_asset_cache("a/b.svg".into(), "_".into(), 256, 128).unwrap().unwrap();
         assert_eq!(got.png, png);
         assert_eq!(got.source_hash.as_deref(), Some("hash1"));
         // Same source, different size — separate row.
         let png2 = vec![0u8; 16];
-        db_put_asset_cache("a/b.svg".into(), "_".into(), 1920, 1080, png2.clone(), None).unwrap();
+        db_put_asset_cache_inner("a/b.svg".into(), "_".into(), 1920, 1080, png2.clone(), None).unwrap();
         let variants = db_list_asset_cache_variants("a/b.svg".into()).unwrap();
         assert_eq!(variants.len(), 2);
         // Clear by source removes both.
         let n = db_clear_asset_cache("a/b.svg".into()).unwrap();
         assert_eq!(n, 2);
         assert!(db_get_asset_cache("a/b.svg".into(), "_".into(), 256, 128).unwrap().is_none());
+    }
+
+    /// Generate a small valid PNG (32x32 RGBA) for tests that exercise
+    /// the image-crate decode/resize/encode pipeline.
+    fn make_test_png(w: u32, h: u32) -> Vec<u8> {
+        use image::codecs::png::PngEncoder;
+        use image::ImageEncoder;
+        let rgba = vec![0xCCu8; (w * h * 4) as usize];
+        let mut out = Vec::new();
+        let encoder = PngEncoder::new(&mut out);
+        encoder.write_image(&rgba, w, h, image::ExtendedColorType::Rgba8).unwrap();
+        out
+    }
+
+    /// Cache miss for the source tier returns an empty Vec. The JS-side
+    /// contract is `if (dsBuf.byteLength === 0)` — turning misses into
+    /// hard errors (e.g. via substring-matched error mapping) would
+    /// break the (A) downscale-from-cache path's fallthrough to fresh
+    /// render. This guards that contract.
+    #[test]
+    fn test_db_downscale_asset_cache_miss_returns_empty() {
+        let conn = Connection::open_in_memory().unwrap();
+        create_schema(&conn).unwrap();
+        *DB.lock().unwrap() = Some(conn);
+
+        let out = db_downscale_asset_cache_inner(
+            "no-such-asset".into(), "_".into(),
+            1920, 1920, 256, 256,
+        ).unwrap();
+        assert!(out.is_empty(), "cache miss should return empty Vec (not error)");
+    }
+
+    /// Cache hit: encode a real PNG at FULL, downscale to thumb tier,
+    /// assert the returned bytes are a valid PNG AND the target tier
+    /// got written to cache. Both halves matter: the bytes feed the
+    /// blob URL in JS, and the cache write means future thumb requests
+    /// hit db_get_asset_cache_bytes directly (no re-decode + re-resize).
+    /// If the post-write step ever regresses, every sidebar paint would
+    /// re-decode the FULL PNG silently — invisible perf cliff.
+    #[test]
+    fn test_db_downscale_asset_cache_hit_writes_target() {
+        let conn = Connection::open_in_memory().unwrap();
+        create_schema(&conn).unwrap();
+        *DB.lock().unwrap() = Some(conn);
+
+        // Seed FULL-tier cache with a real PNG.
+        let full = make_test_png(64, 64);
+        db_put_asset_cache_inner(
+            "asset-1".into(), "_".into(), 64, 64,
+            full.clone(), None,
+        ).unwrap();
+
+        // Downscale to a smaller tier.
+        let target = db_downscale_asset_cache_inner(
+            "asset-1".into(), "_".into(),
+            64, 64, 16, 16,
+        ).unwrap();
+
+        // Returned bytes are a valid PNG (magic header).
+        assert!(target.len() > 8, "downscaled PNG too small");
+        assert_eq!(&target[..8], &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
+            "returned bytes should start with PNG magic");
+
+        // Critically: the target tier was written back to cache, so the
+        // next thumb request hits the cache directly.
+        let cached = db_get_asset_cache("asset-1".into(), "_".into(), 16, 16)
+            .unwrap()
+            .expect("target tier should be in cache after downscale");
+        assert_eq!(cached.png, target,
+            "cached bytes should match what downscale returned");
     }
 
     #[test]
@@ -3445,7 +3542,9 @@ mod tests {
         // Restore: bring the older version back as current.
         let older_valid_from = history[1].valid_from.clone();
         db_restore_asset_version(asset_id.clone(), older_valid_from).unwrap();
-        let restored = db_get_asset_by_id(asset_id.clone()).unwrap();
+        // Use the bytes-returning helper here, not the Tauri command form
+        // (Response doesn't implement Debug/PartialEq so assert_eq! fails).
+        let restored = db_get_asset_bytes_by_id(asset_id.clone()).unwrap();
         assert_eq!(restored, data, "restore should bring back original bytes");
 
         teardown_global_db();
@@ -4061,7 +4160,7 @@ mod tests {
     }
 
     fn insert_cache_row(source_id: &str) {
-        db_put_asset_cache(
+        db_put_asset_cache_inner(
             source_id.to_string(), "_".to_string(),
             256, 128, vec![0xFFu8; 4], Some("h".to_string()),
         ).unwrap();
