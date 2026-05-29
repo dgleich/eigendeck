@@ -751,14 +751,12 @@ known limitation; tracked separately. Paste works as a workaround.
 
 - **Native settings window** (#62) — current SettingsModal is
   webview; native NSPanel scales better with future preferences.
-- **PDF "page 1 of N" inspector hint** — multi-page PDFs render the
-  first page only; the inspector should surface page count so the
-  user knows pages 2+ are inaccessible. Page count is cheap to
-  read via `db_pdf_page_count` (already implemented); UI wiring
-  deferred.
-- **Multi-page PDF picker** — `asset_cache.variant` column reserved
-  for page-index variants. UX needs design: per-page select,
-  "open in new element" per page.
+- **Multi-page PDF picker** — multi-page PDFs render the first page;
+  pages 2+ aren't accessible today. `asset_cache.variant` column
+  reserved for page-index variants. UX needs design: per-page
+  select, "open in new element" per page. Convention follows
+  PowerPoint (no page-count hint either) — most pasted PDFs are
+  single-page figure exports.
 - **Cross-platform pdfium prebuilts** — only macOS arm64/x86_64
   wired up today. bblanchon ships Win + Linux dylibs that we don't
   yet bundle. Will need `build.rs` arms for those targets, plus
