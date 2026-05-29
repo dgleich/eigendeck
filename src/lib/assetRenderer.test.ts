@@ -5,7 +5,7 @@
 // invoke calls and a put-into-cache.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, type InvokeArgs } from '@tauri-apps/api/core';
 import { renderAsset } from './assetRenderer';
 
 const mockedInvoke = vi.mocked(invoke);
@@ -120,7 +120,7 @@ describe('renderAsset — pdf branch', () => {
     let rendered1920 = false;
     let cachedFull = false;
     let downscaledFromCache = false;
-    mockedInvoke.mockImplementation(async (cmd: string, args?: Record<string, unknown>) => {
+    mockedInvoke.mockImplementation(async (cmd: string, args?: InvokeArgs) => {
       if (cmd === 'db_get_asset_cache_bytes') return new ArrayBuffer(0);
       if (cmd === 'db_downscale_asset_cache') {
         // First probe (pre-slot): no FULL cached yet → miss.
@@ -169,7 +169,7 @@ describe('renderAsset — pdf branch', () => {
     const directPng = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 3, 3]);
     let rendered256 = false;
     let rendered1920 = false;
-    mockedInvoke.mockImplementation(async (cmd: string, args?: Record<string, unknown>) => {
+    mockedInvoke.mockImplementation(async (cmd: string, args?: InvokeArgs) => {
       if (cmd === 'db_get_asset_cache_bytes') return new ArrayBuffer(0);
       if (cmd === 'db_downscale_asset_cache') return new ArrayBuffer(0);  // always miss
       if (cmd === 'db_get_asset_meta_by_id') return { size: 100_000 };  // small PDF
@@ -195,16 +195,19 @@ describe('renderAsset — pdf branch', () => {
 
   it('post-queue race: 256 thumb behind 1920 render skips pdfium when FULL gets cached', async () => {
     // Two parallel renderAsset calls for the same asset, different tiers.
-    // 1920 grabs the pdfium slot first; 256 queues. While 1920 is in
-    // flight, 256 can't do anything. When 1920 finishes and its in-slot
-    // putAssetCache(FULL) commits, the slot releases. 256 acquires,
-    // re-probes db_downscale_asset_cache, and HITs because FULL is now
-    // cached — so 256 never calls pdfium itself.
+    // 1920 ends up holding the slot (256's IIFE awaits its (A)
+    // db_downscale_asset_cache probe first — by the time it reaches
+    // withPdfRenderSlot, 1920 already has it). 256 queues. When 1920
+    // finishes and its in-slot putAssetCache(FULL) commits, the slot
+    // releases. 256 acquires, re-probes db_downscale_asset_cache,
+    // HITs because FULL is now cached — so 256 never calls pdfium.
     //
-    // This guards against a previously-observed regression where 256
-    // re-parsed the same PDF for 44s (Asset 2.pdf log). If anyone moves
-    // the in-slot put outside withPdfRenderSlot, the race window opens
-    // again and this test fails.
+    // This guards the in-slot put + race-recheck contract: if anyone
+    // moves the put outside withPdfRenderSlot, the race window opens
+    // and 256 would re-parse the PDF (the 44s Asset 2.pdf regression
+    // documented in the assetRenderer.ts:319 comment). It does NOT
+    // test FIFO ordering of withPdfRenderSlot itself — that's a
+    // separate invariant covered by its own comment, not by a test.
     const fullPng = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 1, 1]);
     const downscaledPng = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 2, 2]);
 
@@ -215,7 +218,7 @@ describe('renderAsset — pdf branch', () => {
     let renderCalls256 = 0;
     let renderCalls1920 = 0;
 
-    mockedInvoke.mockImplementation(async (cmd: string, args?: Record<string, unknown>) => {
+    mockedInvoke.mockImplementation(async (cmd: string, args?: InvokeArgs) => {
       if (cmd === 'db_get_asset_cache_bytes') return new ArrayBuffer(0);
       if (cmd === 'db_downscale_asset_cache') {
         return cachedFull ? (downscaledPng.buffer.slice(0) as ArrayBuffer) : new ArrayBuffer(0);

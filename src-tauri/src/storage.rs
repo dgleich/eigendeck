@@ -2030,6 +2030,11 @@ pub fn db_restore_asset_version(asset_id: String, valid_from: String) -> Result<
         let now = timestamp();
         let tx = conn.unchecked_transaction()?;
         // Snapshot the target version's data + metadata.
+        // Inline tuple type rather than an alias — only used here, and
+        // a type alias 'AssetVersionRow' would just be a thin rename of
+        // the same 7-tuple. Suppressed clippy::type_complexity for that
+        // reason.
+        #[allow(clippy::type_complexity)]
         let (data, mime_type, size, hash, path, external_path, external_mtime):
             (Vec<u8>, Option<String>, i64, Option<String>, Option<String>, Option<String>, Option<String>)
             = tx.query_row(
