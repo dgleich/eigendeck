@@ -180,11 +180,8 @@ All elements share these base fields:
 - `opacity`: optional number 0–1 — image transparency
 - `rotation`: optional number — rotation in degrees
 - `kind`: optional `'raster' | 'svg' | 'pdf'` — source format. Absent means
-  `'raster'` (PNG/JPEG/WebP/GIF used directly). `'svg'` renders via the
-  browser from a raw blob URL (no rasterization). `'pdf'` is rasterized
-  by pdfium into the `asset_cache` SQLite table at two tiers (thumb +
-  FULL); the editor uses the cached PNG for display. See
-  `docs/ASSETS.md` → "PDF rendering pipeline" for the full flow.
+  `'raster'` (PNG/JPEG/WebP/GIF). Set `'svg'` for SVG sources and `'pdf'`
+  for PDF sources; the editor handles display.
 - `snapshotVariant`: optional string — for sources with multiple cached
   variants (future: PDF page number like `'p2'`, demo configuration name
   like `'converged'`). Defaults to `'_'` (single-page / single-variant);
