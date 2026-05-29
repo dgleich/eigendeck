@@ -757,13 +757,19 @@ known limitation; tracked separately. Paste works as a workaround.
   select, "open in new element" per page. Convention follows
   PowerPoint (no page-count hint either) — most pasted PDFs are
   single-page figure exports.
-- **Cross-platform pdfium prebuilts** — only macOS arm64/x86_64
-  wired up today. bblanchon ships Win + Linux dylibs that we don't
-  yet bundle. Will need `build.rs` arms for those targets, plus
-  Linux AppImage RPATH handling and Windows DLL code-signing.
-- **Build-time bblanchon outage** — build.rs panics if the GitHub
+- **Linux AppImage RPATH** — pdfium-linux dylib is bundled and
+  loads in plain Linux builds (tested). AppImage packaging would
+  need `$ORIGIN` in RPATH or an `LD_LIBRARY_PATH` wrapper so the
+  AppImage binary finds the bundled .so. Untested.
+- **Windows DLL code-signing** — `pdfium.dll` bundles fine via
+  Tauri's resource pipeline. End-user distribution would need the
+  DLL signed alongside the .exe; ad-hoc dev builds don't need it.
+- **Build-time bblanchon outage** — `build.rs` panics if the GitHub
   release is unreachable. No offline fallback documented; a
-  developer-cached prebuilt drop-in would fix this if it bites.
+  developer-cached prebuilt drop-in (manually placing
+  `libpdfium.{dylib,so}` / `pdfium.dll` in
+  `src-tauri/resources/pdfium/` plus matching `RELEASE_TAG`) would
+  bypass the download.
 - **PowerPoint drag** — needs a Tauri plugin or NSView subclass to
   bypass the webview's drag MIME filter.
 - **Demo snapshots** (#59) — `asset_cache.variant` column reserved;

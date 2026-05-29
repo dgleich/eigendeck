@@ -17,20 +17,37 @@ use std::path::PathBuf;
 const PDFIUM_RELEASE_TAG: &str = "chromium/7763";
 
 /// Resolve the bblanchon release-asset name for the build's target.
-/// Returns (asset_filename, expected_dylib_path_inside_archive).
-fn bblanchon_asset_for_target() -> Option<(&'static str, &'static str)> {
+/// Returns (asset_filename, lib_path_inside_archive, output_filename).
+///
+/// bblanchon ships .tgz for every platform (including Windows — yes,
+/// .tgz on Windows, not .zip). Per-platform dylib names:
+///   - macOS:  bin/libpdfium.dylib  → libpdfium.dylib
+///   - Linux:  lib/libpdfium.so     → libpdfium.so
+///   - Win:    bin/pdfium.dll       → pdfium.dll
+///
+/// Note: bblanchon's mac builds put the dylib under lib/, the
+/// others under bin/. Verified against the chromium/7763 release.
+fn bblanchon_asset_for_target() -> Option<(&'static str, &'static str, &'static str)> {
     let os = env::var("CARGO_CFG_TARGET_OS").ok()?;
     let arch = env::var("CARGO_CFG_TARGET_ARCH").ok()?;
     match (os.as_str(), arch.as_str()) {
-        ("macos", "aarch64") => Some(("pdfium-mac-arm64.tgz", "lib/libpdfium.dylib")),
-        ("macos", "x86_64") => Some(("pdfium-mac-x64.tgz", "lib/libpdfium.dylib")),
-        // Windows + Linux follow as separate commits per the plan.
+        ("macos",   "aarch64") => Some(("pdfium-mac-arm64.tgz",   "lib/libpdfium.dylib", "libpdfium.dylib")),
+        ("macos",   "x86_64")  => Some(("pdfium-mac-x64.tgz",     "lib/libpdfium.dylib", "libpdfium.dylib")),
+        ("linux",   "x86_64")  => Some(("pdfium-linux-x64.tgz",   "lib/libpdfium.so",    "libpdfium.so")),
+        ("linux",   "aarch64") => Some(("pdfium-linux-arm64.tgz", "lib/libpdfium.so",    "libpdfium.so")),
+        ("windows", "x86_64")  => Some(("pdfium-win-x64.tgz",     "bin/pdfium.dll",      "pdfium.dll")),
+        ("windows", "aarch64") => Some(("pdfium-win-arm64.tgz",   "bin/pdfium.dll",      "pdfium.dll")),
         _ => None,
     }
 }
 
-fn download_and_extract_pdfium(archive_name: &str, lib_in_archive: &str, dest_dir: &PathBuf) {
-    let dylib_dest = dest_dir.join("libpdfium.dylib");
+fn download_and_extract_pdfium(
+    archive_name: &str,
+    lib_in_archive: &str,
+    output_filename: &str,
+    dest_dir: &PathBuf,
+) {
+    let dylib_dest = dest_dir.join(output_filename);
     // Sentinel: the release tag this dylib was extracted from. Mismatch
     // (tag bump in this file) forces re-download so the dylib stays in
     // lockstep with pdfium-render's expected symbol set.
@@ -133,15 +150,15 @@ fn main() {
 
     // Stage pdfium dylib into src-tauri/resources/pdfium/ so tauri.conf.json
     // can bundle it via the "resources" field. Path is stable across
-    // platforms; the dylib filename differs (libpdfium.dylib / .so / .dll)
-    // — handled in the download step.
-    if let Some((archive, lib_in_archive)) = bblanchon_asset_for_target() {
+    // platforms; the dylib filename differs per OS — bblanchon_asset_for_target
+    // returns the right one.
+    if let Some((archive, lib_in_archive, output_filename)) = bblanchon_asset_for_target() {
         let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
         let dest_dir = manifest_dir.join("resources").join("pdfium");
-        download_and_extract_pdfium(archive, lib_in_archive, &dest_dir);
-        // Apply on every build: handles both fresh downloads AND any
-        // previously-cached dylib (e.g. from before this fix landed).
-        ensure_dylib_loadable_on_macos(&dest_dir.join("libpdfium.dylib"));
+        download_and_extract_pdfium(archive, lib_in_archive, output_filename, &dest_dir);
+        // macOS-only: clear quarantine xattr + ad-hoc codesign so
+        // Gatekeeper allows dlopen. No-op on other platforms.
+        ensure_dylib_loadable_on_macos(&dest_dir.join(output_filename));
     } else {
         println!(
             "cargo:warning=no pdfium prebuilt configured for this target — \
