@@ -394,6 +394,15 @@ export function PropertiesPanel() {
               </>
             )}
 
+            {/* Demo + demo-piece share the Asset section (history,
+                Reload-from-disk, Watch toggle). Demo-piece adds its
+                own custom block below. */}
+            {(selectedEl.type === 'demo' || selectedEl.type === 'demo-piece') && (
+              <PropSection label="Asset">
+                <AssetSection assetId={selectedEl.assetId} elementId={selectedEl.id} />
+              </PropSection>
+            )}
+
             {selectedEl.type === 'demo-piece' && (
               <DemoPieceProperties element={selectedEl} />
             )}
