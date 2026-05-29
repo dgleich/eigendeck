@@ -388,19 +388,169 @@ unsaved presentation:
 
 ## Renderer
 
-Two hooks resolve assets to blob URLs:
+One dispatch hook + two backing hooks resolve assets to blob URLs:
 
+- **`useImageSrc(assetId, kind, opts?)` (`src/lib/imageSrc.ts`)** —
+  the entry point used by every image surface (ImageBox in the
+  editor, PresentImage in PresentMode). Picks between the two
+  backing hooks based on `kind`:
+  - `kind === 'pdf'` → `useRenderedAsset` (pdfium-rasterized PNG
+    from `asset_cache`). PDFs can't render via `<img src="blob:.../pdf">`
+    — WebKit doesn't natively rasterize PDF inline.
+  - everything else (`raster` / `svg` / `undefined`) → `useAssetUrl`
+    (raw blob URL, browser-native rendering). SVG renders directly
+    in the browser at any size; raster comes back as the source
+    bytes in a `<img>`.
 - `useAssetUrl(assetId, hash?)` (`src/lib/demoAssets.ts`) — raw
-  bytes via blob URL, cached. Used for HTML demos and unrasterized
-  images.
+  bytes via blob URL, in-memory cached. Also used for HTML demos.
 - `useRenderedAsset(assetId, kind, maxW, maxH, variant?)`
   (`src/lib/assetRenderer.ts`) — cache-or-rasterize PNG into the
-  `asset_cache` SQLite table. Used by slide-sidebar thumbnails. SVG
-  ≤ 200 KB takes the native fast path (raw blob URL); larger SVG
-  and all raster go through the PNG cache.
+  `asset_cache` SQLite table. Today only PDF takes this path; the
+  hook still accepts other kinds for future demo-snapshot work.
 
-Both key off `assetId` exclusively (`db_get_asset_by_id`); no path
-fallback. Cache key is the `assetId`.
+All hooks key off `assetId` exclusively (`db_get_asset_by_id`); no
+path fallback. The renderer-hook cache key is `assetId`; the
+underlying `asset_cache` SQLite table keys by
+`(source_id, variant, width, height)` — multiple rows per asset
+because of tier promotion (see PDF rendering pipeline below).
+
+### `asset_cache` table schema
+
+```
+CREATE TABLE asset_cache (
+  source_id TEXT NOT NULL,    -- the asset_id this PNG was derived from
+  variant TEXT NOT NULL,      -- '_' = single-page PDF / single SVG;
+                              -- reserved for future demo snapshots
+                              -- (variant name) and multi-page PDFs
+                              -- (page index)
+  width INTEGER NOT NULL,     -- requested max width at render time
+  height INTEGER NOT NULL,    -- requested max height at render time
+  png BLOB NOT NULL,          -- the rendered PNG bytes
+  source_hash TEXT,           -- optional; for explicit invalidation
+  PRIMARY KEY (source_id, variant, width, height)
+);
+```
+
+Tier promotion (see below) populates two rows per big PDF — one at
+FULL (1920×1920) and one at the requested thumb tier (e.g.
+256×256). Cache misses fall through to a fresh pdfium render.
+
+## PDF rendering pipeline
+
+PDFs are special: pdfium parsing is slow (40+ seconds on
+pathologically vector-heavy PDFs like ggplot/Illustrator/matplotlib
+exports with thousands of Form XObjects), and the WebView can't
+display PDF natively. So the pipeline does several things to keep
+the UX shippable even on bad PDFs.
+
+### Static pieces
+
+- **Static lib**: `src-tauri/build.rs` downloads bblanchon's
+  prebuilt `libpdfium.dylib` at compile time (tag `chromium/7763`,
+  matching `pdfium-render`'s `pdfium_7763` binding feature). Cached
+  per-target under `src-tauri/resources/pdfium/` (gitignored);
+  `tauri.conf.json` bundles it via `"resources": ["resources/pdfium/*"]`
+  so it ships inside `.app/Contents/Resources/`.
+- **macOS quarantine + codesign**: `build.rs` runs `xattr -c` +
+  `codesign --force --sign -` (ad-hoc) on the downloaded dylib —
+  Gatekeeper SIGKILLs processes that dlopen a quarantined dylib.
+  Sentinel-gated to run once per fresh download.
+- **One Pdfium instance**: behind a `OnceLock<Pdfium>` in
+  `src-tauri/src/pdf.rs`. With pdfium-render's `thread_safe`
+  feature, it's safe to share across Tauri command threads.
+
+### Runtime flow (per render request)
+
+The PDF arm in `renderAsset` (`src/lib/assetRenderer.ts`) runs
+this sequence:
+
+1. **Cache check** (the standard `getAssetCache` for the requested
+   tier). HIT → return cached PNG immediately.
+2. **(A) Downscale-from-cache probe** (sub-FULL requests only).
+   Asks Rust to look up the FULL-tier cache row, decode + resize +
+   encode + cache the target tier — all server-side via
+   `db_downscale_asset_cache`. Empty Response = miss (the typed
+   `rusqlite::Error::QueryReturnedNoRows` is converted to an empty
+   `Vec<u8>` — JS detects via `dsBuf.byteLength === 0`). HIT
+   returns the target bytes without touching pdfium.
+3. **Acquire the pdfium render slot** (`withPdfRenderSlot`,
+   concurrency=1). pdfium binds one process-wide instance and
+   SQLite uses a global Mutex — concurrent renders would contend
+   for both. FIFO ordering enforced: a fresh caller queues if
+   anyone is already waiting, so the post-queue race-recheck
+   below has unambiguous slot ownership.
+4. **Post-queue race-recheck**: another caller may have cached
+   FULL while we were waiting in the slot queue. Re-probe (A) for
+   sub-FULL requests, or `getAssetCache(maxW, maxH)` for FULL.
+   HIT → return without pdfium. **This is load-bearing for the
+   thumb-while-rendering-element race** — see code comment for
+   the Asset 2.pdf 44s re-parse this prevents.
+5. **(B) Tier promotion**: sub-FULL requests for big PDFs (asset
+   `size >= PDF_PROMOTE_THRESHOLD_BYTES` = 500 KB) render at FULL
+   once via `db_render_pdf_page`, cache FULL via
+   `putAssetCache`, then server-side downscale to the requested
+   tier via `db_downscale_asset_cache`. Subsequent requests at
+   any tier ≤ FULL hit (A) above — pdfium parses the PDF exactly
+   once across its lifetime.
+6. **Direct render**: small PDFs (or FULL-tier requests) bypass
+   promotion and render directly at the requested size. Cache
+   write happens **inside** the slot — slot release strictly
+   follows the cache commit so the next acquirer's re-probe
+   actually sees the result.
+
+### Binary IPC
+
+PDF bytes + cache bytes + pdfium output all use Tauri 2's binary
+IPC (`tauri::ipc::Response`). Pre-binary-IPC the bytes serialized
+as JSON number arrays — a 600 KB PNG became ~3 MB of JSON
+parsing on the WebView main thread, taking hundreds of ms. The
+binary path is a memcpy.
+
+### async + spawn_blocking
+
+`db_render_pdf_page`, `db_downscale_asset_cache`, and
+`db_put_asset_cache` are all `pub async fn` wrapping
+`tauri::async_runtime::spawn_blocking`. Tauri 2's sync `pub fn`
+commands run on the WebView main thread; a 40-second pdfium parse
+there would block the compositor and produce a beachball even
+though JS keeps running. Pushing onto tokio's blocking pool
+leaves the main thread free for paint commits.
+
+### AssetMeta.size
+
+`AssetMeta` returns the `assets.size` column so tier-promotion's
+`isBig` check has data without an extra IPC. Without this, every
+PDF was rendered direct (no promotion); the 44s re-parse race
+documented above was a consequence.
+
+## Cache-build UX
+
+PDF renders can be slow (single asset: 1–40+s) and batch open of
+a large deck can take a minute or two. Three coordinated UI
+elements keep the experience honest:
+
+- **In-progress placeholder** (`SlideElementRenderer.tsx`
+  `ImageBox`): when `useImageSrc` returns `undefined`, render a
+  blue dashed tile labelled `PDF` / `SVG` / `IMG` (large) +
+  filename (medium, ellipsis if long) + "rendering…" (italic).
+  Filename comes from a module-level `useAssetPath` hook (in-flight
+  dedup + persistent cache by assetId). Font sizes divided by the
+  editor `scale` so they render at fixed on-screen pixels regardless
+  of zoom. Delayed 500 ms (`PLACEHOLDER_DELAY_MS`) so cache-hit
+  renders don't flash a placeholder for one frame.
+- **Per-asset slow-render toast** (`assetRenderer.ts`
+  `acquireSlowToast`): fires after `SLOW_RENDER_TOAST_MS` = 5 s
+  if the render hasn't completed. Refcounted by `assetId` so
+  multi-tier renders for the same asset (sidebar thumb + slide
+  element) collapse to one toast. Sticky; dismissed when the last
+  in-flight render for that asset completes.
+- **Batch progress banner** (`notifyRenderBatch`): when
+  `RENDER_BATCH_THRESHOLD` = 2 or more renders are simultaneously
+  in flight, show one aggregate "Building previews: N/M…" toast
+  instead. The per-asset toast suppresses itself while the batch
+  banner is active — the user already knows things are slow; N
+  stacked toasts would be noise. Counter resets to 0 when the
+  queue drains so the next batch starts fresh.
 
 ## UI
 
@@ -601,8 +751,21 @@ known limitation; tracked separately. Paste works as a workaround.
 
 - **Native settings window** (#62) — current SettingsModal is
   webview; native NSPanel scales better with future preferences.
-- **PDF render path** — `pdfium-render` integration; bytes stored
-  today, render is placeholder.
+- **PDF "page 1 of N" inspector hint** — multi-page PDFs render the
+  first page only; the inspector should surface page count so the
+  user knows pages 2+ are inaccessible. Page count is cheap to
+  read via `db_pdf_page_count` (already implemented); UI wiring
+  deferred.
+- **Multi-page PDF picker** — `asset_cache.variant` column reserved
+  for page-index variants. UX needs design: per-page select,
+  "open in new element" per page.
+- **Cross-platform pdfium prebuilts** — only macOS arm64/x86_64
+  wired up today. bblanchon ships Win + Linux dylibs that we don't
+  yet bundle. Will need `build.rs` arms for those targets, plus
+  Linux AppImage RPATH handling and Windows DLL code-signing.
+- **Build-time bblanchon outage** — build.rs panics if the GitHub
+  release is unreachable. No offline fallback documented; a
+  developer-cached prebuilt drop-in would fix this if it bites.
 - **PowerPoint drag** — needs a Tauri plugin or NSView subclass to
   bypass the webview's drag MIME filter.
 - **Demo snapshots** (#59) — `asset_cache.variant` column reserved;
