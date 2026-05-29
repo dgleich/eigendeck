@@ -396,7 +396,11 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
             {reloading ? 'Reloading…' : 'Reload from disk now'}
           </button>
         )}
-        {elementId && (
+        {/* "Resize to image" only makes sense for raster / SVG assets
+            with measurable natural dimensions. Demos (text/html) and
+            PDFs don't have a single intrinsic display size you'd
+            snap the element box to. */}
+        {elementId && (meta.mime_type ?? '').startsWith('image/') && (
           <button onClick={() => { void resizeToAsset(); }}
             title="Resize the bounding box to wrap the image exactly. The image stays in place."
             style={{
