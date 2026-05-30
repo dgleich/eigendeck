@@ -390,6 +390,20 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
 // fonts can coexist on the same slide, which the singleton-MathJax approach in
 // src/lib/mathjax.ts can't deliver.
 // ============================================
+
+/**
+ * Magic-comment marker embedded in HTML when the user copies from an
+ * eigendeck text element. On paste, presence of this marker means
+ * "trust the HTML formatting — it's our own"; absence means "paste
+ * came from an outside source (browser, Word, etc.) — strip to plain
+ * text so external styles don't clobber the slide's typography."
+ *
+ * HTML comment chosen over a custom MIME type (e.g.
+ * application/x-eigendeck) because WebKit's clipboard sanitizer in
+ * Tauri can strip non-standard types; comments survive cleanly.
+ */
+const EIGENDECK_PASTE_MARKER = '<!--eigendeck-copy:v1-->';
+
 function TextContent({
   element,
   onCommit,
@@ -605,6 +619,39 @@ function TextContent({
         style={style}
         contentEditable={editing}
         suppressContentEditableWarning
+        onCopy={editing ? (e) => {
+          // Prepend the eigendeck marker to the copied HTML so a
+          // future paste into another eigendeck text element knows
+          // the formatting is trusted and can be preserved. Also
+          // sets text/plain so external apps get a clean paste.
+          const sel = window.getSelection();
+          if (!sel || sel.rangeCount === 0) return;
+          e.preventDefault();
+          const range = sel.getRangeAt(0);
+          const container = document.createElement('div');
+          container.appendChild(range.cloneContents());
+          e.clipboardData?.setData('text/html', EIGENDECK_PASTE_MARKER + container.innerHTML);
+          e.clipboardData?.setData('text/plain', sel.toString());
+        } : undefined}
+        onPaste={editing ? (e) => {
+          // Default contenteditable paste inserts whatever HTML the
+          // source app put on the clipboard — Word, Pages, browser
+          // pages all push styled HTML that clobbers the slide's
+          // typography. Restrict: trust HTML only when our own marker
+          // is present (eigendeck → eigendeck round trip); otherwise
+          // fall back to text/plain.
+          const cb = e.clipboardData;
+          if (!cb) return;
+          e.preventDefault();
+          const html = cb.getData('text/html');
+          if (html && html.includes(EIGENDECK_PASTE_MARKER)) {
+            const cleaned = html.split(EIGENDECK_PASTE_MARKER).join('');
+            document.execCommand('insertHTML', false, cleaned);
+          } else {
+            const text = cb.getData('text/plain');
+            if (text) document.execCommand('insertText', false, text);
+          }
+        } : undefined}
         onBlur={editing ? (e) => {
           const related = e.relatedTarget as HTMLElement | null;
           if (related?.closest('.text-format-toolbar')) return;
