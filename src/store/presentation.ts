@@ -516,9 +516,49 @@ export const usePresentationStore = create<PresentationState>()(
       limit: 100,
       equality: (past, current) =>
         JSON.stringify(past) === JSON.stringify(current),
+      // Coalesce rapid-fire set() calls into a single undo entry.
+      //
+      // Without this: composite actions that loop over N elements (e.g.
+      // PropertiesPanel's align-left forEach, multi-select moves,
+      // syncId propagation that doesn't batch, slider drags firing
+      // many onChange events) each created N separate undo entries.
+      // The user hit Cmd-Z expecting one logical undo and only got
+      // ONE-Nth of it back — what felt like "erratic skips."
+      //
+      // handleSet is zundo's snapshot-push hook. Wrapping it in a
+      // leading-edge debounce means: the FIRST set() in a burst
+      // creates a snapshot of the PRE-burst state; subsequent set()s
+      // within UNDO_DEBOUNCE_MS update current state but don't push
+      // new entries. After UNDO_DEBOUNCE_MS of inactivity the
+      // debounce resets, so the next user action starts a fresh
+      // undoable group. Net: one undo step per "logical action."
+      //
+      // Trade: typing in a property field at slower-than-200ms cadence
+      // produces multiple undo entries (one per pause). That matches
+      // expected behavior in most editors. Continuous mouse drags
+      // (canvas element move/resize) already use pauseUndo/resumeUndo
+      // explicitly and are unaffected.
+      handleSet: (handleSet) => debounceUndoSnapshot(handleSet, UNDO_DEBOUNCE_MS),
     }
   )
 );
+
+const UNDO_DEBOUNCE_MS = 200;
+
+/** Leading-edge debounce: first call fires immediately, subsequent
+ *  calls within `ms` are dropped, then the gate resets after `ms`
+ *  of idle. The right semantic for "collapse a burst of state
+ *  changes into one undo step recording the PRE-burst state." */
+function debounceUndoSnapshot<F extends (...args: never[]) => void>(fn: F, ms: number): F {
+  let lastFire = 0;
+  return ((...args: Parameters<F>) => {
+    const now = performance.now();
+    if (now - lastFire >= ms) {
+      lastFire = now;
+      fn(...args);
+    }
+  }) as F;
+}
 
 // Helper: pause undo tracking (call before continuous operations like drags)
 export function pauseUndo() {
