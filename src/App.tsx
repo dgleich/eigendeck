@@ -34,6 +34,7 @@ import {
 import { flushToSqlite } from './store/presentation';
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
+import { markAsEigendeck } from './lib/clipboard';
 import { TEXT_PRESET_STYLES } from './types/presentation';
 import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
 
@@ -57,9 +58,15 @@ export function renderSlideForPrint(
                          valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
       const color = el.color || themeColorForPreset(theme, el.preset);
       const presetFontFamily = fontFamilyForPreset(fontForPreset(el.preset, slide, cfg), el.preset);
+      // markAsEigendeck wraps el.html with the clipboard-marker comment
+      // so a full-element copy from a browser viewing this exported page
+      // round-trips through eigendeck paste with inline markup preserved.
+      // Comment is invisible in render; partial sub-selections won't carry
+      // it (browser copy only includes parent comments when the selection
+      // spans them), so this benefits the common whole-paragraph copy case.
       inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">` +
         `<div style="width:100%;height:100%;${valignStyle}">` +
-        `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${color};line-height:1.3;padding:8px 12px;">${el.html || ''}</div>` +
+        `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${color};line-height:1.3;padding:8px 12px;">${markAsEigendeck(el.html || '')}</div>` +
         `</div></div>`;
     } else if (el.type === 'image') {
       const src = imageCache.get(el.assetId);
@@ -269,7 +276,7 @@ async function printToPdf() {
           const presetFontFamily = fontFamilyForPreset(fontForPreset(el.preset, slide, presentation.config), el.preset);
           inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};overflow:hidden;">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:1.3;padding:${px2in(8)} ${px2in(12)};">${el.html || ''}</div>` +
+            `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:1.3;padding:${px2in(8)} ${px2in(12)};">${markAsEigendeck(el.html || '')}</div>` +
             `</div></div>`;
         } else if (el.type === 'image') {
           const src = imageCache.get(el.assetId);

@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { useDemoUrl, invalidateAsset } from '../lib/demoAssets';
 import { useImageSrc } from '../lib/imageSrc';
+import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 
 import { TEXT_PRESET_STYLES } from '../types/presentation';
@@ -391,18 +392,6 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
 // src/lib/mathjax.ts can't deliver.
 // ============================================
 
-/**
- * Magic-comment marker embedded in HTML when the user copies from an
- * eigendeck text element. On paste, presence of this marker means
- * "trust the HTML formatting — it's our own"; absence means "paste
- * came from an outside source (browser, Word, etc.) — strip to plain
- * text so external styles don't clobber the slide's typography."
- *
- * HTML comment chosen over a custom MIME type (e.g.
- * application/x-eigendeck) because WebKit's clipboard sanitizer in
- * Tauri can strip non-standard types; comments survive cleanly.
- */
-const EIGENDECK_PASTE_MARKER = '<!--eigendeck-copy:v1-->';
 
 function TextContent({
   element,
@@ -644,9 +633,8 @@ function TextContent({
           if (!cb) return;
           e.preventDefault();
           const html = cb.getData('text/html');
-          if (html && html.includes(EIGENDECK_PASTE_MARKER)) {
-            const cleaned = html.split(EIGENDECK_PASTE_MARKER).join('');
-            document.execCommand('insertHTML', false, cleaned);
+          if (html && hasEigendeckMarker(html)) {
+            document.execCommand('insertHTML', false, stripEigendeckMarker(html));
           } else {
             const text = cb.getData('text/plain');
             if (text) document.execCommand('insertText', false, text);
