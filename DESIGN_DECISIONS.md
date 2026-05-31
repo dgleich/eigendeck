@@ -24,18 +24,18 @@ The override behavior at each tier differs based on whether the setting is *defa
 
 UX shape: optional field at each level. New instances are blank at the instance level so changes at the deck level naturally propagate. Inspector renders `(deck default: X)` as a placeholder hint.
 
-**Active / restrictive** — A higher-tier value *binds* unless the lower tier has explicit opt-out semantics that the higher tier permits. Example: file-watching auto-reload. `PresentationConfig.autoReloadAssets: 'on' | 'off' | absent` — `'on'/'off'` overrides the global pref; `absent` means "follow global"; per-asset `assets.auto_reload` is the final override. The override IS the policy at its level — flipping the deck default to `'off'` turns watching off for all assets that haven't opted in individually.
+**Active / restrictive** — Downward-only: any tier can *refuse*, and no tier below can override a refusal above. The effective value is the AND of all tiers. Higher tiers set a ceiling; lower tiers can only narrow further, never re-enable. Example: file-watching auto-reload — `effectiveAutoReload = global && deck !== 'off' && asset !== 'off'` (see `src/lib/preferences.ts`). Global off → nobody anywhere gets it. Global on + deck `'off'` → nobody in the deck gets it. Only when every tier permits does the element get the behavior.
 
-UX shape: tri-state field (`'on' | 'off' | absent`). Inspector needs an explicit "use deck default" toggle separate from the on/off switch, because the absence of a value is itself meaningful.
+UX shape: the override field doesn't need to express "on" *and* "off" at every tier — only the narrowing direction. File-watching uses `'off' | absent` per asset (not `'on' | 'off' | absent`), because an asset can opt OUT but not opt IN beyond what the deck/global already allow. The shape of the type expresses the contract: legacy `'on'` values in the DB are silently coerced to `absent` because per-asset 'on' has no meaning in this cascade.
 
 ### When designing a new setting
 
-Decide the flavor first. The choice expresses the contract:
+Decide the flavor first. The choice expresses the contract — type shape, resolution function, and UI affordances all follow:
 
-- Default-setting → `field?: T` everywhere; `?? deck ?? app ?? fallback` at use sites.
-- Active / restrictive → `field?: 'on' | 'off' | T` (tri-state); resolution walks up but stops at the first explicit value.
+- **Default-setting** → `field?: T` at every tier; resolution is `instance ?? deck ?? app ?? fallback`. Lower tier can override in either direction.
+- **Active / restrictive** → narrowing-only. The override field expresses the *direction of permitted narrowing only*. For an opt-out cascade: `field?: 'off' | absent` at lower tiers (no `'on'` — that would be a no-op or a contract violation). Resolution is a conjunctive AND, not a walk-up. See `effectiveAutoReload()` in `src/lib/preferences.ts` for the canonical pattern.
 
-Avoid mixing the two patterns within a single setting — it confuses both the cascade logic and the UI.
+Avoid mixing the two patterns within a single setting — it confuses both the cascade logic and the UI. If a setting genuinely needs both directions of opt-out from a tier, that's a sign it should be two settings.
 
 ## Text Editing
 
