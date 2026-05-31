@@ -57,3 +57,11 @@ debug-report-*.json
 # tools/build_svg_test_deck.py)
 _svg-fixtures/
 test-presentations/svg-render-test.eigendeck
+
+# Notebook spike build artifacts — see public/notebook-spike/README.md
+# and FINDINGS.md. Rebuild via spike-tools/setup.sh.
+public/notebook-spike/lite/
+spike-tools/.venv/
+spike-tools/lite-build/
+spike-tools/jupyter.log
+spike-tools/nohup.out
