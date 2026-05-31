@@ -98,6 +98,28 @@ export function createSeededPresentation(): Presentation {
   return pres;
 }
 
+// Undo debounce helpers must be declared BEFORE the store creation:
+// zundo's `handleSet` factory is invoked synchronously during
+// `temporal(...)` setup, which runs at module-init time. Declaring
+// these afterwards left them in the TDZ ("Cannot access uninitialized
+// variable") and the whole app failed to boot.
+const UNDO_DEBOUNCE_MS = 200;
+
+/** Leading-edge debounce: first call fires immediately, subsequent
+ *  calls within `ms` are dropped, then the gate resets after `ms`
+ *  of idle. The right semantic for "collapse a burst of state
+ *  changes into one undo step recording the PRE-burst state." */
+function debounceUndoSnapshot<F extends (...args: never[]) => void>(fn: F, ms: number): F {
+  let lastFire = 0;
+  return ((...args: Parameters<F>) => {
+    const now = performance.now();
+    if (now - lastFire >= ms) {
+      lastFire = now;
+      fn(...args);
+    }
+  }) as F;
+}
+
 export const usePresentationStore = create<PresentationState>()(
   temporal(
     (set) => ({
@@ -542,23 +564,6 @@ export const usePresentationStore = create<PresentationState>()(
     }
   )
 );
-
-const UNDO_DEBOUNCE_MS = 200;
-
-/** Leading-edge debounce: first call fires immediately, subsequent
- *  calls within `ms` are dropped, then the gate resets after `ms`
- *  of idle. The right semantic for "collapse a burst of state
- *  changes into one undo step recording the PRE-burst state." */
-function debounceUndoSnapshot<F extends (...args: never[]) => void>(fn: F, ms: number): F {
-  let lastFire = 0;
-  return ((...args: Parameters<F>) => {
-    const now = performance.now();
-    if (now - lastFire >= ms) {
-      lastFire = now;
-      fn(...args);
-    }
-  }) as F;
-}
 
 // Helper: pause undo tracking (call before continuous operations like drags)
 export function pauseUndo() {
