@@ -2,6 +2,41 @@
 
 This document captures the reasoning behind non-obvious design choices. An LLM reading this should be able to understand *why* things work the way they do and recreate similar decisions.
 
+## Preferences cascade
+
+Settings flow through three tiers, evaluated in this order at use time:
+
+1. **App preferences** — set in the global Preferences panel, stored in localStorage. Serve as *defaults for new slide decks*.
+2. **Per-deck defaults** — set in the Inspector's Presentation section, stored in `PresentationConfig`. Serve as *defaults for new instances within the deck*.
+3. **Per-instance overrides** — set on the element / slide / asset itself. Most specific level wins.
+
+Walk-up resolution: per-instance override (if set), else per-deck default (if set), else app pref, else hardcoded fallback.
+
+### Two flavors of cascade
+
+The override behavior at each tier differs based on whether the setting is *default-setting* or *active / restrictive*:
+
+**Default-setting** (most settings) — Each tier *seeds* the next without enforcing. Higher-tier values are suggestions the lower tier is free to override. Examples:
+- Themes (`app theme → Presentation.theme → Slide.theme`)
+- Fonts (`app default font → PresentationConfig.defaultTitleFont → Slide.titleFont`)
+- Math preamble (`global pref → PresentationConfig.mathPreamble → per-equation`)
+- Notebook kernel (`app default → PresentationConfig.notebookKernel → NotebookElement.kernel`)
+
+UX shape: optional field at each level. New instances are blank at the instance level so changes at the deck level naturally propagate. Inspector renders `(deck default: X)` as a placeholder hint.
+
+**Active / restrictive** — A higher-tier value *binds* unless the lower tier has explicit opt-out semantics that the higher tier permits. Example: file-watching auto-reload. `PresentationConfig.autoReloadAssets: 'on' | 'off' | absent` — `'on'/'off'` overrides the global pref; `absent` means "follow global"; per-asset `assets.auto_reload` is the final override. The override IS the policy at its level — flipping the deck default to `'off'` turns watching off for all assets that haven't opted in individually.
+
+UX shape: tri-state field (`'on' | 'off' | absent`). Inspector needs an explicit "use deck default" toggle separate from the on/off switch, because the absence of a value is itself meaningful.
+
+### When designing a new setting
+
+Decide the flavor first. The choice expresses the contract:
+
+- Default-setting → `field?: T` everywhere; `?? deck ?? app ?? fallback` at use sites.
+- Active / restrictive → `field?: 'on' | 'off' | T` (tri-state); resolution walks up but stops at the first explicit value.
+
+Avoid mixing the two patterns within a single setting — it confuses both the cascade logic and the UI.
+
 ## Text Editing
 
 ### Paste behavior
