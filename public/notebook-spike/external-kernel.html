@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Notebook spike — external Jupyter kernel</title>
+<style>
+  body { font: 14px/1.4 -apple-system, BlinkMacSystemFont, "PT Sans", sans-serif;
+         margin: 0; padding: 16px; background: #fafafa; color: #222; }
+  h1 { font-size: 16px; margin: 0 0 4px; }
+  .sub { color: #666; margin-bottom: 16px; }
+  fieldset { border: 1px solid #ddd; border-radius: 6px; padding: 12px; margin-bottom: 12px;
+             background: #fff; }
+  legend { font-weight: 600; padding: 0 6px; }
+  label { display: inline-block; min-width: 110px; }
+  input[type="text"], input[type="password"], select {
+    padding: 4px 6px; border: 1px solid #ccc; border-radius: 4px; font: inherit; min-width: 280px;
+  }
+  textarea { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px;
+             font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; box-sizing: border-box; }
+  button { padding: 6px 14px; border: 1px solid #bbb; border-radius: 4px; background: #f5f5f5;
+           font: inherit; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.primary { background: #2c7be5; color: #fff; border-color: #1a5fbf; }
+  .row { margin: 6px 0; }
+  .status { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 12px;
+            font-weight: 600; margin-left: 8px; }
+  .status.idle { background: #e8e8e8; color: #555; }
+  .status.busy { background: #ffd54f; color: #5d4500; }
+  .status.starting { background: #b3e5fc; color: #014361; }
+  .status.dead { background: #ef9a9a; color: #5d1313; }
+  .status.connected { background: #c8e6c9; color: #1b5e20; }
+  #log { font: 12px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+         max-height: 180px; overflow-y: auto; background: #1e1e1e; color: #ddd;
+         padding: 8px; border-radius: 4px; white-space: pre-wrap; word-break: break-all; }
+  .out { font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+         background: #f5f5f5; padding: 8px; border-radius: 4px; margin-top: 8px;
+         min-height: 24px; white-space: pre-wrap; }
+  .out .err { color: #c0392b; }
+  .out img { max-width: 100%; display: block; margin: 4px 0; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: #2c7be5; font-size: 12px; }
+  code { background: #f0f0f0; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h1>Notebook spike — external Jupyter kernel</h1>
+<div class="sub">
+  Tests whether eigendeck can talk to a user-run <code>jupyter server</code>
+  via REST + WebSocket. Any kernel (Python, Julia, R, ...) works.
+</div>
+
+<details>
+  <summary>How to start a kernel-friendly Jupyter server</summary>
+  <div style="margin-top: 8px; padding: 8px; background: #fff; border: 1px solid #ddd; border-radius: 4px;">
+    <p style="margin: 0 0 6px;">In a terminal on the same machine:</p>
+    <pre style="margin: 0; font-size: 12px; background: #f0f0f0; padding: 6px; border-radius: 3px;">jupyter server --no-browser --port=8888 \
+  --IdentityProvider.token='spike-token' \
+  --ServerApp.allow_origin='*' \
+  --ServerApp.disable_check_xsrf=True</pre>
+    <p style="margin: 6px 0 0; color: #666; font-size: 12px;">
+      <strong>Why each flag:</strong> <code>--no-browser</code> = don't open a tab;
+      <code>token</code> = simple auth; <code>allow_origin='*'</code> = let this
+      page (different origin) connect; <code>disable_check_xsrf</code> = let
+      cross-origin POSTs through. Token + CORS lockdown will be tightened
+      before this goes into the real app.
+    </p>
+  </div>
+</details>
+
+<fieldset>
+  <legend>Connection</legend>
+  <div class="row"><label>Server URL</label>
+    <input id="srv" type="text" value="http://localhost:8888" />
+  </div>
+  <div class="row"><label>Token</label>
+    <input id="tok" type="password" value="spike-token" />
+  </div>
+  <div class="row"><label>Kernel</label>
+    <select id="kern">
+      <option value="python3">python3 (default)</option>
+    </select>
+    <button id="refresh">Refresh list</button>
+  </div>
+  <div class="row">
+    <button id="start" class="primary">Start kernel</button>
+    <button id="stop" disabled>Stop kernel</button>
+    <span id="kstatus" class="status idle">no kernel</span>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>Execute</legend>
+  <div class="row">
+    <textarea id="code" rows="6">import sys
+print("Python:", sys.version.split()[0])
+import numpy as np
+x = np.arange(10)
+x ** 2</textarea>
+  </div>
+  <div class="row">
+    <button id="run" class="primary" disabled>Run cell (Shift-Enter)</button>
+    <button id="interrupt" disabled>Interrupt</button>
+  </div>
+  <div id="output" class="out"></div>
+</fieldset>
+
+<fieldset>
+  <legend>Protocol log</legend>
+  <div id="log"></div>
+  <div class="row" style="margin-top: 8px;">
+    <button id="clearlog">Clear</button>
+  </div>
+</fieldset>
+
+<script type="module">
+// ---- tiny helpers --------------------------------------------------
+const $ = (id) => document.getElementById(id);
+const logEl = $('log');
+const outEl = $('output');
+
+const SESSION_ID = uuid();
+const USERNAME = 'spike';
+
+function uuid() {
+  // RFC4122 v4 — good enough for spike
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
+function log(line, cls) {
+  const ts = new Date().toISOString().slice(11, 23);
+  const span = document.createElement('div');
+  span.textContent = `[${ts}] ${line}`;
+  if (cls) span.className = cls;
+  logEl.appendChild(span);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setStatus(text, cls) {
+  const el = $('kstatus');
+  el.textContent = text;
+  el.className = 'status ' + cls;
+}
+
+function srvBase() {
+  return $('srv').value.replace(/\/$/, '');
+}
+function token() { return $('tok').value; }
+function authHeaders(extra = {}) {
+  const t = token();
+  return { ...extra, ...(t ? { Authorization: `token ${t}` } : {}) };
+}
+function authQuery() {
+  const t = token();
+  return t ? `?token=${encodeURIComponent(t)}` : '';
+}
+
+// ---- REST: list kernels, start, stop -------------------------------
+
+async function refreshKernelSpecs() {
+  try {
+    const r = await fetch(`${srvBase()}/api/kernelspecs${authQuery()}`, {
+      headers: authHeaders(),
+    });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    const data = await r.json();
+    const sel = $('kern');
+    sel.innerHTML = '';
+    Object.keys(data.kernelspecs).forEach(name => {
+      const o = document.createElement('option');
+      o.value = name;
+      o.textContent = `${name} — ${data.kernelspecs[name].spec.display_name}`;
+      sel.appendChild(o);
+    });
+    if (data.default && [...sel.options].some(o => o.value === data.default)) {
+      sel.value = data.default;
+    }
+    log(`kernelspecs: ${Object.keys(data.kernelspecs).join(', ')}`);
+  } catch (e) {
+    log(`kernelspecs FAILED: ${e.message}`, 'err');
+  }
+}
+
+let kernel = null;     // { id, name }
+let ws = null;
+const pending = new Map(); // msg_id -> { resolve }
+
+async function startKernel() {
+  const name = $('kern').value;
+  setStatus('starting...', 'starting');
+  $('start').disabled = true;
+  try {
+    const r = await fetch(`${srvBase()}/api/kernels${authQuery()}`, {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ name }),
+    });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText} — ${await r.text()}`);
+    const k = await r.json();
+    kernel = { id: k.id, name: k.name };
+    log(`kernel started: ${k.name} id=${k.id}`);
+    await openChannels();
+  } catch (e) {
+    log(`startKernel FAILED: ${e.message}`, 'err');
+    setStatus('failed', 'dead');
+    $('start').disabled = false;
+  }
+}
+
+async function stopKernel() {
+  if (!kernel) return;
+  try {
+    if (ws) { ws.close(); ws = null; }
+    await fetch(`${srvBase()}/api/kernels/${kernel.id}${authQuery()}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    log(`kernel ${kernel.id} stopped`);
+  } catch (e) {
+    log(`stopKernel error: ${e.message}`, 'err');
+  } finally {
+    kernel = null;
+    setStatus('no kernel', 'idle');
+    $('start').disabled = false;
+    $('stop').disabled = true;
+    $('run').disabled = true;
+    $('interrupt').disabled = true;
+  }
+}
+
+// ---- WebSocket: open kernel channels -------------------------------
+
+function openChannels() {
+  return new Promise((resolve, reject) => {
+    const base = srvBase().replace(/^http/, 'ws');
+    const url = `${base}/api/kernels/${kernel.id}/channels${authQuery()}`;
+    log(`WS connect: ${url}`);
+    ws = new WebSocket(url);
+
+    ws.onopen = () => {
+      log('WS open');
+      setStatus('connected (idle)', 'connected');
+      $('stop').disabled = false;
+      $('run').disabled = false;
+      $('interrupt').disabled = false;
+      resolve();
+    };
+    ws.onmessage = (ev) => handleMessage(ev.data);
+    ws.onerror = (e) => { log(`WS error`, 'err'); reject(e); };
+    ws.onclose = (e) => {
+      log(`WS closed (code=${e.code})`);
+      setStatus('disconnected', 'dead');
+    };
+  });
+}
+
+function handleMessage(raw) {
+  let msg;
+  try { msg = JSON.parse(raw); }
+  catch { log('non-JSON WS message ignored'); return; }
+
+  const t = msg.header?.msg_type;
+  const parentId = msg.parent_header?.msg_id;
+  const ch = msg.channel;
+  log(`< ${ch}/${t}${parentId ? ` parent=${parentId.slice(0, 8)}` : ''}`);
+
+  // Status updates
+  if (t === 'status') {
+    setStatus(`connected (${msg.content.execution_state})`,
+      msg.content.execution_state === 'idle' ? 'connected' : 'busy');
+  }
+
+  // Outputs we render
+  const c = msg.content || {};
+  if (t === 'stream') {
+    const span = document.createElement('span');
+    if (c.name === 'stderr') span.className = 'err';
+    span.textContent = c.text;
+    outEl.appendChild(span);
+  } else if (t === 'execute_result' || t === 'display_data') {
+    renderBundle(c.data || {});
+  } else if (t === 'error') {
+    const span = document.createElement('div');
+    span.className = 'err';
+    span.textContent = `${c.ename}: ${c.evalue}\n` + (c.traceback || []).join('\n');
+    outEl.appendChild(span);
+  } else if (t === 'execute_reply') {
+    const handler = pending.get(parentId);
+    if (handler) { handler.resolve(c); pending.delete(parentId); }
+  }
+}
+
+function renderBundle(data) {
+  // Prefer image/png, then text/html, then text/plain
+  if (data['image/png']) {
+    const img = document.createElement('img');
+    img.src = `data:image/png;base64,${data['image/png']}`;
+    outEl.appendChild(img);
+  } else if (data['text/html']) {
+    const div = document.createElement('div');
+    div.innerHTML = data['text/html']; // spike-only; real impl must sanitize
+    outEl.appendChild(div);
+  } else if (data['text/plain']) {
+    const span = document.createElement('span');
+    span.textContent = data['text/plain'] + '\n';
+    outEl.appendChild(span);
+  }
+}
+
+// ---- Execute a cell ------------------------------------------------
+
+function executeCode(code) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    log('no WS open', 'err');
+    return;
+  }
+  const msgId = uuid();
+  const msg = {
+    header: {
+      msg_id: msgId,
+      session: SESSION_ID,
+      username: USERNAME,
+      msg_type: 'execute_request',
+      version: '5.3',
+      date: new Date().toISOString(),
+    },
+    parent_header: {},
+    metadata: {},
+    content: {
+      code,
+      silent: false,
+      store_history: true,
+      user_expressions: {},
+      allow_stdin: false,
+      stop_on_error: true,
+    },
+    buffers: [],
+    channel: 'shell',
+  };
+  log(`> shell/execute_request id=${msgId.slice(0, 8)}`);
+  outEl.innerHTML = '';
+  ws.send(JSON.stringify(msg));
+  return new Promise(resolve => pending.set(msgId, { resolve }));
+}
+
+async function interruptKernel() {
+  if (!kernel) return;
+  try {
+    const r = await fetch(`${srvBase()}/api/kernels/${kernel.id}/interrupt${authQuery()}`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    log(`interrupt: ${r.status}`);
+  } catch (e) {
+    log(`interrupt failed: ${e.message}`, 'err');
+  }
+}
+
+// ---- wire up -------------------------------------------------------
+
+$('refresh').onclick = refreshKernelSpecs;
+$('start').onclick = startKernel;
+$('stop').onclick = stopKernel;
+$('run').onclick = () => executeCode($('code').value);
+$('interrupt').onclick = interruptKernel;
+$('clearlog').onclick = () => { logEl.innerHTML = ''; };
+
+$('code').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.shiftKey) {
+    e.preventDefault();
+    if (!$('run').disabled) executeCode($('code').value);
+  }
+});
+
+log('spike loaded; click "Refresh list" to discover kernels (needs a running server)');
+</script>
+
+</body>
+</html>

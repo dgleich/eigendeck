@@ -6,6 +6,28 @@ that pushed this plan (Eigendeck v2026.5.31). Read `/work/docs/ASSETS.md`
 and `/work/SQLITE_STORAGE.md` first — they document the asset model
 and schema this feature plugs into.
 
+## PIVOT — branch `feat/notebook-spike` (2026-05-31)
+
+The original plan below treats "connect to user's running Jupyter
+server" as a NO and locks v1 to Pyodide. That was wrong for the
+target user: a CS professor demoing matrix/graph/HPC algorithms
+who already has Julia/R/full-CPython kernels installed and wants
+to use them. External kernel via WebSocket is back on the table as
+a first-class option, possibly the *default* with JupyterLite as
+the portable fallback.
+
+Spikes live in `public/notebook-spike/`:
+- `external-kernel.html` — REST + WS round-trip to a user-run
+  `jupyter server`. Validate Tauri WebKit compatibility AND the
+  CORS/auth knobs needed for a real iframe.
+- (TODO) `lite/` — built JupyterLite dist, parallel test.
+
+The non-goals section ("Live exec for non-Python kernels — v1 is
+Python via Pyodide") and the architecture table ("Connect to user's
+running Jupyter server" → NO) below are SUPERSEDED until the spike
+results come in. Read them as the OLD reasoning, not the current
+direction.
+
 ## Goal
 
 Embed a **live, executing** Jupyter notebook as a first-class element
