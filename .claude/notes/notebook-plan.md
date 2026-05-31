@@ -1,369 +1,375 @@
-# Plan: Jupyter notebook in a slide
+# Plan: Live Jupyter notebook in a slide
 
 Author note: This plan is for the next agent picking up this task with
-fresh context. The repo state at planning time is `main` at commit
-`968eb81` (Eigendeck v2026.5.31). Read `/work/docs/ASSETS.md` and
-`/work/SQLITE_STORAGE.md` first — they document the asset model and
-schema this feature plugs into.
+fresh context. Repo state at planning time: `main` at the commit
+that pushed this plan (Eigendeck v2026.5.31). Read `/work/docs/ASSETS.md`
+and `/work/SQLITE_STORAGE.md` first — they document the asset model
+and schema this feature plugs into.
 
 ## Goal
 
-Embed a Jupyter notebook (`.ipynb`) as a first-class element type on a
-slide, so a talk that walks through code + outputs (data science,
-matrix algorithms, anything Python-heavy) doesn't need separate
-windows or screen-share workarounds. The author drops in a notebook,
-chooses what to display, and it renders on the slide alongside text,
-images, PDFs, and demos.
+Embed a **live, executing** Jupyter notebook as a first-class element
+type on a slide. The presenter (a CS professor giving a talk on
+matrix / graph algorithms / HPC) wants to:
+
+- Show code on screen during the talk
+- Run a cell live (Shift-Enter equivalent) and have the output appear
+- Modify a parameter (`k = 5` → `k = 10`) and re-run to demonstrate
+  algorithmic behavior
+- Have it composed with the rest of the slide (title, surrounding
+  text, possibly images / arrows pointing at parts of the output)
+
+**Static notebook rendering (just displaying the saved cells +
+outputs) is explicitly NOT the goal.** That's essentially a PDF
+screenshot — it'd work but it'd offer nothing over the existing
+PDF-embed path. The whole point is live computation visible to the
+audience.
 
 ## Non-goals (v1)
 
-- **Live cell execution** in the slide. v1 is rendering-only. The user
-  edits the notebook elsewhere (Jupyter / JupyterLab / VSCode), saves
-  it, drops it into the slide. Live exec is a v2 conversation.
-- **Cell editing in the slide.** Read-only display.
-- **Multiple kernels / dependency management.** None of that in v1.
-- **Notebook authoring UX.** Eigendeck is a presentation tool, not a
-  notebook editor.
+- **Multi-user collaboration** in the notebook
+- **Kernel persistence across project saves** — kernel restarts on
+  deck reopen is acceptable
+- **Authoring notebooks inside Eigendeck.** The presenter authors in
+  JupyterLab/VSCode/wherever they normally do; eigendeck embeds the
+  result.
+- **Live exec for non-Python kernels** (R, Julia, etc.) — v1 is
+  Python via Pyodide. Other kernels are a v2 conversation.
 
-## Recommended approach: render-only, .ipynb-as-asset
+## Recommended architecture: JupyterLite (Pyodide in-browser)
 
-Treat `.ipynb` as another asset type, alongside images / PDFs /
-demo-HTML. The slide element renders the notebook's cells (markdown +
-code + pre-computed outputs) as static HTML. Same asset-management
-machinery the existing types use: storage in `assets` table,
-external-path watching for in-place edits, version history,
-restore-from-history.
+Embed a [JupyterLite](https://jupyterlite.readthedocs.io/) distribution
+inside the app. Each notebook element is an `<iframe>` pointing at the
+embedded JupyterLite's `lab/index.html?path=...`, loaded with the
+user's `.ipynb` from eigendeck's asset table.
 
-This sits at the same architectural layer as the existing `'demo'`
-type and benefits from every piece of plumbing already built (file
-watcher, scan-on-load, collision dialog, inspector AssetSection).
+Kernel = Pyodide (Python compiled to WASM). Runs entirely in the
+WebView. No external process, no Python install required, no
+network calls during a talk.
 
-### Why not live execution
+### Why JupyterLite over alternatives
 
-- **JupyterLite (Pyodide)** would work in-browser but adds ~30MB of
-  initial download and ~3-5s startup before first cell can run. For
-  a presentation tool that's all-but-zero on the audience-experience
-  axis and large on the bundle size axis. Pyodide also lacks several
-  native-CPython packages (anything with C extensions that hasn't
-  been ported).
-- **Local Jupyter server** (user runs `jupyter server`, slide talks
-  WebSocket) shifts kernel-management complexity onto the presenter
-  during a high-stress moment (talk).
-- **Embedded kernel via Tauri subprocess** is a significant project
-  (process lifecycle, port allocation, idle-shutdown, error UX).
+| Approach | Pros | Cons | Verdict |
+|---|---|---|---|
+| **JupyterLite (Pyodide WASM)** | Self-contained; deck works for anyone who opens it; no Python install; no network during talk | ~30MB bundle; 3-5s first-cell startup; some C-extension packages unavailable | **CHOSEN** |
+| Subprocess kernel via Tauri | Full CPython, all packages, fast | Process lifecycle complexity; user must have Python + the right packages; OS-specific subprocess code; "kernel died during talk" failure mode | v2 if Pyodide hits a wall |
+| Connect to user's running Jupyter server | Easiest implementation | User has to remember to start the server; "demo on someone else's laptop" workflows broken | NO |
+| Bundle a CPython interpreter (PyInstaller-style) | Full Python | Massive bundle (~100MB); cross-platform packaging hell; user-env package mismatch | NO |
 
-Live exec is genuinely valuable for some workflows but the bar to
-build it well is high. v1 ships static render. v2 can layer live
-exec once we understand the actual use patterns.
+The "self-contained, deck works for anyone" property is huge for the
+presenter use case. You hand someone the `.eigendeck` file (or open
+the same one on a different laptop), it Just Works. No "did you
+install scipy? what version of numpy?"
+
+### What works / doesn't work in Pyodide
+
+**Works**: numpy, scipy, pandas, matplotlib, networkx, sympy, scikit-learn,
+sympy, plotly, ipywidgets (partial), Python stdlib. Roughly the
+PyData stack minus things needing native C extensions not yet ported.
+
+**Doesn't work** (or is awkward): PyTorch (partial), TensorFlow,
+anything spawning subprocesses, anything reading arbitrary files
+outside the virtual FS, anything needing a real OS thread pool.
+
+For David's matrix/graph/HPC content: numpy + scipy + networkx +
+matplotlib cover essentially everything. The few HPC libraries
+that don't (e.g. MPI bindings) are dealbreakers — but for those
+cases, the presenter likely has a recorded video anyway.
 
 ## Data model
 
 ### New element type: `notebook`
 
-Add to `src/types/presentation.ts` (mirror the shape of
-`ImageElement` / `DemoElement`):
+Add to `src/types/presentation.ts`:
 
 ```ts
 export interface NotebookElement extends BaseElement {
   type: 'notebook';
   /** Stable asset_id binding — see ImageElement.assetId. */
   assetId: string;
-  /** Optional: subset of cells to display. Indices into the
-   *  notebook's cell array. Absent = show all cells. */
+  /** Optional: cells to show in the iframe. Default: all cells. */
   visibleCells?: number[];
-  /** Optional: starting cell index for slide animation
-   *  (linked-objects could reveal cells one at a time across
-   *  consecutive slides — future). */
-  startCell?: number;
-  endCell?: number;
+  /** Optional: starting kernel state — JSON of preamble code that
+   *  runs before any cell. Useful for "set up these imports + helper
+   *  fns up front so the cells stay short." */
+  preamble?: string;
+  /** Optional: auto-run on slide enter. When true, all visible
+   *  cells execute as soon as the slide becomes active in
+   *  PresentMode. Default false (presenter triggers manually). */
+  autoRun?: boolean;
 }
 ```
 
-Add `'notebook'` to the `SlideElement` discriminated union.
-
 ### Asset storage
 
-`.ipynb` files are JSON. Mime type: `application/x-ipynb+json` (the
-RFC-blessed one). Store as a regular asset:
+The `.ipynb` JSON is stored in `assets.data` (mime
+`application/x-ipynb+json`) with `external_path` set for the
+file-watcher to track edits. Same asset machinery the existing
+types use. No `asset_cache` — there's nothing to rasterize.
 
-- `assets.data` = raw `.ipynb` bytes
-- `assets.mime_type = 'application/x-ipynb+json'`
-- `assets.external_path` set to project-relative path for file-watcher
-  reload on edit (same pattern as demos after the recent fix)
-- `external_mtime` recorded; scan-on-load + watcher both work as-is
-  thanks to the recently-shipped hash-check in `scanForChangedAssets`
+### `detectAssetKind` extension
 
-`asset_cache` is NOT used — the notebook renders directly from the
-JSON every time. No rasterization tier.
+Add `'notebook'` to the `AssetKind` union in `src/lib/assetCache.ts`
+and the function returns `'notebook'` for mime `application/x-ipynb+json`
+or `.ipynb` extension.
 
-### Detect-asset-kind plumbing
+## JupyterLite bundle strategy
 
-`src/lib/assetCache.ts` has `detectAssetKind(filenameOrPath, mimeType)`
-that currently returns `'raster' | 'svg' | 'pdf'`. Extend to also
-return `'notebook'` when:
-- mime type is `application/x-ipynb+json` OR
-- extension is `.ipynb`
+### What to bundle
 
-Update the `AssetKind` union type to add `'notebook'`.
+JupyterLite ships as a `npm install @jupyterlite/lab` (or a CLI-built
+static dist via `jupyter lite build`). Two options:
 
-## Rendering pipeline
+1. **Build a custom JupyterLite dist at eigendeck build time**, drop
+   into `public/jupyterlite/`. CLI: `jupyter lite build --piplite-wheels=...`
+   for custom package bundles. Output is a static directory the
+   WebView can load.
+2. **Use the published @jupyterlite/lab npm package** and serve its
+   built artifacts. Less control over the package set; faster to
+   wire up.
 
-### Library choice
+Recommend option **1** for v1: one-time setup cost buys us control
+over which packages are pre-loaded into the Pyodide environment
+(numpy + scipy + matplotlib + networkx, which are 80% of the slide
+demos).
 
-Use `@nteract/markup` + `@nteract/transforms` + `@nteract/notebook-render`
-or — preferred — pin to a smaller, well-maintained library. Survey
-before committing; the nteract packages are sprawling. Alternatives:
+### Where it lives in the repo
 
-- `react-jupyter-notebook` (npm, small, opinionated)
-- Roll a minimal viewer ourselves (each cell type is a couple of
-  dozen lines: markdown → react-markdown, code → highlight.js, outputs
-  → match mime type and render PNG / HTML / text / JSON-plotly)
+- `public/jupyterlite/` — the built JupyterLite distribution
+  (gitignored; built by a `npm run setup-jupyterlite` step similar
+  to how `public/mathjax/` is populated)
+- `jupyterlite-bundle/` — config + build script for the custom
+  dist (parallel to `mathjax-ptsans-bundle/`)
+- `scripts/setup-jupyterlite.mjs` — runs the bundle build
 
-Recommend: **build minimal in-house viewer** for v1. Notebooks are a
-simple data structure, and the libraries are either heavyweight
-(nteract) or unmaintained. Components needed:
+### Bundle size budget
 
-1. **Markdown cell**: render `cell.source.join('')` via the same
-   markdown renderer used elsewhere (or `marked` / `react-markdown`).
-   Support GFM + math (`$..$` and `$$..$$` — pipe through MathJax
-   like the rest of the app already does for text elements).
-2. **Code cell**: syntax-highlighted code block (highlight.js for
-   Python is well-supported and tiny). Show prompt number
-   (`In [N]:`) if you want the Jupyter aesthetic.
-3. **Output rendering** (each cell can have multiple outputs):
-   - `stream` (stdout/stderr) → `<pre>` block
-   - `execute_result` / `display_data`: dispatch by mime type
-     - `text/plain` → `<pre>`
-     - `text/html` → render HTML (sandboxed iframe is safest;
-       trusted-paste-style marker if you want round-trip)
-     - `image/png` / `image/jpeg` → `<img src="data:...">`
-     - `image/svg+xml` → inline SVG
-     - `application/vnd.plotly.v1+json` → optional plotly bundle (v2)
-     - `application/vnd.jupyter.widget-view+json` → static fallback
-       message ("widget rendering requires a kernel" — v2)
-   - `error` → red-bordered traceback in `<pre>`
+Estimated:
+- JupyterLite core: ~5 MB
+- Pyodide runtime: ~10 MB
+- numpy + scipy + matplotlib pre-bundled wheels: ~15 MB
+- Total: **~30 MB**
 
-### Where rendering lives
+This is the biggest single addition to the app's bundle since pdfium.
+Lazy-loaded: only fetched when the first notebook element renders
+(via dynamic import / iframe lazy src). Doesn't affect cold app start
+for decks without notebooks.
 
-Add `src/lib/notebookRenderer.tsx` exporting a `<NotebookRender
-assetId, opts? />` component. Internally:
+## Loading a user's notebook into JupyterLite
 
-- Fetch the asset bytes via `db_get_asset_by_id` (binary IPC,
-  `tauri::ipc::Response`)
-- `JSON.parse` to get the notebook object
-- Filter cells by `visibleCells` or `startCell..endCell` if set
-- Map each cell to a React component
-- Memoize aggressively — notebooks change on file-watcher events
-  but not on slide-pan / element-select
+JupyterLite has a "virtual filesystem" backed by browser storage
+(IndexedDB). To get our `.ipynb` into it:
 
-### Slide canvas integration
+- Custom JupyterLite contents provider that reads/writes via Tauri
+  IPC instead of IndexedDB. The provider calls back to eigendeck
+  (e.g., via `postMessage` from iframe → parent → invoke
+  `db_get_asset_by_id` / `db_store_asset`).
+- On notebook-element mount: pass the `assetId` via iframe URL
+  param. Iframe boots JupyterLite, provider hooks into asset_id,
+  fetches bytes, populates the file via custom provider.
+- On notebook save (user does Ctrl-S inside the iframe): provider
+  intercepts, posts back to parent, parent calls
+  `storeAssetWithCollisionCheck` to update the asset (new version
+  in the temporal store).
+
+This is **non-trivial**. The plumbing is iframe-postMessage-Tauri
+glue. Get it working for a fresh-load case first; save-from-iframe
+can be a later phase.
+
+## Slide canvas integration
 
 Mirror the image/demo element pattern in
 `src/components/SlideElementRenderer.tsx`:
 
-1. Add a `<NotebookBox>` component, sibling to `<ImageBox>` /
-   `<DemoBox>`. Renders `<NotebookRender assetId=... opts=... />`
-   inside a `<DraggableBox>` for position/resize.
-2. Wire into the main render switch.
-3. Inspector: re-use `<AssetSection>` (it's already kind-agnostic;
-   demos use it after the recent fix). Add notebook-specific
-   controls below: a multi-select / range picker for visible cells.
+1. `<NotebookBox>` component, sibling to `<ImageBox>` / `<DemoBox>`.
+   Renders an iframe inside a `<DraggableBox>` for position/resize.
+2. Iframe src: `/jupyterlite/lab/index.html?asset=<assetId>`.
+3. Iframe `sandbox` attribute: allow scripts (kernel runs JS),
+   same-origin (provider needs IPC).
+4. Postmessage bridge between iframe ↔ parent for file I/O.
+5. Same overlay-for-dragging trick the existing demo iframe uses
+   (transparent div over the iframe captures pointer events
+   while not editing).
 
-### Sidebar tile
+## PresentMode
 
-Add `SidebarNotebookTile` in `src/components/SlideSidebar.tsx`,
-following the pattern of `SidebarDemoTile`:
-- Calls `useAssetFileWatcher(element.assetId, element.id)` so the
-  watcher subscribes
-- Renders a labeled placeholder (`NOTEBOOK` or similar)
+Notebook element in PresentMode renders the SAME iframe — full live
+kernel. Presenter clicks into the iframe to interact (Shift-Enter to
+run a cell, edit code, etc.).
 
-### PresentMode + presenter window
+Kernel state persists as long as the iframe is mounted in the DOM.
+Slide nav unmounts → state lost. For v1, accept this — most notebook
+demos live on one slide. For v1.5: keep notebook iframes mounted
+across all slides (hidden), so navigating away and back preserves
+state.
 
-Add `<PresentNotebook>` to `PresentMode.tsx` and the presenter
-window. Same rendering as the editor canvas; just no
-DraggableBox wrapper.
+## Sidebar tile
+
+`<SidebarNotebookTile>` placeholder div (no live iframe in the
+sidebar — too expensive). Just a labeled "NOTEBOOK" tile that calls
+`useAssetFileWatcher(element.assetId, element.id)` so the watcher
+subscribes for source-file change auto-reload.
 
 ## Insertion paths
 
-Mirror the demo-insertion flow:
-
 ### Drag-drop from Finder
 
-In `SlideEditor.tsx`'s `onDragDropEvent` handler, the file-extension
-sniff at line ~450 currently matches `.html` for demos and
-`.png|jpg|jpeg|gif|svg|webp|pdf` for images. Add `.ipynb` →
-notebook branch that:
-- Reads bytes via `readFile(fullPath)`
-- Calls `storeAssetWithCollisionCheck` with
-  `mimeType: 'application/x-ipynb+json'`, `externalPath: relativePath`
-- Adds a `notebook` element at a sensible default position/size
+In `SlideEditor.tsx`'s `onDragDropEvent` handler, add `.ipynb` →
+notebook branch. Same shape as the demo branch, just different
+mime + element type.
 
 ### `+ Notebook` button in toolbar
 
-App.tsx has `+ Demo` and `+ Image` buttons. Add `+ Notebook` that
-file-picks a `.ipynb` and calls the same storage path. Default
-element position: similar to demo (most of the slide).
-
-### Paste
-
-`.ipynb` files don't typically arrive via clipboard. Skip clipboard
-support for v1.
-
-## Inspector UI
-
-Below the standard `<AssetSection>` block (which gives history /
-reload / watch), add:
-
-```
-Cells visible
-  ( ) All cells
-  (•) Range  [from 0 ] to [to 5 ]
-  ( ) Subset  [edit list...]
-```
-
-`visibleCells` if user picked subset; `startCell`+`endCell` if
-range. Inspector reads/writes these via `updateElement`.
-
-A "cells preview" panel could also show a thin list of cell types
-(`md`, `code`) with checkboxes — overkill for v1, do later if
-users ask.
-
-## Open / save / export
-
-- `.eigendeck` open / save: notebook elements serialize as JSON
-  (the `NotebookElement` interface fields). No change to
-  `db_export_json` / `db_import_json` — they JSON the elements
-  array as-is.
-- HTML export (`renderSlideForPrint` in `App.tsx`): emit notebook
-  element as a self-contained rendered HTML block (use the same
-  rendering pipeline server-side or pre-rendered into the export).
-  Defer the "interactive notebook in exported HTML" case; the
-  static-render is good enough.
+App.tsx adds a `+ Notebook` button that file-picks `.ipynb` and
+calls the same insertion path. Default element size: large (most of
+the slide) since notebooks need vertical space for cells + outputs.
 
 ## Implementation phases
 
-Recommended sequence so each step is reviewable + stops at a usable
-state if you have to break:
+Each phase = one reviewable commit boundary that leaves the branch
+in a working state.
 
-1. **Type + asset wiring**
+1. **JupyterLite dist setup**
+   - Add `jupyterlite-bundle/` with the config + build script
+   - Add `scripts/setup-jupyterlite.mjs` to build + copy
+   - Verify `public/jupyterlite/lab/index.html` loads in a browser
+   - Document in CLAUDE.md the `npm run setup-jupyterlite` step
+   - Land as one commit.
+
+2. **Type + asset wiring**
    - Add `NotebookElement` to `src/types/presentation.ts`
-   - Extend `detectAssetKind` in `src/lib/assetCache.ts`
-   - Verify Rust storage handles the new mime type (it's just a
-     string; no change expected)
-   - Add a test that imports/exports a deck with a notebook element
-     round-trip through `db_import_json` / `db_export_json`
+   - Extend `detectAssetKind` to recognize `.ipynb` / `application/x-ipynb+json`
+   - Schema-compat test stays green
    - Land as one commit.
 
-2. **Minimal renderer (markdown + code + text/plain outputs)**
-   - Create `src/lib/notebookRenderer.tsx`
-   - Just handle markdown cells (text), code cells (no
-     highlighting yet, just `<pre>`), and text-plain outputs
-   - Add a vitest for parse → render shape
+3. **Iframe-based static notebook display (no kernel yet)**
+   - Add `<NotebookBox>` rendering an iframe pointing at JupyterLite
+     in **read-only mode** with the user's `.ipynb` loaded
+   - The iframe shows the notebook UI but doesn't yet execute
+   - Drag a notebook in, see cells displayed
    - Land as one commit.
 
-3. **Slide integration**
-   - Add `<NotebookBox>` in `SlideElementRenderer.tsx`
-   - Wire into the switch
-   - Add `SidebarNotebookTile` in `SlideSidebar.tsx` (with
-     `useAssetFileWatcher` subscription)
-   - Manual test: hardcode a notebook asset, see it render
+4. **File-bridge: load notebook bytes into the iframe**
+   - Implement the postMessage bridge: iframe asks parent for asset
+     bytes by assetId; parent invokes `db_get_asset_by_id` and
+     responds
+   - Custom JupyterLite contents provider hooks into this
+   - Iframe loads the actual cells from the asset
    - Land as one commit.
 
-4. **Insertion (drag-drop + + Notebook button)**
+5. **Kernel execution**
+   - Enable Pyodide kernel in the JupyterLite dist
+   - Bundle numpy + scipy + matplotlib wheels
+   - User can Shift-Enter cells, see outputs in the iframe
+   - Land as one commit. **MILESTONE: live exec works.**
+
+6. **Save-from-iframe**
+   - Reverse direction of the file bridge: iframe Ctrl-S →
+     postMessage to parent → parent calls
+     `storeAssetWithCollisionCheck` to update the asset (new version
+     in temporal store) → file watcher notices the asset_id change
+     and (via the no-byte-change hash check) does NOT invalidate
+     the iframe (which would lose kernel state)
+   - Land as one commit.
+
+7. **Insertion (drag-drop + + Notebook button)**
    - Add `.ipynb` branch to `SlideEditor.tsx` drop handler
    - Add `+ Notebook` button in App.tsx toolbar
-   - Test: drag a `.ipynb` from Finder → see it on the slide
    - Land as one commit.
 
-5. **Output rendering — images + HTML**
-   - Extend renderer to handle `image/png`, `image/svg+xml`,
-     `text/html` (sandboxed iframe), `error` (red traceback)
-   - Manual test with a notebook that has matplotlib output +
-     pandas HTML output
+8. **Inspector — preamble + autoRun controls**
+   - Extend AssetSection consumer (or add NotebookOptions section)
+   - Wire `preamble` (text area for setup code that runs before
+     cells) and `autoRun` (checkbox) through `updateElement`
    - Land as one commit.
 
-6. **Syntax highlighting**
-   - Add `highlight.js` (only Python language pack, ~10KB)
-   - Wire code cells through it
+9. **PresentMode**
+   - Render the same iframe in PresentMode
+   - Verify pointer events reach the iframe (no DraggableBox overlay
+     in present mode)
    - Land as one commit.
 
-7. **Inspector — cells-visible UI**
-   - Extend `AssetSection` consumer (or add a new
-     `NotebookOptions` section) with the cell-selection controls
-   - Wire `visibleCells` / `startCell` / `endCell` through
-     `updateElement`
-   - Land as one commit.
-
-8. **PresentMode + presenter**
-   - Add `<PresentNotebook>` rendering same component
-   - Land as one commit.
-
-9. **HTML export**
-   - Emit notebook block in `renderSlideForPrint` paths
-   - Land as one commit.
-
-10. **Documentation + mutate-notebook.py test tool**
+10. **Documentation + mutate-notebook.py**
     - Update `docs/ASSETS.md` Renderer section to mention notebook
-      kind
+      kind + iframe lifecycle
     - Update `LLM-EDITING.md` element-type list
-    - Update `SQLITE_STORAGE.md` if anything changed (probably not)
     - Add `gitignore/mutate-notebook.py` (parallel to mutate-svg /
-      mutate-pdf / mutate-demo) that bumps a cell's content
-      atomically so file-watcher reload can be tested
+      mutate-pdf / mutate-demo) — bumps a cell's content so
+      file-watcher reload can be tested
     - Land as one commit.
 
 ## Risks / open questions
 
-- **Notebook HTML sandboxing.** Pandas DataFrames render as HTML
-  tables; matplotlib SVGs are SVG; some notebooks have
-  inline `<script>` tags. Decide: trust-and-render (fast, risky)
-  vs sandboxed-iframe (safer, layout-awkward). Recommend sandboxed
-  iframe for `text/html` outputs in v1 with a future
-  "I trust this notebook's HTML" per-element opt-out.
-- **Notebook file size.** Plotly-heavy notebooks can be 10s of MB
-  (embedded data). `assets.data` is a BLOB — fine technically, but
-  watch deck-open performance. May need lazy-load or per-cell
-  fetching later.
-- **Math rendering.** Notebooks use LaTeX `$...$` in markdown cells.
-  Eigendeck's MathJax pipeline is per-text-element with preset-bound
-  fonts; notebook math should probably use the presentation's
-  default math bundle. Pipe markdown through the same MathJax
-  renderer or use a notebook-specific config.
-- **Cell numbering**: do we show `In [N]:` prompts? Toggle in the
-  inspector, default off (cleaner look).
-- **Animation between slides showing different cells.** Future:
-  use the existing `linkId` / `syncId` mechanism so a notebook on
-  slide 2 with cells [0..2] visible can animate to slide 3 with
-  cells [0..5] visible, smoothly revealing new cells. Out of scope
-  for v1 but the data model should leave room.
-- **Live execution (v2).** When we get there, the data model already
-  has `assetId`; the executor can fetch the source via
-  `db_get_asset_by_id` and re-execute. Kernel choice (Pyodide vs
-  spawned subprocess) is a separate decision.
+- **Bundle size**: ~30 MB. App download grows substantially. Mitigate
+  via lazy-load — JupyterLite is only fetched when the first
+  notebook element renders.
+- **First-cell startup latency**: Pyodide init is ~3-5s. Pre-warm
+  by booting the kernel as soon as the slide containing a notebook
+  becomes visible (or one slide ahead in present mode).
+- **Tauri WebKit + Pyodide compatibility**: Pyodide uses
+  WebAssembly + WebWorkers + SharedArrayBuffer. Tauri's WebKit
+  might block some of these. Worth a one-day spike to confirm
+  Pyodide actually runs in Tauri before committing to the larger
+  plan. **Do this before starting Phase 1.**
+- **Notebook saves and the file watcher**: when iframe saves a new
+  cell, eigendeck writes the asset, file-watcher will fire on
+  the external file (if any) — need to make sure the iframe
+  doesn't get force-reloaded (kernel state loss). The recently-
+  shipped hash-check in `scanForChangedAssets` handles
+  iframe-initiated saves correctly (hash will differ → invalidate
+  cache → but cache for notebooks isn't really a thing). The
+  iframe itself reloading is the real concern; should NOT remount
+  the iframe just because asset bytes changed via the iframe's
+  own save.
+- **Kernel state across slide navigation**: lost when iframe
+  unmounts. v1 accepts this. v1.5: keep iframe mounted (hidden)
+  across all slides.
+- **Subprocess kernel fallback**: if Pyodide can't run something
+  the user needs (e.g., PyTorch), the path forward is the
+  subprocess-kernel approach (v2). Data model already supports it
+  — the element binds an asset_id; the executor backend can be
+  swapped.
+- **Notebook authoring round-trip**: user edits the `.ipynb` in
+  JupyterLab outside eigendeck, saves it, file watcher reloads.
+  The iframe needs to handle "your contents changed on disk" gracefully
+  — probably show a "reload notebook to see changes" prompt rather
+  than auto-reload (would lose kernel state).
+- **Plotly / ipywidgets**: ipywidgets support in JupyterLite is
+  partial; some interactive widgets work, some don't. Worth
+  testing the common cases (sliders, dropdowns) during Phase 5.
 
 ## Test plan
 
-- Vitest: assetCache `detectAssetKind` returns `'notebook'` for
-  `.ipynb` and the right mime type.
-- Vitest: notebook renderer produces expected DOM shape for a
-  fixture notebook with markdown + code + image-png output + error
-  traceback.
-- Manual: drag-drop a fixture `.ipynb` onto a slide, save the
-  deck, reopen, verify the notebook still renders.
-- Manual: edit the source `.ipynb` on disk, watch the slide
-  re-render via the file watcher.
-- Manual: use mutate-notebook.py to test scan-on-load behavior
-  (matches the mutate-svg / mutate-pdf workflow).
-- Schema-compat: add a `.eigendeck` fixture with a notebook
-  element under `examples/` so the schema_compat test covers it.
+- Vitest: `detectAssetKind` returns `'notebook'` for `.ipynb` and
+  mime.
+- **Spike test (do FIRST, before Phase 1):** load JupyterLite
+  inside a Tauri WebView, run `import numpy; numpy.zeros(5)`,
+  confirm it works. If not, the whole plan needs rethinking.
+- Manual: drag a fixture `.ipynb` onto a slide, see the cells.
+- Manual: Shift-Enter a cell, see the output.
+- Manual: edit a cell value (e.g. `k=10`), Shift-Enter, see new
+  output. Save (Ctrl-S in iframe), verify asset version history
+  shows the new version.
+- Manual: edit the source `.ipynb` on disk via mutate-notebook.py,
+  watch the slide handle the change without losing kernel state
+  (prompt to reload or similar).
+- Schema-compat: add a fixture `.eigendeck` with a notebook
+  element under `examples/`.
 
-## What lives in `/work/.claude/notes/` already
+## Reference
 
-- `pdf-plan.md` — the original PDF rendering plan (good reference
-  for how to structure THIS plan's execution; similar scope)
+- JupyterLite docs: https://jupyterlite.readthedocs.io/
+- Pyodide: https://pyodide.org/
+- JupyterLite contents API: https://jupyterlite.readthedocs.io/en/latest/howto/configure/contents.html
+- Existing similar pattern: `mathjax-ptsans-bundle/` (custom build
+  artifact lives in repo, copied to `public/` at setup time)
+
+## What lives in `/work/.claude/notes/` already (related context)
+
+- `pdf-plan.md` — the original PDF rendering plan (a similar-scoped
+  feature that shipped; good template for phase boundaries)
 - `asset-model-refactor-plan.md` — the asset-model phases
 - `startup-notes.md` — project cold-start context
 
-When you start: read this file, then read `docs/ASSETS.md` →
-"Renderer" + "PDF rendering pipeline" sections. The notebook
-feature plugs in at the same layer as the PDF arm.
+When you start: read this file. Then do the Pyodide-in-Tauri spike
+test BEFORE any other work. If that fails, come back and re-plan.
