@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createDefaultPresentation, createBlankSlide } from './presentation';
+import { createDefaultPresentation, createBlankSlide, NotebookElement } from './presentation';
 
 describe('presentation types', () => {
   it('createDefaultPresentation returns valid structure', () => {
@@ -27,5 +27,33 @@ describe('presentation types', () => {
     expect(parsed.title).toBe(pres.title);
     expect(parsed.slides).toHaveLength(pres.slides.length);
     expect(parsed.config).toEqual(pres.config);
+  });
+
+  it('NotebookElement roundtrips through JSON with both kernel kinds', () => {
+    const external: NotebookElement = {
+      id: 'nb-1', type: 'notebook',
+      assetId: 'asset-1',
+      kernel: { kind: 'external', baseUrl: 'http://localhost:8888', kernelName: 'julia-1.10' },
+      preamble: 'using LinearAlgebra',
+      autoRun: true,
+      position: { x: 100, y: 100, width: 800, height: 600 },
+    };
+    const lite: NotebookElement = {
+      id: 'nb-2', type: 'notebook',
+      assetId: 'asset-2',
+      kernel: { kind: 'lite' },
+      position: { x: 0, y: 0, width: 1920, height: 1080 },
+    };
+    expect(JSON.parse(JSON.stringify(external))).toEqual(external);
+    expect(JSON.parse(JSON.stringify(lite))).toEqual(lite);
+  });
+
+  it('NotebookElement with kernel absent is valid (resolves at render time)', () => {
+    const el: NotebookElement = {
+      id: 'nb-3', type: 'notebook',
+      assetId: 'asset-3',
+      position: { x: 0, y: 0, width: 100, height: 100 },
+    };
+    expect(el.kernel).toBeUndefined();
   });
 });

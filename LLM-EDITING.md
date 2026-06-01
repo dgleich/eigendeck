@@ -263,6 +263,31 @@ The controller iframe is automatically added (one per unique `assetId` on the cu
 
 Multiple `demo-piece` elements can reference the same `assetId` with different `piece` names to show different views of the same simulation side by side.
 
+### Notebook Element
+
+```json
+{
+  "id": "unique-uuid",
+  "type": "notebook",
+  "assetId": "9f1c...8a4",
+  "kernel": { "kind": "external", "kernelName": "julia-1.10" },
+  "preamble": "using LinearAlgebra",
+  "autoRun": false,
+  "position": { "x": 80, "y": 200, "width": 1760, "height": 800 }
+}
+```
+
+- `assetId`: REQUIRED UUID — stable binding to the `.ipynb` asset.
+- `kernel`: optional kernel backend (`{ kind: 'external', baseUrl?, kernelName?, token? }` or `{ kind: 'lite' }`). When absent, cascades to `PresentationConfig.notebookKernel`, then the app default `{ kind: 'external', baseUrl: 'http://localhost:8888', kernelName: 'python3' }`. See `DESIGN_DECISIONS.md` "Preferences cascade" — default-setting flavor.
+- `preamble`: optional string — setup code run before the visible cells. Useful for imports + helpers so the slide's cells stay short.
+- `autoRun`: optional boolean (default false) — when true, all visible cells execute on slide enter in PresentMode.
+- `visibleCells`: optional array of zero-indexed cell numbers — restricts which cells appear in the rendered notebook. Absent = show all cells.
+
+Notebook elements render as a live, interactive Jupyter UI inside an iframe. Two kernel backends are supported (default to external):
+
+- **`external`**: connects via REST + WebSocket to a user-run `jupyter server` on the local machine. Supports any installed kernel (Python, Julia, R, ...). User must have the server running; eigendeck shows a "connect" panel if it's unreachable.
+- **`lite`**: runs a self-contained Pyodide kernel inside the WebView via a bundled JupyterLite distribution. Python-only, but the deck works on any machine without Jupyter installed — use this for portable demo decks.
+
 ## Linked Objects
 
 Elements can be linked across slides for animation and content synchronization.

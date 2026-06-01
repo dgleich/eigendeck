@@ -158,13 +158,57 @@ export interface CoverElement extends BaseElement {
   color?: string;  // default white
 }
 
+/**
+ * Jupyter kernel binding for a notebook element. Two backends:
+ *   - 'external': REST + WebSocket to a user-run jupyter server.
+ *     Supports any installed kernel (python3, julia-1.10, ir, ...).
+ *     Tiny app-side cost; relies on the user having the kernel
+ *     installed. Default.
+ *   - 'lite': JupyterLite/Pyodide running entirely in the WebView.
+ *     Python-only; self-contained ("portable demo for anyone who
+ *     opens the deck"). ~30 MB bundle on first use.
+ *
+ * All fields beyond `kind` are optional. Cascade per DESIGN_DECISIONS.md
+ * "Preferences cascade" (default-setting flavor):
+ *   NotebookElement.kernel ?? PresentationConfig.notebookKernel
+ *     ?? app-pref default ?? { kind: 'external', baseUrl: 'http://localhost:8888',
+ *                              kernelName: 'python3' }
+ *
+ * `token` lives on the element/deck for v1 (localhost-only realistic
+ * scenario). v2 moves auth to an app-prefs server registry keyed by
+ * baseUrl — decks are git-committable and tokens shouldn't be.
+ */
+export type NotebookKernel =
+  | { kind: 'external'; baseUrl?: string; kernelName?: string; token?: string }
+  | { kind: 'lite' };
+
+export interface NotebookElement extends BaseElement {
+  type: 'notebook';
+  /** Stable asset_id binding — .ipynb stored in assets table.
+   *  See ImageElement.assetId. */
+  assetId: string;
+  /** Per-element kernel override; cascades through deck and app
+   *  defaults when absent. See NotebookKernel docstring. */
+  kernel?: NotebookKernel;
+  /** Setup code run before the user's cells fire. Useful for keeping
+   *  the visible cells short — imports + helper fns go here. */
+  preamble?: string;
+  /** Auto-run all visible cells when the slide becomes active in
+   *  PresentMode. Default false (presenter triggers manually). */
+  autoRun?: boolean;
+  /** Optional cell whitelist (zero-indexed). When absent, all cells
+   *  from the .ipynb are shown. */
+  visibleCells?: number[];
+}
+
 export type SlideElement =
   | TextElement
   | ImageElement
   | ArrowElement
   | DemoElement
   | DemoPieceElement
-  | CoverElement;
+  | CoverElement
+  | NotebookElement;
 
 // ============================================
 // Slide and Presentation
@@ -205,6 +249,12 @@ export interface PresentationConfig {
   // 'on'/'off' override the global pref; absent = follow global. Per-asset
   // assets.auto_reload still overrides this. See effectiveAutoReload().
   autoReloadAssets?: 'on' | 'off';
+  // Deck-level default kernel for notebook elements. Cascades per
+  // DESIGN_DECISIONS.md "Preferences cascade" — default-setting flavor:
+  // NotebookElement.kernel overrides this; absent here means "use the
+  // app-pref default" then "use the hardcoded fallback (external,
+  // localhost:8888, python3)".
+  notebookKernel?: NotebookKernel;
 }
 
 export interface Presentation {
