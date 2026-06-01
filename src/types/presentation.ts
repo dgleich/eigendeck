@@ -199,6 +199,11 @@ export interface NotebookElement extends BaseElement {
   /** Optional cell whitelist (zero-indexed). When absent, all cells
    *  from the .ipynb are shown. */
   visibleCells?: number[];
+  /** Multiplier on the notebook's base font size. Default 1.0.
+   *  Projection-readability knob — bump to ~2.0–2.5 for a lecture
+   *  hall, leave at 1.0 for editor preview. Applies to both code
+   *  and prose. */
+  fontScale?: number;
 }
 
 export type SlideElement =
@@ -245,6 +250,11 @@ export interface PresentationConfig {
   defaultTitleFont?: string;
   defaultBodyFont?: string;
   defaultHypeFont?: string;
+  // Default monospace font package id, used by notebook code cells.
+  // Falls back to 'source-code' (bundled). Notebooks ALSO inherit
+  // the body font for markdown cells via the slide/presentation
+  // cascade — defaultMono only governs the code path.
+  defaultMonoFont?: string;
   // Per-presentation override for the file-watching auto-reload behavior.
   // 'on'/'off' override the global pref; absent = follow global. Per-asset
   // assets.auto_reload still overrides this. See effectiveAutoReload().

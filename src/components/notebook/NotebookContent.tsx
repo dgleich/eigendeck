@@ -17,6 +17,7 @@ import { resolveNotebookKernel, ResolvedExternal } from '../../lib/notebookKerne
 import { Cell, CellOutput } from '../../lib/notebookFormat';
 import { NotebookElement } from '../../types/presentation';
 import { usePresentationStore } from '../../store/presentation';
+import { fontForNotebookProse, fontForNotebookCode } from '../../lib/notebookFonts';
 
 export function NotebookContent({ element, interactive, mode = 'editor' }: {
   element: NotebookElement;
@@ -28,7 +29,20 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
 }) {
   const { notebook, error, loading } = useNotebook(element.assetId);
   const config = usePresentationStore((s) => s.presentation?.config);
+  const slide = usePresentationStore((s) => s.presentation?.slides?.[s.currentSlideIndex]);
   const resolved = resolveNotebookKernel(element, config, notebook);
+
+  // Typography resolution. CSS variables flow through to .nb-* rules
+  // via inline style on the frame wrapper below — keeps the CSS file
+  // generic while the per-element resolution stays in TS.
+  const proseFont = fontForNotebookProse(slide, config);
+  const codeFont = fontForNotebookCode(config);
+  const scale = element.fontScale ?? 1.0;
+  const fontStyle: React.CSSProperties = {
+    '--nb-prose-family': proseFont.family,
+    '--nb-mono-family': codeFont.family,
+    '--nb-scale': String(scale),
+  } as React.CSSProperties;
 
   const cells: Cell[] = notebook
     ? (element.visibleCells && element.visibleCells.length > 0
@@ -38,24 +52,28 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
 
   if (resolved.kind === 'lite') {
     return (
-      <LiteKernelPlaceholder
-        cells={cells}
-        interactive={interactive}
-        kernelDisplayName={notebook?.kernelDisplayName ?? notebook?.kernelspecName ?? null}
-      />
+      <div className="nb-frame" style={fontStyle}>
+        <LiteKernelPlaceholder
+          cells={cells}
+          interactive={interactive}
+          kernelDisplayName={notebook?.kernelDisplayName ?? notebook?.kernelspecName ?? null}
+        />
+      </div>
     );
   }
   return (
-    <ExternalKernelBody
-      cells={cells}
-      loading={loading}
-      error={error}
-      interactive={interactive}
-      resolved={resolved}
-      preamble={element.preamble}
-      autoRun={mode === 'present' && !!element.autoRun}
-      kernelDisplayName={notebook?.kernelDisplayName ?? notebook?.kernelspecName ?? null}
-    />
+    <div className="nb-frame" style={fontStyle}>
+      <ExternalKernelBody
+        cells={cells}
+        loading={loading}
+        error={error}
+        interactive={interactive}
+        resolved={resolved}
+        preamble={element.preamble}
+        autoRun={mode === 'present' && !!element.autoRun}
+        kernelDisplayName={notebook?.kernelDisplayName ?? notebook?.kernelspecName ?? null}
+      />
+    </div>
   );
 }
 

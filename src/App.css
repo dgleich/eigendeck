@@ -1249,7 +1249,12 @@
 
 /* Notebook element — native cell rendering, scroll-on-overflow.
    Scoped via .el-notebook + .nb-* so notebook styles don't leak
-   to the rest of the slide. */
+   to the rest of the slide.
+   Fonts flow in via CSS variables set inline on .nb-frame by
+   NotebookContent (--nb-prose-family, --nb-mono-family, --nb-scale).
+   Cells multiply their base font sizes by var(--nb-scale, 1) for
+   projection readability — bump the inspector slider for a lecture
+   hall. */
 .el-notebook { overflow: visible; }
 .el-notebook .nb-frame {
   width: 100%;
@@ -1260,7 +1265,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "PT Sans", sans-serif;
+  font-family: var(--nb-prose-family, -apple-system, BlinkMacSystemFont, "PT Sans", sans-serif);
   color: #111827;
 }
 .el-notebook .nb-header {
@@ -1298,11 +1303,11 @@
   padding: 4px 12px;
 }
 .el-notebook .nb-cell-prompt {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-  font-size: 13px;
+  font-family: var(--nb-mono-family, ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace);
+  font-size: calc(13px * var(--nb-scale, 1));
   color: #9ca3af;
   text-align: right;
-  padding-top: 6px;
+  padding-top: calc(6px * var(--nb-scale, 1));
   user-select: none;
 }
 .el-notebook .nb-cell-body { min-width: 0; }
@@ -1318,8 +1323,8 @@
   background: #f3f4f6;
   border: 1px solid #e5e7eb;
   border-radius: 3px;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-  font-size: 13px;
+  font-family: var(--nb-mono-family, ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace);
+  font-size: calc(13px * var(--nb-scale, 1));
   line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
@@ -1384,8 +1389,8 @@
 }
 .el-notebook .nb-output {
   margin: 4px 0;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-  font-size: 12px;
+  font-family: var(--nb-mono-family, ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace);
+  font-size: calc(12px * var(--nb-scale, 1));
   line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
@@ -1408,11 +1413,12 @@
   height: auto;
   display: block;
 }
-.el-notebook .nb-html { font-family: inherit; font-size: 14px; }
+.el-notebook .nb-html { font-family: inherit; font-size: calc(14px * var(--nb-scale, 1)); }
 .el-notebook .nb-plain { color: #374151; }
 
 .el-notebook .nb-markdown {
-  font-size: 14px;
+  font-family: var(--nb-prose-family, inherit);
+  font-size: calc(14px * var(--nb-scale, 1));
   line-height: 1.5;
   padding: 4px 0;
 }
@@ -1424,13 +1430,15 @@
   background: #f3f4f6;
   padding: 8px;
   border-radius: 3px;
-  font-size: 12px;
+  font-family: var(--nb-mono-family, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: calc(12px * var(--nb-scale, 1));
   overflow-x: auto;
 }
 .el-notebook .nb-markdown code {
   background: #f3f4f6;
   padding: 1px 4px;
   border-radius: 2px;
+  font-family: var(--nb-mono-family, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 0.9em;
 }
 .el-notebook .nb-markdown pre code {

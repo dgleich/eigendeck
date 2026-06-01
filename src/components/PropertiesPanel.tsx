@@ -206,6 +206,11 @@ export function PropertiesPanel() {
                 onChange={(v) => updateConfig({ defaultHypeFont: v })}
                 inheritLabel="PT Sans (default)" />
             </PropSection>
+            <PropSection label="Default Mono Font">
+              <FontSelect value={presentation.config.defaultMonoFont}
+                onChange={(v) => updateConfig({ defaultMonoFont: v })}
+                inheritLabel="Source Code Pro (default)" />
+            </PropSection>
             <PropSection label="Author">
               <input className="prop-input" value={presentation.config.author || ''}
                 onChange={(e) => updateConfig({ author: e.target.value })} />
@@ -630,6 +635,25 @@ function NotebookProperties({ element }: {
           rows={3}
           style={{ width: '100%', padding: '4px 6px', fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace', resize: 'vertical' }}
         />
+      </PropSection>
+
+      <PropSection label={`Font scale (${(element.fontScale ?? 1).toFixed(2)}×)`}>
+        <input
+          type="range"
+          min={0.5} max={4} step={0.05}
+          value={element.fontScale ?? 1}
+          onChange={(e) => {
+            const v = parseFloat(e.target.value);
+            updateElement(element.id, {
+              // 1.0 is the default — strip the field so the cascade resumes.
+              fontScale: Math.abs(v - 1) < 0.01 ? undefined : v,
+            } as Partial<typeof element>);
+          }}
+          style={{ width: '100%' }}
+        />
+        <div style={{ fontSize: 11, color: '#9ca3af' }}>
+          1× for editor preview · ~2.5× for projection
+        </div>
       </PropSection>
     </>
   );

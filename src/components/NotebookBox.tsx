@@ -37,9 +37,7 @@ export function NotebookBox({ element, zIndex, scale, isSelected, onSelect, onDe
       onPositionChange={(pos: ElementPosition) => onUpdate({ position: pos })}
       onUpdate={onUpdate}
     >
-      <div className="nb-frame">
-        <NotebookContent element={element} interactive={interacting} />
-      </div>
+      <NotebookContent element={element} interactive={interacting} />
       {!interacting && (
         <div className="nb-overlay"
           onDoubleClick={(e) => { e.stopPropagation(); setInteracting(true); }}

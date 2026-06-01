@@ -75,6 +75,7 @@ my-presentation/
 
 - `mathPreamble`: optional LaTeX preamble applied to all MathJax rendering (e.g. `\newcommand`, `\def`)
 - `defaultTitleFont` / `defaultBodyFont` / `defaultHypeFont`: optional default font package ids (see `src/lib/fonts.ts`). Available ids include `"ptsans"`, `"libertinus"`, `"libertinus-sans"`, `"lm-sans"`, `"noto-sans"`, `"source-sans"`, `"source-code"`, `"shantell"`, `"concrete-euler"`. Slides may override via `Slide.titleFont` / `bodyFont` / `hypeFont`. Missing values resolve to `"ptsans"`.
+- `defaultMonoFont`: optional default monospace font package id, used by notebook code cells. Falls back to `"source-code"` (Source Code Pro, bundled). Notebook prose cells use the body font; only code cells / outputs use this.
 - `autoReloadAssets`: optional per-presentation override for the file-watching auto-reload behavior. `"on"` or `"off"` overrides the global preference; absent means follow the global. Per-asset overrides in `assets.auto_reload` still win.
 
 ## Slide Structure
@@ -282,6 +283,9 @@ Multiple `demo-piece` elements can reference the same `assetId` with different `
 - `preamble`: optional string — setup code run before the visible cells. Useful for imports + helpers so the slide's cells stay short.
 - `autoRun`: optional boolean (default false) — when true, all visible cells execute on slide enter in PresentMode.
 - `visibleCells`: optional array of zero-indexed cell numbers — restricts which cells appear in the rendered notebook. Absent = show all cells.
+- `fontScale`: optional number (default 1.0) — multiplier on the cell base font sizes. Bump to ~2.0–2.5 for projection. Code and prose both scale.
+
+Notebook prose cells inherit the slide's body font (`Slide.bodyFont` → `PresentationConfig.defaultBodyFont` → `'ptsans'`). Notebook code cells use `PresentationConfig.defaultMonoFont` → `'source-code'` (Source Code Pro, bundled).
 
 Notebook elements render as a live, interactive Jupyter UI inside an iframe. Two kernel backends are supported (default to external):
 
