@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { useDemoUrl, invalidateAsset } from '../lib/demoAssets';
+import { NotebookBox } from './NotebookBox';
 import { useImageSrc } from '../lib/imageSrc';
 import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
@@ -115,6 +116,16 @@ export function SlideElementRenderer({
         <DemoPieceBox
           element={element} zIndex={zIndex} scale={scale}
           projectPath={projectPath} isSelected={isSelected}
+          onSelect={onSelect} onDelete={onDelete}
+          onUpdate={onUpdate}
+        />
+      );
+
+    case 'notebook':
+      return (
+        <NotebookBox
+          element={element} zIndex={zIndex} scale={scale}
+          isSelected={isSelected}
           onSelect={onSelect} onDelete={onDelete}
           onUpdate={onUpdate}
         />
@@ -700,7 +711,7 @@ function TextContent({
 // ============================================
 // Draggable + resizable box
 // ============================================
-function DraggableBox({
+export function DraggableBox({
   elementId, position: pos, zIndex, scale, className, children, isSelected,
   linkId, syncId, _linkId, _syncId, dataValign, onEdit,
   onSelect, onDelete, onPositionChange, onUpdate,

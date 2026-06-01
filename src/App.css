@@ -1247,6 +1247,142 @@
 .el-demo { overflow: visible; }
 .el-demo iframe { overflow: hidden; }
 
+/* Notebook element — native cell rendering, scroll-on-overflow.
+   Scoped via .el-notebook + .nb-* so notebook styles don't leak
+   to the rest of the slide. */
+.el-notebook { overflow: visible; }
+.el-notebook .nb-frame {
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "PT Sans", sans-serif;
+  color: #111827;
+}
+.el-notebook .nb-header {
+  flex: 0 0 auto;
+  padding: 4px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 12px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.el-notebook .nb-kernel-label {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.el-notebook .nb-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+.el-notebook .nb-status {
+  padding: 16px;
+  color: #6b7280;
+  font-style: italic;
+  font-size: 14px;
+}
+.el-notebook .nb-status.nb-error { color: #b91c1c; }
+
+.el-notebook .nb-cell {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  column-gap: 8px;
+  padding: 4px 12px;
+}
+.el-notebook .nb-cell-prompt {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  color: #9ca3af;
+  text-align: right;
+  padding-top: 6px;
+  user-select: none;
+}
+.el-notebook .nb-cell-body { min-width: 0; }
+
+.el-notebook .nb-cell-source {
+  margin: 0;
+  padding: 6px 10px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #111827;
+}
+.el-notebook .nb-cell-outputs {
+  margin-top: 4px;
+}
+.el-notebook .nb-output {
+  margin: 4px 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.el-notebook .nb-stream.nb-stdout { color: #111827; }
+.el-notebook .nb-stream.nb-stderr {
+  color: #991b1b;
+  background: #fef2f2;
+  padding: 4px 8px;
+  border-left: 3px solid #f87171;
+}
+.el-notebook .nb-error {
+  color: #b91c1c;
+  background: #fef2f2;
+  padding: 4px 8px;
+  border-left: 3px solid #b91c1c;
+}
+.el-notebook .nb-image {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+.el-notebook .nb-html { font-family: inherit; font-size: 14px; }
+.el-notebook .nb-plain { color: #374151; }
+
+.el-notebook .nb-markdown {
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 4px 0;
+}
+.el-notebook .nb-markdown h1 { font-size: 1.6em; margin: 0.3em 0; }
+.el-notebook .nb-markdown h2 { font-size: 1.4em; margin: 0.3em 0; }
+.el-notebook .nb-markdown h3 { font-size: 1.2em; margin: 0.3em 0; }
+.el-notebook .nb-markdown p { margin: 0.5em 0; }
+.el-notebook .nb-markdown pre {
+  background: #f3f4f6;
+  padding: 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  overflow-x: auto;
+}
+.el-notebook .nb-markdown code {
+  background: #f3f4f6;
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-size: 0.9em;
+}
+.el-notebook .nb-markdown pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.el-notebook .nb-overlay {
+  background: transparent;
+}
+
 /* Arrow element */
 .el-arrow .arrow-handle { display: none; }
 .el-arrow:hover .arrow-handle { display: block; }
