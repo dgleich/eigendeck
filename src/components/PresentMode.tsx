@@ -6,6 +6,7 @@ import { SpeakerPanel } from './SpeakerView';
 import { getSlideNumber } from '../types/presentation';
 import type { Slide, SlideElement, TextElement } from '../types/presentation';
 import { TextElementSvg } from './TextElementSvg';
+import { NotebookContent } from './notebook/NotebookContent';
 
 const TRANSITION_MS = 300;
 
@@ -316,6 +317,19 @@ function PresentElement({ element: el, zIndex, style }: {
 
     case 'demo-piece':
       return <PresentDemoIframe assetId={el.assetId} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} style={style} />;
+
+    case 'notebook':
+      return (
+        <div className="el-notebook" style={{
+          position: 'absolute', left: pos.x, top: pos.y,
+          width: pos.width, height: pos.height, zIndex,
+          ...style,
+        }}>
+          <div className="nb-frame">
+            <NotebookContent element={el} interactive={true} />
+          </div>
+        </div>
+      );
 
     case 'cover':
       return (
