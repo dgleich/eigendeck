@@ -1307,6 +1307,11 @@
 }
 .el-notebook .nb-cell-body { min-width: 0; }
 
+.el-notebook .nb-cell-source-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
 .el-notebook .nb-cell-source {
   margin: 0;
   padding: 6px 10px;
@@ -1319,6 +1324,60 @@
   white-space: pre-wrap;
   word-break: break-word;
   color: #111827;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.el-notebook .nb-cell-run {
+  flex: 0 0 auto;
+  width: 28px;
+  padding: 0 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  background: #fff;
+  color: #2563eb;
+  font-size: 12px;
+  cursor: pointer;
+  align-self: flex-start;
+  height: 32px;
+}
+.el-notebook .nb-cell-run:hover:not(:disabled) {
+  background: #eff6ff;
+}
+.el-notebook .nb-cell-run:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+  background: #f9fafb;
+}
+.el-notebook .nb-kernel-suffix {
+  color: #9ca3af;
+  font-weight: 400;
+  margin-left: 4px;
+}
+.el-notebook .nb-status[class*="nb-status-"] {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-style: normal;
+}
+.el-notebook .nb-status-idle { background: #d1fae5; color: #065f46; }
+.el-notebook .nb-status-busy { background: #fef3c7; color: #92400e; }
+.el-notebook .nb-status-connecting { background: #dbeafe; color: #1e40af; }
+.el-notebook .nb-status-error,
+.el-notebook .nb-status-dead { background: #fee2e2; color: #991b1b; }
+.el-notebook .nb-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #6b7280;
+}
+.el-notebook .nb-hint code {
+  background: #f3f4f6;
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-size: 11px;
+  user-select: text;
 }
 .el-notebook .nb-cell-outputs {
   margin-top: 4px;
