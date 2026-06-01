@@ -6,6 +6,7 @@ import { FONT_PACKAGES, type FontPackage } from '../lib/fonts';
 import type { VerticalAlign } from '../types/presentation';
 import { AssetSection } from './AssetSection';
 import { usePreference } from '../lib/preferences';
+import { resolveNotebookKernel } from '../lib/notebookKernel';
 
 const ARROW_COLORS = [
   '#e53e3e', '#dc2626', '#ea580c', '#16a34a',
@@ -407,6 +408,15 @@ export function PropertiesPanel() {
               <DemoPieceProperties element={selectedEl} />
             )}
 
+            {selectedEl.type === 'notebook' && (
+              <>
+                <PropSection label="Asset">
+                  <AssetSection assetId={selectedEl.assetId} elementId={selectedEl.id} />
+                </PropSection>
+                <NotebookProperties element={selectedEl} />
+              </>
+            )}
+
             {selectedEl.type === 'arrow' && (
               <>
                 <PropSection label="Color">
@@ -499,6 +509,128 @@ function DemoPieceProperties({ element }: { element: Extract<import('../types/pr
           </div>
         </PropSection>
       )}
+    </>
+  );
+}
+
+/**
+ * Inspector controls for a notebook element. Cascade-aware: empty
+ * fields fall through to deck default, then app default. Placeholder
+ * text shows the effective resolved value so the user sees what's
+ * currently in force.
+ */
+function NotebookProperties({ element }: {
+  element: Extract<import('../types/presentation').SlideElement, { type: 'notebook' }>;
+}) {
+  const { presentation, updateElement } = usePresentationStore();
+  const config = presentation.config;
+  // notebookKernel module is tiny (cascade resolver only) — static
+  // import is fine; no need to chunk-split.
+  const resolved = resolveNotebookKernel(element, config, null);
+
+  // Element-level kernel may be undefined; user changes promote it
+  // to an explicit object. Per the cascade doc — the absence of a
+  // value is meaningful (means "use deck default"), so we keep the
+  // distinction visible in the UI.
+  const elemKind = element.kernel?.kind ?? '';
+  const elemExt = element.kernel?.kind === 'external' ? element.kernel : undefined;
+
+  const setKernel = (k: typeof element.kernel | undefined) => {
+    updateElement(element.id, { kernel: k } as Partial<typeof element>);
+  };
+
+  return (
+    <>
+      <PropSection label="Kernel backend">
+        <select
+          value={elemKind}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === '') setKernel(undefined);
+            else if (v === 'external') setKernel({ kind: 'external' });
+            else if (v === 'lite') setKernel({ kind: 'lite' });
+          }}
+          style={{ width: '100%', padding: '3px 6px', fontSize: 12 }}
+        >
+          <option value="">deck default ({resolved.kind})</option>
+          <option value="external">External Jupyter server</option>
+          <option value="lite">Lite (Pyodide) — display only in v1</option>
+        </select>
+      </PropSection>
+
+      {(elemKind === 'external' || (elemKind === '' && resolved.kind === 'external')) && (
+        <>
+          <PropSection label="Server URL">
+            <input
+              type="text"
+              value={elemExt?.baseUrl ?? ''}
+              placeholder={resolved.kind === 'external' ? resolved.baseUrl : ''}
+              onChange={(e) => {
+                const v = e.target.value.trim();
+                if (!element.kernel || element.kernel.kind !== 'external') {
+                  setKernel({ kind: 'external', baseUrl: v || undefined });
+                } else {
+                  setKernel({ ...element.kernel, baseUrl: v || undefined });
+                }
+              }}
+              style={{ width: '100%', padding: '3px 6px', fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace' }}
+            />
+          </PropSection>
+          <PropSection label="Kernel name">
+            <input
+              type="text"
+              value={elemExt?.kernelName ?? ''}
+              placeholder={resolved.kind === 'external' ? resolved.kernelName : ''}
+              onChange={(e) => {
+                const v = e.target.value.trim();
+                if (!element.kernel || element.kernel.kind !== 'external') {
+                  setKernel({ kind: 'external', kernelName: v || undefined });
+                } else {
+                  setKernel({ ...element.kernel, kernelName: v || undefined });
+                }
+              }}
+              style={{ width: '100%', padding: '3px 6px', fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace' }}
+            />
+          </PropSection>
+          <PropSection label="Token (optional)">
+            <input
+              type="password"
+              value={elemExt?.token ?? ''}
+              placeholder={(resolved.kind === 'external' && resolved.token) ? '(set)' : '(none)'}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (!element.kernel || element.kernel.kind !== 'external') {
+                  setKernel({ kind: 'external', token: v || undefined });
+                } else {
+                  setKernel({ ...element.kernel, token: v || undefined });
+                }
+              }}
+              style={{ width: '100%', padding: '3px 6px', fontSize: 12 }}
+            />
+          </PropSection>
+        </>
+      )}
+
+      <PropSection label="Auto-run on slide enter">
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+          <input
+            type="checkbox"
+            checked={!!element.autoRun}
+            onChange={(e) => updateElement(element.id, { autoRun: e.target.checked } as Partial<typeof element>)}
+          />
+          Run visible cells when the slide becomes active in PresentMode
+        </label>
+      </PropSection>
+
+      <PropSection label="Preamble">
+        <textarea
+          value={element.preamble ?? ''}
+          placeholder="# code run before any cell, useful for imports + helpers"
+          onChange={(e) => updateElement(element.id, { preamble: e.target.value || undefined } as Partial<typeof element>)}
+          rows={3}
+          style={{ width: '100%', padding: '4px 6px', fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace', resize: 'vertical' }}
+        />
+      </PropSection>
     </>
   );
 }
