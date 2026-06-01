@@ -326,7 +326,7 @@ function PresentElement({ element: el, zIndex, style }: {
           ...style,
         }}>
           <div className="nb-frame">
-            <NotebookContent element={el} interactive={true} />
+            <NotebookContent element={el} interactive={true} mode="present" />
           </div>
         </div>
       );

@@ -7,7 +7,7 @@
 // accept clicks immediately in PresentMode (the editor's overlay
 // trick exists so dragging works; PresentMode has no dragging).
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CodeCell } from './CodeCell';
 import { MarkdownCell } from './MarkdownCell';
 import { RawCell } from './RawCell';
@@ -18,9 +18,13 @@ import { Cell, CellOutput } from '../../lib/notebookFormat';
 import { NotebookElement } from '../../types/presentation';
 import { usePresentationStore } from '../../store/presentation';
 
-export function NotebookContent({ element, interactive }: {
+export function NotebookContent({ element, interactive, mode = 'editor' }: {
   element: NotebookElement;
   interactive: boolean;
+  /** 'editor' suppresses autoRun (the inspector toggle is meaningful
+   *  only in PresentMode). Defaults to 'editor' so the editor can
+   *  omit the prop. */
+  mode?: 'editor' | 'present';
 }) {
   const { notebook, error, loading } = useNotebook(element.assetId);
   const config = usePresentationStore((s) => s.presentation?.config);
@@ -48,6 +52,8 @@ export function NotebookContent({ element, interactive }: {
       error={error}
       interactive={interactive}
       resolved={resolved}
+      preamble={element.preamble}
+      autoRun={mode === 'present' && !!element.autoRun}
       kernelDisplayName={notebook?.kernelDisplayName ?? notebook?.kernelspecName ?? null}
     />
   );
@@ -60,18 +66,25 @@ interface CellRunState {
 }
 
 function ExternalKernelBody({
-  cells, loading, error, interactive, resolved, kernelDisplayName,
+  cells, loading, error, interactive, resolved, preamble, autoRun, kernelDisplayName,
 }: {
   cells: Cell[];
   loading: boolean; error: Error | null;
   interactive: boolean;
   resolved: ResolvedExternal;
+  preamble: string | undefined;
+  autoRun: boolean;
   kernelDisplayName: string | null;
 }) {
   const kernel = useKernel(resolved);
   const [runState, setRunState] = useState<Map<number, CellRunState>>(new Map());
   const accRef = useRef(runState);
   accRef.current = runState;
+  // Track whether preamble has fired in the current kernel session.
+  // Reset to false whenever the kernel reconnects (which happens on
+  // resolved.* change — see useKernel's effect dep).
+  const preambleFiredRef = useRef(false);
+  useEffect(() => { preambleFiredRef.current = false; }, [resolved.baseUrl, resolved.token, resolved.kernelName]);
 
   const setCellState = useCallback(
     (index: number, patch: Partial<CellRunState> | ((prev: CellRunState | undefined) => CellRunState)) => {
@@ -92,6 +105,14 @@ function ExternalKernelBody({
   const runOne = useCallback(async (index: number, source: string) => {
     setCellState(index, { outputs: [], executionCount: '*', running: true });
     try {
+      // Preamble fires once per kernel session, BEFORE the first cell.
+      // Silent execute (no callbacks wired) — its outputs aren't user-
+      // facing; only its side effects on the kernel namespace are.
+      if (preamble && !preambleFiredRef.current) {
+        preambleFiredRef.current = true;
+        const ph = await kernel.runCell(preamble, {});
+        await ph.done;
+      }
       const handle = await kernel.runCell(source, {
         onStream: (s) => setCellState(index, (prev) => {
           const outs = prev?.outputs ? [...prev.outputs] : [];
@@ -134,7 +155,27 @@ function ExternalKernelBody({
         running: false,
       }));
     }
-  }, [kernel, setCellState]);
+  }, [kernel, setCellState, preamble]);
+
+  // autoRun: when active in PresentMode and the element has autoRun
+  // set, fire all visible code cells in order on mount. Each call
+  // waits for the previous to finish so output ordering matches the
+  // notebook's natural top-to-bottom flow.
+  useEffect(() => {
+    if (!autoRun) return;
+    let cancelled = false;
+    (async () => {
+      for (const c of cells) {
+        if (cancelled) break;
+        if (c.kind !== 'code') continue;
+        await runOne(c.index, c.source);
+      }
+    })();
+    return () => { cancelled = true; };
+    // Intentionally only depends on autoRun + element identity (cells
+    // ref changes on every parse; we don't want to retrigger).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRun]);
 
   return (
     <>
