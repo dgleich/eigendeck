@@ -181,3 +181,31 @@ Defined in `src/lib/themes.ts` — single file, easy to modify. Maps preset name
 - `Cmd+E` for center text (no native accelerator)
 - `Cmd+Shift+E` for Export to HTML
 - `Cmd+Shift+V` handled in JS (paste plain text), menu item has no accelerator to avoid conflict
+
+## Notebooks
+
+### Native cell rendering — NOT iframe with JupyterLab
+- Cells are rendered as styled HTML in `<NotebookContent>` (header + scrollable cell list). Code cells use a static `<pre>`, markdown cells use `marked`, outputs render the MIME bundle natively (PNG / SVG / HTML / plain).
+- The other plausible option — embedding a built JupyterLite distribution in an iframe — was rejected. Even though it'd give a free authoring UX (Monaco editor, Ctrl-S to save), the costs were too high: ~30 MB bundle, ~30 s cold boot for the JupyterLab UI, "click into iframe to scroll" feels foreign, and styling/theming becomes a constant fight. Eigendeck's pattern for math, images, text, and arrows is "we own the rendering"; notebooks fit that pattern.
+- Iframes are still appropriate for demos (need HTML/JS isolation, the demo is a black box). Notebooks are JSON; we control the format and can render it ourselves.
+
+### On-demand kernel boot
+- No WebSocket connection until the user clicks ▶ on a code cell. Scrolling a slide with a notebook on it never starts a kernel. Cells display fine without one.
+- `useKernel` is the lazy-connect hook; first `runCell()` triggers `startKernel()` and `openChannels()` together. Per-NotebookBox kernel — independent across elements.
+- Tradeoff accepted: ~1 s extra latency on the first ▶ click. Worth it to avoid every slide-with-a-notebook spinning up a process at slide-enter time.
+
+### Dual-backend type, single-backend runtime (v1)
+- `NotebookElement.kernel` is `{ kind: 'external', baseUrl?, kernelName?, token? } | { kind: 'lite' }`. Both branches exist in the type.
+- **External** (REST + WS to a user-run `jupyter server`) is wired end-to-end. Any installed kernel works — Python, Julia, R, Rust, etc.
+- **Lite** (JupyterLite/Pyodide in-WebView) has a placeholder banner in v1 and falls back to display-only. The data model is dual-backend-ready; v1.5 will implement the lite execution path (Pyodide-in-Worker, direct from main app — no iframe).
+- Per the "Preferences cascade" section above, `kernel` is default-setting: per-element override → deck default → app default `{ external, localhost:8888, python3 }`. Fields cascade independently (a deck can set `baseUrl` while elements override only `kernelName`).
+
+### Token storage — pragmatic, not permanent
+- Authentication tokens currently live on the element (or `PresentationConfig.notebookKernel.token`). For localhost-only v1 workflows this is fine.
+- Long-term concern: `.eigendeck` files are git-committable; tokens shouldn't be. v2 moves auth to an app-preferences server registry keyed by baseUrl. The element/deck only references "the server at this URL"; the token comes from the local registry.
+- v1 type accepts the token field directly because building the server-registry first would block shipping; the cascade resolver already prefers element → deck → app default, so the migration to a registry-backed app default doesn't change the element schema.
+
+### Live outputs are session-scoped (v1)
+- Clicking ▶ shows fresh output in the cell, but the output is not written back to the .ipynb asset. Reloading the slide (or reopening the deck) loses live outputs and shows whatever the .ipynb on disk has.
+- This matches editor conventions (text edits persist, runtime state doesn't) but probably needs an explicit "Save outputs back to notebook" button in v1.5 — presenters who want their demo's output baked into the saved deck need that.
+- Source edits (when we wire in-eigendeck editing) WILL persist back to the asset — source is user intent, outputs are runtime.
