@@ -199,11 +199,11 @@ export interface NotebookElement extends BaseElement {
   /** Optional cell whitelist (zero-indexed). When absent, all cells
    *  from the .ipynb are shown. */
   visibleCells?: number[];
-  /** Multiplier on the notebook's base font size. Default 1.0.
-   *  Projection-readability knob — bump to ~2.0–2.5 for a lecture
-   *  hall, leave at 1.0 for editor preview. Applies to both code
-   *  and prose. */
-  fontScale?: number;
+  /** Base font size in slide-pixels for code cell source. Default 32.
+   *  Other notebook text (markdown, outputs, prompts) is rendered
+   *  proportionally to this base. Presets: 24 (squintable), 32
+   *  (readable, default), 48 (large). */
+  fontSize?: number;
 }
 
 export type SlideElement =

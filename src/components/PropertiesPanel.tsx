@@ -637,22 +637,62 @@ function NotebookProperties({ element }: {
         />
       </PropSection>
 
-      <PropSection label={`Font scale (${(element.fontScale ?? 1).toFixed(2)}×)`}>
-        <input
-          type="range"
-          min={0.5} max={4} step={0.05}
-          value={element.fontScale ?? 1}
-          onChange={(e) => {
-            const v = parseFloat(e.target.value);
-            updateElement(element.id, {
-              // 1.0 is the default — strip the field so the cascade resumes.
-              fontScale: Math.abs(v - 1) < 0.01 ? undefined : v,
-            } as Partial<typeof element>);
-          }}
-          style={{ width: '100%' }}
-        />
-        <div style={{ fontSize: 11, color: '#9ca3af' }}>
-          1× for editor preview · ~2.5× for projection
+      <PropSection label={`Cell size (${element.fontSize ?? 32}px)`}>
+        {/* Named presets reuse the existing TextPreset size vocabulary
+            (footnote 24 / annotation 32 / body 48) so users see the
+            same names they already know from text elements. The
+            visual size of each button label IS the size preview. */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+          {([
+            { label: 'footnote', px: 24 },
+            { label: 'note',     px: 32 },
+            { label: 'body',     px: 48 },
+          ] as const).map(({ label, px }) => {
+            const active = (element.fontSize ?? 32) === px;
+            return (
+              <button key={label}
+                className="prop-zbtn"
+                style={{
+                  flex: 1, padding: '6px 4px',
+                  background: active ? '#dbeafe' : '#fff',
+                  border: '1px solid ' + (active ? '#2563eb' : '#d1d5db'),
+                  borderRadius: 3, cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: 2,
+                }}
+                onClick={() => updateElement(element.id, {
+                  // 32 is the default — strip the field so the cascade resumes.
+                  fontSize: px === 32 ? undefined : px,
+                } as Partial<typeof element>)}
+                title={`${label} — ${px}px`}
+              >
+                <span style={{ fontFamily: 'ui-monospace, Menlo, monospace',
+                               fontSize: Math.max(10, Math.min(px / 2, 22)),
+                               lineHeight: 1, color: active ? '#1e40af' : '#374151' }}>
+                  Aa
+                </span>
+                <span style={{ fontSize: 10, color: '#6b7280' }}>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 11, color: '#6b7280' }}>Custom:</span>
+          <input
+            type="number"
+            min={8} max={120} step={1}
+            value={element.fontSize ?? 32}
+            onChange={(e) => {
+              const v = parseInt(e.target.value, 10);
+              if (Number.isFinite(v) && v >= 8 && v <= 120) {
+                updateElement(element.id, {
+                  fontSize: v === 32 ? undefined : v,
+                } as Partial<typeof element>);
+              }
+            }}
+            style={{ width: 60, padding: '2px 6px', fontSize: 12 }}
+          />
+          <span style={{ fontSize: 11, color: '#9ca3af' }}>px</span>
         </div>
       </PropSection>
     </>

@@ -35,13 +35,17 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
   // Typography resolution. CSS variables flow through to .nb-* rules
   // via inline style on the frame wrapper below — keeps the CSS file
   // generic while the per-element resolution stays in TS.
+  // --nb-base-size is the code-source size in slide-pixels; other
+  // text (markdown, outputs, prompts) is sized proportionally to it
+  // via CSS calc() so the visual hierarchy stays consistent across
+  // size presets.
   const proseFont = fontForNotebookProse(slide, config);
   const codeFont = fontForNotebookCode(config);
-  const scale = element.fontScale ?? 1.0;
+  const baseSize = element.fontSize ?? 32;
   const fontStyle: React.CSSProperties = {
     '--nb-prose-family': proseFont.family,
     '--nb-mono-family': codeFont.family,
-    '--nb-scale': String(scale),
+    '--nb-base-size': `${baseSize}px`,
   } as React.CSSProperties;
 
   const cells: Cell[] = notebook

@@ -283,7 +283,7 @@ Multiple `demo-piece` elements can reference the same `assetId` with different `
 - `preamble`: optional string — setup code run before the visible cells. Useful for imports + helpers so the slide's cells stay short.
 - `autoRun`: optional boolean (default false) — when true, all visible cells execute on slide enter in PresentMode.
 - `visibleCells`: optional array of zero-indexed cell numbers — restricts which cells appear in the rendered notebook. Absent = show all cells.
-- `fontScale`: optional number (default 1.0) — multiplier on the cell base font sizes. Bump to ~2.0–2.5 for projection. Code and prose both scale.
+- `fontSize`: optional number (default 32, slide-pixels) — base font size for code cell source. Other notebook text (markdown, outputs, prompts) is rendered proportionally to this. Named presets (matching `TextPreset` sizes): `footnote` = 24, `note` = 32, `body` = 48. Custom values 8–120 also accepted via the inspector.
 
 Notebook prose cells inherit the slide's body font (`Slide.bodyFont` → `PresentationConfig.defaultBodyFont` → `'ptsans'`). Notebook code cells use `PresentationConfig.defaultMonoFont` → `'source-code'` (Source Code Pro, bundled).
 

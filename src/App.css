@@ -1251,10 +1251,11 @@
    Scoped via .el-notebook + .nb-* so notebook styles don't leak
    to the rest of the slide.
    Fonts flow in via CSS variables set inline on .nb-frame by
-   NotebookContent (--nb-prose-family, --nb-mono-family, --nb-scale).
-   Cells multiply their base font sizes by var(--nb-scale, 1) for
-   projection readability — bump the inspector slider for a lecture
-   hall. */
+   NotebookContent: --nb-prose-family, --nb-mono-family,
+   --nb-base-size (px). The base size IS the code-source size;
+   markdown / outputs / prompts are sized as ratios of it via
+   calc() so the visual hierarchy stays consistent across the
+   24/32/48 px presets the inspector exposes. */
 .el-notebook { overflow: visible; }
 .el-notebook .nb-frame {
   width: 100%;
@@ -1304,10 +1305,11 @@
 }
 .el-notebook .nb-cell-prompt {
   font-family: var(--nb-mono-family, ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace);
-  font-size: calc(13px * var(--nb-scale, 1));
+  /* Prompt matches source size (1:1 with base). */
+  font-size: var(--nb-base-size, 32px);
   color: #9ca3af;
   text-align: right;
-  padding-top: calc(6px * var(--nb-scale, 1));
+  padding-top: calc(var(--nb-base-size, 32px) * 0.19);
   user-select: none;
 }
 .el-notebook .nb-cell-body { min-width: 0; }
@@ -1319,12 +1321,12 @@
 }
 .el-notebook .nb-cell-source {
   margin: 0;
-  padding: 6px 10px;
+  padding: calc(var(--nb-base-size, 32px) * 0.19) calc(var(--nb-base-size, 32px) * 0.31);
   background: #f3f4f6;
   border: 1px solid #e5e7eb;
   border-radius: 3px;
   font-family: var(--nb-mono-family, ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace);
-  font-size: calc(13px * var(--nb-scale, 1));
+  font-size: var(--nb-base-size, 32px);
   line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
@@ -1390,7 +1392,8 @@
 .el-notebook .nb-output {
   margin: 4px 0;
   font-family: var(--nb-mono-family, ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace);
-  font-size: calc(12px * var(--nb-scale, 1));
+  /* Output is slightly smaller than source for visual hierarchy (12/13 ratio). */
+  font-size: calc(var(--nb-base-size, 32px) * 0.92);
   line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
@@ -1413,12 +1416,14 @@
   height: auto;
   display: block;
 }
-.el-notebook .nb-html { font-family: inherit; font-size: calc(14px * var(--nb-scale, 1)); }
+.el-notebook .nb-html { font-family: inherit; font-size: calc(var(--nb-base-size, 32px) * 1.08); }
 .el-notebook .nb-plain { color: #374151; }
 
 .el-notebook .nb-markdown {
   font-family: var(--nb-prose-family, inherit);
-  font-size: calc(14px * var(--nb-scale, 1));
+  /* Markdown is slightly bigger than source so prose reads as the
+     narrative layer above the code (14/13 ratio). */
+  font-size: calc(var(--nb-base-size, 32px) * 1.08);
   line-height: 1.5;
   padding: 4px 0;
 }
@@ -1428,10 +1433,10 @@
 .el-notebook .nb-markdown p { margin: 0.5em 0; }
 .el-notebook .nb-markdown pre {
   background: #f3f4f6;
-  padding: 8px;
+  padding: calc(var(--nb-base-size, 32px) * 0.25);
   border-radius: 3px;
   font-family: var(--nb-mono-family, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: calc(12px * var(--nb-scale, 1));
+  font-size: calc(var(--nb-base-size, 32px) * 0.92);
   overflow-x: auto;
 }
 .el-notebook .nb-markdown code {
