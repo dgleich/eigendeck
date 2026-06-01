@@ -1057,6 +1057,33 @@ function App() {
                 console.error('Failed to add demo:', err);
               }
             }}>+ Demo</button>
+            <button title="Add Jupyter notebook" onClick={async () => {
+              const { open } = await import('@tauri-apps/plugin-dialog');
+              const selected = await open({ title: 'Select Notebook', filters: [{ name: 'Notebook', extensions: ['ipynb'] }] });
+              if (!selected) return;
+              const fullPath = selected as string;
+              const relativePath = relPath(store.projectPath, fullPath);
+              try {
+                const { readFile } = await import('@tauri-apps/plugin-fs');
+                const bytes = await readFile(fullPath);
+                // Track the source link so the file watcher reloads
+                // when the user re-saves the notebook from JupyterLab.
+                const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
+                const r = await storeAssetWithCollisionCheck({
+                  path: relativePath, data: bytes,
+                  mimeType: 'application/x-ipynb+json',
+                  externalPath: relativePath, externalMtime: null,
+                });
+                if (r.cancelled) return;
+                store.addElement({
+                  id: crypto.randomUUID(), type: 'notebook',
+                  assetId: r.assetId,
+                  position: { x: 80, y: 200, width: 1760, height: 700 },
+                });
+              } catch (err) {
+                console.error('Failed to add notebook:', err);
+              }
+            }}>+ Notebook</button>
           </div>
           <SlideEditor />
           <NotesPanel />

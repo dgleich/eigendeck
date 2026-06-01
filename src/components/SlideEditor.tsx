@@ -457,6 +457,7 @@ export function SlideEditor() {
               const name = fullPath.split('/').pop() || '';
               const isImage = /\.(png|jpg|jpeg|gif|svg|webp|pdf)$/i.test(name);
               const isHtml = /\.html?$/i.test(name);
+              const isIpynb = /\.ipynb$/i.test(name);
 
               if (isImage) {
                 try {
@@ -550,6 +551,28 @@ export function SlideEditor() {
                     });
                   }
                 } catch (err) { console.error('Failed to handle dropped HTML:', err); }
+              } else if (isIpynb) {
+                try {
+                  const { readFile } = await import('@tauri-apps/plugin-fs');
+                  const relativePath = relPath(store.projectPath, fullPath);
+                  const bytes = await readFile(fullPath);
+                  // .ipynb is JSON; store as application/x-ipynb+json so
+                  // isNotebookFile recognizes the asset on later loads.
+                  // externalPath set so the file-watcher reloads the
+                  // notebook when the user edits in JupyterLab/VSCode.
+                  const { storeAssetWithCollisionCheck } = await import('../lib/assetInsert');
+                  const r = await storeAssetWithCollisionCheck({
+                    path: relativePath, data: bytes,
+                    mimeType: 'application/x-ipynb+json',
+                    externalPath: relativePath, externalMtime: null,
+                  });
+                  if (r.cancelled) return;
+                  store.addElement({
+                    id: crypto.randomUUID(), type: 'notebook',
+                    assetId: r.assetId,
+                    position: { x: 80, y: 200, width: 1760, height: 700 },
+                  });
+                } catch (err) { console.error('Failed to handle dropped notebook:', err); }
               }
             }
           }
