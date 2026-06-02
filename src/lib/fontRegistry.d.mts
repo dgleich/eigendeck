@@ -44,12 +44,15 @@ export interface MonoFontPackage {
   id: string;
   label: string;
   family: string;
+  files: FontFiles;
   license?: string;
   source?: string;
   description?: string;
 }
 
 export const MONO_FONT_PACKAGES: MonoFontPackage[];
+export const MONO_FONT_PACKAGE_MAP: Record<string, MonoFontPackage>;
+export function resolveMonoFontPackage(id: string | undefined): MonoFontPackage;
 
 export const FONT_PACKAGES: FontPackage[];
 export const FONT_PACKAGE_MAP: Record<string, FontPackage>;

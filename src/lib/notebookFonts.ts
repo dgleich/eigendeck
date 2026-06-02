@@ -12,7 +12,7 @@
 // typography without per-element wiring.
 
 import {
-  MONO_FONT_PACKAGES, resolveFontPackage,
+  MONO_FONT_PACKAGES, resolveFontPackage, resolveMonoFontPackage,
   type FontPackage, type MonoFontPackage,
 } from './fonts';
 import type { Slide, PresentationConfig } from '../types/presentation';
@@ -30,11 +30,11 @@ export function fontForNotebookProse(
 
 export function fontForNotebookCode(
   config: Pick<PresentationConfig, 'defaultMonoFont'> | null | undefined,
-): FontPackage {
-  // resolveFontPackage falls back to 'ptsans' if the id is absent —
-  // that's wrong for code. Explicit fallback to 'source-code' here.
+): MonoFontPackage {
+  // Resolves through MONO_FONT_PACKAGES (separate registry). Falls
+  // back to source-code if the id is absent or not registered.
   const id = config?.defaultMonoFont ?? DEFAULT_MONO_ID;
-  return resolveFontPackage(id);
+  return resolveMonoFontPackage(id);
 }
 
 /** List the font packages eligible to be used as the deck-level

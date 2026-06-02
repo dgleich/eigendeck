@@ -168,11 +168,108 @@ export const MONO_FONT_PACKAGES = [
     id: 'source-code',
     label: 'Source Code Pro',
     family: "'Source Code Pro', monospace",
+    files: {
+      kind: 'variable',
+      upright: 'variable.ttf', italic: 'variable-italic.ttf',
+      weightRange: [200, 900],
+    },
     license: 'OFL-1.1',
     source: 'https://github.com/adobe-fonts/source-code-pro',
     description: 'Adobe Source Code Pro — clean, balanced coding face',
   },
+  {
+    id: 'jetbrains-mono',
+    label: 'JetBrains Mono',
+    family: "'JetBrains Mono', monospace",
+    files: {
+      kind: 'static', ext: 'ttf',
+      regular: 'regular.ttf', bold: 'bold.ttf',
+      italic: 'italic.ttf', boldItalic: 'bold-italic.ttf',
+    },
+    license: 'OFL-1.1',
+    source: 'https://github.com/JetBrains/JetBrainsMono',
+    description: 'JetBrains coding font — popular modern default',
+  },
+  {
+    id: 'fira-code',
+    label: 'Fira Code',
+    family: "'Fira Code', monospace",
+    files: {
+      kind: 'variable',
+      upright: 'variable.ttf',
+      weightRange: [300, 700],
+    },
+    license: 'OFL-1.1',
+    source: 'https://github.com/tonsky/FiraCode',
+    description: "Mozilla's Fira — known for programming ligatures",
+  },
+  {
+    id: 'ibm-plex-mono',
+    label: 'IBM Plex Mono',
+    family: "'IBM Plex Mono', monospace",
+    files: {
+      kind: 'static', ext: 'ttf',
+      regular: 'regular.ttf', bold: 'bold.ttf',
+      italic: 'italic.ttf', boldItalic: 'bold-italic.ttf',
+    },
+    license: 'OFL-1.1',
+    source: 'https://github.com/IBM/plex',
+    description: 'IBM Plex Mono — humanist, pairs with PT Sans',
+  },
+  {
+    id: 'inconsolata',
+    label: 'Inconsolata',
+    family: "'Inconsolata', monospace",
+    files: {
+      kind: 'variable',
+      upright: 'variable.ttf',
+      weightRange: [200, 900],
+    },
+    license: 'OFL-1.1',
+    source: 'https://github.com/googlefonts/inconsolata',
+    description: 'Classic narrow coding font, popular in academia',
+  },
+  {
+    id: 'pt-mono',
+    label: 'PT Mono',
+    family: "'PT Mono', monospace",
+    files: {
+      kind: 'static', ext: 'ttf',
+      regular: 'regular.ttf',
+    },
+    license: 'OFL-1.1',
+    source: 'https://fonts.google.com/specimen/PT+Mono',
+    description: 'ParaType — pairs naturally with PT Sans body font',
+  },
+  {
+    id: 'cmu-typewriter',
+    label: 'CMU Typewriter',
+    family: "'CMU Typewriter Text', monospace",
+    files: {
+      kind: 'static', ext: 'ttf',
+      regular: 'regular.ttf', bold: 'bold.ttf',
+      italic: 'italic.ttf', boldItalic: 'bold-italic.ttf',
+    },
+    license: 'OFL-1.1',
+    source: 'https://sourceforge.net/projects/cm-unicode/',
+    description: 'Computer Modern Typewriter — the LaTeX classic; pairs with concrete-euler',
+  },
+  // Iosevka considered but excluded — TTF bundle is ~43 MB across
+  // four variants, vastly larger than the rest of eigendeck's font
+  // collection combined. Revisit if a subset / smaller stylistic
+  // variant becomes practical.
 ];
+
+export const MONO_FONT_PACKAGE_MAP = Object.fromEntries(
+  MONO_FONT_PACKAGES.map((p) => [p.id, p])
+);
+
+const DEFAULT_MONO_ID = 'source-code';
+
+/** Look up a mono font by id with fallback to source-code. */
+export function resolveMonoFontPackage(id) {
+  return MONO_FONT_PACKAGE_MAP[id] || MONO_FONT_PACKAGE_MAP[DEFAULT_MONO_ID];
+}
 
 /** Resolve a font id to a FontPackage, falling back to default. */
 export function resolveFontPackage(id) {
@@ -270,9 +367,14 @@ export function fontFaceCSSForPackage(pkg) {
   return lines.join('\n');
 }
 
-/** Generate the full @font-face block for all packages. */
+/** Generate the full @font-face block for all packages — text font
+ *  registry AND the separate mono font registry. A font that appears
+ *  in BOTH (e.g. Source Code Pro) emits its declarations twice; the
+ *  browser dedupes identical @font-face entries so this is harmless. */
 export function allFontFacesCSS() {
-  return FONT_PACKAGES.map(fontFaceCSSForPackage).join('\n');
+  return [...FONT_PACKAGES, ...MONO_FONT_PACKAGES]
+    .map(fontFaceCSSForPackage)
+    .join('\n');
 }
 
 /**
