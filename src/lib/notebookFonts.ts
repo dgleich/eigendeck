@@ -12,7 +12,8 @@
 // typography without per-element wiring.
 
 import {
-  FONT_PACKAGES, resolveFontPackage, type FontPackage,
+  MONO_FONT_PACKAGES, resolveFontPackage,
+  type FontPackage, type MonoFontPackage,
 } from './fonts';
 import type { Slide, PresentationConfig } from '../types/presentation';
 
@@ -37,15 +38,14 @@ export function fontForNotebookCode(
 }
 
 /** List the font packages eligible to be used as the deck-level
- *  monospace default. v1 returns the whole set — the picker will
- *  filter visually. Future: tag packages as `kind: 'mono' | 'sans' |
- *  'serif'` in the registry and filter here. */
-export function listMonoEligible(): FontPackage[] {
-  // For now, return all packages but with 'source-code' first.
-  const all = [...FONT_PACKAGES];
-  return all.sort((a, b) => {
+ *  monospace default. Reads from MONO_FONT_PACKAGES — its own
+ *  registry, distinct from the text font list. Source Code Pro
+ *  sorts first as the canonical default; other mono fonts (when
+ *  added to MONO_FONT_PACKAGES) follow alphabetically. */
+export function listMonoEligible(): MonoFontPackage[] {
+  return [...MONO_FONT_PACKAGES].sort((a, b) => {
     if (a.id === DEFAULT_MONO_ID) return -1;
     if (b.id === DEFAULT_MONO_ID) return 1;
-    return 0;
+    return a.label.localeCompare(b.label);
   });
 }

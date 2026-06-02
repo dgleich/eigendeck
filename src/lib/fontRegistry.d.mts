@@ -32,6 +32,25 @@ export interface FontPackage {
   description?: string;
 }
 
+/** Separate registry for code-cell-only fonts. Distinct from
+ *  FONT_PACKAGES because mono fonts in eigendeck are a different
+ *  concept from text fonts: no math-bundle pairing, no
+ *  narrow/title/hype roles, and the picker that shows them is its
+ *  own UI surface. A font CAN appear in both registries (e.g.
+ *  Source Code Pro currently does, since it ships with a Latin
+ *  Modern math bundle and remains usable as a body font), but the
+ *  two lists are maintained independently. */
+export interface MonoFontPackage {
+  id: string;
+  label: string;
+  family: string;
+  license?: string;
+  source?: string;
+  description?: string;
+}
+
+export const MONO_FONT_PACKAGES: MonoFontPackage[];
+
 export const FONT_PACKAGES: FontPackage[];
 export const FONT_PACKAGE_MAP: Record<string, FontPackage>;
 export const DEFAULT_FONT_ID: string;

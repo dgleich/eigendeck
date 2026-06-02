@@ -98,7 +98,7 @@ export const FONT_PACKAGES = [
   },
   {
     id: 'source-code',
-    label: 'Source Code',
+    label: 'Source Code Pro',
     family: "'Source Code Pro', monospace",
     mathjaxBundle: 'tex-mml-svg-mathjax-source-code-nosre.js',
     files: {
@@ -146,6 +146,33 @@ export const FONT_PACKAGE_MAP = Object.fromEntries(
 );
 
 export const DEFAULT_FONT_ID = 'ptsans';
+
+/**
+ * Separate registry for code-cell-only fonts. The Default Mono Font
+ * picker (Inspector + Settings) reads from this list, NOT from a
+ * filter applied to FONT_PACKAGES. Reason: mono fonts are their own
+ * concept in eigendeck — they pair with code cells, don't take title/
+ * body/hype roles, and don't ship math bundles. Keeping them as a
+ * separate list lets us add coding-focused fonts (JetBrains Mono,
+ * Fira Code, CMU Typewriter, etc.) without polluting the text font
+ * picker.
+ *
+ * A font CAN appear in both registries — Source Code Pro currently
+ * does, since it also ships a Latin Modern math bundle in
+ * FONT_PACKAGES and remains valid as a body font. That dual listing
+ * is a convenience, not a requirement.
+ */
+/** @type {import('./fontRegistry.mjs').MonoFontPackage[]} */
+export const MONO_FONT_PACKAGES = [
+  {
+    id: 'source-code',
+    label: 'Source Code Pro',
+    family: "'Source Code Pro', monospace",
+    license: 'OFL-1.1',
+    source: 'https://github.com/adobe-fonts/source-code-pro',
+    description: 'Adobe Source Code Pro — clean, balanced coding face',
+  },
+];
 
 /** Resolve a font id to a FontPackage, falling back to default. */
 export function resolveFontPackage(id) {

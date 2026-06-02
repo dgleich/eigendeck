@@ -5,7 +5,7 @@
 // truth with the app. This file re-exports that surface unchanged and adds the
 // two helpers that need a browser/Tauri context (fetch + document).
 
-export type { FontRole, FontFiles, FontPackage } from './fontRegistry.mjs';
+export type { FontRole, FontFiles, FontPackage, MonoFontPackage } from './fontRegistry.mjs';
 
 import {
   resolveFontPackage,
@@ -19,6 +19,7 @@ import {
 export {
   FONT_PACKAGES,
   FONT_PACKAGE_MAP,
+  MONO_FONT_PACKAGES,
   DEFAULT_FONT_ID,
   resolveFontPackage,
   fontForPreset,

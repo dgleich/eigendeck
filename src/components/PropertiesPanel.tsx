@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, type NamedSize } from '../types/presentation';
 import { BUILT_IN_THEMES } from '../lib/themes';
-import { FONT_PACKAGES, type FontPackage } from '../lib/fonts';
+import { FONT_PACKAGES } from '../lib/fonts';
+import { listMonoEligible } from '../lib/notebookFonts';
 import type { VerticalAlign } from '../types/presentation';
 import { AssetSection } from './AssetSection';
 import { usePreference } from '../lib/preferences';
@@ -101,24 +102,32 @@ export function PropertiesPanel() {
 
   // Reusable font dropdown. `inheritLabel` is shown as the empty option;
   // when set to undefined the value falls through to the parent default.
-  const FontSelect = ({ value, onChange, inheritLabel }: {
+  // `packages` lets the caller substitute a different registry (e.g.
+  // MONO_FONT_PACKAGES for the Default Mono Font picker). Defaults to
+  // the full text font registry.
+  const FontSelect = ({ value, onChange, inheritLabel, packages }: {
     value: string | undefined;
     onChange: (v: string | undefined) => void;
     inheritLabel?: string;
-  }) => (
-    <select className="prop-select" value={value || ''}
-      onChange={(e) => onChange(e.target.value || undefined)}>
-      {inheritLabel && <option value="">{inheritLabel}</option>}
-      {FONT_PACKAGES.map((p: FontPackage) => (
-        // Setting font-family on <option> is honored on macOS Safari/Chrome
-        // for the dropdown panel (not the closed select), giving a visual
-        // preview when the menu is open.
-        <option key={p.id} value={p.id} style={{ fontFamily: p.family }}>
-          {p.label}
-        </option>
-      ))}
-    </select>
-  );
+    packages?: Array<{ id: string; label: string; family: string }>;
+  }) => {
+    const list: Array<{ id: string; label: string; family: string }> =
+      packages ?? FONT_PACKAGES;
+    return (
+      <select className="prop-select" value={value || ''}
+        onChange={(e) => onChange(e.target.value || undefined)}>
+        {inheritLabel && <option value="">{inheritLabel}</option>}
+        {list.map((p) => (
+          // Setting font-family on <option> is honored on macOS Safari/Chrome
+          // for the dropdown panel (not the closed select), giving a visual
+          // preview when the menu is open.
+          <option key={p.id} value={p.id} style={{ fontFamily: p.family }}>
+            {p.label}
+          </option>
+        ))}
+      </select>
+    );
+  };
 
   return (
     <div className="properties-panel">
@@ -209,7 +218,8 @@ export function PropertiesPanel() {
             <PropSection label="Default Mono Font">
               <FontSelect value={presentation.config.defaultMonoFont}
                 onChange={(v) => updateConfig({ defaultMonoFont: v })}
-                inheritLabel="Source Code Pro (default)" />
+                inheritLabel="Source Code Pro (default)"
+                packages={listMonoEligible()} />
             </PropSection>
             <PropSection label="Text sizes (px)">
               {/* Deck-level type scale — overrides DEFAULT_TEXT_SIZES.
