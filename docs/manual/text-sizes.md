@@ -19,9 +19,14 @@ the Presentation section, and edit the spinner for the size you want
 to adjust. The override propagates to every element in the deck that
 uses that named size.
 
-You can also override the size on an individual element via its own
-font-size field. This is the escape hatch for the cases where the
-named scale doesn't fit.
+You can also override the size on an individual element. Every
+sized element — text and notebook — shows the same font-size widget
+in its inspector: three named buttons (`body / note / footnote`)
+plus a numeric spinner. Click a name to bind the element to the
+deck's scale at that size, or type a custom px value to pin it.
+This is the escape hatch for cases where the named scale doesn't
+fit, and it's the same control everywhere so you only learn it
+once.
 
 There is **no slide-level text size override**. This is intentional.
 
@@ -65,10 +70,10 @@ a deliberate exception."
    for a 1920×1080 projection at conference distance.
 
 2. **Use the named sizes everywhere.** Text presets already pick from
-   the scale; you don't need to think about it. Notebook elements
-   show three named buttons (`body / note / footnote`) in their
-   font-size picker — click one to bind that element to the deck's
-   scale.
+   the scale; you don't need to think about it. The same `body /
+   note / footnote` picker appears on every sized element — click a
+   name to bind that element to the deck's scale (overriding the
+   preset for text, or the default `note` for notebooks).
 
 3. **Reach for the numeric override sparingly.** If you find yourself
    typing a custom px value on more than two or three elements per

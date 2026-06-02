@@ -140,7 +140,8 @@ All elements share these base fields:
 | `hype`       | 96       | PT Sans (or hypeFont) | bold     | normal    | #e53e3e | `y:400, h:280` (oversized callouts) |
 
 **Optional overrides** (only include if different from preset default):
-- `fontSize`: number (in slide units, 1920x1080 coordinate space)
+- `fontSizeName`: one of `"footnote"`, `"note"`, `"body"` — picks a named size from the deck's type scale, overriding the preset's default size. `"title"` and `"hype"` are intentionally excluded; the numeric `fontSize` covers those cases.
+- `fontSize`: number (in slide units, 1920×1080 coordinate space). Beats `fontSizeName` when both set.
 - `fontFamily`: string (e.g., `"'PT Sans Narrow', sans-serif"`)
 - `color`: string (CSS color, e.g., `"#dc2626"`)
 - `verticalAlign`: `"top"` | `"middle"` | `"bottom"` — vertical text alignment within the box. Title and footnote default to `"bottom"`.

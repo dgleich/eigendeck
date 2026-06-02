@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
-import { resolveNamedSize, effectiveTextPresetSize, DEFAULT_TEXT_SIZES, type NamedSize } from '../types/presentation';
+import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, type NamedSize } from '../types/presentation';
 import { BUILT_IN_THEMES } from '../lib/themes';
 import { FONT_PACKAGES, type FontPackage } from '../lib/fonts';
 import type { VerticalAlign } from '../types/presentation';
@@ -385,10 +385,10 @@ export function PropertiesPanel() {
                 <PropSection label="Preset">
                   <span style={{ fontSize: 12, textTransform: 'capitalize' }}>{selectedEl.preset}</span>
                 </PropSection>
-                <PropSection label="Font Size">
-                  <input className="prop-input-sm" type="number"
-                    value={selectedEl.fontSize || effectiveTextPresetSize(selectedEl.preset, presentation.config)}
-                    onChange={(e) => updateElement(selectedEl.id, { fontSize: parseInt(e.target.value) || 48 } as any)} />
+                <PropSection label="Font size">
+                  <FontSizeRow element={selectedEl}
+                    updateElement={(id, ch) => updateElement(id, ch as any)}
+                    config={presentation.config} />
                 </PropSection>
                 <PropSection label="Vertical Align">
                   <div style={{ display: 'flex', gap: 2 }}>
@@ -581,27 +581,47 @@ function TextSizesEditor({ config, updateConfig }: {
   );
 }
 
-/** Font-size picker for a notebook element. Single row: named
- *  buttons + numeric spinner. `title` is excluded (reserved for title
- *  text elements). `hype` is also excluded (decoration, not a body
- *  size). */
-const NOTEBOOK_NAMED_OPTIONS: Array<Exclude<NamedSize, 'title' | 'hype'>> = ['body', 'note', 'footnote'];
+/** Font-size picker — single row of named buttons + numeric spinner.
+ *  Identical across element types: text and notebook elements both
+ *  get the same widget so the user learns it once. `title` and
+ *  `hype` are excluded from the named options for everyone — they're
+ *  reserved (title) and decoration (hype). The numeric override
+ *  reaches any value.
+ *
+ *  Notes on the cascade:
+ *  - Click a named button → set fontSizeName, clear fontSize.
+ *    Element follows the deck's textSizes[name] live.
+ *  - Type in the spinner → set fontSize (numeric override),
+ *    clear fontSizeName. Element is pinned to that exact px.
+ *  - Typing a value that exactly matches a named size promotes
+ *    back to the name so the cascade resumes.
+ *
+ *  For text elements, "no override" means the preset's default
+ *  size applies (active button matches if preset's sizeName is
+ *  body/note/footnote; otherwise none highlight — e.g. a title
+ *  preset shows the spinner at 72 with no button highlighted).
+ *  For notebooks, "no override" means 'note' (32 px).
+ */
+const NAMED_SIZE_OPTIONS: Array<Exclude<NamedSize, 'title' | 'hype'>> = ['body', 'note', 'footnote'];
 
-function NotebookFontSizeRow({ element, updateElement, config }: {
-  element: Extract<import('../types/presentation').SlideElement, { type: 'notebook' }>;
-  updateElement: (id: string, changes: Partial<Extract<import('../types/presentation').SlideElement, { type: 'notebook' }>>) => void;
+function FontSizeRow({ element, updateElement, config }: {
+  element: Extract<import('../types/presentation').SlideElement, { type: 'text' | 'notebook' }>;
+  updateElement: (id: string, changes: Partial<typeof element>) => void;
   config: import('../types/presentation').PresentationConfig | undefined;
 }) {
-  const effective =
-    element.fontSize
-    ?? (element.fontSizeName ? resolveNamedSize(element.fontSizeName, config) : undefined)
-    ?? resolveNamedSize('note', config);
+  const effective = effectiveFontSize(element, config);
   const isOverride = element.fontSize != null;
+  // For text elements, the "no override" name is the preset's sizeName.
+  // For notebooks, it's 'note'. Used for button highlighting only.
+  const fallbackName: NamedSize =
+    element.type === 'text'
+      ? TEXT_PRESET_STYLES[element.preset].sizeName
+      : 'note';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      {NOTEBOOK_NAMED_OPTIONS.map((name) => {
+      {NAMED_SIZE_OPTIONS.map((name) => {
         const px = resolveNamedSize(name, config);
-        const active = !isOverride && (element.fontSizeName ?? 'note') === name;
+        const active = !isOverride && (element.fontSizeName ?? fallbackName) === name;
         return (
           <button key={name}
             className="prop-zbtn"
@@ -615,9 +635,14 @@ function NotebookFontSizeRow({ element, updateElement, config }: {
               fontWeight: active ? 600 : 400,
             }}
             onClick={() => updateElement(element.id, {
-              fontSizeName: name === 'note' ? undefined : name,
+              // For text elements, when the named button matches the
+              // preset's own sizeName we strip BOTH fields so the
+              // cascade flows fully back through the preset. For
+              // notebooks, 'note' is the implicit default, so the
+              // same stripping applies.
+              fontSizeName: name === fallbackName ? undefined : name,
               fontSize: undefined,
-            })}
+            } as Partial<typeof element>)}
             title={`${name} — ${px}px`}
           >
             {name}
@@ -626,23 +651,21 @@ function NotebookFontSizeRow({ element, updateElement, config }: {
       })}
       <input
         type="number"
-        min={8} max={120} step={1}
+        min={8} max={200} step={1}
         value={effective}
         onChange={(e) => {
           const v = parseInt(e.target.value, 10);
-          if (!Number.isFinite(v) || v < 8 || v > 120) return;
-          // Typing a value that exactly matches a named size: prefer
-          // the name (keeps cascade alive). Otherwise it's an override.
-          const matchingName = NOTEBOOK_NAMED_OPTIONS.find(
+          if (!Number.isFinite(v) || v < 8 || v > 200) return;
+          const matchingName = NAMED_SIZE_OPTIONS.find(
             (n) => resolveNamedSize(n, config) === v,
           );
           if (matchingName) {
             updateElement(element.id, {
-              fontSizeName: matchingName === 'note' ? undefined : matchingName,
+              fontSizeName: matchingName === fallbackName ? undefined : matchingName,
               fontSize: undefined,
-            });
+            } as Partial<typeof element>);
           } else {
-            updateElement(element.id, { fontSize: v, fontSizeName: undefined });
+            updateElement(element.id, { fontSize: v, fontSizeName: undefined } as Partial<typeof element>);
           }
         }}
         style={{ width: 56, padding: '3px 4px', fontSize: 12, marginLeft: 4 }}
@@ -777,7 +800,9 @@ function NotebookProperties({ element }: {
           The spinner always displays the EFFECTIVE size (whichever
           path resolves). */}
       <PropSection label="Font size">
-        <NotebookFontSizeRow element={element} updateElement={updateElement} config={config} />
+        <FontSizeRow element={element}
+          updateElement={(id, ch) => updateElement(id, ch as Partial<typeof element>)}
+          config={config} />
       </PropSection>
     </>
   );

@@ -124,6 +124,29 @@ export function effectiveTextPresetSize(
   return resolveNamedSize(TEXT_PRESET_STYLES[preset].sizeName, config);
 }
 
+/** Single resolver for "what px size should this element render at?"
+ *  Works for any element that has the standard fontSize / fontSizeName
+ *  pair (currently TextElement and NotebookElement; future code-block
+ *  element will plug in here too).
+ *
+ *  Cascade (default-setting flavor, per DESIGN_DECISIONS.md):
+ *    1. element.fontSize (explicit numeric override) — wins
+ *    2. element.fontSizeName via deck's textSizes
+ *    3. for text elements: the preset's default size
+ *       for notebooks: 'note' (32 px default)
+ */
+export function effectiveFontSize(
+  element:
+    | { type: 'text'; preset: TextPreset; fontSize?: number; fontSizeName?: NamedSize }
+    | { type: 'notebook'; fontSize?: number; fontSizeName?: NamedSize },
+  config?: { textSizes?: Partial<Record<NamedSize, number>> } | null,
+): number {
+  if (element.fontSize != null) return element.fontSize;
+  if (element.fontSizeName) return resolveNamedSize(element.fontSizeName, config);
+  if (element.type === 'text') return effectiveTextPresetSize(element.preset, config);
+  return resolveNamedSize('note', config);
+}
+
 // ============================================
 // Unified element types
 // ============================================
@@ -144,6 +167,13 @@ export interface TextElement extends BaseElement {
   preset: TextPreset;
   html: string;
   // Optional overrides (if user customizes beyond the preset)
+  /** Named size override for THIS element. Picks from the deck's
+   *  type scale rather than the preset's default. 'title' and 'hype'
+   *  are intentionally excluded — title is reserved for title text
+   *  elements (which already get title size from their preset), and
+   *  hype is a decoration style, not a size to opt into. */
+  fontSizeName?: Exclude<NamedSize, 'title' | 'hype'>;
+  /** Explicit numeric override. Beats fontSizeName when both set. */
   fontSize?: number;
   fontFamily?: string;
   color?: string;

@@ -15,7 +15,7 @@ import { useNotebook } from '../../lib/useNotebook';
 import { useKernel, KernelStatus } from '../../lib/useKernel';
 import { resolveNotebookKernel, ResolvedExternal } from '../../lib/notebookKernel';
 import { Cell, CellOutput } from '../../lib/notebookFormat';
-import { NotebookElement, resolveNamedSize } from '../../types/presentation';
+import { NotebookElement, effectiveFontSize } from '../../types/presentation';
 import { usePresentationStore } from '../../store/presentation';
 import { fontForNotebookProse, fontForNotebookCode } from '../../lib/notebookFonts';
 
@@ -45,10 +45,7 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
   // then the named size walked through the deck's type scale, then
   // the 'note' default (32 px). See DESIGN_DECISIONS.md "Preferences
   // cascade" — default-setting flavor.
-  const baseSize =
-    element.fontSize
-    ?? (element.fontSizeName ? resolveNamedSize(element.fontSizeName, config) : undefined)
-    ?? resolveNamedSize('note', config);
+  const baseSize = effectiveFontSize(element, config);
   const fontStyle: React.CSSProperties = {
     '--nb-prose-family': proseFont.family,
     '--nb-mono-family': codeFont.family,
