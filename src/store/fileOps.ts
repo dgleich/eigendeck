@@ -18,7 +18,7 @@ import {
 import {
   renderMathInHtml as renderMathPerBundle,
 } from '../lib/mathjaxRenderer';
-import { TEXT_PRESET_STYLES } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { buildTextElementSvgMarkup } from '../components/TextElementSvg';
 import type { TextElement, Slide } from '../types/presentation';
@@ -223,7 +223,7 @@ export function makeTextElementRenderer(presentation: Presentation) {
     ).catch(() => el.html || '');
     return buildTextElementSvgMarkup(el, renderedHtml, {
       fontFamily,
-      fontSize: el.fontSize || presetStyle.fontSize,
+      fontSize: effectiveFontSize(el, presentation.config),
       fontWeight: presetStyle.fontWeight,
       fontStyle: presetStyle.fontStyle,
       color,

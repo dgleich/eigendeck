@@ -14,7 +14,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { TextElement, Slide, PresentationConfig } from '../types/presentation';
-import { TEXT_PRESET_STYLES } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import {
@@ -131,7 +131,7 @@ export function TextElementSvg({
   const presetFontFamily = fontFamilyForPreset(presetFontPkg, element.preset);
 
   const fontFamily = element.fontFamily || presetFontFamily;
-  const fontSize = element.fontSize || presetStyle.fontSize;
+  const fontSize = effectiveFontSize(element, presentationConfig);
   const fontWeight = presetStyle.fontWeight;
   const fontStyle = presetStyle.fontStyle;
   const color = element.color || themeColor;

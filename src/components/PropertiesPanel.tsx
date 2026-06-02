@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
-import { TEXT_PRESET_STYLES } from '../types/presentation';
+import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, type NamedSize } from '../types/presentation';
 import { BUILT_IN_THEMES } from '../lib/themes';
 import { FONT_PACKAGES, type FontPackage } from '../lib/fonts';
 import type { VerticalAlign } from '../types/presentation';
@@ -211,6 +211,13 @@ export function PropertiesPanel() {
                 onChange={(v) => updateConfig({ defaultMonoFont: v })}
                 inheritLabel="Source Code Pro (default)" />
             </PropSection>
+            <PropSection label="Text sizes (px)">
+              {/* Deck-level type scale — overrides DEFAULT_TEXT_SIZES.
+                  Used by every element that picks a size by name
+                  (notebooks, future text presets retrofit, etc.).
+                  Blank cell = fall back to the built-in default. */}
+              <TextSizesEditor config={presentation.config} updateConfig={updateConfig} />
+            </PropSection>
             <PropSection label="Author">
               <input className="prop-input" value={presentation.config.author || ''}
                 onChange={(e) => updateConfig({ author: e.target.value })} />
@@ -378,10 +385,10 @@ export function PropertiesPanel() {
                 <PropSection label="Preset">
                   <span style={{ fontSize: 12, textTransform: 'capitalize' }}>{selectedEl.preset}</span>
                 </PropSection>
-                <PropSection label="Font Size">
-                  <input className="prop-input-sm" type="number"
-                    value={selectedEl.fontSize || TEXT_PRESET_STYLES[selectedEl.preset].fontSize}
-                    onChange={(e) => updateElement(selectedEl.id, { fontSize: parseInt(e.target.value) || 48 } as any)} />
+                <PropSection label="Font size">
+                  <FontSizeRow element={selectedEl}
+                    updateElement={(id, ch) => updateElement(id, ch as any)}
+                    config={presentation.config} />
                 </PropSection>
                 <PropSection label="Vertical Align">
                   <div style={{ display: 'flex', gap: 2 }}>
@@ -524,6 +531,161 @@ function DemoPieceProperties({ element }: { element: Extract<import('../types/pr
  * text shows the effective resolved value so the user sees what's
  * currently in force.
  */
+/** Deck-level type-scale editor — one row per named size with a
+ *  px-value spinner. Blank cell falls through to DEFAULT_TEXT_SIZES.
+ *  Setting a value to the default also strips the override so the
+ *  cascade resumes (matches the default-setting cascade rules). */
+function TextSizesEditor({ config, updateConfig }: {
+  config: import('../types/presentation').PresentationConfig;
+  updateConfig: (changes: Partial<import('../types/presentation').PresentationConfig>) => void;
+}) {
+  const order: NamedSize[] = ['footnote', 'note', 'body', 'title', 'hype'];
+  const overrides = config.textSizes ?? {};
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {order.map((name) => {
+        const fallback = DEFAULT_TEXT_SIZES[name];
+        const current = overrides[name];
+        const overridden = current != null;
+        return (
+          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 11, color: '#374151', width: 60 }}>{name}</span>
+            <input
+              type="number"
+              min={8} max={200} step={1}
+              // Always populate with the effective value (fallback when
+              // no override) so the spinner steps from a sensible
+              // number, not from blank. The "default Xpx" label and
+              // its italic styling encode the override state instead.
+              value={current ?? fallback}
+              onChange={(e) => {
+                const raw = e.target.value.trim();
+                const next = { ...overrides };
+                if (raw === '') { delete next[name]; }
+                else {
+                  const v = parseInt(raw, 10);
+                  if (!Number.isFinite(v) || v < 8 || v > 200) return;
+                  // Matching the default — strip to keep the cascade alive.
+                  if (v === fallback) delete next[name];
+                  else next[name] = v;
+                }
+                updateConfig({
+                  textSizes: Object.keys(next).length ? next : undefined,
+                });
+              }}
+              style={{ width: 44, padding: '2px 4px', fontSize: 12 }}
+            />
+            <span style={{ fontSize: 10, color: '#9ca3af', marginLeft: -2 }}>px</span>
+            <span style={{
+              fontSize: 10,
+              color: overridden ? '#9ca3af' : '#6b7280',
+              marginLeft: 6,
+              fontStyle: overridden ? 'normal' : 'italic',
+            }}>
+              default {fallback}px
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Font-size picker — single row of named buttons + numeric spinner.
+ *  Identical across element types: text and notebook elements both
+ *  get the same widget so the user learns it once. `title` and
+ *  `hype` are excluded from the named options for everyone — they're
+ *  reserved (title) and decoration (hype). The numeric override
+ *  reaches any value.
+ *
+ *  Notes on the cascade:
+ *  - Click a named button → set fontSizeName, clear fontSize.
+ *    Element follows the deck's textSizes[name] live.
+ *  - Type in the spinner → set fontSize (numeric override),
+ *    clear fontSizeName. Element is pinned to that exact px.
+ *  - Typing a value that exactly matches a named size promotes
+ *    back to the name so the cascade resumes.
+ *
+ *  For text elements, "no override" means the preset's default
+ *  size applies (active button matches if preset's sizeName is
+ *  body/note/footnote; otherwise none highlight — e.g. a title
+ *  preset shows the spinner at 72 with no button highlighted).
+ *  For notebooks, "no override" means 'note' (32 px).
+ */
+const NAMED_SIZE_OPTIONS: Array<Exclude<NamedSize, 'title' | 'hype'>> = ['body', 'note', 'footnote'];
+
+function FontSizeRow({ element, updateElement, config }: {
+  element: Extract<import('../types/presentation').SlideElement, { type: 'text' | 'notebook' }>;
+  updateElement: (id: string, changes: Partial<typeof element>) => void;
+  config: import('../types/presentation').PresentationConfig | undefined;
+}) {
+  const effective = effectiveFontSize(element, config);
+  const isOverride = element.fontSize != null;
+  // For text elements, the "no override" name is the preset's sizeName.
+  // For notebooks, it's 'note'. Used for button highlighting only.
+  const fallbackName: NamedSize =
+    element.type === 'text'
+      ? TEXT_PRESET_STYLES[element.preset].sizeName
+      : 'note';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      {NAMED_SIZE_OPTIONS.map((name) => {
+        const px = resolveNamedSize(name, config);
+        const active = !isOverride && (element.fontSizeName ?? fallbackName) === name;
+        return (
+          <button key={name}
+            className="prop-zbtn"
+            style={{
+              padding: '4px 8px',
+              background: active ? '#dbeafe' : '#fff',
+              border: '1px solid ' + (active ? '#2563eb' : '#d1d5db'),
+              borderRadius: 3, cursor: 'pointer',
+              fontSize: 11,
+              color: active ? '#1e40af' : '#374151',
+              fontWeight: active ? 600 : 400,
+            }}
+            onClick={() => updateElement(element.id, {
+              // For text elements, when the named button matches the
+              // preset's own sizeName we strip BOTH fields so the
+              // cascade flows fully back through the preset. For
+              // notebooks, 'note' is the implicit default, so the
+              // same stripping applies.
+              fontSizeName: name === fallbackName ? undefined : name,
+              fontSize: undefined,
+            } as Partial<typeof element>)}
+            title={`${name} — ${px}px`}
+          >
+            {name}
+          </button>
+        );
+      })}
+      <input
+        type="number"
+        min={8} max={200} step={1}
+        value={effective}
+        onChange={(e) => {
+          const v = parseInt(e.target.value, 10);
+          if (!Number.isFinite(v) || v < 8 || v > 200) return;
+          const matchingName = NAMED_SIZE_OPTIONS.find(
+            (n) => resolveNamedSize(n, config) === v,
+          );
+          if (matchingName) {
+            updateElement(element.id, {
+              fontSizeName: matchingName === fallbackName ? undefined : matchingName,
+              fontSize: undefined,
+            } as Partial<typeof element>);
+          } else {
+            updateElement(element.id, { fontSize: v, fontSizeName: undefined } as Partial<typeof element>);
+          }
+        }}
+        style={{ width: 44, padding: '3px 4px', fontSize: 12, marginLeft: 4 }}
+        title="Custom size in pixels — overrides the named choice"
+      />
+      <span style={{ fontSize: 10, color: '#9ca3af', marginLeft: -2 }}>px</span>
+    </div>
+  );
+}
+
 function NotebookProperties({ element }: {
   element: Extract<import('../types/presentation').SlideElement, { type: 'notebook' }>;
 }) {
@@ -637,63 +799,20 @@ function NotebookProperties({ element }: {
         />
       </PropSection>
 
-      <PropSection label={`Cell size (${element.fontSize ?? 32}px)`}>
-        {/* Named presets reuse the existing TextPreset size vocabulary
-            (footnote 24 / annotation 32 / body 48) so users see the
-            same names they already know from text elements. The
-            visual size of each button label IS the size preview. */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
-          {([
-            { label: 'footnote', px: 24 },
-            { label: 'note',     px: 32 },
-            { label: 'body',     px: 48 },
-          ] as const).map(({ label, px }) => {
-            const active = (element.fontSize ?? 32) === px;
-            return (
-              <button key={label}
-                className="prop-zbtn"
-                style={{
-                  flex: 1, padding: '6px 4px',
-                  background: active ? '#dbeafe' : '#fff',
-                  border: '1px solid ' + (active ? '#2563eb' : '#d1d5db'),
-                  borderRadius: 3, cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', gap: 2,
-                }}
-                onClick={() => updateElement(element.id, {
-                  // 32 is the default — strip the field so the cascade resumes.
-                  fontSize: px === 32 ? undefined : px,
-                } as Partial<typeof element>)}
-                title={`${label} — ${px}px`}
-              >
-                <span style={{ fontFamily: 'ui-monospace, Menlo, monospace',
-                               fontSize: Math.max(10, Math.min(px / 2, 22)),
-                               lineHeight: 1, color: active ? '#1e40af' : '#374151' }}>
-                  Aa
-                </span>
-                <span style={{ fontSize: 10, color: '#6b7280' }}>{label}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 11, color: '#6b7280' }}>Custom:</span>
-          <input
-            type="number"
-            min={8} max={120} step={1}
-            value={element.fontSize ?? 32}
-            onChange={(e) => {
-              const v = parseInt(e.target.value, 10);
-              if (Number.isFinite(v) && v >= 8 && v <= 120) {
-                updateElement(element.id, {
-                  fontSize: v === 32 ? undefined : v,
-                } as Partial<typeof element>);
-              }
-            }}
-            style={{ width: 60, padding: '2px 6px', fontSize: 12 }}
-          />
-          <span style={{ fontSize: 11, color: '#9ca3af' }}>px</span>
-        </div>
+      {/* Font size picker — single row matching the user's sketch:
+          label, named buttons (body / note / footnote in that order —
+          'title' is reserved for title text elements and isn't shown
+          here), and a numeric spinner for arbitrary overrides.
+          - Clicking a named button: sets fontSizeName, clears fontSize
+            override. The cascade kicks in (deck textSizes → defaults).
+          - Editing the spinner: sets fontSize (numeric override),
+            clears fontSizeName. Buttons deactivate.
+          The spinner always displays the EFFECTIVE size (whichever
+          path resolves). */}
+      <PropSection label="Font size">
+        <FontSizeRow element={element}
+          updateElement={(id, ch) => updateElement(id, ch as Partial<typeof element>)}
+          config={config} />
       </PropSection>
     </>
   );
