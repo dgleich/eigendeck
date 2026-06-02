@@ -1,18 +1,22 @@
 // Global application preferences modal. Opened from the Eigendeck menu
-// (Settings…, Cmd+,). One section per preference; today the asset
-// auto-reload toggle and the global LaTeX preamble. Per-presentation and
-// per-asset overrides live in the Inspector — this is for app-wide
-// defaults.
+// (Settings…, Cmd+,). Tabbed: "General" for the asset auto-reload toggle,
+// default text sizes, and default LaTeX preamble; "Jupyter servers" for
+// the per-machine kernel-server registry. Per-presentation and per-asset
+// overrides live in the Inspector — this is for app-wide defaults.
 //
 // This is a webview-based modal; native settings window is tracked in
 // https://github.com/dgleich/eigendeck/issues/62
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { usePreference } from '../lib/preferences';
+import { usePreference, type JupyterServerEntry } from '../lib/preferences';
 import { DEFAULT_TEXT_SIZES, type NamedSize } from '../types/presentation';
 
+type Tab = 'general' | 'servers';
+
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [tab, setTab] = useState<Tab>('general');
+
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -34,7 +38,9 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: '#fff', borderRadius: 8, minWidth: 480, maxWidth: 640,
+          background: '#fff', borderRadius: 8,
+          width: 640, maxWidth: '90vw',
+          maxHeight: '85vh',
           boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
           display: 'flex', flexDirection: 'column',
         }}>
@@ -49,16 +55,243 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280',
             }}>×</button>
         </div>
-        <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <AutoReloadAssetsSetting />
-          <DefaultTextSizesSetting />
-          <MathPreambleSetting />
+        <div style={{
+          display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb',
+          padding: '0 18px',
+        }}>
+          <TabButton active={tab === 'general'} onClick={() => setTab('general')}>General</TabButton>
+          <TabButton active={tab === 'servers'} onClick={() => setTab('servers')}>Jupyter servers</TabButton>
+        </div>
+        <div style={{ padding: '14px 18px', overflowY: 'auto', flex: '1 1 auto' }}>
+          {tab === 'general' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <AutoReloadAssetsSetting />
+              <DefaultTextSizesSetting />
+              <MathPreambleSetting />
+            </div>
+          )}
+          {tab === 'servers' && <JupyterServersSetting />}
         </div>
       </div>
     </div>,
     document.body,
   );
 }
+
+function TabButton({ active, onClick, children }: {
+  active: boolean; onClick: () => void; children: React.ReactNode;
+}) {
+  return (
+    <button onClick={onClick}
+      style={{
+        padding: '10px 14px',
+        background: 'transparent', border: 'none', cursor: 'pointer',
+        fontSize: 13, fontWeight: active ? 600 : 400,
+        color: active ? '#111827' : '#6b7280',
+        borderBottom: active ? '2px solid #2563eb' : '2px solid transparent',
+        marginBottom: -1,
+      }}>
+      {children}
+    </button>
+  );
+}
+
+// ---- Jupyter servers tab -------------------------------------------------
+
+function JupyterServersSetting() {
+  const [servers, setServers] = usePreference('jupyterServers');
+
+  const addServer = () => setServers([
+    ...servers,
+    { label: 'New server', baseUrl: 'http://localhost:8888', token: '' },
+  ]);
+  const updateAt = (i: number, patch: Partial<JupyterServerEntry>) =>
+    setServers(servers.map((s, j) => j === i ? { ...s, ...patch } : s));
+  const removeAt = (i: number) =>
+    setServers(servers.filter((_, j) => j !== i));
+  const moveUp = (i: number) => {
+    if (i === 0) return;
+    const next = [...servers];
+    [next[i - 1], next[i]] = [next[i], next[i - 1]];
+    setServers(next);
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Registered servers</div>
+      <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 12 }}>
+        Notebook elements pick the FIRST server here that advertises the kernel they need.
+        Reorder rows to change which one wins when multiple servers offer the same kernel.
+        Tokens stay on this machine; nothing here is written to a deck file.
+      </div>
+
+      {servers.length === 0 && (
+        <div style={{
+          fontSize: 12, color: '#9ca3af', padding: 12,
+          border: '1px dashed #d1d5db', borderRadius: 4, textAlign: 'center',
+          marginBottom: 12,
+        }}>
+          No servers registered. Add one to enable live kernel execution.
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {servers.map((s, i) => (
+          <ServerRow key={i} entry={s}
+            isFirst={i === 0}
+            onChange={(patch) => updateAt(i, patch)}
+            onRemove={() => removeAt(i)}
+            onMoveUp={() => moveUp(i)} />
+        ))}
+      </div>
+
+      <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+        <button onClick={addServer} className="prop-zbtn"
+          style={{
+            padding: '6px 12px', fontSize: 12,
+            background: '#fff', border: '1px solid #d1d5db', borderRadius: 3,
+            cursor: 'pointer',
+          }}>
+          + Add server
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ServerRow({ entry, isFirst, onChange, onRemove, onMoveUp }: {
+  entry: JupyterServerEntry;
+  isFirst: boolean;
+  onChange: (patch: Partial<JupyterServerEntry>) => void;
+  onRemove: () => void;
+  onMoveUp: () => void;
+}) {
+  // Connection-test state. Result lives in component-local state so
+  // the user sees feedback without persisting test-only flags.
+  // Successful tests DO persist availableKernels + lastSeenAt to the
+  // entry (those are useful for matching + the topbar pill).
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const test = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const url = entry.baseUrl.replace(/\/$/, '');
+      const q = entry.token ? `?token=${encodeURIComponent(entry.token)}` : '';
+      const r = await fetch(`${url}/api/kernelspecs${q}`, {
+        headers: entry.token ? { Authorization: `token ${entry.token}` } : {},
+      });
+      if (!r.ok) {
+        setTestResult({ ok: false, msg: `${r.status} ${r.statusText}` });
+      } else {
+        const data = await r.json();
+        const kernels = Object.keys(data.kernelspecs ?? {});
+        onChange({ availableKernels: kernels, lastSeenAt: Date.now() });
+        setTestResult({ ok: true, msg: kernels.length
+          ? `Kernels: ${kernels.join(', ')}`
+          : 'Connected, but server reports no kernels' });
+      }
+    } catch (e) {
+      setTestResult({ ok: false, msg: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <div style={{
+      border: '1px solid #e5e7eb', borderRadius: 4, padding: 10,
+      display: 'flex', flexDirection: 'column', gap: 6,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <input
+          type="text"
+          value={entry.label}
+          placeholder="e.g. Desktop main"
+          onChange={(e) => onChange({ label: e.target.value })}
+          style={{
+            flex: '1 1 auto', padding: '4px 6px', fontSize: 13, fontWeight: 600,
+            border: '1px solid transparent', borderRadius: 3, background: 'transparent',
+          }}
+        />
+        <button onClick={onMoveUp} disabled={isFirst} title="Move up"
+          style={{
+            padding: '2px 8px', fontSize: 11,
+            background: isFirst ? '#f3f4f6' : '#fff',
+            border: '1px solid #d1d5db', borderRadius: 3,
+            color: isFirst ? '#9ca3af' : '#374151',
+            cursor: isFirst ? 'default' : 'pointer',
+          }}>↑</button>
+        <button onClick={onRemove} title="Remove this server"
+          style={{
+            padding: '2px 8px', fontSize: 11,
+            background: '#fff', border: '1px solid #fca5a5', borderRadius: 3,
+            color: '#b91c1c', cursor: 'pointer',
+          }}>Remove</button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 6, alignItems: 'center' }}>
+        <span style={{ fontSize: 11, color: '#6b7280' }}>URL</span>
+        <input
+          type="text"
+          value={entry.baseUrl}
+          placeholder="http://localhost:8888"
+          onChange={(e) => onChange({ baseUrl: e.target.value })}
+          style={{ padding: '3px 6px', fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace' }}
+        />
+        <span style={{ fontSize: 11, color: '#6b7280' }}>Token</span>
+        <input
+          type="password"
+          value={entry.token}
+          placeholder="(none — server runs token-less)"
+          onChange={(e) => onChange({ token: e.target.value })}
+          style={{ padding: '3px 6px', fontSize: 12 }}
+        />
+        <span style={{ fontSize: 11, color: '#6b7280' }}>Notes</span>
+        <input
+          type="text"
+          value={entry.notes ?? ''}
+          placeholder="optional"
+          onChange={(e) => onChange({ notes: e.target.value || undefined })}
+          style={{ padding: '3px 6px', fontSize: 12 }}
+        />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+        <button onClick={test} disabled={testing}
+          style={{
+            padding: '4px 10px', fontSize: 11,
+            background: '#2563eb', color: '#fff',
+            border: 'none', borderRadius: 3, cursor: testing ? 'wait' : 'pointer',
+          }}>
+          {testing ? 'Testing…' : 'Test connection'}
+        </button>
+        {testResult && (
+          <span style={{ fontSize: 11, color: testResult.ok ? '#065f46' : '#b91c1c' }}>
+            {testResult.ok ? '✓' : '✕'} {testResult.msg}
+          </span>
+        )}
+        {!testResult && entry.availableKernels && (
+          <span style={{ fontSize: 11, color: '#9ca3af' }}>
+            kernels: {entry.availableKernels.length ? entry.availableKernels.join(', ') : '(none reported)'}
+            {entry.lastSeenAt && ` · last seen ${timeAgo(entry.lastSeenAt)}`}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function timeAgo(ms: number): string {
+  const diff = Date.now() - ms;
+  if (diff < 60_000) return 'just now';
+  if (diff < 3_600_000) return `${Math.round(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)}h ago`;
+  return `${Math.round(diff / 86_400_000)}d ago`;
+}
+
+// ---- General tab settings (unchanged) ------------------------------------
 
 function MathPreambleSetting() {
   const [value, setValue] = usePreference('mathPreamble');
@@ -84,13 +317,6 @@ function MathPreambleSetting() {
 }
 
 function DefaultTextSizesSetting() {
-  // Same shape as the deck-level Text sizes editor in the Inspector,
-  // but bound to the GLOBAL pref instead of the current presentation's
-  // config. New presentations are seeded from these values (see
-  // createSeededPresentation in src/store/presentation.ts).
-  // Existing decks are not affected — they keep whatever sizes they
-  // were saved with. To apply a global default to an existing deck,
-  // edit the deck's own Text sizes section in the Inspector.
   const [value, setValue] = usePreference('textSizes');
   const order: NamedSize[] = ['footnote', 'note', 'body', 'title', 'hype'];
   return (
@@ -112,10 +338,6 @@ function DefaultTextSizesSetting() {
               <input
                 type="number"
                 min={8} max={200} step={1}
-                // Spinner starts at the effective value (fallback when
-                // no override) so up/down arrows step from a real number.
-                // Override state is signaled by the "default Xpx" label
-                // styling, not by an empty field.
                 value={current ?? fallback}
                 onChange={(e) => {
                   const raw = e.target.value.trim();
