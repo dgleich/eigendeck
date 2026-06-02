@@ -10,6 +10,9 @@ to people building presentations.
 
 - [Text sizes](text-sizes.md) — the named scale and why slide-level
   overrides don't exist.
+- [Jupyter servers](notebook-servers.md) — the per-machine kernel-
+  server registry, why deck files don't carry URLs or tokens, and
+  how the topbar status pill works.
 
 (More topics are added as design decisions get nailed down.)
 
