@@ -10,6 +10,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { usePreference } from '../lib/preferences';
+import { DEFAULT_TEXT_SIZES, type NamedSize } from '../types/presentation';
 
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   useEffect(() => {
@@ -50,6 +51,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
         </div>
         <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <AutoReloadAssetsSetting />
+          <DefaultTextSizesSetting />
           <MathPreambleSetting />
         </div>
       </div>
@@ -77,6 +79,68 @@ function MathPreambleSetting() {
           minHeight: 120, resize: 'vertical',
           padding: 6, border: '1px solid #d1d5db', borderRadius: 4,
         }} />
+    </div>
+  );
+}
+
+function DefaultTextSizesSetting() {
+  // Same shape as the deck-level Text sizes editor in the Inspector,
+  // but bound to the GLOBAL pref instead of the current presentation's
+  // config. New presentations are seeded from these values (see
+  // createSeededPresentation in src/store/presentation.ts).
+  // Existing decks are not affected — they keep whatever sizes they
+  // were saved with. To apply a global default to an existing deck,
+  // edit the deck's own Text sizes section in the Inspector.
+  const [value, setValue] = usePreference('textSizes');
+  const order: NamedSize[] = ['footnote', 'note', 'body', 'title', 'hype'];
+  return (
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Default text sizes (px)</div>
+      <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>
+        Seed values for the type scale in NEW presentations.
+        Existing decks aren't touched. The deck's own Text sizes
+        section in the Inspector overrides these per-presentation.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {order.map((name) => {
+          const fallback = DEFAULT_TEXT_SIZES[name];
+          const current = value[name];
+          const overridden = current != null;
+          return (
+            <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 12, color: '#374151', width: 70 }}>{name}</span>
+              <input
+                type="number"
+                min={8} max={200} step={1}
+                value={current ?? ''}
+                placeholder={String(fallback)}
+                onChange={(e) => {
+                  const raw = e.target.value.trim();
+                  const next = { ...value };
+                  if (raw === '') { delete next[name]; }
+                  else {
+                    const v = parseInt(raw, 10);
+                    if (!Number.isFinite(v) || v < 8 || v > 200) return;
+                    if (v === fallback) delete next[name];
+                    else next[name] = v;
+                  }
+                  setValue(next);
+                }}
+                style={{ width: 56, padding: '3px 6px', fontSize: 12 }}
+              />
+              <span style={{ fontSize: 11, color: '#9ca3af', marginLeft: -2 }}>px</span>
+              <span style={{
+                fontSize: 11,
+                color: overridden ? '#9ca3af' : '#6b7280',
+                marginLeft: 8,
+                fontStyle: overridden ? 'normal' : 'italic',
+              }}>
+                default {fallback}px
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

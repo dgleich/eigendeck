@@ -546,8 +546,9 @@ function TextSizesEditor({ config, updateConfig }: {
       {order.map((name) => {
         const fallback = DEFAULT_TEXT_SIZES[name];
         const current = overrides[name];
+        const overridden = current != null;
         return (
-          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ fontSize: 11, color: '#374151', width: 60 }}>{name}</span>
             <input
               type="number"
@@ -569,10 +570,16 @@ function TextSizesEditor({ config, updateConfig }: {
                   textSizes: Object.keys(next).length ? next : undefined,
                 });
               }}
-              style={{ width: 56, padding: '2px 4px', fontSize: 12 }}
+              style={{ width: 44, padding: '2px 4px', fontSize: 12 }}
             />
-            <span style={{ fontSize: 11, color: '#9ca3af' }}>
-              {current == null ? `default ${fallback}px` : 'px'}
+            <span style={{ fontSize: 10, color: '#9ca3af', marginLeft: -2 }}>px</span>
+            <span style={{
+              fontSize: 10,
+              color: overridden ? '#9ca3af' : '#6b7280',
+              marginLeft: 6,
+              fontStyle: overridden ? 'normal' : 'italic',
+            }}>
+              default {fallback}px
             </span>
           </div>
         );
@@ -668,10 +675,10 @@ function FontSizeRow({ element, updateElement, config }: {
             updateElement(element.id, { fontSize: v, fontSizeName: undefined } as Partial<typeof element>);
           }
         }}
-        style={{ width: 56, padding: '3px 4px', fontSize: 12, marginLeft: 4 }}
+        style={{ width: 44, padding: '3px 4px', fontSize: 12, marginLeft: 4 }}
         title="Custom size in pixels — overrides the named choice"
       />
-      <span style={{ fontSize: 11, color: '#9ca3af' }}>px</span>
+      <span style={{ fontSize: 10, color: '#9ca3af', marginLeft: -2 }}>px</span>
     </div>
   );
 }

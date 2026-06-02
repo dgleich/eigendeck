@@ -95,6 +95,26 @@ export function createSeededPresentation(): Presentation {
       }
     }
   } catch { /* ignore */ }
+  try {
+    // Seed deck-level type scale from the global pref. Empty/missing
+    // keys fall back to DEFAULT_TEXT_SIZES at render time — we only
+    // store an override if the pref has one. Carrying only the
+    // non-empty entries keeps PresentationConfig.textSizes undefined
+    // when the user hasn't customized anything globally.
+    const v = localStorage.getItem('eigendeck:pref:textSizes');
+    if (v) {
+      const parsed = JSON.parse(v);
+      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length) {
+        const cleaned: Record<string, number> = {};
+        for (const [k, val] of Object.entries(parsed)) {
+          if (typeof val === 'number' && val > 0) cleaned[k] = val;
+        }
+        if (Object.keys(cleaned).length) {
+          pres.config.textSizes = cleaned as Presentation['config']['textSizes'];
+        }
+      }
+    }
+  } catch { /* ignore */ }
   return pres;
 }
 

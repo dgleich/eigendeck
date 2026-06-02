@@ -25,11 +25,19 @@ export interface PrefSchema {
    *  "Replace with global" buttons. Render path only uses the
    *  per-presentation preamble; this is editing-only. */
   mathPreamble: string;
+  /** Default deck-level type scale overrides for NEW presentations.
+   *  When a new deck is created, its PresentationConfig.textSizes is
+   *  seeded from this. Any keys absent here fall back to
+   *  DEFAULT_TEXT_SIZES at render time. Empty object = use built-in
+   *  defaults across the board. Existing decks are NOT affected — they
+   *  keep whatever textSizes they were saved with. */
+  textSizes: Partial<Record<'footnote' | 'note' | 'body' | 'title' | 'hype', number>>;
 }
 
 const DEFAULTS: PrefSchema = {
   autoReloadAssets: true,
   mathPreamble: '',
+  textSizes: {},
 };
 
 const KEY_PREFIX = 'eigendeck:pref:';

@@ -63,11 +63,28 @@ a deliberate exception."
 
 ## Workflow
 
+There are two places to set the scale:
+
+- **Per-deck** (Inspector → Presentation section → Text sizes (px)) —
+  applies to the currently open deck only. This is where you tune
+  the scale for a specific talk.
+- **Global / new-deck default** (Eigendeck menu → Settings → Default
+  text sizes) — seeds the scale for every NEW deck you create.
+  Existing decks aren't touched; they keep whatever they were saved
+  with. Use this when you've found a scale you like and want it as
+  the starting point for everything you make.
+
+Both editors show the built-in default beside each field so you
+always know what the value would be if you cleared the override.
+
 1. **Set the scale once.** Open the Inspector with no element
    selected. Adjust `footnote / note / body / title / hype` in the
    **Text sizes (px)** section until the proportions look right on
    the kind of screen you'll present on. Default values are tuned
-   for a 1920×1080 projection at conference distance.
+   for a 1920×1080 projection at conference distance. If you like
+   the result and want it as your global starting point for future
+   decks, copy the same values into the Settings dialog's Default
+   text sizes section.
 
 2. **Use the named sizes everywhere.** Text presets already pick from
    the scale; you don't need to think about it. The same `body /
