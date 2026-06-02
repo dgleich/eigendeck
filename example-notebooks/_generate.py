@@ -275,9 +275,11 @@ write_nb("eigenvalue-spectrum.ipynb", [
     ),
     code(
         "import numpy as np",
-        "import matplotlib",
-        "matplotlib.use('Agg')",
         "import matplotlib.pyplot as plt",
+        "# Note: in a Jupyter kernel the inline backend captures the",
+        "# figure into the cell output automatically. Do NOT call",
+        "# matplotlib.use('Agg') — Agg is non-interactive and plt.show()",
+        "# would warn + produce nothing.",
         "",
         "rng = np.random.default_rng(0)",
         "n = 600",
