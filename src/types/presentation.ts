@@ -12,8 +12,46 @@ export interface ElementPosition {
 
 export type TextPreset = 'title' | 'body' | 'textbox' | 'annotation' | 'footnote' | 'hype';
 
+/**
+ * Named sizes in the deck's type scale. Five buckets covering every
+ * size the existing TextPresets need. Other element types
+ * (notebooks, future code blocks, etc.) pick from this same vocabulary
+ * so the deck has ONE type scale, not parallel ones per element type.
+ *
+ * UX restriction: 'title' is reserved for title text elements.
+ * Inspector pickers for non-title elements (notebooks, etc.) hide
+ * it from the chooser — they can still use the numeric override
+ * field if they want title-sized text for some reason.
+ */
+export type NamedSize = 'footnote' | 'note' | 'body' | 'title' | 'hype';
+
+/** Built-in defaults for the type scale. Match the historical
+ *  TextPreset.fontSize values so existing decks render identically
+ *  when `PresentationConfig.textSizes` is absent. */
+export const DEFAULT_TEXT_SIZES: Record<NamedSize, number> = {
+  footnote: 24,
+  note:     32,
+  body:     48,
+  title:    72,
+  hype:     96,
+};
+
+/** Resolve a named size against the deck override + defaults. */
+export function resolveNamedSize(
+  name: NamedSize,
+  config?: { textSizes?: Partial<Record<NamedSize, number>> } | null,
+): number {
+  return config?.textSizes?.[name] ?? DEFAULT_TEXT_SIZES[name];
+}
+
 export const TEXT_PRESET_STYLES: Record<TextPreset, {
   label: string;
+  /** Named size in the deck's type scale. The numeric size at render
+   *  time comes from `resolveNamedSize(sizeName, config)`. */
+  sizeName: NamedSize;
+  /** Fallback px size used by code that doesn't have a config in
+   *  scope (e.g. element factories at insertion time). Matches
+   *  DEFAULT_TEXT_SIZES[sizeName]. */
   fontSize: number;
   fontFamily: string;
   fontWeight: string;
@@ -22,7 +60,8 @@ export const TEXT_PRESET_STYLES: Record<TextPreset, {
 }> = {
   title: {
     label: 'Title',
-    fontSize: 72,
+    sizeName: 'title',
+    fontSize: DEFAULT_TEXT_SIZES.title,
     fontFamily: "'PT Sans', sans-serif",
     fontWeight: '700',
     fontStyle: 'normal',
@@ -30,7 +69,8 @@ export const TEXT_PRESET_STYLES: Record<TextPreset, {
   },
   body: {
     label: 'Body',
-    fontSize: 48,
+    sizeName: 'body',
+    fontSize: DEFAULT_TEXT_SIZES.body,
     fontFamily: "'PT Sans', sans-serif",
     fontWeight: 'normal',
     fontStyle: 'normal',
@@ -38,7 +78,8 @@ export const TEXT_PRESET_STYLES: Record<TextPreset, {
   },
   textbox: {
     label: 'Text Box',
-    fontSize: 48,
+    sizeName: 'body',
+    fontSize: DEFAULT_TEXT_SIZES.body,
     fontFamily: "'PT Sans', sans-serif",
     fontWeight: 'normal',
     fontStyle: 'normal',
@@ -46,7 +87,8 @@ export const TEXT_PRESET_STYLES: Record<TextPreset, {
   },
   annotation: {
     label: 'Annotation',
-    fontSize: 32,
+    sizeName: 'note',
+    fontSize: DEFAULT_TEXT_SIZES.note,
     fontFamily: "'PT Sans', sans-serif",
     fontWeight: 'normal',
     fontStyle: 'italic',
@@ -54,7 +96,8 @@ export const TEXT_PRESET_STYLES: Record<TextPreset, {
   },
   footnote: {
     label: 'Footnote',
-    fontSize: 24,
+    sizeName: 'footnote',
+    fontSize: DEFAULT_TEXT_SIZES.footnote,
     fontFamily: "'PT Sans Narrow', sans-serif",
     fontWeight: 'normal',
     fontStyle: 'normal',
@@ -62,13 +105,24 @@ export const TEXT_PRESET_STYLES: Record<TextPreset, {
   },
   hype: {
     label: 'Hype',
-    fontSize: 96,
+    sizeName: 'hype',
+    fontSize: DEFAULT_TEXT_SIZES.hype,
     fontFamily: "'PT Sans', sans-serif",
     fontWeight: '700',
     fontStyle: 'normal',
     color: '#e53e3e',
   },
 };
+
+/** Resolve the effective px size for a text preset, honoring the
+ *  deck's textSizes override. Use this instead of
+ *  TEXT_PRESET_STYLES[preset].fontSize anywhere a config is in scope. */
+export function effectiveTextPresetSize(
+  preset: TextPreset,
+  config?: { textSizes?: Partial<Record<NamedSize, number>> } | null,
+): number {
+  return resolveNamedSize(TEXT_PRESET_STYLES[preset].sizeName, config);
+}
 
 // ============================================
 // Unified element types
@@ -199,10 +253,15 @@ export interface NotebookElement extends BaseElement {
   /** Optional cell whitelist (zero-indexed). When absent, all cells
    *  from the .ipynb are shown. */
   visibleCells?: number[];
-  /** Base font size in slide-pixels for code cell source. Default 32.
-   *  Other notebook text (markdown, outputs, prompts) is rendered
-   *  proportionally to this base. Presets: 24 (squintable), 32
-   *  (readable, default), 48 (large). */
+  /** Named size from the deck's type scale (footnote / note / body
+   *  are exposed in the picker; 'title' is reserved for title text
+   *  elements). When absent, falls back to 'note' (32 px default).
+   *  Lower precedence than `fontSize` — explicit numeric override
+   *  wins. */
+  fontSizeName?: Exclude<NamedSize, 'title' | 'hype'>;
+  /** Explicit numeric override (slide-pixels). When set, beats
+   *  `fontSizeName`. The picker exposes this as the custom-input
+   *  field alongside the named buttons. */
   fontSize?: number;
 }
 
@@ -255,6 +314,11 @@ export interface PresentationConfig {
   // the body font for markdown cells via the slide/presentation
   // cascade — defaultMono only governs the code path.
   defaultMonoFont?: string;
+  // Deck-level overrides for the named type scale (see NamedSize).
+  // Partial — any keys absent fall back to DEFAULT_TEXT_SIZES.
+  // Affects text presets (via effectiveTextPresetSize) AND notebook
+  // fontSizeName resolution AND anything else that picks by name.
+  textSizes?: Partial<Record<NamedSize, number>>;
   // Per-presentation override for the file-watching auto-reload behavior.
   // 'on'/'off' override the global pref; absent = follow global. Per-asset
   // assets.auto_reload still overrides this. See effectiveAutoReload().

@@ -76,6 +76,7 @@ my-presentation/
 - `mathPreamble`: optional LaTeX preamble applied to all MathJax rendering (e.g. `\newcommand`, `\def`)
 - `defaultTitleFont` / `defaultBodyFont` / `defaultHypeFont`: optional default font package ids (see `src/lib/fonts.ts`). Available ids include `"ptsans"`, `"libertinus"`, `"libertinus-sans"`, `"lm-sans"`, `"noto-sans"`, `"source-sans"`, `"source-code"`, `"shantell"`, `"concrete-euler"`. Slides may override via `Slide.titleFont` / `bodyFont` / `hypeFont`. Missing values resolve to `"ptsans"`.
 - `defaultMonoFont`: optional default monospace font package id, used by notebook code cells. Falls back to `"source-code"` (Source Code Pro, bundled). Notebook prose cells use the body font; only code cells / outputs use this.
+- `textSizes`: optional partial map overriding the deck's named type scale. Keys: `"footnote"` (default 24), `"note"` (32), `"body"` (48), `"title"` (72), `"hype"` (96). Values in slide-pixels. Absent keys fall back to the defaults. Used by every element that picks a size by name (notebook `fontSizeName`, and — as text presets are retrofitted — text element sizes).
 - `autoReloadAssets`: optional per-presentation override for the file-watching auto-reload behavior. `"on"` or `"off"` overrides the global preference; absent means follow the global. Per-asset overrides in `assets.auto_reload` still win.
 
 ## Slide Structure
@@ -283,7 +284,8 @@ Multiple `demo-piece` elements can reference the same `assetId` with different `
 - `preamble`: optional string — setup code run before the visible cells. Useful for imports + helpers so the slide's cells stay short.
 - `autoRun`: optional boolean (default false) — when true, all visible cells execute on slide enter in PresentMode.
 - `visibleCells`: optional array of zero-indexed cell numbers — restricts which cells appear in the rendered notebook. Absent = show all cells.
-- `fontSize`: optional number (default 32, slide-pixels) — base font size for code cell source. Other notebook text (markdown, outputs, prompts) is rendered proportionally to this. Named presets (matching `TextPreset` sizes): `footnote` = 24, `note` = 32, `body` = 48. Custom values 8–120 also accepted via the inspector.
+- `fontSizeName`: optional named size from the deck's type scale. One of `"footnote"`, `"note"`, `"body"`. (`"title"` and `"hype"` are intentionally not allowed for notebooks — title is reserved for title text elements.) Resolves through `PresentationConfig.textSizes[name]` then `DEFAULT_TEXT_SIZES[name]`. Default is `"note"` (32 px) when absent.
+- `fontSize`: optional explicit numeric override (slide-pixels). When set, beats `fontSizeName`. Use this when no named bucket fits. Inspector exposes the spinner alongside the named buttons.
 
 Notebook prose cells inherit the slide's body font (`Slide.bodyFont` → `PresentationConfig.defaultBodyFont` → `'ptsans'`). Notebook code cells use `PresentationConfig.defaultMonoFont` → `'source-code'` (Source Code Pro, bundled).
 
