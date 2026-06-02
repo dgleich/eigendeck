@@ -1299,18 +1299,28 @@
 
 .el-notebook .nb-cell {
   display: grid;
-  grid-template-columns: 60px 1fr;
+  /* Prompt column is narrow — it's just a status indicator
+     ("[*]" for running, "[3]" for executed, "[ ]" for fresh).
+     Stay small regardless of base size; the prompt is not part
+     of the slide's content, just a faint hint to the presenter. */
+  grid-template-columns: 36px 1fr;
   column-gap: 8px;
   padding: 4px 12px;
 }
 .el-notebook .nb-cell-prompt {
-  font-family: var(--nb-mono-family, ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace);
-  /* Prompt matches source size (1:1 with base). */
-  font-size: var(--nb-base-size, 32px);
-  color: #9ca3af;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  color: #cbd5e1;
   text-align: right;
-  padding-top: calc(var(--nb-base-size, 32px) * 0.19);
+  padding-top: calc(var(--nb-base-size, 32px) * 0.35);
   user-select: none;
+}
+/* The currently-running cell deserves a bit more visibility — that
+   *is* useful to the presenter. CodeCell sets this class while
+   running. */
+.el-notebook .nb-cell-prompt.is-running {
+  color: #d97706;
+  font-weight: 700;
 }
 .el-notebook .nb-cell-body { min-width: 0; }
 
@@ -1333,6 +1343,14 @@
   color: #111827;
   flex: 1 1 auto;
   min-width: 0;
+}
+/* The inner <code> element has UA `font-family: monospace` which
+   wins over inheritance from .nb-cell-source. Explicit override
+   makes the cascade actually reach the rendered text. Same pattern
+   as the markdown rules below. */
+.el-notebook .nb-cell-source code {
+  font-family: inherit;
+  font-size: inherit;
 }
 .el-notebook .nb-cell-run {
   flex: 0 0 auto;

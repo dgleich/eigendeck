@@ -23,6 +23,10 @@ export interface CodeCellProps {
 
 export function CodeCell({ cell, liveOutputs, liveExecutionCount, running, onRun }: CodeCellProps) {
   const outputs = liveOutputs ?? cell.outputs;
+  // Shortened prompt — drops the "In " prefix. This is presenter-side
+  // status, not Jupyter-tutorial UI. Audiences shouldn't have to read
+  // it. The presenter just needs to know "is this cell still running"
+  // (rendered visibly when running).
   const promptCount = running
     ? '*'
     : liveExecutionCount === '*' ? '*'
@@ -31,7 +35,7 @@ export function CodeCell({ cell, liveOutputs, liveExecutionCount, running, onRun
     : ' ';
   return (
     <div className="nb-cell nb-cell-code">
-      <div className="nb-cell-prompt">In [{promptCount}]:</div>
+      <div className={`nb-cell-prompt${running ? ' is-running' : ''}`}>[{promptCount}]</div>
       <div className="nb-cell-body">
         <div className="nb-cell-source-row">
           <pre className="nb-cell-source"><code>{cell.source}</code></pre>
