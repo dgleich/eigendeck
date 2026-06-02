@@ -4,6 +4,7 @@ import {
   saveProject,
   exportPresentation,
 } from '../store/fileOps';
+import { ServerStatusPill } from './ServerStatusPill';
 
 export function Toolbar() {
   const { presentation, isDirty, setTitle, updateConfig, projectPath } =
@@ -92,6 +93,7 @@ export function Toolbar() {
         )}
       </div>
       <div className="toolbar-right">
+        <ServerStatusPill />
         <input
           className="meta-input"
           value={presentation.config.author || ''}
