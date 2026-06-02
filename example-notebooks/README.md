@@ -14,6 +14,7 @@ state, so the presenter populates them live during a talk.
 | `power-iteration.ipynb` | Dominant-eigenvector via power iteration; convergence plot (commented out by default — uncomment after first run) | numpy, matplotlib |
 | `pagerank.ipynb` | Damped PageRank on a 6-node graph via power iteration | numpy |
 | `bfs-distance.ipynb` | BFS distance from a source on a tiny graph | (stdlib only) |
+| `eigenvalue-spectrum.ipynb` | Spectrum of a random symmetric matrix + Wigner semicircle overlay (matplotlib `plt.show()` output) | numpy, matplotlib |
 
 ## Regenerating
 

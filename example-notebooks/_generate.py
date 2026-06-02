@@ -260,6 +260,54 @@ write_nb("bfs-distance.ipynb", [
 ])
 
 
+# ------------------------------------------------ matplotlib spectrum
+
+write_nb("eigenvalue-spectrum.ipynb", [
+    md(
+        "# Eigenvalue spectrum of a random symmetric matrix",
+        "",
+        "Wigner's semicircle law: for a real symmetric n×n matrix with",
+        "i.i.d. entries (mean 0, variance σ²), the eigenvalue density",
+        "approaches a semicircle of radius 2σ√n as n grows.",
+        "",
+        "Click ▶ on the second cell to see the histogram converge to",
+        "the predicted semicircle.",
+    ),
+    code(
+        "import numpy as np",
+        "import matplotlib",
+        "matplotlib.use('Agg')",
+        "import matplotlib.pyplot as plt",
+        "",
+        "rng = np.random.default_rng(0)",
+        "n = 600",
+        "M = rng.standard_normal((n, n))",
+        "A = (M + M.T) / 2          # symmetrize",
+        "evals = np.linalg.eigvalsh(A)",
+        "print(f'min={evals.min():.2f}  max={evals.max():.2f}  n={n}')",
+    ),
+    code(
+        "fig, ax = plt.subplots(figsize=(6, 3))",
+        "ax.hist(evals, bins=50, density=True, color='#4f46e5', alpha=0.7,",
+        "        edgecolor='white', label='empirical')",
+        "",
+        "# Wigner semicircle prediction: ρ(λ) = √(4nσ² − λ²) / (2π n σ²) for |λ| < 2σ√n",
+        "sigma = 1.0",
+        "R = 2 * sigma * np.sqrt(n)",
+        "xs = np.linspace(-R, R, 400)",
+        "rho = np.sqrt(np.maximum(0, R**2 - xs**2)) / (np.pi * R**2 / 2)",
+        "ax.plot(xs, rho, color='#dc2626', lw=2, label='Wigner semicircle')",
+        "",
+        "ax.set_xlabel('eigenvalue')",
+        "ax.set_ylabel('density')",
+        "ax.set_title(f'Spectrum of a {n}×{n} GOE matrix')",
+        "ax.legend()",
+        "fig.tight_layout()",
+        "plt.show()",
+    ),
+])
+
+
 # ----------------------------------------------------------------- end
 
 print("done — open any .ipynb in JupyterLab to inspect")
