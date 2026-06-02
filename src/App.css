@@ -1477,9 +1477,19 @@
   border-left: 3px solid #b91c1c;
 }
 .el-notebook .nb-image {
-  max-width: 100%;
+  /* Fill the cell width by default. A matplotlib figure renders at
+     figsize×dpi natural pixels (e.g. 6×3in @ 100dpi = 600px) — on a
+     1760px-wide slide element that reads as tiny. For presentations
+     the sensible default is "make the figure big + readable," so we
+     scale output images to the cell content width. Aspect ratio is
+     preserved via height:auto. Authors control the SHAPE with
+     figsize and the CRISPNESS with dpi; eigendeck controls the
+     on-slide SIZE. */
+  width: 100%;
   height: auto;
   display: block;
+  /* Cap so a genuinely huge figure doesn't overflow horizontally. */
+  max-width: 100%;
 }
 .el-notebook .nb-html { font-family: inherit; font-size: calc(var(--nb-base-size, 32px) * 1.08); }
 .el-notebook .nb-plain { color: #374151; }

@@ -289,7 +289,10 @@ write_nb("eigenvalue-spectrum.ipynb", [
         "print(f'min={evals.min():.2f}  max={evals.max():.2f}  n={n}')",
     ),
     code(
-        "fig, ax = plt.subplots(figsize=(6, 3))",
+        "# figsize sets the SHAPE; dpi sets the crispness. eigendeck",
+        "# scales the figure to the cell width on the slide, so a",
+        "# higher dpi keeps it sharp when enlarged.",
+        "fig, ax = plt.subplots(figsize=(8, 4), dpi=150)",
         "ax.hist(evals, bins=50, density=True, color='#4f46e5', alpha=0.7,",
         "        edgecolor='white', label='empirical')",
         "",
