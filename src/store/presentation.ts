@@ -838,6 +838,19 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     const presentation: Presentation = JSON.parse(json);
     olog(`JSON.parse: ${(performance.now() - t).toFixed(0)}ms → ${presentation.slides.length} slides, ${presentation.slides.reduce((n, s) => n + s.elements.length, 0)} elements`);
 
+    // Migrate legacy notebook tokens / baseUrls into the per-machine
+    // server registry, then strip them from the deck so future saves
+    // don't carry auth artifacts. Mutates `presentation` in place.
+    // Idempotent for already-migrated decks.
+    try {
+      const { migrateLegacyNotebookTokens } = await import('../lib/notebookMigrate');
+      if (migrateLegacyNotebookTokens(presentation)) {
+        olog('migrated legacy notebook token/baseUrl into jupyterServers registry');
+      }
+    } catch (e) {
+      console.warn('Notebook token migration failed (non-fatal):', e);
+    }
+
     t = performance.now();
     const store = usePresentationStore.getState();
     store.setPresentation(presentation);
