@@ -300,6 +300,16 @@ export interface NotebookElement extends BaseElement {
    *  `fontSizeName`. The picker exposes this as the custom-input
    *  field alongside the named buttons. */
   fontSize?: number;
+  /** Per-cell source edits made INSIDE eigendeck, keyed by the cell's
+   *  zero-based index in the .ipynb. An overlay: when present for a
+   *  cell, this source replaces the asset's source for both display
+   *  and execution. The underlying .ipynb asset (and any linked
+   *  source file on disk) is left untouched — edits live in the deck,
+   *  so a presenter can tweak `k = 5` → `k = 10` for a talk without
+   *  rewriting their notebook. Cleared per-cell by the "revert"
+   *  affordance. Index-keyed, so it can drift if the source notebook
+   *  is reordered externally; acceptable for v1. */
+  cellEdits?: Record<number, string>;
 }
 
 export type SlideElement =

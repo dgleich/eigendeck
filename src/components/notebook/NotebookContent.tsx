@@ -82,6 +82,7 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
   return (
     <div className="nb-frame" style={fontStyle}>
       <ExternalKernelBody
+        element={element}
         cells={cells}
         loading={loading}
         error={error}
@@ -91,6 +92,7 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
         autoRun={mode === 'present' && !!element.autoRun}
         highlight={highlight}
         language={language}
+        baseSize={baseSize}
         kernelDisplayName={notebook?.kernelDisplayName ?? notebook?.kernelspecName ?? null}
       />
     </div>
@@ -104,9 +106,10 @@ interface CellRunState {
 }
 
 function ExternalKernelBody({
-  cells, loading, error, interactive, resolved, preamble, autoRun,
-  highlight, language, kernelDisplayName,
+  element, cells, loading, error, interactive, resolved, preamble, autoRun,
+  highlight, language, baseSize, kernelDisplayName,
 }: {
+  element: NotebookElement;
   cells: Cell[];
   loading: boolean; error: Error | null;
   interactive: boolean;
@@ -115,12 +118,68 @@ function ExternalKernelBody({
   autoRun: boolean;
   highlight: boolean;
   language: string | null;
+  baseSize: number;
   kernelDisplayName: string | null;
 }) {
   const kernel = useKernel(resolved);
+  const updateElement = usePresentationStore((s) => s.updateElement);
   const [runState, setRunState] = useState<Map<number, CellRunState>>(new Map());
   const accRef = useRef(runState);
   accRef.current = runState;
+
+  // --- Cell-source edit overlay ------------------------------------
+  // `working` holds the live-typing copy keyed by cell index; seeded
+  // from the persisted element.cellEdits. We keep typing in local
+  // state (not the store) so each keystroke doesn't spam undo / the
+  // SQLite write-through; commits land on blur (commitEdit).
+  const persistedEdits = element.cellEdits;
+  const [working, setWorking] = useState<Map<number, string>>(
+    () => new Map(Object.entries(persistedEdits ?? {}).map(([k, v]) => [Number(k), v]))
+  );
+  // Re-seed when the persisted overlay changes by identity (e.g. undo,
+  // file reload). Cheap — cellEdits is small.
+  useEffect(() => {
+    setWorking(new Map(Object.entries(persistedEdits ?? {}).map(([k, v]) => [Number(k), v])));
+  }, [persistedEdits]);
+
+  /** Effective source for a cell: working overlay if present, else
+   *  the cell's own (parsed) source. */
+  const sourceFor = useCallback((c: Cell): string => {
+    if (c.kind !== 'code') return c.source;
+    const w = working.get(c.index);
+    return w !== undefined ? w : c.source;
+  }, [working]);
+
+  const onEdit = useCallback((index: number, next: string) => {
+    setWorking((prev) => { const m = new Map(prev); m.set(index, next); return m; });
+  }, []);
+
+  /** Commit the working copy for one cell into element.cellEdits.
+   *  If the edit equals the cell's saved source, drop the overlay
+   *  entry (a no-op edit shouldn't leave a phantom override). */
+  const commitEdit = useCallback((index: number, savedSource: string) => {
+    const w = working.get(index);
+    const nextEdits: Record<number, string> = { ...(element.cellEdits ?? {}) };
+    if (w === undefined || w === savedSource) {
+      delete nextEdits[index];
+    } else {
+      nextEdits[index] = w;
+    }
+    const isEmpty = Object.keys(nextEdits).length === 0;
+    updateElement(element.id, {
+      cellEdits: isEmpty ? undefined : nextEdits,
+    } as Partial<NotebookElement>);
+  }, [working, element.cellEdits, element.id, updateElement]);
+
+  const revertEdit = useCallback((index: number) => {
+    setWorking((prev) => { const m = new Map(prev); m.delete(index); return m; });
+    const nextEdits: Record<number, string> = { ...(element.cellEdits ?? {}) };
+    delete nextEdits[index];
+    const isEmpty = Object.keys(nextEdits).length === 0;
+    updateElement(element.id, {
+      cellEdits: isEmpty ? undefined : nextEdits,
+    } as Partial<NotebookElement>);
+  }, [element.cellEdits, element.id, updateElement]);
   // Track whether preamble has fired in the current kernel session.
   // Reset to false whenever the kernel reconnects (which happens on
   // server / kernelName change — see useKernel's effect dep).
@@ -210,7 +269,7 @@ function ExternalKernelBody({
       for (const c of cells) {
         if (cancelled) break;
         if (c.kind !== 'code') continue;
-        await runOne(c.index, c.source);
+        await runOne(c.index, sourceFor(c));
       }
     })();
     return () => { cancelled = true; };
@@ -242,14 +301,22 @@ function ExternalKernelBody({
           switch (c.kind) {
             case 'code': {
               const st = runState.get(c.index);
+              const src = sourceFor(c);
               return (
                 <CodeCell key={c.index} cell={c}
+                  source={src}
                   liveOutputs={st?.outputs ?? null}
                   liveExecutionCount={st?.executionCount ?? null}
                   running={st?.running ?? false}
-                  onRun={() => runOne(c.index, c.source)}
+                  onRun={() => runOne(c.index, sourceFor(c))}
                   language={language}
                   highlight={highlight}
+                  editable={interactive}
+                  fontSize={baseSize}
+                  onEdit={(next) => onEdit(c.index, next)}
+                  onCommit={() => commitEdit(c.index, c.source)}
+                  edited={src !== c.source}
+                  onRevert={() => revertEdit(c.index)}
                 />
               );
             }

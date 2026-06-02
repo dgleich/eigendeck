@@ -51,6 +51,17 @@ describe('presentation types', () => {
     expect(JSON.parse(JSON.stringify(lite))).toEqual(lite);
   });
 
+  it('NotebookElement cellEdits overlay roundtrips through JSON', () => {
+    const el: NotebookElement = {
+      id: 'nb-e', type: 'notebook', assetId: 'asset-e',
+      position: { x: 0, y: 0, width: 100, height: 100 },
+      cellEdits: { 0: 'k = 10', 3: 'import numpy as np\nnp.zeros(5)' },
+    };
+    const parsed = JSON.parse(JSON.stringify(el)) as NotebookElement;
+    expect(parsed.cellEdits?.[0]).toBe('k = 10');
+    expect(parsed.cellEdits?.[3]).toBe('import numpy as np\nnp.zeros(5)');
+  });
+
   it('NotebookElement with kernel absent is valid (resolves at render time)', () => {
     const el: NotebookElement = {
       id: 'nb-3', type: 'notebook',

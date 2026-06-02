@@ -1399,8 +1399,14 @@
 .el-notebook .hljs-strong { font-weight: bold; }
 .el-notebook .hljs-addition { background: #f0fff4; color: #22863a; }
 .el-notebook .hljs-deletion { background: #ffeef0; color: #b31d28; }
-.el-notebook .nb-cell-run {
+.el-notebook .nb-cell-actions {
   flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-self: flex-start;
+}
+.el-notebook .nb-cell-run {
   width: 28px;
   padding: 0 6px;
   border: 1px solid #d1d5db;
@@ -1409,7 +1415,6 @@
   color: #2563eb;
   font-size: 12px;
   cursor: pointer;
-  align-self: flex-start;
   height: 32px;
 }
 .el-notebook .nb-cell-run:hover:not(:disabled) {
@@ -1419,6 +1424,35 @@
   color: #9ca3af;
   cursor: not-allowed;
   background: #f9fafb;
+}
+.el-notebook .nb-cell-revert {
+  width: 28px;
+  padding: 0 6px;
+  border: 1px solid #fcd34d;
+  border-radius: 3px;
+  background: #fffbeb;
+  color: #b45309;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  height: 24px;
+}
+.el-notebook .nb-cell-revert:hover {
+  background: #fef3c7;
+}
+/* Editing container — CodeMirror host. Matches the static <pre>'s
+   box so toggling editable doesn't shift layout. An edited cell gets
+   a subtle amber left-border so the presenter sees which cells carry
+   in-deck tweaks. */
+.el-notebook .nb-cell-source-editing {
+  padding: 0;
+  overflow: hidden;
+}
+.el-notebook .nb-cell-editor {
+  width: 100%;
+}
+.el-notebook .nb-cell-editor .cm-editor {
+  border-radius: 3px;
 }
 .el-notebook .nb-kernel-suffix {
   color: #9ca3af;
