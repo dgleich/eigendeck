@@ -7,7 +7,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
-import { getSlideNumber, TEXT_PRESET_STYLES } from '../types/presentation';
+import { getSlideNumber, TEXT_PRESET_STYLES, effectiveTextPresetSize } from '../types/presentation';
 import { navigatePresenter, closePresenterWindow } from '../lib/multiMonitor';
 
 export function SpeakerMode() {
@@ -146,6 +146,7 @@ export function SpeakerMode() {
 /** Simplified element preview for speaker view (no interactivity, no MathJax) */
 function SpeakerPreviewElement({ element: el, zIndex }: { element: import('../types/presentation').SlideElement; zIndex: number }) {
   const p = el.position;
+  const config = usePresentationStore.getState().presentation.config;
 
   switch (el.type) {
     case 'text': {
@@ -154,7 +155,7 @@ function SpeakerPreviewElement({ element: el, zIndex }: { element: import('../ty
         <div style={{
           position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
           fontFamily: el.fontFamily || ps.fontFamily, fontWeight: ps.fontWeight,
-          fontStyle: ps.fontStyle, fontSize: el.fontSize || ps.fontSize,
+          fontStyle: ps.fontStyle, fontSize: el.fontSize || effectiveTextPresetSize(el.preset, config),
           color: el.color || ps.color, lineHeight: 1.3, overflow: 'hidden', padding: '8px 12px',
           zIndex,
         }} dangerouslySetInnerHTML={{ __html: el.html }} />

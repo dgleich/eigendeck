@@ -8,7 +8,7 @@ import { useImageSrc } from '../lib/imageSrc';
 import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 
-import { TEXT_PRESET_STYLES } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveTextPresetSize } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import { buildTextElementSvgMarkup } from './TextElementSvg';
 import { TextFormatToolbar } from './TextFormatToolbar';
@@ -428,7 +428,7 @@ function TextContent({
   const presetFontFamily = fontFamilyForPreset(presetFontPkg, element.preset);
 
   const fontFamily = element.fontFamily || presetFontFamily;
-  const fontSize = element.fontSize || presetStyle.fontSize;
+  const fontSize = element.fontSize || effectiveTextPresetSize(element.preset, presentation.config);
   const fontWeight = presetStyle.fontWeight;
   const fontStyle = presetStyle.fontStyle;
   const color = element.color || themeColor;

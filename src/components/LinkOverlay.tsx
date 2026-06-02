@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
-import { TEXT_PRESET_STYLES } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveTextPresetSize } from '../types/presentation';
 import type { SlideElement } from '../types/presentation';
 
 const SLIDE_W = 1920;
@@ -151,6 +151,7 @@ function LinkableElement({ element: el, isLinked, onClick }: {
   element: SlideElement; isLinked: boolean; onClick: () => void;
 }) {
   const p = el.position;
+  const config = usePresentationStore.getState().presentation.config;
 
   const wrapStyle: React.CSSProperties = {
     position: 'absolute',
@@ -172,7 +173,7 @@ function LinkableElement({ element: el, isLinked, onClick }: {
           <div style={{
             width: '100%', height: '100%',
             fontFamily: el.fontFamily || ps.fontFamily, fontWeight: ps.fontWeight,
-            fontStyle: ps.fontStyle, fontSize: el.fontSize || ps.fontSize,
+            fontStyle: ps.fontStyle, fontSize: el.fontSize || effectiveTextPresetSize(el.preset, config),
             color: el.color || ps.color, lineHeight: 1.3, overflow: 'hidden', padding: '8px 12px',
             pointerEvents: 'none',
           }} dangerouslySetInnerHTML={{ __html: el.html }} />

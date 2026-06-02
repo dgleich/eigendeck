@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
-import { TEXT_PRESET_STYLES, resolveNamedSize, DEFAULT_TEXT_SIZES, type NamedSize } from '../types/presentation';
+import { resolveNamedSize, effectiveTextPresetSize, DEFAULT_TEXT_SIZES, type NamedSize } from '../types/presentation';
 import { BUILT_IN_THEMES } from '../lib/themes';
 import { FONT_PACKAGES, type FontPackage } from '../lib/fonts';
 import type { VerticalAlign } from '../types/presentation';
@@ -387,7 +387,7 @@ export function PropertiesPanel() {
                 </PropSection>
                 <PropSection label="Font Size">
                   <input className="prop-input-sm" type="number"
-                    value={selectedEl.fontSize || TEXT_PRESET_STYLES[selectedEl.preset].fontSize}
+                    value={selectedEl.fontSize || effectiveTextPresetSize(selectedEl.preset, presentation.config)}
                     onChange={(e) => updateElement(selectedEl.id, { fontSize: parseInt(e.target.value) || 48 } as any)} />
                 </PropSection>
                 <PropSection label="Vertical Align">
