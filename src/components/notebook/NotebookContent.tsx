@@ -58,12 +58,20 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
         : notebook.cells)
     : [];
 
+  // Syntax-highlight settings flow into the cell components.
+  // `highlight` defaults to true; the element-level toggle disables.
+  // `language` is read from the parsed notebook's kernelspec.
+  const highlight = element.syntaxHighlight !== false;
+  const language = notebook?.language ?? null;
+
   if (resolved.kind === 'lite') {
     return (
       <div className="nb-frame" style={fontStyle}>
         <LiteKernelPlaceholder
           cells={cells}
           interactive={interactive}
+          highlight={highlight}
+          language={language}
           kernelDisplayName={notebook?.kernelDisplayName ?? notebook?.kernelspecName ?? null}
         />
       </div>
@@ -79,6 +87,8 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
         resolved={resolved}
         preamble={element.preamble}
         autoRun={mode === 'present' && !!element.autoRun}
+        highlight={highlight}
+        language={language}
         kernelDisplayName={notebook?.kernelDisplayName ?? notebook?.kernelspecName ?? null}
       />
     </div>
@@ -92,7 +102,8 @@ interface CellRunState {
 }
 
 function ExternalKernelBody({
-  cells, loading, error, interactive, resolved, preamble, autoRun, kernelDisplayName,
+  cells, loading, error, interactive, resolved, preamble, autoRun,
+  highlight, language, kernelDisplayName,
 }: {
   cells: Cell[];
   loading: boolean; error: Error | null;
@@ -100,6 +111,8 @@ function ExternalKernelBody({
   resolved: ResolvedExternal;
   preamble: string | undefined;
   autoRun: boolean;
+  highlight: boolean;
+  language: string | null;
   kernelDisplayName: string | null;
 }) {
   const kernel = useKernel(resolved);
@@ -236,6 +249,8 @@ function ExternalKernelBody({
                   liveExecutionCount={st?.executionCount ?? null}
                   running={st?.running ?? false}
                   onRun={() => runOne(c.index, c.source)}
+                  language={language}
+                  highlight={highlight}
                 />
               );
             }
@@ -260,10 +275,12 @@ function labelForStatus(s: KernelStatus): string {
 }
 
 function LiteKernelPlaceholder({
-  cells, interactive, kernelDisplayName,
+  cells, interactive, highlight, language, kernelDisplayName,
 }: {
   cells: Cell[];
   interactive: boolean;
+  highlight: boolean;
+  language: string | null;
   kernelDisplayName: string | null;
 }) {
   return (
@@ -275,7 +292,8 @@ function LiteKernelPlaceholder({
       <div className="nb-body" style={{ pointerEvents: interactive ? 'auto' : 'none' }}>
         {cells.map((c) => {
           switch (c.kind) {
-            case 'code': return <CodeCell key={c.index} cell={c} />;
+            case 'code': return <CodeCell key={c.index} cell={c}
+              language={language} highlight={highlight} />;
             case 'markdown': return <MarkdownCell key={c.index} cell={c} />;
             case 'raw': return <RawCell key={c.index} cell={c} />;
           }

@@ -283,6 +283,13 @@ export interface NotebookElement extends BaseElement {
   /** Optional cell whitelist (zero-indexed). When absent, all cells
    *  from the .ipynb are shown. */
   visibleCells?: number[];
+  /** Syntax-highlight code cells. Default true. Set to false when
+   *  the highlighter mis-identifies the language or monochrome code
+   *  reads better on a particular slide. Highlighter grammar is
+   *  picked from notebook.kernelspec.language; common kernels
+   *  (python / julia / r / bash / cpp / rust / js / ts / sql / etc.)
+   *  work out of the box, others render unhighlighted. */
+  syntaxHighlight?: boolean;
   /** Named size from the deck's type scale (footnote / note / body
    *  are exposed in the picker; 'title' is reserved for title text
    *  elements). When absent, falls back to 'note' (32 px default).

@@ -285,6 +285,7 @@ Multiple `demo-piece` elements can reference the same `assetId` with different `
 - `preamble`: optional string — setup code run before the visible cells. Useful for imports + helpers so the slide's cells stay short.
 - `autoRun`: optional boolean (default false) — when true, all visible cells execute on slide enter in PresentMode.
 - `visibleCells`: optional array of zero-indexed cell numbers — restricts which cells appear in the rendered notebook. Absent = show all cells.
+- `syntaxHighlight`: optional boolean (default true) — color code cells using highlight.js with the grammar picked from the notebook's `kernelspec.language`. Set to `false` to render code unhighlighted. Common kernels supported out of the box (python, julia, r, javascript, typescript, c, cpp, rust, go, bash, sql, java, kotlin, swift, ruby, php).
 - `fontSizeName`: optional named size from the deck's type scale. One of `"footnote"`, `"note"`, `"body"`. (`"title"` and `"hype"` are intentionally not allowed for notebooks — title is reserved for title text elements.) Resolves through `PresentationConfig.textSizes[name]` then `DEFAULT_TEXT_SIZES[name]`. Default is `"note"` (32 px) when absent.
 - `fontSize`: optional explicit numeric override (slide-pixels). When set, beats `fontSizeName`. Use this when no named bucket fits. Inspector exposes the spinner alongside the named buttons.
 

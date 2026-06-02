@@ -799,6 +799,21 @@ function NotebookProperties({ element }: {
         </label>
       </PropSection>
 
+      <PropSection label="Syntax highlight code">
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+          <input
+            type="checkbox"
+            // Default true (`undefined` => on). Only stored when the
+            // user explicitly opts out.
+            checked={element.syntaxHighlight !== false}
+            onChange={(e) => updateElement(element.id, {
+              syntaxHighlight: e.target.checked ? undefined : false,
+            } as Partial<typeof element>)}
+          />
+          Color code by language (from kernel metadata)
+        </label>
+      </PropSection>
+
       <PropSection label="Preamble">
         <textarea
           value={element.preamble ?? ''}

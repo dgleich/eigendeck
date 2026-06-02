@@ -1352,6 +1352,53 @@
   font-family: inherit;
   font-size: inherit;
 }
+
+/* Syntax highlighting theme (GitHub Light, scoped). Inlined here
+   rather than importing highlight.js's CSS so the color rules apply
+   only inside notebook cells. Token classes are emitted by
+   highlight.js v11; the set below covers what the common-languages
+   bundle produces. */
+.el-notebook .hljs { color: #24292e; background: transparent; }
+.el-notebook .hljs-doctag,
+.el-notebook .hljs-keyword,
+.el-notebook .hljs-meta .hljs-keyword,
+.el-notebook .hljs-template-tag,
+.el-notebook .hljs-template-variable,
+.el-notebook .hljs-type,
+.el-notebook .hljs-variable.language_ { color: #d73a49; }
+.el-notebook .hljs-title,
+.el-notebook .hljs-title.class_,
+.el-notebook .hljs-title.class_.inherited__,
+.el-notebook .hljs-title.function_ { color: #6f42c1; }
+.el-notebook .hljs-attr,
+.el-notebook .hljs-attribute,
+.el-notebook .hljs-literal,
+.el-notebook .hljs-meta,
+.el-notebook .hljs-number,
+.el-notebook .hljs-operator,
+.el-notebook .hljs-variable,
+.el-notebook .hljs-selector-attr,
+.el-notebook .hljs-selector-class,
+.el-notebook .hljs-selector-id { color: #005cc5; }
+.el-notebook .hljs-regexp,
+.el-notebook .hljs-string,
+.el-notebook .hljs-meta .hljs-string { color: #032f62; }
+.el-notebook .hljs-built_in,
+.el-notebook .hljs-symbol { color: #e36209; }
+.el-notebook .hljs-comment,
+.el-notebook .hljs-code,
+.el-notebook .hljs-formula { color: #6a737d; font-style: italic; }
+.el-notebook .hljs-name,
+.el-notebook .hljs-quote,
+.el-notebook .hljs-selector-tag,
+.el-notebook .hljs-selector-pseudo { color: #22863a; }
+.el-notebook .hljs-subst { color: #24292e; }
+.el-notebook .hljs-section { color: #005cc5; font-weight: bold; }
+.el-notebook .hljs-bullet { color: #735c0f; }
+.el-notebook .hljs-emphasis { font-style: italic; }
+.el-notebook .hljs-strong { font-weight: bold; }
+.el-notebook .hljs-addition { background: #f0fff4; color: #22863a; }
+.el-notebook .hljs-deletion { background: #ffeef0; color: #b31d28; }
 .el-notebook .nb-cell-run {
   flex: 0 0 auto;
   width: 28px;
