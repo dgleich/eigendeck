@@ -7,7 +7,6 @@ import { listMonoEligible } from '../lib/notebookFonts';
 import type { VerticalAlign } from '../types/presentation';
 import { AssetSection } from './AssetSection';
 import { usePreference } from '../lib/preferences';
-import { resolveNotebookKernel } from '../lib/notebookKernel';
 
 const ARROW_COLORS = [
   '#e53e3e', '#dc2626', '#ea580c', '#16a34a',
@@ -701,14 +700,13 @@ function NotebookProperties({ element }: {
 }) {
   const { presentation, updateElement } = usePresentationStore();
   const config = presentation.config;
-  // notebookKernel module is tiny (cascade resolver only) — static
-  // import is fine; no need to chunk-split.
-  const resolved = resolveNotebookKernel(element, config, null);
 
   // Element-level kernel may be undefined; user changes promote it
   // to an explicit object. Per the cascade doc — the absence of a
   // value is meaningful (means "use deck default"), so we keep the
-  // distinction visible in the UI.
+  // distinction visible in the UI. Note: server URL + token are NOT
+  // on the element anymore (those live in the per-machine registry
+  // in Settings → Jupyter servers, matched by kernel name).
   const elemKind = element.kernel?.kind ?? '';
   const elemExt = element.kernel?.kind === 'external' ? element.kernel : undefined;
 
@@ -729,63 +727,33 @@ function NotebookProperties({ element }: {
           }}
           style={{ width: '100%', padding: '3px 6px', fontSize: 12 }}
         >
-          <option value="">deck default ({resolved.kind})</option>
+          <option value="">deck default</option>
           <option value="external">External Jupyter server</option>
           <option value="lite">Lite (Pyodide) — display only in v1</option>
         </select>
       </PropSection>
 
-      {(elemKind === 'external' || (elemKind === '' && resolved.kind === 'external')) && (
-        <>
-          <PropSection label="Server URL">
-            <input
-              type="text"
-              value={elemExt?.baseUrl ?? ''}
-              placeholder={resolved.kind === 'external' ? resolved.baseUrl : ''}
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                if (!element.kernel || element.kernel.kind !== 'external') {
-                  setKernel({ kind: 'external', baseUrl: v || undefined });
-                } else {
-                  setKernel({ ...element.kernel, baseUrl: v || undefined });
-                }
-              }}
-              style={{ width: '100%', padding: '3px 6px', fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace' }}
-            />
-          </PropSection>
-          <PropSection label="Kernel name">
-            <input
-              type="text"
-              value={elemExt?.kernelName ?? ''}
-              placeholder={resolved.kind === 'external' ? resolved.kernelName : ''}
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                if (!element.kernel || element.kernel.kind !== 'external') {
-                  setKernel({ kind: 'external', kernelName: v || undefined });
-                } else {
-                  setKernel({ ...element.kernel, kernelName: v || undefined });
-                }
-              }}
-              style={{ width: '100%', padding: '3px 6px', fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace' }}
-            />
-          </PropSection>
-          <PropSection label="Token (optional)">
-            <input
-              type="password"
-              value={elemExt?.token ?? ''}
-              placeholder={(resolved.kind === 'external' && resolved.token) ? '(set)' : '(none)'}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (!element.kernel || element.kernel.kind !== 'external') {
-                  setKernel({ kind: 'external', token: v || undefined });
-                } else {
-                  setKernel({ ...element.kernel, token: v || undefined });
-                }
-              }}
-              style={{ width: '100%', padding: '3px 6px', fontSize: 12 }}
-            />
-          </PropSection>
-        </>
+      {(elemKind === 'external' || elemKind === '') && (
+        <PropSection label="Kernel name">
+          <input
+            type="text"
+            value={elemExt?.kernelName ?? ''}
+            placeholder="python3 (from notebook metadata)"
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              if (!element.kernel || element.kernel.kind !== 'external') {
+                setKernel({ kind: 'external', kernelName: v || undefined });
+              } else {
+                setKernel({ ...element.kernel, kernelName: v || undefined });
+              }
+            }}
+            style={{ width: '100%', padding: '3px 6px', fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace' }}
+          />
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+            Server URL + token live in Settings → Jupyter servers.
+            The first registered server that advertises this kernel is the one we dial.
+          </div>
+        </PropSection>
       )}
 
       <PropSection label="Auto-run on slide enter">

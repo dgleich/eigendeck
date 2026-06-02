@@ -36,7 +36,7 @@ describe('presentation types', () => {
     const external: NotebookElement = {
       id: 'nb-1', type: 'notebook',
       assetId: 'asset-1',
-      kernel: { kind: 'external', baseUrl: 'http://localhost:8888', kernelName: 'julia-1.10' },
+      kernel: { kind: 'external', kernelName: 'julia-1.10' },
       preamble: 'using LinearAlgebra',
       autoRun: true,
       position: { x: 100, y: 100, width: 800, height: 600 },

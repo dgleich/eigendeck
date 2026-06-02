@@ -14,6 +14,7 @@ import { RawCell } from './RawCell';
 import { useNotebook } from '../../lib/useNotebook';
 import { useKernel, KernelStatus } from '../../lib/useKernel';
 import { resolveNotebookKernel, ResolvedExternal } from '../../lib/notebookKernel';
+import { usePreference } from '../../lib/preferences';
 import { Cell, CellOutput } from '../../lib/notebookFormat';
 import { NotebookElement, effectiveFontSize } from '../../types/presentation';
 import { usePresentationStore } from '../../store/presentation';
@@ -30,7 +31,8 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
   const { notebook, error, loading } = useNotebook(element.assetId);
   const config = usePresentationStore((s) => s.presentation?.config);
   const slide = usePresentationStore((s) => s.presentation?.slides?.[s.currentSlideIndex]);
-  const resolved = resolveNotebookKernel(element, config, notebook);
+  const [jupyterServers] = usePreference('jupyterServers');
+  const resolved = resolveNotebookKernel(element, config, notebook, jupyterServers);
 
   // Typography resolution. CSS variables flow through to .nb-* rules
   // via inline style on the frame wrapper below — keeps the CSS file
@@ -121,9 +123,10 @@ function ExternalKernelBody({
   accRef.current = runState;
   // Track whether preamble has fired in the current kernel session.
   // Reset to false whenever the kernel reconnects (which happens on
-  // resolved.* change — see useKernel's effect dep).
+  // server / kernelName change — see useKernel's effect dep).
   const preambleFiredRef = useRef(false);
-  useEffect(() => { preambleFiredRef.current = false; }, [resolved.baseUrl, resolved.token, resolved.kernelName]);
+  useEffect(() => { preambleFiredRef.current = false; },
+    [resolved.server?.baseUrl, resolved.server?.token, resolved.kernelName]);
 
   const setCellState = useCallback(
     (index: number, patch: Partial<CellRunState> | ((prev: CellRunState | undefined) => CellRunState)) => {
@@ -218,10 +221,15 @@ function ExternalKernelBody({
 
   return (
     <>
+      {/* Compact header — JUST the kernel name + a small status dot.
+          Per the design: no inline auth UX, no server URL, no
+          "kernel error: start a server with..." prompts. The status
+          pill in the app's topbar surfaces server health globally;
+          this element shows the bare minimum the presenter needs to
+          glance at during a talk (is this cell idle/busy/red). */}
       <div className="nb-header">
         <span className="nb-kernel-label">
           {kernelDisplayName || resolved.kernelName}
-          <span className="nb-kernel-suffix"> · {resolved.baseUrl.replace(/^https?:\/\//, '')}</span>
         </span>
         <span className={`nb-status nb-status-${kernel.status}`}>
           {labelForStatus(kernel.status)}
@@ -230,15 +238,6 @@ function ExternalKernelBody({
       <div className="nb-body" style={{ pointerEvents: interactive ? 'auto' : 'none' }}>
         {loading && <div className="nb-status">Loading…</div>}
         {error && <div className="nb-status nb-error">Parse error: {error.message}</div>}
-        {kernel.error && (
-          <div className="nb-status nb-error">
-            Kernel error: {kernel.error}
-            <div className="nb-hint">
-              Start a server with:&nbsp;
-              <code>jupyter server --no-browser --port=8888 --IdentityProvider.token=&apos;...&apos; --ServerApp.allow_origin=&apos;*&apos; --ServerApp.disable_check_xsrf=True</code>
-            </div>
-          </div>
-        )}
         {cells.map((c) => {
           switch (c.kind) {
             case 'code': {
@@ -271,6 +270,7 @@ function labelForStatus(s: KernelStatus): string {
     case 'busy': return '◑ busy';
     case 'error': return '✕ error';
     case 'dead': return '✕ dead';
+    case 'no-server': return '⚠ no server';
   }
 }
 

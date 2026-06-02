@@ -246,24 +246,24 @@ export interface CoverElement extends BaseElement {
  * Jupyter kernel binding for a notebook element. Two backends:
  *   - 'external': REST + WebSocket to a user-run jupyter server.
  *     Supports any installed kernel (python3, julia-1.10, ir, ...).
- *     Tiny app-side cost; relies on the user having the kernel
- *     installed. Default.
+ *     The notebook element ONLY says which kernel it needs; the
+ *     baseUrl + token come from the per-machine server registry in
+ *     PrefSchema.jupyterServers, matched by `availableKernels`. Decks
+ *     therefore stay portable + git-committable — no auth artifacts.
  *   - 'lite': JupyterLite/Pyodide running entirely in the WebView.
  *     Python-only; self-contained ("portable demo for anyone who
  *     opens the deck"). ~30 MB bundle on first use.
  *
- * All fields beyond `kind` are optional. Cascade per DESIGN_DECISIONS.md
- * "Preferences cascade" (default-setting flavor):
+ * Cascade per DESIGN_DECISIONS.md "Preferences cascade":
  *   NotebookElement.kernel ?? PresentationConfig.notebookKernel
- *     ?? app-pref default ?? { kind: 'external', baseUrl: 'http://localhost:8888',
- *                              kernelName: 'python3' }
+ *     ?? app default ?? { kind: 'external', kernelName: 'python3' }
  *
- * `token` lives on the element/deck for v1 (localhost-only realistic
- * scenario). v2 moves auth to an app-prefs server registry keyed by
- * baseUrl — decks are git-committable and tokens shouldn't be.
+ * Server selection (the URL to dial) is NOT part of this cascade —
+ * it's resolved separately from the registry by kernelName matching.
+ * See src/lib/notebookKernel.ts.
  */
 export type NotebookKernel =
-  | { kind: 'external'; baseUrl?: string; kernelName?: string; token?: string }
+  | { kind: 'external'; kernelName?: string }
   | { kind: 'lite' };
 
 export interface NotebookElement extends BaseElement {

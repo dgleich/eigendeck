@@ -11,7 +11,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { JupyterClient, ExecuteCallbacks, ExecuteHandle } from './jupyterClient';
 import { ResolvedExternal } from './notebookKernel';
 
-export type KernelStatus = 'disconnected' | 'connecting' | 'idle' | 'busy' | 'error' | 'dead';
+export type KernelStatus = 'disconnected' | 'connecting' | 'idle' | 'busy' | 'error' | 'dead' | 'no-server';
 
 export interface UseKernelResult {
   status: KernelStatus;
@@ -29,8 +29,17 @@ export interface UseKernelResult {
 
 export function useKernel(resolved: ResolvedExternal): UseKernelResult {
   const clientRef = useRef<JupyterClient | null>(null);
-  const [status, setStatus] = useState<KernelStatus>('disconnected');
-  const [error, setError] = useState<string | null>(null);
+  // 'no-server' when the registry produced no match for the requested
+  // kernel. We never attempt to connect in that state — connect() and
+  // runCell() reject early with a clear message.
+  const noServer = resolved.server == null;
+  const [status, setStatus] = useState<KernelStatus>(noServer ? 'no-server' : 'disconnected');
+  const [error, setError] = useState<string | null>(noServer
+    ? `No registered server advertises a "${resolved.kernelName}" kernel. Add one in Settings → Jupyter servers.`
+    : null);
+
+  const serverBaseUrl = resolved.server?.baseUrl ?? '';
+  const serverToken = resolved.server?.token ?? '';
 
   // Recreate client when connection params change. Stops any in-flight
   // kernel under the old config first.
@@ -40,14 +49,35 @@ export function useKernel(resolved: ResolvedExternal): UseKernelResult {
       clientRef.current = null;
       if (c) void c.stopKernel().catch(() => {});
     };
-  }, [resolved.baseUrl, resolved.token, resolved.kernelName]);
+  }, [serverBaseUrl, serverToken, resolved.kernelName]);
+
+  // When the registry update changes the matched server while mounted
+  // (e.g. user just saved a new server in Settings), sync our status
+  // out of 'no-server' so the next connect attempt is allowed.
+  useEffect(() => {
+    if (noServer) {
+      setStatus('no-server');
+      setError(`No registered server advertises a "${resolved.kernelName}" kernel. Add one in Settings → Jupyter servers.`);
+    } else if (status === 'no-server') {
+      setStatus('disconnected');
+      setError(null);
+    }
+    // status intentionally NOT in deps — we only want to transition
+    // out of no-server, not loop on every status change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noServer, resolved.kernelName]);
 
   const connect = useCallback(async () => {
+    if (noServer) {
+      const msg = `No registered server advertises a "${resolved.kernelName}" kernel.`;
+      setError(msg);
+      throw new Error(msg);
+    }
     if (clientRef.current?.isConnected) return;
     setStatus('connecting'); setError(null);
     const client = new JupyterClient({
-      baseUrl: resolved.baseUrl,
-      token: resolved.token,
+      baseUrl: serverBaseUrl,
+      token: serverToken,
     });
     try {
       await client.startKernel(resolved.kernelName);
@@ -58,7 +88,7 @@ export function useKernel(resolved: ResolvedExternal): UseKernelResult {
       setError(e instanceof Error ? e.message : String(e));
       throw e;
     }
-  }, [resolved.baseUrl, resolved.token, resolved.kernelName]);
+  }, [noServer, serverBaseUrl, serverToken, resolved.kernelName]);
 
   const runCell = useCallback(async (code: string, callbacks?: ExecuteCallbacks) => {
     if (!clientRef.current?.isConnected) await connect();
@@ -77,9 +107,9 @@ export function useKernel(resolved: ResolvedExternal): UseKernelResult {
   const stop = useCallback(async () => {
     const c = clientRef.current;
     clientRef.current = null;
-    setStatus('disconnected');
+    setStatus(noServer ? 'no-server' : 'disconnected');
     if (c) await c.stopKernel().catch(() => {});
-  }, []);
+  }, [noServer]);
 
   return { status, error, connect, runCell, stop };
 }

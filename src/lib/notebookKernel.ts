@@ -1,71 +1,104 @@
-// Cascade-resolve the kernel settings for a NotebookElement.
-// Default-setting cascade (see DESIGN_DECISIONS.md "Preferences
-// cascade"): element.kernel ?? config.notebookKernel ?? app pref
-// ?? hardcoded fallback.
+// Resolve the kernel + server for a NotebookElement.
 //
-// App-pref tier isn't wired through localStorage yet; for now it's
-// stubbed in DEFAULT_APP_KERNEL. Wiring the pref panel is part of
-// the Inspector controls work (Phase 8).
+// Two-step resolution:
+//   1. The CASCADE picks the requested kernel name. Default-setting
+//      flavor per DESIGN_DECISIONS.md "Preferences cascade":
+//         element.kernel.kernelName
+//           ?? config.notebookKernel.kernelName
+//           ?? notebook.metadata.kernelspec.name
+//           ?? 'python3' (final fallback)
+//      Kernel kind ('external' | 'lite') walks the same cascade.
+//
+//   2. The REGISTRY picks the server. Notebook elements never carry
+//      baseUrl + token (those are auth artifacts; decks are
+//      git-committable). Instead we scan PrefSchema.jupyterServers
+//      for the first entry whose `availableKernels` contains the
+//      requested kernel name. No match → ResolvedExternal.server is
+//      null and the status pill (Phase 3) shows red.
 
 import {
-  NotebookElement, NotebookKernel, PresentationConfig,
+  NotebookElement, PresentationConfig,
 } from '../types/presentation';
 import { Notebook } from './notebookFormat';
+import type { JupyterServerEntry } from './preferences';
 
-/** Hardcoded fallback when no tier has expressed a preference. */
-export const DEFAULT_APP_KERNEL: NotebookKernel & { kind: 'external' } = {
-  kind: 'external',
-  baseUrl: 'http://localhost:8888',
-  kernelName: 'python3',
-};
+/** Hardcoded fallback kernel name when no tier expressed a preference
+ *  and the notebook lacks kernelspec metadata. */
+const DEFAULT_KERNEL_NAME = 'python3';
 
 export interface ResolvedExternal {
   kind: 'external';
-  baseUrl: string;
+  /** The kernel name to start (e.g., 'python3', 'julia-1.10'). */
   kernelName: string;
-  token: string;
+  /** The registered server we'll dial, or null if no entry in the
+   *  registry advertises the requested kernel. Consumers should
+   *  render a "no matching server" state when null rather than
+   *  attempting to connect. */
+  server: JupyterServerEntry | null;
 }
+
 export interface ResolvedLite {
   kind: 'lite';
 }
+
 export type ResolvedKernel = ResolvedExternal | ResolvedLite;
 
-/** Resolve the kernel for a notebook element. Walks the cascade and
- *  fills in any missing fields from lower tiers. The notebook's own
- *  metadata.kernelspec.name seeds kernelName when no tier specifies. */
+/** Pick the first server in `registry` advertising `kernelName`. The
+ *  registry order is the user's preference order; reorder in Settings
+ *  to change the default match. A server with no `availableKernels`
+ *  field (never tested) is skipped — discovery hasn't confirmed it
+ *  has the kernel, so we don't gamble during a talk. */
+export function findServerForKernel(
+  kernelName: string,
+  registry: JupyterServerEntry[],
+): JupyterServerEntry | null {
+  for (const s of registry) {
+    if (s.availableKernels?.includes(kernelName)) return s;
+  }
+  return null;
+}
+
 export function resolveNotebookKernel(
   element: NotebookElement,
   config: PresentationConfig | undefined,
   notebook: Notebook | null,
+  registry: JupyterServerEntry[],
 ): ResolvedKernel {
-  // Walk the kind cascade: element → deck → app default.
+  // Step 1a — pick the kind via the standard cascade.
   const kind =
     element.kernel?.kind
     ?? config?.notebookKernel?.kind
-    ?? DEFAULT_APP_KERNEL.kind;
+    ?? 'external';
 
   if (kind === 'lite') return { kind: 'lite' };
 
-  // External: each field falls through tiers independently so a deck
-  // can set baseUrl while leaving kernelName to per-element choice.
+  // Step 1b — pick the kernel name via the cascade.
   const elemExt = element.kernel?.kind === 'external' ? element.kernel : undefined;
   const deckExt = config?.notebookKernel?.kind === 'external'
     ? config.notebookKernel : undefined;
+  const kernelName =
+    elemExt?.kernelName
+    ?? deckExt?.kernelName
+    ?? notebook?.kernelspecName
+    ?? DEFAULT_KERNEL_NAME;
 
+  // Step 2 — registry lookup. Decoupled from the cascade so server
+  // selection lives entirely on the local machine; deck files never
+  // know the URL or token.
   return {
     kind: 'external',
-    baseUrl:
-      elemExt?.baseUrl
-      ?? deckExt?.baseUrl
-      ?? DEFAULT_APP_KERNEL.baseUrl!,
-    kernelName:
-      elemExt?.kernelName
-      ?? deckExt?.kernelName
-      ?? notebook?.kernelspecName
-      ?? DEFAULT_APP_KERNEL.kernelName!,
-    token:
-      elemExt?.token
-      ?? deckExt?.token
-      ?? '',
+    kernelName,
+    server: findServerForKernel(kernelName, registry),
   };
+}
+
+/** Convenience export retained for tests / docs referencing the
+ *  previous name. New code should call resolveNotebookKernel with a
+ *  registry; this helper assumes an empty one (no server matches). */
+export function resolveKernelNameOnly(
+  element: NotebookElement,
+  config: PresentationConfig | undefined,
+  notebook: Notebook | null,
+): ResolvedKernel {
+  return resolveNotebookKernel(element, config, notebook, []);
 }

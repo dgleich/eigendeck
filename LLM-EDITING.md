@@ -281,7 +281,7 @@ Multiple `demo-piece` elements can reference the same `assetId` with different `
 ```
 
 - `assetId`: REQUIRED UUID — stable binding to the `.ipynb` asset.
-- `kernel`: optional kernel backend (`{ kind: 'external', baseUrl?, kernelName?, token? }` or `{ kind: 'lite' }`). When absent, cascades to `PresentationConfig.notebookKernel`, then the app default `{ kind: 'external', baseUrl: 'http://localhost:8888', kernelName: 'python3' }`. See `DESIGN_DECISIONS.md` "Preferences cascade" — default-setting flavor.
+- `kernel`: optional kernel backend (`{ kind: 'external', kernelName? }` or `{ kind: 'lite' }`). When absent, cascades to `PresentationConfig.notebookKernel`, then `'python3'` as the final default. See `DESIGN_DECISIONS.md` "Preferences cascade." **Server URL and authentication token are NOT on the element** — they live in the per-machine app preference `jupyterServers` registry (Settings → Jupyter servers). At render time, the first registered server whose `availableKernels` includes the resolved `kernelName` is the one we dial.
 - `preamble`: optional string — setup code run before the visible cells. Useful for imports + helpers so the slide's cells stay short.
 - `autoRun`: optional boolean (default false) — when true, all visible cells execute on slide enter in PresentMode.
 - `visibleCells`: optional array of zero-indexed cell numbers — restricts which cells appear in the rendered notebook. Absent = show all cells.
@@ -293,7 +293,7 @@ Notebook prose cells inherit the slide's body font (`Slide.bodyFont` → `Presen
 
 Notebook elements render as a live, interactive Jupyter UI inside an iframe. Two kernel backends are supported (default to external):
 
-- **`external`**: connects via REST + WebSocket to a user-run `jupyter server` on the local machine. Supports any installed kernel (Python, Julia, R, ...). User must have the server running; eigendeck shows a "connect" panel if it's unreachable.
+- **`external`**: connects via REST + WebSocket to a user-run `jupyter server`. Supports any installed kernel (Python, Julia, R, ...). The server URL + token come from `PrefSchema.jupyterServers`, picked by matching `availableKernels`. If no registered server advertises the requested kernel, the notebook renders but can't run (status pill shows red).
 - **`lite`**: runs a self-contained Pyodide kernel inside the WebView via a bundled JupyterLite distribution. Python-only, but the deck works on any machine without Jupyter installed — use this for portable demo decks.
 
 ## Linked Objects

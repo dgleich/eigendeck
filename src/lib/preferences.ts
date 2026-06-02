@@ -32,12 +32,39 @@ export interface PrefSchema {
    *  defaults across the board. Existing decks are NOT affected — they
    *  keep whatever textSizes they were saved with. */
   textSizes: Partial<Record<'footnote' | 'note' | 'body' | 'title' | 'hype', number>>;
+  /** Per-machine registry of Jupyter kernel servers. Notebook elements
+   *  store ONLY the kernel name they need (`python3`, `julia-1.10`,
+   *  ...) — the resolver finds the first registry server whose
+   *  `availableKernels` contains the requested name and dials its
+   *  baseUrl with its token. Tokens stay on this machine; decks never
+   *  carry them. */
+  jupyterServers: JupyterServerEntry[];
+}
+
+export interface JupyterServerEntry {
+  /** Display name in Settings + the topbar status pill. */
+  label: string;
+  /** REST + WebSocket base URL, e.g. 'http://localhost:8888'. */
+  baseUrl: string;
+  /** Auth token. Empty string when the server runs token-less
+   *  (--ServerApp.token=''). */
+  token: string;
+  /** Kernel ids discovered from /api/kernelspecs. Populated by the
+   *  Settings UI's "Test connection" action and by the auto-discovery
+   *  poll on app start. Empty = unknown (server never reached). */
+  availableKernels?: string[];
+  /** Unix-ms timestamp of the last successful contact, for the
+   *  status pill staleness check. Absent = never. */
+  lastSeenAt?: number;
+  /** Optional free-form note shown in Settings. */
+  notes?: string;
 }
 
 const DEFAULTS: PrefSchema = {
   autoReloadAssets: true,
   mathPreamble: '',
   textSizes: {},
+  jupyterServers: [],
 };
 
 const KEY_PREFIX = 'eigendeck:pref:';
