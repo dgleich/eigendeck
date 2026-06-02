@@ -67,6 +67,11 @@ Demos are standalone HTML files stored as assets in the `.eigendeck` file. See [
 # See LLM-EDITING.md for the programmatic editing guide
 ```
 
+## Manual
+
+Editorial choices and the reasoning behind them — for people building
+talks, not people reading the code. See [docs/manual/README.md](docs/manual/README.md).
+
 ## License
 
 MIT
