@@ -553,8 +553,11 @@ function TextSizesEditor({ config, updateConfig }: {
             <input
               type="number"
               min={8} max={200} step={1}
-              value={current ?? ''}
-              placeholder={String(fallback)}
+              // Always populate with the effective value (fallback when
+              // no override) so the spinner steps from a sensible
+              // number, not from blank. The "default Xpx" label and
+              // its italic styling encode the override state instead.
+              value={current ?? fallback}
               onChange={(e) => {
                 const raw = e.target.value.trim();
                 const next = { ...overrides };

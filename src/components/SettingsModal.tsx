@@ -112,8 +112,11 @@ function DefaultTextSizesSetting() {
               <input
                 type="number"
                 min={8} max={200} step={1}
-                value={current ?? ''}
-                placeholder={String(fallback)}
+                // Spinner starts at the effective value (fallback when
+                // no override) so up/down arrows step from a real number.
+                // Override state is signaled by the "default Xpx" label
+                // styling, not by an empty field.
+                value={current ?? fallback}
                 onChange={(e) => {
                   const raw = e.target.value.trim();
                   const next = { ...value };
