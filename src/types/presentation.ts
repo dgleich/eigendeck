@@ -320,17 +320,20 @@ export interface NotebookElement extends BaseElement {
    *  docs/manual/notebook-servers.md sibling note + NotebookProperties
    *  which flips the asset's auto_reload when this toggles. */
   editable?: boolean;
-  /** Per-cell source edits made INSIDE eigendeck, keyed by the cell's
-   *  zero-based index in the .ipynb. An overlay: when present for a
-   *  cell, this source replaces the asset's source for both display
-   *  and execution. The underlying .ipynb asset (and any linked
-   *  source file on disk) is left untouched — edits live in the deck,
-   *  so a presenter can tweak `k = 5` → `k = 10` for a talk without
-   *  rewriting their notebook. Cleared per-cell by the "revert"
-   *  affordance, or wholesale by a manual reload from source.
-   *  Index-keyed; safe from drift because editing disables
-   *  auto-reload (the source can't shift underneath it). */
+  /** LEGACY (pre-recording-asset). Per-cell source edits as a deck
+   *  overlay keyed by .ipynb index. Superseded by the recording asset
+   *  (recordingAssetId). On load, migrateRecording folds any value
+   *  here into the recording and strips this field. Do not write new
+   *  values; kept only so old decks migrate. */
   cellEdits?: Record<number, string>;
+  /** Eigendeck-owned "recording" asset (mime
+   *  application/x-eigendeck-nb-recording+json) bound to this element.
+   *  Holds the live session: source edits, recorded outputs, and
+   *  live-authored (appended) cells. Versioned via the temporal asset
+   *  history. The .ipynb asset stays pristine — eigendeck records, it
+   *  doesn't edit the source notebook. Absent until the first thing
+   *  worth recording happens. See src/lib/notebookRecording.ts. */
+  recordingAssetId?: string;
 }
 
 export type SlideElement =
