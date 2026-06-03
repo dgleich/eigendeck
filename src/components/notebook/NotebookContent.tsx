@@ -184,18 +184,25 @@ function ExternalKernelBody({
     }
   }, [element.cellEdits, element.id, ov, updateElement]);
 
-  // Manual reload-from-disk (or restore) fires asset-changed for the
-  // .ipynb → drop the whole overlay (user asked for fresh source).
-  // Auto-reload can't fire while editable (watching off), so this only
-  // triggers on a deliberate reload.
+  // Drop the overlay ONLY when the .ipynb source genuinely changes
+  // (deliberate reload-from-disk / restore-version) — detected by the
+  // parsed notebook's CONTENT changing, not by the generic
+  // `eigendeck:asset-changed` event. That event fires for many incidental
+  // reasons (preview/cache invalidation, watcher re-eval, auto-reload
+  // toggle); reacting to it wiped recorded outputs + edits during plain
+  // editing. Same bytes re-parse to identical content, so a spurious event
+  // is a no-op here; a real reload re-parses to different content → clear.
+  const clearOverlay = ov.clear;
+  const nbSigRef = useRef<{ id: string; sig: string } | null>(null);
   useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { assetId?: string } | undefined;
-      if (detail?.assetId === element.assetId) ov.clear();
-    };
-    window.addEventListener('eigendeck:asset-changed', handler);
-    return () => window.removeEventListener('eigendeck:asset-changed', handler);
-  }, [element.assetId, ov]);
+    if (!notebook) return;
+    const sig = JSON.stringify(notebook);
+    const prev = nbSigRef.current;
+    nbSigRef.current = { id: element.id, sig };
+    // Only clear for the SAME element whose source actually changed (not the
+    // first load, and not when the component is reused for a new element).
+    if (prev && prev.id === element.id && prev.sig !== sig) clearOverlay();
+  }, [notebook, element.id, clearOverlay]);
 
   // Transient running status, keyed by cell key.
   const [running, setRunning] = useState<Map<string, RunningState>>(new Map());
