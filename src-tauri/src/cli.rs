@@ -682,7 +682,7 @@ fn cmd_store_asset(args: &[String]) -> Result<(), String> {
         _ => "application/octet-stream",
     };
 
-    let _asset_id = storage::db_store_asset(rel_path.to_string(), data, mime.to_string(), None, None, None, None)?;
+    let _asset_id = storage::db_store_asset(rel_path.to_string(), data, mime.to_string(), None, None, None, None, None)?;
     println!("Stored {} ({} bytes)", rel_path, std::fs::metadata(file_path).map(|m| m.len()).unwrap_or(0));
     Ok(())
 }

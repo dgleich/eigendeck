@@ -261,6 +261,7 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
              external_path TEXT,
              external_mtime TEXT,
              auto_reload TEXT,
+             owner_element_id TEXT,
              created_at TEXT,
              valid_from TEXT NOT NULL,
              valid_to TEXT,
@@ -269,6 +270,22 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
          CREATE INDEX IF NOT EXISTS idx_assets_current ON assets(asset_id) WHERE valid_to IS NULL;
          CREATE INDEX IF NOT EXISTS idx_assets_path ON assets(path) WHERE valid_to IS NULL;",
     )?;
+
+    // Migration: add owner_element_id to existing DBs (the CREATE above
+    // is a no-op when the table already exists). Nullable; null = a
+    // normal shared asset. A non-null value means the asset is a
+    // PRIVATE per-element sidecar (e.g. a notebook's "overlay" of
+    // edits + recorded outputs) owned by that element id — discovered
+    // by query, never referenced via elements.asset_id, GC-reachable
+    // only while its owner element is live, and exempt from path-based
+    // dedup. ALTER fails silently if the column already exists.
+    let _ = conn.execute("ALTER TABLE assets ADD COLUMN owner_element_id TEXT", []);
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_assets_owner
+         ON assets(owner_element_id)
+         WHERE valid_to IS NULL AND owner_element_id IS NOT NULL",
+        [],
+    );
 
     // Migration: legacy elements (pre-assetId era) have $.src or
     // $.demoSrc in `data` but no $.assetId — the earlier ALTER+UPDATE
@@ -1293,11 +1310,23 @@ struct GcCounts {
 fn gc_assets_inner(tx: &rusqlite::Transaction) -> SqlResult<GcCounts> {
     // Count distinct orphan asset_ids before delete — counting after
     // would always be 0.
+    // Reachability: an asset is kept if EITHER
+    //   (a) it's referenced by a live element's asset_id (shared source
+    //       assets — images, PDFs, demos, the .ipynb), OR
+    //   (b) it's a private sidecar (owner_element_id set) whose owner
+    //       element is still live (notebook overlays).
+    // Everything else is orphan.
     let removed_assets: i64 = tx.query_row(
         "SELECT COUNT(DISTINCT a.asset_id) FROM assets a
          WHERE a.asset_id NOT IN (
              SELECT e.asset_id FROM elements e
              WHERE e.valid_to IS NULL AND e.asset_id IS NOT NULL
+         )
+         AND NOT (
+             a.owner_element_id IS NOT NULL
+             AND a.owner_element_id IN (
+                 SELECT e.id FROM elements e WHERE e.valid_to IS NULL
+             )
          )",
         [],
         |row| row.get(0),
@@ -1308,6 +1337,12 @@ fn gc_assets_inner(tx: &rusqlite::Transaction) -> SqlResult<GcCounts> {
          WHERE asset_id NOT IN (
              SELECT asset_id FROM elements
              WHERE valid_to IS NULL AND asset_id IS NOT NULL
+         )
+         AND NOT (
+             owner_element_id IS NOT NULL
+             AND owner_element_id IN (
+                 SELECT id FROM elements WHERE valid_to IS NULL
+             )
          )",
         [],
     )? as i64;
@@ -1732,6 +1767,7 @@ pub fn db_store_asset(
     external_mtime: Option<String>,
     asset_id: Option<String>,
     auto_reload: Option<String>,
+    owner_element_id: Option<String>,
 ) -> Result<String, String> {
     with_db(|conn| {
         let new_hash = sha256_hex(&data);
@@ -1811,6 +1847,20 @@ pub fn db_store_asset(
             ).unwrap_or(None)
         };
 
+        // owner_element_id preservation — same per-ASSET (not per-version)
+        // rule as auto_reload: inherit the current row's value when the
+        // caller doesn't pass one, so a flush that omits it doesn't
+        // silently un-own an overlay. Shared assets pass None and have no
+        // current owner → stays None.
+        let effective_owner: Option<String> = if owner_element_id.is_some() {
+            owner_element_id
+        } else {
+            conn.query_row(
+                "SELECT owner_element_id FROM assets WHERE asset_id = ?1 AND valid_to IS NULL",
+                params![&id], |row| row.get::<_, Option<String>>(0),
+            ).unwrap_or(None)
+        };
+
         // Transactional close-old + insert-new.
         let tx = conn.unchecked_transaction()?;
         tx.execute(
@@ -1819,10 +1869,10 @@ pub fn db_store_asset(
         )?;
         tx.execute(
             "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, \
-             external_path, external_mtime, auto_reload, created_at, valid_from, valid_to) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, NULL)",
+             external_path, external_mtime, auto_reload, owner_element_id, created_at, valid_from, valid_to) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, NULL)",
             params![&id, &data, &mime_type, size, &new_hash, &path,
-                    &external_path, &external_mtime, &effective_auto_reload, &now, &now],
+                    &external_path, &external_mtime, &effective_auto_reload, &effective_owner, &now, &now],
         )?;
         tx.commit()?;
         Ok(id)
@@ -1866,6 +1916,28 @@ pub fn db_get_asset_bytes_by_id(asset_id: String) -> Result<Vec<u8>, String> {
 pub fn db_get_asset_by_id(asset_id: String) -> Result<tauri::ipc::Response, String> {
     let bytes = db_get_asset_bytes_by_id(asset_id)?;
     Ok(tauri::ipc::Response::new(bytes))
+}
+
+/// Find the current asset_id of the private sidecar owned by a given
+/// element (e.g. a notebook's overlay), or None if it has none. The
+/// overlay is then fetched via the binary db_get_asset_by_id path.
+/// This is how owner-private assets are discovered — they're never
+/// referenced via elements.asset_id.
+#[tauri::command]
+pub fn db_get_owned_asset_id(owner_element_id: String) -> Result<Option<String>, String> {
+    with_db(|conn| {
+        match conn.query_row(
+            "SELECT asset_id FROM assets \
+             WHERE owner_element_id = ?1 AND valid_to IS NULL \
+             ORDER BY valid_from DESC LIMIT 1",
+            params![&owner_element_id],
+            |row| row.get::<_, String>(0),
+        ) {
+            Ok(id) => Ok(Some(id)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e),
+        }
+    })
 }
 
 /// Read the bytes of a specific HISTORICAL version of an asset, keyed by
@@ -3536,7 +3608,7 @@ mod tests {
         let data = vec![0x89, 0x50, 0x4E, 0x47]; // PNG magic bytes
         let asset_id = db_store_asset(
             "img/test.png".to_string(), data.clone(), "image/png".to_string(),
-            None, None, None, None,
+            None, None, None, None, None,
         ).unwrap();
         assert!(!asset_id.is_empty(), "should return a generated asset_id");
 
@@ -3546,7 +3618,7 @@ mod tests {
         // Dedup: identical content + same asset_id should NOT create a new version.
         let asset_id_2 = db_store_asset(
             "img/test.png".to_string(), data.clone(), "image/png".to_string(),
-            None, None, Some(asset_id.clone()), None,
+            None, None, Some(asset_id.clone()), None, None,
         ).unwrap();
         assert_eq!(asset_id, asset_id_2);
         let history = db_get_asset_history(asset_id.clone()).unwrap();
@@ -3556,7 +3628,7 @@ mod tests {
         let new_data = vec![0x89, 0x50, 0x4E, 0x47, 0x0D];
         db_store_asset(
             "img/test.png".to_string(), new_data.clone(), "image/png".to_string(),
-            None, None, Some(asset_id.clone()), None,
+            None, None, Some(asset_id.clone()), None, None,
         ).unwrap();
         let history = db_get_asset_history(asset_id.clone()).unwrap();
         assert_eq!(history.len(), 2, "real change should append a version");

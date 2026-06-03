@@ -145,6 +145,15 @@ CREATE TABLE assets (
     auto_reload TEXT,             -- 'on' | 'off' | NULL. Per-asset
                                   -- opt-out; NULL = follow per-pres
                                   -- + global pref cascade
+    owner_element_id TEXT,        -- NULL = normal shared asset. Non-null
+                                  -- = a PRIVATE per-element sidecar (e.g.
+                                  -- a notebook "overlay" of edits +
+                                  -- recorded outputs) owned by that
+                                  -- element id. Discovered by query,
+                                  -- never via elements.asset_id; GC-kept
+                                  -- only while the owner element is live;
+                                  -- created with an explicit asset_id so
+                                  -- it never hits path-based dedup.
     created_at TEXT,
     valid_from TEXT NOT NULL,
     valid_to TEXT,                -- NULL = current version
@@ -161,6 +170,20 @@ version under a fresh `asset_id`.
 `auto_reload` is per-ASSET, not per-version: setting it on the
 current row applies to all future versions of the same `asset_id`
 (see `docs/ASSETS.md` for the cascade resolver detail).
+`owner_element_id` is preserved across versions the same way.
+
+**Owner-private assets (`owner_element_id`).** A nullable
+`owner_element_id` column distinguishes private per-element sidecars
+(notebook overlays) from normal shared assets. Three rules apply
+when it is non-null: (1) GC reachability keeps the asset while its
+owner element is live (`gc_assets_inner` unions the owner clause
+with the `elements.asset_id` clause); (2) it's discovered via
+`db_get_owned_asset_id(owner_element_id)`, never through
+`elements.asset_id`; (3) it must be created with an explicit
+client-minted `asset_id` so it never resolves through the
+path-lookup branch (which would collapse two empty overlays onto
+one asset). `db_store_asset` gained an `owner_element_id` parameter
+that is preserved-when-omitted, mirroring `auto_reload`.
 
 ### `math_cache` — MathJax SVG cache (NOT temporal)
 
