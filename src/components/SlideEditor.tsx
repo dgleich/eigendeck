@@ -495,11 +495,14 @@ export function SlideEditor() {
                     // We have the original full path — handler can offer to embed.
                     const updated = await handleSvgExternalRefs(bytes, name, fullPath);
                     if (updated) {
-                      // Embed snapshot intentionally breaks the source link
+                      // Embed snapshot intentionally SEVERS the source link
                       // (matches the dialog wording — "no longer references
-                      // the source files"). Clearing externalPath stops the
-                      // file watcher. Same assetId: the embed is a new
-                      // version of the same asset, not a new asset.
+                      // the source files") by clearing external_path. This is
+                      // DISTINCT from merely turning off file-watching: that's
+                      // the per-asset auto_reload knob, which keeps
+                      // external_path so a manual reload still works. Here we
+                      // want no source link at all. Same assetId: the embed is
+                      // a new version of the same asset, not a new asset.
                       // Direct db_store_asset (skip collision helper): we
                       // KNOW this is a follow-up update to the asset we
                       // just stored, not a real collision.

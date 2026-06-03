@@ -66,6 +66,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           {tab === 'general' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <AutoReloadAssetsSetting />
+              <DefaultNotebookEditableSetting />
               <DefaultTextSizesSetting />
               <MathPreambleSetting />
             </div>
@@ -366,6 +367,30 @@ function DefaultTextSizesSetting() {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function DefaultNotebookEditableSetting() {
+  const [value, setValue] = usePreference('defaultNotebookEditable');
+  return (
+    <div>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={value}
+          onChange={(e) => setValue(e.target.checked)}
+          style={{ marginTop: 3 }} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Notebooks editable by default</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+            New notebook elements start with editable code cells. Off by
+            default (the read-only "canned demo" case). Each notebook
+            can override this in its inspector. Making a notebook
+            editable disables file-watching for it.
+          </div>
+        </div>
+      </label>
     </div>
   );
 }

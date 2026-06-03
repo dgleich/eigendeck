@@ -39,6 +39,14 @@ export interface PrefSchema {
    *  baseUrl with its token. Tokens stay on this machine; decks never
    *  carry them. */
   jupyterServers: JupyterServerEntry[];
+  /** Default editability for notebook elements. When a notebook's
+   *  own `editable` field is unset, this is the fallback. Default
+   *  false — the common "canned demo" case is read-only. A presenter
+   *  who lives in live-typing mode can flip this so new notebooks
+   *  start editable. (Per-element override still wins.) Turning a
+   *  notebook editable disables file-watching for its asset — see
+   *  NotebookElement.editable. */
+  defaultNotebookEditable: boolean;
 }
 
 export interface JupyterServerEntry {
@@ -65,6 +73,7 @@ const DEFAULTS: PrefSchema = {
   mathPreamble: '',
   textSizes: {},
   jupyterServers: [],
+  defaultNotebookEditable: false,
 };
 
 const KEY_PREFIX = 'eigendeck:pref:';

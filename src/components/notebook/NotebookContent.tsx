@@ -31,8 +31,32 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
   const { notebook, error, loading } = useNotebook(element.assetId);
   const config = usePresentationStore((s) => s.presentation?.config);
   const slide = usePresentationStore((s) => s.presentation?.slides?.[s.currentSlideIndex]);
+  const updateElement = usePresentationStore((s) => s.updateElement);
   const [jupyterServers] = usePreference('jupyterServers');
+  const [defaultEditable] = usePreference('defaultNotebookEditable');
   const resolved = resolveNotebookKernel(element, config, notebook, jupyterServers);
+
+  // Effective editability cascades: element override → global pref →
+  // false. (Per DESIGN_DECISIONS.md "Preferences cascade".)
+  const editable = element.editable ?? defaultEditable;
+
+  // A manual reload-from-disk (or restore) fires `asset-changed` for
+  // this asset. When that happens we drop the in-deck cellEdits
+  // overlay — the user explicitly asked for fresh source, so the
+  // overlay should no longer mask it. Auto-reload can't fire here when
+  // the notebook is editable (editing turns watching off), so this
+  // only triggers on a deliberate reload.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { assetId?: string } | undefined;
+      if (detail?.assetId !== element.assetId) return;
+      if (element.cellEdits && Object.keys(element.cellEdits).length > 0) {
+        updateElement(element.id, { cellEdits: undefined } as Partial<NotebookElement>);
+      }
+    };
+    window.addEventListener('eigendeck:asset-changed', handler);
+    return () => window.removeEventListener('eigendeck:asset-changed', handler);
+  }, [element.assetId, element.id, element.cellEdits, updateElement]);
 
   // Typography resolution. CSS variables flow through to .nb-* rules
   // via inline style on the frame wrapper below — keeps the CSS file
@@ -87,6 +111,7 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
         loading={loading}
         error={error}
         interactive={interactive}
+        editable={editable}
         resolved={resolved}
         preamble={element.preamble}
         autoRun={mode === 'present' && !!element.autoRun}
@@ -106,13 +131,14 @@ interface CellRunState {
 }
 
 function ExternalKernelBody({
-  element, cells, loading, error, interactive, resolved, preamble, autoRun,
+  element, cells, loading, error, interactive, editable, resolved, preamble, autoRun,
   highlight, language, baseSize, kernelDisplayName,
 }: {
   element: NotebookElement;
   cells: Cell[];
   loading: boolean; error: Error | null;
   interactive: boolean;
+  editable: boolean;
   resolved: ResolvedExternal;
   preamble: string | undefined;
   autoRun: boolean;
@@ -311,7 +337,7 @@ function ExternalKernelBody({
                   onRun={() => runOne(c.index, sourceFor(c))}
                   language={language}
                   highlight={highlight}
-                  editable={interactive}
+                  editable={editable && interactive}
                   fontSize={baseSize}
                   onEdit={(next) => onEdit(c.index, next)}
                   onCommit={() => commitEdit(c.index, c.source)}

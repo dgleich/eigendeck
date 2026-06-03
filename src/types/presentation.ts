@@ -300,6 +300,14 @@ export interface NotebookElement extends BaseElement {
    *  `fontSizeName`. The picker exposes this as the custom-input
    *  field alongside the named buttons. */
   fontSize?: number;
+  /** Whether code cells are editable. Default false (read-only — the
+   *  common "canned demo" case). Turning this ON disables file-watching
+   *  (auto-reload) for the bound asset, so in-deck edits can't be
+   *  clobbered by a disk-change reload; the asset keeps its
+   *  external_path so a MANUAL reload still works. See
+   *  docs/manual/notebook-servers.md sibling note + NotebookProperties
+   *  which flips the asset's auto_reload when this toggles. */
+  editable?: boolean;
   /** Per-cell source edits made INSIDE eigendeck, keyed by the cell's
    *  zero-based index in the .ipynb. An overlay: when present for a
    *  cell, this source replaces the asset's source for both display
@@ -307,8 +315,9 @@ export interface NotebookElement extends BaseElement {
    *  source file on disk) is left untouched — edits live in the deck,
    *  so a presenter can tweak `k = 5` → `k = 10` for a talk without
    *  rewriting their notebook. Cleared per-cell by the "revert"
-   *  affordance. Index-keyed, so it can drift if the source notebook
-   *  is reordered externally; acceptable for v1. */
+   *  affordance, or wholesale by a manual reload from source.
+   *  Index-keyed; safe from drift because editing disables
+   *  auto-reload (the source can't shift underneath it). */
   cellEdits?: Record<number, string>;
 }
 

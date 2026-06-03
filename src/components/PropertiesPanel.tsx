@@ -700,6 +700,7 @@ function NotebookProperties({ element }: {
 }) {
   const { presentation, updateElement } = usePresentationStore();
   const config = presentation.config;
+  const [defaultNotebookEditable] = usePreference('defaultNotebookEditable');
 
   // Element-level kernel may be undefined; user changes promote it
   // to an explicit object. Per the cascade doc — the absence of a
@@ -712,6 +713,31 @@ function NotebookProperties({ element }: {
 
   const setKernel = (k: typeof element.kernel | undefined) => {
     updateElement(element.id, { kernel: k } as Partial<typeof element>);
+  };
+
+  // Effective editability cascades: element override → global pref →
+  // false. The toggle stores an explicit boolean so it overrides the
+  // global default in either direction.
+  const effectiveEditable = element.editable ?? defaultNotebookEditable;
+
+  // Editable toggle is coupled to file-watching: turning editing ON
+  // disables auto-reload for the bound asset (so an in-deck edit can't
+  // be clobbered by a disk-change reload), and turning it OFF returns
+  // the asset to following the global/deck default. The asset keeps
+  // its external_path either way, so a MANUAL reload (Asset section →
+  // Reload from disk) still works — and that reload drops the
+  // cellEdits overlay (see NotebookContent).
+  const setEditable = async (on: boolean) => {
+    updateElement(element.id, { editable: on } as Partial<typeof element>);
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('db_set_asset_auto_reload', {
+        assetId: element.assetId,
+        value: on ? 'off' : null,
+      });
+    } catch (e) {
+      console.error('Failed to toggle asset auto_reload for editable notebook:', e);
+    }
   };
 
   return (
@@ -755,6 +781,27 @@ function NotebookProperties({ element }: {
           </div>
         </PropSection>
       )}
+
+      <PropSection label="Editable">
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+          <input
+            type="checkbox"
+            checked={effectiveEditable}
+            onChange={(e) => setEditable(e.target.checked)}
+          />
+          Allow editing code cells
+        </label>
+        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+          Turning this on disables file-watching for this notebook
+          (so your edits aren't overwritten by a disk reload). Use the
+          Asset section's "Reload from disk" to pull the latest source
+          — that discards in-deck edits.
+          {element.editable === undefined && (
+            <> Default ({defaultNotebookEditable ? 'on' : 'off'}) comes
+            from Settings → General.</>
+          )}
+        </div>
+      </PropSection>
 
       <PropSection label="Auto-run on slide enter">
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
