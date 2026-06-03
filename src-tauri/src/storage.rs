@@ -790,15 +790,127 @@ pub fn db_import_json(json: String) -> Result<(), String> {
             }
         }
 
+        // Self-contained import: if the JSON carries an `assets` array, it is
+        // AUTHORITATIVE — restore those bytes (clearing the table first).
+        // Absent (the common case: GUI save, legacy JSON), assets are left
+        // untouched. restore_assets returns String errors; map into the
+        // rusqlite error channel so a malformed asset aborts the whole tx.
+        if let Some(assets) = presentation.get("assets").and_then(|v| v.as_array()) {
+            restore_assets(&tx, assets, &ts)
+                .map_err(|e| rusqlite::Error::ToSqlConversionFailure(e.into()))?;
+        }
+
         tx.commit()?;
         Ok(())
     })
 }
 
-/// Export the current state to a Presentation JSON string
+/// Export the current state to a Presentation JSON string (structure only —
+/// no asset bytes). This is the lean format used for normal deck load and
+/// the LLM bulk-edit workflow; see `db_export_json_with_assets` for the
+/// self-contained variant.
 #[tauri::command]
 pub fn db_export_json() -> Result<String, String> {
+    with_db(|conn| Ok(serde_json::to_string_pretty(&build_presentation_value(conn)?).unwrap()))
+}
+
+/// Export the presentation AND a self-contained `assets` array (each asset's
+/// CURRENT version only, bytes base64-encoded). The result round-trips
+/// losslessly through `db_import_json`, which restores the assets. Used for
+/// "export a portable, self-contained deck" — NOT for normal load (that
+/// would serialize every image/PDF/notebook on every open).
+#[tauri::command]
+pub fn db_export_json_with_assets() -> Result<String, String> {
     with_db(|conn| {
+        let mut p = build_presentation_value(conn)?;
+        let assets = collect_current_assets(conn)?;
+        p.as_object_mut()
+            .unwrap()
+            .insert("assets".to_string(), Value::Array(assets));
+        Ok(serde_json::to_string_pretty(&p).unwrap())
+    })
+}
+
+/// Collect every asset's CURRENT version as a JSON object with base64 bytes.
+/// History is intentionally NOT included — a portable deck carries the live
+/// asset set, not its edit log. Preserves the fields needed to reconstruct
+/// the asset faithfully, including `ownerElementId` (notebook overlays) and
+/// `externalPath` (file links).
+fn collect_current_assets(conn: &Connection) -> SqlResult<Vec<Value>> {
+    use base64::Engine;
+    let mut stmt = conn.prepare(
+        "SELECT asset_id, path, mime_type, size, hash, external_path, external_mtime, \
+                auto_reload, owner_element_id, created_at, data \
+         FROM assets WHERE valid_to IS NULL",
+    )?;
+    let rows = stmt.query_map([], |row| {
+        let data: Vec<u8> = row.get(10)?;
+        Ok(serde_json::json!({
+            "assetId": row.get::<_, String>(0)?,
+            "path": row.get::<_, Option<String>>(1)?,
+            "mime": row.get::<_, Option<String>>(2)?,
+            "size": row.get::<_, Option<i64>>(3)?,
+            "hash": row.get::<_, Option<String>>(4)?,
+            "externalPath": row.get::<_, Option<String>>(5)?,
+            "externalMtime": row.get::<_, Option<String>>(6)?,
+            "autoReload": row.get::<_, Option<String>>(7)?,
+            "ownerElementId": row.get::<_, Option<String>>(8)?,
+            "createdAt": row.get::<_, Option<String>>(9)?,
+            "data": base64::engine::general_purpose::STANDARD.encode(&data),
+        }))
+    })?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r?);
+    }
+    Ok(out)
+}
+
+/// Restore an `assets` array (as produced by `collect_current_assets`) into
+/// the open DB inside `tx`. Each asset becomes a single CURRENT version (no
+/// history). When a presentation JSON carries assets, that array is
+/// AUTHORITATIVE: the table is cleared first so the result is exactly the
+/// JSON's set (true round-trip). Returns an error — aborting the whole
+/// import transaction — if any entry is malformed (missing id/data/mime),
+/// rather than silently importing a broken deck.
+fn restore_assets(tx: &rusqlite::Transaction, assets: &[Value], ts: &str) -> Result<(), String> {
+    use base64::Engine;
+    tx.execute("DELETE FROM assets", [])
+        .map_err(|e| e.to_string())?;
+    for (i, a) in assets.iter().enumerate() {
+        let asset_id = a.get("assetId").and_then(|v| v.as_str())
+            .ok_or_else(|| format!("assets[{i}]: missing 'assetId'"))?;
+        let b64 = a.get("data").and_then(|v| v.as_str())
+            .ok_or_else(|| format!("assets[{i}] ({asset_id}): missing 'data' (base64 bytes)"))?;
+        let mime = a.get("mime").and_then(|v| v.as_str())
+            .ok_or_else(|| format!("assets[{i}] ({asset_id}): missing 'mime'"))?;
+        let data = base64::engine::general_purpose::STANDARD
+            .decode(b64)
+            .map_err(|e| format!("assets[{i}] ({asset_id}): invalid base64 data: {e}"))?;
+        let path = a.get("path").and_then(|v| v.as_str());
+        let hash = a.get("hash").and_then(|v| v.as_str());
+        let external_path = a.get("externalPath").and_then(|v| v.as_str());
+        let external_mtime = a.get("externalMtime").and_then(|v| v.as_str());
+        let auto_reload = a.get("autoReload").and_then(|v| v.as_str());
+        let owner_element_id = a.get("ownerElementId").and_then(|v| v.as_str());
+        let created_at = a.get("createdAt").and_then(|v| v.as_str()).unwrap_or(ts);
+        let size = a.get("size").and_then(|v| v.as_i64()).unwrap_or(data.len() as i64);
+        tx.execute(
+            "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, external_path, \
+                                 external_mtime, auto_reload, owner_element_id, created_at, \
+                                 valid_from, valid_to) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, NULL)",
+            params![asset_id, data, mime, size, hash, path, external_path, external_mtime,
+                    auto_reload, owner_element_id, created_at, ts],
+        ).map_err(|e| format!("assets[{i}] ({asset_id}): insert failed: {e}"))?;
+    }
+    Ok(())
+}
+
+/// Build the structure-only presentation JSON value (shared by the two
+/// export commands).
+fn build_presentation_value(conn: &Connection) -> SqlResult<Value> {
+    {
         // Metadata
         let mut title = String::from("Untitled");
         let mut theme = String::from("white");
@@ -928,8 +1040,8 @@ pub fn db_export_json() -> Result<String, String> {
             "config": config,
         });
 
-        Ok(serde_json::to_string_pretty(&presentation).unwrap())
-    })
+        Ok(presentation)
+    }
 }
 
 /// Get all current slides (metadata only, for sidebar)
@@ -3872,6 +3984,78 @@ mod tests {
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_file(&wal);
         let _ = std::fs::remove_file(format!("{}-shm", path_s));
+    }
+
+    /// export json --with-assets → import json round-trips asset bytes
+    /// losslessly (the self-contained portable-deck format). Bytes travel
+    /// base64 in an `assets[]` array; import restores them under their
+    /// original id, and a JSON carrying `assets` is authoritative for the
+    /// asset table. Also checks the lean db_export_json omits assets.
+    #[test]
+    fn export_with_assets_import_roundtrip() {
+        setup_global_db();
+        db_import_json(json!({
+            "title": "Deck", "slides": [
+                { "id": "s1", "elements": [
+                    { "id": "e1", "type": "image", "assetId": "asset-xyz",
+                      "position": {"x":0,"y":0} }
+                ]}
+            ]
+        }).to_string()).unwrap();
+        // Store an asset with the id the element references.
+        let bytes = b"\x89PNG\r\n\x1a\n unique payload bytes".to_vec();
+        with_db(|conn| {
+            let now = timestamp();
+            conn.execute(
+                "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, valid_from)
+                 VALUES ('asset-xyz', ?1, 'image/png', ?2, 'abc123', 'images/p.png', ?3)",
+                params![&bytes, bytes.len() as i64, &now],
+            )?;
+            Ok(())
+        }).unwrap();
+
+        // Lean export omits assets; with-assets includes them.
+        let lean = db_export_json().unwrap();
+        assert!(!lean.contains("\"assets\""), "lean export must NOT embed assets");
+        let portable = db_export_json_with_assets().unwrap();
+        let parsed: Value = serde_json::from_str(&portable).unwrap();
+        let assets = parsed.get("assets").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(assets.len(), 1);
+        assert_eq!(assets[0]["assetId"], "asset-xyz");
+        assert_eq!(assets[0]["mime"], "image/png");
+        assert_eq!(assets[0]["path"], "images/p.png");
+
+        // Import the portable JSON into a fresh DB; bytes restored exactly.
+        teardown_global_db();
+        setup_global_db();
+        db_import_json(portable).unwrap();
+        let (n, restored, mime): (i64, Vec<u8>, String) = with_db(|c| {
+            let n = c.query_row("SELECT COUNT(*) FROM assets WHERE valid_to IS NULL", [], |r| r.get(0))?;
+            let d = c.query_row(
+                "SELECT data, mime_type FROM assets WHERE asset_id='asset-xyz' AND valid_to IS NULL",
+                [], |r| Ok((r.get::<_, Vec<u8>>(0)?, r.get::<_, String>(1)?)))?;
+            Ok((n, d.0, d.1))
+        }).unwrap();
+        assert_eq!(n, 1, "exactly the JSON's asset set");
+        assert_eq!(restored, bytes, "asset bytes must round-trip exactly");
+        assert_eq!(mime, "image/png");
+
+        teardown_global_db();
+    }
+
+    /// A malformed assets[] entry (missing data) aborts the WHOLE import —
+    /// no partial/broken deck. The reject-don't-dangle rule.
+    #[test]
+    fn import_with_malformed_asset_is_rejected() {
+        setup_global_db();
+        let bad = json!({
+            "title": "X", "slides": [],
+            "assets": [ { "assetId": "a1", "mime": "image/png" } ]  // no `data`
+        }).to_string();
+        let err = db_import_json(bad).unwrap_err();
+        assert!(err.contains("data") || err.contains("a1"),
+                "error should name the missing field / asset, got: {err}");
+        teardown_global_db();
     }
 
     /// Regression guard for the "materialize a brand-new deck" sequence

@@ -617,14 +617,22 @@ fn cmd_edit(args: &[String]) -> Result<(), String> {
 }
 
 fn cmd_export(args: &[String]) -> Result<(), String> {
-    let format = args.first().map(|s| s.as_str()).ok_or("Usage: export <json> [output]")?;
-    let output = args.get(1);
+    let format = args.first().map(|s| s.as_str())
+        .ok_or("Usage: export json [output] [--with-assets]")?;
+    // --with-assets → self-contained JSON (embeds asset bytes, base64).
+    let with_assets = args.iter().any(|a| a == "--with-assets");
+    // output = first non-flag arg after the format.
+    let output = args.iter().skip(1).find(|a| !a.starts_with("--"));
     match format {
         "json" => {
-            let json = storage::db_export_json()?;
+            let json = if with_assets {
+                storage::db_export_json_with_assets()?
+            } else {
+                storage::db_export_json()?
+            };
             if let Some(path) = output {
                 std::fs::write(path, &json).map_err(|e| e.to_string())?;
-                println!("Exported to {}", path);
+                println!("Exported{} to {}", if with_assets { " (with assets)" } else { "" }, path);
             } else {
                 println!("{}", json);
             }

@@ -36,6 +36,7 @@ once_cell = "1"
 rusqlite = { version = "0.33", features = ["bundled", "backup"] }
 uuid = { version = "1", features = ["v4"] }
 sha2 = "0.10"
+base64 = "0.21"
 tauri-plugin-dialog = "2.6.0"
 tauri-plugin-fs = { version = "2.4.5", features = ["watch"] }
 # PDF rendering via Google's pdfium (bundled dylib loaded at runtime).

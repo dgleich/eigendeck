@@ -540,6 +540,7 @@ pub fn run() {
             storage::db_close,
             storage::db_import_json,
             storage::db_export_json,
+            storage::db_export_json_with_assets,
             storage::db_get_slides,
             storage::db_get_slide_elements,
             storage::db_update_element,
