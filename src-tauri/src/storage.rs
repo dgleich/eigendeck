@@ -15,13 +15,14 @@ static DB: Lazy<Mutex<Option<Connection>>> = Lazy::new(|| Mutex::new(None));
 /// Schema version for migration tracking
 const SCHEMA_VERSION: i32 = 3;
 
-/// Every per-project table that a "fresh import" / "new project" flow
-/// must wipe. Adding a new table to the schema? Add it here too — the
-/// `db_import_json_wipes_all_per_project_tables` test will fail if you
-/// don't, because it cross-checks this list against `sqlite_master`.
-///
-/// `_meta` is intentionally NOT in this list — it's handled separately
-/// in `reset_db_for_import` so the `schema_version` key survives.
+/// Full inventory of per-project tables (everything that isn't `_meta`).
+/// Used by the `db_import_json_resets_structure_preserves_assets` test to
+/// cross-check `sqlite_master`: add a table to the schema and the test
+/// fails until you add it here AND decide whether an import resets it
+/// (→ `STRUCTURE_TABLES`) or preserves it across imports (like `assets`).
+/// Test-only — no runtime code wipes "all per-project tables" anymore;
+/// a clean slate comes from a fresh DB + atomic file replace, not a wipe.
+#[cfg(test)]
 const PER_PROJECT_TABLES: &[&str] = &[
     "presentation",
     "slides",
@@ -32,14 +33,13 @@ const PER_PROJECT_TABLES: &[&str] = &[
     "math_cache",
 ];
 
-/// The slide/element graph tables — a SUBSET of PER_PROJECT_TABLES that
-/// excludes `assets` and the derived caches. Wiped by `db_sync_presentation`
-/// (the Save / Save As path), which re-imports the presentation structure
-/// from Zustand JSON but must PRESERVE the assets already stored in the open
-/// DB: assets aren't represented in the presentation JSON (they're referenced
-/// by id), so wiping them would lose every image/PDF/notebook on first save.
-/// Contrast `db_import_json`, which wipes everything for a true clean slate
-/// (New Project / CLI import) — see commit dca9005 for why that wipe exists.
+/// The slide/element graph — the SUBSET of per-project tables that
+/// `db_import_json` resets when importing a presentation. Excludes `assets`
+/// and the derived caches: assets aren't in the presentation JSON (they're
+/// referenced by id), so an import must PRESERVE them, or every image/PDF/
+/// notebook is lost on save (issue #65). A true clean slate (dropping old
+/// assets) is achieved by building in a fresh in-memory DB and atomically
+/// replacing the file (`save_to_file`), never by wiping a live file.
 const STRUCTURE_TABLES: &[&str] = &[
     "presentation",
     "slides",
@@ -649,38 +649,20 @@ pub fn db_close() -> Result<(), String> {
     close_db().map_err(|e| e.to_string())
 }
 
-/// Wipe every per-project table so the open DB can absorb a fresh
-/// presentation as if newly created. Used by `db_import_json` (and any
-/// future "new project" pathway that runs against an existing file).
+/// Reset the open DB's slide/element graph (STRUCTURE_TABLES) so it can
+/// absorb a freshly-imported presentation, while PRESERVING the `assets`
+/// table and derived caches. Assets aren't part of the presentation JSON
+/// (they're referenced by id), so an import must never wipe them — that
+/// cost us two bugs (dca9005, #65). A genuinely clean slate (no old
+/// assets) is achieved by building in a FRESH in-memory DB and atomically
+/// replacing the target file (see `save_to_file`), NOT by wiping a live
+/// file in place.
 ///
-/// Iterates `PER_PROJECT_TABLES` for the bulk wipe, then handles `_meta`
-/// separately (preserves `schema_version`, drops `project_id`). Also
-/// resets the in-memory `PENDING_PROJECT_ID` so the next
-/// `db_get_project_id` either reads a persisted value (none — we just
-/// wiped it) or generates a fresh UUID. Without this, an OLD session-
-/// generated UUID would survive across the import.
-///
-/// The companion test `db_import_json_wipes_all_per_project_tables`
-/// cross-checks `PER_PROJECT_TABLES` against `sqlite_master` to catch
-/// new tables that get added to the schema without being added to the
-/// const.
-fn reset_db_for_import(tx: &rusqlite::Transaction) -> SqlResult<()> {
-    reset_tables(tx, PER_PROJECT_TABLES)
-}
-
-/// Wipe only the slide/element graph (STRUCTURE_TABLES), preserving the
-/// `assets` table and derived caches. Used by `db_sync_presentation` so a
-/// Save / Save As re-imports the presentation structure without destroying
-/// the assets already stored in the open DB. Identity (_meta project_id +
-/// PENDING_PROJECT_ID) is still reset — a saved/copied file gets a fresh id.
-fn reset_structure_for_sync(tx: &rusqlite::Transaction) -> SqlResult<()> {
-    reset_tables(tx, STRUCTURE_TABLES)
-}
-
-/// Shared body for the two resets above: DELETE the given tables, drop all
-/// `_meta` except `schema_version`, and clear the pending session project id.
-fn reset_tables(tx: &rusqlite::Transaction, tables: &[&str]) -> SqlResult<()> {
-    for table in tables {
+/// `_meta` is cleared except `schema_version` (drops `project_id`), and
+/// `PENDING_PROJECT_ID` is reset, so the next `db_get_project_id` mints a
+/// fresh id rather than carrying an old session's UUID across the import.
+fn reset_structure_for_import(tx: &rusqlite::Transaction) -> SqlResult<()> {
+    for table in STRUCTURE_TABLES {
         tx.execute(&format!("DELETE FROM \"{}\"", table), [])?;
     }
     tx.execute("DELETE FROM _meta WHERE key != 'schema_version'", [])?;
@@ -688,20 +670,25 @@ fn reset_tables(tx: &rusqlite::Transaction, tables: &[&str]) -> SqlResult<()> {
     Ok(())
 }
 
-/// Shared implementation for `db_import_json` (full clean slate, assets
-/// wiped) and `db_sync_presentation` (structure-only, assets preserved).
-/// `full_reset` selects which.
-fn import_presentation_json(json: String, full_reset: bool) -> Result<(), String> {
+/// Import a presentation JSON into the open DB: reset the slide/element
+/// structure (assets preserved) and insert the new graph.
+///
+/// Every caller pairs this with a fresh DB or an atomic file write:
+///   - New Project / import-from-HTML / CLI `import`: `db_open_memory` →
+///     `db_import_json` → `db_save_to_file` (atomic replace). The structure
+///     reset is a no-op on the empty memory DB; the old file (and its
+///     assets) is replaced wholesale by the rename.
+///   - Save (first save) / Save As: `db_import_json` on the LIVE DB resets
+///     structure but keeps this deck's already-stored assets, then
+///     `db_save_to_file`.
+#[tauri::command]
+pub fn db_import_json(json: String) -> Result<(), String> {
     let presentation: Value = serde_json::from_str(&json).map_err(|e| e.to_string())?;
     let ts = timestamp();
 
     with_db(|conn| {
         let tx = conn.unchecked_transaction()?;
-        if full_reset {
-            reset_db_for_import(&tx)?;
-        } else {
-            reset_structure_for_sync(&tx)?;
-        }
+        reset_structure_for_import(&tx)?;
 
         // Presentation metadata
         if let Some(title) = presentation.get("title").and_then(|v| v.as_str()) {
@@ -806,26 +793,6 @@ fn import_presentation_json(json: String, full_reset: bool) -> Result<(), String
         tx.commit()?;
         Ok(())
     })
-}
-
-/// Import a presentation.json into the open database, wiping EVERYTHING
-/// first (slides, elements, assets, caches, project id) for a true clean
-/// slate. Used by New Project and the CLI `import` command — both of which
-/// may target an existing file and must not inherit its assets/history
-/// (see commit dca9005).
-#[tauri::command]
-pub fn db_import_json(json: String) -> Result<(), String> {
-    import_presentation_json(json, true)
-}
-
-/// Sync the presentation STRUCTURE (slides/elements) from JSON into the open
-/// DB, preserving the `assets` table and derived caches. Used by Save (first
-/// save of an untitled deck) and Save As, where the in-memory DB already
-/// holds the deck's assets (images/PDFs/notebooks) — assets aren't in the
-/// JSON, so a full `db_import_json` here would wipe them on save (issue #65).
-#[tauri::command]
-pub fn db_sync_presentation(json: String) -> Result<(), String> {
-    import_presentation_json(json, false)
 }
 
 /// Export the current state to a Presentation JSON string
@@ -3752,123 +3719,22 @@ mod tests {
         teardown_global_db();
     }
 
-    /// Regression guard: db_import_json must wipe EVERY per-project
-    /// table, not just slides/elements. Bug shape if it doesn't: 'New
-    /// Project' overwriting an existing .eigendeck inherits old assets,
-    /// asset_cache, math_cache, and project_id.
+    /// Regression guard for dca9005 + issue #65: db_import_json resets the
+    /// slide/element STRUCTURE but PRESERVES the assets table + caches.
+    /// Assets aren't in the presentation JSON, so wiping them on import
+    /// loses every image/PDF/notebook (#65). A genuine clean slate (no old
+    /// assets) is achieved separately by building in fresh memory + atomic
+    /// file replace (save_to_file), not by wiping a live file here.
     ///
-    /// Also cross-checks PER_PROJECT_TABLES against sqlite_master: any
-    /// user-created table not in the const (and not `_meta`) fails the
-    /// test. This is the mechanism that catches future schema
-    /// additions where someone added a table but forgot to add it to
-    /// PER_PROJECT_TABLES.
+    /// Also cross-checks the schema inventory: every user table must be in
+    /// PER_PROJECT_TABLES (or be `_meta`), and STRUCTURE_TABLES must be a
+    /// strict subset excluding `assets`. Catches a new schema table added
+    /// without deciding whether an import resets or preserves it.
     #[test]
-    fn db_import_json_wipes_all_per_project_tables() {
+    fn db_import_json_resets_structure_preserves_assets() {
         setup_global_db();
 
-        // 1. Populate the per-project tables via various paths.
-        db_import_json(sample_presentation()).unwrap();
-        // assets: insert directly (db_store_asset works but pulls in
-        // hash/uuid plumbing not worth exercising here)
-        with_db(|conn| {
-            let now = timestamp();
-            conn.execute(
-                "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, valid_from)
-                 VALUES ('a-1', X'00', 'image/png', 1, 'h', 'p', ?1)",
-                params![&now],
-            )?;
-            conn.execute(
-                "INSERT INTO asset_cache (source_id, variant, width, height, png)
-                 VALUES ('p', '_', 100, 100, X'00')",
-                [],
-            )?;
-            conn.execute(
-                "INSERT INTO math_cache (key, tex, bundle, display, preamble, svg)
-                 VALUES ('k', 'x', 'b', 0, '', '<svg/>')",
-                [],
-            )?;
-            conn.execute(
-                "INSERT OR REPLACE INTO _meta VALUES ('project_id', 'old-uuid')",
-                [],
-            )?;
-            Ok(())
-        }).unwrap();
-        *PENDING_PROJECT_ID.lock().unwrap() = Some("session-uuid".into());
-
-        // 2. Reimport (simulates 'New Project' overwriting). Use empty
-        // slides so we can verify cleanliness without contamination.
-        db_import_json(json!({ "title": "Fresh", "slides": [] }).to_string()).unwrap();
-
-        // 3. Assert every PER_PROJECT_TABLES table is empty (or has
-        // only the new import's data; for slides/elements/etc that's
-        // empty since the new presentation has no slides).
-        with_db(|conn| {
-            for table in PER_PROJECT_TABLES {
-                let count: i64 = conn.query_row(
-                    &format!("SELECT COUNT(*) FROM \"{}\"", table),
-                    [],
-                    |r| r.get(0),
-                )?;
-                // 'presentation' will have 1-3 rows from the new import
-                // (title/theme/config), the rest should be 0.
-                if *table == "presentation" {
-                    assert!(count <= 3, "{} should have at most 3 rows post-import, got {}", table, count);
-                } else {
-                    assert_eq!(count, 0, "{} should be empty after import, got {} rows", table, count);
-                }
-            }
-            // _meta should preserve schema_version and nothing else.
-            let project_id_count: i64 = conn.query_row(
-                "SELECT COUNT(*) FROM _meta WHERE key = 'project_id'",
-                [], |r| r.get(0),
-            )?;
-            assert_eq!(project_id_count, 0, "_meta.project_id should be wiped");
-            Ok(())
-        }).unwrap();
-
-        // 4. PENDING_PROJECT_ID should be cleared (next db_get_project_id
-        // generates fresh).
-        assert!(PENDING_PROJECT_ID.lock().unwrap().is_none(),
-                "PENDING_PROJECT_ID should be reset after import");
-
-        // 5. Cross-check: every user table in sqlite_master must be in
-        // PER_PROJECT_TABLES OR be `_meta`. If you added a new table to
-        // the schema without adding it to PER_PROJECT_TABLES, this
-        // assertion fails — go add it.
-        let all_tables: Vec<String> = with_db(|conn| {
-            let mut stmt = conn.prepare(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-            )?;
-            let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
-            let mut out = Vec::new();
-            for r in rows { out.push(r?); }
-            Ok(out)
-        }).unwrap();
-        for table in &all_tables {
-            if table == "_meta" { continue; }
-            assert!(
-                PER_PROJECT_TABLES.contains(&table.as_str()),
-                "Table '{}' exists in the schema but is missing from PER_PROJECT_TABLES. \
-                 Add it to the const in storage.rs so db_import_json (and 'New Project') \
-                 wipes it on import — otherwise overwriting an existing .eigendeck \
-                 inherits stale data from that table.",
-                table,
-            );
-        }
-
-        teardown_global_db();
-    }
-
-    /// Regression guard for issue #65: db_sync_presentation (the Save /
-    /// Save As path) must re-import the slide/element STRUCTURE while
-    /// PRESERVING the assets table + caches. Bug shape if it doesn't: a
-    /// fresh deck's first save — or any Save As — wipes every image/PDF/
-    /// notebook, because assets aren't in the presentation JSON.
-    #[test]
-    fn db_sync_presentation_preserves_assets() {
-        setup_global_db();
-
-        // 1. Seed a deck with structure + an asset + caches + project id.
+        // 1. Seed structure + an asset + caches + a stale project id.
         db_import_json(sample_presentation()).unwrap();
         with_db(|conn| {
             let now = timestamp();
@@ -3887,38 +3753,68 @@ mod tests {
                  VALUES ('k', 'x', 'b', 0, '', '<svg/>')",
                 [],
             )?;
+            conn.execute("INSERT OR REPLACE INTO _meta VALUES ('project_id', 'old-uuid')", [])?;
             Ok(())
         }).unwrap();
+        *PENDING_PROJECT_ID.lock().unwrap() = Some("session-uuid".into());
 
-        // 2. Sync a DIFFERENT structure (simulates a save after edits).
-        db_sync_presentation(json!({ "title": "Saved", "slides": [] }).to_string()).unwrap();
+        // 2. Re-import a different (empty) structure.
+        db_import_json(json!({ "title": "Fresh", "slides": [] }).to_string()).unwrap();
 
-        // 3. Structure tables are replaced (empty slides), assets + caches
-        //    survive.
+        // 3. Structure reset; assets + caches preserved; identity reset.
         with_db(|conn| {
             let slides: i64 = conn.query_row("SELECT COUNT(*) FROM slides", [], |r| r.get(0))?;
-            assert_eq!(slides, 0, "structure should be re-imported (empty)");
+            assert_eq!(slides, 0, "structure should be reset on import");
+            let elements: i64 = conn.query_row("SELECT COUNT(*) FROM elements", [], |r| r.get(0))?;
+            assert_eq!(elements, 0, "elements should be reset on import");
             let assets: i64 = conn.query_row("SELECT COUNT(*) FROM assets", [], |r| r.get(0))?;
-            assert_eq!(assets, 1, "assets MUST survive a sync — issue #65");
+            assert_eq!(assets, 1, "assets MUST survive an import — issue #65");
             let ac: i64 = conn.query_row("SELECT COUNT(*) FROM asset_cache", [], |r| r.get(0))?;
-            assert_eq!(ac, 1, "asset_cache should survive a sync");
+            assert_eq!(ac, 1, "asset_cache should survive an import");
             let mc: i64 = conn.query_row("SELECT COUNT(*) FROM math_cache", [], |r| r.get(0))?;
-            assert_eq!(mc, 1, "math_cache should survive a sync");
-            // Title was re-imported.
+            assert_eq!(mc, 1, "math_cache should survive an import");
             let title: String = conn.query_row(
-                "SELECT value FROM presentation WHERE key = 'title'", [], |r| r.get(0))?;
-            assert_eq!(title, "Saved");
+                "SELECT value FROM presentation WHERE key='title'", [], |r| r.get(0))?;
+            assert_eq!(title, "Fresh", "new presentation metadata imported");
+            let pid: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM _meta WHERE key='project_id'", [], |r| r.get(0))?;
+            assert_eq!(pid, 0, "_meta.project_id should be reset on import");
             Ok(())
         }).unwrap();
+        assert!(PENDING_PROJECT_ID.lock().unwrap().is_none(),
+                "PENDING_PROJECT_ID should be reset after import");
 
-        // 4. STRUCTURE_TABLES must be a strict subset of PER_PROJECT_TABLES
-        //    (so the sync never names a table the full wipe doesn't know).
+        // 4. Schema inventory: STRUCTURE_TABLES ⊂ PER_PROJECT_TABLES, no assets.
         for t in STRUCTURE_TABLES {
             assert!(PER_PROJECT_TABLES.contains(t),
                     "STRUCTURE_TABLES entry '{}' missing from PER_PROJECT_TABLES", t);
         }
         assert!(!STRUCTURE_TABLES.contains(&"assets"),
                 "assets must NOT be in STRUCTURE_TABLES — that's the whole point");
+
+        // 5. Every user table must be inventoried in PER_PROJECT_TABLES (or
+        //    be _meta). Forces a deliberate choice when a table is added:
+        //    does an import reset it (→ STRUCTURE_TABLES) or preserve it
+        //    across imports (like assets)?
+        let all_tables: Vec<String> = with_db(|conn| {
+            let mut stmt = conn.prepare(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )?;
+            let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+            let mut out = Vec::new();
+            for r in rows { out.push(r?); }
+            Ok(out)
+        }).unwrap();
+        for table in &all_tables {
+            if table == "_meta" { continue; }
+            assert!(
+                PER_PROJECT_TABLES.contains(&table.as_str()),
+                "Table '{}' exists in the schema but is missing from PER_PROJECT_TABLES. \
+                 Add it to the const, and decide whether db_import_json should reset it \
+                 (add to STRUCTURE_TABLES) or preserve it across imports (like assets).",
+                table,
+            );
+        }
 
         teardown_global_db();
     }
@@ -3975,6 +3871,54 @@ mod tests {
 
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_file(&wal);
+        let _ = std::fs::remove_file(format!("{}-shm", path_s));
+    }
+
+    /// Regression guard for the "materialize a brand-new deck" sequence
+    /// (CLI `import`, New Project, import-from-HTML): with a DB already
+    /// open that holds assets, building a new deck must drop them. The
+    /// trap: `open_memory_db` is a NO-OP while a DB is open, so the flow
+    /// must `close_db` first — otherwise db_import_json runs in place on
+    /// the live DB, its structure-only reset keeps the old assets, and
+    /// they collide by path (the dca9005 bug). This test fails if the
+    /// close step is removed.
+    #[test]
+    fn materialize_fresh_deck_drops_old_assets() {
+        // Stand-in for "a file DB with assets is already open".
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+        with_db(|conn| {
+            let now = timestamp();
+            conn.execute(
+                "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, valid_from)
+                 VALUES ('old', X'00', 'image/png', 1, 'h', 'p', ?1)",
+                params![&now],
+            )?;
+            Ok(())
+        }).unwrap();
+        let before: i64 =
+            with_db(|c| c.query_row("SELECT COUNT(*) FROM assets", [], |r| r.get(0))).unwrap();
+        assert_eq!(before, 1, "precondition: an asset is present");
+
+        let path = std::env::temp_dir()
+            .join(format!("eigendeck-fresh-{}.eigendeck", std::process::id()));
+        let path_s = path.to_str().unwrap().to_string();
+
+        // The materialize sequence: close → fresh memory → import → save.
+        close_db().unwrap();
+        open_memory_db().unwrap();
+        db_import_json(json!({ "title": "New", "slides": [] }).to_string()).unwrap();
+        save_to_file(&path_s).unwrap();
+
+        // The saved file (now the open session) carries NONE of the old
+        // deck's assets.
+        let after: i64 =
+            with_db(|c| c.query_row("SELECT COUNT(*) FROM assets", [], |r| r.get(0))).unwrap();
+        assert_eq!(after, 0, "old assets must NOT survive materializing a fresh deck");
+
+        close_db().unwrap();
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(format!("{}-wal", path_s));
         let _ = std::fs::remove_file(format!("{}-shm", path_s));
     }
 

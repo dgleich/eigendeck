@@ -640,7 +640,7 @@ Replaced JSON directory format with a single `.eigendeck` SQLite file.
 - Subscriber diffs previous and current state after each change
 - Only dirty items are written to SQLite (elements, slides, metadata)
 - Structural changes (add/delete slide/element) tracked explicitly
-- `db_import_json` is NEVER used in normal editing flow — only for initial creation and explicit compact
+- `db_import_json` is NEVER used in normal editing flow — only to materialize a whole deck (New Project, import, first save / Save As); it resets structure but preserves assets
 - This preserves temporal history (each edit = new version row)
 
 **Why temporal versioning (valid_from/valid_to):**

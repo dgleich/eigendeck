@@ -58,7 +58,7 @@ fn main() {
         "move" => cmd_move(&args[3..]),
         "edit" => cmd_edit(&args[3..]),
         "export" => cmd_export(&args[3..]),
-        "import" => cmd_import(&args[3..]),
+        "import" => cmd_import(db_path, &args[3..]),
         "store-asset" => cmd_store_asset(&args[3..]),
         "compact" => cmd_compact(&args[3..]),
         "unpack" => cmd_unpack(db_path, &args[3..]),
@@ -634,14 +634,24 @@ fn cmd_export(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
-fn cmd_import(args: &[String]) -> Result<(), String> {
+fn cmd_import(db_path: &str, args: &[String]) -> Result<(), String> {
     let format = args.first().map(|s| s.as_str()).ok_or("Usage: import json <input.json>")?;
     if format != "json" { return Err("Usage: import json <input.json>".to_string()); }
     let input = args.get(1).ok_or("Usage: import json <input.json>")?;
     let content = std::fs::read_to_string(input).map_err(|e| format!("Failed to read {}: {}", input, e))?;
     // Validate JSON
     let _: Value = serde_json::from_str(&content).map_err(|e| format!("Invalid JSON: {}", e))?;
+    // Build the deck in a FRESH in-memory DB, then atomically replace the
+    // target file — same model as the GUI's New Project. db_import_json
+    // preserves assets, so we must NOT import in place over the existing
+    // file (its old assets would survive and collide by path, the dca9005
+    // bug); building in empty memory + atomic save gives a true clean slate.
+    // main() already opened db_path, and open_memory_db is a no-op while a
+    // DB is open, so close first to guarantee a fresh empty in-memory DB.
+    storage::close_db().map_err(|e| e.to_string())?;
+    storage::open_memory_db().map_err(|e| e.to_string())?;
     storage::db_import_json(content)?;
+    storage::save_to_file(db_path)?;
     println!("Imported from {}", input);
     Ok(())
 }

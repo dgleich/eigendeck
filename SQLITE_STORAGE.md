@@ -368,40 +368,35 @@ The app does NOT query SQLite on every render. Instead:
      `addedElements`/`deletedElements`
 3. `scheduleFlush()` debounces (1s) then writes only dirty items
 
-### On first save (no project file yet) / Save As
-1. `db_sync_presentation(json)` pushes the current Zustand structure
-   into the in-memory DB. Crucially this resets **only** the
-   slide/element graph (`STRUCTURE_TABLES`) and the project id — it
-   **preserves the `assets` table and caches**. Assets are written
-   straight to the open DB by `db_store_asset` and are *not* part of
-   the presentation JSON, so a full `db_import_json` here would wipe
-   every image/PDF/notebook on save (issue #65).
-2. `db_save_to_file(path)` backs the DB up to a sibling temp file and
-   **atomically renames it over `path`** (clearing the old file's
-   `-wal`/`-shm` sidecars). Overwriting an existing deck is therefore
-   crash-safe and leaves no stale pages.
-3. Reopens from file; write-through continues to disk
-4. `project_id` (lazily generated in memory) is persisted into `_meta`
+There is **one** import command, `db_import_json`, and one file-write
+command, `db_save_to_file`. `db_import_json` resets only the
+slide/element graph (`STRUCTURE_TABLES`) and the project id — it
+**always preserves the `assets` table and caches**, because assets are
+written straight to the DB by `db_store_asset` and are *not* in the
+presentation JSON. `db_save_to_file` backs the DB up to a sibling temp
+file and **atomically renames it over the target** (clearing the old
+file's `-wal`/`-shm` sidecars), so any overwrite is crash-safe and
+leaves no stale pages.
 
-### New Project / import-from-HTML (create or overwrite a file)
+### Create / overwrite a deck file (New Project, import-from-HTML, CLI `import`)
 1. `db_open_memory()` — build the new deck in a **fresh** in-memory DB
-2. `db_import_json(json)` — seed it (the wipe is a no-op on empty memory)
+2. `db_import_json(json)` — seed it (structure reset is a no-op on empty
+   memory; there are no assets to preserve)
 3. `db_save_to_file(path)` — atomic write, replacing any existing file
+   wholesale (old file + its assets are gone via the rename)
+
+### First save (untitled) / Save As
+1. `db_import_json(json)` on the **live** DB — resets structure, keeps
+   this deck's already-stored assets (they aren't in the JSON; issue #65)
+2. `db_save_to_file(path)` — atomic write
+3. Reopens from file; write-through continues; `project_id` persisted
 
 > **Never open a populated file just to clear it.** Both the dca9005
 > stale-asset bug and issue #65 came from the old `db_open(existing) +
-> db_import_json` pattern. Creating/overwriting a deck now always builds
-> in fresh memory and atomic-saves over the target, so the old file is
-> replaced wholesale — no in-place wipe of a live file's assets.
-
-> **`db_import_json` vs `db_sync_presentation`.** Both import a
-> presentation JSON. `db_import_json` wipes *everything* first (slides,
-> elements, **assets**, caches, project id) for a true clean slate — used
-> by New Project (on fresh memory), import-from-HTML, and the CLI
-> `import` (in-place on a file, where a full replace is the intent;
-> commit dca9005). `db_sync_presentation` resets only the structure and
-> **keeps assets** — used by Save / Save As, where the open DB already
-> holds this deck's assets, which aren't in the JSON.
+> db_import_json(wipe-everything)` pattern. A clean slate now comes from
+> building in fresh memory and atomic-saving over the target — the old
+> file is replaced wholesale, so no code path ever wipes a live file's
+> assets in place.
 
 ### On close
 1. Flush pending writes
