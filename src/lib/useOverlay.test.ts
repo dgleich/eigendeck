@@ -152,4 +152,38 @@ describe('useOverlay flush', () => {
     expect(storeCalls).toHaveLength(1);
     expect(storeCalls[0].assetId).toBe('existing-ov');
   });
+
+  it('uses a DETERMINISTIC id when no owned asset exists (not random)', async () => {
+    vi.useFakeTimers();
+    const storeCalls = mockInvoke({ ownedId: null });
+    const { result } = renderHook(() => useOverlay('el-det'));
+    await act(async () => { await vi.runOnlyPendingTimersAsync(); });
+    act(() => result.current.recordOutput(0, [{ kind: 'stream', name: 'stdout', text: 'hi' }], 1));
+    await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+    expect(storeCalls).toHaveLength(1);
+    expect(storeCalls[0].assetId).toBe('overlay-el-det');   // deterministic, not crypto.randomUUID
+  });
+
+  it('remounts converge on ONE asset id — no duplicate overlay assets', async () => {
+    vi.useFakeTimers();
+    const storeCalls = mockInvoke({ ownedId: null });   // DB never reports an owned id
+    const a = renderHook(() => useOverlay('el-conv'));
+    await act(async () => { await vi.runOnlyPendingTimersAsync(); });
+    act(() => a.result.current.recordOutput(0, [{ kind: 'stream', name: 'stdout', text: '1' }], 1));
+    await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+    a.unmount();                                          // remount (slide switch, present↔edit)
+    const b = renderHook(() => useOverlay('el-conv'));
+    act(() => b.result.current.recordOutput(1, [{ kind: 'stream', name: 'stdout', text: '2' }], 1));
+    await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+    const ids = new Set(storeCalls.map((c) => c.assetId));
+    expect(ids).toEqual(new Set(['overlay-el-conv']));   // exactly one asset, despite two mounts
+  });
+
+  it('never creates an asset for an untouched empty overlay', async () => {
+    vi.useFakeTimers();
+    const storeCalls = mockInvoke({ ownedId: null });
+    renderHook(() => useOverlay('el-empty'));
+    await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+    expect(storeCalls).toHaveLength(0);                   // no empty-overlay asset minted
+  });
 });

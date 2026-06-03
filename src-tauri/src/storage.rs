@@ -2094,13 +2094,19 @@ pub fn db_get_asset_by_id(asset_id: String) -> Result<tauri::ipc::Response, Stri
 /// overlay is then fetched via the binary db_get_asset_by_id path.
 /// This is how owner-private assets are discovered — they're never
 /// referenced via elements.asset_id.
+///
+/// There should be exactly ONE current owned asset per element. Decks
+/// written before the duplicate-asset fix can have several (an empty
+/// stray plus the real one); we order by `length(data) DESC` first so the
+/// content-bearing overlay wins over an empty duplicate, then newest, to
+/// recover those decks gracefully.
 #[tauri::command]
 pub fn db_get_owned_asset_id(owner_element_id: String) -> Result<Option<String>, String> {
     with_db(|conn| {
         match conn.query_row(
             "SELECT asset_id FROM assets \
              WHERE owner_element_id = ?1 AND valid_to IS NULL \
-             ORDER BY valid_from DESC LIMIT 1",
+             ORDER BY length(data) DESC, valid_from DESC LIMIT 1",
             params![&owner_element_id],
             |row| row.get::<_, String>(0),
         ) {
@@ -4055,6 +4061,38 @@ mod tests {
         let err = db_import_json(bad).unwrap_err();
         assert!(err.contains("data") || err.contains("a1"),
                 "error should name the missing field / asset, got: {err}");
+        teardown_global_db();
+    }
+
+    /// db_get_owned_asset_id recovery: a deck written before the
+    /// duplicate-asset fix can have several current overlay assets for one
+    /// element — an empty stray plus the real one. The lookup must return
+    /// the CONTENT-bearing asset (length DESC), not whichever was written
+    /// last, so the user's recorded outputs load instead of an empty
+    /// duplicate. (Mirrors the real test-1.eigendeck corruption.)
+    #[test]
+    fn owned_asset_lookup_prefers_content_over_empty_duplicate() {
+        setup_global_db();
+        let owner = "el-dup";
+        with_db(|conn| {
+            // Empty stray written LATER (larger valid_from) ...
+            conn.execute(
+                "INSERT INTO assets (asset_id, data, mime_type, size, hash, owner_element_id, valid_from)
+                 VALUES ('empty-dup', ?1, 'application/x-eigendeck-overlay+json', 2, 'h', ?2, '2026-02')",
+                params![b"{}".to_vec(), owner],
+            )?;
+            // ... real overlay with content written EARLIER (smaller valid_from).
+            conn.execute(
+                "INSERT INTO assets (asset_id, data, mime_type, size, hash, owner_element_id, valid_from)
+                 VALUES ('real-ov', ?1, 'application/x-eigendeck-overlay+json', 99, 'h', ?2, '2026-01')",
+                params![b"{\"cellOutputs\":{\"1\":[\"lots of recorded output bytes\"]}}".to_vec(), owner],
+            )?;
+            Ok(())
+        }).unwrap();
+        // Latest-first would pick 'empty-dup' (the bug); length-first picks the real one.
+        let got = db_get_owned_asset_id(owner.to_string()).unwrap();
+        assert_eq!(got, Some("real-ov".to_string()),
+                   "must recover the content-bearing overlay, not the empty duplicate");
         teardown_global_db();
     }
 

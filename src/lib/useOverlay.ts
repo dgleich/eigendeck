@@ -69,8 +69,13 @@ export function useOverlay(elementId: string): UseOverlayResult {
   // The overlay asset's id once known (loaded or created). null until
   // the first flush creates it.
   const assetIdRef = useRef<string | null>(null);
-  // Last-flushed serialized bytes, to skip no-op flushes.
-  const lastFlushedRef = useRef<string>('');
+  // Last-flushed serialized bytes, to skip no-op flushes. Seeded with the
+  // initial overlay's bytes so an UNTOUCHED overlay never flushes (a ''
+  // seed let a flush racing the load write an empty overlay — one source
+  // of the duplicate-asset bug).
+  const lastFlushedRef = useRef<string>(
+    serializeOverlay(overlayCache.get(elementId) ?? emptyOverlay()),
+  );
   const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Latest overlay for the debounced flush closure.
   const overlayRef = useRef<Overlay>(overlay);
@@ -124,15 +129,36 @@ export function useOverlay(elementId: string): UseOverlayResult {
 
   // --- flush (debounced, only-when-changed) -------------------------
   const flushNow = useCallback(async () => {
-    const current = overlayRef.current;
+    // Flush the SHARED cache — it's the source of truth across remounts and
+    // the present<->edit transition. Serializing per-instance state here let
+    // a stale/empty instance overwrite a richer overlay. Fall back to the
+    // live overlay if the cache was cleared (reload-from-disk).
+    const current = overlayCache.get(elementId) ?? overlayRef.current;
     const bytes = serializeOverlay(current);
-    if (bytes === lastFlushedRef.current) return;       // no-op guard
-    try {
-      // Lazily create with an explicit UUID so two empty overlays
-      // never hash-collapse onto one asset (blocker B3). Reuse the
-      // existing id on subsequent flushes (new temporal version).
-      const id = assetIdRef.current ?? crypto.randomUUID();
+    if (bytes === lastFlushedRef.current) return;       // nothing changed
+
+    // Resolve the asset id WITHOUT minting a fresh random one per flush —
+    // that created a new overlay asset on every remount, and the loader
+    // (db_get_owned_asset_id, latest-first) could then pick an empty
+    // duplicate. Reuse this element's existing owned overlay if any;
+    // otherwise use a DETERMINISTIC id so concurrent/remount first-flushes
+    // all converge on ONE asset (also subsumes the old anti-hash-collapse
+    // trick — B3). Never create an asset for an empty overlay.
+    let id = assetIdRef.current;
+    if (id == null) {
+      if (bytes === serializeOverlay(emptyOverlay())) {
+        lastFlushedRef.current = bytes;                  // nothing to persist
+        return;
+      }
+      try {
+        id = await invoke<string | null>('db_get_owned_asset_id', {
+          ownerElementId: elementId,
+        });
+      } catch { id = null; }
+      id = id ?? `overlay-${elementId}`;
       assetIdRef.current = id;
+    }
+    try {
       const data = Array.from(new TextEncoder().encode(bytes));
       await invoke('db_store_asset', {
         path: `overlay:${elementId}`,
