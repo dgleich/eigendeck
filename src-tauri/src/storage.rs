@@ -3797,6 +3797,7 @@ mod tests {
             None,
             None,
             Some("off".into()),  // explicit opt-out
+            None,
         ).unwrap();
         assert_eq!(read_auto_reload(&asset_id), Some("off".into()));
 
@@ -3811,6 +3812,7 @@ mod tests {
             None,
             Some(asset_id.clone()),
             None,  // preserve
+            None,
         ).unwrap();
         assert_eq!(
             read_auto_reload(&asset_id),
@@ -3828,6 +3830,7 @@ mod tests {
             None,
             Some(asset_id.clone()),
             Some("off".into()),
+            None,
         ).unwrap();
         assert_eq!(read_auto_reload(&asset_id), Some("off".into()));
 
@@ -3848,6 +3851,7 @@ mod tests {
             None,
             None,    // let it generate
             None,    // no explicit auto_reload
+            None,
         ).unwrap();
         assert_eq!(read_auto_reload(&asset_id), None);
 
@@ -3869,6 +3873,7 @@ mod tests {
             "image/svg+xml".into(),
             None, None, None,
             Some("off".into()),
+            None,
         ).unwrap();
         assert_eq!(read_auto_reload(&asset_id), Some("off".into()));
 
@@ -3880,6 +3885,7 @@ mod tests {
             None, None,
             Some(asset_id.clone()),
             Some("on".into()),
+            None,
         ).unwrap();
         assert_eq!(read_auto_reload(&asset_id), Some("on".into()));
 
