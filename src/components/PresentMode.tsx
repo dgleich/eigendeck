@@ -70,8 +70,20 @@ export function PresentMode() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape always exits present mode, even from a focused editor.
+      if (e.key === 'Escape') { setPresenting(false); return; }
+      // When focus is in a text-entry context (a notebook code cell's
+      // CodeMirror editor, an input, etc.), let it handle the key —
+      // otherwise Space/arrows get hijacked for slide navigation and
+      // the presenter can't type a space into a live cell.
+      const t = e.target as HTMLElement | null;
+      const inEditor = !!t && (
+        t.isContentEditable ||
+        t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' ||
+        !!t.closest?.('.cm-editor')
+      );
+      if (inEditor) return;
       switch (e.key) {
-        case 'Escape': setPresenting(false); break;
         case 'ArrowRight': case 'ArrowDown': case ' ': case 'PageDown':
           e.preventDefault(); goNext(); break;
         case 'ArrowLeft': case 'ArrowUp': case 'PageUp':
