@@ -32,6 +32,21 @@ const PER_PROJECT_TABLES: &[&str] = &[
     "math_cache",
 ];
 
+/// The slide/element graph tables — a SUBSET of PER_PROJECT_TABLES that
+/// excludes `assets` and the derived caches. Wiped by `db_sync_presentation`
+/// (the Save / Save As path), which re-imports the presentation structure
+/// from Zustand JSON but must PRESERVE the assets already stored in the open
+/// DB: assets aren't represented in the presentation JSON (they're referenced
+/// by id), so wiping them would lose every image/PDF/notebook on first save.
+/// Contrast `db_import_json`, which wipes everything for a true clean slate
+/// (New Project / CLI import) — see commit dca9005 for why that wipe exists.
+const STRUCTURE_TABLES: &[&str] = &[
+    "presentation",
+    "slides",
+    "elements",
+    "slide_elements",
+];
+
 /// Create the schema in a new database
 pub fn create_schema(conn: &Connection) -> SqlResult<()> {
     // NOTE: the `assets` table + its indices are NOT created here. They
@@ -613,7 +628,22 @@ pub fn db_close() -> Result<(), String> {
 /// new tables that get added to the schema without being added to the
 /// const.
 fn reset_db_for_import(tx: &rusqlite::Transaction) -> SqlResult<()> {
-    for table in PER_PROJECT_TABLES {
+    reset_tables(tx, PER_PROJECT_TABLES)
+}
+
+/// Wipe only the slide/element graph (STRUCTURE_TABLES), preserving the
+/// `assets` table and derived caches. Used by `db_sync_presentation` so a
+/// Save / Save As re-imports the presentation structure without destroying
+/// the assets already stored in the open DB. Identity (_meta project_id +
+/// PENDING_PROJECT_ID) is still reset — a saved/copied file gets a fresh id.
+fn reset_structure_for_sync(tx: &rusqlite::Transaction) -> SqlResult<()> {
+    reset_tables(tx, STRUCTURE_TABLES)
+}
+
+/// Shared body for the two resets above: DELETE the given tables, drop all
+/// `_meta` except `schema_version`, and clear the pending session project id.
+fn reset_tables(tx: &rusqlite::Transaction, tables: &[&str]) -> SqlResult<()> {
+    for table in tables {
         tx.execute(&format!("DELETE FROM \"{}\"", table), [])?;
     }
     tx.execute("DELETE FROM _meta WHERE key != 'schema_version'", [])?;
@@ -621,15 +651,20 @@ fn reset_db_for_import(tx: &rusqlite::Transaction) -> SqlResult<()> {
     Ok(())
 }
 
-/// Import a presentation.json into the open database
-#[tauri::command]
-pub fn db_import_json(json: String) -> Result<(), String> {
+/// Shared implementation for `db_import_json` (full clean slate, assets
+/// wiped) and `db_sync_presentation` (structure-only, assets preserved).
+/// `full_reset` selects which.
+fn import_presentation_json(json: String, full_reset: bool) -> Result<(), String> {
     let presentation: Value = serde_json::from_str(&json).map_err(|e| e.to_string())?;
     let ts = timestamp();
 
     with_db(|conn| {
         let tx = conn.unchecked_transaction()?;
-        reset_db_for_import(&tx)?;
+        if full_reset {
+            reset_db_for_import(&tx)?;
+        } else {
+            reset_structure_for_sync(&tx)?;
+        }
 
         // Presentation metadata
         if let Some(title) = presentation.get("title").and_then(|v| v.as_str()) {
@@ -734,6 +769,26 @@ pub fn db_import_json(json: String) -> Result<(), String> {
         tx.commit()?;
         Ok(())
     })
+}
+
+/// Import a presentation.json into the open database, wiping EVERYTHING
+/// first (slides, elements, assets, caches, project id) for a true clean
+/// slate. Used by New Project and the CLI `import` command — both of which
+/// may target an existing file and must not inherit its assets/history
+/// (see commit dca9005).
+#[tauri::command]
+pub fn db_import_json(json: String) -> Result<(), String> {
+    import_presentation_json(json, true)
+}
+
+/// Sync the presentation STRUCTURE (slides/elements) from JSON into the open
+/// DB, preserving the `assets` table and derived caches. Used by Save (first
+/// save of an untitled deck) and Save As, where the in-memory DB already
+/// holds the deck's assets (images/PDFs/notebooks) — assets aren't in the
+/// JSON, so a full `db_import_json` here would wipe them on save (issue #65).
+#[tauri::command]
+pub fn db_sync_presentation(json: String) -> Result<(), String> {
+    import_presentation_json(json, false)
 }
 
 /// Export the current state to a Presentation JSON string
@@ -3763,6 +3818,70 @@ mod tests {
                 table,
             );
         }
+
+        teardown_global_db();
+    }
+
+    /// Regression guard for issue #65: db_sync_presentation (the Save /
+    /// Save As path) must re-import the slide/element STRUCTURE while
+    /// PRESERVING the assets table + caches. Bug shape if it doesn't: a
+    /// fresh deck's first save — or any Save As — wipes every image/PDF/
+    /// notebook, because assets aren't in the presentation JSON.
+    #[test]
+    fn db_sync_presentation_preserves_assets() {
+        setup_global_db();
+
+        // 1. Seed a deck with structure + an asset + caches + project id.
+        db_import_json(sample_presentation()).unwrap();
+        with_db(|conn| {
+            let now = timestamp();
+            conn.execute(
+                "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, valid_from)
+                 VALUES ('keep-1', X'00', 'image/png', 1, 'h', 'p', ?1)",
+                params![&now],
+            )?;
+            conn.execute(
+                "INSERT INTO asset_cache (source_id, variant, width, height, png)
+                 VALUES ('p', '_', 10, 10, X'00')",
+                [],
+            )?;
+            conn.execute(
+                "INSERT INTO math_cache (key, tex, bundle, display, preamble, svg)
+                 VALUES ('k', 'x', 'b', 0, '', '<svg/>')",
+                [],
+            )?;
+            Ok(())
+        }).unwrap();
+
+        // 2. Sync a DIFFERENT structure (simulates a save after edits).
+        db_sync_presentation(json!({ "title": "Saved", "slides": [] }).to_string()).unwrap();
+
+        // 3. Structure tables are replaced (empty slides), assets + caches
+        //    survive.
+        with_db(|conn| {
+            let slides: i64 = conn.query_row("SELECT COUNT(*) FROM slides", [], |r| r.get(0))?;
+            assert_eq!(slides, 0, "structure should be re-imported (empty)");
+            let assets: i64 = conn.query_row("SELECT COUNT(*) FROM assets", [], |r| r.get(0))?;
+            assert_eq!(assets, 1, "assets MUST survive a sync — issue #65");
+            let ac: i64 = conn.query_row("SELECT COUNT(*) FROM asset_cache", [], |r| r.get(0))?;
+            assert_eq!(ac, 1, "asset_cache should survive a sync");
+            let mc: i64 = conn.query_row("SELECT COUNT(*) FROM math_cache", [], |r| r.get(0))?;
+            assert_eq!(mc, 1, "math_cache should survive a sync");
+            // Title was re-imported.
+            let title: String = conn.query_row(
+                "SELECT value FROM presentation WHERE key = 'title'", [], |r| r.get(0))?;
+            assert_eq!(title, "Saved");
+            Ok(())
+        }).unwrap();
+
+        // 4. STRUCTURE_TABLES must be a strict subset of PER_PROJECT_TABLES
+        //    (so the sync never names a table the full wipe doesn't know).
+        for t in STRUCTURE_TABLES {
+            assert!(PER_PROJECT_TABLES.contains(t),
+                    "STRUCTURE_TABLES entry '{}' missing from PER_PROJECT_TABLES", t);
+        }
+        assert!(!STRUCTURE_TABLES.contains(&"assets"),
+                "assets must NOT be in STRUCTURE_TABLES — that's the whole point");
 
         teardown_global_db();
     }

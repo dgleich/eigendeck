@@ -368,11 +368,26 @@ The app does NOT query SQLite on every render. Instead:
      `addedElements`/`deletedElements`
 3. `scheduleFlush()` debounces (1s) then writes only dirty items
 
-### On first save (no project file yet)
-1. `db_save_to_file(path)` uses SQLite's backup API to copy
+### On first save (no project file yet) / Save As
+1. `db_sync_presentation(json)` pushes the current Zustand structure
+   into the in-memory DB. Crucially this resets **only** the
+   slide/element graph (`STRUCTURE_TABLES`) and the project id — it
+   **preserves the `assets` table and caches**. Assets are written
+   straight to the open DB by `db_store_asset` and are *not* part of
+   the presentation JSON, so a full `db_import_json` here would wipe
+   every image/PDF/notebook on save (issue #65).
+2. `db_save_to_file(path)` uses SQLite's backup API to copy
    memory → file
-2. Reopens from file; write-through continues to disk
-3. `project_id` (lazily generated in memory) is persisted into `_meta`
+3. Reopens from file; write-through continues to disk
+4. `project_id` (lazily generated in memory) is persisted into `_meta`
+
+> **`db_import_json` vs `db_sync_presentation`.** Both import a
+> presentation JSON, but `db_import_json` wipes *everything* first
+> (slides, elements, **assets**, caches, project id) for a true clean
+> slate — used by New Project and the CLI `import`, which may target an
+> existing file and must not inherit its assets/history (commit
+> dca9005). `db_sync_presentation` keeps assets — used by Save / Save
+> As, where the open DB already holds this deck's assets.
 
 ### On close
 1. Flush pending writes

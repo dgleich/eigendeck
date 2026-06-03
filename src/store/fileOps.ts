@@ -135,8 +135,11 @@ export async function saveProject(): Promise<void> {
       // yet (App.tsx fires it unawaited). db_open_memory is a no-op
       // when a DB is already open, so this is safe to call always.
       await invoke('db_open_memory');
-      // Ensure the in-memory DB has the current Zustand state
-      await invoke('db_import_json', { json: JSON.stringify(store.presentation) });
+      // Sync the current Zustand structure into the in-memory DB WITHOUT
+      // wiping assets — db_store_asset already wrote any images/PDFs/
+      // notebooks into this DB, and they aren't in the presentation JSON.
+      // (db_import_json would wipe them — issue #65.)
+      await invoke('db_sync_presentation', { json: JSON.stringify(store.presentation) });
       // Backup in-memory DB to file, then reopen from file
       await invoke('db_save_to_file', { path: selected });
       // Set the project path so future saves go to this file
@@ -184,7 +187,10 @@ export async function saveAsProject(): Promise<void> {
     // Make sure the in-memory DB matches the live Zustand state before
     // we serialize it to the new file.
     await flushToSqlite();
-    await invoke('db_import_json', { json: JSON.stringify(store.presentation) });
+    // Sync structure but PRESERVE assets — the open DB holds this deck's
+    // images/PDFs/notebooks, which aren't in the JSON. A full db_import_json
+    // here wiped them, corrupting the copy (issue #65).
+    await invoke('db_sync_presentation', { json: JSON.stringify(store.presentation) });
     await invoke('db_save_to_file', { path: selected });
     // Switch the active project to the new file going forward.
     store.setProjectPath((selected as string).replace(/\.eigendeck$/, ''));
