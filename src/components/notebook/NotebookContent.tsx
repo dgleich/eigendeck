@@ -19,6 +19,7 @@ import { Cell, CellOutput } from '../../lib/notebookFormat';
 import { NotebookElement, effectiveFontSize } from '../../types/presentation';
 import { usePresentationStore } from '../../store/presentation';
 import { fontForNotebookProse, fontForNotebookCode } from '../../lib/notebookFonts';
+import { resolveTheme, isDarkTheme } from '../../lib/themes';
 
 export function NotebookContent({ element, interactive, mode = 'editor' }: {
   element: NotebookElement;
@@ -72,39 +73,76 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
   // the 'note' default (32 px). See DESIGN_DECISIONS.md "Preferences
   // cascade" — default-setting flavor.
   const baseSize = effectiveFontSize(element, config);
+
+  // Theme-awareness: derive notebook colors from the slide's resolved
+  // theme so the notebook integrates with light/dark/custom themes
+  // instead of being a hardcoded white card. CSS variables flow to the
+  // scoped .nb-* rules; a `nb-theme-dark` class swaps the syntax-
+  // highlight palette. Code-cell + output backgrounds are a subtle
+  // tint OVER the slide background (translucent black on light themes,
+  // translucent white on dark) so they read as "code regions" without
+  // hardcoding a grey.
+  const theme = resolveTheme(
+    usePresentationStore.getState().presentation?.theme ?? 'white',
+    slide?.theme,
+  );
+  const dark = isDarkTheme(theme);
+  const tint = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.045)';
+  const borderColor = dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.12)';
   const fontStyle: React.CSSProperties = {
     '--nb-prose-family': proseFont.family,
     '--nb-mono-family': codeFont.family,
     '--nb-base-size': `${baseSize}px`,
+    '--nb-fg': theme.text,
+    '--nb-bg': theme.background,
+    '--nb-code-bg': tint,
+    '--nb-muted': theme.muted,
+    '--nb-accent': theme.accent,
+    '--nb-border': borderColor,
   } as React.CSSProperties;
 
-  const cells: Cell[] = notebook
+  // Frame classes: theme palette + optional border. Default is
+  // borderless (blends into the slide).
+  const frameClass = [
+    'nb-frame',
+    dark ? 'nb-theme-dark' : 'nb-theme-light',
+    element.showBorder ? 'nb-frame--bordered' : '',
+  ].filter(Boolean).join(' ');
+
+  let cells: Cell[] = notebook
     ? (element.visibleCells && element.visibleCells.length > 0
         ? notebook.cells.filter((c) => element.visibleCells!.includes(c.index))
         : notebook.cells)
     : [];
+  // hideMarkdown → drop markdown cells, keep code (+ raw). "Focus on
+  // the code" mode.
+  if (element.hideMarkdown) {
+    cells = cells.filter((c) => c.kind !== 'markdown');
+  }
 
   // Syntax-highlight settings flow into the cell components.
   // `highlight` defaults to true; the element-level toggle disables.
   // `language` is read from the parsed notebook's kernelspec.
   const highlight = element.syntaxHighlight !== false;
   const language = notebook?.language ?? null;
+  const hideHeader = element.hideHeader === true;
 
   if (resolved.kind === 'lite') {
     return (
-      <div className="nb-frame" style={fontStyle}>
+      <div className={frameClass} style={fontStyle}>
         <LiteKernelPlaceholder
           cells={cells}
           interactive={interactive}
           highlight={highlight}
           language={language}
+          hideHeader={hideHeader}
           kernelDisplayName={notebook?.kernelDisplayName ?? notebook?.kernelspecName ?? null}
         />
       </div>
     );
   }
   return (
-    <div className="nb-frame" style={fontStyle}>
+    <div className={frameClass} style={fontStyle}>
       <ExternalKernelBody
         element={element}
         cells={cells}
@@ -118,6 +156,7 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
         highlight={highlight}
         language={language}
         baseSize={baseSize}
+        hideHeader={hideHeader}
         kernelDisplayName={notebook?.kernelDisplayName ?? notebook?.kernelspecName ?? null}
       />
     </div>
@@ -132,7 +171,7 @@ interface CellRunState {
 
 function ExternalKernelBody({
   element, cells, loading, error, interactive, editable, resolved, preamble, autoRun,
-  highlight, language, baseSize, kernelDisplayName,
+  highlight, language, baseSize, hideHeader, kernelDisplayName,
 }: {
   element: NotebookElement;
   cells: Cell[];
@@ -145,6 +184,7 @@ function ExternalKernelBody({
   highlight: boolean;
   language: string | null;
   baseSize: number;
+  hideHeader: boolean;
   kernelDisplayName: string | null;
 }) {
   const kernel = useKernel(resolved);
@@ -306,20 +346,19 @@ function ExternalKernelBody({
 
   return (
     <>
-      {/* Compact header — JUST the kernel name + a small status dot.
-          Per the design: no inline auth UX, no server URL, no
-          "kernel error: start a server with..." prompts. The status
-          pill in the app's topbar surfaces server health globally;
-          this element shows the bare minimum the presenter needs to
-          glance at during a talk (is this cell idle/busy/red). */}
-      <div className="nb-header">
-        <span className="nb-kernel-label">
-          {kernelDisplayName || resolved.kernelName}
-        </span>
-        <span className={`nb-status nb-status-${kernel.status}`}>
-          {labelForStatus(kernel.status)}
-        </span>
-      </div>
+      {/* Busy indicator: a small dot at the top-left of the frame,
+          present regardless of the header. Visible only for states
+          worth a glance mid-talk (connecting / busy / error / dead /
+          no-server); idle + disconnected render nothing. This is the
+          ONLY status cue when the header is hidden. */}
+      <StatusDot status={kernel.status} />
+      {!hideHeader && (
+        <div className="nb-header">
+          <span className="nb-kernel-label">
+            {kernelDisplayName || resolved.kernelName}
+          </span>
+        </div>
+      )}
       <div className="nb-body" style={{ pointerEvents: interactive ? 'auto' : 'none' }}>
         {loading && <div className="nb-status">Loading…</div>}
         {error && <div className="nb-status nb-error">Parse error: {error.message}</div>}
@@ -355,33 +394,50 @@ function ExternalKernelBody({
   );
 }
 
+/** Human-readable status, used only as the dot's hover title. */
 function labelForStatus(s: KernelStatus): string {
   switch (s) {
-    case 'disconnected': return '○ not connected';
-    case 'connecting': return '◐ connecting…';
-    case 'idle': return '● idle';
-    case 'busy': return '◑ busy';
-    case 'error': return '✕ error';
-    case 'dead': return '✕ dead';
-    case 'no-server': return '⚠ no server';
+    case 'disconnected': return 'not connected';
+    case 'connecting': return 'connecting…';
+    case 'idle': return 'idle';
+    case 'busy': return 'running';
+    case 'error': return 'error';
+    case 'dead': return 'kernel died';
+    case 'no-server': return 'no matching server';
   }
 }
 
+/** Small top-left status dot. Renders nothing for idle/disconnected
+ *  (no clutter when there's nothing to say); a colored dot otherwise.
+ *  busy pulses. */
+function StatusDot({ status }: { status: KernelStatus }) {
+  if (status === 'idle' || status === 'disconnected') return null;
+  return (
+    <span
+      className={`nb-status-dot nb-status-dot-${status}`}
+      title={labelForStatus(status)}
+    />
+  );
+}
+
 function LiteKernelPlaceholder({
-  cells, interactive, highlight, language, kernelDisplayName,
+  cells, interactive, highlight, language, hideHeader, kernelDisplayName,
 }: {
   cells: Cell[];
   interactive: boolean;
   highlight: boolean;
   language: string | null;
+  hideHeader: boolean;
   kernelDisplayName: string | null;
 }) {
   return (
     <>
-      <div className="nb-header">
-        <span className="nb-kernel-label">{kernelDisplayName || 'Notebook'}</span>
-        <span className="nb-status nb-status-disconnected">lite (display only — v1.5)</span>
-      </div>
+      {!hideHeader && (
+        <div className="nb-header">
+          <span className="nb-kernel-label">{kernelDisplayName || 'Notebook'}</span>
+          <span className="nb-lite-tag">lite</span>
+        </div>
+      )}
       <div className="nb-body" style={{ pointerEvents: interactive ? 'auto' : 'none' }}>
         {cells.map((c) => {
           switch (c.kind) {

@@ -121,12 +121,28 @@ export function NotebookCellEditor({
       });
 
       // Font size matches the cell's code size so the editor doesn't
-      // jump when switching between static + editing.
+      // jump when switching between static + editing. Colors come from
+      // the notebook's theme CSS variables (set on .nb-frame) so the
+      // editor integrates with light/dark/custom slide themes instead
+      // of CodeMirror's default black-on-white.
       const theme = EditorView.theme({
-        '&': { fontSize: `${fontSize}px`, backgroundColor: 'transparent' },
-        '.cm-content': { fontFamily: 'var(--nb-mono-family, ui-monospace, Menlo, monospace)' },
-        '.cm-gutters': { backgroundColor: 'transparent', border: 'none', color: '#cbd5e1' },
+        '&': {
+          fontSize: `${fontSize}px`,
+          backgroundColor: 'transparent',
+          color: 'var(--nb-fg, #111827)',
+        },
+        '.cm-content': {
+          fontFamily: 'var(--nb-mono-family, ui-monospace, Menlo, monospace)',
+          caretColor: 'var(--nb-fg, #111827)',
+        },
+        '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--nb-fg, #111827)' },
+        '.cm-gutters': {
+          backgroundColor: 'transparent', border: 'none',
+          color: 'var(--nb-muted, #cbd5e1)',
+        },
+        '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'transparent' },
         '&.cm-focused': { outline: 'none' },
+        '.cm-selectionBackground, ::selection': { backgroundColor: 'var(--nb-code-bg, rgba(0,0,0,0.08))' },
       });
 
       const extensions = [

@@ -1258,24 +1258,32 @@
    24/32/48 px presets the inspector exposes. */
 .el-notebook { overflow: visible; }
 .el-notebook .nb-frame {
+  position: relative;       /* anchor for the absolute status dot */
   width: 100%;
   height: 100%;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  /* Theme-aware: colors come from CSS vars set by NotebookContent
+     (derived from the slide's resolved theme). Default = blend into
+     the slide (theme background, no border). */
+  background: var(--nb-bg, #fff);
+  border: none;
   border-radius: 4px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   font-family: var(--nb-prose-family, -apple-system, BlinkMacSystemFont, "PT Sans", sans-serif);
-  color: #111827;
+  color: var(--nb-fg, #111827);
+}
+/* Optional thin frame (showBorder). */
+.el-notebook .nb-frame--bordered {
+  border: 1px solid var(--nb-border, #e5e7eb);
 }
 .el-notebook .nb-header {
   flex: 0 0 auto;
   padding: 4px 12px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-bottom: 1px solid var(--nb-border, #e5e7eb);
+  background: var(--nb-code-bg, #f9fafb);
   font-size: 12px;
-  color: #6b7280;
+  color: var(--nb-muted, #6b7280);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1283,6 +1291,13 @@
 .el-notebook .nb-kernel-label {
   font-weight: 600;
   letter-spacing: 0.02em;
+  padding-left: 12px;       /* clear the status dot at top-left */
+}
+.el-notebook .nb-lite-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.6;
 }
 .el-notebook .nb-body {
   flex: 1 1 auto;
@@ -1291,11 +1306,37 @@
 }
 .el-notebook .nb-status {
   padding: 16px;
-  color: #6b7280;
+  color: var(--nb-muted, #6b7280);
   font-style: italic;
   font-size: 14px;
 }
 .el-notebook .nb-status.nb-error { color: #b91c1c; }
+
+/* Busy/status dot — small, top-left, above content. Only rendered
+   for non-idle states (see StatusDot). busy pulses. */
+.el-notebook .nb-status-dot {
+  position: absolute;
+  top: 7px; left: 7px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  z-index: 3;
+  pointer-events: none;
+}
+.el-notebook .nb-status-dot-connecting { background: #3b82f6; }
+.el-notebook .nb-status-dot-busy {
+  background: #d97706;
+  animation: nb-pulse 1s ease-in-out infinite;
+}
+.el-notebook .nb-status-dot-error,
+.el-notebook .nb-status-dot-dead { background: #dc2626; }
+.el-notebook .nb-status-dot-no-server {
+  background: transparent;
+  border: 1.5px solid #dc2626;
+}
+@keyframes nb-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
 
 .el-notebook .nb-cell {
   display: grid;
@@ -1332,15 +1373,15 @@
 .el-notebook .nb-cell-source {
   margin: 0;
   padding: calc(var(--nb-base-size, 32px) * 0.19) calc(var(--nb-base-size, 32px) * 0.31);
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  background: var(--nb-code-bg, #f3f4f6);
+  border: 1px solid var(--nb-border, #e5e7eb);
   border-radius: 3px;
   font-family: var(--nb-mono-family, ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace);
   font-size: var(--nb-base-size, 32px);
   line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
-  color: #111827;
+  color: var(--nb-fg, #111827);
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -1399,6 +1440,53 @@
 .el-notebook .hljs-strong { font-weight: bold; }
 .el-notebook .hljs-addition { background: #f0fff4; color: #22863a; }
 .el-notebook .hljs-deletion { background: #ffeef0; color: #b31d28; }
+
+/* Dark syntax-highlight palette (GitHub Dark, scoped). Applied when
+   NotebookContent tags the frame .nb-theme-dark for dark slide
+   themes. Prefixed with .el-notebook so it outranks the light token
+   rules above (which are .el-notebook .hljs-*) by specificity, not
+   just source order. */
+.el-notebook .nb-theme-dark.hljs,
+.el-notebook .nb-theme-dark .hljs { color: #c9d1d9; }
+.el-notebook .nb-theme-dark .hljs-doctag,
+.el-notebook .nb-theme-dark .hljs-keyword,
+.el-notebook .nb-theme-dark .hljs-meta .hljs-keyword,
+.el-notebook .nb-theme-dark .hljs-template-tag,
+.el-notebook .nb-theme-dark .hljs-template-variable,
+.el-notebook .nb-theme-dark .hljs-type,
+.el-notebook .nb-theme-dark .hljs-variable.language_ { color: #ff7b72; }
+.el-notebook .nb-theme-dark .hljs-title,
+.el-notebook .nb-theme-dark .hljs-title.class_,
+.el-notebook .nb-theme-dark .hljs-title.class_.inherited__,
+.el-notebook .nb-theme-dark .hljs-title.function_ { color: #d2a8ff; }
+.el-notebook .nb-theme-dark .hljs-attr,
+.el-notebook .nb-theme-dark .hljs-attribute,
+.el-notebook .nb-theme-dark .hljs-literal,
+.el-notebook .nb-theme-dark .hljs-meta,
+.el-notebook .nb-theme-dark .hljs-number,
+.el-notebook .nb-theme-dark .hljs-operator,
+.el-notebook .nb-theme-dark .hljs-variable,
+.el-notebook .nb-theme-dark .hljs-selector-attr,
+.el-notebook .nb-theme-dark .hljs-selector-class,
+.el-notebook .nb-theme-dark .hljs-selector-id { color: #79c0ff; }
+.el-notebook .nb-theme-dark .hljs-regexp,
+.el-notebook .nb-theme-dark .hljs-string,
+.el-notebook .nb-theme-dark .hljs-meta .hljs-string { color: #a5d6ff; }
+.el-notebook .nb-theme-dark .hljs-built_in,
+.el-notebook .nb-theme-dark .hljs-symbol { color: #ffa657; }
+.el-notebook .nb-theme-dark .hljs-comment,
+.el-notebook .nb-theme-dark .hljs-code,
+.el-notebook .nb-theme-dark .hljs-formula { color: #8b949e; font-style: italic; }
+.el-notebook .nb-theme-dark .hljs-name,
+.el-notebook .nb-theme-dark .hljs-quote,
+.el-notebook .nb-theme-dark .hljs-selector-tag,
+.el-notebook .nb-theme-dark .hljs-selector-pseudo { color: #7ee787; }
+.el-notebook .nb-theme-dark .hljs-subst { color: #c9d1d9; }
+.el-notebook .nb-theme-dark .hljs-section { color: #1f6feb; font-weight: bold; }
+.el-notebook .nb-theme-dark .hljs-bullet { color: #f2cc60; }
+.el-notebook .nb-theme-dark .hljs-addition { background: #033a16; color: #aff5b4; }
+.el-notebook .nb-theme-dark .hljs-deletion { background: #67060c; color: #ffdcd7; }
+
 .el-notebook .nb-cell-actions {
   flex: 0 0 auto;
   display: flex;
@@ -1526,7 +1614,7 @@
   max-width: 100%;
 }
 .el-notebook .nb-html { font-family: inherit; font-size: calc(var(--nb-base-size, 32px) * 1.08); }
-.el-notebook .nb-plain { color: #374151; }
+.el-notebook .nb-plain { color: var(--nb-fg, #374151); }
 
 .el-notebook .nb-markdown {
   font-family: var(--nb-prose-family, inherit);
@@ -1541,7 +1629,7 @@
 .el-notebook .nb-markdown h3 { font-size: 1.2em; margin: 0.3em 0; }
 .el-notebook .nb-markdown p { margin: 0.5em 0; }
 .el-notebook .nb-markdown pre {
-  background: #f3f4f6;
+  background: var(--nb-code-bg, #f3f4f6);
   padding: calc(var(--nb-base-size, 32px) * 0.25);
   border-radius: 3px;
   font-family: var(--nb-mono-family, ui-monospace, SFMono-Regular, Menlo, monospace);
@@ -1549,7 +1637,7 @@
   overflow-x: auto;
 }
 .el-notebook .nb-markdown code {
-  background: #f3f4f6;
+  background: var(--nb-code-bg, #f3f4f6);
   padding: 1px 4px;
   border-radius: 2px;
   font-family: var(--nb-mono-family, ui-monospace, SFMono-Regular, Menlo, monospace);

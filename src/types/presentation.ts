@@ -290,6 +290,18 @@ export interface NotebookElement extends BaseElement {
    *  (python / julia / r / bash / cpp / rust / js / ts / sql / etc.)
    *  work out of the box, others render unhighlighted. */
   syntaxHighlight?: boolean;
+  /** Hide markdown cells, showing only code (+ outputs). Default
+   *  false. For "focus on the code" decks where prose cells are just
+   *  authoring scaffolding. */
+  hideMarkdown?: boolean;
+  /** Hide the kernel-name header row. Default false. The small busy
+   *  indicator dot stays regardless — it's the only status cue a
+   *  presenter needs mid-talk. */
+  hideHeader?: boolean;
+  /** Draw a thin frame border around the notebook. Default false —
+   *  the notebook blends into the slide (theme background, no box).
+   *  Turn on for a contained, card-like look. */
+  showBorder?: boolean;
   /** Named size from the deck's type scale (footnote / note / body
    *  are exposed in the picker; 'title' is reserved for title text
    *  elements). When absent, falls back to 'note' (32 px default).

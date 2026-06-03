@@ -829,6 +829,39 @@ function NotebookProperties({ element }: {
         </label>
       </PropSection>
 
+      <PropSection label="Display">
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+          <input
+            type="checkbox"
+            checked={element.hideMarkdown === true}
+            onChange={(e) => updateElement(element.id, {
+              hideMarkdown: e.target.checked ? true : undefined,
+            } as Partial<typeof element>)}
+          />
+          Hide markdown cells (code only)
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginTop: 4 }}>
+          <input
+            type="checkbox"
+            checked={element.hideHeader === true}
+            onChange={(e) => updateElement(element.id, {
+              hideHeader: e.target.checked ? true : undefined,
+            } as Partial<typeof element>)}
+          />
+          Hide kernel header
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginTop: 4 }}>
+          <input
+            type="checkbox"
+            checked={element.showBorder === true}
+            onChange={(e) => updateElement(element.id, {
+              showBorder: e.target.checked ? true : undefined,
+            } as Partial<typeof element>)}
+          />
+          Show frame border
+        </label>
+      </PropSection>
+
       <PropSection label="Preamble">
         <textarea
           value={element.preamble ?? ''}
