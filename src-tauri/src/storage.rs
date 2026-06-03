@@ -365,23 +365,60 @@ pub fn open_memory_db() -> SqlResult<()> {
 
 /// Save the current in-memory DB to a file, then reopen from that file.
 /// Uses SQLite's backup API for an atomic copy.
-pub fn save_to_file(path: &str) -> SqlResult<()> {
-    let mut db = DB.lock().unwrap();
-    let src = db.as_ref().ok_or(rusqlite::Error::InvalidQuery)?;
-    // Flush the lazily-generated project_id into _meta before backing up
-    // so the saved file has the same id this session has been using.
-    persist_pending_project_id(src)?;
+/// Save the current DB to `path`, then reopen the session from it.
+///
+/// Crash-safe + clean-slate. The DB is backed up to a sibling temp file
+/// which is then atomically renamed over `path`; the old file (and any of
+/// its `-wal`/`-shm` sidecars) is replaced wholesale. Two consequences:
+///   - Overwriting an existing deck can never leave a half-written file or
+///     inherit stale pages/sidecars from the old one.
+///   - "Create/overwrite a deck" callers (New Project, import-foreign)
+///     build in a FRESH in-memory DB and save here, instead of opening the
+///     target file and clearing it in place — which is the pattern that
+///     produced both the dca9005 stale-asset bug and issue #65. Opening a
+///     populated file just to wipe it is gone.
+pub fn save_to_file(path: &str) -> Result<(), String> {
+    // Same-directory temp → same filesystem → rename is atomic.
+    let tmp = format!("{}.tmp-eigendeck", path);
+    let _ = std::fs::remove_file(&tmp); // clear any leftover from a prior crash
+
     {
-        let mut dest = Connection::open(path)?;
-        let backup = rusqlite::backup::Backup::new(src, &mut dest)?;
-        backup.run_to_completion(100, std::time::Duration::from_millis(0), None)?;
-        // dest closes on drop, flushing everything
+        let db = DB.lock().unwrap();
+        let src = db.as_ref().ok_or("No database open")?;
+        // Flush the lazily-generated project_id into _meta before backing up
+        // so the saved file has the same id this session has been using.
+        persist_pending_project_id(src).map_err(|e| e.to_string())?;
+        let mut dest = Connection::open(&tmp).map_err(|e| e.to_string())?;
+        let backup =
+            rusqlite::backup::Backup::new(src, &mut dest).map_err(|e| e.to_string())?;
+        backup
+            .run_to_completion(100, std::time::Duration::from_millis(0), None)
+            .map_err(|e| e.to_string())?;
+        // dest closes on drop (complete single-file DB); src borrow + db
+        // lock release at the end of this block so the reopen below can
+        // re-lock.
     }
-    // Now reopen from the file so future writes go to disk
-    let conn = Connection::open(path)?;
-    // WAL mode is already set in schema, but ensure it after reopen
-    conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;")?;
-    *db = Some(conn);
+
+    // Atomically replace the target. fs::rename replaces an existing file
+    // on Unix; on Windows it errors if the dest exists, so fall back to
+    // remove-then-rename there.
+    if std::fs::rename(&tmp, path).is_err() {
+        let _ = std::fs::remove_file(path);
+        std::fs::rename(&tmp, path).map_err(|e| {
+            let _ = std::fs::remove_file(&tmp);
+            e.to_string()
+        })?;
+    }
+    // Drop sidecars belonging to the OLD file content — a leftover `-wal`
+    // would otherwise be replayed against the new file on open.
+    let _ = std::fs::remove_file(format!("{}-wal", path));
+    let _ = std::fs::remove_file(format!("{}-shm", path));
+
+    // Reopen from the file so future writes go to disk.
+    let conn = Connection::open(path).map_err(|e| e.to_string())?;
+    conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;")
+        .map_err(|e| e.to_string())?;
+    *DB.lock().unwrap() = Some(conn);
     Ok(())
 }
 
@@ -574,7 +611,7 @@ pub fn db_open_memory() -> Result<(), String> {
 /// Save in-memory DB to a file, then reopen from file
 #[tauri::command]
 pub fn db_save_to_file(path: String) -> Result<(), String> {
-    save_to_file(&path).map_err(|e| e.to_string())
+    save_to_file(&path)
 }
 
 /// Save the current DB to a new file as a FORK: the saved file gets a
@@ -593,7 +630,7 @@ pub fn db_save_as_to_file(path: String) -> Result<String, String> {
     })?;
     // Clear any pending — the fresh id is now persisted in the in-memory DB
     *PENDING_PROJECT_ID.lock().unwrap() = None;
-    save_to_file(&path).map_err(|e| e.to_string())?;
+    save_to_file(&path)?;
     Ok(fresh_id)
 }
 
@@ -3884,6 +3921,61 @@ mod tests {
                 "assets must NOT be in STRUCTURE_TABLES — that's the whole point");
 
         teardown_global_db();
+    }
+
+    /// save_to_file must atomically REPLACE an existing file (clean slate,
+    /// no inherited pages), drop the old file's stale `-wal`/`-shm`
+    /// sidecars (so they can't be replayed onto the new file), and leave
+    /// no `.tmp-eigendeck` behind. This is what lets New Project /
+    /// import-foreign build in fresh memory and overwrite the target
+    /// safely instead of opening it to wipe in place.
+    #[test]
+    fn save_to_file_atomically_replaces_existing() {
+        setup_global_db();
+        db_import_json(sample_presentation()).unwrap();
+        with_db(|conn| {
+            let now = timestamp();
+            conn.execute(
+                "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, valid_from)
+                 VALUES ('a1', X'00', 'image/png', 1, 'h', 'p', ?1)",
+                params![&now],
+            )?;
+            Ok(())
+        }).unwrap();
+
+        let path = std::env::temp_dir()
+            .join(format!("eigendeck-atomic-{}.eigendeck", std::process::id()));
+        let path_s = path.to_str().unwrap().to_string();
+        let wal = format!("{}-wal", path_s);
+        let tmp = format!("{}.tmp-eigendeck", path_s);
+        // Stale, unrelated junk already at the destination + a stale WAL.
+        std::fs::write(&path, b"GARBAGE, not a database").unwrap();
+        std::fs::write(&wal, b"stale wal bytes").unwrap();
+
+        save_to_file(&path_s).unwrap();
+
+        // No temp file left behind.
+        assert!(!std::path::Path::new(&tmp).exists(),
+                "temp file should have been renamed away");
+        // The saved file is a VALID deck with our content — proves the
+        // garbage was replaced wholesale and no stale -wal corrupted it.
+        let (assets, title): (i64, String) = with_db(|c| {
+            let a = c.query_row("SELECT COUNT(*) FROM assets", [], |r| r.get(0))?;
+            let t = c.query_row(
+                "SELECT value FROM presentation WHERE key='title'", [], |r| r.get(0))?;
+            Ok((a, t))
+        }).unwrap();
+        assert_eq!(assets, 1, "asset should survive into the saved file");
+        assert_eq!(title, "Test Presentation");
+
+        // Clean shutdown removes the live sidecars; then nothing lingers.
+        close_db().unwrap();
+        assert!(!std::path::Path::new(&wal).exists(),
+                "no -wal should linger after a clean close");
+
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&wal);
+        let _ = std::fs::remove_file(format!("{}-shm", path_s));
     }
 
     /// Helper: read the current row's auto_reload for an asset_id.

@@ -376,18 +376,32 @@ The app does NOT query SQLite on every render. Instead:
    straight to the open DB by `db_store_asset` and are *not* part of
    the presentation JSON, so a full `db_import_json` here would wipe
    every image/PDF/notebook on save (issue #65).
-2. `db_save_to_file(path)` uses SQLite's backup API to copy
-   memory → file
+2. `db_save_to_file(path)` backs the DB up to a sibling temp file and
+   **atomically renames it over `path`** (clearing the old file's
+   `-wal`/`-shm` sidecars). Overwriting an existing deck is therefore
+   crash-safe and leaves no stale pages.
 3. Reopens from file; write-through continues to disk
 4. `project_id` (lazily generated in memory) is persisted into `_meta`
 
+### New Project / import-from-HTML (create or overwrite a file)
+1. `db_open_memory()` — build the new deck in a **fresh** in-memory DB
+2. `db_import_json(json)` — seed it (the wipe is a no-op on empty memory)
+3. `db_save_to_file(path)` — atomic write, replacing any existing file
+
+> **Never open a populated file just to clear it.** Both the dca9005
+> stale-asset bug and issue #65 came from the old `db_open(existing) +
+> db_import_json` pattern. Creating/overwriting a deck now always builds
+> in fresh memory and atomic-saves over the target, so the old file is
+> replaced wholesale — no in-place wipe of a live file's assets.
+
 > **`db_import_json` vs `db_sync_presentation`.** Both import a
-> presentation JSON, but `db_import_json` wipes *everything* first
-> (slides, elements, **assets**, caches, project id) for a true clean
-> slate — used by New Project and the CLI `import`, which may target an
-> existing file and must not inherit its assets/history (commit
-> dca9005). `db_sync_presentation` keeps assets — used by Save / Save
-> As, where the open DB already holds this deck's assets.
+> presentation JSON. `db_import_json` wipes *everything* first (slides,
+> elements, **assets**, caches, project id) for a true clean slate — used
+> by New Project (on fresh memory), import-from-HTML, and the CLI
+> `import` (in-place on a file, where a full replace is the intent;
+> commit dca9005). `db_sync_presentation` resets only the structure and
+> **keeps assets** — used by Save / Save As, where the open DB already
+> holds this deck's assets, which aren't in the JSON.
 
 ### On close
 1. Flush pending writes

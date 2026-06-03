@@ -107,8 +107,13 @@ export async function createProject(): Promise<void> {
     // Same seeding helper the Zustand cold-start uses — keeps the two
     // "fresh presentation" entry points in sync.
     const presentation = createSeededPresentation();
-    await invoke('db_open', { path: selected });
+    // Build the new deck in a FRESH in-memory DB, then atomically write it
+    // over `selected`. Never db_open() an existing file just to clear it —
+    // that "open-dirty-then-wipe" pattern caused the dca9005 stale-asset
+    // bug and issue #65. The atomic save replaces any old file wholesale.
+    await invoke('db_open_memory');
     await invoke('db_import_json', { json: JSON.stringify(presentation) });
+    await invoke('db_save_to_file', { path: selected });
     await openSqliteProject(selected as string);
     const store = usePresentationStore.getState();
     store.markClean();
@@ -328,8 +333,12 @@ export async function importFromHtml(): Promise<void> {
     });
     if (!selected) return;
 
-    await invoke('db_open', { path: selected });
+    // Build in a fresh in-memory DB and atomic-save over `selected` rather
+    // than opening (possibly an existing file) to clear it in place. See
+    // createProject for why (dca9005 / issue #65).
+    await invoke('db_open_memory');
     await invoke('db_import_json', { json: JSON.stringify(presentation) });
+    await invoke('db_save_to_file', { path: selected });
     await openSqliteProject(selected as string);
     addRecentProject(selected as string, presentation.title);
   } catch (e) {
