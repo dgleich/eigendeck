@@ -1363,7 +1363,59 @@
   color: #d97706;
   font-weight: 700;
 }
-.el-notebook .nb-cell-body { min-width: 0; }
+.el-notebook .nb-cell-body { min-width: 0; position: relative; }
+
+/* Visual distinction of overlay content from pristine .ipynb cells.
+   A left accent + a small corner tag mark cells whose source is an
+   in-deck edit (amber) or that were authored live in eigendeck
+   (teal "added"). Pristine cells get no accent. The 3px border is
+   compensated by trimming the cell's left padding so the code stays
+   aligned. */
+.el-notebook .nb-cell-edited {
+  border-left: 3px solid #f59e0b;
+  padding-left: 9px;
+}
+.el-notebook .nb-cell-added {
+  border-left: 3px solid #14b8a6;
+  padding-left: 9px;
+}
+.el-notebook .nb-cell-tag {
+  position: absolute;
+  top: 0; right: 0;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border-radius: 0 0 0 3px;
+  opacity: 0.7;
+  user-select: none;
+  pointer-events: none;
+}
+.el-notebook .nb-cell-edited .nb-cell-tag { background: #fef3c7; color: #92400e; }
+.el-notebook .nb-cell-added .nb-cell-tag { background: #ccfbf1; color: #0f766e; }
+.el-notebook .nb-cell-delete {
+  width: 28px;
+  padding: 0 6px;
+  border: 1px solid #fca5a5;
+  border-radius: 3px;
+  background: #fff;
+  color: #b91c1c;
+  font-size: 12px;
+  cursor: pointer;
+  height: 24px;
+}
+.el-notebook .nb-cell-delete:hover { background: #fef2f2; }
+/* "+ Cell" button in the header (editable notebooks). */
+.el-notebook .nb-add-cell {
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid var(--nb-border, #d1d5db);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--nb-muted, #6b7280);
+  cursor: pointer;
+}
+.el-notebook .nb-add-cell:hover { background: var(--nb-code-bg, #f3f4f6); }
 
 .el-notebook .nb-cell-source-row {
   display: flex;

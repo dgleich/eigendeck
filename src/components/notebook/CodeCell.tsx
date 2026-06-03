@@ -48,16 +48,20 @@ export interface CodeCellProps {
   onEdit?: (next: string) => void;
   /** Commit handler (editor blur). */
   onCommit?: () => void;
-  /** True when this cell has an active edit overlay (shows revert). */
+  /** True when this cell has an active edit overlay (amber accent +
+   *  "edited" tag + revert ⟲). */
   edited?: boolean;
-  /** Revert this cell's edit back to the notebook's saved source. */
+  /** True when this is a live-authored (appended) cell (teal accent +
+   *  "added" tag + delete ✕). */
+  added?: boolean;
+  /** edited: revert to saved source. added: delete the cell. */
   onRevert?: () => void;
 }
 
 export function CodeCell({
   cell, source, liveOutputs, liveExecutionCount, running, onRun,
   language, highlight = true,
-  editable = false, fontSize = 32, onEdit, onCommit, edited, onRevert,
+  editable = false, fontSize = 32, onEdit, onCommit, edited, added, onRevert,
 }: CodeCellProps) {
   const effectiveSource = source ?? cell.source;
   const outputs = liveOutputs ?? cell.outputs;
@@ -81,10 +85,17 @@ export function CodeCell({
     return () => { cancelled = true; };
   }, [effectiveSource, language, highlight, editable]);
 
+  // Visual distinction: appended (live-authored) > edited (overlay) >
+  // pristine. Drives the left accent + tag.
+  const markClass = added ? ' nb-cell-added' : edited ? ' nb-cell-edited' : '';
+
   return (
-    <div className="nb-cell nb-cell-code">
+    <div className={`nb-cell nb-cell-code${markClass}`}>
       <div className={`nb-cell-prompt${running ? ' is-running' : ''}`}>[{promptCount}]</div>
       <div className="nb-cell-body">
+        {(added || edited) && (
+          <div className="nb-cell-tag">{added ? 'added' : 'edited'}</div>
+        )}
         <div className="nb-cell-source-row">
           {editable ? (
             <div className="nb-cell-source nb-cell-source-editing">
@@ -105,7 +116,14 @@ export function CodeCell({
             </pre>
           )}
           <div className="nb-cell-actions">
-            {edited && onRevert && (
+            {added && onRevert && (
+              <button className="nb-cell-delete"
+                onClick={(e) => { e.stopPropagation(); onRevert(); }}
+                title="Delete this added cell">
+                ✕
+              </button>
+            )}
+            {!added && edited && onRevert && (
               <button className="nb-cell-revert"
                 onClick={(e) => { e.stopPropagation(); onRevert(); }}
                 title="Revert this cell to the notebook's saved source">

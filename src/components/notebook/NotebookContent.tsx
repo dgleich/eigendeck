@@ -3,19 +3,26 @@
 // wrapped in DraggableBox) and PresentNotebook (PresentMode,
 // wrapped in an absolute-positioned div).
 //
+// Display = the pristine .ipynb merged with the element's "overlay"
+// (source edits, recorded outputs, live-authored appended cells) via
+// mergeNotebook. The overlay is an owner-tagged asset managed by
+// useOverlay — the .ipynb is never mutated. See
+// .claude/notes/notebook-recording-decisions.md.
+//
 // `interactive: false` disables the pointer-events gate so cells
-// accept clicks immediately in PresentMode (the editor's overlay
-// trick exists so dragging works; PresentMode has no dragging).
+// accept clicks immediately in PresentMode.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CodeCell } from './CodeCell';
 import { MarkdownCell } from './MarkdownCell';
 import { RawCell } from './RawCell';
 import { useNotebook } from '../../lib/useNotebook';
+import { useOverlay } from '../../lib/useOverlay';
 import { useKernel, KernelStatus } from '../../lib/useKernel';
 import { resolveNotebookKernel, ResolvedExternal } from '../../lib/notebookKernel';
 import { usePreference } from '../../lib/preferences';
-import { Cell, CellOutput } from '../../lib/notebookFormat';
+import { Cell, CellOutput, CodeCell as CodeCellT, Notebook } from '../../lib/notebookFormat';
+import { mergeNotebook, MergedCell } from '../../lib/notebookOverlay';
 import { NotebookElement, effectiveFontSize } from '../../types/presentation';
 import { usePresentationStore } from '../../store/presentation';
 import { fontForNotebookProse, fontForNotebookCode } from '../../lib/notebookFonts';
@@ -25,63 +32,24 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
   element: NotebookElement;
   interactive: boolean;
   /** 'editor' suppresses autoRun (the inspector toggle is meaningful
-   *  only in PresentMode). Defaults to 'editor' so the editor can
-   *  omit the prop. */
+   *  only in PresentMode). Defaults to 'editor'. */
   mode?: 'editor' | 'present';
 }) {
   const { notebook, error, loading } = useNotebook(element.assetId);
   const config = usePresentationStore((s) => s.presentation?.config);
   const slide = usePresentationStore((s) => s.presentation?.slides?.[s.currentSlideIndex]);
-  const updateElement = usePresentationStore((s) => s.updateElement);
   const [jupyterServers] = usePreference('jupyterServers');
   const [defaultEditable] = usePreference('defaultNotebookEditable');
   const resolved = resolveNotebookKernel(element, config, notebook, jupyterServers);
 
-  // Effective editability cascades: element override → global pref →
-  // false. (Per DESIGN_DECISIONS.md "Preferences cascade".)
+  // Effective editability cascades: element override → global pref → false.
   const editable = element.editable ?? defaultEditable;
 
-  // A manual reload-from-disk (or restore) fires `asset-changed` for
-  // this asset. When that happens we drop the in-deck cellEdits
-  // overlay — the user explicitly asked for fresh source, so the
-  // overlay should no longer mask it. Auto-reload can't fire here when
-  // the notebook is editable (editing turns watching off), so this
-  // only triggers on a deliberate reload.
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { assetId?: string } | undefined;
-      if (detail?.assetId !== element.assetId) return;
-      if (element.cellEdits && Object.keys(element.cellEdits).length > 0) {
-        updateElement(element.id, { cellEdits: undefined } as Partial<NotebookElement>);
-      }
-    };
-    window.addEventListener('eigendeck:asset-changed', handler);
-    return () => window.removeEventListener('eigendeck:asset-changed', handler);
-  }, [element.assetId, element.id, element.cellEdits, updateElement]);
-
-  // Typography resolution. CSS variables flow through to .nb-* rules
-  // via inline style on the frame wrapper below — keeps the CSS file
-  // generic while the per-element resolution stays in TS.
-  // --nb-base-size is the code-source size in slide-pixels; other
-  // text (markdown, outputs, prompts) is sized proportionally to it
-  // via CSS calc() so the visual hierarchy stays consistent across
-  // size presets.
+  // Typography + theme → CSS variables on the frame. (See the detailed
+  // notes in the prior revision; unchanged.)
   const proseFont = fontForNotebookProse(slide, config);
   const codeFont = fontForNotebookCode(config);
-  // Resolution priority: explicit numeric override (fontSize) wins,
-  // then the named size walked through the deck's type scale, then
-  // the 'note' default (32 px). See DESIGN_DECISIONS.md "Preferences
-  // cascade" — default-setting flavor.
   const baseSize = effectiveFontSize(element, config);
-
-  // Theme-awareness: derive notebook colors from the slide's resolved
-  // theme so the notebook integrates with light/dark/custom themes
-  // instead of being a hardcoded white card. CSS variables flow to the
-  // scoped .nb-* rules; a `nb-theme-dark` class swaps the syntax-
-  // highlight palette. Code-cell + output backgrounds are a subtle
-  // tint OVER the slide background (translucent black on light themes,
-  // translucent white on dark) so they read as "code regions" without
-  // hardcoding a grey.
   const theme = resolveTheme(
     usePresentationStore.getState().presentation?.theme ?? 'white',
     slide?.theme,
@@ -100,38 +68,22 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
     '--nb-accent': theme.accent,
     '--nb-border': borderColor,
   } as React.CSSProperties;
-
-  // Frame classes: theme palette + optional border. Default is
-  // borderless (blends into the slide).
   const frameClass = [
     'nb-frame',
     dark ? 'nb-theme-dark' : 'nb-theme-light',
     element.showBorder ? 'nb-frame--bordered' : '',
   ].filter(Boolean).join(' ');
 
-  let cells: Cell[] = notebook
-    ? (element.visibleCells && element.visibleCells.length > 0
-        ? notebook.cells.filter((c) => element.visibleCells!.includes(c.index))
-        : notebook.cells)
-    : [];
-  // hideMarkdown → drop markdown cells, keep code (+ raw). "Focus on
-  // the code" mode.
-  if (element.hideMarkdown) {
-    cells = cells.filter((c) => c.kind !== 'markdown');
-  }
-
-  // Syntax-highlight settings flow into the cell components.
-  // `highlight` defaults to true; the element-level toggle disables.
-  // `language` is read from the parsed notebook's kernelspec.
   const highlight = element.syntaxHighlight !== false;
   const language = notebook?.language ?? null;
   const hideHeader = element.hideHeader === true;
 
+  // Lite backend stays display-only (no overlay/kernel) in v1.
   if (resolved.kind === 'lite') {
     return (
       <div className={frameClass} style={fontStyle}>
         <LiteKernelPlaceholder
-          cells={cells}
+          cells={filterCells(notebook?.cells ?? [], element)}
           interactive={interactive}
           highlight={highlight}
           language={language}
@@ -145,7 +97,7 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
     <div className={frameClass} style={fontStyle}>
       <ExternalKernelBody
         element={element}
-        cells={cells}
+        notebook={notebook}
         loading={loading}
         error={error}
         interactive={interactive}
@@ -163,18 +115,43 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
   );
 }
 
-interface CellRunState {
-  outputs: CellOutput[];
-  executionCount: number | '*' | null;
-  running: boolean;
+/** Apply the element's visibleCells whitelist + hideMarkdown filter to
+ *  a plain Cell[] (lite path). */
+function filterCells(cells: Cell[], element: NotebookElement): Cell[] {
+  let out = (element.visibleCells && element.visibleCells.length > 0)
+    ? cells.filter((c) => element.visibleCells!.includes(c.index))
+    : cells;
+  if (element.hideMarkdown) out = out.filter((c) => c.kind !== 'markdown');
+  return out;
 }
 
+/** Apply the same filters to the merged render list (external path). */
+function filterMerged(merged: MergedCell[], element: NotebookElement): MergedCell[] {
+  return merged.filter((m) => {
+    if (m.origin === 'ipynb') {
+      if (element.visibleCells && element.visibleCells.length > 0
+          && !element.visibleCells.includes(m.cell.index)) return false;
+      if (element.hideMarkdown && m.cell.kind === 'markdown') return false;
+      return true;
+    }
+    // appended cells are always shown (user-authored), except markdown
+    // when hideMarkdown.
+    if (element.hideMarkdown && m.appended.cellType === 'markdown') return false;
+    return true;
+  });
+}
+
+/** Transient per-cell run status (the [*] spinner) — keyed by a string
+ *  cell key (index for .ipynb cells, id for appended). Not persisted;
+ *  outputs themselves live in the overlay. */
+type RunningState = { running: boolean; count: number | '*' | null };
+
 function ExternalKernelBody({
-  element, cells, loading, error, interactive, editable, resolved, preamble, autoRun,
+  element, notebook, loading, error, interactive, editable, resolved, preamble, autoRun,
   highlight, language, baseSize, hideHeader, kernelDisplayName,
 }: {
   element: NotebookElement;
-  cells: Cell[];
+  notebook: Notebook | null;
   loading: boolean; error: Error | null;
   interactive: boolean;
   editable: boolean;
@@ -188,210 +165,205 @@ function ExternalKernelBody({
   kernelDisplayName: string | null;
 }) {
   const kernel = useKernel(resolved);
+  const ov = useOverlay(element.id);
   const updateElement = usePresentationStore((s) => s.updateElement);
-  const [runState, setRunState] = useState<Map<number, CellRunState>>(new Map());
-  const accRef = useRef(runState);
-  accRef.current = runState;
 
-  // --- Cell-source edit overlay ------------------------------------
-  // `working` holds the live-typing copy keyed by cell index; seeded
-  // from the persisted element.cellEdits. We keep typing in local
-  // state (not the store) so each keystroke doesn't spam undo / the
-  // SQLite write-through; commits land on blur (commitEdit).
-  const persistedEdits = element.cellEdits;
-  const [working, setWorking] = useState<Map<number, string>>(
-    () => new Map(Object.entries(persistedEdits ?? {}).map(([k, v]) => [Number(k), v]))
-  );
-  // Re-seed when the persisted overlay changes by identity (e.g. undo,
-  // file reload). Cheap — cellEdits is small.
+  // Migrate legacy element.cellEdits (pre-overlay) into the overlay
+  // once, then strip the field. cellEdits is being retired in favor of
+  // the overlay asset.
+  const migratedRef = useRef(false);
   useEffect(() => {
-    setWorking(new Map(Object.entries(persistedEdits ?? {}).map(([k, v]) => [Number(k), v])));
-  }, [persistedEdits]);
+    if (migratedRef.current) return;
+    const legacy = element.cellEdits;
+    if (legacy && Object.keys(legacy).length > 0) {
+      migratedRef.current = true;
+      for (const [k, v] of Object.entries(legacy)) {
+        ov.setEdit(Number(k), v, '');   // savedSource '' → always set
+      }
+      updateElement(element.id, { cellEdits: undefined } as Partial<NotebookElement>);
+    }
+  }, [element.cellEdits, element.id, ov, updateElement]);
 
-  /** Effective source for a cell: working overlay if present, else
-   *  the cell's own (parsed) source. */
-  const sourceFor = useCallback((c: Cell): string => {
-    if (c.kind !== 'code') return c.source;
-    const w = working.get(c.index);
-    return w !== undefined ? w : c.source;
-  }, [working]);
+  // Manual reload-from-disk (or restore) fires asset-changed for the
+  // .ipynb → drop the whole overlay (user asked for fresh source).
+  // Auto-reload can't fire while editable (watching off), so this only
+  // triggers on a deliberate reload.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { assetId?: string } | undefined;
+      if (detail?.assetId === element.assetId) ov.clear();
+    };
+    window.addEventListener('eigendeck:asset-changed', handler);
+    return () => window.removeEventListener('eigendeck:asset-changed', handler);
+  }, [element.assetId, ov]);
 
-  const onEdit = useCallback((index: number, next: string) => {
-    setWorking((prev) => { const m = new Map(prev); m.set(index, next); return m; });
+  // Transient running status, keyed by cell key.
+  const [running, setRunning] = useState<Map<string, RunningState>>(new Map());
+  const setRun = useCallback((key: string, s: RunningState | null) => {
+    setRunning((prev) => {
+      const next = new Map(prev);
+      if (s === null) next.delete(key); else next.set(key, s);
+      return next;
+    });
   }, []);
 
-  /** Commit the working copy for one cell into element.cellEdits.
-   *  If the edit equals the cell's saved source, drop the overlay
-   *  entry (a no-op edit shouldn't leave a phantom override). */
-  const commitEdit = useCallback((index: number, savedSource: string) => {
-    const w = working.get(index);
-    const nextEdits: Record<number, string> = { ...(element.cellEdits ?? {}) };
-    if (w === undefined || w === savedSource) {
-      delete nextEdits[index];
-    } else {
-      nextEdits[index] = w;
-    }
-    const isEmpty = Object.keys(nextEdits).length === 0;
-    updateElement(element.id, {
-      cellEdits: isEmpty ? undefined : nextEdits,
-    } as Partial<NotebookElement>);
-  }, [working, element.cellEdits, element.id, updateElement]);
+  // Working buffers for in-progress typing, so each keystroke doesn't
+  // touch the overlay state/flush. Committed to the overlay on blur.
+  const [working, setWorking] = useState<Map<string, string>>(new Map());
 
-  const revertEdit = useCallback((index: number) => {
-    setWorking((prev) => { const m = new Map(prev); m.delete(index); return m; });
-    const nextEdits: Record<number, string> = { ...(element.cellEdits ?? {}) };
-    delete nextEdits[index];
-    const isEmpty = Object.keys(nextEdits).length === 0;
-    updateElement(element.id, {
-      cellEdits: isEmpty ? undefined : nextEdits,
-    } as Partial<NotebookElement>);
-  }, [element.cellEdits, element.id, updateElement]);
-  // Track whether preamble has fired in the current kernel session.
-  // Reset to false whenever the kernel reconnects (which happens on
-  // server / kernelName change — see useKernel's effect dep).
   const preambleFiredRef = useRef(false);
   useEffect(() => { preambleFiredRef.current = false; },
     [resolved.server?.baseUrl, resolved.server?.token, resolved.kernelName]);
 
-  const setCellState = useCallback(
-    (index: number, patch: Partial<CellRunState> | ((prev: CellRunState | undefined) => CellRunState)) => {
-      setRunState((prev) => {
-        const next = new Map(prev);
-        const old = next.get(index);
-        const updated = typeof patch === 'function'
-          ? patch(old)
-          : { outputs: old?.outputs ?? [], executionCount: old?.executionCount ?? null, running: old?.running ?? false, ...patch };
-        next.set(index, updated);
-        accRef.current = next;
-        return next;
-      });
-    },
-    []
-  );
-
-  const runOne = useCallback(async (index: number, source: string) => {
-    setCellState(index, { outputs: [], executionCount: '*', running: true });
+  // Execute `source`; stream outputs into the overlay live. `record`
+  // writes the accumulating outputs (ipynb index or appended id).
+  const execute = useCallback(async (
+    key: string,
+    source: string,
+    record: (outs: CellOutput[], count: number | null) => void,
+  ) => {
+    setRun(key, { running: true, count: '*' });
+    let outs: CellOutput[] = [];
+    let count: number | null = null;
+    const push = (o: CellOutput) => { outs = [...outs, o]; record(outs, count); };
     try {
-      // Preamble fires once per kernel session, BEFORE the first cell.
-      // Silent execute (no callbacks wired) — its outputs aren't user-
-      // facing; only its side effects on the kernel namespace are.
       if (preamble && !preambleFiredRef.current) {
         preambleFiredRef.current = true;
         const ph = await kernel.runCell(preamble, {});
         await ph.done;
       }
+      record([], null);  // clear prior outputs at run start
       const handle = await kernel.runCell(source, {
-        onStream: (s) => setCellState(index, (prev) => {
-          const outs = prev?.outputs ? [...prev.outputs] : [];
+        onStream: (s) => {
           const last = outs[outs.length - 1];
           if (last && last.kind === 'stream' && last.name === s.name) {
-            outs[outs.length - 1] = { ...last, text: last.text + s.text };
-          } else {
-            outs.push({ kind: 'stream', ...s });
-          }
-          return { outputs: outs, executionCount: prev?.executionCount ?? '*', running: true };
-        }),
-        onDisplayData: (d) => setCellState(index, (prev) => ({
-          outputs: [...(prev?.outputs ?? []), { kind: 'display_data', data: d.data }],
-          executionCount: prev?.executionCount ?? '*', running: true,
-        })),
-        onExecuteResult: (r) => setCellState(index, (prev) => ({
-          outputs: [...(prev?.outputs ?? []), { kind: 'execute_result', data: r.data, executionCount: r.executionCount }],
-          executionCount: r.executionCount ?? prev?.executionCount ?? '*',
-          running: true,
-        })),
-        onError: (e) => setCellState(index, (prev) => ({
-          outputs: [...(prev?.outputs ?? []), { kind: 'error', ename: e.ename, evalue: e.evalue, traceback: e.traceback }],
-          executionCount: prev?.executionCount ?? '*', running: true,
-        })),
+            outs = [...outs.slice(0, -1), { ...last, text: last.text + s.text }];
+            record(outs, count);
+          } else { push({ kind: 'stream', ...s }); }
+        },
+        onDisplayData: (d) => push({ kind: 'display_data', data: d.data }),
+        onExecuteResult: (r) => { count = r.executionCount; push({ kind: 'execute_result', data: r.data, executionCount: r.executionCount }); },
+        onError: (e) => push({ kind: 'error', ename: e.ename, evalue: e.evalue, traceback: e.traceback }),
       });
       await handle.done;
+      record(outs, count);
     } catch (e) {
-      setCellState(index, (prev) => ({
-        outputs: [
-          ...(prev?.outputs ?? []),
-          { kind: 'error', ename: 'KernelError', evalue: e instanceof Error ? e.message : String(e), traceback: [] },
-        ],
-        executionCount: prev?.executionCount ?? null,
-        running: false,
-      }));
+      record([...outs, { kind: 'error', ename: 'KernelError', evalue: e instanceof Error ? e.message : String(e), traceback: [] }], count);
     } finally {
-      setCellState(index, (prev) => ({
-        outputs: prev?.outputs ?? [],
-        executionCount: prev?.executionCount ?? null,
-        running: false,
-      }));
+      setRun(key, null);
     }
-  }, [kernel, setCellState, preamble]);
+  }, [kernel, preamble, setRun]);
 
-  // autoRun: when active in PresentMode and the element has autoRun
-  // set, fire all visible code cells in order on mount. Each call
-  // waits for the previous to finish so output ordering matches the
-  // notebook's natural top-to-bottom flow.
+  const merged = filterMerged(mergeNotebook(notebook, ov.overlay), element);
+
+  // autoRun: fire all visible code cells in order (present mode).
   useEffect(() => {
     if (!autoRun) return;
     let cancelled = false;
     (async () => {
-      for (const c of cells) {
+      for (const m of merged) {
         if (cancelled) break;
-        if (c.kind !== 'code') continue;
-        await runOne(c.index, sourceFor(c));
+        if (m.origin === 'ipynb' && m.cell.kind === 'code') {
+          await execute(`i${m.cell.index}`, m.source, (o, c) => ov.recordOutput(m.cell.index, o, c));
+        } else if (m.origin === 'appended' && m.appended.cellType === 'code') {
+          const a = m.appended;
+          await execute(`a${a.id}`, a.source, (o, c) => ov.recordAppendedOutput(a.id, o, c));
+        }
       }
     })();
     return () => { cancelled = true; };
-    // Intentionally only depends on autoRun + element identity (cells
-    // ref changes on every parse; we don't want to retrigger).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRun]);
 
   return (
     <>
-      {/* Busy indicator: a small dot at the top-left of the frame,
-          present regardless of the header. Visible only for states
-          worth a glance mid-talk (connecting / busy / error / dead /
-          no-server); idle + disconnected render nothing. This is the
-          ONLY status cue when the header is hidden. */}
       <StatusDot status={kernel.status} />
       {!hideHeader && (
         <div className="nb-header">
           <span className="nb-kernel-label">
             {kernelDisplayName || resolved.kernelName}
           </span>
+          {editable && interactive && (
+            <button className="nb-add-cell" title="Add a code cell at the end"
+              onClick={() => ov.addAppended(lastIpynbIndex(merged), 'code')}>
+              + Cell
+            </button>
+          )}
         </div>
       )}
       <div className="nb-body" style={{ pointerEvents: interactive ? 'auto' : 'none' }}>
         {loading && <div className="nb-status">Loading…</div>}
         {error && <div className="nb-status nb-error">Parse error: {error.message}</div>}
-        {cells.map((c) => {
-          switch (c.kind) {
-            case 'code': {
-              const st = runState.get(c.index);
-              const src = sourceFor(c);
-              return (
-                <CodeCell key={c.index} cell={c}
-                  source={src}
-                  liveOutputs={st?.outputs ?? null}
-                  liveExecutionCount={st?.executionCount ?? null}
-                  running={st?.running ?? false}
-                  onRun={() => runOne(c.index, sourceFor(c))}
-                  language={language}
-                  highlight={highlight}
-                  editable={editable && interactive}
-                  fontSize={baseSize}
-                  onEdit={(next) => onEdit(c.index, next)}
-                  onCommit={() => commitEdit(c.index, c.source)}
-                  edited={src !== c.source}
-                  onRevert={() => revertEdit(c.index)}
-                />
-              );
-            }
-            case 'markdown': return <MarkdownCell key={c.index} cell={c} />;
-            case 'raw': return <RawCell key={c.index} cell={c} />;
+        {merged.map((m) => {
+          if (m.origin === 'ipynb') {
+            const c = m.cell;
+            if (c.kind === 'markdown') return <MarkdownCell key={`i${c.index}`} cell={{ ...c, source: m.source }} />;
+            if (c.kind === 'raw') return <RawCell key={`i${c.index}`} cell={{ ...c, source: m.source }} />;
+            const key = `i${c.index}`;
+            const run = running.get(key);
+            const wsrc = working.get(key);
+            return (
+              <CodeCell key={key}
+                cell={c as CodeCellT}
+                source={wsrc ?? m.source}
+                liveOutputs={m.outputs}
+                liveExecutionCount={run?.count ?? m.executionCount}
+                running={run?.running ?? false}
+                onRun={() => execute(key, working.get(key) ?? m.source, (o, cnt) => ov.recordOutput(c.index, o, cnt))}
+                language={language}
+                highlight={highlight}
+                editable={editable && interactive}
+                fontSize={baseSize}
+                onEdit={(next) => setWorking((p) => new Map(p).set(key, next))}
+                onCommit={() => { const w = working.get(key); if (w !== undefined) ov.setEdit(c.index, w, c.source); }}
+                edited={m.edited}
+                onRevert={() => { setWorking((p) => { const n = new Map(p); n.delete(key); return n; }); ov.revertEdit(c.index); }}
+              />
+            );
           }
+          // appended cell
+          const a = m.appended;
+          const key = `a${a.id}`;
+          if (a.cellType === 'markdown') {
+            return <MarkdownCell key={key} cell={{ kind: 'markdown', index: -1, source: working.get(key) ?? a.source }} />;
+          }
+          const run = running.get(key);
+          const synth: CodeCellT = {
+            kind: 'code', index: -1,
+            source: a.source,
+            executionCount: a.executionCount ?? null,
+            outputs: a.outputs ?? [],
+          };
+          return (
+            <CodeCell key={key}
+              cell={synth}
+              source={working.get(key) ?? a.source}
+              liveOutputs={a.outputs ?? []}
+              liveExecutionCount={run?.count ?? a.executionCount ?? null}
+              running={run?.running ?? false}
+              onRun={() => execute(key, working.get(key) ?? a.source, (o, cnt) => ov.recordAppendedOutput(a.id, o, cnt))}
+              language={language}
+              highlight={highlight}
+              editable={editable && interactive}
+              fontSize={baseSize}
+              added
+              onEdit={(next) => setWorking((p) => new Map(p).set(key, next))}
+              onCommit={() => { const w = working.get(key); if (w !== undefined) ov.setAppendedSource(a.id, w); }}
+              onRevert={() => ov.removeAppended(a.id)}
+            />
+          );
         })}
       </div>
     </>
   );
+}
+
+/** Highest .ipynb cell index in the merged list, for anchoring a new
+ *  appended cell at the end. null when there are no .ipynb cells. */
+function lastIpynbIndex(merged: MergedCell[]): number | null {
+  let last: number | null = null;
+  for (const m of merged) if (m.origin === 'ipynb') last = m.cell.index;
+  return last;
 }
 
 /** Human-readable status, used only as the dot's hover title. */
@@ -407,16 +379,10 @@ function labelForStatus(s: KernelStatus): string {
   }
 }
 
-/** Small top-left status dot. Renders nothing for idle/disconnected
- *  (no clutter when there's nothing to say); a colored dot otherwise.
- *  busy pulses. */
 function StatusDot({ status }: { status: KernelStatus }) {
   if (status === 'idle' || status === 'disconnected') return null;
   return (
-    <span
-      className={`nb-status-dot nb-status-dot-${status}`}
-      title={labelForStatus(status)}
-    />
+    <span className={`nb-status-dot nb-status-dot-${status}`} title={labelForStatus(status)} />
   );
 }
 
