@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  emptyRecording, isRecordingEmpty, parseRecording, serializeRecording,
-  mergeNotebook, type Recording,
-} from './notebookRecording';
+  emptyOverlay, isOverlayEmpty, parseOverlay, serializeOverlay,
+  mergeNotebook, type Overlay,
+} from './notebookOverlay';
 import type { Notebook } from './notebookFormat';
 
 const nb: Notebook = {
@@ -17,31 +17,31 @@ const nb: Notebook = {
 
 describe('recording parse/serialize', () => {
   it('round-trips', () => {
-    const r: Recording = {
+    const r: Overlay = {
       version: 1,
       cellEdits: { 1: 'k = 10' },
       cellOutputs: { 1: [{ kind: 'stream', name: 'stdout', text: 'live\n' }] },
       cellCounts: { 1: 7 },
       appendedCells: [{ id: 'a1', afterIndex: 2, cellType: 'code', source: 'k*2' }],
     };
-    expect(parseRecording(serializeRecording(r))).toEqual(r);
+    expect(parseOverlay(serializeOverlay(r))).toEqual(r);
   });
 
   it('tolerates garbage → empty', () => {
-    expect(parseRecording('not json')).toEqual(emptyRecording());
-    expect(parseRecording('{"cellEdits": 42}')).toEqual(emptyRecording());
+    expect(parseOverlay('not json')).toEqual(emptyOverlay());
+    expect(parseOverlay('{"cellEdits": 42}')).toEqual(emptyOverlay());
   });
 
-  it('isRecordingEmpty', () => {
-    expect(isRecordingEmpty(emptyRecording())).toBe(true);
-    const r = emptyRecording(); r.cellEdits[0] = 'x';
-    expect(isRecordingEmpty(r)).toBe(false);
+  it('isOverlayEmpty', () => {
+    expect(isOverlayEmpty(emptyOverlay())).toBe(true);
+    const r = emptyOverlay(); r.cellEdits[0] = 'x';
+    expect(isOverlayEmpty(r)).toBe(false);
   });
 });
 
 describe('mergeNotebook', () => {
   it('pristine notebook with empty recording = baked state', () => {
-    const merged = mergeNotebook(nb, emptyRecording());
+    const merged = mergeNotebook(nb, emptyOverlay());
     expect(merged).toHaveLength(3);
     const code1 = merged[1];
     expect(code1.origin).toBe('ipynb');
@@ -54,7 +54,7 @@ describe('mergeNotebook', () => {
   });
 
   it('source edit overrides + flags edited', () => {
-    const r = emptyRecording(); r.cellEdits[1] = 'k = 10';
+    const r = emptyOverlay(); r.cellEdits[1] = 'k = 10';
     const merged = mergeNotebook(nb, r);
     const c = merged[1];
     expect(c.origin).toBe('ipynb');
@@ -65,14 +65,14 @@ describe('mergeNotebook', () => {
   });
 
   it('edit equal to source is not flagged edited', () => {
-    const r = emptyRecording(); r.cellEdits[1] = 'k = 5';
+    const r = emptyOverlay(); r.cellEdits[1] = 'k = 5';
     const merged = mergeNotebook(nb, r);
     const c = merged[1];
     if (c.origin === 'ipynb') expect(c.edited).toBe(false);
   });
 
   it('recorded output takes precedence over baked-in', () => {
-    const r = emptyRecording();
+    const r = emptyOverlay();
     r.cellOutputs[1] = [{ kind: 'stream', name: 'stdout', text: 'live\n' }];
     r.cellCounts[1] = 9;
     const merged = mergeNotebook(nb, r);
@@ -85,7 +85,7 @@ describe('mergeNotebook', () => {
   });
 
   it('appended cell splices after its anchor index', () => {
-    const r = emptyRecording();
+    const r = emptyOverlay();
     r.appendedCells = [{ id: 'a1', afterIndex: 1, cellType: 'code', source: 'extra' }];
     const merged = mergeNotebook(nb, r);
     // order: md(0), code(1), APPENDED, code(2)
@@ -96,14 +96,14 @@ describe('mergeNotebook', () => {
   });
 
   it('appended cell anchored to top (null) renders first', () => {
-    const r = emptyRecording();
+    const r = emptyOverlay();
     r.appendedCells = [{ id: 'a0', afterIndex: null, cellType: 'markdown', source: 'intro' }];
     const merged = mergeNotebook(nb, r);
     expect(merged[0].origin).toBe('appended');
   });
 
   it('handles null notebook (only appended cells)', () => {
-    const r = emptyRecording();
+    const r = emptyOverlay();
     r.appendedCells = [{ id: 'a', afterIndex: null, cellType: 'code', source: 'x = 1' }];
     const merged = mergeNotebook(null, r);
     expect(merged).toHaveLength(1);

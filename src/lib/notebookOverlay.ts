@@ -1,21 +1,26 @@
-// The "recording" — eigendeck's record of a live notebook session,
+// The "overlay" — eigendeck's record of a live notebook session,
 // stored as a SEPARATE eigendeck-owned asset (mime
-// application/x-eigendeck-nb-recording+json) bound to a notebook
-// element via recordingAssetId. The user's .ipynb asset is NEVER
-// mutated; the recording holds everything that happened in eigendeck.
+// application/x-eigendeck-overlay+json) tagged with the owning
+// element via assets.owner_element_id (discovered by query, not
+// referenced from element.data). The user's .ipynb asset is NEVER
+// mutated; the overlay holds everything that happened in eigendeck.
 //
-// Why a separate asset (not an element overlay):
+// Why an owned asset (not inline element.data, not a second
+// element→asset slot):
 //   - free versioning + Restore via the temporal asset history
 //   - keeps potentially-large outputs (base64 PNGs) out of the
-//     presentation JSON, which is re-serialized on every deck save
+//     temporal `elements` row, which is rewritten on any element edit
+//   - respects 0/1/∞: the element still references ONE asset (.ipynb)
 //
 // "eigendeck is not a notebook editor, but it is a recorder":
 //   - source authored in JupyterLab → the .ipynb (pristine)
 //   - the live session (edits, outputs, live-authored cells) → here
+//
+// See .claude/notes/notebook-recording-decisions.md for the why.
 
 import { Cell, CellOutput, CodeCell, Notebook } from './notebookFormat';
 
-export const RECORDING_MIME = 'application/x-eigendeck-nb-recording+json';
+export const OVERLAY_MIME = 'application/x-eigendeck-overlay+json';
 
 /** A cell authored live inside eigendeck (the live-coding case). Not
  *  present in the .ipynb. Identified by a stable UUID, not an index. */
@@ -30,7 +35,7 @@ export interface AppendedCell {
   executionCount?: number | null;
 }
 
-export interface Recording {
+export interface Overlay {
   version: 1;
   /** Source overrides for .ipynb cells, keyed by zero-based index. */
   cellEdits: Record<number, string>;
@@ -43,11 +48,11 @@ export interface Recording {
   appendedCells: AppendedCell[];
 }
 
-export function emptyRecording(): Recording {
+export function emptyOverlay(): Overlay {
   return { version: 1, cellEdits: {}, cellOutputs: {}, cellCounts: {}, appendedCells: [] };
 }
 
-export function isRecordingEmpty(r: Recording): boolean {
+export function isOverlayEmpty(r: Overlay): boolean {
   return Object.keys(r.cellEdits).length === 0
     && Object.keys(r.cellOutputs).length === 0
     && Object.keys(r.cellCounts).length === 0
@@ -55,13 +60,13 @@ export function isRecordingEmpty(r: Recording): boolean {
 }
 
 /** Parse recording-asset bytes. Tolerant: malformed → empty. */
-export function parseRecording(bytes: Uint8Array | ArrayBuffer | string): Recording {
+export function parseOverlay(bytes: Uint8Array | ArrayBuffer | string): Overlay {
   try {
     const text = typeof bytes === 'string'
       ? bytes
       : new TextDecoder('utf-8').decode(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
     const o = JSON.parse(text);
-    if (!o || typeof o !== 'object') return emptyRecording();
+    if (!o || typeof o !== 'object') return emptyOverlay();
     return {
       version: 1,
       cellEdits: numKeyedStrings(o.cellEdits),
@@ -72,11 +77,11 @@ export function parseRecording(bytes: Uint8Array | ArrayBuffer | string): Record
         : [],
     };
   } catch {
-    return emptyRecording();
+    return emptyOverlay();
   }
 }
 
-export function serializeRecording(r: Recording): string {
+export function serializeOverlay(r: Overlay): string {
   return JSON.stringify(r);
 }
 
@@ -93,7 +98,7 @@ export type MergedCell =
  *  list. Source precedence: cellEdits → cell.source. Output
  *  precedence: cellOutputs → baked-in cell.outputs → []. Appended
  *  cells splice in after their anchor index. */
-export function mergeNotebook(notebook: Notebook | null, rec: Recording): MergedCell[] {
+export function mergeNotebook(notebook: Notebook | null, rec: Overlay): MergedCell[] {
   const out: MergedCell[] = [];
   const appendedByAnchor = new Map<number | null, AppendedCell[]>();
   for (const a of rec.appendedCells) {
