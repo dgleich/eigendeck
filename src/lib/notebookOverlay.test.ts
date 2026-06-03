@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   emptyOverlay, isOverlayEmpty, parseOverlay, serializeOverlay,
-  mergeNotebook, type Overlay,
+  mergeNotebook, notebookSourceSignature, overlaySourceChanged, type Overlay,
 } from './notebookOverlay';
 import type { Notebook } from './notebookFormat';
 
@@ -36,6 +36,34 @@ describe('recording parse/serialize', () => {
     expect(isOverlayEmpty(emptyOverlay())).toBe(true);
     const r = emptyOverlay(); r.cellEdits[0] = 'x';
     expect(isOverlayEmpty(r)).toBe(false);
+  });
+});
+
+describe('overlay source-change detection (wipe-during-edit guard)', () => {
+  const sig = notebookSourceSignature(nb);
+
+  it('same bytes re-parse to an identical signature', () => {
+    // simulate useNotebook re-fetching the same .ipynb (incidental event)
+    const reparsed: Notebook = JSON.parse(JSON.stringify(nb));
+    expect(notebookSourceSignature(reparsed)).toBe(sig);
+  });
+
+  it('does NOT reset on first load (no previous signature)', () => {
+    expect(overlaySourceChanged(null, 'el-1', sig)).toBe(false);
+  });
+
+  it('does NOT reset when the signature is unchanged (incidental event)', () => {
+    expect(overlaySourceChanged({ id: 'el-1', sig }, 'el-1', sig)).toBe(false);
+  });
+
+  it('RESETS when the same element’s source genuinely changes (reload/restore)', () => {
+    const changed = notebookSourceSignature({ ...nb, cells: nb.cells.slice(0, 1) });
+    expect(overlaySourceChanged({ id: 'el-1', sig }, 'el-1', changed)).toBe(true);
+  });
+
+  it('does NOT reset when the component is reused for a DIFFERENT element', () => {
+    const other = notebookSourceSignature({ ...nb, cells: [] });
+    expect(overlaySourceChanged({ id: 'el-1', sig }, 'el-2', other)).toBe(false);
   });
 });
 

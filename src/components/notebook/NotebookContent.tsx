@@ -22,7 +22,9 @@ import { useKernel, KernelStatus } from '../../lib/useKernel';
 import { resolveNotebookKernel, ResolvedExternal } from '../../lib/notebookKernel';
 import { usePreference } from '../../lib/preferences';
 import { Cell, CellOutput, CodeCell as CodeCellT, Notebook } from '../../lib/notebookFormat';
-import { mergeNotebook, MergedCell } from '../../lib/notebookOverlay';
+import {
+  mergeNotebook, MergedCell, notebookSourceSignature, overlaySourceChanged,
+} from '../../lib/notebookOverlay';
 import { NotebookElement, effectiveFontSize } from '../../types/presentation';
 import { usePresentationStore } from '../../store/presentation';
 import { fontForNotebookProse, fontForNotebookCode } from '../../lib/notebookFonts';
@@ -196,12 +198,10 @@ function ExternalKernelBody({
   const nbSigRef = useRef<{ id: string; sig: string } | null>(null);
   useEffect(() => {
     if (!notebook) return;
-    const sig = JSON.stringify(notebook);
+    const sig = notebookSourceSignature(notebook);
     const prev = nbSigRef.current;
     nbSigRef.current = { id: element.id, sig };
-    // Only clear for the SAME element whose source actually changed (not the
-    // first load, and not when the component is reused for a new element).
-    if (prev && prev.id === element.id && prev.sig !== sig) clearOverlay();
+    if (overlaySourceChanged(prev, element.id, sig)) clearOverlay();
   }, [notebook, element.id, clearOverlay]);
 
   // Transient running status, keyed by cell key.

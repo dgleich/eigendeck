@@ -22,6 +22,29 @@ import { Cell, CellOutput, CodeCell, Notebook } from './notebookFormat';
 
 export const OVERLAY_MIME = 'application/x-eigendeck-overlay+json';
 
+/** Signature of a notebook's SOURCE, for change detection. Two parses of
+ *  the same .ipynb bytes produce equal signatures, so an incidental
+ *  re-fetch (preview/cache invalidation, watcher re-eval) is a no-op; a
+ *  deliberate reload-from-disk / version-restore parses to different
+ *  content and yields a different signature. */
+export function notebookSourceSignature(nb: Notebook): string {
+  return JSON.stringify(nb);
+}
+
+/** Decide whether an element's overlay should be RESET because its .ipynb
+ *  source genuinely changed. True ONLY when, for the SAME element, the new
+ *  signature differs from a previously-seen one — never on first load, and
+ *  never when a component instance is reused for a different element. This
+ *  is what stops incidental `eigendeck:asset-changed` events from wiping
+ *  recorded outputs/edits during plain editing (the wipe-during-edit bug). */
+export function overlaySourceChanged(
+  prev: { id: string; sig: string } | null,
+  nextId: string,
+  nextSig: string,
+): boolean {
+  return prev !== null && prev.id === nextId && prev.sig !== nextSig;
+}
+
 /** A cell authored live inside eigendeck (the live-coding case). Not
  *  present in the .ipynb. Identified by a stable UUID, not an index. */
 export interface AppendedCell {
