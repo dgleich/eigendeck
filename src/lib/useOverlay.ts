@@ -24,6 +24,23 @@ import { CellOutput } from './notebookFormat';
 
 const FLUSH_DEBOUNCE_MS = 800;
 
+// Module-level in-session cache of overlays, keyed by element id. The
+// editor and PresentMode mount SEPARATE NotebookContent instances
+// (App returns <PresentMode/> instead of the editor while presenting),
+// so a per-instance overlay would lose state across the present↔edit
+// transition — and a DB reload on remount races the outgoing flush.
+// This cache is the in-session source of truth: any instance's
+// mutations land here, and a remounted instance reads it synchronously
+// (no flicker, no race). The asset is still flushed for durability.
+// Cleared per-element on reload-from-disk and wholesale on deck load.
+const overlayCache = new Map<string, Overlay>();
+
+/** Drop all cached overlays — call on deck open/close so element ids
+ *  from a previous deck don't leak. */
+export function clearAllOverlayCache(): void {
+  overlayCache.clear();
+}
+
 export interface UseOverlayResult {
   overlay: Overlay;
   /** Replace a cell's recorded output + execution count (by .ipynb index). */
@@ -46,7 +63,9 @@ export interface UseOverlayResult {
 }
 
 export function useOverlay(elementId: string): UseOverlayResult {
-  const [overlay, setOverlay] = useState<Overlay>(() => emptyOverlay());
+  // Seed from the in-session cache so a remount (e.g. exiting
+  // PresentMode) shows recorded outputs immediately.
+  const [overlay, setOverlay] = useState<Overlay>(() => overlayCache.get(elementId) ?? emptyOverlay());
   // The overlay asset's id once known (loaded or created). null until
   // the first flush creates it.
   const assetIdRef = useRef<string | null>(null);
@@ -59,6 +78,23 @@ export function useOverlay(elementId: string): UseOverlayResult {
 
   // --- load on mount / element change -------------------------------
   useEffect(() => {
+    // If this element's overlay is already cached this session, trust
+    // it (it holds in-flight edits/outputs that may not be flushed yet)
+    // and skip the DB load — avoids the present→edit reload race.
+    if (overlayCache.has(elementId)) {
+      const cached = overlayCache.get(elementId)!;
+      // We don't know the asset id from the cache alone; fetch it lazily
+      // (cheap) so a subsequent flush updates the existing asset rather
+      // than minting a second one.
+      if (assetIdRef.current === null) {
+        void invoke<string | null>('db_get_owned_asset_id', { ownerElementId: elementId })
+          .then((id) => { if (id) assetIdRef.current = id; })
+          .catch(() => {});
+      }
+      lastFlushedRef.current = serializeOverlay(cached);
+      setOverlay(cached);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -72,6 +108,7 @@ export function useOverlay(elementId: string): UseOverlayResult {
           if (cancelled) return;
           const parsed = parseOverlay(new Uint8Array(buf));
           lastFlushedRef.current = serializeOverlay(parsed);
+          overlayCache.set(elementId, parsed);
           setOverlay(parsed);
         } else {
           assetIdRef.current = null;
@@ -126,63 +163,75 @@ export function useOverlay(elementId: string): UseOverlayResult {
   }, [flushNow]);
 
   // --- mutators -----------------------------------------------------
+  // All mutations go through applyOverlay so the in-session cache stays
+  // in lock-step with component state — that's what survives the
+  // present↔edit remount.
+  const applyOverlay = useCallback((updater: (o: Overlay) => Overlay) => {
+    setOverlay((prev) => {
+      const next = updater(prev);
+      overlayCache.set(elementId, next);
+      return next;
+    });
+  }, [elementId]);
+
   const recordOutput = useCallback((index: number, outputs: CellOutput[], executionCount: number | null) => {
-    setOverlay((prev) => ({
+    applyOverlay((prev) => ({
       ...prev,
       cellOutputs: { ...prev.cellOutputs, [index]: outputs },
       cellCounts: { ...prev.cellCounts, [index]: executionCount },
     }));
-  }, []);
+  }, [applyOverlay]);
 
   const setEdit = useCallback((index: number, source: string, savedSource: string) => {
-    setOverlay((prev) => {
+    applyOverlay((prev) => {
       const edits = { ...prev.cellEdits };
       if (source === savedSource) delete edits[index];
       else edits[index] = source;
       return { ...prev, cellEdits: edits };
     });
-  }, []);
+  }, [applyOverlay]);
 
   const revertEdit = useCallback((index: number) => {
-    setOverlay((prev) => {
+    applyOverlay((prev) => {
       if (!(index in prev.cellEdits)) return prev;
       const edits = { ...prev.cellEdits };
       delete edits[index];
       return { ...prev, cellEdits: edits };
     });
-  }, []);
+  }, [applyOverlay]);
 
   const setAppendedSource = useCallback((id: string, source: string) => {
-    setOverlay((prev) => ({
+    applyOverlay((prev) => ({
       ...prev,
       appendedCells: prev.appendedCells.map((a) => a.id === id ? { ...a, source } : a),
     }));
-  }, []);
+  }, [applyOverlay]);
 
   const recordAppendedOutput = useCallback((id: string, outputs: CellOutput[], executionCount: number | null) => {
-    setOverlay((prev) => ({
+    applyOverlay((prev) => ({
       ...prev,
       appendedCells: prev.appendedCells.map((a) =>
         a.id === id ? { ...a, outputs, executionCount } : a),
     }));
-  }, []);
+  }, [applyOverlay]);
 
   const addAppended = useCallback((afterIndex: number | null, cellType: 'code' | 'markdown') => {
     const cell: AppendedCell = { id: crypto.randomUUID(), afterIndex, cellType, source: '' };
-    setOverlay((prev) => ({ ...prev, appendedCells: [...prev.appendedCells, cell] }));
+    applyOverlay((prev) => ({ ...prev, appendedCells: [...prev.appendedCells, cell] }));
     return cell;
-  }, []);
+  }, [applyOverlay]);
 
   const removeAppended = useCallback((id: string) => {
-    setOverlay((prev) => ({
+    applyOverlay((prev) => ({
       ...prev,
       appendedCells: prev.appendedCells.filter((a) => a.id !== id),
     }));
-  }, []);
+  }, [applyOverlay]);
 
   const clear = useCallback(() => {
+    overlayCache.delete(elementId);
     setOverlay(emptyOverlay());
-  }, []);
+  }, [elementId]);
 
   return {
     overlay,

@@ -825,6 +825,11 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     const { resetMathCacheWarmupFlag } = await import('../lib/mathjaxRenderer');
     resetMathCacheWarmupFlag();
 
+    // Drop the in-session notebook-overlay cache so element ids from
+    // the previous deck don't shadow this one.
+    const { clearAllOverlayCache } = await import('../lib/useOverlay');
+    clearAllOverlayCache();
+
     // Open new DB and load
     let t = performance.now();
     await invoke('db_open', { path: dbPath });

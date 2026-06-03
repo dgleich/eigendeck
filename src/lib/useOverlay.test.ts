@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { invoke } from '@tauri-apps/api/core';
-import { useOverlay } from './useOverlay';
+import { useOverlay, clearAllOverlayCache } from './useOverlay';
 import { serializeOverlay, emptyOverlay, OVERLAY_MIME, type Overlay } from './notebookOverlay';
 
 const mockedInvoke = vi.mocked(invoke);
@@ -31,7 +31,7 @@ function mockInvoke(opts: { ownedId?: string | null; overlay?: Overlay } = {}) {
   return storeCalls;
 }
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => { vi.clearAllMocks(); clearAllOverlayCache(); });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('useOverlay load', () => {
@@ -126,6 +126,20 @@ describe('useOverlay flush', () => {
     renderHook(() => useOverlay('el-x'));
     await act(async () => { await vi.advanceTimersByTimeAsync(900); });
     expect(storeCalls).toHaveLength(0);
+  });
+
+  it('survives a remount in-session (the present→edit bug)', async () => {
+    mockInvoke({ ownedId: null });
+    // First mount (e.g. PresentMode): record an output.
+    const first = renderHook(() => useOverlay('el-rm'));
+    await waitFor(() => expect(first.result.current.overlay).toEqual(emptyOverlay()));
+    act(() => first.result.current.recordOutput(0, [{ kind: 'stream', name: 'stdout', text: 'out\n' }], 1));
+    first.unmount();
+    // Remount (e.g. back to the editor): output is still there from the
+    // in-session cache, no DB reload race.
+    const second = renderHook(() => useOverlay('el-rm'));
+    expect(second.result.current.overlay.cellOutputs[0]).toHaveLength(1);
+    expect((second.result.current.overlay.cellOutputs[0][0] as { text: string }).text).toBe('out\n');
   });
 
   it('reuses the loaded asset id on flush (new version, not a new asset)', async () => {
