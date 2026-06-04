@@ -230,6 +230,13 @@ function LinkableElement({ element: el, isLinked, onClick }: {
           DEMO
         </div>
       );
+    case 'notebook':
+      return (
+        <div style={{ ...wrapStyle, background: '#eef7ee', border: isLinked ? '4px solid #16a34a' : '4px dashed #86c986', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: '#3f9142' }}
+          onClick={onClick} className="link-overlay-element">
+          NB
+        </div>
+      );
     case 'demo-piece':
       return (
         <div style={{ ...wrapStyle, background: '#f0e8f8', border: isLinked ? '4px solid #16a34a' : '4px dashed #a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#7c3aed' }}

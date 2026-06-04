@@ -56,5 +56,15 @@ round-trip is drivable.
 - **overlay-heal** — a deck with two overlays for one element (the test-1
   corruption) loads the content-bearing one.
 - **B2 duplicate** — Duplicate → the copy shows the SHARED overlay.
+- **link-conflict chooser** — linking two notebooks with DIFFERENT recordings
+  raises the "which to keep?" chooser; picking one keeps it and discards the
+  other. Has its own driver (clicks through the modal), not `check.mjs`:
+
+  ```bash
+  python3 e2e/fixtures/make_link_conflict_deck.py /tmp/lc.json
+  eigendeck-cli /tmp/lc.eigendeck import json /tmp/lc.json
+  # then run link-smoke.mjs under the same xvfb+tauri-driver harness as run.sh,
+  # with E2E_APP and E2E_DECK=/tmp/lc.eigendeck (see run.sh for the wrapper).
+  ```
 
 See `../.claude/notes/notebook-edge-cases-findings.md` for findings.
