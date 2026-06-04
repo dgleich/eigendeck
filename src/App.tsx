@@ -44,6 +44,15 @@ import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from '.
 // module load — before any free/merge action can fire.
 registerNotebookLifecycle();
 
+// Debug/automation seam: expose the store + write-through flush on window so
+// headless E2E (and programmatic editing, see LLM-EDITING.md) can drive store
+// actions and persist them through the real SQLite path. Harmless in a desktop
+// webview; no behavior change for the app itself.
+(window as unknown as { __eigendeck?: unknown }).__eigendeck = {
+  store: usePresentationStore,
+  flush: flushToSqlite,
+};
+
 /** Render a single slide to HTML for PDF/print export */
 export function renderSlideForPrint(
   slide: import('./types/presentation').Slide,

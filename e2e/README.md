@@ -67,4 +67,18 @@ round-trip is drivable.
   # with E2E_APP and E2E_DECK=/tmp/lc.eigendeck (see run.sh for the wrapper).
   ```
 
+- **sync/link round-trip** — `roundtrip-probe.mjs` drives store actions
+  (duplicate / linkElements / promoteToSync) via the `window.__eigendeck` seam,
+  runs the REAL `flushToSqlite`, then `db_export_json`, and asserts the persisted
+  structure: duplicate & promote → one entry (shared id + syncId); link → shared
+  linkId with separate positions and no syncId. This is the in-session→save
+  reopen path end-to-end.
+
+  ```bash
+  python3 e2e/fixtures/make_roundtrip_decks.py ab /tmp/rt-ab.json
+  eigendeck-cli /tmp/rt-ab.eigendeck import json /tmp/rt-ab.json
+  # run roundtrip-probe.mjs under run.sh's xvfb+tauri-driver wrapper with
+  # E2E_DECK=/tmp/rt-ab.eigendeck E2E_MODE=linkpromote  (or 'a' deck + duplicate)
+  ```
+
 See `../.claude/notes/notebook-edge-cases-findings.md` for findings.
