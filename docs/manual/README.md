@@ -10,6 +10,13 @@ to people building presentations.
 
 - [Text sizes](text-sizes.md) — the named scale and why slide-level
   overrides don't exist.
+- [Sync and link](sync-and-link.md) — the two ways to relate elements
+  across slides (sync unifies, link animates), the duplicate→free→move
+  animation workflow, the S/A badges, promoting a link to a sync, and
+  what copy/paste does.
+- [Notebooks](notebooks.md) — embedding Jupyter notebooks, the in-deck
+  recording (your source file is never touched), editable vs.
+  file-watching, display options, and syncing a notebook across slides.
 - [Jupyter servers](notebook-servers.md) — the per-machine kernel-
   server registry, why deck files don't carry URLs or tokens, and
   how the topbar status pill works.
