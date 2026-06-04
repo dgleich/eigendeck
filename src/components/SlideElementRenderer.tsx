@@ -323,7 +323,10 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'grab', zIndex: 1 }} />
       )}
       {interacting && (
-        <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, display: 'flex', gap: 4 }}>
+        <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, display: 'flex', gap: 4,
+          // Counter-scale so the lock/refresh buttons stay a fixed on-screen
+          // size regardless of canvas zoom (anchored at the top-right corner).
+          transform: `scale(${1 / scale})`, transformOrigin: 'top right' }}>
           <button className="demo-lock-btn" onClick={async () => {
             try {
               if (await refreshDemoFromDisk(element.assetId)) setReloadKey((k) => k + 1);
@@ -376,7 +379,10 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'grab', zIndex: 1 }} />
       )}
       {interacting && (
-        <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, display: 'flex', gap: 4 }}>
+        <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, display: 'flex', gap: 4,
+          // Counter-scale so the lock/refresh buttons stay a fixed on-screen
+          // size regardless of canvas zoom (anchored at the top-right corner).
+          transform: `scale(${1 / scale})`, transformOrigin: 'top right' }}>
           <button className="demo-lock-btn" onClick={async () => {
             try {
               if (await refreshDemoFromDisk(element.assetId)) setReloadKey((k) => k + 1);

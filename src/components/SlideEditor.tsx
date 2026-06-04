@@ -612,6 +612,10 @@ export function SlideEditor() {
           ref={canvasRef}
           className="slide-canvas"
           style={{ width: SLIDE_WIDTH, height: SLIDE_HEIGHT, transform: `scale(${scale})`, transformOrigin: 'top center',
+            // Exposed so in-canvas chrome (badges, lock buttons, notebook
+            // controls) can counter-scale to a fixed on-screen size — the
+            // canvas transform: scale() otherwise shrinks them with zoom.
+            ['--canvas-scale' as string]: String(scale),
             backgroundColor: resolveTheme(presentation.theme, slide.theme).background }}
           onPointerDown={handleCanvasPointerDown}
           onContextMenu={handleCanvasContextMenu}
