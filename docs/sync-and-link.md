@@ -146,13 +146,16 @@ present    →  advancing slide animates A → A' (shared linkId L)
 | --- | --- |
 | **Duplicate slide / Build slide** | Elements become **synced** (mirrored) and carry a `linkId` (animation-capable). One entry in storage (row + junctions). |
 | **"L" / Time-Machine button** | An **animation link** only (shared `linkId`). Non-destructive; never syncs. |
-| **Copy an element, then paste** | The paste is **linked** (animation) to the element it was copied from — *unless* the source is part of a **sync group**, in which case the paste **joins that sync group** (becomes another synced instance, not just a link). |
+| **Copy an element, paste on a DIFFERENT slide** | The paste is **linked** (animation) to the element it was copied from — *unless* the source is part of a **sync group**, in which case the paste **joins that sync group** (becomes another synced instance, not just a link). |
+| **Copy an element, paste on the SAME slide** | A plain **independent copy** — no link, no sync (you can't animate between two elements on one slide). Detached. |
 | **Promote (greyed "S" badge on a linked element)** | Upgrades an animation link → a **sync**: the clicked element is the master; linked instances become the same single entry (shared id/content/position). DESTRUCTIVE, confirmed. `promoteToSync` (`presentation.ts`). |
 
-> **Copy/paste status:** the paste-links-to-source (and copy-within-a-sync-group
-> joins the group) rule is the **intended** behavior. The current Cmd+D /
-> paste path detaches the copy fully (`detachDelta`, `App.tsx`) — this is the
-> spot to change when implementing the rule.
+> **Copy/paste status:** today every duplicate/paste detaches fully
+> (`detachDelta`, `App.tsx`) — which is already **correct for the same-slide
+> case**. The part still to implement is the **cross-slide** paste: paste onto a
+> *different* slide should link to the source (or join its sync group if the
+> source is synced). `App.tsx` is the spot — branch on whether the paste target
+> slide differs from the source element's slide.
 
 ---
 
