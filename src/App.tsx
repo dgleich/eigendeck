@@ -18,6 +18,7 @@ import { ToastHost } from './components/ToastHost';
 import { SettingsModal } from './components/SettingsModal';
 import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
+import { detachDelta } from './lib/syncLink';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
 import type { SlideElement } from './types/presentation';
@@ -717,7 +718,7 @@ function App() {
           e.preventDefault();
           const el = slide.elements.find((el) => el.id === sel.id);
           if (el) {
-            const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), linkId: undefined, syncId: undefined, _linkId: undefined, _syncId: undefined };
+            const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), ...detachDelta() };
             if (newEl.type === 'arrow') { newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40; }
             else { newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 }; }
             state.addElement(newEl);
@@ -729,7 +730,7 @@ function App() {
           for (const id of sel.ids) {
             const el = slide.elements.find((el) => el.id === id);
             if (el) {
-              const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), linkId: undefined, syncId: undefined, _linkId: undefined, _syncId: undefined };
+              const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), ...detachDelta() };
               if (newEl.type === 'arrow') { newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40; }
               else { newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 }; }
               state.addElement(newEl);

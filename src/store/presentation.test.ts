@@ -354,6 +354,63 @@ describe('presentation store', () => {
     });
   });
 
+  describe('sync / link relationship actions', () => {
+    it('freeElement frees a synced element and remembers the group', () => {
+      const store = usePresentationStore.getState();
+      store.duplicateSlide(0);                 // slides 0 & 1 now synced
+      store.selectSlide(0);
+      const el = usePresentationStore.getState().presentation.slides[0].elements[0];
+      expect(el.syncId).toBeTruthy();
+      store.freeElement(el.id);
+      const freed = usePresentationStore.getState().presentation.slides[0].elements[0];
+      expect(freed.syncId).toBeUndefined();
+      expect((freed as any)._syncId).toBe(el.syncId);
+    });
+
+    it('resyncElement restores a freed element to its group', () => {
+      const store = usePresentationStore.getState();
+      store.duplicateSlide(0);
+      store.selectSlide(0);
+      const el = usePresentationStore.getState().presentation.slides[0].elements[0];
+      const gid = el.syncId;
+      store.freeElement(el.id);
+      store.resyncElement(el.id);
+      const back = usePresentationStore.getState().presentation.slides[0].elements[0];
+      expect(back.syncId).toBe(gid);
+      expect((back as any)._syncId).toBeUndefined();
+    });
+
+    it('unlinkElement ALWAYS remembers _linkId (re-linkable)', () => {
+      const store = usePresentationStore.getState();
+      const id = usePresentationStore.getState().presentation.slides[0].elements[0].id;
+      store.updateElement(id, { linkId: 'L1' } as any);
+      store.unlinkElement(id);
+      const el = usePresentationStore.getState().presentation.slides[0].elements[0];
+      expect(el.linkId).toBeUndefined();
+      expect((el as any)._linkId).toBe('L1');
+    });
+
+    it('relinkElement restores the remembered link', () => {
+      const store = usePresentationStore.getState();
+      const id = usePresentationStore.getState().presentation.slides[0].elements[0].id;
+      store.updateElement(id, { linkId: 'L1' } as any);
+      store.unlinkElement(id);
+      store.relinkElement(id);
+      const el = usePresentationStore.getState().presentation.slides[0].elements[0];
+      expect(el.linkId).toBe('L1');
+      expect((el as any)._linkId).toBeUndefined();
+    });
+
+    it('freeElement is a no-op on an un-synced element', () => {
+      const store = usePresentationStore.getState();
+      const id = usePresentationStore.getState().presentation.slides[0].elements[0].id;
+      store.freeElement(id);
+      const el = usePresentationStore.getState().presentation.slides[0].elements[0];
+      expect(el.syncId).toBeUndefined();
+      expect((el as any)._syncId).toBeUndefined();
+    });
+  });
+
   describe('HTML well-formedness', () => {
     function countTag(html: string, tag: string): { opens: number; closes: number } {
       const opens = (html.match(new RegExp(`<${tag}[\\s>]`, 'gi')) || []).length;

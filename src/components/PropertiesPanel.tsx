@@ -17,6 +17,7 @@ export function PropertiesPanel() {
   const {
     presentation, currentSlideIndex, selectedObject,
     updateSlide, updateElement, updateConfig, moveElementZ, deleteElements,
+    freeElement, unlinkElement,
   } = usePresentationStore();
 
   const slide = presentation.slides[currentSlideIndex];
@@ -166,9 +167,7 @@ export function PropertiesPanel() {
                   {slide.elements.some((el) => el.syncId) && (
                     <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '3px 8px' }}
                       onClick={() => {
-                        for (const el of slide.elements) {
-                          if (el.syncId) updateElement(el.id, { syncId: undefined, _syncId: el.syncId } as any);
-                        }
+                        for (const el of slide.elements) if (el.syncId) freeElement(el.id);
                       }}
                       title="Free position of all elements on this slide">
                       Unsync All
@@ -177,9 +176,7 @@ export function PropertiesPanel() {
                   {slide.elements.some((el) => el.linkId) && (
                     <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '3px 8px' }}
                       onClick={() => {
-                        for (const el of slide.elements) {
-                          if (el.linkId) updateElement(el.id, { linkId: undefined, _linkId: el.linkId } as any);
-                        }
+                        for (const el of slide.elements) if (el.linkId) unlinkElement(el.id);
                       }}
                       title="Remove animation links from all elements on this slide">
                       Unlink All
@@ -325,7 +322,7 @@ export function PropertiesPanel() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 11, color: '#999' }}>{selectedEl.linkId.slice(0, 8)}</span>
                   <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '1px 6px' }}
-                    onClick={() => updateElement(selectedEl.id, { linkId: undefined } as any)}
+                    onClick={() => unlinkElement(selectedEl.id)}
                     title="Remove link to other slides">Unlink</button>
                 </div>
               </PropSection>

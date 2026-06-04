@@ -35,7 +35,6 @@ export function NotebookBox({ element, zIndex, scale, isSelected, onSelect, onDe
       _syncId={(element as { _syncId?: string })._syncId}
       onSelect={onSelect} onDelete={onDelete}
       onPositionChange={(pos: ElementPosition) => onUpdate({ position: pos })}
-      onUpdate={onUpdate}
     >
       <NotebookContent element={element} interactive={interacting} />
       {!interacting && (

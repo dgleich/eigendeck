@@ -8,6 +8,9 @@ import {
   createBlankSlide,
 } from '../types/presentation';
 import { cloneOverlay } from '../lib/useOverlay';
+import {
+  IDENTITY_KEYS, freeDelta, resyncDelta, unlinkDelta, relinkDelta,
+} from '../lib/syncLink';
 
 export type SelectedObject =
   | { type: 'slide' }
@@ -52,6 +55,16 @@ interface PresentationState {
   deleteElements: (elementIds: string[]) => void;
   moveElementZ: (elementId: string, direction: 'top' | 'up' | 'down' | 'bottom') => void;
   moveElementsBy: (elementIds: string[], dx: number, dy: number) => void;
+
+  // Sync / link relationships (the single API; UI must not hand-build deltas)
+  /** Free a synced element on the current slide (remembers the group). */
+  freeElement: (elementId: string) => void;
+  /** Re-sync a freed element back into its remembered group. */
+  resyncElement: (elementId: string) => void;
+  /** Unlink an animated element (remembers the link). */
+  unlinkElement: (elementId: string) => void;
+  /** Re-link a previously-unlinked element. */
+  relinkElement: (elementId: string) => void;
 
   // Selection
   selectObject: (obj: SelectedObject) => void;
@@ -411,12 +424,13 @@ export const usePresentationStore = create<PresentationState>()(
           // identity / sync-linkage so we never clobber per-instance ids.
           const syncId = updatedElement.syncId;
           if (syncId) {
-            const {
-              id: _sid0, syncId: _sid1, _syncId: _sid2,
-              linkId: _lid0, _linkId: _lid1,
-              ...syncChanges
-            } = changes as any;
-            void _sid0; void _sid1; void _sid2; void _lid0; void _lid1;
+            // Only DATA changes propagate to synced peers — strip identity /
+            // linkage so each instance keeps its own ids (IDENTITY_KEYS is the
+            // single source of truth, shared with the delta helpers).
+            const identity: readonly string[] = IDENTITY_KEYS;
+            const syncChanges = Object.fromEntries(
+              Object.entries(changes).filter(([k]) => !identity.includes(k))
+            ) as Partial<SlideElement>;
 
             if (Object.keys(syncChanges).length > 0) {
               const slides = state.presentation.slides.map((slide) => ({
@@ -439,6 +453,40 @@ export const usePresentationStore = create<PresentationState>()(
             ),
           }));
         });
+      },
+
+      // --- sync / link relationships -------------------------------------
+      // Thin wrappers: find the element on the current slide, compute the
+      // delta with the shared helpers, route through updateElement (so they
+      // inherit sync-propagation, dirty tracking and undo coalescing). The
+      // single API the UI calls — no more hand-built {syncId,_syncId,…} deltas.
+      freeElement: (elementId) => {
+        const el = get().presentation.slides[get().currentSlideIndex]
+          ?.elements.find((e) => e.id === elementId);
+        if (!el) return;
+        const delta = freeDelta(el);
+        if (Object.keys(delta).length) get().updateElement(elementId, delta);
+      },
+      resyncElement: (elementId) => {
+        const el = get().presentation.slides[get().currentSlideIndex]
+          ?.elements.find((e) => e.id === elementId);
+        if (!el) return;
+        const delta = resyncDelta(el);
+        if (Object.keys(delta).length) get().updateElement(elementId, delta);
+      },
+      unlinkElement: (elementId) => {
+        const el = get().presentation.slides[get().currentSlideIndex]
+          ?.elements.find((e) => e.id === elementId);
+        if (!el) return;
+        const delta = unlinkDelta(el);
+        if (Object.keys(delta).length) get().updateElement(elementId, delta);
+      },
+      relinkElement: (elementId) => {
+        const el = get().presentation.slides[get().currentSlideIndex]
+          ?.elements.find((e) => e.id === elementId);
+        if (!el) return;
+        const delta = relinkDelta(el);
+        if (Object.keys(delta).length) get().updateElement(elementId, delta);
       },
 
       deleteElement: (elementId) =>

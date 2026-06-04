@@ -88,7 +88,6 @@ export function SlideElementRenderer({
           }}
           onSelect={onSelect} onDelete={onDelete}
           onPositionChange={(pos) => onUpdate({ position: pos } as any)}
-          onUpdate={onUpdate}
         >
           <TextContent element={element} onCommit={(html) => onUpdate({ html } as any)} />
         </DraggableBox>
@@ -141,7 +140,6 @@ export function SlideElementRenderer({
           _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
           onSelect={onSelect} onDelete={onDelete}
           onPositionChange={(pos) => onUpdate({ position: pos } as any)}
-          onUpdate={onUpdate}
         >
           <div style={{
             width: '100%', height: '100%',
@@ -239,7 +237,6 @@ function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
       _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
       onSelect={onSelect} onDelete={onDelete}
       onPositionChange={(pos) => onUpdate({ position: pos } as any)}
-      onUpdate={onUpdate}
     >
       {src ? (
         <img src={src} alt="" draggable={false}
@@ -311,7 +308,6 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
       _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
       onSelect={onSelect} onDelete={onDelete}
       onPositionChange={(pos) => onUpdate({ position: pos } as any)}
-      onUpdate={onUpdate}
     >
       {src ? (
         <iframe key={reloadKey} ref={iframeRef} src={src} sandbox="allow-scripts allow-same-origin" title="demo"
@@ -367,7 +363,6 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
       _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
       onSelect={onSelect} onDelete={onDelete}
       onPositionChange={(pos) => onUpdate({ position: pos } as any)}
-      onUpdate={onUpdate}
     >
       {src ? (
         <iframe key={reloadKey} src={src} sandbox="allow-scripts allow-same-origin" title={`demo-piece: ${element.piece}`}
@@ -720,7 +715,7 @@ function TextContent({
 export function DraggableBox({
   elementId, position: pos, zIndex, scale, className, children, isSelected,
   linkId, syncId, _linkId, _syncId, dataValign, onEdit,
-  onSelect, onDelete, onPositionChange, onUpdate,
+  onSelect, onDelete, onPositionChange,
 }: {
   elementId: string;
   position: ElementPosition; zIndex: number; scale: number; className: string;
@@ -730,7 +725,6 @@ export function DraggableBox({
   onEdit?: () => void;
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onPositionChange: (pos: ElementPosition) => void;
-  onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
@@ -903,10 +897,10 @@ export function DraggableBox({
           { label: 'Send to Back', onClick: () => store.moveElementZ(elementId, 'bottom') },
           ...(syncId ? [
             { separator: true as const },
-            { label: 'Free Position', onClick: () => onUpdate({ syncId: undefined, _syncId: syncId } as any) },
+            { label: 'Free Position', onClick: () => store.freeElement(elementId) },
           ] : []),
           ...(linkId ? [
-            { label: 'Unlink Animation', onClick: () => onUpdate({ linkId: undefined, _linkId: linkId } as any) },
+            { label: 'Unlink Animation', onClick: () => store.unlinkElement(elementId) },
           ] : []),
           { separator: true },
           { label: 'Properties', onClick: () => {
@@ -934,11 +928,9 @@ export function DraggableBox({
                 className={`el-link-badge ${syncId ? 'el-badge-sync' : 'el-badge-off'}`}
                 title={syncId ? 'Synced — click to free position' : 'Position free — click to re-sync'}
                 onClick={() => {
-                  if (syncId) {
-                    onUpdate({ syncId: undefined, _syncId: syncId } as any);
-                  } else if (_syncId) {
-                    onUpdate({ syncId: _syncId, _syncId: undefined } as any);
-                  }
+                  const store = usePresentationStore.getState();
+                  if (syncId) store.freeElement(elementId);
+                  else if (_syncId) store.resyncElement(elementId);
                 }}>
                 S
               </button>
@@ -950,11 +942,9 @@ export function DraggableBox({
               className={`el-link-badge ${linkId ? 'el-badge-anim' : 'el-badge-off'}`}
               title={linkId ? 'Animated — click to unlink' : 'Not animated — click to re-link'}
               onClick={() => {
-                if (linkId) {
-                  onUpdate({ linkId: undefined, _linkId: linkId } as any);
-                } else if (_linkId) {
-                  onUpdate({ linkId: _linkId, _linkId: undefined } as any);
-                }
+                const store = usePresentationStore.getState();
+                if (linkId) store.unlinkElement(elementId);
+                else if (_linkId) store.relinkElement(elementId);
               }}>
               A
             </button>
