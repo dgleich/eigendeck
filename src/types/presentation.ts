@@ -290,6 +290,10 @@ export interface NotebookElement extends BaseElement {
    *  (python / julia / r / bash / cpp / rust / js / ts / sql / etc.)
    *  work out of the box, others render unhighlighted. */
   syntaxHighlight?: boolean;
+  /** Show a line-number gutter in editable code cells (CodeMirror).
+   *  Default false — line numbers add visual noise on a slide; opt in
+   *  when referring to "line N" while presenting. */
+  showLineNumbers?: boolean;
   /** Hide markdown cells, showing only code (+ outputs). Default
    *  false. For "focus on the code" decks where prose cells are just
    *  authoring scaffolding. */

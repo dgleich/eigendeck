@@ -286,6 +286,7 @@ Multiple `demo-piece` elements can reference the same `assetId` with different `
 - `autoRun`: optional boolean (default false) — when true, all visible cells execute on slide enter in PresentMode.
 - `visibleCells`: optional array of zero-indexed cell numbers — restricts which cells appear in the rendered notebook. Absent = show all cells.
 - `syntaxHighlight`: optional boolean (default true) — color code cells using highlight.js with the grammar picked from the notebook's `kernelspec.language`. Set to `false` to render code unhighlighted. Common kernels supported out of the box (python, julia, r, javascript, typescript, c, cpp, rust, go, bash, sql, java, kotlin, swift, ruby, php). The palette is theme-aware (GitHub-light on light slide themes, GitHub-dark on dark ones).
+- `showLineNumbers`: optional boolean (default false) — show a line-number gutter in editable code cells (the CodeMirror editor). Off by default (cleaner on a slide); enable when you want to refer to "line N" while presenting.
 - `hideMarkdown`: optional boolean (default false) — hide markdown cells, showing only code + outputs ("focus on the code").
 - `hideHeader`: optional boolean (default false) — hide the kernel-name header row. The small busy-status dot (top-left) stays regardless.
 - `showBorder`: optional boolean (default false) — draw a thin frame border. Default is borderless: the notebook blends into the slide using the theme's background + text colors.

@@ -860,6 +860,16 @@ function NotebookProperties({ element }: {
           />
           Show frame border
         </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginTop: 4 }}>
+          <input
+            type="checkbox"
+            checked={element.showLineNumbers === true}
+            onChange={(e) => updateElement(element.id, {
+              showLineNumbers: e.target.checked ? true : undefined,
+            } as Partial<typeof element>)}
+          />
+          Line numbers (when editing)
+        </label>
       </PropSection>
 
       <PropSection label="Preamble">

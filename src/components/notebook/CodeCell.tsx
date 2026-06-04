@@ -42,6 +42,8 @@ export interface CodeCellProps {
   highlight?: boolean;
   /** When true, render an editor instead of a static <pre>. */
   editable?: boolean;
+  /** Show a line-number gutter in the editor. Default false (opt-in). */
+  showLineNumbers?: boolean;
   /** Editor font size in slide-pixels (matches --nb-base-size). */
   fontSize?: number;
   /** Working-copy change handler (per keystroke). */
@@ -61,7 +63,8 @@ export interface CodeCellProps {
 export function CodeCell({
   cell, source, liveOutputs, liveExecutionCount, running, onRun,
   language, highlight = true,
-  editable = false, fontSize = 32, onEdit, onCommit, edited, added, onRevert,
+  editable = false, showLineNumbers = false,
+  fontSize = 32, onEdit, onCommit, edited, added, onRevert,
 }: CodeCellProps) {
   const effectiveSource = source ?? cell.source;
   const outputs = liveOutputs ?? cell.outputs;
@@ -103,6 +106,8 @@ export function CodeCell({
                 value={effectiveSource}
                 language={language ?? null}
                 fontSize={fontSize}
+                highlight={highlight}
+                showLineNumbers={showLineNumbers}
                 onChange={(next) => onEdit?.(next)}
                 onRun={() => onRun?.()}
                 onBlur={onCommit}

@@ -326,6 +326,7 @@ function ExternalKernelBody({
                 language={language}
                 highlight={highlight}
                 editable={editable && interactive}
+                showLineNumbers={element.showLineNumbers}
                 fontSize={baseSize}
                 onEdit={(next) => setWorking((p) => new Map(p).set(key, next))}
                 onCommit={() => { const w = working.get(key); if (w !== undefined) ov.setEdit(c.index, w, c.source); }}
@@ -358,6 +359,7 @@ function ExternalKernelBody({
               language={language}
               highlight={highlight}
               editable={editable && interactive}
+              showLineNumbers={element.showLineNumbers}
               fontSize={baseSize}
               added
               onEdit={(next) => setWorking((p) => new Map(p).set(key, next))}

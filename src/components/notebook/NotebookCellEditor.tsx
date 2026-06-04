@@ -21,6 +21,10 @@ export interface NotebookCellEditorProps {
   language: string | null;
   /** Base font size in slide-pixels (matches the cell's --nb-base-size). */
   fontSize: number;
+  /** Apply syntax highlighting in the editor. Default true. */
+  highlight?: boolean;
+  /** Show a line-number gutter. Default false (opt-in). */
+  showLineNumbers?: boolean;
   onChange: (next: string) => void;
   /** Shift-Enter handler. */
   onRun: () => void;
@@ -82,8 +86,19 @@ async function languageExtension(language: string | null): Promise<unknown | nul
   return null;
 }
 
+// CM6 needs a highlight STYLE separate from the language parser — the
+// language extension parses but renders UNCOLORED without this (that's why
+// double-clicking to edit "lost" the highlighting). defaultHighlightStyle is
+// light-optimized; good on the default white theme (a dark-theme palette +
+// matching the static highlight.js colors is a follow-up).
+async function highlightExtension(): Promise<unknown> {
+  const { syntaxHighlighting, defaultHighlightStyle } = await import('@codemirror/language');
+  return syntaxHighlighting(defaultHighlightStyle, { fallback: true });
+}
+
 export function NotebookCellEditor({
-  value, language, fontSize, onChange, onRun, onBlur,
+  value, language, fontSize, highlight = true, showLineNumbers = false,
+  onChange, onRun, onBlur,
 }: NotebookCellEditorProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   // Keep the latest callbacks in refs so the CodeMirror instance
@@ -102,6 +117,7 @@ export function NotebookCellEditor({
     (async () => {
       const cm = await loadCM();
       const langExt = await languageExtension(language);
+      const hlExt = highlight ? await highlightExtension() : null;
       if (cancelled || !hostRef.current) return;
 
       const { EditorView, keymap, lineNumbers } = cm;
@@ -146,7 +162,6 @@ export function NotebookCellEditor({
       });
 
       const extensions = [
-        lineNumbers(),
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         runKeymap,
@@ -155,7 +170,9 @@ export function NotebookCellEditor({
         theme,
         EditorView.lineWrapping,
       ];
+      if (showLineNumbers) extensions.unshift(lineNumbers());
       if (langExt) extensions.push(langExt as never);
+      if (hlExt) extensions.push(hlExt as never);
 
       view = new EditorView({
         state: EditorState.create({ doc: value, extensions }),
@@ -169,10 +186,11 @@ export function NotebookCellEditor({
       view?.destroy();
       viewRef.current = null;
     };
-    // Rebuild only when language / fontSize change — value updates are
-    // applied imperatively below to avoid losing cursor position.
+    // Rebuild when language / fontSize / highlight / line-number options
+    // change — value updates are applied imperatively below to avoid losing
+    // cursor position.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [language, fontSize]);
+  }, [language, fontSize, highlight, showLineNumbers]);
 
   // Apply external value changes (e.g. revert, file-watcher reload)
   // without rebuilding the editor — only when they differ from the
