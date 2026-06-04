@@ -571,6 +571,7 @@ pub fn run() {
             storage::db_get_slide_elements,
             storage::db_update_element,
             storage::db_add_element,
+            storage::db_add_element_to_slide,
             storage::db_remove_element_from_slide,
             storage::db_compact,
             storage::db_gc_assets,

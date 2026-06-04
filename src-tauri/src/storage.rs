@@ -1161,6 +1161,39 @@ pub fn db_add_element(
     })
 }
 
+/// Add an existing element to another slide (a `slide_elements` junction
+/// only — NO new `elements` row). This is how a SYNCED element appears on
+/// multiple slides: one shared row referenced by many junctions. The
+/// in-place save path (flushToSqlite) uses this for a duplicated synced
+/// instance so it stays linked to its group on reload, mirroring
+/// db_import_json's sync_map. Idempotent-ish: re-adding the same live
+/// (slide,element) pair is skipped so a redundant flush can't double-insert.
+#[tauri::command]
+pub fn db_add_element_to_slide(
+    slide_id: String,
+    element_id: String,
+    z_order: i32,
+) -> Result<(), String> {
+    let ts = timestamp();
+    with_db(|conn| {
+        let exists: bool = conn
+            .query_row(
+                "SELECT 1 FROM slide_elements \
+                 WHERE slide_id = ?1 AND element_id = ?2 AND valid_to IS NULL",
+                params![&slide_id, &element_id],
+                |_| Ok(()),
+            )
+            .is_ok();
+        if !exists {
+            conn.execute(
+                "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
+                params![&slide_id, &element_id, z_order, &ts],
+            )?;
+        }
+        Ok(())
+    })
+}
+
 /// Remove an element from a slide (but keep it in the DB for other slides)
 #[tauri::command]
 pub fn db_remove_element_from_slide(slide_id: String, element_id: String) -> Result<(), String> {
@@ -3563,6 +3596,36 @@ mod tests {
         assert_eq!(slides[0]["id"], "new-s");
         assert_eq!(slides[0]["groupId"], "g1");
 
+        teardown_global_db();
+    }
+
+    /// db_add_element_to_slide adds a junction to an EXISTING element row
+    /// (no new elements row) — the shared-row model that keeps a synced
+    /// element linked across slides. Idempotent for a live (slide,element).
+    #[test]
+    fn add_element_to_slide_is_junction_only() {
+        setup_global_db();
+        db_import_json(json!({ "slides": [{ "id": "s1", "elements": [] },
+                                          { "id": "s2", "elements": [] }] }).to_string()).unwrap();
+        db_add_element("s1".into(), "e1".into(), "text".into(), "{}".into(), None, None, 0).unwrap();
+
+        // Link the same element onto s2 — junction only.
+        db_add_element_to_slide("s2".into(), "e1".into(), 0).unwrap();
+
+        let elements: i64 = with_db(|c| c.query_row(
+            "SELECT COUNT(*) FROM elements WHERE valid_to IS NULL", [], |r| r.get(0))).unwrap();
+        assert_eq!(elements, 1, "no new element row — shared");
+        let junctions: i64 = with_db(|c| c.query_row(
+            "SELECT COUNT(*) FROM slide_elements WHERE element_id='e1' AND valid_to IS NULL",
+            [], |r| r.get(0))).unwrap();
+        assert_eq!(junctions, 2, "e1 now on both slides");
+
+        // Idempotent: re-adding the same live pair doesn't double-insert.
+        db_add_element_to_slide("s2".into(), "e1".into(), 0).unwrap();
+        let junctions2: i64 = with_db(|c| c.query_row(
+            "SELECT COUNT(*) FROM slide_elements WHERE element_id='e1' AND valid_to IS NULL",
+            [], |r| r.get(0))).unwrap();
+        assert_eq!(junctions2, 2, "no duplicate junction");
         teardown_global_db();
     }
 

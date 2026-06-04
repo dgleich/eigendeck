@@ -674,22 +674,53 @@ export async function flushToSqlite(): Promise<void> {
     }
     deletedElements.clear();
 
+    // Canonical element id per syncId materialized as a real row in THIS
+    // flush — so a group whose original isn't persisted yet still collapses
+    // to one row (first instance = row, rest = junctions).
+    const flushSyncCanonical = new Map<string, string>();
     for (const [_key, info] of addedElements) {
       try {
-        // Strip the promoted columns (linkId, assetId) and the sync-related
-        // metadata from the JSON `data` blob — they're stored as their own
-        // columns and reassembled into the JSON by db_export_json.
-        const { linkId, syncId, _syncId, _linkId, assetId, src, demoSrc, ...data } = info.element as any;
-        void src; void syncId; void demoSrc;  // intentionally dropped from data JSON
-        await invoke('db_add_element', {
-          slideId: info.slideId,
-          elementId: info.element.id,
-          elementType: info.element.type,
-          data: JSON.stringify(data),
-          linkId: linkId || null,
-          assetId: assetId || null,
-          zOrder: info.zOrder,
-        });
+        const el = info.element;
+        const syncId: string | undefined = el.syncId;
+        // Is this a synced INSTANCE of an element that already exists (a
+        // persisted element sharing this syncId, or one added earlier this
+        // flush)? If so write ONLY a slide_elements junction to that
+        // canonical row — mirroring db_import_json's sync_map. Writing a
+        // fresh element row instead would detach the instance from its sync
+        // group on reload (the duplicate-on-saved-deck bug).
+        let canonicalId: string | null = null;
+        if (syncId) {
+          for (const slide of state.presentation.slides) {
+            const match = slide.elements.find(
+              (e) => e.syncId === syncId && !addedElements.has(e.id),
+            );
+            if (match) { canonicalId = match.id; break; }
+          }
+          if (!canonicalId) canonicalId = flushSyncCanonical.get(syncId) ?? null;
+        }
+        if (canonicalId && canonicalId !== el.id) {
+          await invoke('db_add_element_to_slide', {
+            slideId: info.slideId,
+            elementId: canonicalId,
+            zOrder: info.zOrder,
+          });
+        } else {
+          // New element → its own row (+ junction). Strip promoted columns
+          // (linkId, assetId) and sync metadata from the JSON `data` blob —
+          // they're stored as their own columns / reassembled by export.
+          const { linkId, syncId: _s, _syncId, _linkId, assetId, src, demoSrc, ...data } = el as any;
+          void src; void _s; void demoSrc;  // intentionally dropped from data JSON
+          await invoke('db_add_element', {
+            slideId: info.slideId,
+            elementId: el.id,
+            elementType: el.type,
+            data: JSON.stringify(data),
+            linkId: linkId || null,
+            assetId: assetId || null,
+            zOrder: info.zOrder,
+          });
+          if (syncId) flushSyncCanonical.set(syncId, el.id);  // canonical for the group
+        }
       } catch (e) { console.warn('add element failed:', e); }
     }
     addedElements.clear();
