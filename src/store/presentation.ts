@@ -7,6 +7,9 @@ import {
   createDefaultPresentation,
   createBlankSlide,
 } from '../types/presentation';
+// B2: clone a notebook's overlay onto its duplicate. Static import so the
+// cache-seed (synchronous prefix) runs before React commits the new slide.
+import { cloneOverlayForDuplicate } from '../lib/useOverlay';
 
 export type SelectedObject =
   | { type: 'slide' }
@@ -187,7 +190,10 @@ export const usePresentationStore = create<PresentationState>()(
           };
         }),
 
-      duplicateSlide: (index) =>
+      duplicateSlide: (index) => {
+        // Collected inside the updater, consumed after set() to clone each
+        // duplicated notebook's overlay onto its new element id (B2).
+        const nbPairs: { oldId: string; newId: string }[] = [];
         set((state) => {
           const slides = [...state.presentation.slides];
           const original = slides[index];
@@ -204,11 +210,15 @@ export const usePresentationStore = create<PresentationState>()(
           const copy: Slide = {
             ...JSON.parse(JSON.stringify(slides[index])),
             id: crypto.randomUUID(),
-            elements: updatedOriginalElements.map((el) => ({
-              ...JSON.parse(JSON.stringify(el)),
-              id: crypto.randomUUID(),
-              // linkId and syncId preserved from original
-            })),
+            elements: updatedOriginalElements.map((el) => {
+              const newId = crypto.randomUUID();
+              if (el.type === 'notebook') nbPairs.push({ oldId: el.id, newId });
+              return {
+                ...JSON.parse(JSON.stringify(el)),
+                id: newId,
+                // linkId and syncId preserved from original
+              };
+            }),
           };
           // If the slide is part of a group, insert after the last slide in the group
           let insertAt = index + 1;
@@ -222,7 +232,11 @@ export const usePresentationStore = create<PresentationState>()(
             currentSlideIndex: insertAt,
             isDirty: true,
           };
-        }),
+        });
+        // Clone overlays synchronously-prefixed so the cache seed lands
+        // before the duplicate slide's notebook mounts.
+        for (const p of nbPairs) void cloneOverlayForDuplicate(p.oldId, p.newId);
+      },
 
       moveSlide: (from, to) =>
         set((state) => {
@@ -298,7 +312,8 @@ export const usePresentationStore = create<PresentationState>()(
         }),
 
       // Build slide: duplicate current slide into the same group
-      addBuildSlide: () =>
+      addBuildSlide: () => {
+        const nbPairs: { oldId: string; newId: string }[] = [];
         set((state) => {
           const slides = [...state.presentation.slides];
           const idx = state.currentSlideIndex;
@@ -318,11 +333,15 @@ export const usePresentationStore = create<PresentationState>()(
             ...JSON.parse(JSON.stringify(slides[idx])),
             id: crypto.randomUUID(),
             groupId,
-            elements: updatedElements.map((el) => ({
-              ...JSON.parse(JSON.stringify(el)),
-              id: crypto.randomUUID(),
-              // linkId preserved from original
-            })),
+            elements: updatedElements.map((el) => {
+              const newId = crypto.randomUUID();
+              if (el.type === 'notebook') nbPairs.push({ oldId: el.id, newId });
+              return {
+                ...JSON.parse(JSON.stringify(el)),
+                id: newId,
+                // linkId preserved from original
+              };
+            }),
           };
 
           // Insert after the last slide in this group
@@ -337,7 +356,9 @@ export const usePresentationStore = create<PresentationState>()(
             currentSlideIndex: insertAt,
             isDirty: true,
           };
-        }),
+        });
+        for (const p of nbPairs) void cloneOverlayForDuplicate(p.oldId, p.newId);
+      },
 
       // Group consecutive slides together
       groupSlides: (indices) =>

@@ -2117,6 +2117,52 @@ pub fn db_get_owned_asset_id(owner_element_id: String) -> Result<Option<String>,
     })
 }
 
+/// Clone the current owned overlay of `old_owner_element_id` into a NEW
+/// asset owned by `new_owner_element_id`. Used when a slide/element is
+/// duplicated: the copy gets an INDEPENDENT recording (its own asset id +
+/// owner) seeded from the original, then diverges. Without this a duplicate
+/// either shares the original's overlay (cross-mutation) or starts empty.
+/// Returns the new asset id, or None if the source has no overlay.
+/// Content-preferring source pick (matches db_get_owned_asset_id).
+#[tauri::command]
+pub fn db_clone_owned_overlay(
+    old_owner_element_id: String,
+    new_owner_element_id: String,
+) -> Result<Option<String>, String> {
+    with_db(|conn| {
+        let src = conn.query_row(
+            "SELECT data, mime_type, size, hash FROM assets \
+             WHERE owner_element_id = ?1 AND valid_to IS NULL \
+             ORDER BY length(data) DESC, valid_from DESC LIMIT 1",
+            params![&old_owner_element_id],
+            |r| Ok((
+                r.get::<_, Vec<u8>>(0)?,
+                r.get::<_, Option<String>>(1)?,
+                r.get::<_, Option<i64>>(2)?,
+                r.get::<_, Option<String>>(3)?,
+            )),
+        );
+        let (data, mime, size, hash) = match src {
+            Ok(v) => v,
+            Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
+            Err(e) => return Err(e),
+        };
+        let new_id = uuid::Uuid::new_v4().to_string();
+        let ts = timestamp();
+        conn.execute(
+            "INSERT INTO assets (asset_id, data, mime_type, size, hash, path, \
+                                 owner_element_id, auto_reload, valid_from, valid_to) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'off', ?8, NULL)",
+            params![
+                &new_id, &data, &mime, &size, &hash,
+                format!("overlay:{}", new_owner_element_id),
+                &new_owner_element_id, &ts
+            ],
+        )?;
+        Ok(Some(new_id))
+    })
+}
+
 /// Read the bytes of a specific HISTORICAL version of an asset, keyed by
 /// (asset_id, valid_from). Used by the AssetSection version-history hover
 /// preview to show what the asset looked like at a given point in time.
@@ -4093,6 +4139,43 @@ mod tests {
         let got = db_get_owned_asset_id(owner.to_string()).unwrap();
         assert_eq!(got, Some("real-ov".to_string()),
                    "must recover the content-bearing overlay, not the empty duplicate");
+        teardown_global_db();
+    }
+
+    /// B2: db_clone_owned_overlay copies an element's overlay to a NEW asset
+    /// owned by the duplicate element — independent (fresh id), same bytes,
+    /// source untouched. None when the source has no overlay.
+    #[test]
+    fn clone_owned_overlay_makes_independent_copy() {
+        setup_global_db();
+        with_db(|conn| {
+            let now = timestamp();
+            conn.execute(
+                "INSERT INTO assets (asset_id, data, mime_type, size, hash, owner_element_id, valid_from)
+                 VALUES ('ov-src', ?1, 'application/x-eigendeck-overlay+json', 5, 'h', 'el-old', ?2)",
+                params![b"hello".to_vec(), now],
+            )?;
+            Ok(())
+        }).unwrap();
+
+        let new_id = db_clone_owned_overlay("el-old".into(), "el-new".into())
+            .unwrap().expect("clone should return a new asset id");
+        assert_ne!(new_id, "ov-src", "clone gets a fresh asset id");
+
+        let (owner, data): (String, Vec<u8>) = with_db(|c| c.query_row(
+            "SELECT owner_element_id, data FROM assets WHERE asset_id=?1 AND valid_to IS NULL",
+            params![&new_id], |r| Ok((r.get(0)?, r.get(1)?)))).unwrap();
+        assert_eq!(owner, "el-new");
+        assert_eq!(data, b"hello", "clone carries the source bytes");
+
+        // Source still has exactly its one current overlay (untouched).
+        let n: i64 = with_db(|c| c.query_row(
+            "SELECT COUNT(*) FROM assets WHERE owner_element_id='el-old' AND valid_to IS NULL",
+            [], |r| r.get(0))).unwrap();
+        assert_eq!(n, 1);
+
+        // No overlay on the source → None.
+        assert_eq!(db_clone_owned_overlay("nobody".into(), "x".into()).unwrap(), None);
         teardown_global_db();
     }
 

@@ -17,8 +17,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import {
-  Overlay, emptyOverlay, parseOverlay, serializeOverlay, OVERLAY_MIME,
-  AppendedCell,
+  Overlay, emptyOverlay, isOverlayEmpty, parseOverlay, serializeOverlay,
+  OVERLAY_MIME, AppendedCell,
 } from './notebookOverlay';
 import { CellOutput } from './notebookFormat';
 
@@ -39,6 +39,55 @@ const overlayCache = new Map<string, Overlay>();
  *  from a previous deck don't leak. */
 export function clearAllOverlayCache(): void {
   overlayCache.clear();
+}
+
+/** Ask a mounted useOverlay(elementId) to drop its cache and reload from
+ *  the DB. Used after cloning an overlay onto a freshly-duplicated element
+ *  whose component may have already mounted (and cached empty). */
+export function requestOverlayReload(elementId: string): void {
+  window.dispatchEvent(
+    new CustomEvent('eigendeck:overlay-reload', { detail: { elementId } }),
+  );
+}
+
+/** B2: persist an INDEPENDENT copy of `oldId`'s overlay owned by `newId`
+ *  (called when a slide/element is duplicated). Seeds the in-session cache
+ *  so the duplicate shows the recording immediately, and falls back to a
+ *  reload for the not-yet-cached case. No-op if the source overlay is
+ *  absent/empty. The clone gets a fresh asset id so it versions on its own.
+ *
+ *  Call this SYNCHRONOUSLY right after the duplicate's state update: the
+ *  cache seed (the part before the first await) then runs before React
+ *  commits the new slide, so the duplicate mounts already showing it. */
+export async function cloneOverlayForDuplicate(oldId: string, newId: string): Promise<void> {
+  const cached = overlayCache.get(oldId) ?? null;
+  if (cached) {
+    if (isOverlayEmpty(cached)) return;             // nothing worth copying
+    const clone: Overlay = JSON.parse(JSON.stringify(cached));
+    overlayCache.set(newId, clone);                 // show on the duplicate now
+    try {
+      const bytes = serializeOverlay(clone);
+      await invoke('db_store_asset', {
+        path: `overlay:${newId}`,
+        data: Array.from(new TextEncoder().encode(bytes)),
+        mimeType: OVERLAY_MIME, externalPath: null, externalMtime: null,
+        assetId: crypto.randomUUID(), autoReload: 'off', ownerElementId: newId,
+      });
+    } catch (e) { console.warn('cloneOverlayForDuplicate (persist) failed:', e); }
+    return;
+  }
+  // Not in this session's cache — clone the DB asset directly, then ask the
+  // (possibly already-mounted) duplicate to reload.
+  try {
+    const newAssetId = await invoke<string | null>('db_clone_owned_overlay', {
+      oldOwnerElementId: oldId, newOwnerElementId: newId,
+    });
+    if (newAssetId) {
+      const buf = await invoke<ArrayBuffer>('db_get_asset_by_id', { assetId: newAssetId });
+      overlayCache.set(newId, parseOverlay(new Uint8Array(buf)));
+      requestOverlayReload(newId);
+    }
+  } catch (e) { console.warn('cloneOverlayForDuplicate (db) failed:', e); }
 }
 
 export interface UseOverlayResult {
@@ -125,6 +174,34 @@ export function useOverlay(elementId: string): UseOverlayResult {
       }
     })();
     return () => { cancelled = true; };
+  }, [elementId]);
+
+  // --- explicit reload (e.g. after clone-on-duplicate) --------------
+  // Drop our cache + asset id and reload from the DB. Handles the case
+  // where this element's component mounted (and cached empty) before the
+  // clone's asset was written.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      if ((e as CustomEvent).detail?.elementId !== elementId) return;
+      overlayCache.delete(elementId);
+      assetIdRef.current = null;
+      void (async () => {
+        try {
+          const id = await invoke<string | null>('db_get_owned_asset_id', {
+            ownerElementId: elementId,
+          });
+          if (!id) return;
+          assetIdRef.current = id;
+          const buf = await invoke<ArrayBuffer>('db_get_asset_by_id', { assetId: id });
+          const parsed = parseOverlay(new Uint8Array(buf));
+          overlayCache.set(elementId, parsed);
+          lastFlushedRef.current = serializeOverlay(parsed);
+          setOverlay(parsed);
+        } catch (err) { console.warn('useOverlay reload failed:', err); }
+      })();
+    };
+    window.addEventListener('eigendeck:overlay-reload', handler);
+    return () => window.removeEventListener('eigendeck:overlay-reload', handler);
   }, [elementId]);
 
   // --- flush (debounced, only-when-changed) -------------------------
