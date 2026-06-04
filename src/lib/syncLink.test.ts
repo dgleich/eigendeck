@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   IDENTITY_KEYS, freeDelta, resyncDelta, unlinkDelta, relinkDelta,
-  detachDelta, linkPairDeltas,
+  detachDelta, linkPairDeltas, pasteElementDelta,
 } from './syncLink';
 
 describe('syncLink delta helpers', () => {
@@ -63,6 +63,27 @@ describe('linkPairDeltas — animation link only, non-destructive', () => {
   it("revives the target's remembered link group rather than minting a new one", () => {
     const { sharedLinkId } = linkPairDeltas({ _linkId: 'OLDL' }, () => 'unused');
     expect(sharedLinkId).toBe('OLDL');
+  });
+});
+
+describe('pasteElementDelta (copy/paste join rules)', () => {
+  it('same slide → independent copy (fully detached, no link)', () => {
+    const r = pasteElementDelta({ syncId: 'g' }, true);
+    expect(r.link).toBe(false);
+    expect(r.delta).toEqual(detachDelta());   // even a synced source detaches on same-slide paste
+  });
+
+  it('different slide + synced source → JOIN the sync group (keep syncId, drop _ids)', () => {
+    const r = pasteElementDelta({ syncId: 'g' }, false);
+    expect(r.link).toBe(false);
+    expect(r.delta).toEqual({ _syncId: undefined, _linkId: undefined });
+    expect('syncId' in r.delta).toBe(false);   // syncId left intact on the copy → joins the group
+  });
+
+  it('different slide + un-synced source → detach now, LINK to source', () => {
+    const r = pasteElementDelta({ syncId: undefined }, false);
+    expect(r.link).toBe(true);
+    expect(r.delta).toEqual(detachDelta());
   });
 });
 

@@ -150,12 +150,14 @@ present    →  advancing slide animates A → A' (shared linkId L)
 | **Copy an element, paste on the SAME slide** | A plain **independent copy** — no link, no sync (you can't animate between two elements on one slide). Detached. |
 | **Promote (greyed "S" badge on a linked element)** | Upgrades an animation link → a **sync**: the clicked element is the master; linked instances become the same single entry (shared id/content/position). DESTRUCTIVE, confirmed. `promoteToSync` (`presentation.ts`). |
 
-> **Copy/paste status:** today every duplicate/paste detaches fully
-> (`detachDelta`, `App.tsx`) — which is already **correct for the same-slide
-> case**. The part still to implement is the **cross-slide** paste: paste onto a
-> *different* slide should link to the source (or join its sync group if the
-> source is synced). `App.tsx` is the spot — branch on whether the paste target
-> slide differs from the source element's slide.
+> **Copy/paste status: implemented.** The paste handler (`App.tsx`) branches via
+> `pasteElementDelta(el, sameSlide)` (`syncLink.ts`): same-slide → detached
+> independent copy (offset); cross-slide + synced source → joins the sync group
+> (keeps `syncId`); cross-slide + un-synced source → detached then linked to the
+> source via `linkElements` (shared `linkId`, only if the source still exists).
+> Cmd+D (same-slide duplicate) stays a detached copy. (Note: the link targets
+> the source slide by its **id**, captured at copy time, so reordering slides
+> between copy and paste doesn't mislink.)
 
 ---
 

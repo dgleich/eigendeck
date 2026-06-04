@@ -18,7 +18,7 @@ import { ToastHost } from './components/ToastHost';
 import { SettingsModal } from './components/SettingsModal';
 import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
-import { detachDelta } from './lib/syncLink';
+import { detachDelta, pasteElementDelta } from './lib/syncLink';
 import { registerNotebookLifecycle } from './components/notebook/notebookLifecycle';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
@@ -486,7 +486,7 @@ function App() {
   const [sidebarWidth, setSidebarWidth] = useState(200);
   const resizeStartX = useRef(0);
   const resizeStartW = useRef(0);
-  const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[]; fromSlideIndex: number } | { type: 'slide'; data: any } | null>(null);
+  const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[]; fromSlideIndex: number; fromSlideId: string } | { type: 'slide'; data: any } | null>(null);
   const [linkOverlayElementId, setLinkOverlayElementId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuEntry[] } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -765,11 +765,11 @@ function App() {
         const slide = state.presentation.slides[state.currentSlideIndex];
         if (sel?.type === 'element') {
           const el = slide.elements.find((el) => el.id === sel.id);
-          if (el) clipboardRef.current = { type: 'elements', data: [JSON.parse(JSON.stringify(el))], fromSlideIndex: state.currentSlideIndex };
+          if (el) clipboardRef.current = { type: 'elements', data: [JSON.parse(JSON.stringify(el))], fromSlideIndex: state.currentSlideIndex, fromSlideId: slide.id };
         } else if (sel?.type === 'multi') {
           clipboardRef.current = { type: 'elements', data: slide.elements
             .filter((el) => sel.ids.includes(el.id))
-            .map((el) => JSON.parse(JSON.stringify(el))), fromSlideIndex: state.currentSlideIndex };
+            .map((el) => JSON.parse(JSON.stringify(el))), fromSlideIndex: state.currentSlideIndex, fromSlideId: slide.id };
         } else if (!sel || sel.type === 'slide') {
           clipboardRef.current = { type: 'slide', data: JSON.parse(JSON.stringify(slide)) };
         }
@@ -793,20 +793,38 @@ function App() {
       if (clip?.type === 'elements') {
         e.preventDefault();
         const state = usePresentationStore.getState();
+        const targetSlide = state.presentation.slides[state.currentSlideIndex];
+        // Same slide if we're pasting back onto the slide we copied from (by id,
+        // so slide reordering doesn't fool it).
+        const sameSlide = targetSlide?.id === clip.fromSlideId;
+        // The source slide (where the originals still live) — for cross-slide
+        // linking. Located by id; may be gone if the slide was deleted.
+        const srcSlideIdx = state.presentation.slides.findIndex((s) => s.id === clip.fromSlideId);
+
         const newIds: string[] = [];
-        const sameSlide = clip.fromSlideIndex === state.currentSlideIndex;
+        const toLink: Array<{ pastedId: string; sourceId: string }> = [];
         for (const el of clip.data) {
-          const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID() };
-          // Only offset when pasting on the same slide (avoid stacking)
+          // Same slide → independent copy; cross-slide → join the source's sync
+          // group (if synced) else link to the source (animation). See
+          // pasteElementDelta + docs/sync-and-link.md.
+          const { delta, link } = pasteElementDelta(el, sameSlide);
+          const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), ...delta };
+          // Offset only the same-slide independent copy so it doesn't stack.
           if (sameSlide) {
-            if (newEl.type === 'arrow') {
-              newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40;
-            } else {
-              newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 };
-            }
+            if (newEl.type === 'arrow') { newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40; }
+            else { newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 }; }
           }
           state.addElement(newEl);
           newIds.push(newEl.id);
+          // Link to the source only if it still exists on the source slide.
+          if (link && srcSlideIdx >= 0
+              && state.presentation.slides[srcSlideIdx].elements.some((s) => s.id === el.id)) {
+            toLink.push({ pastedId: newEl.id, sourceId: el.id });
+          }
+        }
+        // Link cross-slide pastes to their sources (shared linkId on both).
+        for (const { pastedId, sourceId } of toLink) {
+          usePresentationStore.getState().linkElements(pastedId, srcSlideIdx, sourceId);
         }
         if (newIds.length === 1) state.selectObject({ type: 'element', id: newIds[0] });
         else if (newIds.length > 1) state.selectObject({ type: 'multi', ids: newIds });
