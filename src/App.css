@@ -806,6 +806,10 @@
   z-index: 11;
   pointer-events: all;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  /* Counter-scale so the delete chip stays a fixed on-screen size at any
+     canvas zoom (#67). Fallback 1 = no-op where the var isn't set. */
+  transform: scale(calc(1 / var(--canvas-scale, 1)));
+  transform-origin: center;
 }
 
 .slide-element:hover .el-delete-btn {
