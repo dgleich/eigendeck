@@ -387,22 +387,21 @@ export const usePresentationStore = create<PresentationState>()(
           // Apply changes to the target element
           const updatedElement = { ...element, ...changes } as SlideElement;
 
-          // If element has syncId, propagate syncable changes across all slides
+          // If element has syncId, propagate changes across all slides.
+          // Synced instances are the SAME element (one shared DB row), so
+          // EVERY data change propagates — not a hand-picked subset. That
+          // covers content (html, position), styling, and notebook display
+          // options (hideHeader, syntaxHighlight, hideMarkdown, showBorder,
+          // editable, fontSize/fontSizeName, visibleCells, …). Strip only
+          // identity / sync-linkage so we never clobber per-instance ids.
           const syncId = updatedElement.syncId;
           if (syncId) {
-            // Determine which properties to sync: position, html, fontSize, color, fontFamily
-            const syncChanges: Partial<SlideElement> = {};
-            if ('position' in changes) (syncChanges as any).position = (changes as any).position;
-            if ('html' in changes) (syncChanges as any).html = (changes as any).html;
-            if ('fontSize' in changes) (syncChanges as any).fontSize = (changes as any).fontSize;
-            if ('color' in changes) (syncChanges as any).color = (changes as any).color;
-            if ('fontFamily' in changes) (syncChanges as any).fontFamily = (changes as any).fontFamily;
-            if ('verticalAlign' in changes) (syncChanges as any).verticalAlign = (changes as any).verticalAlign;
-            // Arrow coords
-            if ('x1' in changes) (syncChanges as any).x1 = (changes as any).x1;
-            if ('y1' in changes) (syncChanges as any).y1 = (changes as any).y1;
-            if ('x2' in changes) (syncChanges as any).x2 = (changes as any).x2;
-            if ('y2' in changes) (syncChanges as any).y2 = (changes as any).y2;
+            const {
+              id: _sid0, syncId: _sid1, _syncId: _sid2,
+              linkId: _lid0, _linkId: _lid1,
+              ...syncChanges
+            } = changes as any;
+            void _sid0; void _sid1; void _sid2; void _lid0; void _lid1;
 
             if (Object.keys(syncChanges).length > 0) {
               const slides = state.presentation.slides.map((slide) => ({

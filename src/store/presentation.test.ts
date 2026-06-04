@@ -280,6 +280,19 @@ describe('presentation store', () => {
       expect(el2.syncId).toBe(el1.syncId);
     });
 
+    it('propagates ALL options (e.g. notebook display flags) between synced instances', () => {
+      const store = usePresentationStore.getState();
+      store.duplicateSlide(0);   // current slide becomes the copy (index 1)
+      const cur = usePresentationStore.getState();
+      const editEl = cur.presentation.slides[1].elements[0];  // element on the current slide
+      // Notebook-style display options — NOT in the old hand-picked sync list.
+      store.updateElement(editEl.id, { hideHeader: true, syntaxHighlight: false } as any);
+      const after = usePresentationStore.getState();
+      const other = after.presentation.slides[0].elements[0];  // the synced original
+      expect((other as any).hideHeader).toBe(true);
+      expect((other as any).syntaxHighlight).toBe(false);
+    });
+
     it('duplicating a freed-sync slide does not leak old syncId (#45)', () => {
       const store = usePresentationStore.getState();
       // Slide 1 → duplicate to slide 2 (synced)
