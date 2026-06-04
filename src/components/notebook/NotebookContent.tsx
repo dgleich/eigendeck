@@ -108,6 +108,7 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
         preamble={element.preamble}
         autoRun={mode === 'present' && !!element.autoRun}
         highlight={highlight}
+        dark={dark}
         language={language}
         baseSize={baseSize}
         hideHeader={hideHeader}
@@ -150,7 +151,7 @@ type RunningState = { running: boolean; count: number | '*' | null };
 
 function ExternalKernelBody({
   element, notebook, loading, error, interactive, editable, resolved, preamble, autoRun,
-  highlight, language, baseSize, hideHeader, kernelDisplayName,
+  highlight, dark, language, baseSize, hideHeader, kernelDisplayName,
 }: {
   element: NotebookElement;
   notebook: Notebook | null;
@@ -161,6 +162,7 @@ function ExternalKernelBody({
   preamble: string | undefined;
   autoRun: boolean;
   highlight: boolean;
+  dark: boolean;
   language: string | null;
   baseSize: number;
   hideHeader: boolean;
@@ -325,6 +327,7 @@ function ExternalKernelBody({
                 onRun={() => execute(key, working.get(key) ?? m.source, (o, cnt) => ov.recordOutput(c.index, o, cnt))}
                 language={language}
                 highlight={highlight}
+                dark={dark}
                 editable={editable && interactive}
                 showLineNumbers={element.showLineNumbers}
                 fontSize={baseSize}
@@ -358,6 +361,7 @@ function ExternalKernelBody({
               onRun={() => execute(key, working.get(key) ?? a.source, (o, cnt) => ov.recordAppendedOutput(a.id, o, cnt))}
               language={language}
               highlight={highlight}
+              dark={dark}
               editable={editable && interactive}
               showLineNumbers={element.showLineNumbers}
               fontSize={baseSize}

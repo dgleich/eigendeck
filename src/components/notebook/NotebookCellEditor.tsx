@@ -23,6 +23,9 @@ export interface NotebookCellEditorProps {
   fontSize: number;
   /** Apply syntax highlighting in the editor. Default true. */
   highlight?: boolean;
+  /** Dark slide theme — picks the GitHub-Dark highlight palette to match
+   *  the static view. Default false (GitHub Light). */
+  dark?: boolean;
   /** Show a line-number gutter. Default false (opt-in). */
   showLineNumbers?: boolean;
   onChange: (next: string) => void;
@@ -86,14 +89,32 @@ async function languageExtension(language: string | null): Promise<unknown | nul
   return null;
 }
 
-// CM6 needs a highlight STYLE separate from the language parser — the
-// language extension parses but renders UNCOLORED without this (that's why
-// double-clicking to edit "lost" the highlighting). defaultHighlightStyle is
-// light-optimized; good on the default white theme (a dark-theme palette +
-// matching the static highlight.js colors is a follow-up).
-async function highlightExtension(): Promise<unknown> {
-  const { syntaxHighlighting, defaultHighlightStyle } = await import('@codemirror/language');
-  return syntaxHighlighting(defaultHighlightStyle, { fallback: true });
+// CM6 needs a highlight STYLE separate from the language parser. We mirror
+// the static view's highlight.js palette (GitHub Light / Dark, see
+// .el-notebook .hljs-* in App.css) so colors DON'T shift when you double-
+// click a cell to edit. `dark` picks the matching palette.
+async function highlightExtension(dark: boolean): Promise<unknown> {
+  const { syntaxHighlighting, HighlightStyle } = await import('@codemirror/language');
+  const { tags: t } = await import('@lezer/highlight');
+  const c = dark
+    ? { kw: '#ff7b72', fn: '#d2a8ff', lit: '#79c0ff', str: '#a5d6ff',
+        builtin: '#ffa657', comment: '#8b949e', name: '#7ee787' }
+    : { kw: '#d73a49', fn: '#6f42c1', lit: '#005cc5', str: '#032f62',
+        builtin: '#e36209', comment: '#6a737d', name: '#22863a' };
+  const style = HighlightStyle.define([
+    { tag: [t.keyword, t.controlKeyword, t.operatorKeyword, t.moduleKeyword,
+            t.definitionKeyword, t.modifier, t.typeName, t.self], color: c.kw },
+    { tag: [t.function(t.variableName), t.function(t.definition(t.variableName)),
+            t.definition(t.function(t.variableName)), t.className,
+            t.definition(t.className)], color: c.fn },
+    { tag: [t.number, t.bool, t.atom, t.operator, t.attributeName], color: c.lit },
+    { tag: [t.string, t.special(t.string), t.regexp, t.docString], color: c.str },
+    { tag: [t.standard(t.name), t.macroName], color: c.builtin },
+    { tag: [t.comment, t.lineComment, t.blockComment, t.docComment],
+      color: c.comment, fontStyle: 'italic' },
+    { tag: [t.tagName, t.quote], color: c.name },
+  ]);
+  return syntaxHighlighting(style);
 }
 
 // CodeMirror renders a trailing newline as an empty final line — which the
@@ -104,8 +125,8 @@ function editorDoc(value: string): string {
 }
 
 export function NotebookCellEditor({
-  value, language, fontSize, highlight = true, showLineNumbers = false,
-  onChange, onRun, onBlur,
+  value, language, fontSize, highlight = true, dark = false,
+  showLineNumbers = false, onChange, onRun, onBlur,
 }: NotebookCellEditorProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   // Keep the latest callbacks in refs so the CodeMirror instance
@@ -124,7 +145,7 @@ export function NotebookCellEditor({
     (async () => {
       const cm = await loadCM();
       const langExt = await languageExtension(language);
-      const hlExt = highlight ? await highlightExtension() : null;
+      const hlExt = highlight ? await highlightExtension(dark) : null;
       if (cancelled || !hostRef.current) return;
 
       const { EditorView, keymap, lineNumbers } = cm;
@@ -148,11 +169,15 @@ export function NotebookCellEditor({
       // the notebook's theme CSS variables (set on .nb-frame) so the
       // editor integrates with light/dark/custom slide themes instead
       // of CodeMirror's default black-on-white.
+      // Base text color: when highlighting, match the static .hljs base
+      // (GitHub Light/Dark) so plain identifiers don't shift on edit;
+      // otherwise follow the slide theme's foreground.
+      const baseColor = highlight ? (dark ? '#c9d1d9' : '#24292e') : 'var(--nb-fg, #111827)';
       const theme = EditorView.theme({
         '&': {
           fontSize: `${fontSize}px`,
           backgroundColor: 'transparent',
-          color: 'var(--nb-fg, #111827)',
+          color: baseColor,
         },
         '.cm-content': {
           fontFamily: 'var(--nb-mono-family, ui-monospace, Menlo, monospace)',
@@ -203,7 +228,7 @@ export function NotebookCellEditor({
     // change — value updates are applied imperatively below to avoid losing
     // cursor position.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [language, fontSize, highlight, showLineNumbers]);
+  }, [language, fontSize, highlight, dark, showLineNumbers]);
 
   // Apply external value changes (e.g. revert, file-watcher reload)
   // without rebuilding the editor — only when they differ from the

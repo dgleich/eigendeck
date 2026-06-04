@@ -40,6 +40,8 @@ export interface CodeCellProps {
   language?: string | null;
   /** Whether to highlight at all. Default true. */
   highlight?: boolean;
+  /** Dark slide theme — picks the matching editor highlight palette. */
+  dark?: boolean;
   /** When true, render an editor instead of a static <pre>. */
   editable?: boolean;
   /** Show a line-number gutter in the editor. Default false (opt-in). */
@@ -62,11 +64,15 @@ export interface CodeCellProps {
 
 export function CodeCell({
   cell, source, liveOutputs, liveExecutionCount, running, onRun,
-  language, highlight = true,
+  language, highlight = true, dark = false,
   editable = false, showLineNumbers = false,
   fontSize = 32, onEdit, onCommit, edited, added, onRevert,
 }: CodeCellProps) {
   const effectiveSource = source ?? cell.source;
+  // Strip ONE trailing newline for DISPLAY (static + editor) so a cell that
+  // ends in "\n" doesn't render a spurious blank last line — which the
+  // wrapped view hid but the line-number / no-wrap view exposes.
+  const displaySource = effectiveSource.replace(/\n$/, '');
   const outputs = liveOutputs ?? cell.outputs;
   const promptCount = running
     ? '*'
@@ -82,11 +88,11 @@ export function CodeCell({
   useEffect(() => {
     if (!highlight || editable) { setHighlighted(null); return; }
     let cancelled = false;
-    highlightCode(effectiveSource, language ?? null).then((html) => {
+    highlightCode(displaySource, language ?? null).then((html) => {
       if (!cancelled) setHighlighted(html);
     });
     return () => { cancelled = true; };
-  }, [effectiveSource, language, highlight, editable]);
+  }, [displaySource, language, highlight, editable]);
 
   // Visual distinction: appended (live-authored) > edited (overlay) >
   // pristine. Drives the left accent + tag.
@@ -103,10 +109,11 @@ export function CodeCell({
           {editable ? (
             <div className="nb-cell-source nb-cell-source-editing">
               <NotebookCellEditor
-                value={effectiveSource}
+                value={displaySource}
                 language={language ?? null}
                 fontSize={fontSize}
                 highlight={highlight}
+                dark={dark}
                 showLineNumbers={showLineNumbers}
                 onChange={(next) => onEdit?.(next)}
                 onRun={() => onRun?.()}
@@ -118,14 +125,14 @@ export function CodeCell({
               {showLineNumbers && (
                 <span className="nb-linenos" aria-hidden="true">
                   {Array.from(
-                    { length: effectiveSource.split('\n').length },
+                    { length: displaySource.split('\n').length },
                     (_, i) => i + 1,
                   ).join('\n')}
                 </span>
               )}
               {highlight && highlighted != null
                 ? <code className="hljs" dangerouslySetInnerHTML={{ __html: highlighted }} />
-                : <code>{effectiveSource}</code>}
+                : <code>{displaySource}</code>}
             </pre>
           )}
           <div className="nb-cell-actions">
