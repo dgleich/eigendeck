@@ -7,10 +7,10 @@ import {
   createDefaultPresentation,
   createBlankSlide,
 } from '../types/presentation';
-import { cloneOverlay } from '../lib/useOverlay';
 import {
-  IDENTITY_KEYS, freeDelta, resyncDelta, unlinkDelta, relinkDelta,
+  IDENTITY_KEYS, freeDelta, resyncDelta, unlinkDelta, relinkDelta, linkPairDeltas,
 } from '../lib/syncLink';
+import { runFreeHook, runResyncHook, runMergeHook } from '../lib/elementLifecycle';
 
 export type SelectedObject =
   | { type: 'slide' }
@@ -65,6 +65,14 @@ interface PresentationState {
   unlinkElement: (elementId: string) => void;
   /** Re-link a previously-unlinked element. */
   relinkElement: (elementId: string) => void;
+  /** Link a source element (current slide) to a target on another slide,
+   *  giving both a shared link+sync group (one undo step). `keep` chooses which
+   *  side's type-specific state — e.g. a notebook recording — survives the
+   *  merge: 'auto' by content, or an explicit 'source'/'target'. */
+  linkElements: (
+    sourceId: string, targetSlideIndex: number, targetId: string,
+    keep?: 'auto' | 'source' | 'target',
+  ) => void;
 
   // Selection
   selectObject: (obj: SelectedObject) => void;
@@ -393,20 +401,6 @@ export const usePresentationStore = create<PresentationState>()(
         ),
 
       updateElement: (elementId, changes) => {
-        // Clone-on-unsync: freeing a synced NOTEBOOK (syncId -> undefined)
-        // must leave the freed instance its own copy of the recording — the
-        // still-synced instances keep the shared one. Fire BEFORE the state
-        // flips so the freed element renders its copy on the next paint
-        // (cloneOverlay seeds the module cache synchronously when the source
-        // overlay is already cached, which it is for a mounted notebook).
-        if ('syncId' in changes && (changes as { syncId?: string }).syncId === undefined) {
-          const st = get();
-          const cur = st.presentation.slides[st.currentSlideIndex];
-          const el = cur?.elements.find((e) => e.id === elementId);
-          if (el && el.type === 'notebook' && el.syncId) {
-            void cloneOverlay(el.syncId, elementId);
-          }
-        }
         set((state) => {
           const currentSlide = state.presentation.slides[state.currentSlideIndex];
           const element = currentSlide.elements.find((el) => el.id === elementId);
@@ -465,14 +459,20 @@ export const usePresentationStore = create<PresentationState>()(
           ?.elements.find((e) => e.id === elementId);
         if (!el) return;
         const delta = freeDelta(el);
-        if (Object.keys(delta).length) get().updateElement(elementId, delta);
+        if (!Object.keys(delta).length) return;
+        // Type hook (e.g. notebook clone-on-unsync) fires before the flip so it
+        // can seed caches synchronously.
+        void runFreeHook(el, elementId);
+        get().updateElement(elementId, delta);
       },
       resyncElement: (elementId) => {
         const el = get().presentation.slides[get().currentSlideIndex]
           ?.elements.find((e) => e.id === elementId);
         if (!el) return;
         const delta = resyncDelta(el);
-        if (Object.keys(delta).length) get().updateElement(elementId, delta);
+        if (!Object.keys(delta).length) return;
+        void runResyncHook(el);
+        get().updateElement(elementId, delta);
       },
       unlinkElement: (elementId) => {
         const el = get().presentation.slides[get().currentSlideIndex]
@@ -487,6 +487,39 @@ export const usePresentationStore = create<PresentationState>()(
         if (!el) return;
         const delta = relinkDelta(el);
         if (Object.keys(delta).length) get().updateElement(elementId, delta);
+      },
+      linkElements: (sourceId, targetSlideIndex, targetId, keep = 'auto') => {
+        const st = get();
+        const source = st.presentation.slides[st.currentSlideIndex]
+          ?.elements.find((e) => e.id === sourceId);
+        const target = st.presentation.slides[targetSlideIndex]
+          ?.elements.find((e) => e.id === targetId);
+        if (!source || !target) return;
+        const { sharedSyncId, delta } = linkPairDeltas(target);
+        // Reconcile type-specific state (e.g. notebook recordings) before the
+        // flip. void-fired; caches seed synchronously where it matters.
+        void runMergeHook({ source, target, sharedSyncId, keep });
+        // Both sides get the SAME symmetric delta (the #30 fix), applied in one
+        // set() so it's a single undo step — and via set(), not setPresentation,
+        // so undo history survives (linking used to be un-undoable).
+        const csi = st.currentSlideIndex;
+        set((state) => ({
+          presentation: {
+            ...state.presentation,
+            slides: state.presentation.slides.map((slide, idx) => {
+              if (idx === csi) {
+                return { ...slide, elements: slide.elements.map((el) =>
+                  el.id === sourceId ? ({ ...el, ...delta } as SlideElement) : el) };
+              }
+              if (idx === targetSlideIndex) {
+                return { ...slide, elements: slide.elements.map((el) =>
+                  el.id === targetId ? ({ ...el, ...delta } as SlideElement) : el) };
+              }
+              return slide;
+            }),
+          },
+          isDirty: true,
+        }));
       },
 
       deleteElement: (elementId) =>

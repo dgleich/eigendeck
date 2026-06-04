@@ -19,6 +19,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
 import { detachDelta } from './lib/syncLink';
+import { registerNotebookLifecycle } from './components/notebook/notebookLifecycle';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
 import type { SlideElement } from './types/presentation';
@@ -38,6 +39,10 @@ import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
 import { TEXT_PRESET_STYLES, effectiveFontSize } from './types/presentation';
 import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
+
+// Wire built-in element types into the sync/link lifecycle registry once, at
+// module load — before any free/merge action can fire.
+registerNotebookLifecycle();
 
 /** Render a single slide to HTML for PDF/print export */
 export function renderSlideForPrint(

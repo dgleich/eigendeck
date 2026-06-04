@@ -401,6 +401,36 @@ describe('presentation store', () => {
       expect((el as any)._linkId).toBeUndefined();
     });
 
+    it('linkElements links both sides symmetrically (#30), shared group', () => {
+      const store = usePresentationStore.getState();
+      usePresentationStore.setState({
+        presentation: {
+          ...createDefaultPresentation(),
+          slides: [
+            { id: 's0', elements: [{ id: 'A', type: 'text', preset: 'body', html: '',
+              position: { x: 0, y: 0, width: 1, height: 1 },
+              _syncId: 'old', _linkId: 'oldL' } as any] } as any,
+            { id: 's1', elements: [{ id: 'B', type: 'text', preset: 'body', html: '',
+              position: { x: 0, y: 0, width: 1, height: 1 } } as any] } as any,
+          ],
+        },
+        currentSlideIndex: 0,
+      });
+      store.linkElements('A', 1, 'B', 'auto');
+      const st = usePresentationStore.getState();
+      const a = st.presentation.slides[0].elements[0];
+      const b = st.presentation.slides[1].elements[0];
+      expect(a.syncId).toBeTruthy();
+      expect(a.linkId).toBeTruthy();
+      expect(a.syncId).toBe(b.syncId);              // one shared group
+      expect(a.linkId).toBe(b.linkId);
+      // #30: the remembered freed-group is cleared on BOTH sides (was source-only)
+      expect((a as any)._syncId).toBeUndefined();
+      expect((a as any)._linkId).toBeUndefined();
+      expect((b as any)._syncId).toBeUndefined();
+      expect((b as any)._linkId).toBeUndefined();
+    });
+
     it('freeElement is a no-op on an un-synced element', () => {
       const store = usePresentationStore.getState();
       const id = usePresentationStore.getState().presentation.slides[0].elements[0].id;
