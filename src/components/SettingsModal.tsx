@@ -386,8 +386,10 @@ function DefaultNotebookEditableSetting() {
           <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
             New notebook elements start with editable code cells. Off by
             default (the read-only "canned demo" case). Each notebook
-            can override this in its inspector. Making a notebook
-            editable disables file-watching for it.
+            can override this in its inspector. While a notebook is
+            editable its .ipynb is no longer auto-watched for on-disk
+            changes (so your edits aren't clobbered) — pull external
+            changes yourself with the inspector's "Reload from disk".
           </div>
         </div>
       </label>
