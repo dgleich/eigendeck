@@ -51,6 +51,7 @@ registerNotebookLifecycle();
 (window as unknown as { __eigendeck?: unknown }).__eigendeck = {
   store: usePresentationStore,
   flush: flushToSqlite,
+  save: saveProject,   // flush + atomic save-in-place to the open file
 };
 
 /** Render a single slide to HTML for PDF/print export */
