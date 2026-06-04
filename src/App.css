@@ -838,19 +838,23 @@
 /* Link status badges (outside top-left, sized in slide coords) */
 .el-link-badges {
   position: absolute;
-  top: -28px;
-  left: -28px;
+  top: -14px;
+  left: -14px;
   display: flex;
   gap: 4px;
   z-index: 11;
+  /* Authoring chrome → fixed on-screen size at any canvas zoom (#67),
+     anchored top-left (mirrors the delete chip at top-right). */
+  transform: scale(calc(1 / var(--canvas-scale, 1)));
+  transform-origin: top left;
 }
 
 .el-link-badge {
-  width: 40px;
-  height: 40px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  border: 3px solid #fff;
-  font-size: 20px;
+  border: 2px solid #fff;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
