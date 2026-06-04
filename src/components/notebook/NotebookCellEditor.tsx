@@ -96,6 +96,13 @@ async function highlightExtension(): Promise<unknown> {
   return syntaxHighlighting(defaultHighlightStyle, { fallback: true });
 }
 
+// CodeMirror renders a trailing newline as an empty final line — which the
+// static <pre> view doesn't show. Strip ONE trailing newline so entering
+// edit mode doesn't add a spurious blank line at the bottom of the cell.
+function editorDoc(value: string): string {
+  return value.endsWith('\n') ? value.slice(0, -1) : value;
+}
+
 export function NotebookCellEditor({
   value, language, fontSize, highlight = true, showLineNumbers = false,
   onChange, onRun, onBlur,
@@ -156,6 +163,9 @@ export function NotebookCellEditor({
           backgroundColor: 'transparent', border: 'none',
           color: 'var(--nb-muted, #cbd5e1)',
         },
+        // Line numbers: smaller + subtle than the code (matches the static
+        // gutter). CM aligns gutter elements per-line regardless of font.
+        '.cm-lineNumbers .cm-gutterElement': { fontSize: '0.72em', opacity: '0.7' },
         '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'transparent' },
         '&.cm-focused': { outline: 'none' },
         '.cm-selectionBackground, ::selection': { backgroundColor: 'var(--nb-code-bg, rgba(0,0,0,0.08))' },
@@ -168,14 +178,17 @@ export function NotebookCellEditor({
         updateListener,
         blurListener,
         theme,
-        EditorView.lineWrapping,
       ];
+      // With line numbers on, behave like a code editor: no wrap, gutter,
+      // horizontal scroll (consistent with the static gutter view). Without
+      // them, wrap long lines so code stays readable on a slide.
       if (showLineNumbers) extensions.unshift(lineNumbers());
+      else extensions.push(EditorView.lineWrapping);
       if (langExt) extensions.push(langExt as never);
       if (hlExt) extensions.push(hlExt as never);
 
       view = new EditorView({
-        state: EditorState.create({ doc: value, extensions }),
+        state: EditorState.create({ doc: editorDoc(value), extensions }),
         parent: hostRef.current,
       });
       viewRef.current = view;
@@ -198,9 +211,10 @@ export function NotebookCellEditor({
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    const next = editorDoc(value);
     const current = view.state.doc.toString();
-    if (current !== value) {
-      view.dispatch({ changes: { from: 0, to: current.length, insert: value } });
+    if (current !== next) {
+      view.dispatch({ changes: { from: 0, to: current.length, insert: next } });
     }
   }, [value]);
 

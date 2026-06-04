@@ -1446,6 +1446,33 @@
   font-size: inherit;
 }
 
+/* Line-number gutter (static view). Switches the cell to no-wrap so the
+   numbers stay aligned with code lines; long lines scroll horizontally —
+   matching the editor's behavior when line numbers are on. */
+.el-notebook .nb-cell-source.nb-has-linenos {
+  display: flex;
+  gap: calc(var(--nb-base-size, 32px) * 0.45);
+  white-space: pre;
+}
+.el-notebook .nb-cell-source.nb-has-linenos code {
+  white-space: pre;
+  overflow-x: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.el-notebook .nb-linenos {
+  flex: 0 0 auto;
+  text-align: right;
+  user-select: none;
+  white-space: pre;
+  color: var(--nb-muted, #9ca3af);
+  opacity: 0.55;
+  /* Smaller + subtle than the code, but absolute line-height so each
+     number still lines up with its code line. */
+  font-size: calc(var(--nb-base-size, 32px) * 0.72);
+  line-height: calc(var(--nb-base-size, 32px) * 1.4);
+}
+
 /* Syntax highlighting theme (GitHub Light, scoped). Inlined here
    rather than importing highlight.js's CSS so the color rules apply
    only inside notebook cells. Token classes are emitted by

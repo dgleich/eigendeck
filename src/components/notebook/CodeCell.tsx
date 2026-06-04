@@ -114,7 +114,15 @@ export function CodeCell({
               />
             </div>
           ) : (
-            <pre className="nb-cell-source">
+            <pre className={`nb-cell-source${showLineNumbers ? ' nb-has-linenos' : ''}`}>
+              {showLineNumbers && (
+                <span className="nb-linenos" aria-hidden="true">
+                  {Array.from(
+                    { length: effectiveSource.split('\n').length },
+                    (_, i) => i + 1,
+                  ).join('\n')}
+                </span>
+              )}
               {highlight && highlighted != null
                 ? <code className="hljs" dangerouslySetInnerHTML={{ __html: highlighted }} />
                 : <code>{effectiveSource}</code>}
