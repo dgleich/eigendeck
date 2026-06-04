@@ -431,50 +431,41 @@ describe('presentation store', () => {
       expect((b as any)._linkId).toBeUndefined();
     });
 
-    const twoSlideGroup = (linked: boolean) => ({
-      presentation: {
-        ...createDefaultPresentation(),
-        slides: [
-          { id: 's0', elements: [{ id: 'A', type: 'text', preset: 'body', html: 'orig',
-            syncId: 'g', ...(linked ? { linkId: 'g' } : {}),
-            position: { x: 0, y: 0, width: 1, height: 1 } } as any] } as any,
-          { id: 's1', elements: [{ id: 'B', type: 'text', preset: 'body', html: 'orig',
-            syncId: 'g', ...(linked ? { linkId: 'g' } : {}),
-            position: { x: 100, y: 100, width: 1, height: 1 } } as any] } as any,
-        ],
-      },
-      currentSlideIndex: 0,
-    });
-
-    it('animated (linkId) elements keep independent positions but still sync content (#30)', () => {
+    it('duplicate-slide titles stay synced: move + edit propagate to both slides', () => {
       const store = usePresentationStore.getState();
-      usePresentationStore.setState(twoSlideGroup(true) as any);
-      // Position change must NOT propagate to the linked partner.
-      store.updateElement('A', { position: { x: 50, y: 50, width: 1, height: 1 } } as any);
+      // A deck with a title on slide 1.
+      usePresentationStore.setState({
+        presentation: {
+          ...createDefaultPresentation(),
+          slides: [
+            { id: 's1', elements: [{ id: 'title', type: 'text', preset: 'title',
+              html: 'Hello', position: { x: 100, y: 100, width: 400, height: 80 } } as any] } as any,
+          ],
+        },
+        currentSlideIndex: 0,
+      });
+
+      // Duplicate the slide → the two titles become synced.
+      store.duplicateSlide(0);
       let st = usePresentationStore.getState();
-      expect(st.presentation.slides[0].elements[0].position.x).toBe(50);
-      expect(st.presentation.slides[1].elements[0].position.x).toBe(100);
-      // Content change MUST still propagate.
-      store.updateElement('A', { html: 'edited' } as any);
+      expect(st.presentation.slides).toHaveLength(2);
+      const t0 = st.presentation.slides[0].elements[0];
+      const t1 = st.presentation.slides[1].elements[0];
+      expect(t0.syncId).toBeTruthy();
+      expect(t1.syncId).toBe(t0.syncId);            // same sync group
+
+      // Move the title on slide 1 → BOTH slides' titles move (same position).
+      store.selectSlide(0);
+      store.moveElementsBy([t0.id], 30, 40);
       st = usePresentationStore.getState();
-      expect((st.presentation.slides[1].elements[0] as any).html).toBe('edited');
-    });
+      expect(st.presentation.slides[0].elements[0].position).toMatchObject({ x: 130, y: 140 });
+      expect(st.presentation.slides[1].elements[0].position).toMatchObject({ x: 130, y: 140 });
 
-    it('moveElementsBy does not drag animation-linked partners (#30)', () => {
-      const store = usePresentationStore.getState();
-      usePresentationStore.setState(twoSlideGroup(true) as any);
-      store.moveElementsBy(['A'], 30, 40);
-      const st = usePresentationStore.getState();
-      expect(st.presentation.slides[0].elements[0].position.x).toBe(30);
-      expect(st.presentation.slides[1].elements[0].position.x).toBe(100);  // partner stays
-    });
-
-    it('moveElementsBy DOES drag pure-synced (non-animated) partners', () => {
-      const store = usePresentationStore.getState();
-      usePresentationStore.setState(twoSlideGroup(false) as any);  // syncId, no linkId
-      store.moveElementsBy(['A'], 30, 40);
-      const st = usePresentationStore.getState();
-      expect(st.presentation.slides[1].elements[0].position.x).toBe(130);  // mirror moved
+      // Edit the title on slide 1 → it changes on slide 2 too.
+      store.updateElement(t0.id, { html: 'Changed' } as any);
+      st = usePresentationStore.getState();
+      expect((st.presentation.slides[0].elements[0] as any).html).toBe('Changed');
+      expect((st.presentation.slides[1].elements[0] as any).html).toBe('Changed');
     });
 
     it('freeElement is a no-op on an un-synced element', () => {

@@ -426,16 +426,6 @@ export const usePresentationStore = create<PresentationState>()(
               Object.entries(changes).filter(([k]) => !identity.includes(k))
             ) as Partial<SlideElement>;
 
-            // Animation links keep INDEPENDENT positions: when this element is
-            // animated (has a linkId), don't propagate position/geometry to its
-            // peers — each frame stays where the user put it (the in-session
-            // counterpart to the import split in #32). Pure mirrors (syncId, no
-            // linkId) still sync position.
-            if (updatedElement.linkId) {
-              const sc = syncChanges as Record<string, unknown>;
-              delete sc.position; delete sc.x1; delete sc.y1; delete sc.x2; delete sc.y2;
-            }
-
             if (Object.keys(syncChanges).length > 0) {
               const slides = state.presentation.slides.map((slide) => ({
                 ...slide,
@@ -579,12 +569,14 @@ export const usePresentationStore = create<PresentationState>()(
       moveElementsBy: (elementIds, dx, dy) =>
         set((state) => {
           const currentSlide = state.presentation.slides[state.currentSlideIndex];
-          // Collect syncIds of moved elements — but NOT animation links (an
-          // element with a linkId has an independent position per slide, so
-          // moving one frame must not drag its linked partners).
+          // Collect syncIds of moved elements. Position is governed by syncId:
+          // synced instances mirror position (move one → move all). Independent
+          // position (for animation) comes from FREEING an element (removing its
+          // syncId), not from a linkId — duplicated elements carry a linkId yet
+          // must stay position-synced until freed.
           const syncIds = new Set<string>();
           for (const el of currentSlide.elements) {
-            if (elementIds.includes(el.id) && el.syncId && !el.linkId) syncIds.add(el.syncId);
+            if (elementIds.includes(el.id) && el.syncId) syncIds.add(el.syncId);
           }
 
           if (syncIds.size > 0) {
