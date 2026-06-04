@@ -6,6 +6,7 @@ import { loadOverlayFor } from '../lib/useOverlay';
 import {
   isOverlayEmpty, serializeOverlay, summarizeOverlay, type Overlay,
 } from '../lib/notebookOverlay';
+import { ElementPreviewImg } from './ElementPreviewImg';
 
 const SLIDE_W = 1920;
 const SLIDE_H = 1080;
@@ -232,9 +233,14 @@ function LinkableElement({ element: el, isLinked, onClick }: {
       );
     case 'notebook':
       return (
-        <div style={{ ...wrapStyle, background: '#eef7ee', border: isLinked ? '4px solid #16a34a' : '4px dashed #86c986', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: '#3f9142' }}
+        <div style={{ ...wrapStyle, background: '#eef7ee', border: isLinked ? '4px solid #16a34a' : '4px dashed #86c986', overflow: 'hidden' }}
           onClick={onClick} className="link-overlay-element">
-          NB
+          <ElementPreviewImg
+            cacheKey={el.syncId ?? el.id}
+            fallback={
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: '#3f9142' }}>NB</div>
+            }
+          />
         </div>
       );
     case 'demo-piece':

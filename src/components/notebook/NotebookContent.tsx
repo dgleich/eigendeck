@@ -18,6 +18,7 @@ import { MarkdownCell } from './MarkdownCell';
 import { RawCell } from './RawCell';
 import { useNotebook } from '../../lib/useNotebook';
 import { useOverlay } from '../../lib/useOverlay';
+import { capturePreview } from '../../lib/previewCache';
 import { useKernel, KernelStatus } from '../../lib/useKernel';
 import { resolveNotebookKernel, ResolvedExternal } from '../../lib/notebookKernel';
 import { usePreference } from '../../lib/preferences';
@@ -62,6 +63,17 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
       }))
       .catch(() => {});
   }, [editable, element.assetId, mode]);
+
+  // Cache a PNG preview of the rendered notebook so other places (the sidebar
+  // mini-slide, the link picker) can show an image of it instead of a live
+  // render. Debounced + editor-only; fires when the element changes (add =
+  // first mount, property edits = re-render) and once the cells have settled.
+  // The .nb-frame target excludes the DraggableBox authoring chrome.
+  useEffect(() => {
+    if (mode !== 'editor') return;
+    const t = setTimeout(() => { void capturePreview(element, '.nb-frame'); }, 700);
+    return () => clearTimeout(t);
+  }, [element, mode]);
 
   // Typography + theme → CSS variables on the frame. (See the detailed
   // notes in the prior revision; unchanged.)

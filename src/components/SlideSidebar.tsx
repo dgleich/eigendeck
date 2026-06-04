@@ -7,6 +7,7 @@ import { useRenderedAsset } from '../lib/assetRenderer';
 import { ASSET_TIER } from '../lib/assetCache';
 import { useAssetFileWatcher } from '../lib/assetWatcher';
 import type { MenuEntry } from './ContextMenu';
+import { ElementPreviewImg } from './ElementPreviewImg';
 
 /**
  * Thumbnail-tier image cell for the sidebar. Pulls a cached 256-px PNG from
@@ -201,6 +202,19 @@ export function SlideSidebar() {
                       return <SidebarDemoTile key={el.id} element={el} />;
                     case 'demo-piece':
                       return <SidebarDemoPieceTile key={el.id} element={el} />;
+                    case 'notebook':
+                      return (
+                        <div key={el.id} style={{
+                          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
+                          overflow: 'hidden', background: '#fff',
+                        }}>
+                          <ElementPreviewImg cacheKey={el.syncId ?? el.id} fallback={
+                            <div style={{ width: '100%', height: '100%', display: 'flex',
+                              alignItems: 'center', justifyContent: 'center', fontSize: 64,
+                              color: '#86c986', background: '#eef7ee' }}>NB</div>
+                          } />
+                        </div>
+                      );
                     case 'cover':
                       return (
                         <div key={el.id} style={{
