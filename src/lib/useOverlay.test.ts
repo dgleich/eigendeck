@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { invoke } from '@tauri-apps/api/core';
-import { useOverlay, clearAllOverlayCache, cloneOverlayForDuplicate } from './useOverlay';
+import { useOverlay, clearAllOverlayCache } from './useOverlay';
 import { serializeOverlay, emptyOverlay, OVERLAY_MIME, type Overlay } from './notebookOverlay';
 
 const mockedInvoke = vi.mocked(invoke);
@@ -188,30 +188,17 @@ describe('useOverlay flush', () => {
   });
 });
 
-describe('cloneOverlayForDuplicate (B2)', () => {
-  it('persists an INDEPENDENT copy and the duplicate shows it', async () => {
-    const storeCalls = mockInvoke({ ownedId: null });
-    const src = renderHook(() => useOverlay('el-src'));
-    await waitFor(() => expect(src.result.current.overlay).toEqual(emptyOverlay()));
-    act(() => src.result.current.recordOutput(0, [{ kind: 'stream', name: 'stdout', text: 'hi' }], 1));
-
-    await cloneOverlayForDuplicate('el-src', 'el-dup');
-
-    // A fresh mount of the duplicate shows the cloned output (cache seed).
-    const dup = renderHook(() => useOverlay('el-dup'));
-    expect(dup.result.current.overlay.cellOutputs[0]).toHaveLength(1);
-    // Persisted under el-dup with its OWN asset id (independent).
-    const call = storeCalls.find((c) => c.ownerElementId === 'el-dup');
-    expect(call).toBeTruthy();
-    expect(typeof call!.assetId).toBe('string');
-  });
-
-  it('is a no-op when the source overlay is empty', async () => {
-    const storeCalls = mockInvoke({ ownedId: null });
-    const src = renderHook(() => useOverlay('el-src2'));
-    await waitFor(() => expect(src.result.current.overlay).toEqual(emptyOverlay()));
-    // never edited → empty → nothing to clone, nothing persisted
-    await cloneOverlayForDuplicate('el-src2', 'el-dup2');
-    expect(storeCalls.find((c) => c.ownerElementId === 'el-dup2')).toBeFalsy();
+describe('synced notebooks share ONE overlay (B2)', () => {
+  // Synced instances key useOverlay by the SAME identity (syncId??id at the
+  // call site). Two hooks with the same key therefore see the same overlay:
+  // recording on one is visible to a fresh mount of the other.
+  it('two hooks with the same key share the overlay via the cache', async () => {
+    mockInvoke({ ownedId: null });
+    const a = renderHook(() => useOverlay('shared-key'));
+    await waitFor(() => expect(a.result.current.overlay).toEqual(emptyOverlay()));
+    act(() => a.result.current.recordOutput(0, [{ kind: 'stream', name: 'stdout', text: 'hi' }], 1));
+    // A second instance keyed the same way (the duplicate) sees it.
+    const b = renderHook(() => useOverlay('shared-key'));
+    expect(b.result.current.overlay.cellOutputs[0]).toHaveLength(1);
   });
 });

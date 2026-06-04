@@ -167,7 +167,13 @@ function ExternalKernelBody({
   kernelDisplayName: string | null;
 }) {
   const kernel = useKernel(resolved);
-  const ov = useOverlay(element.id);
+  // Overlay identity is the element's SYNC identity, not its per-slide id:
+  // synced instances (the same notebook shown on multiple slides) are the
+  // SAME thing and must share ONE overlay. syncId is set to the original
+  // element's id on first duplicate, so the whole group resolves here to a
+  // single stable key — consistent across Save and Save As. A lone notebook
+  // has no syncId and keys by its own id (unchanged).
+  const ov = useOverlay(element.syncId ?? element.id);
   const updateElement = usePresentationStore((s) => s.updateElement);
 
   // Migrate legacy element.cellEdits (pre-overlay) into the overlay
