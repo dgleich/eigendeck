@@ -44,30 +44,25 @@ describe('syncLink delta helpers', () => {
   });
 });
 
-describe('linkPairDeltas (#30 symmetry)', () => {
-  it('mints fresh shared ids for two independent elements and clears both groups', () => {
-    const { sharedLinkId, sharedSyncId, delta } = linkPairDeltas({}, () => 'NEW');
+describe('linkPairDeltas — animation link only, non-destructive', () => {
+  it('mints a fresh shared linkId and clears _linkId; NEVER touches syncId', () => {
+    const { sharedLinkId, delta } = linkPairDeltas({}, () => 'NEW');
     expect(sharedLinkId).toBe('NEW');
-    expect(sharedSyncId).toBe('NEW');               // syncId falls back to the link id
-    // The delta is symmetric — applied to BOTH source and target, it sets the
-    // shared ids and clears the remembered group on each (the #30 fix).
-    expect(delta).toEqual({
-      linkId: 'NEW', syncId: 'NEW', _linkId: undefined, _syncId: undefined,
-    });
+    // Link-only + symmetric (#30): both sides get the shared linkId and a
+    // cleared _linkId. No syncId/_syncId — "L" must not sync/merge.
+    expect(delta).toEqual({ linkId: 'NEW', _linkId: undefined });
+    expect('syncId' in delta).toBe(false);
+    expect('_syncId' in delta).toBe(false);
   });
 
-  it("joins the target's existing group when it has one", () => {
-    const { sharedLinkId, sharedSyncId } = linkPairDeltas(
-      { linkId: 'TL', syncId: 'TS' }, () => 'unused');
+  it("joins the target's existing link group when it has one", () => {
+    const { sharedLinkId } = linkPairDeltas({ linkId: 'TL' }, () => 'unused');
     expect(sharedLinkId).toBe('TL');
-    expect(sharedSyncId).toBe('TS');
   });
 
-  it("revives the target's remembered group rather than minting a new one", () => {
-    const { sharedLinkId, sharedSyncId } = linkPairDeltas(
-      { _linkId: 'OLDL', _syncId: 'OLDS' }, () => 'unused');
+  it("revives the target's remembered link group rather than minting a new one", () => {
+    const { sharedLinkId } = linkPairDeltas({ _linkId: 'OLDL' }, () => 'unused');
     expect(sharedLinkId).toBe('OLDL');
-    expect(sharedSyncId).toBe('OLDS');
   });
 });
 

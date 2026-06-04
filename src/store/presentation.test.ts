@@ -401,34 +401,36 @@ describe('presentation store', () => {
       expect((el as any)._linkId).toBeUndefined();
     });
 
-    it('linkElements links both sides symmetrically (#30), shared group', () => {
+    it('linkElements is an ANIMATION link only — shared linkId, NEVER syncId', () => {
       const store = usePresentationStore.getState();
       usePresentationStore.setState({
         presentation: {
           ...createDefaultPresentation(),
           slides: [
-            { id: 's0', elements: [{ id: 'A', type: 'text', preset: 'body', html: '',
-              position: { x: 0, y: 0, width: 1, height: 1 },
-              _syncId: 'old', _linkId: 'oldL' } as any] } as any,
-            { id: 's1', elements: [{ id: 'B', type: 'text', preset: 'body', html: '',
-              position: { x: 0, y: 0, width: 1, height: 1 } } as any] } as any,
+            { id: 's0', elements: [{ id: 'A', type: 'text', preset: 'body', html: 'a',
+              position: { x: 0, y: 0, width: 1, height: 1 }, _linkId: 'oldL' } as any] } as any,
+            { id: 's1', elements: [{ id: 'B', type: 'text', preset: 'body', html: 'b',
+              position: { x: 9, y: 9, width: 1, height: 1 } } as any] } as any,
           ],
         },
         currentSlideIndex: 0,
       });
-      store.linkElements('A', 1, 'B', 'auto');
+      store.linkElements('A', 1, 'B');
       const st = usePresentationStore.getState();
       const a = st.presentation.slides[0].elements[0];
       const b = st.presentation.slides[1].elements[0];
-      expect(a.syncId).toBeTruthy();
+      // Shared linkId on both (#30 symmetry), _linkId cleared.
       expect(a.linkId).toBeTruthy();
-      expect(a.syncId).toBe(b.syncId);              // one shared group
       expect(a.linkId).toBe(b.linkId);
-      // #30: the remembered freed-group is cleared on BOTH sides (was source-only)
-      expect((a as any)._syncId).toBeUndefined();
       expect((a as any)._linkId).toBeUndefined();
-      expect((b as any)._syncId).toBeUndefined();
       expect((b as any)._linkId).toBeUndefined();
+      // NON-destructive: NOT synced — separate elements keep their own content
+      // and position so the presenter can animate between them.
+      expect(a.syncId).toBeUndefined();
+      expect(b.syncId).toBeUndefined();
+      expect((a as any).html).toBe('a');
+      expect((b as any).html).toBe('b');
+      expect(b.position.x).toBe(9);
     });
 
     it('duplicate-slide titles stay synced: move + edit propagate to both slides', () => {
@@ -466,6 +468,37 @@ describe('presentation store', () => {
       st = usePresentationStore.getState();
       expect((st.presentation.slides[0].elements[0] as any).html).toBe('Changed');
       expect((st.presentation.slides[1].elements[0] as any).html).toBe('Changed');
+    });
+
+    it('in-session: editing the COPY propagates to the original (no save needed)', () => {
+      const store = usePresentationStore.getState();
+      usePresentationStore.setState({
+        presentation: {
+          ...createDefaultPresentation(),
+          slides: [
+            { id: 's1', elements: [{ id: 'title', type: 'text', preset: 'title',
+              html: 'Hi', position: { x: 100, y: 100, width: 400, height: 80 } } as any] } as any,
+          ],
+        },
+        currentSlideIndex: 0,
+      });
+      store.duplicateSlide(0);
+      // duplicateSlide selects the COPY (slide index 1); the two instances have
+      // DIFFERENT ids in-session but a shared syncId.
+      let st = usePresentationStore.getState();
+      expect(st.currentSlideIndex).toBe(1);
+      const orig = st.presentation.slides[0].elements[0];
+      const copy = st.presentation.slides[1].elements[0];
+      expect(copy.id).not.toBe(orig.id);          // different ids in-session
+      expect(copy.syncId).toBe(orig.syncId);       // same sync group
+
+      // Edit + move on the COPY → the ORIGINAL must reflect it immediately,
+      // with NO save/reload (pure in-memory propagation).
+      store.updateElement(copy.id, { html: 'Edited' } as any);
+      store.moveElementsBy([copy.id], 25, 35);
+      st = usePresentationStore.getState();
+      expect((st.presentation.slides[0].elements[0] as any).html).toBe('Edited');
+      expect(st.presentation.slides[0].elements[0].position).toMatchObject({ x: 125, y: 135 });
     });
 
     it('freeElement is a no-op on an un-synced element', () => {

@@ -52,20 +52,19 @@ export function detachDelta(): SyncLinkDelta {
   return { syncId: undefined, _syncId: undefined, linkId: undefined, _linkId: undefined };
 }
 
-/** Shared ids + the symmetric per-side delta for linking a source element to a
- *  target on another slide. BOTH sides get the same delta — the shared ids and
- *  a cleared remembered-group — which is the structural fix for #30 (the old
- *  LinkOverlay cleared _syncId/_linkId on the source only). The shared ids
- *  prefer the target's existing group so re-linking rejoins it. */
+/** Shared linkId + the symmetric per-side delta for an ANIMATION link between a
+ *  source element and a target on another slide. Link-only and NON-destructive:
+ *  it sets a shared linkId (and clears _linkId) on BOTH sides and does NOT touch
+ *  syncId — the elements stay SEPARATE (own position, content, recording) so the
+ *  presenter animates between them. Sync (collapsing two elements into one
+ *  entry) is a different, destructive operation that only the junction model
+ *  (duplicate) produces cleanly; "L" must never auto-sync. The shared linkId
+ *  prefers the target's existing/remembered link group so re-linking rejoins it.
+ *  (#30: both sides cleared symmetrically.) */
 export function linkPairDeltas(
-  target: Pick<SlideElement, 'syncId' | '_syncId' | 'linkId' | '_linkId'>,
+  target: Pick<SlideElement, 'linkId' | '_linkId'>,
   newId: () => string = () => crypto.randomUUID(),
-): { sharedLinkId: string; sharedSyncId: string; delta: SyncLinkDelta } {
+): { sharedLinkId: string; delta: SyncLinkDelta } {
   const sharedLinkId = target.linkId || target._linkId || newId();
-  const sharedSyncId = target.syncId || target._syncId || sharedLinkId;
-  return {
-    sharedLinkId,
-    sharedSyncId,
-    delta: { linkId: sharedLinkId, syncId: sharedSyncId, _linkId: undefined, _syncId: undefined },
-  };
+  return { sharedLinkId, delta: { linkId: sharedLinkId, _linkId: undefined } };
 }

@@ -65,10 +65,18 @@ presenter tweens from one to the other when advancing slides.
 
 A `linkId` carries **no** positional coupling. It does *not* sync content and it
 does *not* make position independent — it is purely an animation pairing. The
-`LinkOverlay` UI (`src/components/LinkOverlay.tsx`) lets you pick a target
-element on another slide; on click it calls
-`linkElements(source, targetSlideIndex, target, keep)`
-(`LinkOverlay.tsx:79-97`).
+`LinkOverlay` UI (the "L" button, `src/components/LinkOverlay.tsx`) lets you pick
+a target element on another slide; on click it calls
+`linkElements(source, targetSlideIndex, target)`, which sets **only** a shared
+`linkId` (via `linkPairDeltas`).
+
+**"L" is non-destructive and never syncs.** It sets `linkId` only — the two
+elements stay separate (their own position, content, and notebook recording) so
+the presenter can animate between them. Collapsing two elements into one entry
+(sync) is a *separate, destructive* operation: it is produced cleanly only by
+**duplicate** (the junction model), because two already-existing rows cannot
+become one entry without deleting/re-pointing. So "L" deliberately does not, and
+must not, set `syncId`.
 
 ---
 
@@ -167,7 +175,7 @@ strand-on-unlink bug.
 | `resyncElement(id)`     | `presentation.ts:468` | Restore the remembered `_syncId` back into `syncId`.                   |
 | `unlinkElement(id)`     | `presentation.ts:477` | Drop `linkId`, remember it in `_linkId`.                               |
 | `relinkElement(id)`     | `presentation.ts:484` | Restore the remembered `_linkId` back into `linkId`.                   |
-| `linkElements(src, slideIdx, tgt, keep)` | `presentation.ts:491` | Link two elements: both sides get the same shared `linkId`+`syncId`. |
+| `linkElements(src, slideIdx, tgt)` | `presentation.ts:491` | ANIMATION link only: both sides get the same shared `linkId`. Non-destructive — never sets `syncId`. |
 
 `freeElement`/`resyncElement`/`unlinkElement`/`relinkElement` are thin wrappers:
 they find the element on the current slide, compute the delta with a pure helper,
@@ -187,7 +195,7 @@ remember/restore dance, trivially unit-testable.
 | `unlinkDelta(el)`            | `syncLink.ts:40`      | `{ linkId: undefined, _linkId: el.linkId }`              |
 | `relinkDelta(el)`            | `syncLink.ts:45`      | `{ linkId: el._linkId, _linkId: undefined }`             |
 | `detachDelta()`              | `syncLink.ts:51`      | Clears all four (Cmd+D duplicate / paste — stand alone). |
-| `linkPairDeltas(target, …)`  | `syncLink.ts:60`      | The **symmetric** per-side delta both sides get when linking — shared `linkId`+`syncId`, cleared remembered group (the #30 fix). |
+| `linkPairDeltas(target, …)`  | `syncLink.ts:60`      | The **symmetric** per-side delta both sides get when linking — shared `linkId` + cleared `_linkId` (the #30 fix). Link-only: never touches `syncId`. |
 
 Each returns `{}` (no change) when there is nothing to do (e.g. `freeDelta` on
 an unsynced element), so callers can no-op cheaply.

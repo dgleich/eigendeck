@@ -2,10 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
 import type { SlideElement } from '../types/presentation';
-import { loadOverlayFor } from '../lib/useOverlay';
-import {
-  isOverlayEmpty, serializeOverlay, summarizeOverlay, type Overlay,
-} from '../lib/notebookOverlay';
 import { ElementPreviewImg } from './ElementPreviewImg';
 
 const SLIDE_W = 1920;
@@ -16,22 +12,12 @@ interface Props {
   onClose: () => void;
 }
 
-// A merge held pending the user's "which recording to keep?" choice. Only
-// raised when BOTH sides are notebooks with DIFFERENT non-empty recordings.
-interface PendingMerge {
-  targetId: string;
-  targetSlideIdx: number;
-  sourceOv: Overlay;
-  targetOv: Overlay;
-}
-
 export function LinkOverlay({ elementId, onClose }: Props) {
   const { presentation, currentSlideIndex } = usePresentationStore();
   const [viewIndex, setViewIndex] = useState(Math.max(0, currentSlideIndex - 1));
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [slideScale, setSlideScale] = useState(0.5);
-  const [conflict, setConflict] = useState<PendingMerge | null>(null);
 
   const currentSlide = presentation.slides[currentSlideIndex];
   const sourceElement = currentSlide?.elements.find((el) => el.id === elementId);
@@ -77,64 +63,16 @@ export function LinkOverlay({ elementId, onClose }: Props) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose, navPrev, navNext]);
 
-  const handleElementClick = useCallback(async (targetEl: SlideElement) => {
+  // Establish an ANIMATION link to the clicked target. Non-destructive: both
+  // elements stay separate; only a shared linkId is set. (Syncing/merging is a
+  // deliberate, separate action — never a side effect of picking a link target.)
+  const handleElementClick = useCallback((targetEl: SlideElement) => {
     if (!sourceElement) return;
-    const link = usePresentationStore.getState().linkElements;
-
-    // Only notebooks carry recordings. Pre-check for a CONFLICT (two different
-    // ones) so we can ask which to keep; everything else the merge handles on
-    // its own ('auto').
-    if (sourceElement.type === 'notebook' && targetEl.type === 'notebook') {
-      const sourceOv = await loadOverlayFor(sourceElement.syncId ?? sourceElement.id);
-      const targetOv = await loadOverlayFor(targetEl.syncId ?? targetEl.id);
-      if (!isOverlayEmpty(sourceOv) && !isOverlayEmpty(targetOv)
-          && serializeOverlay(sourceOv) !== serializeOverlay(targetOv)) {
-        setConflict({ targetId: targetEl.id, targetSlideIdx: viewIndex, sourceOv, targetOv });
-        return;
-      }
-    }
-    link(elementId, viewIndex, targetEl.id, 'auto');
+    usePresentationStore.getState().linkElements(elementId, viewIndex, targetEl.id);
     onClose();
   }, [sourceElement, elementId, viewIndex, onClose]);
 
-  // Resolve the chooser: keep the picked side's recording, discard the other.
-  const finishWithKeep = useCallback((keep: 'source' | 'target') => {
-    if (!conflict) return;
-    usePresentationStore.getState().linkElements(
-      elementId, conflict.targetSlideIdx, conflict.targetId, keep);
-    setConflict(null);
-    onClose();
-  }, [conflict, elementId, onClose]);
-
   if (!sourceElement) { onClose(); return null; }
-
-  // The "which recording to keep?" chooser, shown only on a real conflict.
-  if (conflict) {
-    const srcSlideNo = currentSlideIndex + 1;
-    const tgtSlideNo = conflict.targetSlideIdx + 1;
-    return (
-      <div className="link-overlay" onClick={() => setConflict(null)}>
-        <div className="link-overlay-content" onClick={(e) => e.stopPropagation()}>
-          <div className="link-overlay-header">
-            <span>Both notebooks have a recording — keep which one? The other is discarded.</span>
-            <button className="link-overlay-close" onClick={() => setConflict(null)}>Cancel</button>
-          </div>
-          <div className="overlay-conflict-choices">
-            <button className="overlay-conflict-card" onClick={() => finishWithKeep('source')}>
-              <strong>This slide (slide {srcSlideNo})</strong>
-              <span>{summarizeOverlay(conflict.sourceOv)}</span>
-              <em>Keep this recording</em>
-            </button>
-            <button className="overlay-conflict-card" onClick={() => finishWithKeep('target')}>
-              <strong>Linked slide (slide {tgtSlideNo})</strong>
-              <span>{summarizeOverlay(conflict.targetOv)}</span>
-              <em>Keep this recording</em>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Build the stack of slides to show (exclude current)
   const otherSlides = presentation.slides

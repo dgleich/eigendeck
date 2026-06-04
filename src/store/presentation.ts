@@ -10,7 +10,7 @@ import {
 import {
   IDENTITY_KEYS, freeDelta, resyncDelta, unlinkDelta, relinkDelta, linkPairDeltas,
 } from '../lib/syncLink';
-import { runFreeHook, runResyncHook, runMergeHook } from '../lib/elementLifecycle';
+import { runFreeHook, runResyncHook } from '../lib/elementLifecycle';
 
 export type SelectedObject =
   | { type: 'slide' }
@@ -65,14 +65,11 @@ interface PresentationState {
   unlinkElement: (elementId: string) => void;
   /** Re-link a previously-unlinked element. */
   relinkElement: (elementId: string) => void;
-  /** Link a source element (current slide) to a target on another slide,
-   *  giving both a shared link+sync group (one undo step). `keep` chooses which
-   *  side's type-specific state — e.g. a notebook recording — survives the
-   *  merge: 'auto' by content, or an explicit 'source'/'target'. */
-  linkElements: (
-    sourceId: string, targetSlideIndex: number, targetId: string,
-    keep?: 'auto' | 'source' | 'target',
-  ) => void;
+  /** Establish an ANIMATION link (linkId) between a source element on the
+   *  current slide and a target on another slide. Non-destructive: sets a
+   *  shared linkId on both, leaves syncId/content/position alone. One undo
+   *  step. Does NOT sync/merge — that's a separate, destructive operation. */
+  linkElements: (sourceId: string, targetSlideIndex: number, targetId: string) => void;
 
   // Selection
   selectObject: (obj: SelectedObject) => void;
@@ -488,20 +485,21 @@ export const usePresentationStore = create<PresentationState>()(
         const delta = relinkDelta(el);
         if (Object.keys(delta).length) get().updateElement(elementId, delta);
       },
-      linkElements: (sourceId, targetSlideIndex, targetId, keep = 'auto') => {
+      linkElements: (sourceId, targetSlideIndex, targetId) => {
         const st = get();
         const source = st.presentation.slides[st.currentSlideIndex]
           ?.elements.find((e) => e.id === sourceId);
         const target = st.presentation.slides[targetSlideIndex]
           ?.elements.find((e) => e.id === targetId);
         if (!source || !target) return;
-        const { sharedSyncId, delta } = linkPairDeltas(target);
-        // Reconcile type-specific state (e.g. notebook recordings) before the
-        // flip. void-fired; caches seed synchronously where it matters.
-        void runMergeHook({ source, target, sharedSyncId, keep });
-        // Both sides get the SAME symmetric delta (the #30 fix), applied in one
-        // set() so it's a single undo step — and via set(), not setPresentation,
-        // so undo history survives (linking used to be un-undoable).
+        // ANIMATION link only — NON-destructive. Both sides get a shared linkId
+        // (the #30-symmetric delta); syncId is left untouched, so the elements
+        // stay separate (own position/content/recording) and the presenter
+        // animates between them. "L" must NOT sync/merge — that's destructive
+        // and only the duplicate junction model produces a clean single entry.
+        const { delta } = linkPairDeltas(target);
+        // One set() = one undo step; via set() (not setPresentation) so undo
+        // history survives.
         const csi = st.currentSlideIndex;
         set((state) => ({
           presentation: {
