@@ -132,6 +132,30 @@ present    →  advancing slide animates A → A' (shared linkId L)
 
 ---
 
+## What each relationship is FOR
+
+- **Linked elements exist only for animation.** A `linkId` pairs elements across
+  slides so the presenter tweens between their (different) positions. Nothing
+  else — no shared content, no shared position.
+- **Synced elements exist to unify information across slides.** A `syncId` makes
+  several slides show the *same* element; edit it once, every instance updates.
+
+## How elements join a group (duplicate · copy/paste · promote)
+
+| Action | Result |
+| --- | --- |
+| **Duplicate slide / Build slide** | Elements become **synced** (mirrored) and carry a `linkId` (animation-capable). One entry in storage (row + junctions). |
+| **"L" / Time-Machine button** | An **animation link** only (shared `linkId`). Non-destructive; never syncs. |
+| **Copy an element, then paste** | The paste is **linked** (animation) to the element it was copied from — *unless* the source is part of a **sync group**, in which case the paste **joins that sync group** (becomes another synced instance, not just a link). |
+| **Promote (greyed "S" badge on a linked element)** | Upgrades an animation link → a **sync**: the clicked element is the master; linked instances become the same single entry (shared id/content/position). DESTRUCTIVE, confirmed. `promoteToSync` (`presentation.ts`). |
+
+> **Copy/paste status:** the paste-links-to-source (and copy-within-a-sync-group
+> joins the group) rule is the **intended** behavior. The current Cmd+D /
+> paste path detaches the copy fully (`detachDelta`, `App.tsx`) — this is the
+> spot to change when implementing the rule.
+
+---
+
 ## Field reference
 
 | Field      | Lives where      | Meaning                                                                 |
