@@ -501,6 +501,54 @@ describe('presentation store', () => {
       expect(st.presentation.slides[0].elements[0].position).toMatchObject({ x: 125, y: 135 });
     });
 
+    it('promoteToSync upgrades an animation link to ONE synced entry (master wins)', () => {
+      const store = usePresentationStore.getState();
+      usePresentationStore.setState({
+        presentation: {
+          ...createDefaultPresentation(),
+          slides: [
+            { id: 's0', elements: [{ id: 'M', type: 'text', preset: 'title', html: 'Master',
+              linkId: 'L', position: { x: 10, y: 10, width: 100, height: 50 } } as any] } as any,
+            { id: 's1', elements: [{ id: 'P', type: 'text', preset: 'title', html: 'Partner',
+              linkId: 'L', position: { x: 500, y: 400, width: 100, height: 50 } } as any] } as any,
+          ],
+        },
+        currentSlideIndex: 0,
+      });
+      store.promoteToSync('M');
+      const st = usePresentationStore.getState();
+      const m = st.presentation.slides[0].elements[0];
+      const p = st.presentation.slides[1].elements[0];
+      // Collapsed to one entry: the partner BECOMES the master (same id) so save
+      // writes one row + junctions; both carry syncId = the master's id.
+      expect(m.syncId).toBe('M');
+      expect(p.id).toBe('M');
+      expect(p.syncId).toBe('M');
+      // Destructive: the partner adopts the master's content + position.
+      expect((p as any).html).toBe('Master');
+      expect(p.position).toMatchObject({ x: 10, y: 10 });
+      // linkId preserved — still animatable if later freed.
+      expect(m.linkId).toBe('L');
+      expect(p.linkId).toBe('L');
+    });
+
+    it('promoteToSync is a no-op on an already-synced or unlinked element', () => {
+      const store = usePresentationStore.getState();
+      usePresentationStore.setState({
+        presentation: {
+          ...createDefaultPresentation(),
+          slides: [
+            { id: 's0', elements: [{ id: 'X', type: 'text', preset: 'body', html: 'x',
+              position: { x: 0, y: 0, width: 1, height: 1 } } as any] } as any,
+          ],
+        },
+        currentSlideIndex: 0,
+      });
+      store.promoteToSync('X');   // no linkId → nothing happens
+      const x = usePresentationStore.getState().presentation.slides[0].elements[0];
+      expect(x.syncId).toBeUndefined();
+    });
+
     it('freeElement is a no-op on an un-synced element', () => {
       const store = usePresentationStore.getState();
       const id = usePresentationStore.getState().presentation.slides[0].elements[0].id;

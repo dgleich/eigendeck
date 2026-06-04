@@ -914,23 +914,34 @@ export function DraggableBox({
       {/* Link badges — shown when selected */}
       {isSelected && (
         <div className="el-link-badges" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-          {/* Sync badge: green = active, grey = inactive (click to toggle) */}
-          {(syncId || _syncId) && (() => {
-            // Check if the sync partner still exists somewhere in the presentation
-            const sid = syncId || _syncId;
+          {/* Sync badge. Green = synced (click to free). Grey = either freed
+              (click to re-sync) OR animation-linked-but-not-synced (click to
+              PROMOTE link → sync, destructive). Hidden if there's no partner. */}
+          {(syncId || _syncId || linkId) && (() => {
             const slides = usePresentationStore.getState().presentation.slides;
-            const hasPartner = slides.some((s) =>
-              s.elements.some((el) => el.id !== elementId && (el.syncId === sid || (el as any)._syncId === sid))
-            );
-            if (!hasPartner) return null; // Partner deleted — hide badge
+            const sid = syncId || _syncId;
+            // A sync partner (synced/freed group) OR, for the promote case, an
+            // animation-link partner sharing this linkId.
+            const hasPartner = sid
+              ? slides.some((s) => s.elements.some((el) =>
+                  el.id !== elementId && (el.syncId === sid || (el as any)._syncId === sid)))
+              : slides.some((s) => s.elements.some((el) =>
+                  el.id !== elementId && el.linkId === linkId));
+            if (!hasPartner) return null;
+            const promote = !syncId && !_syncId;   // linked, not yet synced
             return (
               <button
                 className={`el-link-badge ${syncId ? 'el-badge-sync' : 'el-badge-off'}`}
-                title={syncId ? 'Synced — click to free position' : 'Position free — click to re-sync'}
+                title={syncId ? 'Synced — click to free position'
+                  : promote ? 'Animation-linked — click to promote to a sync (makes the copies identical; destructive)'
+                  : 'Position free — click to re-sync'}
                 onClick={() => {
                   const store = usePresentationStore.getState();
                   if (syncId) store.freeElement(elementId);
                   else if (_syncId) store.resyncElement(elementId);
+                  else if (confirm('Promote this animation link to a sync?\n\nThe linked copies on other slides will become identical to this one (same position and content), and their separate recordings will be discarded.')) {
+                    store.promoteToSync(elementId);
+                  }
                 }}>
                 S
               </button>

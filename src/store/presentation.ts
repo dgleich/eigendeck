@@ -10,7 +10,7 @@ import {
 import {
   IDENTITY_KEYS, freeDelta, resyncDelta, unlinkDelta, relinkDelta, linkPairDeltas,
 } from '../lib/syncLink';
-import { runFreeHook, runResyncHook } from '../lib/elementLifecycle';
+import { runFreeHook, runResyncHook, runMergeHook } from '../lib/elementLifecycle';
 
 export type SelectedObject =
   | { type: 'slide' }
@@ -70,6 +70,12 @@ interface PresentationState {
    *  shared linkId on both, leaves syncId/content/position alone. One undo
    *  step. Does NOT sync/merge — that's a separate, destructive operation. */
   linkElements: (sourceId: string, targetSlideIndex: number, targetId: string) => void;
+  /** Promote an animation-linked element to a SYNC: the clicked element becomes
+   *  the master, and every linked instance on other slides becomes the SAME
+   *  element (one entry — shared id/content/position), keeping the master's
+   *  recording. DESTRUCTIVE: the partners' separate positions/content/recordings
+   *  are discarded. The opt-in upgrade from link → sync. */
+  promoteToSync: (elementId: string) => void;
 
   // Selection
   selectObject: (obj: SelectedObject) => void;
@@ -515,6 +521,44 @@ export const usePresentationStore = create<PresentationState>()(
               }
               return slide;
             }),
+          },
+          isDirty: true,
+        }));
+      },
+      promoteToSync: (elementId) => {
+        const st = get();
+        const cur = st.presentation.slides[st.currentSlideIndex];
+        const master = cur?.elements.find((e) => e.id === elementId);
+        if (!master || !master.linkId || master.syncId) return;  // only linked, not-yet-synced
+        const linkId = master.linkId;
+        const masterId = master.id;
+        // Reconcile type-specific state: the master wins, each linked partner's
+        // (e.g. notebook recording) is discarded. Reuses the merge hook with
+        // keep='source' (the master). Fire before the flip.
+        for (const slide of st.presentation.slides) {
+          for (const p of slide.elements) {
+            if (p.linkId === linkId && p.id !== masterId) {
+              void runMergeHook({ source: master, target: p, sharedSyncId: masterId, keep: 'source' });
+            }
+          }
+        }
+        // Collapse to ONE entry: the master gets syncId = its own id, and every
+        // linked instance on other slides BECOMES the master (same id, content,
+        // position) so save writes one row + junctions. Destructive: partners'
+        // own position/content are replaced by the master's.
+        set((state) => ({
+          presentation: {
+            ...state.presentation,
+            slides: state.presentation.slides.map((slide) => ({
+              ...slide,
+              elements: slide.elements.map((el) => {
+                if (el.id === masterId) return { ...el, syncId: masterId } as SlideElement;
+                if (el.linkId === linkId) {
+                  return { ...master, syncId: masterId, linkId } as SlideElement;
+                }
+                return el;
+              }),
+            })),
           },
           isDirty: true,
         }));
