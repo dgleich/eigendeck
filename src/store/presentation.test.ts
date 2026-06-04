@@ -431,6 +431,52 @@ describe('presentation store', () => {
       expect((b as any)._linkId).toBeUndefined();
     });
 
+    const twoSlideGroup = (linked: boolean) => ({
+      presentation: {
+        ...createDefaultPresentation(),
+        slides: [
+          { id: 's0', elements: [{ id: 'A', type: 'text', preset: 'body', html: 'orig',
+            syncId: 'g', ...(linked ? { linkId: 'g' } : {}),
+            position: { x: 0, y: 0, width: 1, height: 1 } } as any] } as any,
+          { id: 's1', elements: [{ id: 'B', type: 'text', preset: 'body', html: 'orig',
+            syncId: 'g', ...(linked ? { linkId: 'g' } : {}),
+            position: { x: 100, y: 100, width: 1, height: 1 } } as any] } as any,
+        ],
+      },
+      currentSlideIndex: 0,
+    });
+
+    it('animated (linkId) elements keep independent positions but still sync content (#30)', () => {
+      const store = usePresentationStore.getState();
+      usePresentationStore.setState(twoSlideGroup(true) as any);
+      // Position change must NOT propagate to the linked partner.
+      store.updateElement('A', { position: { x: 50, y: 50, width: 1, height: 1 } } as any);
+      let st = usePresentationStore.getState();
+      expect(st.presentation.slides[0].elements[0].position.x).toBe(50);
+      expect(st.presentation.slides[1].elements[0].position.x).toBe(100);
+      // Content change MUST still propagate.
+      store.updateElement('A', { html: 'edited' } as any);
+      st = usePresentationStore.getState();
+      expect((st.presentation.slides[1].elements[0] as any).html).toBe('edited');
+    });
+
+    it('moveElementsBy does not drag animation-linked partners (#30)', () => {
+      const store = usePresentationStore.getState();
+      usePresentationStore.setState(twoSlideGroup(true) as any);
+      store.moveElementsBy(['A'], 30, 40);
+      const st = usePresentationStore.getState();
+      expect(st.presentation.slides[0].elements[0].position.x).toBe(30);
+      expect(st.presentation.slides[1].elements[0].position.x).toBe(100);  // partner stays
+    });
+
+    it('moveElementsBy DOES drag pure-synced (non-animated) partners', () => {
+      const store = usePresentationStore.getState();
+      usePresentationStore.setState(twoSlideGroup(false) as any);  // syncId, no linkId
+      store.moveElementsBy(['A'], 30, 40);
+      const st = usePresentationStore.getState();
+      expect(st.presentation.slides[1].elements[0].position.x).toBe(130);  // mirror moved
+    });
+
     it('freeElement is a no-op on an un-synced element', () => {
       const store = usePresentationStore.getState();
       const id = usePresentationStore.getState().presentation.slides[0].elements[0].id;
