@@ -1390,6 +1390,11 @@
   opacity: 0.7;
   user-select: none;
   pointer-events: none;
+  /* Counter-scale so the badge stays a fixed on-screen size at any canvas
+     zoom (#67), anchored at the cell's top-right. Fallback 1 = no-op
+     outside the editor (e.g. present mode, where the var isn't set). */
+  transform: scale(calc(1 / var(--canvas-scale, 1)));
+  transform-origin: top right;
 }
 .el-notebook .nb-cell-edited .nb-cell-tag { background: #fef3c7; color: #92400e; }
 .el-notebook .nb-cell-added .nb-cell-tag { background: #ccfbf1; color: #0f766e; }
