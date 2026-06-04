@@ -709,6 +709,13 @@ pub fn db_import_json(json: String) -> Result<(), String> {
             std::collections::HashMap::new();
         let mut inserted_elements: std::collections::HashSet<String> =
             std::collections::HashSet::new();
+        // Re-own map: a synced group collapses to ONE canonical element id, so
+        // any owned asset (notebook overlay) tagged with a now-dead instance
+        // id — or with the group's syncId itself — must follow to the
+        // canonical, else it's unreachable at the element's live key
+        // (`syncId ?? id` = canonical). See synced_overlay_owner_must_be_canonical.
+        let mut owner_remap: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
 
         if let Some(slides) = presentation.get("slides").and_then(|v| v.as_array()) {
             for (i, slide) in slides.iter().enumerate() {
@@ -746,7 +753,12 @@ pub fn db_import_json(json: String) -> Result<(), String> {
                         // Handle synced elements
                         if let Some(sid) = sync_id {
                             if let Some(existing_id) = sync_map.get(sid) {
-                                // Already inserted — just add junction row
+                                // Already inserted — just add junction row. This
+                                // instance's id dies; an overlay owned by it
+                                // must re-own to the canonical.
+                                if element_id != *existing_id {
+                                    owner_remap.insert(element_id.clone(), existing_id.clone());
+                                }
                                 tx.execute(
                                     "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
                                     params![slide_id, existing_id, z as i32, &ts],
@@ -754,6 +766,12 @@ pub fn db_import_json(json: String) -> Result<(), String> {
                                 continue;
                             }
                             sync_map.insert(sid.to_string(), element_id.clone());
+                            // An overlay tagged with the group's syncId (e.g. a
+                            // freshly-linked pair before its first save) also
+                            // belongs to the canonical instance.
+                            if sid != element_id {
+                                owner_remap.insert(sid.to_string(), element_id.clone());
+                            }
                         }
 
                         if !inserted_elements.contains(&element_id) {
@@ -798,6 +816,18 @@ pub fn db_import_json(json: String) -> Result<(), String> {
         if let Some(assets) = presentation.get("assets").and_then(|v| v.as_array()) {
             restore_assets(&tx, assets, &ts)
                 .map_err(|e| rusqlite::Error::ToSqlConversionFailure(e.into()))?;
+        }
+
+        // Re-own overlays from dead instance ids / syncIds to the canonical
+        // element, so a synced notebook's recording stays reachable at its
+        // live key after the syncId-group collapse. Runs whether or not the
+        // import carried assets[] — it also heals decks saved before this fix.
+        for (from, to) in &owner_remap {
+            tx.execute(
+                "UPDATE assets SET owner_element_id = ?1 \
+                 WHERE owner_element_id = ?2 AND valid_to IS NULL",
+                params![to, from],
+            )?;
         }
 
         tx.commit()?;
@@ -4109,6 +4139,103 @@ mod tests {
         assert_eq!(restored, bytes, "asset bytes must round-trip exactly");
         assert_eq!(mime, "image/png");
 
+        teardown_global_db();
+    }
+
+    /// GROUND TRUTH for the synced-notebook overlay reopen leg.
+    ///
+    /// A linked/synced notebook is ONE element row + N slide junctions. On
+    /// export, el_count>1 re-derives `syncId` = the canonical element_id
+    /// (storage.rs ~1011), and the overlay is looked up in-app by
+    /// `syncId ?? id` = that canonical id. So the overlay survives a
+    /// save→reopen ONLY if its `owner_element_id` equals the canonical
+    /// (first) instance's id. This test pins both halves of that invariant:
+    ///   (a) owner == canonical  → survives reopen.
+    ///   (b) owner == the *other* instance's id → HEALED on import: the
+    ///       re-own map (db_import_json) moves it to the canonical so it stays
+    ///       reachable. Without that heal it would orphan — the data-loss trap
+    ///       that link-reconcile / clone-on-unsync depend on this fix to avoid.
+    #[test]
+    fn synced_overlay_owner_must_be_canonical() {
+        use base64::Engine;
+        // Two notebook instances sharing a syncId — what LinkOverlay produces.
+        let deck = json!({
+            "title": "Synced", "slides": [
+                { "id": "s1", "elements": [
+                    { "id": "nbA", "type": "notebook", "assetId": "ipy",
+                      "syncId": "sy", "position": {"x":0,"y":0} } ]},
+                { "id": "s2", "elements": [
+                    { "id": "nbB", "type": "notebook", "assetId": "ipy",
+                      "syncId": "sy", "position": {"x":0,"y":0} } ]}
+            ]
+        });
+        let ov = br#"{"version":1,"cellEdits":{"0":"x=999"}}"#.to_vec();
+
+        // ---- (a) owner == canonical (first instance "nbA") survives ----
+        setup_global_db();
+        db_import_json(deck.to_string()).unwrap();
+        // Canonical is the first instance; sanity-check the dedup happened.
+        let canonical: String = with_db(|c| {
+            let n: i64 = c.query_row(
+                "SELECT COUNT(*) FROM elements WHERE valid_to IS NULL", [], |r| r.get(0))?;
+            assert_eq!(n, 1, "synced pair must collapse to one element row");
+            Ok(c.query_row(
+                "SELECT id FROM elements WHERE valid_to IS NULL", [], |r| r.get(0))?)
+        }).unwrap();
+        assert_eq!(canonical, "nbA", "canonical is the first instance");
+
+        with_db(|c| {
+            let now = timestamp();
+            c.execute(
+                "INSERT INTO assets (asset_id, data, mime_type, size, hash, owner_element_id, valid_from)
+                 VALUES ('ov', ?1, 'application/x-eigendeck-overlay+json', ?2, 'h', 'nbA', ?3)",
+                params![&ov, ov.len() as i64, &now])?;
+            Ok(())
+        }).unwrap();
+
+        let portable = db_export_json_with_assets().unwrap();
+        teardown_global_db();
+        setup_global_db();
+        db_import_json(portable).unwrap();
+        let found = db_get_owned_asset_id("nbA".into()).unwrap();
+        assert!(found.is_some(),
+            "overlay owned by the canonical id MUST survive save→reopen");
+        let data: Vec<u8> = with_db(|c| Ok(c.query_row(
+            "SELECT data FROM assets WHERE asset_id = ?1 AND valid_to IS NULL",
+            params![found.unwrap()], |r| r.get(0))?)).unwrap();
+        assert_eq!(data, ov, "overlay bytes round-trip exactly");
+        teardown_global_db();
+
+        // ---- (b) owner == the group's syncId is HEALED on import ----
+        // The fresh-link-before-save state: two distinct instances sharing a
+        // syncId, with the recording owned by that syncId. A single import of
+        // such a self-contained deck must re-own the overlay to the canonical.
+        let ov_b64 = base64::engine::general_purpose::STANDARD.encode(&ov);
+        let deck_with_ov = json!({
+            "title": "Synced", "slides": [
+                { "id": "s1", "elements": [
+                    { "id": "nbA", "type": "notebook", "assetId": "ipy",
+                      "syncId": "sy", "position": {"x":0,"y":0} } ]},
+                { "id": "s2", "elements": [
+                    { "id": "nbB", "type": "notebook", "assetId": "ipy",
+                      "syncId": "sy", "position": {"x":0,"y":0} } ]}
+            ],
+            "assets": [
+                { "assetId": "ovb", "mime": "application/x-eigendeck-overlay+json",
+                  "ownerElementId": "sy", "data": ov_b64 }
+            ]
+        });
+        setup_global_db();
+        db_import_json(deck_with_ov.to_string()).unwrap();
+        let healed = db_get_owned_asset_id("nbA".into()).unwrap();
+        assert!(healed.is_some(),
+            "overlay owned by the group's syncId must be re-owned to the canonical");
+        let data2: Vec<u8> = with_db(|c| Ok(c.query_row(
+            "SELECT data FROM assets WHERE asset_id = ?1 AND valid_to IS NULL",
+            params![healed.unwrap()], |r| r.get(0))?)).unwrap();
+        assert_eq!(data2, ov, "healed overlay bytes are intact");
+        assert!(db_get_owned_asset_id("sy".into()).unwrap().is_none(),
+            "nothing left owned by the bare syncId after the heal");
         teardown_global_db();
     }
 
