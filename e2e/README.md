@@ -81,4 +81,10 @@ round-trip is drivable.
   # E2E_DECK=/tmp/rt-ab.eigendeck E2E_MODE=linkpromote  (or 'a' deck + duplicate)
   ```
 
+- **notebook promote round-trip** — `nb-promote-reload.mjs`: two notebooks with
+  their own recordings (the link-conflict fixture, nb1=MARK_A / nb2=MARK_B) →
+  link → promote nb1 → save → QUIT the app → relaunch → assert the master's
+  recording (MARK_A) survived, MARK_B discarded, one synced entry. The combined
+  promote + notebook-overlay + close/reopen check.
+
 See `../.claude/notes/notebook-edge-cases-findings.md` for findings.
