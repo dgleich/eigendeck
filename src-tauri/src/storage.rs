@@ -716,6 +716,14 @@ pub fn db_import_json(json: String) -> Result<(), String> {
         // (`syncId ?? id` = canonical). See synced_overlay_owner_must_be_canonical.
         let mut owner_remap: std::collections::HashMap<String, String> =
             std::collections::HashMap::new();
+        // For each syncId: the canonical element's cleaned data (to detect
+        // animation frames — same syncId but DIFFERENT data/position, which
+        // must stay separate elements sharing a linkId, not be deduped — #32),
+        // and the linkId chosen for such a divergent group.
+        let mut sync_data: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
+        let mut sync_link: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
 
         if let Some(slides) = presentation.get("slides").and_then(|v| v.as_array()) {
             for (i, slide) in slides.iter().enumerate() {
@@ -748,53 +756,91 @@ pub fn db_import_json(json: String) -> Result<(), String> {
                         let link_id = el.get("linkId").and_then(|v| v.as_str());
                         let asset_id = el.get("assetId").and_then(|v| v.as_str());
 
-                        let element_id = el_id.clone();
+                        let mut element_id = el_id.clone();
+
+                        // Clean the data: strip the JSON-side copies of fields
+                        // stored as their own columns, plus src/demoSrc (asset
+                        // binding is purely via asset_id; db_export reassembles
+                        // linkId/assetId). Computed up front: also used to detect
+                        // animation frames within a syncId group.
+                        let mut data = el.clone();
+                        if let Some(obj) = data.as_object_mut() {
+                            obj.remove("syncId");
+                            obj.remove("_syncId");
+                            obj.remove("_linkId");
+                            obj.remove("linkId");
+                            obj.remove("assetId");
+                            obj.remove("src");
+                            obj.remove("demoSrc");
+                        }
+                        let data_str = data.to_string();
+                        // Comparison key for syncId-group dedup: the cleaned data
+                        // WITHOUT the per-instance id, so true-sync copies (same
+                        // content, different id) compare equal while animation
+                        // frames (different position) compare different.
+                        let cmp_str = {
+                            let mut d = data.clone();
+                            if let Some(o) = d.as_object_mut() { o.remove("id"); }
+                            d.to_string()
+                        };
+                        // Effective linkId for the row (may be overridden below
+                        // when this is an animation frame of a syncId group).
+                        let mut row_link_id: Option<String> = link_id.map(|s| s.to_string());
 
                         // Handle synced elements
                         if let Some(sid) = sync_id {
-                            if let Some(existing_id) = sync_map.get(sid) {
-                                // Already inserted — just add junction row. This
-                                // instance's id dies; an overlay owned by it
-                                // must re-own to the canonical.
-                                if element_id != *existing_id {
-                                    owner_remap.insert(element_id.clone(), existing_id.clone());
+                            if let Some(existing_id) = sync_map.get(sid).cloned() {
+                                if sync_data.get(sid).map(|d| d.as_str()) == Some(cmp_str.as_str()) {
+                                    // TRUE SYNC: identical data → one element row,
+                                    // extra junction. This instance's id dies, so
+                                    // an overlay owned by it re-owns to canonical.
+                                    if element_id != existing_id {
+                                        owner_remap.insert(element_id.clone(), existing_id.clone());
+                                    }
+                                    tx.execute(
+                                        "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
+                                        params![slide_id, existing_id, z as i32, &ts],
+                                    )?;
+                                    continue;
                                 }
+                                // ANIMATION FRAME: same syncId, DIFFERENT data —
+                                // keep it a SEPARATE element so its position is
+                                // preserved, linked to the canonical via a shared
+                                // linkId so presenter mode animates between them
+                                // (#32). Don't dedupe.
+                                let lid = sync_link.entry(sid.to_string()).or_insert_with(|| {
+                                    row_link_id.clone().unwrap_or_else(|| sid.to_string())
+                                }).clone();
+                                // Give the canonical the shared linkId too (only
+                                // if it lacked one), so the pair animates.
                                 tx.execute(
-                                    "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
-                                    params![slide_id, existing_id, z as i32, &ts],
+                                    "UPDATE elements SET link_id = ?1 \
+                                     WHERE id = ?2 AND valid_to IS NULL AND link_id IS NULL",
+                                    params![&lid, &existing_id],
                                 )?;
-                                continue;
-                            }
-                            sync_map.insert(sid.to_string(), element_id.clone());
-                            // An overlay tagged with the group's syncId (e.g. a
-                            // freshly-linked pair before its first save) also
-                            // belongs to the canonical instance.
-                            if sid != element_id {
-                                owner_remap.insert(sid.to_string(), element_id.clone());
+                                row_link_id = Some(lid);
+                                // Frames normally have distinct ids; if a corrupt
+                                // deck reuses the canonical id for a differing
+                                // frame, mint a unique id so the insert succeeds.
+                                if element_id == existing_id || inserted_elements.contains(&element_id) {
+                                    element_id = format!("{el_id}-anim{z}");
+                                }
+                            } else {
+                                sync_map.insert(sid.to_string(), element_id.clone());
+                                sync_data.insert(sid.to_string(), cmp_str.clone());
+                                // An overlay tagged with the group's syncId (the
+                                // freshly-linked-before-save state) belongs to the
+                                // canonical instance.
+                                if sid != element_id {
+                                    owner_remap.insert(sid.to_string(), element_id.clone());
+                                }
                             }
                         }
 
                         if !inserted_elements.contains(&element_id) {
-                            // Clean the data: strip the JSON-side copies of
-                            // fields that are stored as their own columns,
-                            // plus src/demoSrc (phase-4: dropped from the
-                            // element type — asset binding is purely via
-                            // asset_id; path comes from asset.path).
-                            // db_export_json reassembles linkId/assetId.
-                            let mut data = el.clone();
-                            if let Some(obj) = data.as_object_mut() {
-                                obj.remove("syncId");
-                                obj.remove("_syncId");
-                                obj.remove("_linkId");
-                                obj.remove("linkId");
-                                obj.remove("assetId");
-                                obj.remove("src");
-                                obj.remove("demoSrc");
-                            }
-
                             tx.execute(
                                 "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
-                                params![&element_id, el_type, data.to_string(), link_id, asset_id, &ts],
+                                params![&element_id, el_type, data_str, row_link_id, asset_id, &ts],
                             )?;
                             inserted_elements.insert(element_id.clone());
                         }
@@ -3227,6 +3273,67 @@ mod tests {
         assert!(s1_els[0].get("syncId").is_some());
         assert!(s2_els[0].get("syncId").is_some());
 
+        teardown_global_db();
+    }
+
+    /// #32: elements sharing a syncId but with DIFFERENT positions are
+    /// animation frames — they must stay SEPARATE element rows (positions
+    /// preserved) linked by a shared linkId, NOT be deduped into one.
+    #[test]
+    fn animation_frames_stay_separate_with_shared_linkid() {
+        setup_global_db();
+        db_import_json(json!({
+            "title": "Anim", "slides": [
+                { "id": "s1", "elements": [
+                    { "id": "p1", "type": "demo-piece", "syncId": "g", "linkId": "g",
+                      "position": { "x": 491, "y": 495, "width": 100, "height": 100 } } ]},
+                { "id": "s2", "elements": [
+                    { "id": "p2", "type": "demo-piece", "syncId": "g", "linkId": "g",
+                      "position": { "x": 39, "y": 486, "width": 100, "height": 100 } } ]}
+            ]
+        }).to_string()).unwrap();
+
+        with_db(|c| {
+            let n: i64 = c.query_row(
+                "SELECT COUNT(*) FROM elements WHERE valid_to IS NULL", [], |r| r.get(0))?;
+            assert_eq!(n, 2, "differing positions must stay separate elements");
+            let linked: i64 = c.query_row(
+                "SELECT COUNT(*) FROM elements WHERE valid_to IS NULL AND link_id = 'g'",
+                [], |r| r.get(0))?;
+            assert_eq!(linked, 2, "both frames share the linkId for animation");
+            Ok(())
+        }).unwrap();
+
+        // Both positions survive the round-trip.
+        let out: Value = serde_json::from_str(&db_export_json().unwrap()).unwrap();
+        assert_eq!(out["slides"][0]["elements"][0]["position"]["x"], 491);
+        assert_eq!(out["slides"][1]["elements"][0]["position"]["x"], 39);
+        teardown_global_db();
+    }
+
+    /// #32 backfill: when only the syncId is set (no linkId) and data differs,
+    /// the import gives BOTH frames a shared linkId (= the syncId) so they can
+    /// still animate.
+    #[test]
+    fn animation_frames_backfill_linkid_from_syncid() {
+        setup_global_db();
+        db_import_json(json!({
+            "title": "Anim2", "slides": [
+                { "id": "s1", "elements": [
+                    { "id": "a", "type": "image", "syncId": "grp",
+                      "position": { "x": 0, "y": 0, "width": 1, "height": 1 } } ]},
+                { "id": "s2", "elements": [
+                    { "id": "b", "type": "image", "syncId": "grp",
+                      "position": { "x": 500, "y": 0, "width": 1, "height": 1 } } ]}
+            ]
+        }).to_string()).unwrap();
+        with_db(|c| {
+            let linked: i64 = c.query_row(
+                "SELECT COUNT(*) FROM elements WHERE valid_to IS NULL AND link_id = 'grp'",
+                [], |r| r.get(0))?;
+            assert_eq!(linked, 2, "both frames get the syncId as their shared linkId");
+            Ok(())
+        }).unwrap();
         teardown_global_db();
     }
 
