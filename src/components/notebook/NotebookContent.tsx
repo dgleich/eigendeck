@@ -47,6 +47,22 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
   // Effective editability cascades: element override → global pref → false.
   const editable = element.editable ?? defaultEditable;
 
+  // BUG-2: a notebook that's EFFECTIVELY editable — whether via the per-element
+  // toggle or the global default — must not be file-watched, else a disk reload
+  // clobbers in-deck edits. The toggle already sets auto_reload='off'; this also
+  // covers the default-on case (element.editable left undefined). Editor only,
+  // so we never write during a presentation. One-directional: we suppress when
+  // editable but don't auto-re-enable (per-asset flag can't safely represent
+  // per-element intent — see BUG-3); the explicit toggle still clears it.
+  useEffect(() => {
+    if (mode !== 'editor' || !editable || !element.assetId) return;
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke('db_set_asset_auto_reload', {
+        assetId: element.assetId, value: 'off',
+      }))
+      .catch(() => {});
+  }, [editable, element.assetId, mode]);
+
   // Typography + theme → CSS variables on the frame. (See the detailed
   // notes in the prior revision; unchanged.)
   const proseFont = fontForNotebookProse(slide, config);
