@@ -17,8 +17,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import {
-  Overlay, emptyOverlay, parseOverlay, serializeOverlay, OVERLAY_MIME,
-  AppendedCell,
+  Overlay, emptyOverlay, isOverlayEmpty, parseOverlay, serializeOverlay,
+  OVERLAY_MIME, AppendedCell,
 } from './notebookOverlay';
 import { CellOutput } from './notebookFormat';
 
@@ -45,6 +45,69 @@ export function clearAllOverlayCache(): void {
 // overlay — they are the SAME thing. That sharing is achieved by keying the
 // overlay on the element's sync identity (syncId ?? id) at the call site
 // (NotebookContent), so no per-duplicate clone is needed.
+//
+// Sync/unsync DO move overlays around, via the plain (non-hook) helpers below
+// — they operate on the same module cache + persist path useOverlay uses, so
+// the change is visible to mounted instances synchronously and durable on save.
+
+/** Read an overlay by its element key — cache first, then DB. Empty if none. */
+export async function loadOverlayFor(key: string): Promise<Overlay> {
+  const cached = overlayCache.get(key);
+  if (cached) return cached;
+  try {
+    const id = await invoke<string | null>('db_get_owned_asset_id', { ownerElementId: key });
+    if (id) {
+      const buf = await invoke<ArrayBuffer>('db_get_asset_by_id', { assetId: id });
+      return parseOverlay(new Uint8Array(buf));
+    }
+  } catch (e) { console.warn('loadOverlayFor failed:', e); }
+  return emptyOverlay();
+}
+
+/** Persist `overlay` as owned by `key` (deterministic asset id, reusing an
+ *  existing owned asset for that key if present) and seed the cache. Empty
+ *  overlays are not persisted (no stray assets). */
+export async function writeOverlayFor(key: string, overlay: Overlay): Promise<void> {
+  overlayCache.set(key, overlay);
+  const bytes = serializeOverlay(overlay);
+  if (isOverlayEmpty(overlay)) return;
+  let id: string | null = null;
+  try {
+    id = await invoke<string | null>('db_get_owned_asset_id', { ownerElementId: key });
+  } catch { id = null; }
+  id = id ?? `overlay-${key}`;
+  try {
+    await invoke('db_store_asset', {
+      path: `overlay:${key}`,
+      data: Array.from(new TextEncoder().encode(bytes)),
+      mimeType: OVERLAY_MIME,
+      externalPath: null, externalMtime: null,
+      assetId: id, autoReload: 'off', ownerElementId: key,
+    });
+  } catch (e) { console.warn('writeOverlayFor failed:', e); }
+}
+
+/** Copy the overlay at `fromKey` into a private overlay owned by `toKey`.
+ *  Used when a synced notebook is freed (unsynced): the freed instance keeps
+ *  its own copy of the recording while the still-synced instances keep the
+ *  original. When `fromKey` is already cached, the cache seed happens before
+ *  the first await, so a caller that fires this immediately before flipping
+ *  syncId sees the clone on the very next render (no empty flash). No-op when
+ *  the source is empty or the keys coincide. */
+export async function cloneOverlay(fromKey: string, toKey: string): Promise<void> {
+  if (!fromKey || !toKey || fromKey === toKey) return;
+  const cached = overlayCache.get(fromKey);
+  if (cached) {
+    if (isOverlayEmpty(cached)) return;
+    const clone: Overlay = structuredClone(cached);
+    overlayCache.set(toKey, clone);          // sync seed, pre-await
+    await writeOverlayFor(toKey, clone);
+    return;
+  }
+  const src = await loadOverlayFor(fromKey);
+  if (isOverlayEmpty(src)) return;
+  await writeOverlayFor(toKey, structuredClone(src));
+}
 
 export interface UseOverlayResult {
   overlay: Overlay;

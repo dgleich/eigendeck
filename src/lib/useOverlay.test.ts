@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { invoke } from '@tauri-apps/api/core';
-import { useOverlay, clearAllOverlayCache } from './useOverlay';
-import { serializeOverlay, emptyOverlay, OVERLAY_MIME, type Overlay } from './notebookOverlay';
+import {
+  useOverlay, clearAllOverlayCache, cloneOverlay, writeOverlayFor, loadOverlayFor,
+} from './useOverlay';
+import {
+  serializeOverlay, emptyOverlay, isOverlayEmpty, OVERLAY_MIME, type Overlay,
+} from './notebookOverlay';
 
 const mockedInvoke = vi.mocked(invoke);
 
@@ -185,6 +189,65 @@ describe('useOverlay flush', () => {
     renderHook(() => useOverlay('el-empty'));
     await act(async () => { await vi.advanceTimersByTimeAsync(900); });
     expect(storeCalls).toHaveLength(0);                   // no empty-overlay asset minted
+  });
+});
+
+describe('cloneOverlay (clone-on-unsync)', () => {
+  it('copies a cached overlay to a private overlay owned by the new key', async () => {
+    const storeCalls = mockInvoke({ ownedId: null });
+    // Prime the source key's cache via a mounted hook (as a synced notebook
+    // would have done).
+    const src = renderHook(() => useOverlay('sync-A'));
+    await waitFor(() => expect(src.result.current.overlay).toEqual(emptyOverlay()));
+    act(() => src.result.current.recordOutput(0, [{ kind: 'stream', name: 'stdout', text: 'rec' }], 3));
+
+    await act(async () => { await cloneOverlay('sync-A', 'freed-B'); });
+
+    // Persisted as owned by the FREED element id, with its own asset id.
+    const write = storeCalls.find((c) => c.ownerElementId === 'freed-B');
+    expect(write).toBeTruthy();
+    expect(write!.assetId).toBe('overlay-freed-B');
+    // A fresh mount at the new key sees the copied recording (cache seeded).
+    const dst = renderHook(() => useOverlay('freed-B'));
+    expect(dst.result.current.overlay.cellOutputs[0]).toHaveLength(1);
+    expect(dst.result.current.overlay.cellCounts[0]).toBe(3);
+  });
+
+  it('is a no-op for an empty source and for from===to', async () => {
+    const storeCalls = mockInvoke({ ownedId: null });
+    const src = renderHook(() => useOverlay('empty-src'));
+    await waitFor(() => expect(src.result.current.overlay).toEqual(emptyOverlay()));
+    await act(async () => { await cloneOverlay('empty-src', 'dst'); });   // empty
+    await act(async () => { await cloneOverlay('same', 'same'); });        // identity
+    expect(storeCalls.filter((c) => c.mimeType === OVERLAY_MIME)).toHaveLength(0);
+  });
+
+  it('the clone diverges from the original (independent copies)', async () => {
+    mockInvoke({ ownedId: null });
+    const src = renderHook(() => useOverlay('div-A'));
+    await waitFor(() => expect(src.result.current.overlay).toEqual(emptyOverlay()));
+    act(() => src.result.current.setEdit(0, 'orig', 'saved'));
+    await act(async () => { await cloneOverlay('div-A', 'div-B'); });
+    // Mutate the clone; the source must not change.
+    const dst = renderHook(() => useOverlay('div-B'));
+    act(() => dst.result.current.setEdit(1, 'only-in-clone', 'saved'));
+    expect(1 in src.result.current.overlay.cellEdits).toBe(false);
+    expect(dst.result.current.overlay.cellEdits[1]).toBe('only-in-clone');
+  });
+
+  it('loadOverlayFor falls back to the DB when not cached', async () => {
+    const ov = emptyOverlay();
+    ov.cellEdits[0] = 'from-db';
+    mockInvoke({ ownedId: 'db-ov', overlay: ov });
+    const loaded = await loadOverlayFor('not-cached');
+    expect(loaded.cellEdits[0]).toBe('from-db');
+  });
+
+  it('writeOverlayFor does not persist an empty overlay', async () => {
+    const storeCalls = mockInvoke({ ownedId: null });
+    await writeOverlayFor('w-empty', emptyOverlay());
+    expect(isOverlayEmpty(emptyOverlay())).toBe(true);
+    expect(storeCalls.filter((c) => c.mimeType === OVERLAY_MIME)).toHaveLength(0);
   });
 });
 

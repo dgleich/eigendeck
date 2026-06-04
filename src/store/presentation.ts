@@ -7,6 +7,7 @@ import {
   createDefaultPresentation,
   createBlankSlide,
 } from '../types/presentation';
+import { cloneOverlay } from '../lib/useOverlay';
 
 export type SelectedObject =
   | { type: 'slide' }
@@ -142,7 +143,7 @@ function debounceUndoSnapshot<F extends (...args: never[]) => void>(fn: F, ms: n
 
 export const usePresentationStore = create<PresentationState>()(
   temporal(
-    (set) => ({
+    (set, get) => ({
       presentation: createSeededPresentation(),
       currentSlideIndex: 0,
       isPresenting: false,
@@ -378,7 +379,21 @@ export const usePresentationStore = create<PresentationState>()(
           }))
         ),
 
-      updateElement: (elementId, changes) =>
+      updateElement: (elementId, changes) => {
+        // Clone-on-unsync: freeing a synced NOTEBOOK (syncId -> undefined)
+        // must leave the freed instance its own copy of the recording — the
+        // still-synced instances keep the shared one. Fire BEFORE the state
+        // flips so the freed element renders its copy on the next paint
+        // (cloneOverlay seeds the module cache synchronously when the source
+        // overlay is already cached, which it is for a mounted notebook).
+        if ('syncId' in changes && (changes as { syncId?: string }).syncId === undefined) {
+          const st = get();
+          const cur = st.presentation.slides[st.currentSlideIndex];
+          const el = cur?.elements.find((e) => e.id === elementId);
+          if (el && el.type === 'notebook' && el.syncId) {
+            void cloneOverlay(el.syncId, elementId);
+          }
+        }
         set((state) => {
           const currentSlide = state.presentation.slides[state.currentSlideIndex];
           const element = currentSlide.elements.find((el) => el.id === elementId);
@@ -423,7 +438,8 @@ export const usePresentationStore = create<PresentationState>()(
               el.id === elementId ? updatedElement : el
             ),
           }));
-        }),
+        });
+      },
 
       deleteElement: (elementId) =>
         set((state) => ({
