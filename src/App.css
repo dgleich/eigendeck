@@ -930,6 +930,48 @@
   font-size: 14px;
 }
 
+/* "Which recording to keep?" chooser shown when linking two notebooks that
+   each hold a different recording. */
+.overlay-conflict-choices {
+  display: flex;
+  gap: 16px;
+  padding: 24px;
+  justify-content: center;
+}
+
+.overlay-conflict-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1;
+  max-width: 280px;
+  padding: 18px;
+  text-align: left;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.overlay-conflict-card:hover {
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.55);
+}
+
+.overlay-conflict-card strong { font-size: 14px; }
+.overlay-conflict-card span { font-size: 12px; opacity: 0.8; }
+.overlay-conflict-card em {
+  margin-top: 4px;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4ade80;
+}
+
 .link-overlay-nav {
   display: flex;
   align-items: center;

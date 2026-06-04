@@ -82,6 +82,19 @@ export function isOverlayEmpty(r: Overlay): boolean {
     && r.appendedCells.length === 0;
 }
 
+/** Human one-line summary of what a recording holds, for the link-reconcile
+ *  chooser ("which recording do you want to keep?"). */
+export function summarizeOverlay(r: Overlay): string {
+  const edits = Object.keys(r.cellEdits).length;
+  const outs = Object.keys(r.cellOutputs).length;
+  const added = r.appendedCells.length;
+  const parts: string[] = [];
+  if (edits) parts.push(`${edits} edited cell${edits > 1 ? 's' : ''}`);
+  if (outs) parts.push(`${outs} recorded output${outs > 1 ? 's' : ''}`);
+  if (added) parts.push(`${added} added cell${added > 1 ? 's' : ''}`);
+  return parts.length ? parts.join(' · ') : 'empty recording';
+}
+
 /** Parse recording-asset bytes. Tolerant: malformed → empty. */
 export function parseOverlay(bytes: Uint8Array | ArrayBuffer | string): Overlay {
   try {

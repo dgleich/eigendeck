@@ -3,10 +3,21 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { invoke } from '@tauri-apps/api/core';
 import {
   useOverlay, clearAllOverlayCache, cloneOverlay, writeOverlayFor, loadOverlayFor,
+  discardOverlay, applyLinkOverlay,
 } from './useOverlay';
 import {
   serializeOverlay, emptyOverlay, isOverlayEmpty, OVERLAY_MIME, type Overlay,
 } from './notebookOverlay';
+
+/** An overlay with one edit, for distinguishing recordings in merge tests. */
+function withEdit(edit: string): Overlay {
+  const o = emptyOverlay();
+  o.cellEdits[0] = edit;
+  return o;
+}
+const closedKeys = () => mockedInvoke.mock.calls
+  .filter(([cmd]) => cmd === 'db_close_owned_overlay')
+  .map(([, args]) => (args as { ownerElementId: string }).ownerElementId);
 
 const mockedInvoke = vi.mocked(invoke);
 
@@ -248,6 +259,65 @@ describe('cloneOverlay (clone-on-unsync)', () => {
     await writeOverlayFor('w-empty', emptyOverlay());
     expect(isOverlayEmpty(emptyOverlay())).toBe(true);
     expect(storeCalls.filter((c) => c.mimeType === OVERLAY_MIME)).toHaveLength(0);
+  });
+});
+
+describe('applyLinkOverlay (link-reconcile)', () => {
+  it('keeps the chosen recording under the new key and discards both old keys', async () => {
+    const storeCalls = mockInvoke({ ownedId: null });
+    await writeOverlayFor('L-src', withEdit('SRC'));
+    await writeOverlayFor('L-tgt', withEdit('TGT'));
+
+    await applyLinkOverlay({ sourceKey: 'L-src', targetKey: 'L-tgt', newKey: 'L-new' }, 'L-src');
+
+    // Winner installed under the new shared key.
+    const win = storeCalls.find((c) => c.ownerElementId === 'L-new');
+    expect(win).toBeTruthy();
+    // Both pre-merge keys discarded so nothing lingers / gets revived.
+    expect(closedKeys()).toEqual(expect.arrayContaining(['L-src', 'L-tgt']));
+    // A fresh mount at the new key shows the SOURCE recording, not the target's.
+    const merged = renderHook(() => useOverlay('L-new'));
+    expect(merged.result.current.overlay.cellEdits[0]).toBe('SRC');
+  });
+
+  it('keeps the target recording when the target is chosen', async () => {
+    mockInvoke({ ownedId: null });
+    await writeOverlayFor('K-src', withEdit('SRC'));
+    await writeOverlayFor('K-tgt', withEdit('TGT'));
+    await applyLinkOverlay({ sourceKey: 'K-src', targetKey: 'K-tgt', newKey: 'K-new' }, 'K-tgt');
+    const merged = renderHook(() => useOverlay('K-new'));
+    expect(merged.result.current.overlay.cellEdits[0]).toBe('TGT');
+  });
+
+  it('with no surviving recording discards source, target, and the new key', async () => {
+    mockInvoke({ ownedId: null });
+    await applyLinkOverlay({ sourceKey: 'N-src', targetKey: 'N-tgt', newKey: 'N-new' }, null);
+    expect(closedKeys()).toEqual(expect.arrayContaining(['N-src', 'N-tgt', 'N-new']));
+  });
+
+  it('does not discard the new key when it equals a surviving pre-merge key', async () => {
+    mockInvoke({ ownedId: null });
+    await writeOverlayFor('T-tgt', withEdit('TGT'));
+    // Target already synced under what becomes the shared key (newKey == targetKey).
+    await applyLinkOverlay({ sourceKey: 'T-src', targetKey: 'T-tgt', newKey: 'T-tgt' }, 'T-tgt');
+    // Only the source key is closed; the surviving target/new key is not.
+    expect(closedKeys()).toContain('T-src');
+    expect(closedKeys()).not.toContain('T-tgt');
+    const merged = renderHook(() => useOverlay('T-tgt'));
+    expect(merged.result.current.overlay.cellEdits[0]).toBe('TGT');
+  });
+});
+
+describe('discardOverlay', () => {
+  it('soft-closes the owned overlay and clears the cache', async () => {
+    mockInvoke({ ownedId: null });
+    await writeOverlayFor('D-1', withEdit('X'));
+    await discardOverlay('D-1');
+    expect(closedKeys()).toContain('D-1');
+    // Cache cleared: a fresh mount no longer sees the recording (load returns
+    // null from the mocked DB).
+    const after = renderHook(() => useOverlay('D-1'));
+    await waitFor(() => expect(after.result.current.overlay).toEqual(emptyOverlay()));
   });
 });
 

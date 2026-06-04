@@ -2180,6 +2180,24 @@ pub fn db_get_owned_asset_id(owner_element_id: String) -> Result<Option<String>,
     })
 }
 
+/// Soft-close every CURRENT overlay owned by `owner_element_id` (set
+/// valid_to). Used by link-reconcile to discard the losing recording when two
+/// notebooks merge under one syncId, so it is neither exported nor revived by
+/// the import re-own map. owner_element_id tags overlays only, so this never
+/// touches .ipynb/image/PDF assets. Returns how many versions were closed.
+#[tauri::command]
+pub fn db_close_owned_overlay(owner_element_id: String) -> Result<usize, String> {
+    with_db(|conn| {
+        let ts = timestamp();
+        let n = conn.execute(
+            "UPDATE assets SET valid_to = ?1 \
+             WHERE owner_element_id = ?2 AND valid_to IS NULL",
+            params![&ts, &owner_element_id],
+        )?;
+        Ok(n)
+    })
+}
+
 /// Read the bytes of a specific HISTORICAL version of an asset, keyed by
 /// (asset_id, valid_from). Used by the AssetSection version-history hover
 /// preview to show what the asset looked like at a given point in time.

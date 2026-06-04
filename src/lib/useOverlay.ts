@@ -109,6 +109,37 @@ export async function cloneOverlay(fromKey: string, toKey: string): Promise<void
   await writeOverlayFor(toKey, structuredClone(src));
 }
 
+/** Soft-close and forget the overlay owned by `key`. After this the recording
+ *  is neither exported nor revived by the import re-own map. */
+export async function discardOverlay(key: string): Promise<void> {
+  overlayCache.delete(key);
+  try {
+    await invoke('db_close_owned_overlay', { ownerElementId: key });
+  } catch (e) { console.warn('discardOverlay failed:', e); }
+}
+
+/** Reconcile recordings when two notebooks merge under one syncId (the Link /
+ *  Time-Machine action). The surviving overlay — the one owned by `keepKey`,
+ *  or none — becomes owned by `newKey` (the shared syncId), and BOTH pre-merge
+ *  keys are discarded so nothing lingers to be revived later. The caller
+ *  decides `keepKey` (auto when 0/1 recordings exist; user-chosen on a real
+ *  conflict). Load the winner BEFORE discarding so its bytes survive. */
+export async function applyLinkOverlay(
+  keys: { sourceKey: string; targetKey: string; newKey: string },
+  keepKey: string | null,
+): Promise<void> {
+  const { sourceKey, targetKey, newKey } = keys;
+  const winner = keepKey ? await loadOverlayFor(keepKey) : null;
+  for (const k of new Set([sourceKey, targetKey])) {
+    if (k !== newKey) await discardOverlay(k);
+  }
+  if (winner && !isOverlayEmpty(winner)) {
+    await writeOverlayFor(newKey, structuredClone(winner));
+  } else {
+    await discardOverlay(newKey);
+  }
+}
+
 export interface UseOverlayResult {
   overlay: Overlay;
   /** Replace a cell's recorded output + execution count (by .ipynb index). */

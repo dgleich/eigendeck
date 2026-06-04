@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
 import type { SlideElement } from '../types/presentation';
+import { loadOverlayFor, applyLinkOverlay } from '../lib/useOverlay';
+import {
+  emptyOverlay, isOverlayEmpty, serializeOverlay, summarizeOverlay, type Overlay,
+} from '../lib/notebookOverlay';
 
 const SLIDE_W = 1920;
 const SLIDE_H = 1080;
@@ -11,12 +15,26 @@ interface Props {
   onClose: () => void;
 }
 
+// A merge held pending the user's "which recording to keep?" choice. Only
+// raised when BOTH sides are notebooks with DIFFERENT non-empty recordings.
+interface PendingMerge {
+  targetEl: SlideElement;
+  sharedLinkId: string;
+  sharedSyncId: string;
+  targetSlideIdx: number;
+  sourceKey: string;
+  targetKey: string;
+  sourceOv: Overlay;
+  targetOv: Overlay;
+}
+
 export function LinkOverlay({ elementId, onClose }: Props) {
   const { presentation, currentSlideIndex } = usePresentationStore();
   const [viewIndex, setViewIndex] = useState(Math.max(0, currentSlideIndex - 1));
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [slideScale, setSlideScale] = useState(0.5);
+  const [conflict, setConflict] = useState<PendingMerge | null>(null);
 
   const currentSlide = presentation.slides[currentSlideIndex];
   const sourceElement = currentSlide?.elements.find((el) => el.id === elementId);
@@ -62,42 +80,103 @@ export function LinkOverlay({ elementId, onClose }: Props) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose, navPrev, navNext]);
 
-  const handleElementClick = useCallback((targetEl: SlideElement) => {
-    if (!sourceElement) return;
-    // Link the source element to the target element
-    const sharedLinkId = targetEl.linkId || targetEl._linkId || crypto.randomUUID();
-    const sharedSyncId = targetEl.syncId || targetEl._syncId || sharedLinkId;
-
-    // Update target element (on the other slide) to have the linkId
-    const targetSlide = presentation.slides[viewIndex];
-    const targetSlideIdx = viewIndex;
-    const store = usePresentationStore.getState();
-
-    // Set linkId on both elements
-    // First update the target on the other slide
+  // Commit the link: both elements get the shared link/sync ids and drop any
+  // remembered freed-group (_syncId/_linkId) since they're now in a live one.
+  const applyLink = useCallback((
+    targetEl: SlideElement, sharedLinkId: string, sharedSyncId: string, targetSlideIdx: number,
+  ) => {
+    const join = (el: SlideElement): SlideElement =>
+      ({ ...el, linkId: sharedLinkId, syncId: sharedSyncId, _linkId: undefined, _syncId: undefined } as SlideElement);
     const slides = [...presentation.slides];
     slides[targetSlideIdx] = {
-      ...targetSlide,
-      elements: targetSlide.elements.map((el) =>
-        el.id === targetEl.id ? { ...el, linkId: sharedLinkId, syncId: sharedSyncId } : el
-      ),
+      ...slides[targetSlideIdx],
+      elements: slides[targetSlideIdx].elements.map((el) => el.id === targetEl.id ? join(el) : el),
     };
-    // Then update the source on the current slide
     slides[currentSlideIndex] = {
       ...slides[currentSlideIndex],
-      elements: slides[currentSlideIndex].elements.map((el) =>
-        el.id === elementId ? { ...el, linkId: sharedLinkId, syncId: sharedSyncId, _linkId: undefined, _syncId: undefined } : el
-      ),
+      elements: slides[currentSlideIndex].elements.map((el) => el.id === elementId ? join(el) : el),
     };
-
-    store.setPresentation({ ...presentation, slides });
+    usePresentationStore.getState().setPresentation({ ...presentation, slides });
     // Mark dirty manually since setPresentation clears it
     usePresentationStore.setState({ isDirty: true, currentSlideIndex });
-
     onClose();
-  }, [sourceElement, elementId, viewIndex, currentSlideIndex, presentation, onClose]);
+  }, [presentation, currentSlideIndex, elementId, onClose]);
+
+  // Move the surviving recording onto the new shared key, then commit the link.
+  const reconcileAndLink = useCallback(async (
+    p: Omit<PendingMerge, 'sourceOv' | 'targetOv'>, keepKey: string | null,
+  ) => {
+    await applyLinkOverlay(
+      { sourceKey: p.sourceKey, targetKey: p.targetKey, newKey: p.sharedSyncId }, keepKey);
+    applyLink(p.targetEl, p.sharedLinkId, p.sharedSyncId, p.targetSlideIdx);
+  }, [applyLink]);
+
+  const handleElementClick = useCallback(async (targetEl: SlideElement) => {
+    if (!sourceElement) return;
+    const sharedLinkId = targetEl.linkId || targetEl._linkId || crypto.randomUUID();
+    const sharedSyncId = targetEl.syncId || targetEl._syncId || sharedLinkId;
+    const targetSlideIdx = viewIndex;
+    // The keys under which each side's recording currently lives.
+    const sourceKey = sourceElement.syncId ?? sourceElement.id;
+    const targetKey = targetEl.syncId ?? targetEl.id;
+
+    // Only notebooks carry recordings — reconcile them so the merged element
+    // keeps exactly one. Non-notebook sides contribute nothing.
+    const sourceOv = sourceElement.type === 'notebook' ? await loadOverlayFor(sourceKey) : emptyOverlay();
+    const targetOv = targetEl.type === 'notebook' ? await loadOverlayFor(targetKey) : emptyOverlay();
+    const sHas = !isOverlayEmpty(sourceOv);
+    const tHas = !isOverlayEmpty(targetOv);
+    const common = { targetEl, sharedLinkId, sharedSyncId, targetSlideIdx, sourceKey, targetKey };
+
+    if (sHas && tHas && serializeOverlay(sourceOv) !== serializeOverlay(targetOv)) {
+      // Two DIFFERENT recordings → can't keep both. Ask which to keep (and
+      // warn that the other is discarded). This is the only warning case.
+      setConflict({ ...common, sourceOv, targetOv });
+      return;
+    }
+    // 0, 1, or identical recordings → no data loss, no prompt: keep whichever
+    // is non-empty (source wins a tie since the contents match).
+    await reconcileAndLink(common, sHas ? sourceKey : (tHas ? targetKey : null));
+  }, [sourceElement, viewIndex, reconcileAndLink]);
+
+  // Resolve the chooser: keep the picked side's recording, discard the other.
+  const finishWithKeep = useCallback((keepKey: string | null) => {
+    if (!conflict) return;
+    const { sourceOv: _s, targetOv: _t, ...rest } = conflict;
+    void _s; void _t;
+    setConflict(null);
+    void reconcileAndLink(rest, keepKey);
+  }, [conflict, reconcileAndLink]);
 
   if (!sourceElement) { onClose(); return null; }
+
+  // The "which recording to keep?" chooser, shown only on a real conflict.
+  if (conflict) {
+    const srcSlideNo = currentSlideIndex + 1;
+    const tgtSlideNo = conflict.targetSlideIdx + 1;
+    return (
+      <div className="link-overlay" onClick={() => setConflict(null)}>
+        <div className="link-overlay-content" onClick={(e) => e.stopPropagation()}>
+          <div className="link-overlay-header">
+            <span>Both notebooks have a recording — keep which one? The other is discarded.</span>
+            <button className="link-overlay-close" onClick={() => setConflict(null)}>Cancel</button>
+          </div>
+          <div className="overlay-conflict-choices">
+            <button className="overlay-conflict-card" onClick={() => finishWithKeep(conflict.sourceKey)}>
+              <strong>This slide (slide {srcSlideNo})</strong>
+              <span>{summarizeOverlay(conflict.sourceOv)}</span>
+              <em>Keep this recording</em>
+            </button>
+            <button className="overlay-conflict-card" onClick={() => finishWithKeep(conflict.targetKey)}>
+              <strong>Linked slide (slide {tgtSlideNo})</strong>
+              <span>{summarizeOverlay(conflict.targetOv)}</span>
+              <em>Keep this recording</em>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Build the stack of slides to show (exclude current)
   const otherSlides = presentation.slides
