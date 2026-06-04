@@ -483,6 +483,7 @@ Used for build animations, step-by-step demos, and linked object transitions.
 ## Future / Planned
 
 ### Linked Objects (cross-slide animation)
+- See `docs/sync-and-link.md` for the settled sync/link model and lifecycle
 - Elements can have a `linkId` shared across slides
 - Duplicate slide within a group links all elements automatically
 - Linked elements in different positions → animate transition
@@ -634,6 +635,7 @@ Replaced JSON directory format with a single `.eigendeck` SQLite file.
 - Sync = one element row, multiple slide_elements rows
 - Editing a synced element is O(1) — one write, all slides see it
 - Freeing a synced element = duplicate the element row, update the junction
+- See `docs/sync-and-link.md` for the authoritative sync vs. link semantics (position is governed by `syncId`; `linkId` is animation only)
 
 **Incremental write-through (not full reimport):**
 - Zustand is the interaction layer (fast, synchronous for UI)
