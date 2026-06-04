@@ -787,15 +787,15 @@
 
 .slide-element .el-delete-btn {
   position: absolute;
-  top: -28px;
-  right: -28px;
-  width: 40px;
-  height: 40px;
+  top: -14px;
+  right: -14px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  border: 3px solid #fff;
+  border: 2px solid #fff;
   background: #ef4444;
   color: #fff;
-  font-size: 20px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
@@ -806,6 +806,10 @@
   z-index: 11;
   pointer-events: all;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  /* Authoring chrome → fixed on-screen size at any canvas zoom (#67).
+     Counter-scales the canvas transform; fallback 1 = no-op (present mode). */
+  transform: scale(calc(1 / var(--canvas-scale, 1)));
+  transform-origin: center;
 }
 
 .slide-element:hover .el-delete-btn {
