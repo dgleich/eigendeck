@@ -507,14 +507,22 @@ function App() {
 
   // Initialize: open in-memory DB, sync recent menu, restore window position
   useEffect(() => {
-    import('@tauri-apps/api/core').then(({ invoke }) => {
+    import('@tauri-apps/api/core').then(async ({ invoke }) => {
       // db_open_memory is a no-op when a DB is already open, so it's
       // safe even if a file was opened first. Log on actual failure
       // (was previously swallowed) — silent failure here causes a
       // confusing "No database open" later when saveProject runs.
-      invoke('db_open_memory').catch((e) => {
+      await invoke('db_open_memory').catch((e) => {
         console.error('[boot] db_open_memory failed:', e);
       });
+      // If the app was launched by double-clicking / "open with" a
+      // .eigendeck (Linux/Windows arg, or an early macOS Opened event),
+      // open it now. openRecentProject → openSqliteProject tears down the
+      // boot in-memory DB safely first.
+      try {
+        const path = await invoke<string | null>('take_launch_file');
+        if (path) await openRecentProject(path);
+      } catch (e) { console.error('[boot] take_launch_file failed:', e); }
     }).catch((e) => { console.error('[boot] tauri core import failed:', e); });
     syncRecentMenu();
     // Restore saved window position/size
@@ -926,7 +934,17 @@ function App() {
     const unlistenRecent = listen<string>('menu-event-recent', (event) => {
       openRecentProject(event.payload);
     });
-    return () => { unlisten.then((fn) => fn()); unlistenRecent.then((fn) => fn()); };
+    // Warm open: app already running and the OS handed us a file — single
+    // instance (Linux/Win) or RunEvent::Opened (macOS) pushes it here.
+    // Routes through the same safe teardown as Open Recent.
+    const unlistenOpenFile = listen<string>('open-file', (event) => {
+      openRecentProject(event.payload);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+      unlistenRecent.then((fn) => fn());
+      unlistenOpenFile.then((fn) => fn());
+    };
   }, []);
 
   if (isPresenting && multiMonitorPresenting) return <SpeakerMode />;

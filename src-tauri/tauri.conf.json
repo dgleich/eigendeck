@@ -43,6 +43,15 @@
     ],
     "resources": [
       "resources/pdfium/*"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["eigendeck"],
+        "name": "Eigendeck Presentation",
+        "description": "Eigendeck presentation document",
+        "mimeType": "application/x-eigendeck",
+        "role": "Editor"
+      }
     ]
   }
 }

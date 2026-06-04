@@ -16,6 +16,31 @@ static RECENT_PATHS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new
 // CLI export mode: store args for the hidden webview to retrieve
 static CLI_EXPORT_ARGS: Lazy<Mutex<Option<(String, String)>>> = Lazy::new(|| Mutex::new(None));
 
+// A .eigendeck path the app was launched to open (double-click / "open
+// with"). On Linux/Windows the OS passes it as a CLI arg; on macOS it
+// arrives via RunEvent::Opened. Drained once by the frontend on boot via
+// take_launch_file; warm opens (app already running) are pushed straight to
+// the window as an "open-file" event instead.
+static PENDING_OPEN_FILE: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
+
+/// First existing `*.eigendeck` path in `args` (skips argv[0] and flags).
+/// Used to open a deck the OS handed us on double-click / "open with".
+fn first_eigendeck_path(args: &[String]) -> Option<String> {
+    args.iter()
+        .skip(1)
+        .find(|a| !a.starts_with('-')
+            && a.ends_with(".eigendeck")
+            && std::path::Path::new(a).is_file())
+        .cloned()
+}
+
+/// Return (and clear) a .eigendeck path the app was launched to open, if
+/// any. The frontend calls this once on boot and opens the deck.
+#[tauri::command]
+fn take_launch_file() -> Option<String> {
+    PENDING_OPEN_FILE.lock().unwrap().take()
+}
+
 #[tauri::command]
 fn force_quit() {
     let _ = storage::close_db();
@@ -532,6 +557,7 @@ pub fn run() {
             disable_display_mirroring,
             enable_display_mirroring,
             update_recent_menu,
+            take_launch_file,
             storage::db_open,
             storage::db_open_memory,
             storage::db_save_to_file,
@@ -588,6 +614,19 @@ pub fn run() {
             cli_export_args,
             cli_write_and_exit,
         ])
+        // MUST be the first plugin. A second launch (e.g. double-clicking
+        // another .eigendeck while the app is open) forwards its args to THIS
+        // instance and exits, instead of spawning a duplicate process that
+        // would fight over the same SQLite file. We focus the window and push
+        // the file as an "open-file" event for the frontend to open safely.
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.set_focus();
+                if let Some(path) = first_eigendeck_path(&argv) {
+                    let _ = win.emit("open-file", path);
+                }
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -611,6 +650,14 @@ pub fn run() {
                     let _ = main_win.eval("window.location.href = '/export-cli.html'");
                 }
                 return Ok(());
+            }
+
+            // Launched by double-clicking / "open with" a .eigendeck? On
+            // Linux/Windows the OS passes the file as a CLI arg. Stash it for
+            // the frontend to open on boot (take_launch_file). macOS delivers
+            // it via RunEvent::Opened instead (handled in run()).
+            if let Some(path) = first_eigendeck_path(&args) {
+                *PENDING_OPEN_FILE.lock().unwrap() = Some(path);
             }
 
             // Build menu bar (shared function — also used by update_recent_menu)
@@ -667,6 +714,55 @@ pub fn run() {
                 _ => {}
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app_handle, _event| {
+            // macOS delivers double-click / "open with" as an Apple Event
+            // surfaced here (no CLI arg; RunEvent::Opened is macOS-only).
+            // Forward to the running window, or stash if the window isn't up
+            // yet (frontend drains on boot via take_launch_file).
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = _event {
+                let path = urls.iter().find_map(|u| {
+                    u.to_file_path().ok().and_then(|p| {
+                        let s = p.to_string_lossy().into_owned();
+                        s.ends_with(".eigendeck").then_some(s)
+                    })
+                });
+                if let Some(path) = path {
+                    if let Some(win) = _app_handle.get_webview_window("main") {
+                        let _ = win.set_focus();
+                        let _ = win.emit("open-file", path);
+                    } else {
+                        *PENDING_OPEN_FILE.lock().unwrap() = Some(path);
+                    }
+                }
+            }
+        });
+}
+
+#[cfg(test)]
+mod launch_tests {
+    use super::first_eigendeck_path;
+
+    #[test]
+    fn picks_existing_eigendeck_skips_flags_and_binary() {
+        let deck = std::env::temp_dir().join(format!("fe-{}.eigendeck", std::process::id()));
+        std::fs::write(&deck, b"x").unwrap();
+        let d = deck.to_string_lossy().into_owned();
+        // argv[0]=binary, a flag, a NON-existent deck, then the real one.
+        let args = vec![
+            "/usr/bin/eigendeck".to_string(),
+            "--export".to_string(),
+            "/nope/missing.eigendeck".to_string(),
+            d.clone(),
+        ];
+        assert_eq!(first_eigendeck_path(&args), Some(d));
+        // No deck arg -> None (skips argv[0], ignores flags).
+        assert_eq!(
+            first_eigendeck_path(&["bin".to_string(), "--debug".to_string()]),
+            None
+        );
+        let _ = std::fs::remove_file(&deck);
+    }
 }
