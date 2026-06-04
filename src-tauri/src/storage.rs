@@ -5,7 +5,7 @@
 //! Elements own their position. slide_elements is a junction table for sync.
 
 use once_cell::sync::Lazy;
-use rusqlite::{params, Connection, Result as SqlResult};
+use rusqlite::{params, Connection, OptionalExtension, Result as SqlResult};
 use serde_json::Value;
 use std::sync::Mutex;
 
@@ -1186,12 +1186,18 @@ pub fn db_update_element(
     let ts = timestamp();
     with_db(|conn| {
         let tx = conn.unchecked_transaction()?;
-        // Get current type
-        let el_type: String = tx.query_row(
+        // Get current type. A synced element is ONE row referenced by several
+        // slide_elements junctions, but in-session each junction instance keeps
+        // its own element id; only the canonical instance is a real row. The
+        // write-through flush marks EVERY changed instance dirty, so it also
+        // calls this for non-canonical ids that have no row — that's a no-op,
+        // not an error (the canonical write already persisted the shared data).
+        let el_type: Option<String> = tx.query_row(
             "SELECT type FROM elements WHERE id = ?1 AND valid_to IS NULL",
             params![&id],
             |row| row.get(0),
-        )?;
+        ).optional()?;
+        let Some(el_type) = el_type else { return Ok(()); };
         // Close old version
         tx.execute(
             "UPDATE elements SET valid_to = ?1 WHERE id = ?2 AND valid_to IS NULL",
@@ -3273,6 +3279,77 @@ mod tests {
         assert!(s1_els[0].get("syncId").is_some());
         assert!(s2_els[0].get("syncId").is_some());
 
+        teardown_global_db();
+    }
+
+    /// A synced element is ONE row + N junctions, so a single db_update_element
+    /// on that row must surface on EVERY slide that references it — i.e. a
+    /// synced edit/move persists to all instances through the shared row (the
+    /// in-DB counterpart to the JS-side propagation; the JS keeps the live view
+    /// in step, the DB stores it once).
+    #[test]
+    fn synced_element_update_propagates_to_all_slides_via_shared_row() {
+        setup_global_db();
+        // Two slides, one synced element (same data → one row + two junctions).
+        db_import_json(json!({
+            "title": "Sync", "slides": [
+                { "id": "s1", "elements": [
+                    { "id": "t1", "type": "text", "syncId": "g", "html": "Hello",
+                      "position": { "x": 100, "y": 100, "width": 400, "height": 80 } } ]},
+                { "id": "s2", "elements": [
+                    { "id": "t2", "type": "text", "syncId": "g", "html": "Hello",
+                      "position": { "x": 100, "y": 100, "width": 400, "height": 80 } } ]}
+            ]
+        }).to_string()).unwrap();
+
+        // One row; its id is the canonical (first instance) "t1".
+        let canonical: String = with_db(|c| {
+            let n: i64 = c.query_row(
+                "SELECT COUNT(*) FROM elements WHERE valid_to IS NULL", [], |r| r.get(0))?;
+            assert_eq!(n, 1, "synced pair is one row");
+            Ok(c.query_row(
+                "SELECT id FROM elements WHERE valid_to IS NULL", [], |r| r.get(0))?)
+        }).unwrap();
+        assert_eq!(canonical, "t1");
+
+        // Edit + move via the SAME call the flush makes (one row update).
+        db_update_element(
+            "t1".into(),
+            json!({ "id": "t1", "type": "text", "html": "Changed",
+                    "position": { "x": 130, "y": 140, "width": 400, "height": 80 } }).to_string(),
+            None, None,
+        ).unwrap();
+
+        // Both slides reflect the new content AND position on export.
+        let out: Value = serde_json::from_str(&db_export_json().unwrap()).unwrap();
+        for s in 0..2 {
+            let el = &out["slides"][s]["elements"][0];
+            assert_eq!(el["html"], "Changed", "slide {s} content synced");
+            assert_eq!(el["position"]["x"], 130, "slide {s} position synced");
+            assert!(el.get("syncId").is_some(), "slide {s} still synced");
+        }
+        teardown_global_db();
+    }
+
+    /// db_update_element on an id with no row is a NO-OP, not an error — the
+    /// write-through flush calls it for synced non-canonical instance ids
+    /// (which are junctions, not rows). Erroring there would abort the flush.
+    #[test]
+    fn update_element_missing_id_is_noop() {
+        setup_global_db();
+        db_import_json(json!({
+            "title": "X", "slides": [ { "id": "s1", "elements": [
+                { "id": "real", "type": "text", "html": "hi",
+                  "position": { "x": 0, "y": 0, "width": 1, "height": 1 } } ] } ]
+        }).to_string()).unwrap();
+        // No row "ghost" → must succeed and change nothing.
+        db_update_element("ghost".into(), json!({ "html": "x" }).to_string(), None, None).unwrap();
+        with_db(|c| {
+            let n: i64 = c.query_row(
+                "SELECT COUNT(*) FROM elements WHERE valid_to IS NULL", [], |r| r.get(0))?;
+            assert_eq!(n, 1, "no phantom row created");
+            Ok(())
+        }).unwrap();
         teardown_global_db();
     }
 
