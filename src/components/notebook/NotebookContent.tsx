@@ -348,12 +348,6 @@ function ExternalKernelBody({
           <span className="nb-kernel-label">
             {kernelDisplayName || resolved.kernelName}
           </span>
-          {editable && interactive && (
-            <button className="nb-add-cell" title="Add a code cell at the end"
-              onClick={() => ov.addAppended(lastIpynbIndex(merged), 'code')}>
-              + Cell
-            </button>
-          )}
         </div>
       )}
       <div className="nb-body" style={{ pointerEvents: interactive ? 'auto' : 'none' }}>
@@ -422,6 +416,14 @@ function ExternalKernelBody({
             />
           );
         })}
+        {/* "+ Cell" lives at the END of the body (not the header) so it's
+            available even when the kernel header is hidden. */}
+        {editable && interactive && (
+          <button className="nb-add-cell" title="Add a code cell at the end"
+            onClick={() => ov.addAppended(lastIpynbIndex(merged), 'code')}>
+            + Cell
+          </button>
+        )}
       </div>
     </>
   );

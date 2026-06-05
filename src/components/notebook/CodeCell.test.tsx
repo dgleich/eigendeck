@@ -18,13 +18,14 @@ describe('CodeCell visual distinction', () => {
     expect(container.querySelector('.nb-cell-tag')).toBeNull();
   });
 
-  it('edited cell gets amber "edited" tag + revert affordance', () => {
+  it('edited cell gets the amber accent + revert affordance (no redundant tag)', () => {
     const onRevert = vi.fn();
     const { container } = render(
       <CodeCell cell={cell} highlight={false} edited onRevert={onRevert} />
     );
     expect(container.querySelector('.nb-cell-edited')).not.toBeNull();
-    expect(screen.getByText('edited')).toBeInTheDocument();
+    // The revert ⟲ button + amber accent indicate "edited" — no text tag.
+    expect(container.querySelector('.nb-cell-tag')).toBeNull();
     expect(container.querySelector('.nb-cell-revert')).not.toBeNull();
     expect(container.querySelector('.nb-cell-delete')).toBeNull();
   });

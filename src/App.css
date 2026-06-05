@@ -821,21 +821,17 @@
 
 .slide-element .el-resize-handle {
   position: absolute;
-  bottom: -6px;
-  right: -6px;
-  width: 14px;
-  height: 14px;
+  bottom: -5px;
+  right: -5px;
+  width: 10px;
+  height: 10px;
   background: #3b82f6;
-  border: 2px solid #fff;
+  border: 1.5px solid #fff;
   border-radius: 2px;
   cursor: nwse-resize;
   display: none;
   z-index: 12;
   pointer-events: all;
-  /* Authoring chrome → fixed on-screen size at any canvas zoom (#67),
-     anchored at the element's bottom-right corner. */
-  transform: scale(calc(1 / var(--canvas-scale, 1)));
-  transform-origin: bottom right;
 }
 
 .slide-element:hover .el-resize-handle {
@@ -1460,11 +1456,11 @@
 /* Inline pill in the action strip (#67) — sized in inverse-scaled px so it's
    screen-fixed and sits on one row with the buttons. */
 .el-notebook .nb-cell-tag {
-  font-size: calc(9px / var(--canvas-scale, 1));
+  font-size: calc(var(--nb-base-size, 32px) * 0.28);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  padding: calc(2px / var(--canvas-scale, 1)) calc(5px / var(--canvas-scale, 1));
-  border-radius: calc(3px / var(--canvas-scale, 1));
+  padding: calc(var(--nb-base-size, 32px) * 0.05) calc(var(--nb-base-size, 32px) * 0.16);
+  border-radius: 3px;
   opacity: 0.85;
   user-select: none;
   pointer-events: none;
@@ -1473,22 +1469,28 @@
 .el-notebook .nb-cell-edited .nb-cell-tag { background: #fef3c7; color: #92400e; }
 .el-notebook .nb-cell-added .nb-cell-tag { background: #ccfbf1; color: #0f766e; }
 .el-notebook .nb-cell-delete {
-  width: calc(28px / var(--canvas-scale, 1));
-  padding: 0 calc(6px / var(--canvas-scale, 1));
+  width: calc(var(--nb-base-size, 32px) * 0.85);
+  height: calc(var(--nb-base-size, 32px) * 0.85);
+  padding: 0;
   border: 1px solid #fca5a5;
   border-radius: 3px;
   background: #fff;
   color: #b91c1c;
-  font-size: calc(12px / var(--canvas-scale, 1));
+  font-size: calc(var(--nb-base-size, 32px) * 0.42);
+  line-height: 1;
   cursor: pointer;
-  height: calc(22px / var(--canvas-scale, 1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .el-notebook .nb-cell-delete:hover { background: #fef2f2; }
 /* "+ Cell" button in the header (editable notebooks). */
 .el-notebook .nb-add-cell {
-  font-size: calc(11px / var(--canvas-scale, 1));
-  padding: calc(2px / var(--canvas-scale, 1)) calc(8px / var(--canvas-scale, 1));
-  border: 1px solid var(--nb-border, #d1d5db);
+  display: block;
+  margin: calc(var(--nb-base-size, 32px) * 0.2) calc(var(--nb-base-size, 32px) * 0.37);
+  font-size: calc(var(--nb-base-size, 32px) * 0.4);
+  padding: calc(var(--nb-base-size, 32px) * 0.1) calc(var(--nb-base-size, 32px) * 0.3);
+  border: 1px dashed var(--nb-border, #d1d5db);
   border-radius: 3px;
   background: transparent;
   color: var(--nb-muted, #6b7280);
@@ -1498,8 +1500,8 @@
 
 .el-notebook .nb-cell-source-row {
   display: flex;
-  align-items: stretch;
-  gap: 4px;
+  align-items: flex-start;
+  gap: calc(var(--nb-base-size, 32px) * 0.12);
 }
 .el-notebook .nb-cell-source {
   margin: 0;
@@ -1649,25 +1651,31 @@
    ABSOLUTE so it never adds to the cell's height — a one-line cell stays one
    line when edited (no vertical "jump"); the tag + buttons sit on one row. */
 .el-notebook .nb-cell-actions {
-  position: absolute;
-  top: calc(4px / var(--canvas-scale, 1));
-  right: calc(4px / var(--canvas-scale, 1));
+  flex: 0 0 auto;
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: calc(4px / var(--canvas-scale, 1));
-  z-index: 2;
+  gap: calc(var(--nb-base-size, 32px) * 0.12);
+  /* One code-line tall, offset by the source's top padding so the strip sits
+     centered on the FIRST line. Controls scale with the cell font (never taller
+     than a line; also matches the presentation view, which has no canvas var). */
+  height: calc(var(--nb-base-size, 32px) * 1.4);
+  margin-top: calc(var(--nb-base-size, 32px) * 0.19);
 }
 .el-notebook .nb-cell-run {
-  width: calc(28px / var(--canvas-scale, 1));
-  padding: 0 calc(6px / var(--canvas-scale, 1));
+  width: calc(var(--nb-base-size, 32px) * 0.85);
+  height: calc(var(--nb-base-size, 32px) * 0.85);
+  padding: 0;
   border: 1px solid #d1d5db;
   border-radius: 3px;
   background: #fff;
   color: #2563eb;
-  font-size: calc(12px / var(--canvas-scale, 1));
+  font-size: calc(var(--nb-base-size, 32px) * 0.42);
+  line-height: 1;
   cursor: pointer;
-  height: calc(22px / var(--canvas-scale, 1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .el-notebook .nb-cell-run:hover:not(:disabled) {
   background: #eff6ff;
@@ -1678,16 +1686,19 @@
   background: #f9fafb;
 }
 .el-notebook .nb-cell-revert {
-  width: calc(28px / var(--canvas-scale, 1));
-  padding: 0 calc(6px / var(--canvas-scale, 1));
+  width: calc(var(--nb-base-size, 32px) * 0.85);
+  height: calc(var(--nb-base-size, 32px) * 0.85);
+  padding: 0;
   border: 1px solid #fcd34d;
   border-radius: 3px;
   background: #fffbeb;
   color: #b45309;
-  font-size: calc(14px / var(--canvas-scale, 1));
+  font-size: calc(var(--nb-base-size, 32px) * 0.46);
   line-height: 1;
   cursor: pointer;
-  height: calc(22px / var(--canvas-scale, 1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .el-notebook .nb-cell-revert:hover {
   background: #fef3c7;

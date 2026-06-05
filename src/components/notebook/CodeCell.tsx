@@ -133,8 +133,10 @@ export function CodeCell({
             </pre>
           )}
           <div className="nb-cell-actions">
-            {(added || edited) && (
-              <span className="nb-cell-tag">{added ? 'added' : 'edited'}</span>
+            {/* Only "added" gets a tag — for an EDITED cell the amber accent +
+                the ⟲ revert button are indicator enough (no redundant tag). */}
+            {added && (
+              <span className="nb-cell-tag">added</span>
             )}
             {added && onRevert && (
               <button className="nb-cell-delete"
