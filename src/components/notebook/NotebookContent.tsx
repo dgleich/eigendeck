@@ -421,7 +421,7 @@ function ExternalKernelBody({
         {editable && interactive && (
           <button className="nb-add-cell" title="Add a code cell at the end"
             onClick={() => ov.addAppended(lastIpynbIndex(merged), 'code')}>
-            + Cell
+            + []
           </button>
         )}
       </div>
