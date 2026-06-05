@@ -787,8 +787,9 @@
 
 .slide-element .el-delete-btn {
   position: absolute;
-  top: -14px;
-  right: -14px;
+  bottom: 100%;          /* sit ABOVE the top edge, never over content */
+  right: 0;
+  margin-bottom: 4px;
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -808,10 +809,10 @@
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   /* Authoring chrome → fixed on-screen size at any canvas zoom (#67).
      Counter-scales the canvas transform; fallback 1 = no-op (present mode).
-     Anchor at top-right so the top edge stays at -14px and lines up with the
-     link badges (which anchor top-left) at any zoom. */
+     Anchored at its BOTTOM-right (= the element's top-right) so it grows
+     upward/outward and never expands over content as you zoom out. */
   transform: scale(calc(1 / var(--canvas-scale, 1)));
-  transform-origin: top right;
+  transform-origin: bottom right;
 }
 
 .slide-element:hover .el-delete-btn {
@@ -841,18 +842,20 @@
   display: block;
 }
 
-/* Link status badges (outside top-left, sized in slide coords) */
+/* Link status badges — sit ABOVE the top-left edge, never over content. */
 .el-link-badges {
   position: absolute;
-  top: -14px;
-  left: -14px;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 4px;
   display: flex;
   gap: 4px;
   z-index: 11;
-  /* Authoring chrome → fixed on-screen size at any canvas zoom (#67),
-     anchored top-left (mirrors the delete chip at top-right). */
+  /* Authoring chrome → fixed on-screen size at any canvas zoom (#67).
+     Anchored at its BOTTOM-left (= the element's top-left) so it grows
+     upward/outward and never expands over content as you zoom out. */
   transform: scale(calc(1 / var(--canvas-scale, 1)));
-  transform-origin: top left;
+  transform-origin: bottom left;
 }
 
 .el-link-badge {
