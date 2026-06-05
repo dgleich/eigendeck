@@ -1656,6 +1656,13 @@
   gap: calc(4px / var(--canvas-scale, 1));
   align-self: flex-start;
 }
+/* When the cell carries an edited/added tag (absolute, top-right of the body),
+   push the action column down so the tag doesn't sit over the first button
+   (revert ⟲ / delete ✕). Inverse-scaled to match the tag's screen-fixed size. */
+.el-notebook .nb-cell-edited .nb-cell-actions,
+.el-notebook .nb-cell-added .nb-cell-actions {
+  margin-top: calc(16px / var(--canvas-scale, 1));
+}
 .el-notebook .nb-cell-run {
   width: calc(28px / var(--canvas-scale, 1));
   padding: 0 calc(6px / var(--canvas-scale, 1));
