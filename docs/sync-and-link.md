@@ -45,9 +45,9 @@ same content, the same style, and the **same position**. Editing one — or
   instance keeps its own `id`/`linkId`/`_*` while sharing all data.
 
 - **Moving propagates.** `moveElementsBy`
-  (`src/store/presentation.ts:569-595`) collects the `syncId`s of the moved
+  (`src/store/presentation.ts:613-651`) collects the `syncId`s of the moved
   elements and shifts **every** instance sharing those `syncId`s on **every**
-  slide by the same `dx, dy` (`presentation.ts:577-594`). Arrows shift all four
+  slide by the same `dx, dy` (`presentation.ts:621-650`). Arrows shift all four
   endpoints; everything else shifts `position`.
 
 > **Position is governed by `syncId`, period.** A synced element mirrors
@@ -87,7 +87,7 @@ independent positions that animation needs. Independent position comes from
 **freeing** the element — *removing its `syncId`* while keeping its `linkId`.
 
 This is spelled out in the move code itself
-(`src/store/presentation.ts:572-576`):
+(`src/store/presentation.ts:617-623`):
 
 > Position is governed by syncId: synced instances mirror position (move one →
 > move all). Independent position (for animation) comes from FREEING an element
@@ -246,9 +246,14 @@ sync/link transitions:
   Notebooks clone their overlay here.
 - `onResync(el)` — fired by `resyncElement` (`presentation.ts:474`); notebooks
   discard the fork.
-- `onMerge(ctx)` — fired by `linkElements` (`presentation.ts:501`); notebooks
-  reconcile recordings. Runs once per **distinct** type among source/target
-  (`elementLifecycle.ts:57-62`).
+- `onMerge(ctx)` — fired by **`promoteToSync`** (the link→sync upgrade), NOT by
+  `linkElements` (which is link-only and fires no hook). Notebooks reconcile
+  recordings (keep the master's, discard the rest). Runs once per **distinct**
+  type among source/target. When the linked notebooks hold DIFFERENT recordings,
+  the "S"-badge promote raises a chooser (`PromoteChooser`, driven from
+  `App.tsx`) to pick which copy becomes the master before promoting.
+- `onCopy(source, copy)` — fired by paste / Cmd+D; notebooks clone the
+  recording to the copy (no-op when the copy shares the source's key).
 
 Hooks are registered at app boot (e.g.
 `registerNotebookLifecycle`); the store calls only the type-agnostic

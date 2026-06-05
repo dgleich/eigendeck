@@ -57,9 +57,16 @@ A link is just animation; if you decide two animation copies should actually
 be *the same element* (mirror, not motion), select one and click its **grey
 "S"** badge to **promote**. The one you click becomes the master — the others
 become identical to it. This is **destructive** (the copies' separate
-positions, content, and any notebook recordings are discarded in favour of the
-master's), so it asks for confirmation. There's no automatic reverse; sync is a
-deliberate step up from link, never a side effect of it.
+positions and content are discarded in favour of the master's), so it asks for
+confirmation. There's no automatic reverse; sync is a deliberate step up from
+link, never a side effect of it.
+
+If the linked copies are **notebooks with different recordings**, promoting
+can't keep both — so instead of a plain confirm you get a **chooser**: each
+copy is shown with a one-line summary of its recording, and the one you pick
+becomes the master (its recording is kept; the others are discarded). This is
+how you "sync notebooks": link them, then promote and choose which recording
+the unified notebook should carry.
 
 ## Copy and paste
 

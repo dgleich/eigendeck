@@ -56,16 +56,15 @@ round-trip is drivable.
 - **overlay-heal** — a deck with two overlays for one element (the test-1
   corruption) loads the content-bearing one.
 - **B2 duplicate** — Duplicate → the copy shows the SHARED overlay.
-- **link-conflict chooser** — linking two notebooks with DIFFERENT recordings
-  raises the "which to keep?" chooser; picking one keeps it and discards the
-  other. Has its own driver (clicks through the modal), not `check.mjs`:
-
-  ```bash
-  python3 e2e/fixtures/make_link_conflict_deck.py /tmp/lc.json
-  eigendeck-cli /tmp/lc.eigendeck import json /tmp/lc.json
-  # then run link-smoke.mjs under the same xvfb+tauri-driver harness as run.sh,
-  # with E2E_APP and E2E_DECK=/tmp/lc.eigendeck (see run.sh for the wrapper).
-  ```
+- **link is non-destructive** — `link-smoke.mjs`: clicking a target in the "L"
+  picker establishes an *animation link* only — it asserts NO sync/merge chooser
+  appears and neither recording is touched. (The link-conflict fixture,
+  `make_link_conflict_deck.py`, nb1=MARK_A / nb2=MARK_B.)
+- **promote chooser** — `promote-chooser-probe.mjs`: when you PROMOTE
+  (link→sync) two notebooks that hold DIFFERENT recordings, a chooser lists each
+  and the picked copy's recording is kept. Drives link → `promote-to-sync` event
+  → clicks the slide-2 card → asserts MARK_B kept, MARK_A discarded, one entry.
+  (Same fixture.)
 
 - **sync/link round-trip** — `roundtrip-probe.mjs` drives store actions
   (duplicate / linkElements / promoteToSync) via the `window.__eigendeck` seam,
@@ -81,10 +80,22 @@ round-trip is drivable.
   # E2E_DECK=/tmp/rt-ab.eigendeck E2E_MODE=linkpromote  (or 'a' deck + duplicate)
   ```
 
+- **true close+reopen round-trip** — `roundtrip-reload-probe.mjs`: TWO app
+  sessions — session 1 opens, runs a store op, flush + `save()`, then QUITS;
+  session 2 launches FRESH on the saved file and asserts the structure
+  (`E2E_MODE=duplicate` → one synced entry; `linkpromote` → link then promote →
+  one entry). The real save→close→reopen path.
 - **notebook promote round-trip** — `nb-promote-reload.mjs`: two notebooks with
-  their own recordings (the link-conflict fixture, nb1=MARK_A / nb2=MARK_B) →
-  link → promote nb1 → save → QUIT the app → relaunch → assert the master's
-  recording (MARK_A) survived, MARK_B discarded, one synced entry. The combined
-  promote + notebook-overlay + close/reopen check.
+  their own recordings (nb1=MARK_A / nb2=MARK_B) → link → promote nb1 → save →
+  QUIT → relaunch → assert the master's recording (MARK_A) survived, MARK_B
+  discarded, one synced entry. Combined promote + overlay + close/reopen.
+- **copy carries the recording** — `copypaste-reload.mjs`: copy a notebook with
+  a recording → paste on a different slide (cross-slide → linked copy) → save →
+  QUIT → relaunch → assert the pasted notebook still shows its recording.
+
+All the `*-reload.mjs` / `*-probe.mjs` drivers use the `window.__eigendeck`
+seam (store + flush + save) and run under run.sh's xvfb + tauri-driver wrapper
+with `E2E_APP` / `E2E_DECK` (some also `E2E_MODE`); decks must be SQLite, so
+convert JSON fixtures with `eigendeck-cli out.eigendeck import json in.json`.
 
 See `../.claude/notes/notebook-edge-cases-findings.md` for findings.
