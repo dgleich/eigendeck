@@ -57,10 +57,14 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
   // per-element intent — see BUG-3); the explicit toggle still clears it.
   useEffect(() => {
     if (mode !== 'editor' || !editable || !element.assetId) return;
+    const assetId = element.assetId;
     void import('@tauri-apps/api/core')
-      .then(({ invoke }) => invoke('db_set_asset_auto_reload', {
-        assetId: element.assetId, value: 'off',
-      }))
+      .then(({ invoke }) => invoke('db_set_asset_auto_reload', { assetId, value: 'off' }))
+      // Fire asset-changed so the file watcher re-evaluates the cascade and
+      // UNSUBSCRIBES — without this the watcher keeps firing and a disk change
+      // clobbers the in-deck edits despite "taking control" (matches what
+      // AssetSection.setAutoReload does).
+      .then(() => window.dispatchEvent(new CustomEvent('eigendeck:asset-changed', { detail: { assetId } })))
       .catch(() => {});
   }, [editable, element.assetId, mode]);
 
