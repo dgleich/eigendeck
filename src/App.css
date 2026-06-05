@@ -1469,14 +1469,14 @@
 .el-notebook .nb-cell-edited .nb-cell-tag { background: #fef3c7; color: #92400e; }
 .el-notebook .nb-cell-added .nb-cell-tag { background: #ccfbf1; color: #0f766e; }
 .el-notebook .nb-cell-delete {
-  width: calc(var(--nb-base-size, 32px) * 0.85);
-  height: calc(var(--nb-base-size, 32px) * 0.85);
+  width: calc(var(--nb-base-size, 32px) * 1.0);
+  height: calc(var(--nb-base-size, 32px) * 1.0);
   padding: 0;
   border: 1px solid #fca5a5;
   border-radius: 3px;
   background: #fff;
   color: #b91c1c;
-  font-size: calc(var(--nb-base-size, 32px) * 0.42);
+  font-size: calc(var(--nb-base-size, 32px) * 0.5);
   line-height: 1;
   cursor: pointer;
   display: flex;
@@ -1663,14 +1663,14 @@
   margin-top: calc(var(--nb-base-size, 32px) * 0.19);
 }
 .el-notebook .nb-cell-run {
-  width: calc(var(--nb-base-size, 32px) * 0.85);
-  height: calc(var(--nb-base-size, 32px) * 0.85);
+  width: calc(var(--nb-base-size, 32px) * 1.0);
+  height: calc(var(--nb-base-size, 32px) * 1.0);
   padding: 0;
   border: 1px solid #d1d5db;
   border-radius: 3px;
   background: #fff;
   color: #2563eb;
-  font-size: calc(var(--nb-base-size, 32px) * 0.42);
+  font-size: calc(var(--nb-base-size, 32px) * 0.5);
   line-height: 1;
   cursor: pointer;
   display: flex;
@@ -1686,14 +1686,14 @@
   background: #f9fafb;
 }
 .el-notebook .nb-cell-revert {
-  width: calc(var(--nb-base-size, 32px) * 0.85);
-  height: calc(var(--nb-base-size, 32px) * 0.85);
+  width: calc(var(--nb-base-size, 32px) * 1.0);
+  height: calc(var(--nb-base-size, 32px) * 1.0);
   padding: 0;
   border: 1px solid #fcd34d;
   border-radius: 3px;
   background: #fffbeb;
   color: #b45309;
-  font-size: calc(var(--nb-base-size, 32px) * 0.46);
+  font-size: calc(var(--nb-base-size, 32px) * 0.54);
   line-height: 1;
   cursor: pointer;
   display: flex;
