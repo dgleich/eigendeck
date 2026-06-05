@@ -23,6 +23,14 @@ export function registerNotebookLifecycle(): void {
       if (el._syncId && el._syncId !== el.id) return discardOverlay(el.id);
     },
 
+    // Copy/duplicate carries the recording: clone the source's overlay to the
+    // copy's key so an independent or animation-linked copy keeps its own copy
+    // of the recording. cloneOverlay no-ops when the keys match — which is the
+    // join-a-sync-group case (same key → already shares the one overlay).
+    onCopy(source, copy) {
+      return cloneOverlay(source.syncId ?? source.id, copy.syncId ?? copy.id);
+    },
+
     // Merging two notebooks under one group: the merged element can keep only
     // ONE recording. Honour an explicit user choice, else keep whichever side
     // actually has one (source wins a tie). The losing recording is discarded.

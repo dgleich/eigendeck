@@ -31,6 +31,11 @@ export interface ElementLifecycleHooks {
   onResync?(el: SlideElement): void | Promise<void>;
   /** Two elements are merging under one group. */
   onMerge?(ctx: MergeContext): void | Promise<void>;
+  /** `copy` was just created from `source` (duplicate / paste). Carry
+   *  type-specific state across — e.g. clone a notebook's recording — so a copy
+   *  keeps everything intact. Should no-op when the copy SHARES the source's
+   *  group (same overlay key), which it can detect via the keys. */
+  onCopy?(source: SlideElement, copy: SlideElement): void | Promise<void>;
 }
 
 const registry = new Map<string, ElementLifecycleHooks>();
@@ -50,6 +55,10 @@ export function runFreeHook(el: SlideElement, freedId: string): void | Promise<v
 
 export function runResyncHook(el: SlideElement): void | Promise<void> {
   return registry.get(el.type)?.onResync?.(el);
+}
+
+export function runCopyHook(source: SlideElement, copy: SlideElement): void | Promise<void> {
+  return registry.get(source.type)?.onCopy?.(source, copy);
 }
 
 /** Run the merge hook for each DISTINCT type among source/target (so a hook

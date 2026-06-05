@@ -20,6 +20,7 @@ import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
 import { detachDelta, pasteElementDelta } from './lib/syncLink';
 import { registerNotebookLifecycle } from './components/notebook/notebookLifecycle';
+import { runCopyHook } from './lib/elementLifecycle';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
 import type { SlideElement } from './types/presentation';
@@ -737,6 +738,7 @@ function App() {
             if (newEl.type === 'arrow') { newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40; }
             else { newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 }; }
             state.addElement(newEl);
+            void runCopyHook(el, newEl);   // carry recording/state to the copy
             state.selectObject({ type: 'element', id: newEl.id });
           }
         } else if (sel?.type === 'multi') {
@@ -749,6 +751,7 @@ function App() {
               if (newEl.type === 'arrow') { newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40; }
               else { newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 }; }
               state.addElement(newEl);
+              void runCopyHook(el, newEl);   // carry recording/state to the copy
               newIds.push(newEl.id);
             }
           }
@@ -826,6 +829,10 @@ function App() {
           }
           state.addElement(newEl);
           newIds.push(newEl.id);
+          // Carry type-specific state across (e.g. clone a notebook's
+          // recording). No-op when the copy joined the source's sync group
+          // (same overlay key → already shares it).
+          void runCopyHook(el, newEl);
           // Link to the source only if it still exists on the source slide.
           if (link && srcSlideIdx >= 0
               && state.presentation.slides[srcSlideIdx].elements.some((s) => s.id === el.id)) {

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   registerElementLifecycle, clearElementLifecycle,
-  runFreeHook, runResyncHook, runMergeHook, type MergeContext,
+  runFreeHook, runResyncHook, runMergeHook, runCopyHook, type MergeContext,
 } from './elementLifecycle';
 import type { SlideElement } from '../types/presentation';
 
@@ -44,6 +44,16 @@ describe('element lifecycle registry', () => {
       sharedSyncId: 'S', keep: 'auto',
     });
     expect(calls).toBe(1);
+  });
+
+  it('runCopyHook dispatches to the SOURCE element type', async () => {
+    const seen: Array<[string, string]> = [];
+    registerElementLifecycle('notebook', {
+      onCopy: (s, c) => { seen.push([s.id, c.id]); },
+    });
+    await runCopyHook(el({ id: 'src' }), el({ id: 'cpy' }));
+    await runCopyHook(el({ id: 't1', type: 'text' }), el({ id: 't2', type: 'text' }));  // no hook
+    expect(seen).toEqual([['src', 'cpy']]);
   });
 
   it('awaits async hooks', async () => {
