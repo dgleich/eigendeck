@@ -831,6 +831,10 @@
   display: none;
   z-index: 12;
   pointer-events: all;
+  /* Authoring chrome → fixed on-screen size at any canvas zoom (#67),
+     anchored at the element's bottom-right corner. */
+  transform: scale(calc(1 / var(--canvas-scale, 1)));
+  transform-origin: bottom right;
 }
 
 .slide-element:hover .el-resize-handle {
@@ -1338,12 +1342,22 @@
 .el-notebook .nb-frame--bordered {
   border: 1px solid var(--nb-border, #e5e7eb);
 }
+/* #67 — notebook authoring CHROME (header, +Cell, per-cell Run/revert/delete)
+   should render at a fixed ON-SCREEN size regardless of canvas zoom, like the
+   element badges. These controls are IN-FLOW (unlike the absolute corner
+   badges), so a `transform: scale(1/zoom)` would distort their layout. Instead
+   we size their DIMENSIONS in `calc(px / var(--canvas-scale))`: the canvas
+   transform multiplies back by the zoom → a constant screen size, AND the
+   (inverse-scaled) box reserves the right amount of layout space (no overflow).
+   Fallback 1 = no-op (e.g. present mode, where the var isn't set).
+   The cell PROMPT is intentionally left scaling with content so it stays
+   vertically aligned with its code line. */
 .el-notebook .nb-header {
   flex: 0 0 auto;
-  padding: 4px 12px;
+  padding: calc(4px / var(--canvas-scale, 1)) calc(12px / var(--canvas-scale, 1));
   border-bottom: 1px solid var(--nb-border, #e5e7eb);
   background: var(--nb-code-bg, #f9fafb);
-  font-size: 12px;
+  font-size: calc(12px / var(--canvas-scale, 1));
   color: var(--nb-muted, #6b7280);
   display: flex;
   align-items: center;
@@ -1460,21 +1474,21 @@
 .el-notebook .nb-cell-edited .nb-cell-tag { background: #fef3c7; color: #92400e; }
 .el-notebook .nb-cell-added .nb-cell-tag { background: #ccfbf1; color: #0f766e; }
 .el-notebook .nb-cell-delete {
-  width: 28px;
-  padding: 0 6px;
+  width: calc(28px / var(--canvas-scale, 1));
+  padding: 0 calc(6px / var(--canvas-scale, 1));
   border: 1px solid #fca5a5;
   border-radius: 3px;
   background: #fff;
   color: #b91c1c;
-  font-size: 12px;
+  font-size: calc(12px / var(--canvas-scale, 1));
   cursor: pointer;
-  height: 24px;
+  height: calc(24px / var(--canvas-scale, 1));
 }
 .el-notebook .nb-cell-delete:hover { background: #fef2f2; }
 /* "+ Cell" button in the header (editable notebooks). */
 .el-notebook .nb-add-cell {
-  font-size: 11px;
-  padding: 2px 8px;
+  font-size: calc(11px / var(--canvas-scale, 1));
+  padding: calc(2px / var(--canvas-scale, 1)) calc(8px / var(--canvas-scale, 1));
   border: 1px solid var(--nb-border, #d1d5db);
   border-radius: 3px;
   background: transparent;
@@ -1636,19 +1650,19 @@
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: calc(4px / var(--canvas-scale, 1));
   align-self: flex-start;
 }
 .el-notebook .nb-cell-run {
-  width: 28px;
-  padding: 0 6px;
+  width: calc(28px / var(--canvas-scale, 1));
+  padding: 0 calc(6px / var(--canvas-scale, 1));
   border: 1px solid #d1d5db;
   border-radius: 3px;
   background: #fff;
   color: #2563eb;
-  font-size: 12px;
+  font-size: calc(12px / var(--canvas-scale, 1));
   cursor: pointer;
-  height: 32px;
+  height: calc(32px / var(--canvas-scale, 1));
 }
 .el-notebook .nb-cell-run:hover:not(:disabled) {
   background: #eff6ff;
@@ -1659,16 +1673,16 @@
   background: #f9fafb;
 }
 .el-notebook .nb-cell-revert {
-  width: 28px;
-  padding: 0 6px;
+  width: calc(28px / var(--canvas-scale, 1));
+  padding: 0 calc(6px / var(--canvas-scale, 1));
   border: 1px solid #fcd34d;
   border-radius: 3px;
   background: #fffbeb;
   color: #b45309;
-  font-size: 14px;
+  font-size: calc(14px / var(--canvas-scale, 1));
   line-height: 1;
   cursor: pointer;
-  height: 24px;
+  height: calc(24px / var(--canvas-scale, 1));
 }
 .el-notebook .nb-cell-revert:hover {
   background: #fef3c7;
