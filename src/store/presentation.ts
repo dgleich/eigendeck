@@ -527,8 +527,10 @@ export const usePresentationStore = create<PresentationState>()(
       },
       promoteToSync: (elementId) => {
         const st = get();
-        const cur = st.presentation.slides[st.currentSlideIndex];
-        const master = cur?.elements.find((e) => e.id === elementId);
+        // The master may be on ANY slide (the chooser can pick a copy from a
+        // different slide as the one to keep).
+        const master = st.presentation.slides
+          .flatMap((s) => s.elements).find((e) => e.id === elementId);
         if (!master || !master.linkId || master.syncId) return;  // only linked, not-yet-synced
         const linkId = master.linkId;
         const masterId = master.id;

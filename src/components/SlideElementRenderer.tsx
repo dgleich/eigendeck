@@ -939,8 +939,11 @@ export function DraggableBox({
                   const store = usePresentationStore.getState();
                   if (syncId) store.freeElement(elementId);
                   else if (_syncId) store.resyncElement(elementId);
-                  else if (confirm('Promote this animation link to a sync?\n\nThe linked copies on other slides will become identical to this one (same position and content), and their separate recordings will be discarded.')) {
-                    store.promoteToSync(elementId);
+                  else {
+                    // Promote link → sync. App decides: a recording conflict
+                    // raises the "which to keep?" chooser; otherwise it confirms
+                    // and promotes (keeping the only recording, if any).
+                    window.dispatchEvent(new CustomEvent('promote-to-sync', { detail: { elementId } }));
                   }
                 }}>
                 S

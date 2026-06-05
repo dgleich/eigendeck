@@ -21,6 +21,9 @@ import type { MenuEntry } from './components/ContextMenu';
 import { detachDelta, pasteElementDelta } from './lib/syncLink';
 import { registerNotebookLifecycle } from './components/notebook/notebookLifecycle';
 import { runCopyHook } from './lib/elementLifecycle';
+import { loadOverlayFor } from './lib/useOverlay';
+import { isOverlayEmpty, serializeOverlay, summarizeOverlay } from './lib/notebookOverlay';
+import { PromoteChooser } from './components/PromoteChooser';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
 import type { SlideElement } from './types/presentation';
@@ -499,6 +502,7 @@ function App() {
   const resizeStartW = useRef(0);
   const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[]; fromSlideIndex: number; fromSlideId: string } | { type: 'slide'; data: any } | null>(null);
   const [linkOverlayElementId, setLinkOverlayElementId] = useState<string | null>(null);
+  const [promoteCandidates, setPromoteCandidates] = useState<{ elementId: string; slideNo: number; summary: string }[] | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuEntry[] } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [multiMonitorPresenting, setMultiMonitorPresenting] = useState(false);
@@ -909,6 +913,48 @@ function App() {
     return () => window.removeEventListener('open-link-overlay', handler);
   }, []);
 
+  // Promote an animation link → sync. Destructive, so: if the linked notebooks
+  // hold DIFFERENT recordings, raise a chooser to pick which one survives (the
+  // picked copy becomes the master); otherwise confirm and promote, keeping the
+  // single recording if there is one.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail?.elementId as string | undefined;
+      if (!id) return;
+      void (async () => {
+        const st = usePresentationStore.getState();
+        const clicked = st.presentation.slides.flatMap((s) => s.elements).find((x) => x.id === id);
+        if (!clicked || !clicked.linkId || clicked.syncId) return;
+        const linkId = clicked.linkId;
+        // Notebook members of the link group, with their slide number + overlay key.
+        const members: { elementId: string; slideNo: number; key: string }[] = [];
+        st.presentation.slides.forEach((s, i) => s.elements.forEach((el) => {
+          if (el.linkId === linkId && el.type === 'notebook') {
+            members.push({ elementId: el.id, slideNo: i + 1, key: el.syncId ?? el.id });
+          }
+        }));
+        const withRec: { elementId: string; slideNo: number; sig: string; summary: string }[] = [];
+        for (const m of members) {
+          const ov = await loadOverlayFor(m.key);
+          if (!isOverlayEmpty(ov)) withRec.push({ elementId: m.elementId, slideNo: m.slideNo, sig: serializeOverlay(ov), summary: summarizeOverlay(ov) });
+        }
+        const distinct = new Set(withRec.map((r) => r.sig));
+        if (distinct.size >= 2) {
+          // Real conflict → let the user choose which recording to keep.
+          setPromoteCandidates(withRec.map((r) => ({ elementId: r.elementId, slideNo: r.slideNo, summary: r.summary })));
+          return;
+        }
+        // No conflict: master = the sole recording's holder (so it's kept), else the clicked one.
+        const masterId = withRec.length === 1 ? withRec[0].elementId : id;
+        if (confirm('Promote this animation link to a sync?\n\nThe linked copies become one element (same position and content). This is hard to undo.')) {
+          usePresentationStore.getState().promoteToSync(masterId);
+        }
+      })();
+    };
+    window.addEventListener('promote-to-sync', handler);
+    return () => window.removeEventListener('promote-to-sync', handler);
+  }, []);
+
   // Native menu events
   useEffect(() => {
     const unlisten = listen<string>('menu-event', (event) => {
@@ -1160,6 +1206,13 @@ function App() {
         <LinkOverlay
           elementId={linkOverlayElementId}
           onClose={() => setLinkOverlayElementId(null)}
+        />
+      )}
+      {promoteCandidates && (
+        <PromoteChooser
+          candidates={promoteCandidates}
+          onPick={(elementId) => { usePresentationStore.getState().promoteToSync(elementId); setPromoteCandidates(null); }}
+          onCancel={() => setPromoteCandidates(null)}
         />
       )}
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
