@@ -75,13 +75,26 @@ export function pasteElementDelta(
  *  syncId — the elements stay SEPARATE (own position, content, recording) so the
  *  presenter animates between them. Sync (collapsing two elements into one
  *  entry) is a different, destructive operation that only the junction model
- *  (duplicate) produces cleanly; "L" must never auto-sync. The shared linkId
- *  prefers the target's existing/remembered link group so re-linking rejoins it.
- *  (#30: both sides cleared symmetrically.) */
+ *  (duplicate) produces cleanly; "L" must never auto-sync.
+ *
+ *  The shared linkId prefers the SOURCE's existing/remembered group, then the
+ *  target's. This is what makes a link directional+groupable: repeatedly linking
+ *  FROM one anchor element to several slides builds ONE group (each new target
+ *  joins the anchor's linkId) instead of minting a fresh id that strands the
+ *  anchor's earlier partner (#S9). `mergeIds` lists the OTHER live group ids
+ *  pulled in (so the caller migrates every member). (#30: both sides cleared
+ *  symmetrically.) */
 export function linkPairDeltas(
+  source: Pick<SlideElement, 'linkId' | '_linkId'>,
   target: Pick<SlideElement, 'linkId' | '_linkId'>,
   newId: () => string = () => crypto.randomUUID(),
-): { sharedLinkId: string; delta: SyncLinkDelta } {
-  const sharedLinkId = target.linkId || target._linkId || newId();
-  return { sharedLinkId, delta: { linkId: sharedLinkId, _linkId: undefined } };
+): { sharedLinkId: string; delta: SyncLinkDelta; mergeIds: string[] } {
+  const sharedLinkId = source.linkId || source._linkId || target.linkId || target._linkId || newId();
+  // Distinct live/remembered group ids being merged INTO sharedLinkId — every
+  // element carrying one must be re-pointed so no prior partner is stranded.
+  const mergeIds = [...new Set(
+    [source.linkId, source._linkId, target.linkId, target._linkId]
+      .filter((id): id is string => !!id && id !== sharedLinkId),
+  )];
+  return { sharedLinkId, delta: { linkId: sharedLinkId, _linkId: undefined }, mergeIds };
 }

@@ -1276,6 +1276,24 @@ pub fn db_add_element_to_slide(
     })
 }
 
+/// Does a live `elements` row with this id exist? Used by the in-place flush
+/// to decide whether a synced INSTANCE can be written as a junction to an
+/// existing canonical row, or must materialize its own row (e.g. when the
+/// canonical instance was deleted in the same session). Cheap existence probe.
+#[tauri::command]
+pub fn db_element_exists(element_id: String) -> Result<bool, String> {
+    with_db(|conn| {
+        let exists: bool = conn
+            .query_row(
+                "SELECT 1 FROM elements WHERE id = ?1 AND valid_to IS NULL",
+                params![&element_id],
+                |_| Ok(()),
+            )
+            .is_ok();
+        Ok(exists)
+    })
+}
+
 /// Remove an element from a slide (but keep it in the DB for other slides)
 #[tauri::command]
 pub fn db_remove_element_from_slide(slide_id: String, element_id: String) -> Result<(), String> {

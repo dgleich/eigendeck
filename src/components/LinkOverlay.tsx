@@ -107,14 +107,21 @@ export function LinkOverlay({ elementId, onClose }: Props) {
             transform: `scale(${slideScale})`,
             transformOrigin: 'top left',
           }}>
-            {viewSlide.elements.map((el) => (
-              <LinkableElement
-                key={el.id}
-                element={el}
-                isLinked={!!(sourceElement.linkId && el.linkId === sourceElement.linkId)}
-                onClick={() => handleElementClick(el)}
-              />
-            ))}
+            {viewSlide.elements.map((el) => {
+              // Links/sync only join elements of the SAME type — a cross-type
+              // link could later promote-sync one type over another (losing a
+              // notebook's recording). Off-type elements show dimmed + inert.
+              const linkable = el.type === sourceElement.type;
+              return (
+                <LinkableElement
+                  key={el.id}
+                  element={el}
+                  linkable={linkable}
+                  isLinked={!!(sourceElement.linkId && el.linkId === sourceElement.linkId)}
+                  onClick={() => { if (linkable) handleElementClick(el); }}
+                />
+              );
+            })}
           </div>
         </div>
       </div>
@@ -122,8 +129,8 @@ export function LinkOverlay({ elementId, onClose }: Props) {
   );
 }
 
-function LinkableElement({ element: el, isLinked, onClick }: {
-  element: SlideElement; isLinked: boolean; onClick: () => void;
+function LinkableElement({ element: el, isLinked, linkable = true, onClick }: {
+  element: SlideElement; isLinked: boolean; linkable?: boolean; onClick: () => void;
 }) {
   const p = el.position;
   const config = usePresentationStore.getState().presentation.config;
@@ -131,11 +138,15 @@ function LinkableElement({ element: el, isLinked, onClick }: {
   const wrapStyle: React.CSSProperties = {
     position: 'absolute',
     left: p.x, top: p.y, width: p.width, height: p.height,
-    cursor: 'pointer',
+    cursor: linkable ? 'pointer' : 'not-allowed',
     border: isLinked ? '4px solid #16a34a' : '4px solid transparent',
     borderRadius: 4,
     transition: 'border-color 0.15s',
     zIndex: 10,
+    // Off-type targets are inert: dimmed and non-interactive (kept visible for
+    // spatial context so you still see what's on the slide).
+    opacity: linkable ? 1 : 0.3,
+    pointerEvents: linkable ? 'auto' : 'none',
   };
 
   switch (el.type) {

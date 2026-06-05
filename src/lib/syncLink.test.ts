@@ -46,23 +46,38 @@ describe('syncLink delta helpers', () => {
 
 describe('linkPairDeltas — animation link only, non-destructive', () => {
   it('mints a fresh shared linkId and clears _linkId; NEVER touches syncId', () => {
-    const { sharedLinkId, delta } = linkPairDeltas({}, () => 'NEW');
+    const { sharedLinkId, delta, mergeIds } = linkPairDeltas({}, {}, () => 'NEW');
     expect(sharedLinkId).toBe('NEW');
     // Link-only + symmetric (#30): both sides get the shared linkId and a
     // cleared _linkId. No syncId/_syncId — "L" must not sync/merge.
     expect(delta).toEqual({ linkId: 'NEW', _linkId: undefined });
     expect('syncId' in delta).toBe(false);
     expect('_syncId' in delta).toBe(false);
+    expect(mergeIds).toEqual([]);
   });
 
-  it("joins the target's existing link group when it has one", () => {
-    const { sharedLinkId } = linkPairDeltas({ linkId: 'TL' }, () => 'unused');
+  it("prefers the SOURCE's existing group so links from an anchor don't strand", () => {
+    // anchor (source) already in group L1, target unlinked → keep L1.
+    const { sharedLinkId, mergeIds } = linkPairDeltas({ linkId: 'L1' }, {}, () => 'unused');
+    expect(sharedLinkId).toBe('L1');
+    expect(mergeIds).toEqual([]);
+  });
+
+  it("falls back to the target's group when the source has none", () => {
+    const { sharedLinkId } = linkPairDeltas({}, { linkId: 'TL' }, () => 'unused');
     expect(sharedLinkId).toBe('TL');
   });
 
-  it("revives the target's remembered link group rather than minting a new one", () => {
-    const { sharedLinkId } = linkPairDeltas({ _linkId: 'OLDL' }, () => 'unused');
+  it('revives a remembered group rather than minting a new one', () => {
+    const { sharedLinkId } = linkPairDeltas({ _linkId: 'OLDL' }, {}, () => 'unused');
     expect(sharedLinkId).toBe('OLDL');
+  });
+
+  it('merging two live groups reports the other id so all members migrate', () => {
+    // source in L1, target in L2 → keep L1, report L2 for migration.
+    const { sharedLinkId, mergeIds } = linkPairDeltas({ linkId: 'L1' }, { linkId: 'L2' }, () => 'x');
+    expect(sharedLinkId).toBe('L1');
+    expect(mergeIds).toEqual(['L2']);
   });
 });
 

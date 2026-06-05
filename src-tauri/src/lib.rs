@@ -573,6 +573,7 @@ pub fn run() {
             storage::db_add_element,
             storage::db_add_element_to_slide,
             storage::db_remove_element_from_slide,
+            storage::db_element_exists,
             storage::db_compact,
             storage::db_gc_assets,
             pdf::db_render_pdf_page,

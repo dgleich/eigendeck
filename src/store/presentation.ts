@@ -498,29 +498,39 @@ export const usePresentationStore = create<PresentationState>()(
         const target = st.presentation.slides[targetSlideIndex]
           ?.elements.find((e) => e.id === targetId);
         if (!source || !target) return;
+        // Links are cross-slide and SAME-TYPE only. You can't animate within a
+        // slide, and linking across types would let a later promote replace one
+        // type with another (e.g. a text box overwriting a notebook + its
+        // recording). The picker enforces both; guard here too.
+        const csi = st.currentSlideIndex;
+        if (csi === targetSlideIndex) return;
+        if (source.type !== target.type) return;
         // ANIMATION link only — NON-destructive. Both sides get a shared linkId
         // (the #30-symmetric delta); syncId is left untouched, so the elements
         // stay separate (own position/content/recording) and the presenter
         // animates between them. "L" must NOT sync/merge — that's destructive
         // and only the duplicate junction model produces a clean single entry.
-        const { delta } = linkPairDeltas(target);
+        const { delta, mergeIds } = linkPairDeltas(source, target);
+        // Re-point the two endpoints AND every member of any group being merged
+        // in, so sequential links from one anchor build a single group rather
+        // than stranding the anchor's earlier partner (#S9).
+        const migrate = new Set(mergeIds);
         // One set() = one undo step; via set() (not setPresentation) so undo
         // history survives.
-        const csi = st.currentSlideIndex;
         set((state) => ({
           presentation: {
             ...state.presentation,
-            slides: state.presentation.slides.map((slide, idx) => {
-              if (idx === csi) {
-                return { ...slide, elements: slide.elements.map((el) =>
-                  el.id === sourceId ? ({ ...el, ...delta } as SlideElement) : el) };
-              }
-              if (idx === targetSlideIndex) {
-                return { ...slide, elements: slide.elements.map((el) =>
-                  el.id === targetId ? ({ ...el, ...delta } as SlideElement) : el) };
-              }
-              return slide;
-            }),
+            slides: state.presentation.slides.map((slide, idx) => ({
+              ...slide,
+              elements: slide.elements.map((el) => {
+                const isEndpoint = (idx === csi && el.id === sourceId)
+                  || (idx === targetSlideIndex && el.id === targetId);
+                if (isEndpoint || (el.linkId && migrate.has(el.linkId))) {
+                  return { ...el, ...delta } as SlideElement;
+                }
+                return el;
+              }),
+            })),
           },
           isDirty: true,
         }));
@@ -762,11 +772,21 @@ const dirtySlides = new Set<string>();      // slide IDs whose metadata changed
 const dirtyZOrder = new Set<string>();      // slide IDs whose element z-order changed
 let dirtyPresentation = false;              // config/title changed
 
-// Structural changes tracked explicitly
+// Structural changes tracked explicitly.
+// Element maps are keyed PER JUNCTION — `${slideId}\0${instanceId}` — not by
+// element id alone, because a synced element appears on several slides under
+// ONE shared id (after a save/reopen all instances share the canonical id).
+// Keying by id alone would let two instances collide; keying by (slide,id)
+// addresses each junction distinctly, which is what add/delete operate on.
+const jkey = (slideId: string, elementId: string) => `${slideId} ${elementId}`;
 const addedSlides = new Map<string, { position: number; groupId?: string }>();
 const deletedSlides = new Set<string>();
 const addedElements = new Map<string, { slideId: string; element: any; zOrder: number }>();
-const deletedElements = new Map<string, string>();  // elementId → slideId it was removed from
+// junction key → the slide + the CANONICAL row id (syncId ?? id) whose
+// slide_elements junction must be closed. A duplicated synced instance has a
+// fresh in-session id but its DB junction is under the canonical id, so we
+// must remove by canonical, not by the in-session instance id.
+const deletedElements = new Map<string, { slideId: string; junctionId: string }>();
 
 /** Mark an element as dirty (will be flushed to SQLite) */
 export function markElementDirty(elementId: string) {
@@ -798,7 +818,27 @@ export async function flushToSqlite(): Promise<void> {
     const { invoke } = await import('@tauri-apps/api/core');
     const state = usePresentationStore.getState();
 
-    // Structural changes: add/delete slides and elements
+    // --- Reconcile structural add/delete that CANCEL within this one flush ---
+    // Deletions run before adds (so an add can re-create a deleted row's
+    // junction), but a slide/element created AND removed before its first
+    // flush must not be resurrected: the delete is a no-op on a not-yet-written
+    // row, then the stale "added" entry would re-materialize it. Drop both.
+    // (Fixes: delete a freshly-duplicated mirror / its slide → it came back.)
+    for (const slideId of [...deletedSlides]) {
+      if (addedSlides.has(slideId)) {
+        addedSlides.delete(slideId);
+        deletedSlides.delete(slideId);
+        // …and any element junctions queued onto that never-persisted slide.
+        for (const k of [...addedElements.keys()]) {
+          if (addedElements.get(k)!.slideId === slideId) addedElements.delete(k);
+        }
+      }
+    }
+    for (const k of [...deletedElements.keys()]) {
+      if (addedElements.has(k)) { addedElements.delete(k); deletedElements.delete(k); }
+    }
+
+    // Structural changes: delete slides + element junctions first, then add.
     for (const slideId of deletedSlides) {
       try { await invoke('db_delete_slide', { slideId }); } catch (e) { console.warn('delete slide failed:', e); }
     }
@@ -811,61 +851,63 @@ export async function flushToSqlite(): Promise<void> {
     }
     addedSlides.clear();
 
-    for (const [elementId, slideId] of deletedElements) {
+    // Close junctions by the CANONICAL row id (syncId ?? id). A duplicated
+    // synced instance has a fresh in-session id but its DB junction was written
+    // under the canonical id, so removing by the instance id would miss the
+    // junction and the element would resurrect on reload.
+    for (const { slideId, junctionId } of deletedElements.values()) {
       try {
-        await invoke('db_remove_element_from_slide', { slideId, elementId });
+        await invoke('db_remove_element_from_slide', { slideId, elementId: junctionId });
       } catch (e) { console.warn('remove element failed:', e); }
     }
     deletedElements.clear();
 
-    // Canonical element id per syncId materialized as a real row in THIS
-    // flush — so a group whose original isn't persisted yet still collapses
-    // to one row (first instance = row, rest = junctions).
-    const flushSyncCanonical = new Map<string, string>();
-    for (const [_key, info] of addedElements) {
+    // Added elements in TWO passes so junctions never precede their row:
+    //   pass 1 — instances that OWN their row (canonical === own id) → db_add_element
+    //   pass 2 — synced instances → a slide_elements junction to the canonical row
+    // The canonical row id for a synced instance is its syncId (the original's
+    // id; preserved across duplicate/save). A junction is written only when
+    // that row exists (created this flush, or already persisted); otherwise the
+    // canonical instance was deleted, so THIS instance is promoted to the row.
+    const flushSyncCanonical = new Map<string, string>();  // syncId → row id that exists
+    const addElementRow = async (el: any, slideId: string, zOrder: number) => {
+      // Strip promoted columns (linkId, assetId) and sync metadata from the
+      // JSON `data` blob — they're their own columns / reassembled by export.
+      const { linkId, syncId: _s, _syncId, _linkId, assetId, src, demoSrc, ...data } = el;
+      void src; void _s; void demoSrc;  // intentionally dropped from data JSON
+      await invoke('db_add_element', {
+        slideId, elementId: el.id, elementType: el.type,
+        data: JSON.stringify(data), linkId: linkId || null, assetId: assetId || null, zOrder,
+      });
+      if (el.syncId) flushSyncCanonical.set(el.syncId, el.id);
+    };
+    for (const info of addedElements.values()) {
+      const el = info.element;
+      const canonical = el.syncId ?? el.id;
+      if (canonical === el.id) {
+        try { await addElementRow(el, info.slideId, info.zOrder); }
+        catch (e) { console.warn('add element row failed:', e); }
+      }
+    }
+    for (const info of addedElements.values()) {
+      const el = info.element;
+      const syncId: string | undefined = el.syncId;
+      const canonical = syncId ?? el.id;
+      if (canonical === el.id) continue;  // already written as a row in pass 1
       try {
-        const el = info.element;
-        const syncId: string | undefined = el.syncId;
-        // Is this a synced INSTANCE of an element that already exists (a
-        // persisted element sharing this syncId, or one added earlier this
-        // flush)? If so write ONLY a slide_elements junction to that
-        // canonical row — mirroring db_import_json's sync_map. Writing a
-        // fresh element row instead would detach the instance from its sync
-        // group on reload (the duplicate-on-saved-deck bug).
-        let canonicalId: string | null = null;
-        if (syncId) {
-          for (const slide of state.presentation.slides) {
-            const match = slide.elements.find(
-              (e) => e.syncId === syncId && !addedElements.has(e.id),
-            );
-            if (match) { canonicalId = match.id; break; }
-          }
-          if (!canonicalId) canonicalId = flushSyncCanonical.get(syncId) ?? null;
-        }
-        if (canonicalId && canonicalId !== el.id) {
+        const rowId = flushSyncCanonical.get(syncId!) ?? canonical;
+        const exists = flushSyncCanonical.has(syncId!)
+          || (await invoke('db_element_exists', { elementId: rowId }) as boolean);
+        if (exists) {
           await invoke('db_add_element_to_slide', {
-            slideId: info.slideId,
-            elementId: canonicalId,
-            zOrder: info.zOrder,
+            slideId: info.slideId, elementId: rowId, zOrder: info.zOrder,
           });
         } else {
-          // New element → its own row (+ junction). Strip promoted columns
-          // (linkId, assetId) and sync metadata from the JSON `data` blob —
-          // they're stored as their own columns / reassembled by export.
-          const { linkId, syncId: _s, _syncId, _linkId, assetId, src, demoSrc, ...data } = el as any;
-          void src; void _s; void demoSrc;  // intentionally dropped from data JSON
-          await invoke('db_add_element', {
-            slideId: info.slideId,
-            elementId: el.id,
-            elementType: el.type,
-            data: JSON.stringify(data),
-            linkId: linkId || null,
-            assetId: assetId || null,
-            zOrder: info.zOrder,
-          });
-          if (syncId) flushSyncCanonical.set(syncId, el.id);  // canonical for the group
+          // Canonical row is gone (its instance was deleted this session) →
+          // this instance becomes the surviving row for the group.
+          await addElementRow(el, info.slideId, info.zOrder);
         }
-      } catch (e) { console.warn('add element failed:', e); }
+      } catch (e) { console.warn('add element junction failed:', e); }
     }
     addedElements.clear();
 
@@ -929,9 +971,12 @@ export async function flushToSqlite(): Promise<void> {
       const slide = state.presentation.slides.find((s) => s.id === slideId);
       if (slide) {
         for (let j = 0; j < slide.elements.length; j++) {
+          const el = slide.elements[j];
           await invoke('db_update_z_order', {
             slideId,
-            elementId: slide.elements[j].id,
+            // Junctions are keyed by the canonical row id (syncId ?? id); a
+            // duplicated synced instance's fresh in-session id has no junction.
+            elementId: el.syncId ?? el.id,
             newZOrder: j,
           });
         }
@@ -1152,7 +1197,8 @@ usePresentationStore.subscribe((state) => {
       addedSlides.set(cs.id, { position: idx, groupId: cs.groupId });
       // All elements on this slide are new
       for (let j = 0; j < cs.elements.length; j++) {
-        addedElements.set(cs.elements[j].id, { slideId: cs.id, element: cs.elements[j], zOrder: j });
+        const el = cs.elements[j];
+        addedElements.set(jkey(cs.id, el.id), { slideId: cs.id, element: el, zOrder: j });
       }
       structuralChange = true;
       scheduleFlush();
@@ -1213,15 +1259,19 @@ usePresentationStore.subscribe((state) => {
       for (let j = 0; j < cs.elements.length; j++) {
         const el = cs.elements[j];
         if (!prevElIds.has(el.id)) {
-          addedElements.set(el.id, { slideId: cs.id, element: el, zOrder: j });
+          addedElements.set(jkey(cs.id, el.id), { slideId: cs.id, element: el, zOrder: j });
           scheduleFlush();
         }
       }
 
-      // Elements removed from this slide
+      // Elements removed from this slide. Record the CANONICAL row id
+      // (syncId ?? id) so the right slide_elements junction is closed even
+      // when the instance carried a fresh in-session id (duplicated mirror).
       for (const pel of ps.elements) {
         if (!currElIds.has(pel.id)) {
-          deletedElements.set(pel.id, cs.id);
+          deletedElements.set(jkey(cs.id, pel.id), {
+            slideId: cs.id, junctionId: (pel as any).syncId ?? pel.id,
+          });
           scheduleFlush();
         }
       }
