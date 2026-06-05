@@ -102,9 +102,6 @@ export function CodeCell({
     <div className={`nb-cell nb-cell-code${markClass}`}>
       <div className={`nb-cell-prompt${running ? ' is-running' : ''}`}>[{promptCount}]</div>
       <div className="nb-cell-body">
-        {(added || edited) && (
-          <div className="nb-cell-tag">{added ? 'added' : 'edited'}</div>
-        )}
         <div className="nb-cell-source-row">
           {editable ? (
             <div className="nb-cell-source nb-cell-source-editing">
@@ -136,6 +133,9 @@ export function CodeCell({
             </pre>
           )}
           <div className="nb-cell-actions">
+            {(added || edited) && (
+              <span className="nb-cell-tag">{added ? 'added' : 'edited'}</span>
+            )}
             {added && onRevert && (
               <button className="nb-cell-delete"
                 onClick={(e) => { e.stopPropagation(); onRevert(); }}

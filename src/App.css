@@ -1457,22 +1457,18 @@
   border-left: 3px solid #14b8a6;
   padding-left: 9px;
 }
+/* Inline pill in the action strip (#67) — sized in inverse-scaled px so it's
+   screen-fixed and sits on one row with the buttons. */
 .el-notebook .nb-cell-tag {
-  position: absolute;
-  top: 0; right: 0;
-  font-size: 9px;
+  font-size: calc(9px / var(--canvas-scale, 1));
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  padding: 1px 5px;
-  border-radius: 0 0 0 3px;
-  opacity: 0.7;
+  padding: calc(2px / var(--canvas-scale, 1)) calc(5px / var(--canvas-scale, 1));
+  border-radius: calc(3px / var(--canvas-scale, 1));
+  opacity: 0.85;
   user-select: none;
   pointer-events: none;
-  /* Counter-scale so the badge stays a fixed on-screen size at any canvas
-     zoom (#67), anchored at the cell's top-right. Fallback 1 = no-op
-     outside the editor (e.g. present mode, where the var isn't set). */
-  transform: scale(calc(1 / var(--canvas-scale, 1)));
-  transform-origin: top right;
+  white-space: nowrap;
 }
 .el-notebook .nb-cell-edited .nb-cell-tag { background: #fef3c7; color: #92400e; }
 .el-notebook .nb-cell-added .nb-cell-tag { background: #ccfbf1; color: #0f766e; }
@@ -1485,7 +1481,7 @@
   color: #b91c1c;
   font-size: calc(12px / var(--canvas-scale, 1));
   cursor: pointer;
-  height: calc(24px / var(--canvas-scale, 1));
+  height: calc(22px / var(--canvas-scale, 1));
 }
 .el-notebook .nb-cell-delete:hover { background: #fef2f2; }
 /* "+ Cell" button in the header (editable notebooks). */
@@ -1649,19 +1645,18 @@
 .el-notebook .nb-theme-dark .hljs-addition { background: #033a16; color: #aff5b4; }
 .el-notebook .nb-theme-dark .hljs-deletion { background: #67060c; color: #ffdcd7; }
 
+/* Controls as a single horizontal strip floating at the cell's top-right.
+   ABSOLUTE so it never adds to the cell's height — a one-line cell stays one
+   line when edited (no vertical "jump"); the tag + buttons sit on one row. */
 .el-notebook .nb-cell-actions {
-  flex: 0 0 auto;
+  position: absolute;
+  top: calc(4px / var(--canvas-scale, 1));
+  right: calc(4px / var(--canvas-scale, 1));
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
   gap: calc(4px / var(--canvas-scale, 1));
-  align-self: flex-start;
-}
-/* When the cell carries an edited/added tag (absolute, top-right of the body),
-   push the action column down so the tag doesn't sit over the first button
-   (revert ⟲ / delete ✕). Inverse-scaled to match the tag's screen-fixed size. */
-.el-notebook .nb-cell-edited .nb-cell-actions,
-.el-notebook .nb-cell-added .nb-cell-actions {
-  margin-top: calc(16px / var(--canvas-scale, 1));
+  z-index: 2;
 }
 .el-notebook .nb-cell-run {
   width: calc(28px / var(--canvas-scale, 1));
@@ -1672,7 +1667,7 @@
   color: #2563eb;
   font-size: calc(12px / var(--canvas-scale, 1));
   cursor: pointer;
-  height: calc(32px / var(--canvas-scale, 1));
+  height: calc(22px / var(--canvas-scale, 1));
 }
 .el-notebook .nb-cell-run:hover:not(:disabled) {
   background: #eff6ff;
@@ -1692,7 +1687,7 @@
   font-size: calc(14px / var(--canvas-scale, 1));
   line-height: 1;
   cursor: pointer;
-  height: calc(24px / var(--canvas-scale, 1));
+  height: calc(22px / var(--canvas-scale, 1));
 }
 .el-notebook .nb-cell-revert:hover {
   background: #fef3c7;
