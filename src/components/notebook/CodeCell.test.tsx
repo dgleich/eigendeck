@@ -30,13 +30,14 @@ describe('CodeCell visual distinction', () => {
     expect(container.querySelector('.nb-cell-delete')).toBeNull();
   });
 
-  it('added cell gets teal "added" tag + delete affordance', () => {
+  it('added cell gets the teal accent + delete affordance (no redundant tag)', () => {
     const onRevert = vi.fn();
     const { container } = render(
       <CodeCell cell={cell} highlight={false} added onRevert={onRevert} />
     );
     expect(container.querySelector('.nb-cell-added')).not.toBeNull();
-    expect(screen.getByText('added')).toBeInTheDocument();
+    // The ✕ delete button + teal accent indicate "added" — no text tag.
+    expect(container.querySelector('.nb-cell-tag')).toBeNull();
     expect(container.querySelector('.nb-cell-delete')).not.toBeNull();
     expect(container.querySelector('.nb-cell-revert')).toBeNull();
   });

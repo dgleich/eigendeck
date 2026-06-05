@@ -1453,21 +1453,6 @@
   border-left: 3px solid #14b8a6;
   padding-left: 9px;
 }
-/* Inline pill in the action strip (#67) — sized in inverse-scaled px so it's
-   screen-fixed and sits on one row with the buttons. */
-.el-notebook .nb-cell-tag {
-  font-size: calc(var(--nb-base-size, 32px) * 0.28);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: calc(var(--nb-base-size, 32px) * 0.05) calc(var(--nb-base-size, 32px) * 0.16);
-  border-radius: 3px;
-  opacity: 0.85;
-  user-select: none;
-  pointer-events: none;
-  white-space: nowrap;
-}
-.el-notebook .nb-cell-edited .nb-cell-tag { background: #fef3c7; color: #92400e; }
-.el-notebook .nb-cell-added .nb-cell-tag { background: #ccfbf1; color: #0f766e; }
 .el-notebook .nb-cell-delete {
   width: calc(var(--nb-base-size, 32px) * 1.0);
   height: calc(var(--nb-base-size, 32px) * 1.0);
