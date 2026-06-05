@@ -108,10 +108,12 @@ export function LinkOverlay({ elementId, onClose }: Props) {
             transformOrigin: 'top left',
           }}>
             {viewSlide.elements.map((el) => {
-              // Links/sync only join elements of the SAME type — a cross-type
-              // link could later promote-sync one type over another (losing a
-              // notebook's recording). Off-type elements show dimmed + inert.
-              const linkable = el.type === sourceElement.type;
+              // A target is linkable only if it's the SAME type and NOT itself
+              // synced. Cross-type links could later promote-sync one type over
+              // another (losing a notebook's recording); a synced element can't
+              // animate (it shares one position across slides). Both show dimmed
+              // + inert. (The L badge is likewise disabled on synced sources.)
+              const linkable = el.type === sourceElement.type && !el.syncId;
               return (
                 <LinkableElement
                   key={el.id}

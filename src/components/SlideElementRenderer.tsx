@@ -963,11 +963,18 @@ export function DraggableBox({
               A
             </button>
           )}
-          {/* Link button: open Time Machine overlay */}
+          {/* Link button: open Time Machine overlay. Disabled for synced
+              elements — sync and link are mutually exclusive: a synced element
+              shares ONE position across slides, so there's no position delta to
+              animate. Free it first to make it animatable. */}
           <button
             className="el-link-badge el-badge-link"
-            title="Link to element on another slide"
+            disabled={!!syncId}
+            title={syncId
+              ? 'Synced elements share one position across slides — free it (S) first to animate'
+              : 'Link to element on another slide'}
             onClick={() => {
+              if (syncId) return;
               window.dispatchEvent(new CustomEvent('open-link-overlay', { detail: { elementId } }));
             }}>
             L

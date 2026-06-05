@@ -433,6 +433,27 @@ describe('presentation store', () => {
       expect(b.position.x).toBe(9);
     });
 
+    it('linkElements is a NO-OP when either element is synced (sync/link mutually exclusive)', () => {
+      const store = usePresentationStore.getState();
+      usePresentationStore.setState({
+        presentation: {
+          ...createDefaultPresentation(),
+          slides: [
+            { id: 's0', elements: [{ id: 'A', type: 'text', preset: 'body', html: 'a',
+              position: { x: 0, y: 0, width: 1, height: 1 }, syncId: 'A' } as any] } as any,
+            { id: 's1', elements: [{ id: 'B', type: 'text', preset: 'body', html: 'b',
+              position: { x: 9, y: 9, width: 1, height: 1 } } as any] } as any,
+          ],
+        },
+        currentSlideIndex: 0,
+      });
+      store.linkElements('A', 1, 'B');
+      const st = usePresentationStore.getState();
+      // A synced source can't animate — no linkId gets set on either side.
+      expect(st.presentation.slides[0].elements[0].linkId).toBeUndefined();
+      expect(st.presentation.slides[1].elements[0].linkId).toBeUndefined();
+    });
+
     it('duplicate-slide titles stay synced: move + edit propagate to both slides', () => {
       const store = usePresentationStore.getState();
       // A deck with a title on slide 1.

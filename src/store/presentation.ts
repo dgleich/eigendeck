@@ -498,13 +498,17 @@ export const usePresentationStore = create<PresentationState>()(
         const target = st.presentation.slides[targetSlideIndex]
           ?.elements.find((e) => e.id === targetId);
         if (!source || !target) return;
-        // Links are cross-slide and SAME-TYPE only. You can't animate within a
-        // slide, and linking across types would let a later promote replace one
-        // type with another (e.g. a text box overwriting a notebook + its
-        // recording). The picker enforces both; guard here too.
+        // Links are cross-slide, SAME-TYPE, and NEVER on a synced element.
+        //  - same-slide: nothing to animate between.
+        //  - cross-type: a later promote could replace one type with another
+        //    (e.g. a text box overwriting a notebook + its recording).
+        //  - synced: sync and link are mutually exclusive — a synced element
+        //    shares ONE position across slides, so there's no delta to animate.
+        // The picker/badge enforce these; guard here too (also covers paste).
         const csi = st.currentSlideIndex;
         if (csi === targetSlideIndex) return;
         if (source.type !== target.type) return;
+        if (source.syncId || target.syncId) return;
         // ANIMATION link only — NON-destructive. Both sides get a shared linkId
         // (the #30-symmetric delta); syncId is left untouched, so the elements
         // stay separate (own position/content/recording) and the presenter

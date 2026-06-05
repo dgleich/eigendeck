@@ -900,6 +900,15 @@
   background: #1d4ed8;
 }
 
+.el-link-badge:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.el-link-badge:disabled:hover {
+  background: #2563eb;  /* no hover affordance when disabled */
+}
+
 /* ============================================
    Link Overlay (Time Machine view)
    ============================================ */
