@@ -98,4 +98,17 @@ seam (store + flush + save) and run under run.sh's xvfb + tauri-driver wrapper
 with `E2E_APP` / `E2E_DECK` (some also `E2E_MODE`); decks must be SQLite, so
 convert JSON fixtures with `eigendeck-cli out.eigendeck import json in.json`.
 
+- **notebook file-watching + take control** — `notebook-watch-takecontrol-probe.mjs`
+  drives the REAL fs-watch end-to-end: mutate the linked `.ipynb` on disk →
+  notebook auto-reloads; take control (make editable → watching off) → mutate →
+  does NOT reload; make an in-deck edit → save → QUIT → relaunch → edit persists;
+  "Reload from disk now" → latest file shown + edit wiped; re-enable watching →
+  mutate → reloads again.
+
+  ⚠️ **fs-watch scope:** `fs:allow-watch` only covers the home / documents /
+  desktop / downloads / temp dirs. Files in an arbitrary `/tmp/...` path are NOT
+  in scope and watch() throws "forbidden path". The probe runs with the app's
+  **`HOME=/tmp`** so the deck + `.ipynb` live under `scope-home-recursive`.
+  (Real users' decks live in home/Documents, so it just works.)
+
 See `../.claude/notes/notebook-edge-cases-findings.md` for findings.
