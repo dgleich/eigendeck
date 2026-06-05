@@ -68,6 +68,11 @@ understand sync vs. link, see **[Sync and link](sync-and-link.md)**. (When you
 *free* a synced notebook, it keeps its own copy of the recording; when you
 *promote* a link to a sync, the master's recording is the one that's kept.)
 
+**Copy carries the recording.** Copy/paste or duplicate a notebook and its
+recording comes along: an independent or animation-linked copy gets its **own
+copy** of the recording (it can then diverge), while a copy that **joins a sync
+group shares** that group's single recording.
+
 ## Previews
 
 Wherever Eigendeck needs a small stand-in image of a notebook — the slide

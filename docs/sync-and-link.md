@@ -158,6 +158,13 @@ present    →  advancing slide animates A → A' (shared linkId L)
 > Cmd+D (same-slide duplicate) stays a detached copy. (Note: the link targets
 > the source slide by its **id**, captured at copy time, so reordering slides
 > between copy and paste doesn't mislink.)
+>
+> **Copy carries type-specific state too.** After creating each copy, paste and
+> Cmd+D call `runCopyHook(source, copy)` (`elementLifecycle.ts`); the notebook
+> hook `cloneOverlay`s the source's recording to the copy's key — a real clone
+> for an independent/linked copy, and a no-op (shared) when the copy joined a
+> sync group (same overlay key). So copies keep everything intact, recordings
+> included. Verified across a real close+reopen by `e2e/copypaste-reload.mjs`.
 
 ---
 
