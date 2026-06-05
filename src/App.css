@@ -807,9 +807,11 @@
   pointer-events: all;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   /* Authoring chrome → fixed on-screen size at any canvas zoom (#67).
-     Counter-scales the canvas transform; fallback 1 = no-op (present mode). */
+     Counter-scales the canvas transform; fallback 1 = no-op (present mode).
+     Anchor at top-right so the top edge stays at -14px and lines up with the
+     link badges (which anchor top-left) at any zoom. */
   transform: scale(calc(1 / var(--canvas-scale, 1)));
-  transform-origin: center;
+  transform-origin: top right;
 }
 
 .slide-element:hover .el-delete-btn {
