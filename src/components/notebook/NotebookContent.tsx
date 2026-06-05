@@ -25,6 +25,7 @@ import { usePreference } from '../../lib/preferences';
 import { Cell, CellOutput, CodeCell as CodeCellT, Notebook } from '../../lib/notebookFormat';
 import {
   mergeNotebook, MergedCell, notebookSourceSignature, overlaySourceChanged,
+  serializeOverlay,
 } from '../../lib/notebookOverlay';
 import { NotebookElement, effectiveFontSize } from '../../types/presentation';
 import { usePresentationStore } from '../../store/presentation';
@@ -131,6 +132,7 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
     <div className={frameClass} style={fontStyle}>
       <ExternalKernelBody
         element={element}
+        mode={mode}
         notebook={notebook}
         loading={loading}
         error={error}
@@ -182,10 +184,11 @@ function filterMerged(merged: MergedCell[], element: NotebookElement): MergedCel
 type RunningState = { running: boolean; count: number | '*' | null };
 
 function ExternalKernelBody({
-  element, notebook, loading, error, interactive, editable, resolved, preamble, autoRun,
+  element, mode, notebook, loading, error, interactive, editable, resolved, preamble, autoRun,
   highlight, dark, language, baseSize, hideHeader, kernelDisplayName,
 }: {
   element: NotebookElement;
+  mode: 'editor' | 'present';
   notebook: Notebook | null;
   loading: boolean; error: Error | null;
   interactive: boolean;
@@ -209,6 +212,21 @@ function ExternalKernelBody({
   // has no syncId and keys by its own id (unchanged).
   const ov = useOverlay(element.syncId ?? element.id);
   const updateElement = usePresentationStore((s) => s.updateElement);
+
+  // Keep the cached PNG preview fresh when the RECORDING changes (cell edits,
+  // recorded outputs, appended cells). Those live in the overlay, not the
+  // element, so the element-keyed capture in NotebookContent misses them and the
+  // sidebar/picker thumbnail would go stale. Debounced + editor-only; the
+  // element comes via a ref so this fires only on overlay changes (the
+  // NotebookContent effect already covers element/prop changes).
+  const elForCapture = useRef(element);
+  elForCapture.current = element;
+  const ovSig = serializeOverlay(ov.overlay);
+  useEffect(() => {
+    if (mode !== 'editor') return;
+    const t = setTimeout(() => { void capturePreview(elForCapture.current, '.nb-frame'); }, 700);
+    return () => clearTimeout(t);
+  }, [ovSig, mode]);
 
   // Migrate legacy element.cellEdits (pre-overlay) into the overlay
   // once, then strip the field. cellEdits is being retired in favor of
