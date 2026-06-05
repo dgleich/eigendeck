@@ -71,6 +71,27 @@ function SidebarDemoPieceTile({ element }: { element: Extract<SlideElement, { ty
   );
 }
 
+/** Notebook thumbnail — shows the cached preview image, and (crucially)
+ *  subscribes the file watcher for the notebook's external .ipynb so it
+ *  auto-reloads on disk changes. Like images/demos, the watcher lives in the
+ *  always-rendered sidebar thumb, so it covers notebooks on every slide. */
+function SidebarNotebookThumb({ element }: { element: Extract<SlideElement, { type: 'notebook' }> }) {
+  const p = element.position;
+  useAssetFileWatcher(element.assetId, element.id);
+  return (
+    <div style={{
+      position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
+      overflow: 'hidden', background: '#fff',
+    }}>
+      <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
+        <div style={{ width: '100%', height: '100%', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', fontSize: 64,
+          color: '#86c986', background: '#eef7ee' }}>NB</div>
+      } />
+    </div>
+  );
+}
+
 const SLIDE_WIDTH = 1920;
 const SLIDE_HEIGHT = 1080;
 const THUMB_WIDTH = 166;
@@ -203,18 +224,7 @@ export function SlideSidebar() {
                     case 'demo-piece':
                       return <SidebarDemoPieceTile key={el.id} element={el} />;
                     case 'notebook':
-                      return (
-                        <div key={el.id} style={{
-                          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-                          overflow: 'hidden', background: '#fff',
-                        }}>
-                          <ElementPreviewImg cacheKey={el.syncId ?? el.id} fallback={
-                            <div style={{ width: '100%', height: '100%', display: 'flex',
-                              alignItems: 'center', justifyContent: 'center', fontSize: 64,
-                              color: '#86c986', background: '#eef7ee' }}>NB</div>
-                          } />
-                        </div>
-                      );
+                      return <SidebarNotebookThumb key={el.id} element={el} />;
                     case 'cover':
                       return (
                         <div key={el.id} style={{
