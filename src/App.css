@@ -1502,6 +1502,10 @@
   color: var(--nb-fg, #111827);
   flex: 1 1 auto;
   min-width: 0;
+  /* An EMPTY cell's <pre> has no line box and would collapse to just padding
+     (a thin sliver) in the static view — keep at least one line tall so blank
+     appended cells stay visible. */
+  min-height: calc(var(--nb-base-size, 32px) * 1.4);
 }
 /* The inner <code> element has UA `font-family: monospace` which
    wins over inheritance from .nb-cell-source. Explicit override
