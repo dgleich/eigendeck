@@ -8,7 +8,7 @@ import {
   createBlankSlide,
 } from '../types/presentation';
 import {
-  IDENTITY_KEYS, freeDelta, resyncDelta, unlinkDelta, relinkDelta, linkPairDeltas,
+  IDENTITY_KEYS, resyncDelta, unlinkDelta, relinkDelta, linkPairDeltas,
 } from '../lib/syncLink';
 import { runFreeHook, runResyncHook, runMergeHook } from '../lib/elementLifecycle';
 
@@ -458,24 +458,79 @@ export const usePresentationStore = create<PresentationState>()(
       // inherit sync-propagation, dirty tracking and undo coalescing). The
       // single API the UI calls — no more hand-built {syncId,_syncId,…} deltas.
       freeElement: (elementId) => {
-        const el = get().presentation.slides[get().currentSlideIndex]
-          ?.elements.find((e) => e.id === elementId);
-        if (!el) return;
-        const delta = freeDelta(el);
-        if (!Object.keys(delta).length) return;
-        // Type hook (e.g. notebook clone-on-unsync) fires before the flip so it
-        // can seed caches synchronously.
-        void runFreeHook(el, elementId);
-        get().updateElement(elementId, delta);
+        const st = get();
+        const csi = st.currentSlideIndex;
+        const el = st.presentation.slides[csi]?.elements.find((e) => e.id === elementId);
+        if (!el || !el.syncId) return;   // only a synced element can be freed
+        const oldSyncId = el.syncId;
+        // Give the freed instance its OWN id so it persists as its own DB row.
+        // A sync group is ONE shared row; after reload its instances share the
+        // canonical id, so without a fresh id the freed frame can't be written
+        // separately and collapses back into the group on save (the S5c bug).
+        const newId = crypto.randomUUID();
+        // Ensure the freed frame and its (former) sync peers share ONE animation
+        // linkId so duplicate→free→move→animate works even for sync groups not
+        // created by duplicate (which already seeds one). Reuse any existing.
+        const sharedLinkId = el.linkId
+          || st.presentation.slides.flatMap((s) => s.elements)
+               .find((e) => e.syncId === oldSyncId && e.linkId)?.linkId
+          || crypto.randomUUID();
+        // Type hook (notebook clone-on-unsync) fires before the flip, onto the
+        // freed instance's NEW key, so it can seed caches synchronously.
+        void runFreeHook(el, newId);
+        set((state) => ({
+          presentation: {
+            ...state.presentation,
+            slides: state.presentation.slides.map((slide, idx) => ({
+              ...slide,
+              elements: slide.elements.map((e) => {
+                // Only the instance on the CURRENT slide is freed. Scope by
+                // slide index, not id alone — after a reload synced instances
+                // SHARE the canonical id, so `e.id === elementId` would match
+                // (and wrongly free) every mirror.
+                if (idx === csi && e.id === elementId) {
+                  return { ...e, id: newId, syncId: undefined,
+                    _syncId: oldSyncId, linkId: sharedLinkId } as SlideElement;
+                }
+                // Still-synced peers (other slides) get the same (dormant)
+                // linkId so they animate with the freed frame; no-op if shared.
+                if (idx !== csi && e.syncId === oldSyncId && e.linkId !== sharedLinkId) {
+                  return { ...e, linkId: sharedLinkId } as SlideElement;
+                }
+                return e;
+              }),
+            })),
+          },
+          selectedObject: (() => {
+            const sel = state.selectedObject;
+            if (!sel) return sel;
+            if (sel.type === 'element' && sel.id === elementId) return { type: 'element' as const, id: newId };
+            if (sel.type === 'multi' && sel.ids.includes(elementId))
+              return { type: 'multi' as const, ids: sel.ids.map((i: string) => i === elementId ? newId : i) };
+            return sel;
+          })(),
+          isDirty: true,
+        }));
       },
       resyncElement: (elementId) => {
-        const el = get().presentation.slides[get().currentSlideIndex]
+        const st = get();
+        const el = st.presentation.slides[st.currentSlideIndex]
           ?.elements.find((e) => e.id === elementId);
-        if (!el) return;
-        const delta = resyncDelta(el);
-        if (!Object.keys(delta).length) return;
+        if (!el || !el._syncId) return;
+        const syncId = el._syncId;
+        // Snap to the group's geometry: re-syncing means "this is the same
+        // element again", so it ADOPTS a still-synced peer's position (the move
+        // made while freed is discarded — to keep it, stay freed). Without this
+        // the group ends up at two different positions (the S2 bug).
+        const peer = st.presentation.slides.flatMap((s) => s.elements)
+          .find((e) => e.id !== elementId && e.syncId === syncId);
+        const geom: Partial<SlideElement> = peer
+          ? (peer.type === 'arrow' && el.type === 'arrow'
+              ? { x1: peer.x1, y1: peer.y1, x2: peer.x2, y2: peer.y2 } as Partial<SlideElement>
+              : { position: { ...peer.position } } as Partial<SlideElement>)
+          : {};
         void runResyncHook(el);
-        get().updateElement(elementId, delta);
+        get().updateElement(elementId, { ...resyncDelta(el), ...geom } as Partial<SlideElement>);
       },
       unlinkElement: (elementId) => {
         const el = get().presentation.slides[get().currentSlideIndex]
@@ -885,8 +940,16 @@ export async function flushToSqlite(): Promise<void> {
       });
       if (el.syncId) flushSyncCanonical.set(el.syncId, el.id);
     };
+    // Use the CURRENT element (not the snapshot captured when it was first
+    // added): a sync/link transition after the add but before the flush —
+    // free / resync — changes syncId, which decides row-vs-junction. The
+    // snapshot would be stale (e.g. a freed-then-resynced instance would be
+    // written as a stray row instead of a junction).
+    const liveOf = (info: { slideId: string; element: any }) =>
+      state.presentation.slides.find((s) => s.id === info.slideId)
+        ?.elements.find((e) => e.id === info.element.id) ?? info.element;
     for (const info of addedElements.values()) {
-      const el = info.element;
+      const el = liveOf(info);
       const canonical = el.syncId ?? el.id;
       if (canonical === el.id) {
         try { await addElementRow(el, info.slideId, info.zOrder); }
@@ -894,7 +957,7 @@ export async function flushToSqlite(): Promise<void> {
       }
     }
     for (const info of addedElements.values()) {
-      const el = info.element;
+      const el = liveOf(info);
       const syncId: string | undefined = el.syncId;
       const canonical = syncId ?? el.id;
       if (canonical === el.id) continue;  // already written as a row in pass 1

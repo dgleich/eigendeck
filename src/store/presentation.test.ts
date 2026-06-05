@@ -355,29 +355,44 @@ describe('presentation store', () => {
   });
 
   describe('sync / link relationship actions', () => {
-    it('freeElement frees a synced element and remembers the group', () => {
+    it('freeElement frees a synced element, gives it a NEW id, remembers the group, seeds a shared link', () => {
       const store = usePresentationStore.getState();
       store.duplicateSlide(0);                 // slides 0 & 1 now synced
       store.selectSlide(0);
       const el = usePresentationStore.getState().presentation.slides[0].elements[0];
       expect(el.syncId).toBeTruthy();
-      store.freeElement(el.id);
+      const oldId = el.id;
+      store.freeElement(oldId);
       const freed = usePresentationStore.getState().presentation.slides[0].elements[0];
       expect(freed.syncId).toBeUndefined();
       expect((freed as any)._syncId).toBe(el.syncId);
+      // NEW id → the freed frame persists as its own DB row (S5c)
+      expect(freed.id).not.toBe(oldId);
+      // peer stays synced and shares the freed frame's animation linkId
+      const peer = usePresentationStore.getState().presentation.slides[1].elements[0];
+      expect(peer.syncId).toBe(el.syncId);
+      expect(freed.linkId).toBeTruthy();
+      expect(peer.linkId).toBe(freed.linkId);
     });
 
-    it('resyncElement restores a freed element to its group', () => {
+    it('resyncElement restores a freed element to its group AND snaps to the canonical position (S2)', () => {
       const store = usePresentationStore.getState();
       store.duplicateSlide(0);
       store.selectSlide(0);
       const el = usePresentationStore.getState().presentation.slides[0].elements[0];
       const gid = el.syncId;
+      const canonX = el.position.x;
       store.freeElement(el.id);
-      store.resyncElement(el.id);
+      // move the freed instance away from the group
+      const freedId = usePresentationStore.getState().presentation.slides[0].elements[0].id;
+      store.moveElementsBy([freedId], 200, 0);
+      expect(usePresentationStore.getState().presentation.slides[0].elements[0].position.x).toBe(canonX + 200);
+      // resync → rejoins the group AND snaps back to the peer's (canonical) x
+      store.resyncElement(freedId);
       const back = usePresentationStore.getState().presentation.slides[0].elements[0];
       expect(back.syncId).toBe(gid);
       expect((back as any)._syncId).toBeUndefined();
+      expect(back.position.x).toBe(canonX);            // snapped; the move is discarded
     });
 
     it('unlinkElement ALWAYS remembers _linkId (re-linkable)', () => {

@@ -111,21 +111,15 @@ convert JSON fixtures with `eigendeck-cli out.eigendeck import json in.json`.
   **`HOME=/tmp`** so the deck + `.ipynb` live under `scope-home-recursive`.
   (Real users' decks live in home/Documents, so it just works.)
 
-### Known-failing regression probes (drive open bugs; flip to PASS when fixed)
-
 - **S5c free→move→animate round-trip** — `free-animate-reload-probe.mjs`
   (`E2E_MODE=samesession|settled`): duplicate a slide → free the slide-2 instance
   → move it +300 → save → reopen. Asserts TWO distinct rows (slide 1 @ x=60,
   slide 2 @ x=360), neither synced, both sharing one `linkId` (animation pairing),
-  recording intact on the moved frame. **Currently FAILS** — reopen collapses to
-  one synced entry at x=60 (the move + free are lost). The headline animation
-  workflow. Likely fix: `freeElement` gives the freed instance a fresh id so it
-  splits onto its own row.
+  recording intact on the moved frame. The headline animation workflow — `freeElement`
+  gives the freed instance a fresh id so it splits onto its own DB row.
 - **S2 resync position reconcile** — `resync-position-probe.mjs`: duplicate →
   free + move (positions diverge to [60,260]) → resync. Asserts resync SNAPS to
   the canonical position (decision 2026-06): in-session [60,60], a later synced
-  move keeps both equal, and it round-trips. **Currently FAILS** — resync leaves
-  [60,260] in-session (two synced members at different x) and a later move keeps a
-  permanent offset [70,270].
+  move keeps both equal, and it round-trips.
 
 See `../.claude/notes/notebook-edge-cases-findings.md` for findings.

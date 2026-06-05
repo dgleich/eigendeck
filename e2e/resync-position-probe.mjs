@@ -37,12 +37,13 @@ const r=await run(sid,`
   s.getState().selectSlide(0); s.getState().duplicateSlide(0);
   await new Promise(r=>setTimeout(r,300));
   s.getState().selectSlide(1);
-  const cid=s.getState().presentation.slides[1].elements[0].id;
-  s.getState().freeElement(cid);
-  s.getState().moveElementsBy([cid],200,0);
+  s.getState().freeElement(s.getState().presentation.slides[1].elements[0].id);
+  await new Promise(r=>setTimeout(r,100));
+  const fid=s.getState().presentation.slides[1].elements[0].id;   // re-id'd by free
+  s.getState().moveElementsBy([fid],200,0);
   await new Promise(r=>setTimeout(r,100));
   const diverged=px();                       // [60, 260]
-  s.getState().resyncElement(cid);
+  s.getState().resyncElement(fid);
   await new Promise(r=>setTimeout(r,100));
   const afterResync=px();                     // EXPECT [60, 60] (snap to canonical)
   // moving one synced instance now moves all, staying equal:
