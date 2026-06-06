@@ -717,23 +717,22 @@ function NotebookProperties({ element }: {
   // global default in either direction.
   const effectiveEditable = element.editable ?? defaultNotebookEditable;
 
-  // Editable toggle is coupled to file-watching: turning editing ON
-  // disables auto-reload for the bound asset (so an in-deck edit can't
-  // be clobbered by a disk-change reload), and turning it OFF returns
-  // the asset to following the global/deck default. The asset keeps
-  // its external_path either way, so a MANUAL reload (Asset section →
-  // Reload from disk) still works — and that reload drops the
-  // cellEdits overlay (see NotebookContent).
+  // Editable toggle is coupled to file-watching. Turning editing ON disables
+  // auto-reload for the bound asset (so an in-deck edit can't be clobbered by a
+  // disk-change reload). Turning it OFF deliberately LEAVES watching off —
+  // taking control is sticky: the user re-enables Watch explicitly (Asset
+  // section) when they want the notebook to follow the file again. The asset
+  // keeps its external_path, so the Asset section's Watch checkbox and the
+  // "Reload from disk" button still work (the latter drops the cellEdits
+  // overlay; see NotebookContent).
   const setEditable = async (on: boolean) => {
     updateElement(element.id, { editable: on } as Partial<typeof element>);
+    if (!on) return;  // un-editing keeps watching off — user re-enables it
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('db_set_asset_auto_reload', {
-        assetId: element.assetId,
-        value: on ? 'off' : null,
-      });
+      await invoke('db_set_asset_auto_reload', { assetId: element.assetId, value: 'off' });
     } catch (e) {
-      console.error('Failed to toggle asset auto_reload for editable notebook:', e);
+      console.error('Failed to disable asset auto_reload for editable notebook:', e);
     }
   };
 

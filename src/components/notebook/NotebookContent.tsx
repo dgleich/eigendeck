@@ -53,9 +53,10 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
   // toggle or the global default — must not be file-watched, else a disk reload
   // clobbers in-deck edits. The toggle already sets auto_reload='off'; this also
   // covers the default-on case (element.editable left undefined). Editor only,
-  // so we never write during a presentation. One-directional: we suppress when
-  // editable but don't auto-re-enable (per-asset flag can't safely represent
-  // per-element intent — see BUG-3); the explicit toggle still clears it.
+  // so we never write during a presentation. One-directional BY DESIGN: making
+  // a notebook editable stops watching, and un-editing LEAVES it stopped —
+  // taking control is sticky; the user re-enables Watch explicitly (Asset
+  // section) when ready. So nothing here re-enables on editable=false.
   useEffect(() => {
     if (mode !== 'editor' || !editable || !element.assetId) return;
     const assetId = element.assetId;
