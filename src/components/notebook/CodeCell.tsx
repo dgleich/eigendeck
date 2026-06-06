@@ -127,9 +127,14 @@ export function CodeCell({
                   ).join('\n')}
                 </span>
               )}
-              {highlight && highlighted != null
-                ? <code className="hljs" dangerouslySetInnerHTML={{ __html: highlighted }} />
-                : <code>{displaySource}</code>}
+              {displaySource === ''
+                /* Phantom space so an EMPTY cell still has a full line box —
+                   keeps it the same height as a one-line code cell instead of
+                   collapsing to padding. */
+                ? <code>{' '}</code>
+                : highlight && highlighted != null
+                  ? <code className="hljs" dangerouslySetInnerHTML={{ __html: highlighted }} />
+                  : <code>{displaySource}</code>}
             </pre>
           )}
           <div className="nb-cell-actions">
