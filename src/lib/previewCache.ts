@@ -41,9 +41,19 @@ export async function capturePreview(
   if (inflight.has(key)) return;
   const host = document.querySelector(`[data-element-id="${el.id}"]`) as HTMLElement | null;
   if (!host) return;
-  const node = (innerSelector
+  let node: HTMLElement = (innerSelector
     ? (host.querySelector(innerSelector) as HTMLElement | null)
     : host) ?? host;
+  // A demo renders in a (same-origin, blob:) sandboxed iframe. The <iframe>
+  // element is opaque to DOM cloning, so capture its inner document instead —
+  // allow-same-origin lets the parent reach contentDocument. Bail silently if
+  // it's unreachable (cross-origin) or not loaded yet.
+  if (node instanceof HTMLIFrameElement) {
+    const doc = node.contentDocument;
+    const root = doc?.body ?? doc?.documentElement ?? null;
+    if (!root) return;
+    node = root as HTMLElement;
+  }
   const width = Math.round(el.position.width);
   const height = Math.round(el.position.height);
   if (!width || !height) return;

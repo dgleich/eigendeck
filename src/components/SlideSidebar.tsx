@@ -50,10 +50,14 @@ function SidebarDemoTile({ element }: { element: Extract<SlideElement, { type: '
   return (
     <div style={{
       position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-      background: '#e8f4f8', border: '1px dashed #93c5fd', borderRadius: 2,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 20, color: '#60a5fa',
-    }}>DEMO</div>
+      overflow: 'hidden', background: '#fff',
+    }}>
+      <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
+        <div style={{ width: '100%', height: '100%', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', fontSize: 20,
+          color: '#60a5fa', background: '#e8f4f8', border: '1px dashed #93c5fd' }}>DEMO</div>
+      } />
+    </div>
   );
 }
 
@@ -64,10 +68,14 @@ function SidebarDemoPieceTile({ element }: { element: Extract<SlideElement, { ty
   return (
     <div style={{
       position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-      background: '#f0e8f8', border: '1px dashed #a78bfa', borderRadius: 2,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 16, color: '#7c3aed',
-    }}>{element.piece}</div>
+      overflow: 'hidden', background: '#fff',
+    }}>
+      <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
+        <div style={{ width: '100%', height: '100%', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', fontSize: 16,
+          color: '#7c3aed', background: '#f0e8f8', border: '1px dashed #a78bfa' }}>{element.piece}</div>
+      } />
+    </div>
   );
 }
 

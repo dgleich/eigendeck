@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { useDemoUrl, invalidateAsset } from '../lib/demoAssets';
+import { capturePreview } from '../lib/previewCache';
 import { NotebookBox } from './NotebookBox';
 import { useImageSrc } from '../lib/imageSrc';
 import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
@@ -299,6 +300,16 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
   const [reloadKey, setReloadKey] = useState(0);
   const src = useDemoUrl(element.assetId);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  // Proactively cache a PNG preview of the rendered demo (sidebar thumbs /
+  // export) once it's loaded + settled. The demo is a same-origin blob iframe,
+  // so capturePreview reaches its contentDocument. Debounced; re-runs on
+  // reload/resize. (No phase awareness yet — one 'preview' per element.)
+  useEffect(() => {
+    if (!src) return;
+    const t = setTimeout(() => { void capturePreview(element, 'iframe'); }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId]);
   return (
     <DraggableBox
       elementId={element.id}
@@ -354,6 +365,14 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
   const [interacting, setInteracting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const src = useDemoUrl(element.assetId, `piece=${element.piece}`);
+  // Cache a preview of the rendered demo-piece (see DemoBox). One 'preview' per
+  // element key — no phase variants yet.
+  useEffect(() => {
+    if (!src) return;
+    const t = setTimeout(() => { void capturePreview(element, 'iframe'); }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId]);
   return (
     <DraggableBox
       elementId={element.id}
