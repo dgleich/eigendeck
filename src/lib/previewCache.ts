@@ -30,6 +30,23 @@ function dataUrlToBytes(dataUrl: string): Uint8Array {
 // double-capture the same element).
 const inflight = new Set<string>();
 
+// Last source_hash captured this session per key — lets us skip the expensive
+// domToDataUrl when the to-be-captured content + size are unchanged.
+const lastHash = new Map<string, string>();
+
+/** Fast non-crypto string hash (cyrb53) — ample as a cache-bust key. */
+function hashString(s: string): string {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+
 /** Capture the element's rendered content to a PNG and store it as the cached
  *  preview. Captures `[data-element-id=el.id]`, or — when `innerSelector` is
  *  given — that descendant (e.g. '.nb-frame', so authoring chrome on the outer
@@ -58,6 +75,18 @@ export async function capturePreview(
   const height = Math.round(el.position.height);
   if (!width || !height) return;
 
+  // Skip the (expensive) rasterization when the content + size are unchanged
+  // since the last capture. The hash is over the to-be-captured node's HTML +
+  // size, so it changes exactly when the picture's structure does. (Canvas
+  // pixel state isn't in the HTML — acceptable: a thumbnail is a single frame.)
+  const sig = hashString(`${width}x${height}|${node.outerHTML}`);
+  if (lastHash.get(key) === sig) return;
+  try {
+    const variants = await invoke<CacheVariant[]>('db_list_asset_cache_variants', { sourceId: key });
+    const ex = variants.find((v) => v.variant === 'preview' && v.width === width && v.height === height);
+    if (ex && ex.source_hash === sig) { lastHash.set(key, sig); return; }  // persisted + unchanged
+  } catch { /* fall through and (re)capture */ }
+
   inflight.add(key);
   try {
     const { domToDataUrl } = await import('modern-screenshot');
@@ -69,8 +98,9 @@ export async function capturePreview(
       width,
       height,
       png: Array.from(bytes),
-      sourceHash: null,
+      sourceHash: sig,
     });
+    lastHash.set(key, sig);
     bumpPreviewVersion(key);
   } catch (e) {
     console.warn('capturePreview failed:', e);
@@ -99,7 +129,7 @@ export function onPreviewChange(fn: () => void): () => void {
   return () => listeners.delete(fn);
 }
 
-interface CacheVariant { variant: string; width: number; height: number }
+interface CacheVariant { variant: string; width: number; height: number; source_hash?: string | null }
 
 /** Load the element's cached preview as an object URL, or null on a miss.
  *  Size-robust: discovers the stored `preview` size via list-variants rather
