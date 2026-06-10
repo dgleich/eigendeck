@@ -19,6 +19,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
 import { detachDelta, pasteElementDelta } from './lib/syncLink';
+import { previewKey, loadPreviewDataUrl } from './lib/previewCache';
 import { registerNotebookLifecycle } from './components/notebook/notebookLifecycle';
 import { runCopyHook } from './lib/elementLifecycle';
 import { loadOverlayFor } from './lib/useOverlay';
@@ -203,10 +204,27 @@ async function printToPdf() {
   const hasDemos = presentation.slides.some(s =>
     s.elements.some(e => e.type === 'demo' || e.type === 'demo-piece'));
 
+  // Prefer the proactively-cached preview for each demo — no flip-through for
+  // demos that already have one. Only the misses need a live capture.
+  const demoScreenshots = new Map<string, string>(); // slideId:elementId → dataUrl
   if (hasDemos) {
+    for (const slide of presentation.slides) {
+      for (const el of slide.elements) {
+        if (el.type === 'demo' || el.type === 'demo-piece') {
+          const cached = await loadPreviewDataUrl(previewKey(el));
+          if (cached) demoScreenshots.set(`${slide.id}:${el.id}`, cached);
+        }
+      }
+    }
+  }
+  const needsLiveCapture = presentation.slides.some(s =>
+    s.elements.some(e => (e.type === 'demo' || e.type === 'demo-piece')
+      && !demoScreenshots.has(`${s.id}:${e.id}`)));
+
+  if (needsLiveCapture) {
     await message(
-      'Interactive demos will be captured as static screenshots. ' +
-      'The view will flip through slides with demos briefly — this is normal.\n\n' +
+      "Some demos don't have a cached preview yet and will be captured now — " +
+      'the view will flip through those slides briefly.\n\n' +
       'Open the exported file in a browser and use Cmd+P to save as PDF.',
       { title: 'Export for Print', kind: 'info' }
     );
@@ -238,12 +256,10 @@ async function printToPdf() {
       }
     }
 
-    // Capture screenshots of demo elements only
-    const demoScreenshots = new Map<string, string>(); // slideId:elementId → dataUrl
-    const slidesWithDemos = presentation.slides.filter(s =>
-      s.elements.some(e => e.type === 'demo' || e.type === 'demo-piece'));
-
-    if (slidesWithDemos.length > 0) {
+    // Live-capture ONLY the demos with no cached preview (flip through just
+    // those slides). Cached demos were already filled into demoScreenshots
+    // above — the common case is an empty flip-through here.
+    if (needsLiveCapture) {
       const { domToDataUrl } = await import('modern-screenshot');
       const originalSlideIndex = state.currentSlideIndex;
       usePresentationStore.getState().selectObject({ type: 'slide' });
@@ -251,7 +267,9 @@ async function printToPdf() {
 
       for (let i = 0; i < presentation.slides.length; i++) {
         const slide = presentation.slides[i];
-        const demoEls = slide.elements.filter(e => e.type === 'demo' || e.type === 'demo-piece');
+        const demoEls = slide.elements.filter(e =>
+          (e.type === 'demo' || e.type === 'demo-piece')
+          && !demoScreenshots.has(`${slide.id}:${e.id}`));
         if (demoEls.length === 0) continue;
 
         usePresentationStore.getState().selectSlide(i);

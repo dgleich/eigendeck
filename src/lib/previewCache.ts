@@ -120,3 +120,27 @@ export async function loadPreviewUrl(key: string): Promise<string | null> {
     return null;
   }
 }
+
+/** Load the element's cached preview as a base64 `data:` URL (or null on a
+ *  miss). For embedding in exported HTML/PDF, where a blob: URL won't survive
+ *  in the written file. */
+export async function loadPreviewDataUrl(key: string): Promise<string | null> {
+  try {
+    const variants = await invoke<CacheVariant[]>('db_list_asset_cache_variants', { sourceId: key });
+    const p = variants.find((v) => v.variant === 'preview');
+    if (!p) return null;
+    const buf = await invoke<ArrayBuffer>('db_get_asset_cache_bytes', {
+      sourceId: key, variant: 'preview', width: p.width, height: p.height,
+    });
+    const bytes = new Uint8Array(buf);
+    if (bytes.length === 0) return null;
+    let binary = '';
+    for (let k = 0; k < bytes.length; k += 8192) {
+      binary += String.fromCharCode(...bytes.slice(k, k + 8192));
+    }
+    return `data:image/png;base64,${btoa(binary)}`;
+  } catch (e) {
+    console.warn('loadPreviewDataUrl failed:', e);
+    return null;
+  }
+}
