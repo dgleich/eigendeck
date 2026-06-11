@@ -79,6 +79,25 @@ function SidebarDemoPieceTile({ element }: { element: Extract<SlideElement, { ty
   );
 }
 
+/** Video thumbnail — shows the cached poster-frame preview, and subscribes the
+ *  file watcher for the video's external file so it reloads on disk changes. */
+function SidebarVideoTile({ element }: { element: Extract<SlideElement, { type: 'video' }> }) {
+  const p = element.position;
+  useAssetFileWatcher(element.assetId, element.id);
+  return (
+    <div style={{
+      position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
+      overflow: 'hidden', background: '#000',
+    }}>
+      <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
+        <div style={{ width: '100%', height: '100%', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', fontSize: 18,
+          color: '#fff', background: '#1f2937' }}>▶</div>
+      } />
+    </div>
+  );
+}
+
 /** Notebook thumbnail — shows the cached preview image, and (crucially)
  *  subscribes the file watcher for the notebook's external .ipynb so it
  *  auto-reloads on disk changes. Like images/demos, the watcher lives in the
@@ -233,6 +252,8 @@ export function SlideSidebar() {
                       return <SidebarDemoPieceTile key={el.id} element={el} />;
                     case 'notebook':
                       return <SidebarNotebookThumb key={el.id} element={el} />;
+                    case 'video':
+                      return <SidebarVideoTile key={el.id} element={el} />;
                     case 'cover':
                       return (
                         <div key={el.id} style={{

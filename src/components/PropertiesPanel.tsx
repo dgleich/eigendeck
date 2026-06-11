@@ -426,6 +426,84 @@ export function PropertiesPanel() {
               <DemoPieceProperties element={selectedEl} />
             )}
 
+            {selectedEl.type === 'video' && (
+              <>
+                {selectedEl.kind === 'file' && selectedEl.assetId && (
+                  <PropSection label="Asset">
+                    <AssetSection assetId={selectedEl.assetId} elementId={selectedEl.id} />
+                  </PropSection>
+                )}
+                {selectedEl.kind === 'embed' && (
+                  <PropSection label="Source">
+                    <div style={{ fontSize: 11, color: '#999', wordBreak: 'break-all' }}>
+                      {selectedEl.provider} · {selectedEl.url}
+                    </div>
+                  </PropSection>
+                )}
+                <PropSection label="Playback">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                      <input type="checkbox" checked={!!selectedEl.loop}
+                        onChange={(e) => updateElement(selectedEl.id, { loop: e.target.checked } as any)} /> Loop
+                    </label>
+                    {selectedEl.kind === 'file' && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                        <input type="checkbox" checked={!!selectedEl.pingPong}
+                          onChange={(e) => updateElement(selectedEl.id, { pingPong: e.target.checked } as any)} /> Ping-pong (reverse loop)
+                      </label>
+                    )}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                      <input type="checkbox" checked={!!selectedEl.autoplay}
+                        onChange={(e) => updateElement(selectedEl.id, { autoplay: e.target.checked } as any)} /> Autoplay
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                      <input type="checkbox" checked={!!selectedEl.controls}
+                        onChange={(e) => updateElement(selectedEl.id, { controls: e.target.checked } as any)} /> Show controls
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                      <input type="checkbox" checked={!!selectedEl.muted}
+                        onChange={(e) => updateElement(selectedEl.id, { muted: e.target.checked } as any)} /> Muted
+                    </label>
+                    <label style={{ fontSize: 12 }}>Speed
+                      <select value={selectedEl.playbackRate ?? 1}
+                        onChange={(e) => updateElement(selectedEl.id, { playbackRate: parseFloat(e.target.value) } as any)}
+                        style={{ marginLeft: 6, fontSize: 12 }}>
+                        {[0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map((r) => <option key={r} value={r}>{r}&times;</option>)}
+                      </select>
+                    </label>
+                  </div>
+                </PropSection>
+                <PropSection label="Captions">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                      <input type="checkbox" checked={!!selectedEl.captions}
+                        onChange={(e) => updateElement(selectedEl.id, { captions: e.target.checked } as any)} /> Show captions
+                    </label>
+                    {selectedEl.kind === 'file' && (
+                      <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '3px 8px' }}
+                        onClick={async () => {
+                          const { open } = await import('@tauri-apps/plugin-dialog');
+                          const sel = await open({ title: 'Select captions (.vtt)', filters: [{ name: 'WebVTT', extensions: ['vtt'] }] });
+                          if (!sel) return;
+                          const full = sel as string;
+                          const name = full.split(/[\\/]/).pop() || 'captions.vtt';
+                          try {
+                            const { readFile } = await import('@tauri-apps/plugin-fs');
+                            const bytes = await readFile(full);
+                            const { storeAssetWithCollisionCheck } = await import('../lib/assetInsert');
+                            const r = await storeAssetWithCollisionCheck({ path: name, data: bytes, mimeType: 'text/vtt', externalPath: null, externalMtime: null });
+                            if (r.cancelled) return;
+                            updateElement(selectedEl.id, { captionsAssetId: r.assetId, captions: true, captionsLabel: name.replace(/\.vtt$/i, '') } as any);
+                          } catch (e) { console.error('attach captions failed:', e); }
+                        }}>
+                        {selectedEl.captionsAssetId ? 'Replace .vtt…' : 'Attach .vtt…'}
+                      </button>
+                    )}
+                  </div>
+                </PropSection>
+              </>
+            )}
+
             {selectedEl.type === 'notebook' && (
               <>
                 <PropSection label="Asset">

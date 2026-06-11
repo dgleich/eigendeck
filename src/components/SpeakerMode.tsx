@@ -167,6 +167,8 @@ function SpeakerPreviewElement({ element: el, zIndex }: { element: import('../ty
       return <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: el.color || '#fff', zIndex }} />;
     case 'demo': case 'demo-piece':
       return <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: '#e8f4f8', border: '1px dashed #93c5fd', zIndex }} />;
+    case 'video':
+      return <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: '#1f2937', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex }}>▶</div>;
     case 'arrow': {
       const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 3 } = el;
       return (

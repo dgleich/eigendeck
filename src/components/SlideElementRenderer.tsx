@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { useDemoUrl, invalidateAsset } from '../lib/demoAssets';
 import { capturePreview } from '../lib/previewCache';
+import { usePlaybackRate, usePingPong } from '../lib/videoPlayback';
 import { NotebookBox } from './NotebookBox';
 import { useImageSrc } from '../lib/imageSrc';
 import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
@@ -124,6 +125,16 @@ export function SlideElementRenderer({
     case 'notebook':
       return (
         <NotebookBox
+          element={element} zIndex={zIndex} scale={scale}
+          isSelected={isSelected}
+          onSelect={onSelect} onDelete={onDelete}
+          onUpdate={onUpdate}
+        />
+      );
+
+    case 'video':
+      return (
+        <VideoBox
           element={element} zIndex={zIndex} scale={scale}
           isSelected={isSelected}
           onSelect={onSelect} onDelete={onDelete}
@@ -409,6 +420,71 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
             style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
             Lock
           </button>
+        </div>
+      )}
+    </DraggableBox>
+  );
+}
+
+// ============================================
+// Video element — local file (<video>) in the editor. Double-click the overlay
+// to interact (play/pause, or native controls if enabled); Lock to drag again.
+// ============================================
+function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpdate }: {
+  element: Extract<SlideElement, { type: 'video' }>;
+  zIndex: number; scale: number;
+  isSelected: boolean;
+  onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
+  onUpdate: (changes: Partial<SlideElement>) => void;
+}) {
+  const [interacting, setInteracting] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const src = useDemoUrl(element.assetId);                  // file kind (V2)
+  const captionsSrc = useDemoUrl(element.captionsAssetId);
+  usePlaybackRate(videoRef, element.playbackRate ?? 1, src);
+  usePingPong(videoRef, !!element.pingPong, element.playbackRate ?? 1, src);
+  const btn: React.CSSProperties = { padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' };
+  return (
+    <DraggableBox
+      elementId={element.id}
+      position={element.position} zIndex={zIndex} scale={scale}
+      className="el-video" isSelected={isSelected}
+      linkId={element.linkId} syncId={element.syncId}
+      _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
+      onSelect={onSelect} onDelete={onDelete}
+      onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+    >
+      {src ? (
+        <video ref={videoRef} src={src} playsInline
+          loop={!!element.loop && !element.pingPong}
+          muted={!!element.muted}
+          controls={!!element.controls && interacting}
+          // A poster frame for the sidebar/export preview, once a frame decodes.
+          onLoadedData={() => { void capturePreview(element, 'video'); }}
+          style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000',
+            pointerEvents: interacting ? 'auto' : 'none' }}>
+          {element.captions && captionsSrc && (
+            <track kind="captions" src={captionsSrc} srcLang="en"
+              label={element.captionsLabel || 'Captions'} default />
+          )}
+        </video>
+      ) : <div style={{ padding: 20, color: '#999' }}>Video</div>}
+      {!interacting && (
+        <div className="demo-overlay"
+          onDoubleClick={(e) => { e.stopPropagation(); setInteracting(true); }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'grab', zIndex: 1 }} />
+      )}
+      {interacting && (
+        <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, display: 'flex', gap: 4,
+          transform: `scale(${1 / scale})`, transformOrigin: 'top right' }}>
+          {!element.controls && (
+            <button className="demo-lock-btn" style={btn} onClick={() => {
+              const v = videoRef.current; if (!v) return;
+              if (v.paused) void v.play().catch(() => {}); else v.pause();
+            }}>Play / Pause</button>
+          )}
+          <button className="demo-lock-btn" style={btn}
+            onClick={() => { videoRef.current?.pause(); setInteracting(false); }}>Lock</button>
         </div>
       )}
     </DraggableBox>

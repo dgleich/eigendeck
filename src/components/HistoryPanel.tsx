@@ -156,6 +156,9 @@ export function HistoryPanel() {
                   {!el.html && el.type === 'demo' && (
                     <div style={{ width: '100%', height: '100%', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: '#3b82f6' }}>demo</div>
                   )}
+                  {!el.html && el.type === 'video' && (
+                    <div style={{ width: '100%', height: '100%', background: '#1f2937', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: '#fff' }}>▶</div>
+                  )}
                 </div>
               ))}
             </div>

@@ -10,6 +10,7 @@ import { listen, emitTo } from '@tauri-apps/api/event';
 import { getSlideNumber } from './types/presentation';
 import { useDemoUrl } from './lib/demoAssets';
 import { useImageSrc } from './lib/imageSrc';
+import { usePlaybackRate, usePingPong } from './lib/videoPlayback';
 import type { Presentation, SlideElement, TextElement } from './types/presentation';
 import { TextElementSvg } from './components/TextElementSvg';
 import './App.css';
@@ -141,6 +142,9 @@ function PresenterElement({ element: el, zIndex, slide, presentationConfig, pres
     case 'demo-piece':
       return <PresenterDemoIframe assetId={el.assetId} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} />;
 
+    case 'video':
+      return <PresenterVideo element={el} zIndex={zIndex} />;
+
     case 'cover':
       return (
         <div style={{
@@ -199,6 +203,26 @@ function PresenterImage({ element: el, zIndex }: { element: Extract<SlideElement
       ...(el.opacity != null && el.opacity < 1 ? { opacity: el.opacity } : {}),
       ...(el.rotation ? { transform: `rotate(${el.rotation}deg)` } : {}),
     }} />
+  );
+}
+
+function PresenterVideo({ element: el, zIndex }: { element: Extract<SlideElement, { type: 'video' }>; zIndex: number }) {
+  const pos = el.position;
+  const ref = useRef<HTMLVideoElement>(null);
+  const src = useDemoUrl(el.assetId);
+  const captionsSrc = useDemoUrl(el.captionsAssetId);
+  usePlaybackRate(ref, el.playbackRate ?? 1, src);
+  usePingPong(ref, !!el.pingPong, el.playbackRate ?? 1, src);
+  if (!src) return null;
+  return (
+    <video ref={ref} src={src} playsInline
+      loop={!!el.loop && !el.pingPong} muted={!!el.muted}
+      autoPlay={!!el.autoplay} controls={!!el.controls}
+      style={{ position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, objectFit: 'contain', background: '#000', zIndex }}>
+      {el.captions && captionsSrc && (
+        <track kind="captions" src={captionsSrc} srcLang="en" label={el.captionsLabel || 'Captions'} default />
+      )}
+    </video>
   );
 }
 

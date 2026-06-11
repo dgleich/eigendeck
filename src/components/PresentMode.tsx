@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useImageSrc } from '../lib/imageSrc';
+import { usePlaybackRate, usePingPong } from '../lib/videoPlayback';
 import { SpeakerPanel } from './SpeakerView';
 import { getSlideNumber } from '../types/presentation';
 import type { Slide, SlideElement, TextElement } from '../types/presentation';
@@ -330,6 +331,9 @@ function PresentElement({ element: el, zIndex, style }: {
     case 'demo-piece':
       return <PresentDemoIframe assetId={el.assetId} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} style={style} />;
 
+    case 'video':
+      return <PresentVideo element={el} zIndex={zIndex} style={style} />;
+
     case 'notebook':
       return (
         <div className="el-notebook" style={{
@@ -483,6 +487,33 @@ function PresentImage({ element: el, zIndex, style }: {
       ...(el.rotation ? { transform: `rotate(${el.rotation}deg)` } : {}),
       ...style,
     }} />
+  );
+}
+
+function PresentVideo({ element: el, zIndex, style }: {
+  element: Extract<SlideElement, { type: 'video' }>; zIndex: number; style?: React.CSSProperties;
+}) {
+  const pos = el.position;
+  const ref = useRef<HTMLVideoElement>(null);
+  const src = useDemoUrl(el.assetId);
+  const captionsSrc = useDemoUrl(el.captionsAssetId);
+  usePlaybackRate(ref, el.playbackRate ?? 1, src);
+  usePingPong(ref, !!el.pingPong, el.playbackRate ?? 1, src);
+  if (!src) return null;
+  return (
+    <video ref={ref} src={src} playsInline
+      loop={!!el.loop && !el.pingPong}
+      muted={!!el.muted}
+      autoPlay={!!el.autoplay}
+      controls={!!el.controls}
+      style={{
+        position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
+        objectFit: 'contain', background: '#000', zIndex, ...style,
+      }}>
+      {el.captions && captionsSrc && (
+        <track kind="captions" src={captionsSrc} srcLang="en" label={el.captionsLabel || 'Captions'} default />
+      )}
+    </video>
   );
 }
 

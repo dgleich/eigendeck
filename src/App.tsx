@@ -105,6 +105,8 @@ export function renderSlideForPrint(
       inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:${el.color || theme.background};"></div>`;
     } else if (el.type === 'demo' || el.type === 'demo-piece') {
       inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:#f8f8f8;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#999;font-size:24px;font-family:system-ui;">Interactive Demo</div>`;
+    } else if (el.type === 'video') {
+      inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:#000;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-family:system-ui;">&#9654; Video</div>`;
     }
   }
   return `<div class="print-slide" style="width:${W}px;height:${H}px;position:relative;overflow:hidden;background:${theme.background};page-break-after:always;">${inner}</div>`;
@@ -202,7 +204,7 @@ async function printToPdf() {
 
   // Check if any slides have demos
   const hasDemos = presentation.slides.some(s =>
-    s.elements.some(e => e.type === 'demo' || e.type === 'demo-piece'));
+    s.elements.some(e => e.type === 'demo' || e.type === 'demo-piece' || e.type === 'video'));
 
   // Prefer the proactively-cached preview for each demo — no flip-through for
   // demos that already have one. Only the misses need a live capture.
@@ -210,7 +212,7 @@ async function printToPdf() {
   if (hasDemos) {
     for (const slide of presentation.slides) {
       for (const el of slide.elements) {
-        if (el.type === 'demo' || el.type === 'demo-piece') {
+        if (el.type === 'demo' || el.type === 'demo-piece' || el.type === 'video') {
           const cached = await loadPreviewDataUrl(previewKey(el));
           if (cached) demoScreenshots.set(`${slide.id}:${el.id}`, cached);
         }
@@ -218,7 +220,7 @@ async function printToPdf() {
     }
   }
   const needsLiveCapture = presentation.slides.some(s =>
-    s.elements.some(e => (e.type === 'demo' || e.type === 'demo-piece')
+    s.elements.some(e => (e.type === 'demo' || e.type === 'demo-piece' || e.type === 'video')
       && !demoScreenshots.has(`${s.id}:${e.id}`)));
 
   if (needsLiveCapture) {
@@ -268,7 +270,7 @@ async function printToPdf() {
       for (let i = 0; i < presentation.slides.length; i++) {
         const slide = presentation.slides[i];
         const demoEls = slide.elements.filter(e =>
-          (e.type === 'demo' || e.type === 'demo-piece')
+          (e.type === 'demo' || e.type === 'demo-piece' || e.type === 'video')
           && !demoScreenshots.has(`${slide.id}:${e.id}`));
         if (demoEls.length === 0) continue;
 
@@ -337,7 +339,7 @@ async function printToPdf() {
             `</svg>`;
         } else if (el.type === 'cover') {
           inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};background:${el.color || theme.background};"></div>`;
-        } else if (el.type === 'demo' || el.type === 'demo-piece') {
+        } else if (el.type === 'demo' || el.type === 'demo-piece' || el.type === 'video') {
           const screenshot = demoScreenshots.get(`${slide.id}:${el.id}`);
           if (screenshot) {
             inner += `<img src="${screenshot}" style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};" />`;
@@ -1181,6 +1183,43 @@ function App() {
                 console.error('Failed to add demo:', err);
               }
             }}>+ Demo</button>
+            <button title="Add a movie from a video file" onClick={async () => {
+              const { open, confirm } = await import('@tauri-apps/plugin-dialog');
+              const selected = await open({ title: 'Select Video', filters: [{ name: 'Video', extensions: ['mp4', 'webm', 'mov', 'm4v', 'ogv', 'ogg'] }] });
+              if (!selected) return;
+              const fullPath = selected as string;
+              const relativePath = relPath(store.projectPath, fullPath);
+              const ext = fullPath.split('.').pop()?.toLowerCase() || 'mp4';
+              const mime = ext === 'webm' ? 'video/webm'
+                : ext === 'mov' ? 'video/quicktime'
+                : ext === 'm4v' ? 'video/x-m4v'
+                : (ext === 'ogv' || ext === 'ogg') ? 'video/ogg'
+                : 'video/mp4';
+              try {
+                const { readFile } = await import('@tauri-apps/plugin-fs');
+                const bytes = await readFile(fullPath);
+                const mb = bytes.length / (1024 * 1024);
+                if (mb > 250) {
+                  const ok = await confirm(
+                    `This video is ${mb.toFixed(0)} MB. It will be embedded in the deck file, making it large. Continue?`,
+                    { title: 'Large video', kind: 'warning' });
+                  if (!ok) return;
+                }
+                // Embed the bytes as an asset (like images); externalPath keeps
+                // the source link so the file watcher reloads on-disk edits.
+                const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
+                const r = await storeAssetWithCollisionCheck({
+                  path: relativePath, data: bytes, mimeType: mime,
+                  externalPath: relativePath, externalMtime: null,
+                });
+                if (r.cancelled) return;
+                store.addElement({
+                  id: crypto.randomUUID(), type: 'video', kind: 'file',
+                  assetId: r.assetId,
+                  position: { x: 360, y: 200, width: 1200, height: 680 },
+                });
+              } catch (err) { console.error('Failed to add video:', err); }
+            }}>+ Video</button>
             <button title="Add Jupyter notebook" onClick={async () => {
               const { open } = await import('@tauri-apps/plugin-dialog');
               const selected = await open({ title: 'Select Notebook', filters: [{ name: 'Notebook', extensions: ['ipynb'] }] });

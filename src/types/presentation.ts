@@ -340,6 +340,34 @@ export interface NotebookElement extends BaseElement {
   recordingAssetId?: string;
 }
 
+/** A movie element: either a local video file stored as an asset (kind
+ *  'file') or a hosted embed by URL (kind 'embed' — YouTube/Vimeo/PeerTube).
+ *  All playback toggles default OFF; playbackRate defaults to 1. */
+export interface VideoElement extends BaseElement {
+  type: 'video';
+  kind: 'file' | 'embed';
+  /** file kind: the stored video asset (promoted assetId column). */
+  assetId?: string;
+  /** file kind: optional WebVTT captions sidecar asset (browser <track>). */
+  captionsAssetId?: string;
+  /** file kind: a label for the captions track (e.g. "English"). */
+  captionsLabel?: string;
+  /** embed kind: detected provider + the original pasted URL. */
+  provider?: 'youtube' | 'vimeo' | 'peertube';
+  url?: string;
+  // --- playback options (defaults: all toggles off, rate 1) ---
+  loop?: boolean;
+  /** ping-pong reverse loop. FILE ONLY, best-effort (smooth only for short
+   *  clips — reverse is done by reverse-seeking). */
+  pingPong?: boolean;
+  playbackRate?: number;
+  autoplay?: boolean;
+  controls?: boolean;
+  muted?: boolean;
+  /** Show captions: a <track> for files, provider CC param for embeds. */
+  captions?: boolean;
+}
+
 export type SlideElement =
   | TextElement
   | ImageElement
@@ -347,7 +375,8 @@ export type SlideElement =
   | DemoElement
   | DemoPieceElement
   | CoverElement
-  | NotebookElement;
+  | NotebookElement
+  | VideoElement;
 
 // ============================================
 // Slide and Presentation

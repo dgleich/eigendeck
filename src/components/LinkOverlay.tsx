@@ -182,6 +182,15 @@ function LinkableElement({ element: el, isLinked, linkable = true, onClick }: {
           DEMO
         </div>
       );
+    case 'video':
+      return (
+        <div style={{ ...wrapStyle, background: '#000', overflow: 'hidden' }}
+          onClick={onClick} className="link-overlay-element">
+          <ElementPreviewImg cacheKey={el.syncId ?? el.id} fallback={
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: '#fff' }}>▶</div>
+          } />
+        </div>
+      );
     case 'notebook':
       return (
         <div style={{ ...wrapStyle, background: '#eef7ee', border: isLinked ? '4px solid #16a34a' : '4px dashed #86c986', overflow: 'hidden' }}
