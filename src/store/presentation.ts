@@ -71,6 +71,8 @@ function updateCurrentSlide(
   };
 }
 
+const UNDO_DEBOUNCE_MS = 200;
+
 /** Build a fresh presentation with global-pref seeding applied.
  *  Used both by the Zustand store's cold-start initial state AND by
  *  fileOps.createProject (Cmd+N) — they MUST stay in sync, so the
@@ -542,8 +544,6 @@ export const usePresentationStore = create<PresentationState>()(
     }
   )
 );
-
-const UNDO_DEBOUNCE_MS = 200;
 
 /** Leading-edge debounce: first call fires immediately, subsequent
  *  calls within `ms` are dropped, then the gate resets after `ms`
