@@ -123,3 +123,17 @@ convert JSON fixtures with `eigendeck-cli out.eigendeck import json in.json`.
   move keeps both equal, and it round-trips.
 
 See `../.claude/notes/notebook-edge-cases-findings.md` for findings.
+
+### Video probes
+
+- **video-watch-probe.mjs** — a local video bound to an external file reloads on
+  disk change (byte-level; no codecs). Needs an empty deck under `HOME=/tmp`.
+- **video-roundtrip-probe.mjs** — file + embed video elements survive save→reopen
+  with all fields (kind, assetId, provider, url, loop, pingPong, playbackRate,
+  controls, muted). Codec-independent.
+- **video-decode-probe.mjs** — REAL decode + frame-capture + playback, using the
+  committed `fixtures/test.webm` (vp8). **Codec-dependent:** needs WebKit's
+  GStreamer media plugins — `gstreamer1.0-plugins-good` (vpx) decodes the webm;
+  add `gstreamer1.0-libav` for h264/mp4. (They're present in the dev container;
+  CI must apt-install them.) Asserts the `<video>` decoded (readyState/size/
+  duration), a real poster PNG was cached, and muted playback advances.

@@ -130,6 +130,16 @@ describe('renderSlideForPrint', () => {
     expect(html).toContain('Interactive Demo');
   });
 
+  it('renders a video placeholder', () => {
+    const html = renderSlideForPrint(makeSlide({
+      elements: [{
+        id: 'e1', type: 'video', kind: 'file', assetId: 'asset-vid',
+        position: { x: 80, y: 200, width: 800, height: 600 },
+      }],
+    }), 'white', emptyCache);
+    expect(html).toContain('Video');
+  });
+
   it('has balanced div tags', () => {
     const cache = new Map([['asset-x', 'data:image/png;base64,x']]);
     const html = renderSlideForPrint(makeSlide({
