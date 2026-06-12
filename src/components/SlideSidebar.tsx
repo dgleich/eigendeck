@@ -8,6 +8,7 @@ import { ASSET_TIER } from '../lib/assetCache';
 import { useAssetFileWatcher } from '../lib/assetWatcher';
 import type { MenuEntry } from './ContextMenu';
 import { ElementPreviewImg } from './ElementPreviewImg';
+import { VideoThumb } from './VideoThumb';
 
 /**
  * Thumbnail-tier image cell for the sidebar. Pulls a cached 256-px PNG from
@@ -89,11 +90,7 @@ function SidebarVideoTile({ element }: { element: Extract<SlideElement, { type: 
       position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
       overflow: 'hidden', background: '#000',
     }}>
-      <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
-        <div style={{ width: '100%', height: '100%', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', fontSize: 18,
-          color: '#fff', background: '#1f2937' }}>▶</div>
-      } />
+      <VideoThumb element={element} />
     </div>
   );
 }

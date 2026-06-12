@@ -3,6 +3,7 @@ import { usePresentationStore } from '../store/presentation';
 import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
 import type { SlideElement } from '../types/presentation';
 import { ElementPreviewImg } from './ElementPreviewImg';
+import { VideoThumb } from './VideoThumb';
 
 const SLIDE_W = 1920;
 const SLIDE_H = 1080;
@@ -186,9 +187,7 @@ function LinkableElement({ element: el, isLinked, linkable = true, onClick }: {
       return (
         <div style={{ ...wrapStyle, background: '#000', overflow: 'hidden' }}
           onClick={onClick} className="link-overlay-element">
-          <ElementPreviewImg cacheKey={el.syncId ?? el.id} fallback={
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: '#fff' }}>▶</div>
-          } />
+          <VideoThumb element={el} />
         </div>
       );
     case 'notebook':

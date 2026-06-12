@@ -526,6 +526,8 @@ function App() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuEntry[] } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [multiMonitorPresenting, setMultiMonitorPresenting] = useState(false);
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [videoUrl, setVideoUrl] = useState('');
 
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
@@ -1059,6 +1061,42 @@ function App() {
 
   const store = usePresentationStore.getState();
 
+  const addVideoFromFile = async () => {
+    const { open, confirm } = await import('@tauri-apps/plugin-dialog');
+    const selected = await open({ title: 'Select Video', filters: [{ name: 'Video', extensions: ['mp4', 'webm', 'mov', 'm4v', 'ogv', 'ogg'] }] });
+    if (!selected) return;
+    const fullPath = selected as string;
+    const relativePath = relPath(store.projectPath, fullPath);
+    const ext = fullPath.split('.').pop()?.toLowerCase() || 'mp4';
+    const mime = ext === 'webm' ? 'video/webm' : ext === 'mov' ? 'video/quicktime'
+      : ext === 'm4v' ? 'video/x-m4v' : (ext === 'ogv' || ext === 'ogg') ? 'video/ogg' : 'video/mp4';
+    try {
+      const { readFile } = await import('@tauri-apps/plugin-fs');
+      const bytes = await readFile(fullPath);
+      const mb = bytes.length / (1024 * 1024);
+      if (mb > 250) {
+        const ok = await confirm(`This video is ${mb.toFixed(0)} MB. It will be embedded in the deck file, making it large. Continue?`, { title: 'Large video', kind: 'warning' });
+        if (!ok) return;
+      }
+      const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
+      const r = await storeAssetWithCollisionCheck({ path: relativePath, data: bytes, mimeType: mime, externalPath: relativePath, externalMtime: null });
+      if (r.cancelled) return;
+      store.addElement({ id: crypto.randomUUID(), type: 'video', kind: 'file', assetId: r.assetId, position: { x: 360, y: 200, width: 1200, height: 680 } });
+    } catch (err) { console.error('Failed to add video:', err); }
+  };
+
+  const addVideoFromUrl = async (raw: string) => {
+    const url = raw.trim();
+    const { detectVideoProvider } = await import('./lib/videoEmbed');
+    const parsed = detectVideoProvider(url);
+    if (!parsed) {
+      const { message } = await import('@tauri-apps/plugin-dialog');
+      await message('Unrecognized video URL. Supported: YouTube, Vimeo, PeerTube.', { title: 'Add Video', kind: 'warning' });
+      return;
+    }
+    store.addElement({ id: crypto.randomUUID(), type: 'video', kind: 'embed', provider: parsed.provider, url, position: { x: 360, y: 200, width: 1200, height: 680 } });
+  };
+
   return (
     <div className="app">
       <DebugMenu />
@@ -1183,43 +1221,8 @@ function App() {
                 console.error('Failed to add demo:', err);
               }
             }}>+ Demo</button>
-            <button title="Add a movie from a video file" onClick={async () => {
-              const { open, confirm } = await import('@tauri-apps/plugin-dialog');
-              const selected = await open({ title: 'Select Video', filters: [{ name: 'Video', extensions: ['mp4', 'webm', 'mov', 'm4v', 'ogv', 'ogg'] }] });
-              if (!selected) return;
-              const fullPath = selected as string;
-              const relativePath = relPath(store.projectPath, fullPath);
-              const ext = fullPath.split('.').pop()?.toLowerCase() || 'mp4';
-              const mime = ext === 'webm' ? 'video/webm'
-                : ext === 'mov' ? 'video/quicktime'
-                : ext === 'm4v' ? 'video/x-m4v'
-                : (ext === 'ogv' || ext === 'ogg') ? 'video/ogg'
-                : 'video/mp4';
-              try {
-                const { readFile } = await import('@tauri-apps/plugin-fs');
-                const bytes = await readFile(fullPath);
-                const mb = bytes.length / (1024 * 1024);
-                if (mb > 250) {
-                  const ok = await confirm(
-                    `This video is ${mb.toFixed(0)} MB. It will be embedded in the deck file, making it large. Continue?`,
-                    { title: 'Large video', kind: 'warning' });
-                  if (!ok) return;
-                }
-                // Embed the bytes as an asset (like images); externalPath keeps
-                // the source link so the file watcher reloads on-disk edits.
-                const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
-                const r = await storeAssetWithCollisionCheck({
-                  path: relativePath, data: bytes, mimeType: mime,
-                  externalPath: relativePath, externalMtime: null,
-                });
-                if (r.cancelled) return;
-                store.addElement({
-                  id: crypto.randomUUID(), type: 'video', kind: 'file',
-                  assetId: r.assetId,
-                  position: { x: 360, y: 200, width: 1200, height: 680 },
-                });
-              } catch (err) { console.error('Failed to add video:', err); }
-            }}>+ Video</button>
+            <button title="Add a movie — file or URL (YouTube/Vimeo/PeerTube)"
+              onClick={() => { setVideoUrl(''); setVideoModalOpen(true); }}>+ Video</button>
             <button title="Add Jupyter notebook" onClick={async () => {
               const { open } = await import('@tauri-apps/plugin-dialog');
               const selected = await open({ title: 'Select Notebook', filters: [{ name: 'Notebook', extensions: ['ipynb'] }] });
@@ -1273,6 +1276,29 @@ function App() {
         />
       )}
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {videoModalOpen && (
+        <div onClick={() => setVideoModalOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 8, padding: 20, width: 420, boxShadow: '0 8px 32px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ fontWeight: 600, fontSize: 15 }}>Add Video</div>
+            <button className="prop-zbtn" style={{ width: 'auto', padding: '6px 10px', fontSize: 13 }}
+              onClick={() => { setVideoModalOpen(false); void addVideoFromFile(); }}>Choose a video file…</button>
+            <div style={{ fontSize: 12, color: '#888', textAlign: 'center' }}>or paste a URL</div>
+            <input autoFocus type="text" value={videoUrl} placeholder="YouTube / Vimeo / PeerTube URL"
+              onChange={(e) => setVideoUrl(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && videoUrl.trim()) { setVideoModalOpen(false); void addVideoFromUrl(videoUrl); } }}
+              style={{ padding: '6px 8px', fontSize: 13, border: '1px solid #ccc', borderRadius: 4 }} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button className="prop-zbtn" style={{ width: 'auto', padding: '5px 10px', fontSize: 13 }}
+                onClick={() => setVideoModalOpen(false)}>Cancel</button>
+              <button className="prop-zbtn" style={{ width: 'auto', padding: '5px 10px', fontSize: 13, background: '#2563eb', color: '#fff' }}
+                disabled={!videoUrl.trim()}
+                onClick={() => { setVideoModalOpen(false); void addVideoFromUrl(videoUrl); }}>Add URL</button>
+            </div>
+          </div>
+        </div>
+      )}
       <CollisionDialog />
       {unsavedDialog && (
         <UnsavedChangesDialog

@@ -5,6 +5,7 @@ import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentati
 import { useDemoUrl, invalidateAsset } from '../lib/demoAssets';
 import { capturePreview } from '../lib/previewCache';
 import { usePlaybackRate, usePingPong } from '../lib/videoPlayback';
+import { buildEmbedSrc } from '../lib/videoEmbed';
 import { NotebookBox } from './NotebookBox';
 import { useImageSrc } from '../lib/imageSrc';
 import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
@@ -439,8 +440,9 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
 }) {
   const [interacting, setInteracting] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const src = useDemoUrl(element.assetId);                  // file kind (V2)
+  const src = useDemoUrl(element.assetId);                  // file kind
   const captionsSrc = useDemoUrl(element.captionsAssetId);
+  const embedSrc = element.kind === 'embed' ? buildEmbedSrc(element) : null;
   usePlaybackRate(videoRef, element.playbackRate ?? 1, src);
   usePingPong(videoRef, !!element.pingPong, element.playbackRate ?? 1, src);
   const btn: React.CSSProperties = { padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' };
@@ -454,7 +456,13 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
       onSelect={onSelect} onDelete={onDelete}
       onPositionChange={(pos) => onUpdate({ position: pos } as any)}
     >
-      {src ? (
+      {element.kind === 'embed' ? (
+        embedSrc
+          ? <iframe src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+              style={{ width: '100%', height: '100%', border: 'none', background: '#000',
+                pointerEvents: interacting ? 'auto' : 'none' }} />
+          : <div style={{ padding: 20, color: '#999' }}>Unrecognized video URL</div>
+      ) : src ? (
         <video ref={videoRef} src={src} playsInline
           loop={!!element.loop && !element.pingPong}
           muted={!!element.muted}
@@ -477,7 +485,7 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
       {interacting && (
         <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, display: 'flex', gap: 4,
           transform: `scale(${1 / scale})`, transformOrigin: 'top right' }}>
-          {!element.controls && (
+          {element.kind === 'file' && !element.controls && (
             <button className="demo-lock-btn" style={btn} onClick={() => {
               const v = videoRef.current; if (!v) return;
               if (v.paused) void v.play().catch(() => {}); else v.pause();

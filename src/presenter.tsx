@@ -11,6 +11,7 @@ import { getSlideNumber } from './types/presentation';
 import { useDemoUrl } from './lib/demoAssets';
 import { useImageSrc } from './lib/imageSrc';
 import { usePlaybackRate, usePingPong } from './lib/videoPlayback';
+import { buildEmbedSrc } from './lib/videoEmbed';
 import type { Presentation, SlideElement, TextElement } from './types/presentation';
 import { TextElementSvg } from './components/TextElementSvg';
 import './App.css';
@@ -213,12 +214,18 @@ function PresenterVideo({ element: el, zIndex }: { element: Extract<SlideElement
   const captionsSrc = useDemoUrl(el.captionsAssetId);
   usePlaybackRate(ref, el.playbackRate ?? 1, src);
   usePingPong(ref, !!el.pingPong, el.playbackRate ?? 1, src);
+  const box: React.CSSProperties = { position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, objectFit: 'contain', background: '#000', zIndex };
+  if (el.kind === 'embed') {
+    const embedSrc = buildEmbedSrc(el);
+    if (!embedSrc) return null;
+    return <iframe src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" style={{ ...box, border: 'none' }} />;
+  }
   if (!src) return null;
   return (
     <video ref={ref} src={src} playsInline
       loop={!!el.loop && !el.pingPong} muted={!!el.muted}
       autoPlay={!!el.autoplay} controls={!!el.controls}
-      style={{ position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, objectFit: 'contain', background: '#000', zIndex }}>
+      style={box}>
       {el.captions && captionsSrc && (
         <track kind="captions" src={captionsSrc} srcLang="en" label={el.captionsLabel || 'Captions'} default />
       )}
