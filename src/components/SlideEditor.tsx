@@ -458,6 +458,7 @@ export function SlideEditor() {
               const isImage = /\.(png|jpg|jpeg|gif|svg|webp|pdf)$/i.test(name);
               const isHtml = /\.html?$/i.test(name);
               const isIpynb = /\.ipynb$/i.test(name);
+              const isVideo = /\.(mp4|webm|mov|m4v|ogv|ogg)$/i.test(name);
 
               if (isImage) {
                 try {
@@ -576,6 +577,34 @@ export function SlideEditor() {
                     position: { x: 80, y: 200, width: 1760, height: 700 },
                   });
                 } catch (err) { console.error('Failed to handle dropped notebook:', err); }
+              } else if (isVideo) {
+                try {
+                  const { readFile } = await import('@tauri-apps/plugin-fs');
+                  const relativePath = relPath(store.projectPath, fullPath);
+                  const bytes = await readFile(fullPath);
+                  const ext = name.split('.').pop()?.toLowerCase() || 'mp4';
+                  const mime = ext === 'webm' ? 'video/webm' : ext === 'mov' ? 'video/quicktime'
+                    : ext === 'm4v' ? 'video/x-m4v' : (ext === 'ogv' || ext === 'ogg') ? 'video/ogg' : 'video/mp4';
+                  const mb = bytes.length / (1024 * 1024);
+                  if (mb > 250) {
+                    const { confirm } = await import('@tauri-apps/plugin-dialog');
+                    const ok = await confirm(`This video is ${mb.toFixed(0)} MB. It will be embedded in the deck file, making it large. Continue?`, { title: 'Large video', kind: 'warning' });
+                    if (!ok) return;
+                  }
+                  // Embed bytes as an asset; externalPath keeps the source link
+                  // for file-watching (same as image/demo drag-drop).
+                  const { storeAssetWithCollisionCheck } = await import('../lib/assetInsert');
+                  const r = await storeAssetWithCollisionCheck({
+                    path: relativePath, data: bytes, mimeType: mime,
+                    externalPath: relativePath, externalMtime: null,
+                  });
+                  if (r.cancelled) return;
+                  store.addElement({
+                    id: crypto.randomUUID(), type: 'video', kind: 'file',
+                    assetId: r.assetId,
+                    position: { x: 360, y: 200, width: 1200, height: 680 },
+                  });
+                } catch (err) { console.error('Failed to handle dropped video:', err); }
               }
             }
           }
