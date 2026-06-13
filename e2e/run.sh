@@ -4,6 +4,9 @@
 #      E2E_APP (default /tmp/el-target/debug/eigendeck).
 # A debug build loads devUrl, so we serve dist/ on :1420; a release build
 # is self-contained — drop the http.server line for CI.
+# NOTE: build dist/ with `VITE_EIGENDECK_SEAM=1 npm run build` — the probes
+# drive the app via window.__eigendeck, which is off unless that flag is baked
+# in (a runtime pref won't stick: XDG_DATA_HOME is throwaway per run).
 set -u
 export E2E_APP="${E2E_APP:-/tmp/el-target/debug/eigendeck}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

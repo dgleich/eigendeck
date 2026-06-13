@@ -42,6 +42,7 @@ import { flushToSqlite } from './store/presentation';
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
+import { getPreference } from './lib/preferences';
 import { TEXT_PRESET_STYLES, effectiveFontSize } from './types/presentation';
 import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
 
@@ -50,14 +51,27 @@ import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from '.
 registerNotebookLifecycle();
 
 // Debug/automation seam: expose the store + write-through flush on window so
-// headless E2E (and programmatic editing, see LLM-EDITING.md) can drive store
-// actions and persist them through the real SQLite path. Harmless in a desktop
-// webview; no behavior change for the app itself.
-(window as unknown as { __eigendeck?: unknown }).__eigendeck = {
-  store: usePresentationStore,
-  flush: flushToSqlite,
-  save: saveProject,   // flush + atomic save-in-place to the open file
-};
+// headless E2E and live scripting can drive store actions and persist them
+// through the real SQLite path. OFF by default in release builds — this is a
+// test/automation hook, not the documented editing path (LLM-EDITING.md uses
+// the offline `eigendeck-cli` against the file at rest). It installs when any
+// of these hold:
+//   • dev build (`import.meta.env.DEV`) — convenience while developing.
+//   • `VITE_EIGENDECK_SEAM=1` baked into the build — used for E2E dist (the
+//     E2E runner wipes localStorage each run, so a runtime pref won't stick).
+//   • the user opted in via Settings → "Enable automation seam" (the pref is
+//     read once at startup; toggling it takes effect on the next launch).
+if (
+  import.meta.env.DEV ||
+  import.meta.env.VITE_EIGENDECK_SEAM === '1' ||
+  getPreference('automationSeam')
+) {
+  (window as unknown as { __eigendeck?: unknown }).__eigendeck = {
+    store: usePresentationStore,
+    flush: flushToSqlite,
+    save: saveProject,   // flush + atomic save-in-place to the open file
+  };
+}
 
 /** Render a single slide to HTML for PDF/print export */
 export function renderSlideForPrint(

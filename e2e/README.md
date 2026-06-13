@@ -24,10 +24,16 @@ A **debug** build loads `devUrl` (the vite dev server), so `run.sh` serves
 binary (self-contained, embeds `dist/`) and skip the server:
 
 ```bash
-npm run build                                          # produce dist/
+VITE_EIGENDECK_SEAM=1 npm run build                    # produce dist/ WITH the seam
 cargo build --bin eigendeck                            # debug binary
 # (CI: cargo build --release --bin eigendeck, then drop the :1420 server)
 ```
+
+> **The `VITE_EIGENDECK_SEAM=1` is required.** The probes drive the app through
+> `window.__eigendeck`, which is OFF in a plain release build (it's gated behind
+> a Settings opt-in / dev build). This flag bakes it into the dist. A runtime
+> preference won't do — `run.sh` uses a throwaway `XDG_DATA_HOME` per run, so
+> localStorage is empty every time.
 
 Set `E2E_APP` to the binary (default `/tmp/el-target/debug/eigendeck`).
 

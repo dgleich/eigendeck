@@ -47,6 +47,14 @@ export interface PrefSchema {
    *  notebook editable disables file-watching for its asset — see
    *  NotebookElement.editable. */
   defaultNotebookEditable: boolean;
+  /** Install the `window.__eigendeck` automation seam (live store +
+   *  flush + save) in the running app. Off by default — the seam is a
+   *  test/automation hook (see LLM-EDITING.md uses the offline CLI, not
+   *  this). Turn it on to script the *open* deck from devtools or an
+   *  automation driver. Local dev builds and E2E builds
+   *  (VITE_EIGENDECK_SEAM=1) install it regardless. Takes effect on the
+   *  next launch. */
+  automationSeam: boolean;
 }
 
 export interface JupyterServerEntry {
@@ -74,6 +82,7 @@ const DEFAULTS: PrefSchema = {
   textSizes: {},
   jupyterServers: [],
   defaultNotebookEditable: false,
+  automationSeam: false,
 };
 
 const KEY_PREFIX = 'eigendeck:pref:';
