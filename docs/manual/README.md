@@ -20,6 +20,10 @@ to people building presentations.
 - [Jupyter servers](notebook-servers.md) — the per-machine kernel-
   server registry, why deck files don't carry URLs or tokens, and
   how the topbar status pill works.
+- [Videos](videos.md) — local video files (embedded + watched) vs.
+  YouTube/Vimeo/PeerTube embeds, the playback options (loop, ping-pong,
+  speed, autoplay, controls, muted, captions), and how thumbnails/export
+  work.
 
 (More topics are added as design decisions get nailed down.)
 

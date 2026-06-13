@@ -65,7 +65,7 @@ cd src-tauri && cargo check && cargo clippy -- -D warnings
 
 ## Key files
 
-- `src/components/SlideElementRenderer.tsx` — renders ALL element types (text, image, arrow, demo)
+- `src/components/SlideElementRenderer.tsx` — renders ALL element types (text, image, arrow, demo, demo-piece, notebook, video, cover)
 - `src/store/presentation.ts` — Zustand store with all slide/element actions
 - `src/types/presentation.ts` — data model (Slide, SlideElement, TextPreset, etc.)
 - `src/lib/mathjax.ts` — MathJax loading, rendering, caching
@@ -95,7 +95,7 @@ cd src-tauri && cargo check && cargo clippy -- -D warnings
 ## Data model
 
 Every slide has an `elements[]` array. Array order = z-order.
-Element types: `text` (5 presets), `image`, `arrow`, `demo`.
+Element types: `text` (5 presets), `image`, `arrow`, `demo`, `demo-piece`, `notebook`, `video` (file or YouTube/Vimeo/PeerTube embed), `cover`.
 Slides can have `groupId` for slide groups (shared numbering, group move).
 
 See SPEC.md for full schema and LLM-EDITING.md for programmatic editing guide.

@@ -302,6 +302,52 @@ Notebook elements render as a live, interactive Jupyter UI inside an iframe. Two
 - **`external`**: connects via REST + WebSocket to a user-run `jupyter server`. Supports any installed kernel (Python, Julia, R, ...). The server URL + token come from `PrefSchema.jupyterServers`, picked by matching `availableKernels`. If no registered server advertises the requested kernel, the notebook renders but can't run (status pill shows red).
 - **`lite`**: runs a self-contained Pyodide kernel inside the WebView via a bundled JupyterLite distribution. Python-only, but the deck works on any machine without Jupyter installed — use this for portable demo decks.
 
+### Video Element
+
+A movie: either a **local file** stored as an asset (`kind: "file"`) or a hosted
+**embed** by URL (`kind: "embed"` — YouTube / Vimeo / PeerTube).
+
+```json
+{
+  "id": "unique-uuid",
+  "type": "video",
+  "kind": "file",
+  "assetId": "b7e2...44c",
+  "loop": true,
+  "playbackRate": 1,
+  "position": { "x": 360, "y": 200, "width": 1200, "height": 680 }
+}
+```
+
+```json
+{
+  "id": "unique-uuid",
+  "type": "video",
+  "kind": "embed",
+  "provider": "youtube",
+  "url": "https://youtu.be/dQw4w9WgXcQ",
+  "loop": true,
+  "position": { "x": 360, "y": 200, "width": 1200, "height": 680 }
+}
+```
+
+- `kind`: REQUIRED — `"file"` or `"embed"`.
+- `assetId`: file kind — REQUIRED UUID, the stored video asset (mp4/webm/mov/…). Bytes are embedded in the deck like images; the asset keeps its `external_path`, so the video is **file-watched** (re-encode/replace the source on disk → it reloads). No "take control" concept (video isn't edited in-deck).
+- `provider` / `url`: embed kind — `provider` is `"youtube" | "vimeo" | "peertube"`; `url` is the original pasted URL (the provider + video id are re-parsed from it at render time). PeerTube keeps the instance origin from the URL.
+- `captionsAssetId` / `captionsLabel`: file kind — an optional **WebVTT (`.vtt`) sidecar** asset rendered as a `<track>` (browser `<video>` can't read subtitles embedded inside the container, so captions need this sidecar). `captionsLabel` is the track label.
+
+Playback options (all toggles default **off**; `playbackRate` defaults to **1**):
+
+- `loop`: boolean — loop forever.
+- `pingPong`: boolean — **file only**, ping-pong reverse loop (forward, then reverse-seek back, repeat). Best-effort: smooth only for short clips (reverse has no native support — it's done by reverse-seeking). Disables native `loop` when on.
+- `playbackRate`: number — speed (0.25–2×). For **embeds** this is applied best-effort via each provider's postMessage player API (YouTube IFrame API / Vimeo player.js / PeerTube PlayerAPI), since no URL param sets it.
+- `autoplay`: boolean — play on slide enter (PresentMode). Browsers require muted autoplay, so it forces mute.
+- `controls`: boolean — show the native controls bar. When off in present mode the video is chrome-free (click-to-play in the editor).
+- `muted`: boolean — start muted.
+- `captions`: boolean — show captions: the `.vtt` `<track>` for files, the provider's CC param for embeds (best-effort).
+
+A poster frame (file) or the provider thumbnail (embed) is captured into the preview cache for the sidebar mini-slides and static export (`previewCache`, variant `preview`). Add via the "+ Video" toolbar button (file picker or pasted URL) or by **dragging a video file** onto the canvas.
+
 ## Linked Objects
 
 Elements can be linked across slides for animation and content synchronization.
