@@ -137,3 +137,6 @@ See `../.claude/notes/notebook-edge-cases-findings.md` for findings.
   add `gstreamer1.0-libav` for h264/mp4. (They're present in the dev container;
   CI must apt-install them.) Asserts the `<video>` decoded (readyState/size/
   duration), a real poster PNG was cached, and muted playback advances.
+- **video-playback-probe.mjs** — REAL loop + ping-pong: asserts native loop wraps
+  currentTime back to the start, and ping-pong plays forward then reverse-seeks
+  back down (rAF runs headlessly). Codec-dependent (uses the webm fixture).
