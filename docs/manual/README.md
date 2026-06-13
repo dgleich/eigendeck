@@ -10,6 +10,10 @@ to people building presentations.
 
 - [Text sizes](text-sizes.md) — the named scale and why slide-level
   overrides don't exist.
+- [Files, watching, and auto-reload](assets.md) — how files you add
+  are embedded *and* live-watched, the Watch cascade (global → deck →
+  per-asset), "editable = take control" for notebooks, and
+  Reload-from-disk.
 - [Sync and link](sync-and-link.md) — the two ways to relate elements
   across slides (sync unifies, link animates), the duplicate→free→move
   animation workflow, the S/A badges, promoting a link to a sync, and
