@@ -419,21 +419,31 @@
 .editor-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 6px 12px;
   background: #fff;
   border-bottom: 1px solid #eee;
   flex-shrink: 0;
+  /* Keep the insert buttons on ONE row: never wrap (which squeezed buttons
+     until "+ Title" broke onto two lines). When the toolbar is too narrow for
+     them all, scroll horizontally instead. */
+  flex-wrap: nowrap;
+  overflow-x: auto;
 }
+/* Don't let any button shrink below its label. */
+.editor-actions > * { flex: 0 0 auto; }
+.editor-actions::-webkit-scrollbar { height: 6px; }
+.editor-actions::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
 
 .editor-actions button {
-  padding: 3px 10px;
+  padding: 3px 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
   background: #fff;
   cursor: pointer;
   font-size: 12px;
   color: #1a1a1a;
+  white-space: nowrap;
 }
 
 .editor-actions button:hover {
