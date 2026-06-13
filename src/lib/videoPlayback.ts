@@ -2,6 +2,21 @@
 // so all three honor the element's options identically.
 
 import { useEffect, type RefObject } from 'react';
+import { postEmbedSpeed } from './videoEmbed';
+
+/** Apply playback speed to an EMBED via the provider's postMessage API. Posts a
+ *  few times after the iframe (re)loads since there's no player-ready callback
+ *  wired — best-effort. No-op at rate 1 (provider default). */
+export function useEmbedSpeed(
+  ref: RefObject<HTMLIFrameElement | null>, provider: string | undefined, rate: number, srcKey: unknown,
+): void {
+  useEffect(() => {
+    if (!provider || !rate || rate === 1) return;
+    const post = () => postEmbedSpeed(ref.current?.contentWindow, provider, rate);
+    const timers = [600, 1500, 3000].map((ms) => setTimeout(post, ms));
+    return () => timers.forEach(clearTimeout);
+  }, [ref, provider, rate, srcKey]);
+}
 
 /** Keep the element's playbackRate applied (it resets on src/metadata change). */
 export function usePlaybackRate(

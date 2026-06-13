@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useImageSrc } from '../lib/imageSrc';
-import { usePlaybackRate, usePingPong } from '../lib/videoPlayback';
+import { usePlaybackRate, usePingPong, useEmbedSpeed } from '../lib/videoPlayback';
 import { buildEmbedSrc } from '../lib/videoEmbed';
 import { SpeakerPanel } from './SpeakerView';
 import { getSlideNumber } from '../types/presentation';
@@ -496,18 +496,20 @@ function PresentVideo({ element: el, zIndex, style }: {
 }) {
   const pos = el.position;
   const ref = useRef<HTMLVideoElement>(null);
+  const embedRef = useRef<HTMLIFrameElement>(null);
   const src = useDemoUrl(el.assetId);
   const captionsSrc = useDemoUrl(el.captionsAssetId);
+  const embedSrc = el.kind === 'embed' ? buildEmbedSrc(el) : null;
   usePlaybackRate(ref, el.playbackRate ?? 1, src);
   usePingPong(ref, !!el.pingPong, el.playbackRate ?? 1, src);
+  useEmbedSpeed(embedRef, el.provider, el.playbackRate ?? 1, embedSrc);
   const box: React.CSSProperties = {
     position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
     objectFit: 'contain', background: '#000', zIndex, ...style,
   };
   if (el.kind === 'embed') {
-    const embedSrc = buildEmbedSrc(el);
     if (!embedSrc) return null;
-    return <iframe src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+    return <iframe ref={embedRef} src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
       style={{ ...box, border: 'none' }} />;
   }
   if (!src) return null;

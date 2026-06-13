@@ -58,6 +58,7 @@ export function buildEmbedSrc(el: EmbedOpts): string | null {
     if (el.loop) { p.set('loop', '1'); p.set('playlist', id); }  // single-video loop needs playlist=id
     p.set('controls', el.controls ? '1' : '0');
     if (el.captions) p.set('cc_load_policy', '1');
+    p.set('enablejsapi', '1');  // enable postMessage control (setPlaybackRate)
     p.set('rel', '0');
     return `https://www.youtube-nocookie.com/embed/${id}?${p.toString()}`;
   }
@@ -77,7 +78,25 @@ export function buildEmbedSrc(el: EmbedOpts): string | null {
   if (el.loop) p.set('loop', '1');
   if (!el.controls) p.set('controls', '0');
   if (el.captions) p.set('subtitle', 'en');
+  p.set('api', '1');  // enable the PeerTube PlayerAPI (postMessage setPlaybackRate)
   return `${base}/videos/embed/${id}?${p.toString()}`;
+}
+
+/** Best-effort playback-speed control for an embed, via each provider's
+ *  postMessage player API (YouTube IFrame API / Vimeo player.js / PeerTube
+ *  PlayerAPI). No-op/silent if the player isn't ready or the provider rejects
+ *  it — speed is "best-effort" for embeds. */
+export function postEmbedSpeed(win: Window | null | undefined, provider: string | undefined, rate: number): void {
+  if (!win || !provider) return;
+  try {
+    if (provider === 'youtube') {
+      win.postMessage(JSON.stringify({ event: 'command', func: 'setPlaybackRate', args: [rate] }), '*');
+    } else if (provider === 'vimeo') {
+      win.postMessage({ method: 'setPlaybackRate', value: rate }, '*');
+    } else if (provider === 'peertube') {
+      win.postMessage({ method: 'setPlaybackRate', params: [rate] }, '*');
+    }
+  } catch { /* cross-origin / not ready — ignore */ }
 }
 
 /** YouTube poster — a direct CDN URL (no API/CORS needed for <img> display). */

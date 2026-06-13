@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectVideoProvider, buildEmbedSrc, youtubeThumb } from './videoEmbed';
+import { detectVideoProvider, buildEmbedSrc, youtubeThumb, postEmbedSpeed } from './videoEmbed';
 
 describe('detectVideoProvider', () => {
   it('YouTube: watch / youtu.be / embed / shorts', () => {
@@ -32,6 +32,7 @@ describe('buildEmbedSrc', () => {
     expect(src).toContain('mute=1');
     expect(src).toContain('controls=1');
     expect(src).toContain('cc_load_policy=1');
+    expect(src).toContain('enablejsapi=1');  // needed for postMessage setPlaybackRate
   });
   it('Vimeo: player URL with loop/controls', () => {
     const src = buildEmbedSrc({ provider: 'vimeo', url: 'https://vimeo.com/42', loop: true })!;
@@ -43,6 +44,7 @@ describe('buildEmbedSrc', () => {
     const src = buildEmbedSrc({ provider: 'peertube', url: 'https://framatube.org/w/xyz', muted: true })!;
     expect(src.startsWith('https://framatube.org/videos/embed/xyz?')).toBe(true);
     expect(src).toContain('muted=1');
+    expect(src).toContain('api=1');  // enable the PeerTube PlayerAPI
   });
   it('returns null for an unrecognized URL', () => {
     expect(buildEmbedSrc({ provider: 'youtube', url: 'https://example.com/x' })).toBeNull();
@@ -52,5 +54,24 @@ describe('buildEmbedSrc', () => {
 describe('youtubeThumb', () => {
   it('is a direct CDN URL', () => {
     expect(youtubeThumb('ID')).toBe('https://i.ytimg.com/vi/ID/hqdefault.jpg');
+  });
+});
+
+describe('postEmbedSpeed', () => {
+  it('posts the provider-specific setPlaybackRate message', () => {
+    const calls: any[] = [];
+    const win = { postMessage: (m: any) => calls.push(m) } as unknown as Window;
+    postEmbedSpeed(win, 'youtube', 1.5);
+    postEmbedSpeed(win, 'vimeo', 1.5);
+    postEmbedSpeed(win, 'peertube', 1.5);
+    expect(JSON.parse(calls[0])).toMatchObject({ event: 'command', func: 'setPlaybackRate', args: [1.5] }); // YT: JSON string
+    expect(calls[1]).toMatchObject({ method: 'setPlaybackRate', value: 1.5 });                              // Vimeo: object
+    expect(calls[2]).toMatchObject({ method: 'setPlaybackRate', params: [1.5] });                           // PeerTube: object
+  });
+  it('is a no-op for null window / unknown provider', () => {
+    expect(() => postEmbedSpeed(null, 'youtube', 1.5)).not.toThrow();
+    const calls: any[] = [];
+    postEmbedSpeed({ postMessage: (m: any) => calls.push(m) } as unknown as Window, 'unknown', 1.5);
+    expect(calls.length).toBe(0);
   });
 });
