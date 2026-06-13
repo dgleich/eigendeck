@@ -30,10 +30,9 @@ cargo build --bin eigendeck                            # debug binary
 ```
 
 > **The `VITE_EIGENDECK_SEAM=1` is required.** The probes drive the app through
-> `window.__eigendeck`, which is OFF in a plain release build (it's gated behind
-> a Settings opt-in / dev build). This flag bakes it into the dist. A runtime
-> preference won't do — `run.sh` uses a throwaway `XDG_DATA_HOME` per run, so
-> localStorage is empty every time.
+> `window.__eigendeck`, which is installed only in a dev build or when this flag
+> is baked into the dist. A plain release build tree-shakes it away entirely
+> (it's a dev/test-only hook, not a user-facing feature).
 
 Set `E2E_APP` to the binary (default `/tmp/el-target/debug/eigendeck`).
 

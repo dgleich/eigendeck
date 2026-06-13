@@ -42,7 +42,6 @@ import { flushToSqlite } from './store/presentation';
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
-import { getPreference } from './lib/preferences';
 import { TEXT_PRESET_STYLES, effectiveFontSize } from './types/presentation';
 import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
 
@@ -52,19 +51,17 @@ registerNotebookLifecycle();
 
 // Debug/automation seam: expose the store + write-through flush on window so
 // headless E2E and live scripting can drive store actions and persist them
-// through the real SQLite path. OFF by default in release builds — this is a
-// test/automation hook, not the documented editing path (LLM-EDITING.md uses
-// the offline `eigendeck-cli` against the file at rest). It installs when any
-// of these hold:
+// through the real SQLite path. Dev/test only — NOT shipped in release builds
+// and NOT a user-facing feature. This is a test hook, not the documented
+// editing path (LLM-EDITING.md uses the offline `eigendeck-cli` against the
+// file at rest). It installs when either holds:
 //   • dev build (`import.meta.env.DEV`) — convenience while developing.
-//   • `VITE_EIGENDECK_SEAM=1` baked into the build — used for E2E dist (the
-//     E2E runner wipes localStorage each run, so a runtime pref won't stick).
-//   • the user opted in via Settings → "Enable automation seam" (the pref is
-//     read once at startup; toggling it takes effect on the next launch).
+//   • `VITE_EIGENDECK_SEAM=1` baked into the build — used for the E2E dist.
+// Both are compile-time constants, so a plain release build tree-shakes the
+// install away entirely.
 if (
   import.meta.env.DEV ||
-  import.meta.env.VITE_EIGENDECK_SEAM === '1' ||
-  getPreference('automationSeam')
+  import.meta.env.VITE_EIGENDECK_SEAM === '1'
 ) {
   (window as unknown as { __eigendeck?: unknown }).__eigendeck = {
     store: usePresentationStore,

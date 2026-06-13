@@ -69,7 +69,6 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               <DefaultNotebookEditableSetting />
               <DefaultTextSizesSetting />
               <MathPreambleSetting />
-              <AutomationSeamSetting />
             </div>
           )}
           {tab === 'servers' && <JupyterServersSetting />}
@@ -391,32 +390,6 @@ function DefaultNotebookEditableSetting() {
             editable its .ipynb is no longer auto-watched for on-disk
             changes (so your edits aren't clobbered) — pull external
             changes yourself with the inspector's "Reload from disk".
-          </div>
-        </div>
-      </label>
-    </div>
-  );
-}
-
-function AutomationSeamSetting() {
-  const [value, setValue] = usePreference('automationSeam');
-  return (
-    <div>
-      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
-        <input
-          type="checkbox"
-          checked={value}
-          onChange={(e) => setValue(e.target.checked)}
-          style={{ marginTop: 3 }} />
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>Enable automation seam (advanced)</div>
-          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
-            Exposes <code>window.__eigendeck</code> (the live store plus
-            flush/save) so the open deck can be scripted from devtools or an
-            automation driver. Off by default — this is a developer/testing
-            hook, not the normal editing path (script files at rest with{' '}
-            <code>eigendeck-cli</code> instead). Takes effect after you restart
-            the app.
           </div>
         </div>
       </label>
