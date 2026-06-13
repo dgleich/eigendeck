@@ -85,6 +85,7 @@ function SidebarDemoPieceTile({ element }: { element: Extract<SlideElement, { ty
 function SidebarVideoTile({ element }: { element: Extract<SlideElement, { type: 'video' }> }) {
   const p = element.position;
   useAssetFileWatcher(element.assetId, element.id);
+  useAssetFileWatcher(element.captionsAssetId, element.id);  // watch the .vtt sidecar too
   return (
     <div style={{
       position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,

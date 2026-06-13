@@ -128,6 +128,8 @@ See `../.claude/notes/notebook-edge-cases-findings.md` for findings.
 
 - **video-watch-probe.mjs** — a local video bound to an external file reloads on
   disk change (byte-level; no codecs). Needs an empty deck under `HOME=/tmp`.
+- **video-captions-watch-probe.mjs** — the `.vtt` captions sidecar is watched too
+  (edit it on disk → the asset reloads). Byte-level.
 - **video-roundtrip-probe.mjs** — file + embed video elements survive save→reopen
   with all fields (kind, assetId, provider, url, loop, pingPong, playbackRate,
   controls, muted). Codec-independent.

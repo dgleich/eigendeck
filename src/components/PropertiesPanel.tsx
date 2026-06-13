@@ -486,12 +486,16 @@ export function PropertiesPanel() {
                           const sel = await open({ title: 'Select captions (.vtt)', filters: [{ name: 'WebVTT', extensions: ['vtt'] }] });
                           if (!sel) return;
                           const full = sel as string;
-                          const name = full.split(/[\\/]/).pop() || 'captions.vtt';
                           try {
                             const { readFile } = await import('@tauri-apps/plugin-fs');
+                            const { relPath } = await import('../App');
                             const bytes = await readFile(full);
+                            // externalPath keeps the source link so the .vtt is
+                            // file-watched (edit captions on disk → they reload).
+                            const relativePath = relPath(usePresentationStore.getState().projectPath, full);
+                            const name = relativePath.split(/[\\/]/).pop() || 'captions.vtt';
                             const { storeAssetWithCollisionCheck } = await import('../lib/assetInsert');
-                            const r = await storeAssetWithCollisionCheck({ path: name, data: bytes, mimeType: 'text/vtt', externalPath: null, externalMtime: null });
+                            const r = await storeAssetWithCollisionCheck({ path: relativePath, data: bytes, mimeType: 'text/vtt', externalPath: relativePath, externalMtime: null });
                             if (r.cancelled) return;
                             updateElement(selectedEl.id, { captionsAssetId: r.assetId, captions: true, captionsLabel: name.replace(/\.vtt$/i, '') } as any);
                           } catch (e) { console.error('attach captions failed:', e); }
