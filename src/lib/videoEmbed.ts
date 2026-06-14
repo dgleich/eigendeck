@@ -44,7 +44,11 @@ type EmbedOpts = {
 /** Build the iframe src for an embed, applying the element's options. Per
  *  provider + best-effort: loop/autoplay/muted/controls/captions are URL
  *  params; playback SPEED has no reliable URL param (needs each provider's JS
- *  API) so it's omitted here. Autoplay forces mute (browser autoplay policy). */
+ *  API) so it's omitted here. Mute follows the `muted` option only — autoplay
+ *  does NOT force mute, because the app's webview is configured to allow
+ *  autoplay with sound (wry sets WebKitGTK AutoplayPolicy::Allow / macOS
+ *  mediaTypesRequiringUserActionForPlayback=None), unlike a normal web page.
+ *  (YouTube's own player may still mute autoplay; PeerTube/Vimeo honor sound.) */
 export function buildEmbedSrc(el: EmbedOpts): string | null {
   if (!el.url) return null;
   const parsed = detectVideoProvider(el.url);
@@ -62,7 +66,7 @@ export function buildEmbedSrc(el: EmbedOpts): string | null {
   const showControls = !!el.controls || !el.autoplay;
 
   if (provider === 'youtube') {
-    if (el.autoplay) { p.set('autoplay', '1'); p.set('mute', '1'); }
+    if (el.autoplay) p.set('autoplay', '1');
     if (el.muted) p.set('mute', '1');
     if (el.loop) { p.set('loop', '1'); p.set('playlist', id); }  // single-video loop needs playlist=id
     p.set('controls', showControls ? '1' : '0');
@@ -72,7 +76,7 @@ export function buildEmbedSrc(el: EmbedOpts): string | null {
     return `https://www.youtube-nocookie.com/embed/${id}?${p.toString()}`;
   }
   if (provider === 'vimeo') {
-    if (el.autoplay) { p.set('autoplay', '1'); p.set('muted', '1'); }
+    if (el.autoplay) p.set('autoplay', '1');
     if (el.muted) p.set('muted', '1');
     if (el.loop) p.set('loop', '1');
     if (!showControls) p.set('controls', '0');
@@ -82,7 +86,7 @@ export function buildEmbedSrc(el: EmbedOpts): string | null {
   // PeerTube
   const base = origin ?? (() => { try { return new URL(el.url!).origin; } catch { return ''; } })();
   if (!base) return null;
-  if (el.autoplay) { p.set('autoplay', '1'); p.set('muted', '1'); }
+  if (el.autoplay) p.set('autoplay', '1');
   if (el.muted) p.set('muted', '1');
   if (el.loop) p.set('loop', '1');
   if (!showControls) p.set('controls', '0');

@@ -23,16 +23,26 @@ describe('detectVideoProvider', () => {
 });
 
 describe('buildEmbedSrc', () => {
-  it('YouTube: loop adds playlist=id; autoplay forces mute; controls/captions', () => {
+  it('YouTube: loop adds playlist=id; autoplay does NOT force mute; controls/captions', () => {
     const src = buildEmbedSrc({ provider: 'youtube', url: 'https://youtu.be/ID12345', loop: true, autoplay: true, controls: true, captions: true })!;
     expect(src.startsWith('https://www.youtube-nocookie.com/embed/ID12345?')).toBe(true);
     expect(src).toContain('loop=1');
     expect(src).toContain('playlist=ID12345');
     expect(src).toContain('autoplay=1');
-    expect(src).toContain('mute=1');
+    expect(src).not.toContain('mute=1');  // autoplay no longer forces mute (webview allows audio)
     expect(src).toContain('controls=1');
     expect(src).toContain('cc_load_policy=1');
     expect(src).toContain('enablejsapi=1');  // needed for postMessage setPlaybackRate
+  });
+  it('autoplay plays with sound by default; mute follows the muted option only', () => {
+    const sound = buildEmbedSrc({ provider: 'peertube', url: 'https://framatube.org/w/xyz', autoplay: true })!;
+    expect(sound).toContain('autoplay=1');
+    expect(sound).not.toContain('muted=1');
+    const silent = buildEmbedSrc({ provider: 'peertube', url: 'https://framatube.org/w/xyz', autoplay: true, muted: true })!;
+    expect(silent).toContain('autoplay=1');
+    expect(silent).toContain('muted=1');
+    const ytSound = buildEmbedSrc({ provider: 'youtube', url: 'https://youtu.be/ID12345', autoplay: true })!;
+    expect(ytSound).not.toContain('mute=1');
   });
   it('Vimeo: player URL; controls hidden only when autoplay starts it', () => {
     // autoplay on -> hiding controls is safe (video starts itself)
