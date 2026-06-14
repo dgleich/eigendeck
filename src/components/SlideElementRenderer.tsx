@@ -442,7 +442,13 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
   const videoRef = useRef<HTMLVideoElement>(null);
   const src = useDemoUrl(element.assetId);                  // file kind
   const captionsSrc = useDemoUrl(element.captionsAssetId);
-  const embedSrc = element.kind === 'embed' ? buildEmbedSrc(element) : null;
+  // In the EDITOR, never autoplay an embed while you're designing — it's
+  // distracting and noisy. Build the src with autoplay suppressed until you
+  // double-click to interact (files already don't autoplay in the editor —
+  // the <video> has no autoPlay attr). Present mode keeps real autoplay.
+  const embedSrc = element.kind === 'embed'
+    ? buildEmbedSrc(interacting ? element : { ...element, autoplay: false })
+    : null;
   const embedRef = useRef<HTMLIFrameElement>(null);
   usePlaybackRate(videoRef, element.playbackRate ?? 1, src);
   usePingPong(videoRef, !!element.pingPong, element.playbackRate ?? 1, src);
