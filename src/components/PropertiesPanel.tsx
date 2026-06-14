@@ -849,13 +849,11 @@ function NotebookProperties({ element }: {
             const v = e.target.value;
             if (v === '') setKernel(undefined);
             else if (v === 'external') setKernel({ kind: 'external' });
-            else if (v === 'lite') setKernel({ kind: 'lite' });
           }}
           style={{ width: '100%', padding: '3px 6px', fontSize: 12 }}
         >
           <option value="">deck default</option>
           <option value="external">External Jupyter server</option>
-          <option value="lite">Lite (Pyodide) — display only in v1</option>
         </select>
       </PropSection>
 
@@ -903,16 +901,6 @@ function NotebookProperties({ element }: {
         </div>
       </PropSection>
 
-      <PropSection label="Auto-run on slide enter">
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-          <input
-            type="checkbox"
-            checked={!!element.autoRun}
-            onChange={(e) => updateElement(element.id, { autoRun: e.target.checked } as Partial<typeof element>)}
-          />
-          Run visible cells when the slide becomes active in PresentMode
-        </label>
-      </PropSection>
 
       <PropSection label="Syntax highlight code">
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
@@ -970,16 +958,6 @@ function NotebookProperties({ element }: {
           />
           Line numbers (when editing)
         </label>
-      </PropSection>
-
-      <PropSection label="Preamble">
-        <textarea
-          value={element.preamble ?? ''}
-          placeholder="# code run before any cell, useful for imports + helpers"
-          onChange={(e) => updateElement(element.id, { preamble: e.target.value || undefined } as Partial<typeof element>)}
-          rows={3}
-          style={{ width: '100%', padding: '4px 6px', fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace', resize: 'vertical' }}
-        />
       </PropSection>
 
       {/* Font size picker — single row matching the user's sketch:
