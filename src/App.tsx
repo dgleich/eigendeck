@@ -1013,15 +1013,28 @@ function App() {
         case 'settings':
           setSettingsOpen(true);
           break;
-        case 'presentation-settings': {
+        case 'presentation-settings':
+        case 'deck-properties': {
           const s = usePresentationStore.getState();
           if (!s.showProperties) s.toggleProperties();
-          s.selectObject(null);
-          // Defer to next frame so the Inspector is mounted before scrolling.
-          requestAnimationFrame(() => {
-            const el = document.getElementById('presentation-prop-block');
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          });
+          s.setInspectorTab('presentation');
+          break;
+        }
+        case 'slide-properties': {
+          const s = usePresentationStore.getState();
+          if (!s.showProperties) s.toggleProperties();
+          s.setInspectorTab('slide');
+          break;
+        }
+        case 'slide-new': usePresentationStore.getState().addSlide(); break;
+        case 'slide-duplicate': {
+          const s = usePresentationStore.getState();
+          s.duplicateSlide(s.currentSlideIndex);
+          break;
+        }
+        case 'slide-delete': {
+          const s = usePresentationStore.getState();
+          s.deleteSlide(s.currentSlideIndex);
           break;
         }
         case 'paste-plain':

@@ -518,6 +518,28 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build()
         .map_err(|e| e.to_string())?;
 
+    // Slide menu — slide operations + the Slide/Deck inspector entries (makes the
+    // per-slide and presentation-wide inspectors discoverable without the toolbar).
+    let slide_new_item = MenuItemBuilder::new("New Slide").id("slide-new").accelerator("CmdOrCtrl+Shift+N")
+        .build(app).map_err(|e| e.to_string())?;
+    let slide_dup_item = MenuItemBuilder::new("Duplicate Slide").id("slide-duplicate").accelerator("CmdOrCtrl+D")
+        .build(app).map_err(|e| e.to_string())?;
+    let slide_del_item = MenuItemBuilder::new("Delete Slide").id("slide-delete")
+        .build(app).map_err(|e| e.to_string())?;
+    let slide_props_item = MenuItemBuilder::new("Slide Properties").id("slide-properties")
+        .build(app).map_err(|e| e.to_string())?;
+    let deck_props_item = MenuItemBuilder::new("Presentation Properties").id("deck-properties")
+        .build(app).map_err(|e| e.to_string())?;
+    let slide_menu = SubmenuBuilder::new(app, "Slide")
+        .item(&slide_new_item)
+        .item(&slide_dup_item)
+        .item(&slide_del_item)
+        .separator()
+        .item(&slide_props_item)
+        .item(&deck_props_item)
+        .build()
+        .map_err(|e| e.to_string())?;
+
     let window_menu = SubmenuBuilder::new(app, "Window")
         .minimize().maximize().separator().close_window()
         .build().map_err(|e| e.to_string())?;
@@ -531,6 +553,7 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .item(&file_menu)
         .item(&edit_menu)
         .item(&view_menu)
+        .item(&slide_menu)
         .item(&window_menu);
     if let Some(ref dm) = debug_menu {
         bar = bar.item(dm);
