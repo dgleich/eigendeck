@@ -52,11 +52,20 @@ export function buildEmbedSrc(el: EmbedOpts): string | null {
   const { provider, id, origin } = parsed;
   const p = new URLSearchParams();
 
+  // Hiding controls is only safe when autoplay starts the video for the user.
+  // With autoplay off, controls=0 leaves NO way to start playback — on
+  // PeerTube (video.js) it also hides the big play button and disables
+  // click-to-play, so a default embed (controls off + autoplay off) is dead.
+  // So: show controls unless autoplay is on. The "controls" toggle still hides
+  // chrome for the autoplay case; for the play-on-click case it's overridden
+  // to keep the embed usable.
+  const showControls = !!el.controls || !el.autoplay;
+
   if (provider === 'youtube') {
     if (el.autoplay) { p.set('autoplay', '1'); p.set('mute', '1'); }
     if (el.muted) p.set('mute', '1');
     if (el.loop) { p.set('loop', '1'); p.set('playlist', id); }  // single-video loop needs playlist=id
-    p.set('controls', el.controls ? '1' : '0');
+    p.set('controls', showControls ? '1' : '0');
     if (el.captions) p.set('cc_load_policy', '1');
     p.set('enablejsapi', '1');  // enable postMessage control (setPlaybackRate)
     p.set('rel', '0');
@@ -66,7 +75,7 @@ export function buildEmbedSrc(el: EmbedOpts): string | null {
     if (el.autoplay) { p.set('autoplay', '1'); p.set('muted', '1'); }
     if (el.muted) p.set('muted', '1');
     if (el.loop) p.set('loop', '1');
-    if (!el.controls) p.set('controls', '0');
+    if (!showControls) p.set('controls', '0');
     if (el.captions) p.set('texttrack', 'en');
     return `https://player.vimeo.com/video/${id}?${p.toString()}`;
   }
@@ -76,7 +85,7 @@ export function buildEmbedSrc(el: EmbedOpts): string | null {
   if (el.autoplay) { p.set('autoplay', '1'); p.set('muted', '1'); }
   if (el.muted) p.set('muted', '1');
   if (el.loop) p.set('loop', '1');
-  if (!el.controls) p.set('controls', '0');
+  if (!showControls) p.set('controls', '0');
   if (el.captions) p.set('subtitle', 'en');
   p.set('api', '1');  // enable the PeerTube PlayerAPI (postMessage setPlaybackRate)
   return `${base}/videos/embed/${id}?${p.toString()}`;

@@ -34,17 +34,39 @@ describe('buildEmbedSrc', () => {
     expect(src).toContain('cc_load_policy=1');
     expect(src).toContain('enablejsapi=1');  // needed for postMessage setPlaybackRate
   });
-  it('Vimeo: player URL with loop/controls', () => {
-    const src = buildEmbedSrc({ provider: 'vimeo', url: 'https://vimeo.com/42', loop: true })!;
-    expect(src.startsWith('https://player.vimeo.com/video/42?')).toBe(true);
-    expect(src).toContain('loop=1');
-    expect(src).toContain('controls=0');  // controls default off
+  it('Vimeo: player URL; controls hidden only when autoplay starts it', () => {
+    // autoplay on -> hiding controls is safe (video starts itself)
+    const auto = buildEmbedSrc({ provider: 'vimeo', url: 'https://vimeo.com/42', loop: true, autoplay: true })!;
+    expect(auto.startsWith('https://player.vimeo.com/video/42?')).toBe(true);
+    expect(auto).toContain('loop=1');
+    expect(auto).toContain('controls=0');
   });
   it('PeerTube: embed URL on the instance origin', () => {
     const src = buildEmbedSrc({ provider: 'peertube', url: 'https://framatube.org/w/xyz', muted: true })!;
     expect(src.startsWith('https://framatube.org/videos/embed/xyz?')).toBe(true);
     expect(src).toContain('muted=1');
     expect(src).toContain('api=1');  // enable the PeerTube PlayerAPI
+  });
+  // Regression: a default embed (controls off + autoplay off) must stay
+  // PLAYABLE. PeerTube's controls=0 hides the big play button AND disables
+  // click-to-play, so we must NOT emit controls=0 unless autoplay starts it.
+  it('default embed (controls off, autoplay off) keeps controls so it is playable', () => {
+    const pt = buildEmbedSrc({ provider: 'peertube', url: 'https://framatube.org/w/xyz' })!;
+    expect(pt).not.toContain('controls=0');
+    const vi = buildEmbedSrc({ provider: 'vimeo', url: 'https://vimeo.com/42' })!;
+    expect(vi).not.toContain('controls=0');
+    const yt = buildEmbedSrc({ provider: 'youtube', url: 'https://youtu.be/ID12345' })!;
+    expect(yt).toContain('controls=1');
+  });
+  it('autoplay embed may hide controls (autoplay provides playback)', () => {
+    const pt = buildEmbedSrc({ provider: 'peertube', url: 'https://framatube.org/w/xyz', autoplay: true })!;
+    expect(pt).toContain('controls=0');
+    const yt = buildEmbedSrc({ provider: 'youtube', url: 'https://youtu.be/ID12345', autoplay: true })!;
+    expect(yt).toContain('controls=0');
+  });
+  it('controls explicitly on is always honored', () => {
+    const pt = buildEmbedSrc({ provider: 'peertube', url: 'https://framatube.org/w/xyz', controls: true, autoplay: true })!;
+    expect(pt).not.toContain('controls=0');
   });
   it('returns null for an unrecognized URL', () => {
     expect(buildEmbedSrc({ provider: 'youtube', url: 'https://example.com/x' })).toBeNull();
