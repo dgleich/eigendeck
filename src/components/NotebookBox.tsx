@@ -6,7 +6,7 @@
 // reuse it without the editor chrome.
 
 import { useState } from 'react';
-import { DraggableBox } from './SlideElementRenderer';
+import { DraggableBox, InteractLockBar } from './SlideElementRenderer';
 import { NotebookContent } from './notebook/NotebookContent';
 import {
   ElementPosition, NotebookElement, SlideElement,
@@ -43,16 +43,7 @@ export function NotebookBox({ element, zIndex, scale, isSelected, onSelect, onDe
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'grab', zIndex: 1 }} />
       )}
       {interacting && (
-        <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 2,
-          // Counter-scale so the Lock button is a fixed on-screen size at
-          // any canvas zoom (#67), anchored at the top-right corner.
-          transform: `scale(${1 / scale})`, transformOrigin: 'top right' }}>
-          <button onClick={() => setInteracting(false)}
-            style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc',
-                     borderRadius: 3, background: 'rgba(255,255,255,0.95)', cursor: 'pointer' }}>
-            Lock
-          </button>
-        </div>
+        <InteractLockBar scale={scale} onLock={() => setInteracting(false)} />
       )}
     </DraggableBox>
   );

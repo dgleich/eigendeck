@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
-import { useDemoUrl, invalidateAsset } from '../lib/demoAssets';
+import { useDemoUrl } from '../lib/demoAssets';
 import { capturePreview } from '../lib/previewCache';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
 import { buildEmbedSrc } from '../lib/videoEmbed';
@@ -33,41 +33,33 @@ interface Props {
   onSelect: (e?: { shiftKey: boolean }) => void;
 }
 
-/** "Refresh demo from disk" — used by the in-place Refresh button on
- *  DemoBox/DemoPieceBox while interacting. Locates the file via the
- *  asset's external_path (or path) under the project dir; falls back
- *  to a file picker. Rewrites bytes onto the same asset_id so all
- *  bound elements update. */
-async function refreshDemoFromDisk(assetId: string): Promise<boolean> {
-  const { invoke } = await import('@tauri-apps/api/core');
-  const { readFile } = await import('@tauri-apps/plugin-fs');
-  const meta = await invoke<{ path: string | null; external_path: string | null; mime_type: string | null } | null>(
-    'db_get_asset_meta_by_id', { assetId },
-  ).catch(() => null);
-  const projectPath = usePresentationStore.getState().projectPath;
-  const dir = projectPath ? projectPath.replace(/\/[^/]+$/, '') : '';
-  let bytes: Uint8Array | null = null;
-  for (const rel of [meta?.external_path, meta?.path]) {
-    if (!rel || !dir) continue;
-    try { bytes = await readFile(`${dir}/${rel}`); break; } catch { /* try next */ }
-  }
-  if (!bytes) {
-    const { open } = await import('@tauri-apps/plugin-dialog');
-    const title = meta?.path ? `Locate ${meta.path}` : 'Locate demo file';
-    const selected = await open({ title, filters: [{ name: 'HTML', extensions: ['html'] }] });
-    if (!selected) return false;
-    bytes = await readFile(selected as string);
-  }
-  await invoke('db_store_asset', {
-    path: meta?.path ?? '',
-    data: Array.from(bytes),
-    mimeType: meta?.mime_type ?? 'text/html',
-    externalPath: meta?.external_path ?? null,
-    externalMtime: null,
-    assetId,
-  });
-  invalidateAsset(assetId);
-  return true;
+
+/**
+ * Controls shown while you're *interacting* with an embedded element (demo,
+ * notebook, video) — i.e. after a double-click. Rendered centered ABOVE the
+ * element (in the tag/badge area) rather than inside the content, so it doesn't
+ * cover the demo. Counter-scaled to stay a fixed on-screen size at any zoom.
+ * Always carries a "Lock" button (re-locks so the element can be dragged);
+ * `children` adds element-specific controls (e.g. a video Play/Pause).
+ */
+export function InteractLockBar({ scale, onLock, children }: {
+  scale: number; onLock: () => void; children?: React.ReactNode;
+}) {
+  const btn: React.CSSProperties = {
+    padding: '2px 10px', fontSize: 11, border: '1px solid #cbd0d8', borderRadius: 4,
+    background: 'rgba(255,255,255,0.96)', cursor: 'pointer', whiteSpace: 'nowrap',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+  };
+  return (
+    <div style={{
+      position: 'absolute', bottom: '100%', left: '50%', zIndex: 3,
+      display: 'flex', gap: 4, marginBottom: 6,
+      transform: `translateX(-50%) scale(${1 / scale})`, transformOrigin: 'bottom center',
+    }}>
+      {children}
+      <button className="demo-lock-btn" onClick={onLock} style={btn} title="Lock (allow dragging again)">🔒 Lock</button>
+    </div>
+  );
 }
 
 export function SlideElementRenderer({
@@ -310,6 +302,16 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
 }) {
   const [interacting, setInteracting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  // Reload the iframe when this demo's asset changes (the inspector's "Reload
+  // from disk now" / file-watch fires eigendeck:asset-changed). Replaces the
+  // old in-overlay Refresh button.
+  useEffect(() => {
+    const onChanged = (e: Event) => {
+      if ((e as CustomEvent).detail?.assetId === element.assetId) setReloadKey((k) => k + 1);
+    };
+    window.addEventListener('eigendeck:asset-changed', onChanged as EventListener);
+    return () => window.removeEventListener('eigendeck:asset-changed', onChanged as EventListener);
+  }, [element.assetId]);
   const src = useDemoUrl(element.assetId);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   // Proactively cache a PNG preview of the rendered demo (sidebar thumbs /
@@ -342,23 +344,8 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'grab', zIndex: 1 }} />
       )}
       {interacting && (
-        <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, display: 'flex', gap: 4,
-          // Counter-scale so the lock/refresh buttons stay a fixed on-screen
-          // size regardless of canvas zoom (anchored at the top-right corner).
-          transform: `scale(${1 / scale})`, transformOrigin: 'top right' }}>
-          <button className="demo-lock-btn" onClick={async () => {
-            try {
-              if (await refreshDemoFromDisk(element.assetId)) setReloadKey((k) => k + 1);
-            } catch (e) { console.error('Refresh failed:', e); }
-          }}
-            style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
-            Refresh
-          </button>
-          <button className="demo-lock-btn" onClick={() => setInteracting(false)}
-            style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
-            Lock
-          </button>
-        </div>
+        // Reload moved to the inspector's Asset section ("Reload from disk now").
+        <InteractLockBar scale={scale} onLock={() => setInteracting(false)} />
       )}
     </DraggableBox>
   );
@@ -376,6 +363,16 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
 }) {
   const [interacting, setInteracting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  // Reload the iframe when this demo's asset changes (the inspector's "Reload
+  // from disk now" / file-watch fires eigendeck:asset-changed). Replaces the
+  // old in-overlay Refresh button.
+  useEffect(() => {
+    const onChanged = (e: Event) => {
+      if ((e as CustomEvent).detail?.assetId === element.assetId) setReloadKey((k) => k + 1);
+    };
+    window.addEventListener('eigendeck:asset-changed', onChanged as EventListener);
+    return () => window.removeEventListener('eigendeck:asset-changed', onChanged as EventListener);
+  }, [element.assetId]);
   const src = useDemoUrl(element.assetId, `piece=${element.piece}`);
   // Cache a preview of the rendered demo-piece (see DemoBox). One 'preview' per
   // element key — no phase variants yet.
@@ -405,23 +402,8 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'grab', zIndex: 1 }} />
       )}
       {interacting && (
-        <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, display: 'flex', gap: 4,
-          // Counter-scale so the lock/refresh buttons stay a fixed on-screen
-          // size regardless of canvas zoom (anchored at the top-right corner).
-          transform: `scale(${1 / scale})`, transformOrigin: 'top right' }}>
-          <button className="demo-lock-btn" onClick={async () => {
-            try {
-              if (await refreshDemoFromDisk(element.assetId)) setReloadKey((k) => k + 1);
-            } catch (e) { console.error('Refresh failed:', e); }
-          }}
-            style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
-            Refresh
-          </button>
-          <button className="demo-lock-btn" onClick={() => setInteracting(false)}
-            style={{ padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' }}>
-            Lock
-          </button>
-        </div>
+        // Reload moved to the inspector's Asset section ("Reload from disk now").
+        <InteractLockBar scale={scale} onLock={() => setInteracting(false)} />
       )}
     </DraggableBox>
   );
@@ -494,17 +476,14 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'grab', zIndex: 1 }} />
       )}
       {interacting && (
-        <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 2, display: 'flex', gap: 4,
-          transform: `scale(${1 / scale})`, transformOrigin: 'top right' }}>
+        <InteractLockBar scale={scale} onLock={() => { videoRef.current?.pause(); setInteracting(false); }}>
           {element.kind === 'file' && !element.controls && (
             <button className="demo-lock-btn" style={btn} onClick={() => {
               const v = videoRef.current; if (!v) return;
               if (v.paused) void v.play().catch(() => {}); else v.pause();
-            }}>Play / Pause</button>
+            }}>▶ / ❚❚</button>
           )}
-          <button className="demo-lock-btn" style={btn}
-            onClick={() => { videoRef.current?.pause(); setInteracting(false); }}>Lock</button>
-        </div>
+        </InteractLockBar>
       )}
     </DraggableBox>
   );
