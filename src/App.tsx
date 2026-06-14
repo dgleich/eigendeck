@@ -563,17 +563,13 @@ function App() {
   // Initialize: open in-memory DB, sync recent menu, restore window position
   useEffect(() => {
     import('@tauri-apps/api/core').then(async ({ invoke }) => {
-      // db_open_memory is a no-op when a DB is already open, so it's
-      // safe even if a file was opened first. Log on actual failure
-      // (was previously swallowed) — silent failure here causes a
-      // confusing "No database open" later when saveProject runs.
-      await invoke('db_open_memory').catch((e) => {
-        console.error('[boot] db_open_memory failed:', e);
-      });
-      // If the app was launched by double-clicking / "open with" a
-      // .eigendeck (Linux/Windows arg, or an early macOS Opened event),
-      // open it now. openRecentProject → openSqliteProject tears down the
-      // boot in-memory DB safely first.
+      // No boot-time in-memory DB (#66). Nothing edits or flushes before a
+      // project is anchored (flushToSqlite no-ops without a db path, and the
+      // editor is gated behind projectPath → the Welcome window shows), so we
+      // open a real DB only when a deck is created/opened.
+      // If launched by double-clicking / "open with" a .eigendeck (a Linux/
+      // Windows arg or an early macOS Opened event), open it directly — this
+      // sets projectPath, so the editor (not the Welcome window) renders.
       try {
         const path = await invoke<string | null>('take_launch_file');
         if (path) await openRecentProject(path);
