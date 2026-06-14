@@ -55,11 +55,12 @@ describe('file operations (SQLite only)', () => {
   });
 
   describe('saveProject', () => {
-    it('creates new project if none open', async () => {
+    it('is a no-op with no project open (no untitled-first-save dialog) (#66)', async () => {
       mockSave.mockResolvedValue(null);
+      usePresentationStore.setState({ projectPath: null });
       await saveProject();
-      // Should have shown create dialog
-      expect(mockSave).toHaveBeenCalled();
+      // Sessions are file-anchored from the start now; Save never prompts.
+      expect(mockSave).not.toHaveBeenCalled();
     });
   });
 });
