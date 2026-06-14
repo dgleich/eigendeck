@@ -151,8 +151,10 @@ describe('AssetSection — mount', () => {
     });
   });
 
-  it('shows "(unnamed)" path when meta.path is null', async () => {
-    setupHappyInvoke({ asset_id: 'A', path: null });
+  it('shows the embedded-snapshot note when there is no linked source file', async () => {
+    // The internal storage path is no longer shown; only the Source file. When
+    // it's absent the section says the asset is an embedded snapshot.
+    setupHappyInvoke({ asset_id: 'A', external_path: null });
     usePresentationStore.setState({
       projectPath: '/path/to/talk',
       presentation: deckWith([[img('e1', 'A')]]),
@@ -160,7 +162,7 @@ describe('AssetSection — mount', () => {
 
     render(<AssetSection assetId="A" elementId="e1" />);
     await waitFor(() => {
-      expect(screen.getByText('(unnamed)')).toBeInTheDocument();
+      expect(screen.getByText(/Embedded snapshot/i)).toBeInTheDocument();
     });
   });
 
