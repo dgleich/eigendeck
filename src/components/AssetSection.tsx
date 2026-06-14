@@ -310,18 +310,19 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
 
   return (
     <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* Path + source */}
-      <div style={{ fontSize: 11 }}>
-        <div style={{ color: '#666', marginBottom: 2 }}>Path</div>
-        <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{meta.path ?? '(unnamed)'}</div>
-      </div>
+      {/* Where the asset is linked from on disk (what file-watch / reload
+          tracks). The internal storage path is a dev detail and not shown. */}
       <div style={{ fontSize: 11 }}>
         <div style={{ color: '#666', marginBottom: 2 }}>Source file</div>
-        <div style={{ fontFamily: 'monospace', wordBreak: 'break-all', color: meta.external_path ? '#222' : '#999' }}>
-          {meta.external_path ?? '(no source link — pasted or embedded snapshot)'}
-        </div>
-        {meta.external_mtime && (
-          <div style={{ color: '#888', marginTop: 2 }}>last loaded: {fmtTime(meta.external_mtime)}</div>
+        {meta.external_path ? (
+          <>
+            <div style={{ fontFamily: 'monospace', wordBreak: 'break-all', color: '#222' }}>{meta.external_path}</div>
+            {meta.external_mtime && (
+              <div style={{ color: '#888', marginTop: 2 }}>last loaded: {fmtTime(meta.external_mtime)}</div>
+            )}
+          </>
+        ) : (
+          <div style={{ color: '#999' }}>Embedded snapshot — no linked source file</div>
         )}
       </div>
 
