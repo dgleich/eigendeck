@@ -8,6 +8,7 @@ import { SpeakerMode } from './components/SpeakerMode';
 import { openPresenterWindow } from './lib/multiMonitor';
 import { NotesPanel } from './components/NotesPanel';
 import { PropertiesPanel } from './components/PropertiesPanel';
+import { WelcomeWindow } from './components/WelcomeWindow';
 import { HistoryPanel } from './components/HistoryPanel';
 import { DebugConsole } from './components/DebugConsole';
 import { LinkOverlay } from './components/LinkOverlay';
@@ -526,7 +527,7 @@ export function relPath(projectPath: string | null, fullPath: string): string {
 }
 
 function App() {
-  const { isPresenting, showProperties, showHistory } =
+  const { isPresenting, showProperties, showHistory, projectPath } =
     usePresentationStore();
   const [sidebarWidth, setSidebarWidth] = useState(200);
   const resizeStartX = useRef(0);
@@ -1082,6 +1083,10 @@ function App() {
 
   if (isPresenting && multiMonitorPresenting) return <SpeakerMode />;
   if (isPresenting) return <PresentMode />;
+  // No project open → welcome screen (issue #66). Editing only begins once a
+  // deck is anchored on disk, so file-watching / linked assets work from the
+  // start. Launching with a file arg sets projectPath before this renders.
+  if (!projectPath) return (<><ToastHost /><WelcomeWindow /></>);
 
   const store = usePresentationStore.getState();
 

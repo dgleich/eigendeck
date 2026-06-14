@@ -2560,3 +2560,42 @@
 .pdf-capturing .slide-footer-number {
   display: none !important;
 }
+
+/* Welcome / startup window (issue #66) */
+.welcome-root {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: #f3f4f6;
+}
+.welcome-card {
+  width: 440px; max-width: 90vw;
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+  box-shadow: 0 12px 44px rgba(0, 0, 0, 0.13);
+  padding: 30px 30px 22px;
+}
+.welcome-title { font-size: 23px; font-weight: 700; color: #111827; }
+.welcome-subtitle { font-size: 13px; color: #6b7280; margin: 4px 0 20px; }
+.welcome-actions { display: flex; flex-direction: column; gap: 8px; }
+.welcome-btn {
+  text-align: left; display: flex; flex-direction: column; gap: 1px;
+  padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px;
+  background: #fff; cursor: pointer;
+}
+.welcome-btn:hover { background: #f9fafb; }
+.welcome-btn.primary { border-color: #2563eb; background: #eff6ff; }
+.welcome-btn.primary:hover { background: #dbeafe; }
+.welcome-btn-main { font-size: 14px; font-weight: 600; color: #111827; }
+.welcome-btn-sub { font-size: 11px; color: #6b7280; }
+.welcome-recent-head {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.5px;
+  text-transform: uppercase; color: #9ca3af; margin: 22px 0 6px;
+}
+.welcome-recent-empty { font-size: 12px; color: #9ca3af; }
+.welcome-recent-list { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow-y: auto; }
+.welcome-recent-item {
+  width: 100%; text-align: left; display: flex; flex-direction: column;
+  padding: 6px 8px; border: none; background: none; border-radius: 6px; cursor: pointer;
+}
+.welcome-recent-item:hover { background: #f3f4f6; }
+.welcome-recent-name { font-size: 13px; color: #1f2937; }
+.welcome-recent-path { font-size: 11px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
