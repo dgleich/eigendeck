@@ -54,25 +54,17 @@ npm run tauri dev
 
 To pull a NEW font that didn't exist before, see "Adding a font" below.
 
-## PT Sans is special (still in-tree)
+## PT Sans (the default) — now sourced from mathjax-fonts
 
-PT Sans — the default font — is **not** built from `mathjax-fonts`. It comes
-from the in-tree `mathjax-ptsans-bundle/` and is rebuilt separately:
+PT Sans is the **default** font. As of 2026-06-14 it is sourced from
+`mathjax-fonts/mathjax-ptsans` like every other font (migrated off the old
+in-tree `mathjax-ptsans-bundle/`), so it tracks upstream fixes via the normal
+pull + `build-all-nosre.cjs` + `npm run setup` flow above. The in-tree
+`mathjax-ptsans-bundle/` is no longer used by `setup-fonts.mjs`.
 
-```bash
-cd mathjax-ptsans-bundle
-npm install
-npm run build           # rebuilds tex-mml-svg-mathjax-ptsans-nosre.js
-cd ..
-npm run setup           # copies it into public/mathjax/
-```
-
-As of `mathjax-fonts` commit `a49f41f` (2026-06-13) PT Sans **also** exists in
-`mathjax-fonts` (`mathjax-ptsans/`, with the `italic_lsb=0` + integral-ratio
-fix). Migrating Eigendeck to source PT Sans from there — adding `'ptsans'` to
-`MATHJAX_FONTS_PACKAGES` in `setup-fonts.mjs` and dropping the in-tree copy —
-is a pending cleanup. It changes the **default** font's rendering, so do it
-deliberately and verify before/after.
+The text-font TTFs still live in `public/fonts/ptsans/` (regular/bold/italic +
+the PT Sans Narrow faces) — those are committed and unaffected by the math-bundle
+update.
 
 ## Adding a font
 
@@ -85,8 +77,10 @@ deliberately and verify before/after.
    (these TTFs **are** committed, unlike the math bundles).
 4. `npm run setup`, then pick the font in the app to confirm it loads.
 
-Note: **Lato** currently exists in `mathjax-fonts` but has **no** nosre bundle
-and is **not** wired into Eigendeck (absent from `MATHJAX_FONTS_PACKAGES`).
+All **10** mathjax-fonts packages are now wired: ptsans, lato, libertinus,
+libertinus-sans, lm-sans, noto-sans, source-sans, source-code, shantell,
+concrete-euler. (Lato was added 2026-06-14 — its nosre bundle is built by
+`build-all-nosre.cjs` and its text TTFs live in `public/fonts/lato/`.)
 
 ## Reproducibility / pinning
 

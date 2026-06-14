@@ -13,7 +13,7 @@ export const FONT_PACKAGES = [
     label: 'PT Sans',
     family: "'PT Sans', sans-serif",
     narrowFamily: "'PT Sans Narrow', sans-serif",
-    mathjaxBundle: 'tex-mml-svg-mathjax-ptsans.js',
+    mathjaxBundle: 'tex-mml-svg-mathjax-ptsans-nosre.js',
     files: {
       kind: 'static', ext: 'ttf',
       regular: 'regular.ttf',
@@ -25,6 +25,20 @@ export const FONT_PACKAGES = [
     license: 'OFL-1.1',
     source: 'https://fonts.google.com/specimen/PT+Sans',
     description: 'Patched PT Sans (serifed I) + Latin Modern Math',
+  },
+  {
+    id: 'lato',
+    label: 'Lato',
+    family: "'Lato', sans-serif",
+    mathjaxBundle: 'tex-mml-svg-mathjax-lato-nosre.js',
+    files: {
+      kind: 'static', ext: 'ttf',
+      regular: 'regular.ttf', bold: 'bold.ttf',
+      italic: 'italic.ttf', boldItalic: 'bold-italic.ttf',
+    },
+    license: 'OFL-1.1',
+    source: 'https://fonts.google.com/specimen/Lato',
+    description: 'Humanist sans (Łukasz Dziedzic) + matching math',
   },
   {
     id: 'libertinus',

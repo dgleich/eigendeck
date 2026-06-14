@@ -26,14 +26,17 @@ const MATHJAX_FONTS_DIR = existsSync(SIBLING_DIR) ? SIBLING_DIR
   : existsSync(IN_REPO_DIR) ? IN_REPO_DIR
   : SIBLING_DIR; // default target if cloning
 const PUBLIC_MATHJAX = resolve(REPO_ROOT, 'public/mathjax');
-const PTSANS_LOCAL = resolve(REPO_ROOT, 'mathjax-ptsans-bundle');
 
 const MATHJAX_FONTS_REPO = 'https://github.com/dgleich/mathjax-fonts.git';
 
 // Packages to copy from mathjax-fonts. Source is the -nosre.js bundle (no
 // SpeechRuleEngine — required for Tauri's restricted WebKit Worker). They are
 // copied without renaming, so registry entries reference 'tex-mml-svg-mathjax-<id>-nosre.js'.
+// PT Sans (the default) is now sourced here too — migrated off the in-tree
+// mathjax-ptsans-bundle so it tracks upstream fixes like everything else.
 const MATHJAX_FONTS_PACKAGES = [
+  'ptsans',
+  'lato',
   'libertinus',
   'libertinus-sans',
   'lm-sans',
@@ -80,14 +83,7 @@ function copyBundle(src, dest, label) {
 function main() {
   mkdirSync(PUBLIC_MATHJAX, { recursive: true });
 
-  // 1) PT Sans (in-tree until migrated to mathjax-fonts)
-  copyBundle(
-    join(PTSANS_LOCAL, 'tex-mml-svg-mathjax-ptsans-nosre.js'),
-    join(PUBLIC_MATHJAX, 'tex-mml-svg-mathjax-ptsans.js'),
-    'ptsans (local nosre → tex-mml-svg-mathjax-ptsans.js)'
-  );
-
-  // 2) mathjax-fonts packages — use the -nosre bundles. The full SRE
+  // mathjax-fonts packages — use the -nosre bundles. The full SRE
   // bundles' SpeechRuleEngine startup hangs in iframes (and times out
   // tex2svgPromise calls in the main page too) because it tries to load
   // async resources that the Worker stub can't provide. The nosre builds
