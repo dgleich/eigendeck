@@ -1860,6 +1860,28 @@
   border-top: 1px solid #eee;
 }
 
+/* Element-panel title: the element type (and, for text, its preset) shown as a
+   clear heading rather than a tiny grey section label. */
+.prop-element-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 12px 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #eef0f3;
+}
+.prop-element-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  text-transform: capitalize;
+}
+.prop-element-sub {
+  font-size: 11px;
+  color: #8a9099;
+  text-transform: capitalize;
+}
+
 .properties-body {
   padding: 8px;
 }

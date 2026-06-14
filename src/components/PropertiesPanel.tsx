@@ -308,7 +308,12 @@ export function PropertiesPanel() {
 
         {tab === 'element' && selectedEl && (
           <>
-            <div className="prop-section-header" style={{ textTransform: 'capitalize' }}>{selectedEl.type}</div>
+            <div className="prop-element-head">
+              <span className="prop-element-type">{selectedEl.type.replace('-', ' ')}</span>
+              {selectedEl.type === 'text' && (
+                <span className="prop-element-sub">{selectedEl.preset}</span>
+              )}
+            </div>
 
             {/* Image element properties */}
             {selectedEl.type === 'image' && (
@@ -354,9 +359,6 @@ export function PropertiesPanel() {
             {/* Text element properties */}
             {selectedEl.type === 'text' && (
               <>
-                <PropSection label="Preset">
-                  <span style={{ fontSize: 12, textTransform: 'capitalize' }}>{selectedEl.preset}</span>
-                </PropSection>
                 <PropSection label="Font size">
                   <FontSizeRow element={selectedEl}
                     updateElement={(id, ch) => updateElement(id, ch as any)}
