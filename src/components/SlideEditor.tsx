@@ -601,7 +601,7 @@ export function SlideEditor() {
                   if (r.cancelled) return;
                   store.addElement({
                     id: crypto.randomUUID(), type: 'video', kind: 'file',
-                    assetId: r.assetId,
+                    assetId: r.assetId, controls: true,
                     position: { x: 360, y: 200, width: 1200, height: 680 },
                   });
                 } catch (err) { console.error('Failed to handle dropped video:', err); }

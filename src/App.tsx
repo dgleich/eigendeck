@@ -1092,7 +1092,7 @@ function App() {
       const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
       const r = await storeAssetWithCollisionCheck({ path: relativePath, data: bytes, mimeType: mime, externalPath: relativePath, externalMtime: null });
       if (r.cancelled) return;
-      store.addElement({ id: crypto.randomUUID(), type: 'video', kind: 'file', assetId: r.assetId, position: { x: 360, y: 200, width: 1200, height: 680 } });
+      store.addElement({ id: crypto.randomUUID(), type: 'video', kind: 'file', assetId: r.assetId, controls: true, position: { x: 360, y: 200, width: 1200, height: 680 } });
     } catch (err) { console.error('Failed to add video:', err); }
   };
 
@@ -1105,7 +1105,7 @@ function App() {
       await message('Unrecognized video URL. Supported: YouTube, Vimeo, PeerTube.', { title: 'Add Video', kind: 'warning' });
       return;
     }
-    store.addElement({ id: crypto.randomUUID(), type: 'video', kind: 'embed', provider: parsed.provider, url, position: { x: 360, y: 200, width: 1200, height: 680 } });
+    store.addElement({ id: crypto.randomUUID(), type: 'video', kind: 'embed', provider: parsed.provider, url, controls: true, position: { x: 360, y: 200, width: 1200, height: 680 } });
   };
 
   return (

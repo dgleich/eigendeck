@@ -28,18 +28,19 @@ In the Inspector (select the video):
   each provider's player API, so treat it as best-effort.
 - **Autoplay** — start when the slide appears in present mode. Browsers only
   allow autoplay when **muted**, so autoplay forces mute.
-- **Show controls** — show the player's controls bar. Off by default (a slide
-  video is usually chrome-free; in the editor, click it to play/pause). *For
-  embeds (YouTube/Vimeo/PeerTube), controls are kept whenever autoplay is off* —
-  otherwise there'd be no way to start the video (PeerTube in particular hides
-  its play button when controls are suppressed). Turn on **Autoplay** if you
-  want a truly chrome-free embed.
+- **Show controls** — show the player's controls bar. **On by default**, so a
+  newly added video is immediately playable. Turn it off for a chrome-free look:
+  a file video can still be started by **clicking it** (play/pause); for embeds
+  (YouTube/Vimeo/PeerTube) controls are kept whenever autoplay is off anyway —
+  otherwise there'd be no way to start the video (PeerTube hides its play button
+  when controls are suppressed), so pair "controls off" with **Autoplay** for a
+  truly chrome-free embed.
 - **Muted** — start with sound off.
 - **Captions** — *files:* attach a **WebVTT (`.vtt`)** subtitle file (browsers
   can't read subtitles baked into the video container, so captions come from this
   sidecar). *Embeds:* turns on the provider's captions, best-effort.
 
-All toggles are **off** by default and speed defaults to **1×**.
+Toggles default **off** except **Show controls** (on), and speed defaults to **1×**.
 
 ## Thumbnails and export
 
