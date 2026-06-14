@@ -687,14 +687,14 @@ function TextSizesEditor({ config, updateConfig }: {
               style={{ width: 44, padding: '2px 4px', fontSize: 12 }}
             />
             <span style={{ fontSize: 10, color: '#9ca3af', marginLeft: -2 }}>px</span>
-            <span style={{
+            <HelpText inline style={{
               fontSize: 10,
               color: overridden ? '#9ca3af' : '#6b7280',
               marginLeft: 6,
               fontStyle: overridden ? 'normal' : 'italic',
             }}>
               default {fallback}px
-            </span>
+            </HelpText>
           </div>
         );
       })}
@@ -1076,7 +1076,7 @@ function AutoReloadAssetsControl({
           style={{ marginTop: 2 }} />
         <span style={{ fontSize: 11 }}>Watch source files for changes</span>
       </label>
-      <div style={{ fontSize: 10, color: '#888', marginTop: 4, marginLeft: 22 }}>
+      <HelpText style={{ fontSize: 10, marginTop: 4, marginLeft: 22 }}>
         {!globalDefault && !optedOut ? (
           <>Disabled because the global setting (Cmd+,) is off.</>
         ) : optedOut ? (
@@ -1084,7 +1084,7 @@ function AutoReloadAssetsControl({
         ) : (
           <>On: linked SVG / image assets reload when their source files change on disk.</>
         )}
-      </div>
+      </HelpText>
     </div>
   );
 }
