@@ -1,0 +1,146 @@
+---
+name: eigendeck-e2e
+description: Set up and run headless end-to-end (e2e) tests for the Eigendeck Tauri desktop app on Linux — driving the REAL built app via tauri-driver + WebKitWebDriver + xvfb. Use when running the e2e/ scenarios, writing a new e2e test for a feature, debugging a frontend↔Rust boundary bug, or re-provisioning the e2e toolchain after a container reset.
+---
+
+# Eigendeck end-to-end (e2e) testing
+
+**e2e = end-to-end:** exercise the whole stack — the real built app, its
+WebKitGTK WebView, real `invoke` calls, real SQLite — instead of mocked
+units. This catches frontend↔Rust boundary bugs (overlay load/merge/persist,
+the duplicate→sync/junction flow, save→reopen round-trips) that vitest with
+mocked `invoke` cannot.
+
+**Linux only.** `tauri-driver` has no macOS support, so this runs in this
+container / CI, never the user's Mac dev loop. The container occasionally
+resets — re-run the Provision steps below when tools are missing.
+
+## 0. Quick check — is it already set up?
+
+```bash
+command -v Xvfb /usr/bin/WebKitWebDriver ~/.cargo/bin/tauri-driver ~/.cargo/bin/cargo
+ls /tmp/el-target/debug/eigendeck 2>/dev/null   # the Linux app binary
+```
+
+## 1. Provision (after a container reset)
+
+Rust toolchain (cargo lives at `~/.cargo/bin/cargo`, NOT on PATH):
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+~/.cargo/bin/rustup component add clippy
+```
+
+Tauri build deps + e2e deps (apt; `sudo` works, uid is non-root):
+```bash
+sudo apt-get update
+sudo apt-get install -y pkg-config libglib2.0-dev libgtk-3-dev \
+  libwebkit2gtk-4.1-dev libsoup-3.0-dev libssl-dev librsvg2-dev \
+  libxdo-dev libayatana-appindicator3-dev \
+  xvfb webkit2gtk-driver               # xvfb + WebKitWebDriver
+~/.cargo/bin/cargo install tauri-driver   # WebDriver bridge (slow, ~minutes)
+```
+
+Node 20 is preinstalled. All `cargo` and long network builds need
+`dangerouslyDisableSandbox: true` on the Bash tool, and the cargo binary is
+`~/.cargo/bin/cargo` (not on PATH).
+
+## 2. Build the app (Linux)
+
+Use an **isolated** `CARGO_TARGET_DIR` (`/tmp/el-target`). `/work` is a
+shared mount with the user's Mac; `src-tauri/target/debug/eigendeck` there is
+often a **Mach-O (macOS) binary** that won't run on Linux, and building into
+the shared dir clobbers their Mac artifacts.
+
+```bash
+cd /work
+npm install                 # if node_modules missing
+npm run setup               # copy MathJax bundle into public/ (gitignored)
+VITE_EIGENDECK_SEAM=1 npm run build   # produce dist/ WITH the automation seam
+cd src-tauri
+CARGO_TARGET_DIR=/tmp/el-target ~/.cargo/bin/cargo build --bin eigendeck      # the app
+CARGO_TARGET_DIR=/tmp/el-target ~/.cargo/bin/cargo build --bin eigendeck-cli  # fixtures
+```
+
+App binary → `/tmp/el-target/debug/eigendeck` (this is `E2E_APP`).
+CLI → `/tmp/el-target/debug/eigendeck-cli` (builds fixture decks).
+
+> **Rebuild `dist/` after every frontend change** — the harness serves
+> `dist/`, so a stale `dist` runs old code. (The bin only needs rebuilding
+> for Rust changes.)
+>
+> **`VITE_EIGENDECK_SEAM=1` is REQUIRED** (not optional). Every probe drives
+> the app through `window.__eigendeck` (the live store + `flush`/`save`). That
+> seam is **dev/test-only** — it installs only on a Vite dev build
+> (`import.meta.env.DEV`) or when this build flag is set. A plain
+> `npm run build` tree-shakes the install out entirely, so probes time out
+> waiting for the seam (`waitSeam` never returns / "deck never opened"). It is
+> NOT a runtime preference — you cannot enable it from Settings or
+> localStorage (and `run.sh` wipes `XDG_DATA_HOME` per run anyway). The flag
+> must be baked into the `dist/` the harness serves. See `src/App.tsx`.
+
+## 3. Run a scenario
+
+```bash
+# build a fixture deck (a notebook whose overlay edits a cell)
+python3 e2e/fixtures/make_overlay_deck.py single /tmp/ov.json
+/tmp/el-target/debug/eigendeck-cli /tmp/ov.eigendeck import json /tmp/ov.json
+
+# open it via the launch-arg seam and assert the DOM
+E2E_APP=/tmp/el-target/debug/eigendeck \
+E2E_DECK=/tmp/ov.eigendeck \
+E2E_EXPECT=EDITED_OVERLAY_MARKER E2E_ABSENT="k = 5" \
+  bash e2e/run.sh
+# -> "E2E_PASS ..." / exit 0
+```
+
+`e2e/run.sh` starts `xvfb` + a static server for `dist/` on :1420 + the
+`tauri-driver`, then runs `e2e/check.mjs`. `check.mjs` creates a WebDriver
+session that launches the app **with the deck path as an argument** (no
+native Open dialog), polls `document.body.textContent` for `E2E_EXPECT`, and
+fails if `E2E_ABSENT` appears.
+
+## 4. Critical gotchas (these cost hours)
+
+1. **WebKitGTK caches the JS bundle across runs** → silently serves STALE
+   frontend code. `run.sh` already exports a throwaway `XDG_CACHE_HOME`/
+   `XDG_DATA_HOME` per run to defeat this. Any new runner MUST do the same.
+2. **Debug build loads `devUrl` (`localhost:1420`)**, not the embedded
+   `dist`. That's why `run.sh` serves `dist/` on :1420. A `--release` build
+   is self-contained — for a CI job, build release and drop the server.
+3. **Native dialogs can't be driven** (Open / Save As / New Project). Work
+   only through dialog-free paths:
+   - **Open** a deck by passing its path as a launch arg (`tauri:options.args`).
+   - **Save** in place with Cmd+S (dispatch a keydown — see below) or rely
+     on autosave; both avoid the dialog when the deck already has a path.
+4. **`tauri-driver` isn't on PATH** in `bash -c` subshells — resolve it
+   (`run.sh` uses `command -v tauri-driver || ~/.cargo/bin/tauri-driver`).
+5. **Headless WebKit env**: set `WEBKIT_DISABLE_COMPOSITING_MODE=1`,
+   `WEBKIT_DISABLE_DMABUF_RENDERER=1`, `LIBGL_ALWAYS_SOFTWARE=1` (run.sh does).
+
+## 5. Writing a new e2e for a feature
+
+- **Fixture:** craft the deck via `eigendeck-cli ... import json <file>`.
+  The presentation JSON can embed `assets[]` (base64) — see
+  `db_export_json_with_assets` and `e2e/fixtures/make_overlay_deck.py` (it
+  builds notebook + overlay assets, incl. owner_element_id sidecars).
+- **Drive the UI** via WebDriver `execute/sync` (POST
+  `/session/{id}/execute/sync`, body `{script, args:[]}`):
+  - click: `document.querySelector("[title='Duplicate']").click()`
+  - Cmd+S: `window.dispatchEvent(new KeyboardEvent('keydown',{key:'s',metaKey:true,ctrlKey:true,bubbles:true}))`
+  - read state: `return document.body.textContent`
+- **Assert** via the DOM (text markers) or by inspecting the saved
+  `.eigendeck` with `python3 -c "import sqlite3; ..."` (current rows have
+  `valid_to IS NULL`). Inspecting the DB is the most reliable check for
+  storage/sync/overlay behavior.
+- Copy `e2e/check.mjs` for a parameterized DOM assertion, or write a
+  bespoke `.mjs` (see git history `/tmp/e2e_*.mjs` patterns) for multi-step
+  flows (load → click → save → re-assert).
+- Add the scenario invocation to `e2e/README.md`.
+
+## 6. Files
+
+- `e2e/run.sh` — xvfb + dist server + tauri-driver + node runner.
+- `e2e/check.mjs` — parameterized: `E2E_DECK`/`E2E_EXPECT`/`E2E_ABSENT`.
+- `e2e/fixtures/make_overlay_deck.py` — notebook+overlay deck generator.
+- `e2e/README.md` — scenarios + prereqs.
+- Findings/edge cases: `.claude/notes/notebook-edge-cases-findings.md`.
