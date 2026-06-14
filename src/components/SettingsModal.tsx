@@ -66,6 +66,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           {tab === 'general' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <AutoReloadAssetsSetting />
+              <ShowHelpTextSetting />
               <DefaultNotebookEditableSetting />
               <DefaultTextSizesSetting />
               <MathPreambleSetting />
@@ -390,6 +391,29 @@ function DefaultNotebookEditableSetting() {
             editable its .ipynb is no longer auto-watched for on-disk
             changes (so your edits aren't clobbered) — pull external
             changes yourself with the inspector's "Reload from disk".
+          </div>
+        </div>
+      </label>
+    </div>
+  );
+}
+
+function ShowHelpTextSetting() {
+  const [value, setValue] = usePreference('showHelpText');
+  return (
+    <div>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={value}
+          onChange={(e) => setValue(e.target.checked)}
+          style={{ marginTop: 3 }} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Show explanatory help text</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+            The grey paragraphs under inspector controls that explain what each
+            option does. On by default; turn off for a denser inspector once
+            you know your way around.
           </div>
         </div>
       </label>

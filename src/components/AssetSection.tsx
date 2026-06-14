@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
+import { HelpText } from './HelpText';
 import { invalidateRenderedAsset } from '../lib/assetRenderer';
 import { dirname, resolvePosixPath } from '../lib/watcherRegistry';
 import { effectiveAutoReload, usePreference } from '../lib/preferences';
@@ -373,7 +374,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
               style={{ marginTop: 2 }} />
             <span>Watch this file for changes</span>
           </label>
-          <div style={{ fontSize: 10, color: '#888', marginTop: 4, marginLeft: 22 }}>
+          <HelpText style={{ fontSize: 10, marginTop: 4, marginLeft: 22 }}>
             {cascadeBlock === 'global' && (
               <>Disabled because the global setting (Cmd+,) is off.</>
             )}
@@ -390,7 +391,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
                 ? <>On: file changes update all {usageCount} copies of this image.</>
                 : <>On: file changes update this image.</>
             )}
-          </div>
+          </HelpText>
         </div>
       )}
 

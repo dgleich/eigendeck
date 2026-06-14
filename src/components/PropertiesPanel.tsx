@@ -6,6 +6,7 @@ import { FONT_PACKAGES } from '../lib/fonts';
 import { listMonoEligible } from '../lib/notebookFonts';
 import type { VerticalAlign } from '../types/presentation';
 import { AssetSection } from './AssetSection';
+import { HelpText } from './HelpText';
 import { usePreference } from '../lib/preferences';
 
 const ARROW_COLORS = [
@@ -873,10 +874,10 @@ function NotebookProperties({ element }: {
             }}
             style={{ width: '100%', padding: '3px 6px', fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace' }}
           />
-          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+          <HelpText>
             Server URL + token live in Settings → Jupyter servers.
             The first registered server that advertises this kernel is the one we dial.
-          </div>
+          </HelpText>
         </PropSection>
       )}
 
@@ -889,7 +890,7 @@ function NotebookProperties({ element }: {
           />
           Allow editing code cells
         </label>
-        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+        <HelpText>
           Turning this on disables file-watching for this notebook
           (so your edits aren't overwritten by a disk reload). Use the
           Asset section's "Reload from disk" to pull the latest source
@@ -898,7 +899,7 @@ function NotebookProperties({ element }: {
             <> Default ({defaultNotebookEditable ? 'on' : 'off'}) comes
             from Settings → General.</>
           )}
-        </div>
+        </HelpText>
       </PropSection>
 
 
@@ -956,7 +957,7 @@ function NotebookProperties({ element }: {
               showLineNumbers: e.target.checked ? true : undefined,
             } as Partial<typeof element>)}
           />
-          Line numbers (when editing)
+          Show line numbers
         </label>
       </PropSection>
 

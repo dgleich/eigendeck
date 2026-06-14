@@ -47,6 +47,10 @@ export interface PrefSchema {
    *  notebook editable disables file-watching for its asset — see
    *  NotebookElement.editable. */
   defaultNotebookEditable: boolean;
+  /** Show the explanatory help text under inspector controls (the grey
+   *  paragraphs that explain what a toggle does). On by default; experienced
+   *  users can turn it off for a denser inspector. */
+  showHelpText: boolean;
 }
 
 export interface JupyterServerEntry {
@@ -74,6 +78,7 @@ const DEFAULTS: PrefSchema = {
   textSizes: {},
   jupyterServers: [],
   defaultNotebookEditable: false,
+  showHelpText: true,
 };
 
 const KEY_PREFIX = 'eigendeck:pref:';
