@@ -315,12 +315,37 @@ export function PropertiesPanel() {
               )}
             </div>
 
+            {/* Layer + Center first — layering is used a lot. */}
+            <PropSection label="Layer">
+              <div style={{ display: 'flex', gap: 2 }}>
+                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'bottom')} title="Move to bottom">⇊</button>
+                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'down')} title="Move down">↓</button>
+                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'up')} title="Move up">↑</button>
+                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'top')} title="Move to top">⇈</button>
+              </div>
+            </PropSection>
+            {selectedEl.type !== 'arrow' && (
+              <PropSection label="Center on slide">
+                <div style={{ display: 'flex', gap: 2 }}>
+                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 8px' }}
+                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position, x: Math.round((1920 - selectedEl.position.width) / 2) } } as any)}
+                    title="Center horizontally on slide">H</button>
+                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 8px' }}
+                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position, y: Math.round((1080 - selectedEl.position.height) / 2) } } as any)}
+                    title="Center vertically on slide">V</button>
+                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 8px' }}
+                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position,
+                      x: Math.round((1920 - selectedEl.position.width) / 2),
+                      y: Math.round((1080 - selectedEl.position.height) / 2),
+                    } } as any)}
+                    title="Center both on slide">Both</button>
+                </div>
+              </PropSection>
+            )}
+
             {/* Image element properties */}
             {selectedEl.type === 'image' && (
               <>
-                <PropSection label="Asset">
-                  <AssetSection assetId={selectedEl.assetId} elementId={selectedEl.id} />
-                </PropSection>
                 <PropSection label="Effects">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
@@ -381,33 +406,12 @@ export function PropertiesPanel() {
               </>
             )}
 
-            {/* Demo + demo-piece share the Asset section (history,
-                Reload-from-disk, Watch toggle). Demo-piece adds its
-                own custom block below. */}
-            {(selectedEl.type === 'demo' || selectedEl.type === 'demo-piece') && (
-              <PropSection label="Asset">
-                <AssetSection assetId={selectedEl.assetId} elementId={selectedEl.id} />
-              </PropSection>
-            )}
-
             {selectedEl.type === 'demo-piece' && (
               <DemoPieceProperties element={selectedEl} />
             )}
 
             {selectedEl.type === 'video' && (
               <>
-                {selectedEl.kind === 'file' && selectedEl.assetId && (
-                  <PropSection label="Asset">
-                    <AssetSection assetId={selectedEl.assetId} elementId={selectedEl.id} />
-                  </PropSection>
-                )}
-                {selectedEl.kind === 'embed' && (
-                  <PropSection label="Source">
-                    <div style={{ fontSize: 11, color: '#999', wordBreak: 'break-all' }}>
-                      {selectedEl.provider} · {selectedEl.url}
-                    </div>
-                  </PropSection>
-                )}
                 <PropSection label="Playback">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
@@ -477,12 +481,7 @@ export function PropertiesPanel() {
             )}
 
             {selectedEl.type === 'notebook' && (
-              <>
-                <PropSection label="Asset">
-                  <AssetSection assetId={selectedEl.assetId} elementId={selectedEl.id} />
-                </PropSection>
-                <NotebookProperties element={selectedEl} />
-              </>
+              <NotebookProperties element={selectedEl} />
             )}
 
             {selectedEl.type === 'arrow' && (
@@ -506,43 +505,46 @@ export function PropertiesPanel() {
               </>
             )}
 
-            {/* Animation link to other slides — uncommon */}
-            {selectedEl.linkId && (
-              <PropSection label="Linked">
-                <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '1px 6px' }}
-                  onClick={() => unlinkElement(selectedEl.id)}
-                  title="Remove animation link to other slides">Unlink</button>
-              </PropSection>
-            )}
-
-            {/* ── Arrange (position, size, layering — least-used → bottom) ── */}
-            <div className="prop-section-header" style={{ marginTop: 12 }}>Arrange</div>
-            <PropSection label="Layer">
-              <div style={{ display: 'flex', gap: 2 }}>
-                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'bottom')} title="Move to bottom">⇊</button>
-                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'down')} title="Move down">↓</button>
-                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'up')} title="Move up">↑</button>
-                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'top')} title="Move to top">⇈</button>
-              </div>
-            </PropSection>
-            {selectedEl.type !== 'arrow' && (
-              <PropSection label="Center on slide">
-                <div style={{ display: 'flex', gap: 2 }}>
-                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 8px' }}
-                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position, x: Math.round((1920 - selectedEl.position.width) / 2) } } as any)}
-                    title="Center horizontally on slide">H</button>
-                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 8px' }}
-                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position, y: Math.round((1080 - selectedEl.position.height) / 2) } } as any)}
-                    title="Center vertically on slide">V</button>
-                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 8px' }}
-                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position,
-                      x: Math.round((1920 - selectedEl.position.width) / 2),
-                      y: Math.round((1080 - selectedEl.position.height) / 2),
-                    } } as any)}
-                    title="Center both on slide">Both</button>
+            {/* Cross-slide relationships — sync (same element, shared position)
+                and animation links. Shown only when the element participates. */}
+            {selectedEl.syncId && (
+              <PropSection label="Synced">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 11, color: '#6b7280', flex: 1 }}>Same element across slides (shared position)</span>
+                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '1px 6px' }}
+                    onClick={() => freeElement(selectedEl.id)}
+                    title="Free this instance — stop syncing its position">Unsync</button>
                 </div>
               </PropSection>
             )}
+            {selectedEl.linkId && (
+              <PropSection label="Animated">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 11, color: '#6b7280', flex: 1 }}>Linked across slides for animation</span>
+                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '1px 6px' }}
+                    onClick={() => unlinkElement(selectedEl.id)}
+                    title="Remove animation link to other slides">Unlink</button>
+                </div>
+              </PropSection>
+            )}
+
+            {/* Asset / source — set up once, then rarely touched, so it sits
+                low (just above Position & Size). */}
+            {'assetId' in selectedEl && selectedEl.assetId && (
+              <PropSection label="Asset">
+                <AssetSection assetId={selectedEl.assetId} elementId={selectedEl.id} />
+              </PropSection>
+            )}
+            {selectedEl.type === 'video' && selectedEl.kind === 'embed' && (
+              <PropSection label="Source">
+                <div style={{ fontSize: 11, color: '#999', wordBreak: 'break-all' }}>
+                  {selectedEl.provider} · {selectedEl.url}
+                </div>
+              </PropSection>
+            )}
+
+            {/* Position & Size — least-used, kept at the bottom behind a quiet divider. */}
+            <div className="prop-divider" />
             {selectedEl.type !== 'arrow' && (
               <PropSection label="Position & Size">
                 <div className="prop-grid">

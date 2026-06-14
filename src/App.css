@@ -1865,10 +1865,14 @@
 .prop-element-head {
   display: flex;
   align-items: baseline;
+  justify-content: center;
   gap: 8px;
-  padding: 4px 12px 8px;
-  margin-bottom: 4px;
-  border-bottom: 1px solid #eef0f3;
+  /* Break out of the .properties-body 8px padding so the band spans the full
+     column width; distinct background sets the header apart from the controls. */
+  margin: -8px -8px 8px;
+  padding: 8px 12px;
+  background: #eef1f5;
+  border-bottom: 1px solid #e0e4ea;
 }
 .prop-element-type {
   font-size: 13px;
@@ -1880,6 +1884,13 @@
   font-size: 11px;
   color: #8a9099;
   text-transform: capitalize;
+}
+
+/* Quiet separator between content and the bottom "arrange" controls — replaces
+   a labeled section header. */
+.prop-divider {
+  border-top: 1px solid #ececf0;
+  margin: 12px 4px 8px;
 }
 
 .properties-body {
