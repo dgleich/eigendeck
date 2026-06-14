@@ -15,7 +15,7 @@ const ARROW_COLORS = [
 
 export function PropertiesPanel() {
   const {
-    presentation, currentSlideIndex, selectedObject,
+    presentation, currentSlideIndex, selectedObject, inspectorTab, setInspectorTab,
     updateSlide, updateElement, updateConfig, moveElementZ, deleteElements,
     freeElement, unlinkElement,
   } = usePresentationStore();
@@ -129,14 +129,37 @@ export function PropertiesPanel() {
     );
   };
 
+  const hasElementSel = !!selectedEl || multiEls.length > 0;
+  // Effective tab: if 'element' is active but nothing is selected, show Slide.
+  const tab: 'presentation' | 'slide' | 'element' =
+    inspectorTab === 'element' && !hasElementSel ? 'slide' : inspectorTab;
+
   return (
     <div className="properties-panel">
-      <div className="properties-header">Properties</div>
+      {/* Context switcher: the whole deck, this slide, or the selected element. */}
+      <div className="properties-header" style={{ display: 'flex', gap: 0, padding: 0 }}>
+        {(['presentation', 'slide', 'element'] as const).map((id) => {
+          const label = id === 'presentation' ? 'Deck' : id === 'slide' ? 'Slide' : 'Element';
+          const disabled = id === 'element' && !hasElementSel;
+          const active = tab === id;
+          return (
+            <button key={id} disabled={disabled} onClick={() => setInspectorTab(id)}
+              style={{
+                flex: 1, padding: '7px 4px', fontSize: 12, fontWeight: active ? 600 : 400,
+                border: 'none', borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
+                background: active ? '#fff' : '#f3f4f6',
+                color: disabled ? '#c4c8d0' : active ? '#111' : '#555',
+                cursor: disabled ? 'default' : 'pointer',
+              }}>
+              {label}
+            </button>
+          );
+        })}
+      </div>
       <div className="properties-body">
-        {(!selectedObject || selectedObject.type === 'slide') && (
+        {tab === 'slide' && (
           <>
-            {/* ── Slide Properties ── */}
-            <div className="prop-section-header">Slide</div>
+            {/* ── Slide ── */}
             <PropSection label="Theme">
               <select className="prop-select" value={slide.theme || ''}
                 onChange={(e) => updateSlide(currentSlideIndex, { theme: e.target.value || undefined })}>
@@ -185,9 +208,12 @@ export function PropertiesPanel() {
                 </div>
               </PropSection>
             )}
+          </>
+        )}
 
-            {/* ── Presentation Properties ── */}
-            <div id="presentation-prop-block" className="prop-section-header" style={{ marginTop: 12 }}>Presentation</div>
+        {tab === 'presentation' && (
+          <>
+            {/* ── Deck (presentation-wide) ── */}
             <PropSection label="Default Theme">
               <select className="prop-select" value={presentation.theme || 'white'}
                 onChange={(e) => usePresentationStore.getState().setTheme(e.target.value)}>
@@ -245,7 +271,7 @@ export function PropertiesPanel() {
           </>
         )}
 
-        {selectedObject?.type === 'multi' && multiEls.length > 0 && (
+        {tab === 'element' && selectedObject?.type === 'multi' && multiEls.length > 0 && (
           <>
             <PropSection label="Selection">
               <span style={{ fontSize: 12 }}>{multiEls.length} elements selected</span>
@@ -280,69 +306,9 @@ export function PropertiesPanel() {
           </>
         )}
 
-        {selectedEl && (
+        {tab === 'element' && selectedEl && (
           <>
-            <PropSection label={`${selectedEl.type} element`}>
-              <span style={{ fontSize: 11, color: '#999' }}>{selectedEl.id.slice(0, 8)}</span>
-            </PropSection>
-
-            {/* Z-order controls */}
-            <PropSection label="Layer">
-              <div style={{ display: 'flex', gap: 2 }}>
-                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'bottom')} title="Move to bottom">⇊</button>
-                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'down')} title="Move down">↓</button>
-                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'up')} title="Move up">↑</button>
-                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'top')} title="Move to top">⇈</button>
-              </div>
-            </PropSection>
-
-            {/* Position: center on slide */}
-            {selectedEl.type !== 'arrow' && (
-              <PropSection label="Position">
-                <div style={{ display: 'flex', gap: 2 }}>
-                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
-                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position, x: Math.round((1920 - selectedEl.position.width) / 2) } } as any)}
-                    title="Center horizontally on slide">Center H</button>
-                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
-                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position, y: Math.round((1080 - selectedEl.position.height) / 2) } } as any)}
-                    title="Center vertically on slide">Center V</button>
-                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
-                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position,
-                      x: Math.round((1920 - selectedEl.position.width) / 2),
-                      y: Math.round((1080 - selectedEl.position.height) / 2),
-                    } } as any)}
-                    title="Center both on slide">Center</button>
-                </div>
-              </PropSection>
-            )}
-
-            {/* Link status */}
-            {selectedEl.linkId && (
-              <PropSection label="Linked">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 11, color: '#999' }}>{selectedEl.linkId.slice(0, 8)}</span>
-                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '1px 6px' }}
-                    onClick={() => unlinkElement(selectedEl.id)}
-                    title="Remove link to other slides">Unlink</button>
-                </div>
-              </PropSection>
-            )}
-
-            {/* Position/size for non-arrow elements */}
-            {selectedEl.type !== 'arrow' && (
-              <PropSection label="Position & Size">
-                <div className="prop-grid">
-                  <label>X <input className="prop-input-sm" type="number" value={selectedEl.position.x}
-                    onChange={(e) => updateElement(selectedEl.id, { position: { ...selectedEl.position, x: parseInt(e.target.value) || 0 } } as any)} /></label>
-                  <label>Y <input className="prop-input-sm" type="number" value={selectedEl.position.y}
-                    onChange={(e) => updateElement(selectedEl.id, { position: { ...selectedEl.position, y: parseInt(e.target.value) || 0 } } as any)} /></label>
-                  <label>W <input className="prop-input-sm" type="number" value={selectedEl.position.width}
-                    onChange={(e) => updateElement(selectedEl.id, { position: { ...selectedEl.position, width: parseInt(e.target.value) || 100 } } as any)} /></label>
-                  <label>H <input className="prop-input-sm" type="number" value={selectedEl.position.height}
-                    onChange={(e) => updateElement(selectedEl.id, { position: { ...selectedEl.position, height: parseInt(e.target.value) || 100 } } as any)} /></label>
-                </div>
-              </PropSection>
-            )}
+            <div className="prop-section-header" style={{ textTransform: 'capitalize' }}>{selectedEl.type}</div>
 
             {/* Image element properties */}
             {selectedEl.type === 'image' && (
@@ -536,6 +502,58 @@ export function PropertiesPanel() {
                     onChange={(e) => updateElement(selectedEl.id, { headSize: parseInt(e.target.value) || 16 } as any)} />
                 </PropSection>
               </>
+            )}
+
+            {/* Animation link to other slides — uncommon */}
+            {selectedEl.linkId && (
+              <PropSection label="Linked">
+                <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '1px 6px' }}
+                  onClick={() => unlinkElement(selectedEl.id)}
+                  title="Remove animation link to other slides">Unlink</button>
+              </PropSection>
+            )}
+
+            {/* ── Arrange (position, size, layering — least-used → bottom) ── */}
+            <div className="prop-section-header" style={{ marginTop: 12 }}>Arrange</div>
+            <PropSection label="Layer">
+              <div style={{ display: 'flex', gap: 2 }}>
+                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'bottom')} title="Move to bottom">⇊</button>
+                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'down')} title="Move down">↓</button>
+                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'up')} title="Move up">↑</button>
+                <button className="prop-zbtn" onClick={() => moveElementZ(selectedEl.id, 'top')} title="Move to top">⇈</button>
+              </div>
+            </PropSection>
+            {selectedEl.type !== 'arrow' && (
+              <PropSection label="Center on slide">
+                <div style={{ display: 'flex', gap: 2 }}>
+                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 8px' }}
+                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position, x: Math.round((1920 - selectedEl.position.width) / 2) } } as any)}
+                    title="Center horizontally on slide">H</button>
+                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 8px' }}
+                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position, y: Math.round((1080 - selectedEl.position.height) / 2) } } as any)}
+                    title="Center vertically on slide">V</button>
+                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 8px' }}
+                    onClick={() => updateElement(selectedEl.id, { position: { ...selectedEl.position,
+                      x: Math.round((1920 - selectedEl.position.width) / 2),
+                      y: Math.round((1080 - selectedEl.position.height) / 2),
+                    } } as any)}
+                    title="Center both on slide">Both</button>
+                </div>
+              </PropSection>
+            )}
+            {selectedEl.type !== 'arrow' && (
+              <PropSection label="Position & Size">
+                <div className="prop-grid">
+                  <label>X <input className="prop-input-sm" type="number" value={selectedEl.position.x}
+                    onChange={(e) => updateElement(selectedEl.id, { position: { ...selectedEl.position, x: parseInt(e.target.value) || 0 } } as any)} /></label>
+                  <label>Y <input className="prop-input-sm" type="number" value={selectedEl.position.y}
+                    onChange={(e) => updateElement(selectedEl.id, { position: { ...selectedEl.position, y: parseInt(e.target.value) || 0 } } as any)} /></label>
+                  <label>W <input className="prop-input-sm" type="number" value={selectedEl.position.width}
+                    onChange={(e) => updateElement(selectedEl.id, { position: { ...selectedEl.position, width: parseInt(e.target.value) || 100 } } as any)} /></label>
+                  <label>H <input className="prop-input-sm" type="number" value={selectedEl.position.height}
+                    onChange={(e) => updateElement(selectedEl.id, { position: { ...selectedEl.position, height: parseInt(e.target.value) || 100 } } as any)} /></label>
+                </div>
+              </PropSection>
             )}
           </>
         )}

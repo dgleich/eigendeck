@@ -18,6 +18,11 @@ export type SelectedObject =
   | { type: 'multi'; ids: string[] }
   | null;
 
+// Which inspector context is showing: the whole deck, the current slide, or the
+// selected element. Selecting an element auto-focuses 'element'; the segmented
+// switcher and the Slide menu set it directly.
+export type InspectorTab = 'presentation' | 'slide' | 'element';
+
 interface PresentationState {
   presentation: Presentation;
   currentSlideIndex: number;
@@ -26,6 +31,7 @@ interface PresentationState {
   projectPath: string | null;
   selectedObject: SelectedObject;
   showProperties: boolean;
+  inspectorTab: InspectorTab;
   showHistory: boolean;
 
   // Presentation actions
@@ -81,6 +87,7 @@ interface PresentationState {
   selectObject: (obj: SelectedObject) => void;
   toggleSelectElement: (id: string) => void;
   toggleProperties: () => void;
+  setInspectorTab: (tab: InspectorTab) => void;
   toggleHistory: () => void;
 }
 
@@ -175,6 +182,7 @@ export const usePresentationStore = create<PresentationState>()(
       projectPath: null,
       selectedObject: { type: 'slide' },
       showProperties: false,
+      inspectorTab: 'slide',
       showHistory: false,
 
       setPresentation: (presentation) => {
@@ -722,18 +730,27 @@ export const usePresentationStore = create<PresentationState>()(
       toggleSelectElement: (id) =>
         set((state) => {
           const sel = state.selectedObject;
+          // Focus the Element tab whenever a selection remains; fall back to
+          // Slide when the toggle clears the selection.
+          const withTab = (selectedObject: SelectedObject) => ({
+            selectedObject,
+            inspectorTab:
+              selectedObject && (selectedObject.type === 'element' || selectedObject.type === 'multi')
+                ? ('element' as InspectorTab)
+                : (state.inspectorTab === 'element' ? ('slide' as InspectorTab) : state.inspectorTab),
+          });
           if (!sel || sel.type === 'slide') {
-            return { selectedObject: { type: 'element', id } };
+            return withTab({ type: 'element', id });
           }
           if (sel.type === 'element') {
-            if (sel.id === id) return { selectedObject: { type: 'slide' } };
-            return { selectedObject: { type: 'multi', ids: [sel.id, id] } };
+            if (sel.id === id) return withTab({ type: 'slide' });
+            return withTab({ type: 'multi', ids: [sel.id, id] });
           }
           if (sel.type === 'multi') {
             const ids = sel.ids.includes(id) ? sel.ids.filter((i) => i !== id) : [...sel.ids, id];
-            if (ids.length === 0) return { selectedObject: { type: 'slide' } };
-            if (ids.length === 1) return { selectedObject: { type: 'element', id: ids[0] } };
-            return { selectedObject: { type: 'multi', ids } };
+            if (ids.length === 0) return withTab({ type: 'slide' });
+            if (ids.length === 1) return withTab({ type: 'element', id: ids[0] });
+            return withTab({ type: 'multi', ids });
           }
           return {};
         }),
@@ -762,7 +779,18 @@ export const usePresentationStore = create<PresentationState>()(
           isDirty: true,
         })),
 
-      selectObject: (selectedObject) => set({ selectedObject }),
+      selectObject: (selectedObject) =>
+        set((state) => ({
+          selectedObject,
+          // Element/multi selection focuses the Element tab; clearing to the
+          // slide pulls a stale Element tab back to Slide but leaves Presentation
+          // alone (so the deck inspector stays put while you click around).
+          inspectorTab:
+            selectedObject && (selectedObject.type === 'element' || selectedObject.type === 'multi')
+              ? 'element'
+              : state.inspectorTab === 'element' ? 'slide' : state.inspectorTab,
+        })),
+      setInspectorTab: (inspectorTab) => set({ inspectorTab }),
       toggleProperties: () =>
         set((state) => ({ showProperties: !state.showProperties })),
       toggleHistory: () =>
