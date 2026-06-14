@@ -123,42 +123,47 @@ export async function createProject(): Promise<void> {
   }
 }
 
+/**
+ * "Just let me scribble" — create a disk-anchored scratch deck in the app's
+ * local-data dir without prompting for a path (#66). Still file-backed, so
+ * file-watching / linked assets / saves all work; the user can Save As later to
+ * give it a real home.
+ */
+export async function createScratchProject(): Promise<void> {
+  try {
+    const { appLocalDataDir, join } = await import('@tauri-apps/api/path');
+    const { mkdir } = await import('@tauri-apps/plugin-fs');
+    const dir = await join(await appLocalDataDir(), 'scratch');
+    await mkdir(dir, { recursive: true }).catch(() => { /* already exists */ });
+    const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ').replace(/:/g, '-');
+    const title = `Scratch ${stamp}`;
+    const path = await join(dir, `${title}.eigendeck`);
+
+    const { closeSqliteProject } = await import('./presentation');
+    await closeSqliteProject();
+    const presentation = createSeededPresentation();
+    presentation.title = title;
+    // Build fresh in-memory, atomic-save to the scratch path, then open it
+    // (same model as createProject — no open-dirty-then-wipe).
+    await invoke('db_open_memory');
+    await invoke('db_import_json', { json: JSON.stringify(presentation) });
+    await invoke('db_save_to_file', { path });
+    await openSqliteProject(path);
+    usePresentationStore.getState().markClean();
+    addRecentProject(path, title);
+  } catch (e) {
+    await showError(`Failed to create scratch deck: ${e}`);
+  }
+}
+
 export async function saveProject(): Promise<void> {
   const store = usePresentationStore.getState();
 
-  if (!store.projectPath) {
-    // No project file yet — flush Zustand state into in-memory DB, then save to file
-    const selected = await save({
-      title: 'Save Presentation',
-      defaultPath: `${store.presentation.title.replace(/[^a-zA-Z0-9]/g, '-') || 'Untitled'}.eigendeck`,
-      filters: [{ name: 'Eigendeck', extensions: ['eigendeck'] }],
-    });
-    if (!selected) return;
-
-    try {
-      // Self-heal in case boot-time db_open_memory hasn't completed
-      // yet (App.tsx fires it unawaited). db_open_memory is a no-op
-      // when a DB is already open, so this is safe to call always.
-      await invoke('db_open_memory');
-      // Import the current Zustand structure into the in-memory DB. This
-      // resets only the slide/element graph and PRESERVES assets —
-      // db_store_asset already wrote any images/PDFs/notebooks into this
-      // DB, and they aren't in the presentation JSON (issue #65).
-      await invoke('db_import_json', { json: JSON.stringify(store.presentation) });
-      // Backup in-memory DB to file, then reopen from file
-      await invoke('db_save_to_file', { path: selected });
-      // Set the project path so future saves go to this file
-      store.setProjectPath((selected as string).replace(/\.eigendeck$/, ''));
-      const { setSqliteDbPath } = await import('./presentation');
-      setSqliteDbPath(selected as string);
-      store.markClean();
-      addRecentProject(selected as string, store.presentation.title);
-    } catch (e) {
-      console.error('Save failed:', e);
-      await showError(`Failed to save: ${e}`);
-    }
-    return;
-  }
+  // Every editing session is now file-anchored from the start (Welcome window /
+  // #66), so there's no untitled-first-save path — just flush to the open file.
+  // Guard in case Save is invoked before a project exists (e.g. the global
+  // Cmd+S handler firing on the Welcome screen).
+  if (!store.projectPath) return;
 
   try {
     await flushToSqlite();

@@ -2599,3 +2599,9 @@
 .welcome-recent-item:hover { background: #f3f4f6; }
 .welcome-recent-name { font-size: 13px; color: #1f2937; }
 .welcome-recent-path { font-size: 11px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.welcome-scratch {
+  margin-top: 10px;
+  background: none; border: none; padding: 2px 0;
+  font-size: 12px; color: #6b7280; cursor: pointer; align-self: flex-start;
+}
+.welcome-scratch:hover { color: #2563eb; text-decoration: underline; }

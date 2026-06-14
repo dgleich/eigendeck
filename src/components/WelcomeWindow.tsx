@@ -3,7 +3,7 @@
 // file-watching, linked assets, relative paths, and saves work uniformly (no
 // in-memory untitled special case). Launching with a file arg skips this.
 import { useEffect, useState } from 'react';
-import { createProject, openProject, openRecentProject, getRecentProjects, type RecentProject } from '../store/fileOps';
+import { createProject, createScratchProject, openProject, openRecentProject, getRecentProjects, type RecentProject } from '../store/fileOps';
 
 export function WelcomeWindow() {
   const [recents, setRecents] = useState<RecentProject[]>([]);
@@ -28,6 +28,11 @@ export function WelcomeWindow() {
             <span className="welcome-btn-sub">Browse for an .eigendeck file</span>
           </button>
         </div>
+
+        <button className="welcome-scratch" onClick={() => void createScratchProject()}
+          title="Create a disk-anchored scratch deck without choosing a path (Save As later to give it a home)">
+          or start a scratch deck →
+        </button>
 
         <div className="welcome-recent-head">Recent</div>
         {recents.length === 0 ? (
