@@ -466,7 +466,7 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
     >
       {element.kind === 'embed' ? (
         embedSrc
-          ? <iframe ref={embedRef} src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+          ? <iframe key={embedSrc} ref={embedRef} src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
               style={{ width: '100%', height: '100%', border: 'none', background: '#000',
                 pointerEvents: interacting ? 'auto' : 'none' }} />
           : <div style={{ padding: 20, color: '#999' }}>Unrecognized video URL</div>

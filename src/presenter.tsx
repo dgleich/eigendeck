@@ -220,7 +220,7 @@ function PresenterVideo({ element: el, zIndex }: { element: Extract<SlideElement
   const box: React.CSSProperties = { position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, objectFit: 'contain', background: '#000', zIndex };
   if (el.kind === 'embed') {
     if (!embedSrc) return null;
-    return <iframe ref={embedRef} src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" style={{ ...box, border: 'none' }} />;
+    return <iframe key={embedSrc} ref={embedRef} src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" style={{ ...box, border: 'none' }} />;
   }
   if (!src) return null;
   return (

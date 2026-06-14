@@ -509,7 +509,7 @@ function PresentVideo({ element: el, zIndex, style }: {
   };
   if (el.kind === 'embed') {
     if (!embedSrc) return null;
-    return <iframe ref={embedRef} src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+    return <iframe key={embedSrc} ref={embedRef} src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
       style={{ ...box, border: 'none' }} />;
   }
   if (!src) return null;
