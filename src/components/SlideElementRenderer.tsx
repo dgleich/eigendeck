@@ -4,7 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { useDemoUrl, invalidateAsset } from '../lib/demoAssets';
 import { capturePreview } from '../lib/previewCache';
-import { usePlaybackRate, usePingPong, useEmbedSpeed } from '../lib/videoPlayback';
+import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
 import { buildEmbedSrc } from '../lib/videoEmbed';
 import { NotebookBox } from './NotebookBox';
 import { useImageSrc } from '../lib/imageSrc';
@@ -475,9 +475,12 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
           loop={!!element.loop && !element.pingPong}
           muted={!!element.muted}
           controls={!!element.controls && interacting}
+          // While interacting with a chrome-free video, click it to play/pause.
+          onClick={interacting && !element.controls ? () => togglePlay(videoRef.current) : undefined}
           // A poster frame for the sidebar/export preview, once a frame decodes.
           onLoadedData={() => { void capturePreview(element, 'video'); }}
           style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000',
+            cursor: interacting && !element.controls ? 'pointer' : undefined,
             pointerEvents: interacting ? 'auto' : 'none' }}>
           {element.captions && captionsSrc && (
             <track kind="captions" src={captionsSrc} srcLang="en"

@@ -10,7 +10,7 @@ import { listen, emitTo } from '@tauri-apps/api/event';
 import { getSlideNumber } from './types/presentation';
 import { useDemoUrl } from './lib/demoAssets';
 import { useImageSrc } from './lib/imageSrc';
-import { usePlaybackRate, usePingPong, useEmbedSpeed } from './lib/videoPlayback';
+import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from './lib/videoPlayback';
 import { buildEmbedSrc } from './lib/videoEmbed';
 import type { Presentation, SlideElement, TextElement } from './types/presentation';
 import { TextElementSvg } from './components/TextElementSvg';
@@ -227,7 +227,8 @@ function PresenterVideo({ element: el, zIndex }: { element: Extract<SlideElement
     <video ref={ref} src={src} playsInline
       loop={!!el.loop && !el.pingPong} muted={!!el.muted}
       autoPlay={!!el.autoplay} controls={!!el.controls}
-      style={box}>
+      onClick={el.controls ? undefined : () => togglePlay(ref.current)}
+      style={el.controls ? box : { ...box, cursor: 'pointer' }}>
       {el.captions && captionsSrc && (
         <track kind="captions" src={captionsSrc} srcLang="en" label={el.captionsLabel || 'Captions'} default />
       )}

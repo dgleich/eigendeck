@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useImageSrc } from '../lib/imageSrc';
-import { usePlaybackRate, usePingPong, useEmbedSpeed } from '../lib/videoPlayback';
+import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
 import { buildEmbedSrc } from '../lib/videoEmbed';
 import { SpeakerPanel } from './SpeakerView';
 import { getSlideNumber } from '../types/presentation';
@@ -519,7 +519,10 @@ function PresentVideo({ element: el, zIndex, style }: {
       muted={!!el.muted}
       autoPlay={!!el.autoplay}
       controls={!!el.controls}
-      style={box}>
+      // Chrome-free (no controls): click the video to play/pause, else it's
+      // unstartable in present mode.
+      onClick={el.controls ? undefined : () => togglePlay(ref.current)}
+      style={el.controls ? box : { ...box, cursor: 'pointer' }}>
       {el.captions && captionsSrc && (
         <track kind="captions" src={captionsSrc} srcLang="en" label={el.captionsLabel || 'Captions'} default />
       )}

@@ -4,6 +4,15 @@
 import { useEffect, type RefObject } from 'react';
 import { postEmbedSpeed } from './videoEmbed';
 
+/** Toggle a file <video>'s play/pause. Used as the click handler when controls
+ *  are off, so a chrome-free video is still startable by clicking it (otherwise
+ *  there's no affordance — in present mode it would just sit on frame 0). */
+export function togglePlay(v: HTMLVideoElement | null): void {
+  if (!v) return;
+  if (v.paused) void v.play().catch(() => {});
+  else v.pause();
+}
+
 /** Apply playback speed to an EMBED via the provider's postMessage API. Posts a
  *  few times after the iframe (re)loads since there's no player-ready callback
  *  wired — best-effort. No-op at rate 1 (provider default). */
