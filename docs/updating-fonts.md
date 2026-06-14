@@ -1,0 +1,110 @@
+# Updating the math fonts
+
+How to pull the latest math-font builds into Eigendeck. Math rendering uses
+MathJax bundles that embed a specific font; those bundles come from the sibling
+**[`dgleich/mathjax-fonts`](https://github.com/dgleich/mathjax-fonts)** repo
+(except PT Sans — see below).
+
+## The big picture
+
+- The app loads `public/mathjax/tex-mml-svg-mathjax-<id>.js` at runtime (one
+  bundle per font, lazy-loaded by `src/lib/fonts.ts` / `fontRegistry.mjs`).
+- Those files are **copied in** by `npm run setup` (`scripts/setup-fonts.mjs`)
+  from the sibling `mathjax-fonts/` clone. They are **gitignored** in this repo
+  (`public/mathjax/`), so a font update commits **nothing** here — it's a
+  per-machine build step. Don't look for the bundles in git; rebuild them.
+- The app must use the **`-nosre`** bundles (no SpeechRuleEngine). The full SRE
+  build hangs in Tauri's restricted WebKit Worker. `setup-fonts.mjs` copies the
+  `…-nosre.js` source to the un-suffixed runtime name.
+- **The `-nosre.js` bundles are themselves build artifacts** — they are *not*
+  committed in `mathjax-fonts` either. `git pull` updates the font sources
+  (`cjs/`, `build.py`) and the *full* bundles, but **not** the nosre bundles.
+  You must rebuild them (step 3 below) or the fixes won't reach the app.
+
+## Update procedure
+
+Run on the machine where you can see the result (the Mac) — fonts are visual
+and need eyeballing.
+
+```bash
+# 1. Pull the latest font sources.
+#    setup-fonts.mjs does NOT pull an existing clone (it only clones if the dir
+#    is missing), so update it yourself:
+cd mathjax-fonts        # sibling of the eigendeck repo (or ./mathjax-fonts)
+git pull --ff-only
+
+# 2. (only if you changed a font's build.py / sources) regenerate its cjs/:
+#    python3 mathjax-<id>/build.py
+#    For upstream fix commits this is already done — the fixes land in the
+#    committed cjs/, so you can skip straight to the rebuild.
+
+# 3. Rebuild the nosre bundles (installs @mathjax/src + webpack on first run).
+#    build-all-nosre.cjs auto-applies the lcGreek patch (without it,
+#    \mathrm{\alpha} renders italic instead of upright Greek).
+npm install
+node mathjax-shantell/build/build-all-nosre.cjs
+
+# 4. Copy the fresh bundles into the app.
+cd ../eigendeck         # back to this repo
+npm run setup
+
+# 5. Verify: run the app, switch a slide to each changed font, check the math.
+npm run tauri dev
+```
+
+To pull a NEW font that didn't exist before, see "Adding a font" below.
+
+## PT Sans is special (still in-tree)
+
+PT Sans — the default font — is **not** built from `mathjax-fonts`. It comes
+from the in-tree `mathjax-ptsans-bundle/` and is rebuilt separately:
+
+```bash
+cd mathjax-ptsans-bundle
+npm install
+npm run build           # rebuilds tex-mml-svg-mathjax-ptsans-nosre.js
+cd ..
+npm run setup           # copies it into public/mathjax/
+```
+
+As of `mathjax-fonts` commit `a49f41f` (2026-06-13) PT Sans **also** exists in
+`mathjax-fonts` (`mathjax-ptsans/`, with the `italic_lsb=0` + integral-ratio
+fix). Migrating Eigendeck to source PT Sans from there — adding `'ptsans'` to
+`MATHJAX_FONTS_PACKAGES` in `setup-fonts.mjs` and dropping the in-tree copy —
+is a pending cleanup. It changes the **default** font's rendering, so do it
+deliberately and verify before/after.
+
+## Adding a font
+
+1. Build it in `mathjax-fonts` (its own `mathjax-<id>/` with a
+   `build/webpack-nosre.config.cjs`), and add `<id>` to the `packages` list in
+   `mathjax-shantell/build/build-all-nosre.cjs`.
+2. Add `<id>` to `MATHJAX_FONTS_PACKAGES` in `scripts/setup-fonts.mjs`.
+3. Register the text font + math bundle in `src/lib/fontRegistry.mjs`
+   (`FONT_PACKAGES`), and drop the text-font TTFs in `public/fonts/<id>/`
+   (these TTFs **are** committed, unlike the math bundles).
+4. `npm run setup`, then pick the font in the app to confirm it loads.
+
+Note: **Lato** currently exists in `mathjax-fonts` but has **no** nosre bundle
+and is **not** wired into Eigendeck (absent from `MATHJAX_FONTS_PACKAGES`).
+
+## Reproducibility / pinning
+
+`setup-fonts.mjs` clones `mathjax-fonts` at `--depth 1` (whatever is latest) and
+does not pin a commit. If you need a reproducible build, record the
+`mathjax-fonts` commit you built from (e.g. in `CHANGELOG.md`) or check out that
+commit in the clone before step 3. The currently-integrated builds are from
+`mathjax-fonts@a49f41f`.
+
+## Gotchas (these cost hours)
+
+- **`git pull` does not update the nosre bundles** — they're build artifacts.
+  Always rerun `build-all-nosre.cjs` after pulling, or the app shows the old
+  fonts even though the sources changed.
+- **`npm run setup` doesn't pull** an existing clone — pull manually first.
+- **lcGreek patch** is mandatory; `build-all-nosre.cjs` applies it to
+  `@mathjax/src`'s `ParseMethods.js`. If `node_modules` was reinstalled, the
+  patch is re-applied on the next build (it's idempotent).
+- **nosre, always** — never ship the full SRE bundle (it hangs the Worker).
+- The full `…js` (non-nosre) bundles in `public/mathjax/` are leftovers and
+  unused by the app; only the un-suffixed names are loaded.
