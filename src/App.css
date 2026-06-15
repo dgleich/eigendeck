@@ -1085,13 +1085,13 @@
 
 /* Vertical alignment for text elements — applied to wrapper, not content div.
    Content div must stay block layout so inline math/text flows normally. */
-.el-text[data-valign="middle"] > div {
+.el-text[data-valign="middle"] > div:not(.el-link-badges) {
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
-.el-text[data-valign="bottom"] > div {
+.el-text[data-valign="bottom"] > div:not(.el-link-badges) {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
