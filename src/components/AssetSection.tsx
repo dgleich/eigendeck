@@ -185,6 +185,19 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
       await invalidateRenderedAsset(meta.asset_id);
       markAssetFound(meta.asset_id);
       window.dispatchEvent(new CustomEvent('eigendeck:asset-changed', { detail: { assetId: meta.asset_id } }));
+      // If a whole folder moved, this one relocate reveals where — apply the
+      // same directory offset to the other missing assets (#74).
+      const projectDir = dirname(projectPath);
+      const oldAbs = resolvePosixPath(projectDir, meta.external_path!);
+      const { relocateMissingByOffset } = await import('../lib/watcherRegistry');
+      const r = await relocateMissingByOffset(projectDir, meta.asset_id, oldAbs, picked);
+      if (r.relocated > 0) {
+        const { showToast } = await import('../lib/toasts');
+        showToast({
+          message: `Relocated ${r.relocated} more file${r.relocated === 1 ? '' : 's'} in the same folder.`,
+          kind: 'success',
+        });
+      }
     } catch (e) {
       console.warn('[AssetSection] relocate failed:', e);
     } finally {

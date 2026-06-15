@@ -21,7 +21,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { invalidateRenderedAsset } from './assetRenderer';
 import { effectiveAutoReload, getPreference } from './preferences';
-import { markAssetMissing, markAssetFound } from './missingAssets';
+import { markAssetMissing, markAssetFound, isAssetMissing } from './missingAssets';
 
 // Verbose logging surfaces in the in-app Debug Console (View menu)
 // because console.log is intercepted there. Prefix `[watcher]` so the
@@ -366,4 +366,69 @@ export async function scanForChangedAssets(
     }
   }
   return { checked: linked.length, reloaded };
+}
+
+/**
+ * Compute the directory remap between a missing source's old absolute path and
+ * the new one the user just picked (#74 follow-up). Strips the common trailing
+ * path (usually the filename, but any shared suffix) and returns the differing
+ * directory prefixes. Returns null when there's nothing to infer (no shared
+ * suffix — the file was also renamed — or identical prefixes — no move).
+ * Exported for unit testing.
+ */
+export function deriveRelocateOffset(oldAbs: string, newAbs: string): { oldPrefix: string; newPrefix: string } | null {
+  const o = oldAbs.split('/');
+  const n = newAbs.split('/');
+  let k = 0;
+  while (k < o.length && k < n.length && o[o.length - 1 - k] === n[n.length - 1 - k]) k++;
+  if (k === 0) return null;
+  const oldPrefix = o.slice(0, o.length - k).join('/');
+  const newPrefix = n.slice(0, n.length - k).join('/');
+  if (oldPrefix === newPrefix) return null;
+  return { oldPrefix, newPrefix };
+}
+
+/**
+ * After the user relocates ONE missing asset (oldAbs → newAbs), try to fix the
+ * OTHER currently-missing assets by applying the SAME directory move — i.e. if a
+ * whole folder moved, one relocate reveals where, and the rest follow. Only
+ * touches assets flagged missing; only re-points ones whose remapped file
+ * actually exists on disk. Returns how many additional assets were relocated.
+ */
+export async function relocateMissingByOffset(
+  projectDir: string,
+  skipAssetId: string,
+  oldAbs: string,
+  newAbs: string,
+): Promise<{ relocated: number; checked: number }> {
+  const offset = deriveRelocateOffset(oldAbs, newAbs);
+  if (!offset) return { relocated: 0, checked: 0 };
+  const { oldPrefix, newPrefix } = offset;
+  const linked = await invoke<LinkedAssetRow[]>('db_list_linked_assets').catch(() => [] as LinkedAssetRow[]);
+  const { stat, readFile } = await import('@tauri-apps/plugin-fs');
+  let relocated = 0, checked = 0;
+  for (const a of linked) {
+    if (a.asset_id === skipAssetId || !isAssetMissing(a.asset_id)) continue;
+    const absOld = resolvePosixPath(projectDir, a.external_path);
+    if (absOld !== oldPrefix && !absOld.startsWith(oldPrefix + '/')) continue;  // outside the moved tree
+    const candidate = newPrefix + absOld.slice(oldPrefix.length);
+    checked++;
+    try {
+      const bytes = await readFile(candidate);
+      const st = await stat(candidate).catch(() => null);
+      await invoke('db_store_asset', {
+        path: a.path ?? candidate.split('/').pop() ?? a.asset_id,
+        data: Array.from(bytes),
+        mimeType: a.mime_type ?? 'application/octet-stream',
+        externalPath: candidate,
+        externalMtime: st?.mtime ? st.mtime.toISOString() : null,
+        assetId: a.asset_id,
+        autoReload: null,
+      });
+      await invalidateRenderedAsset(a.asset_id);
+      markAssetFound(a.asset_id);
+      relocated++;
+    } catch { /* not at the remapped location either — leave it flagged missing */ }
+  }
+  return { relocated, checked };
 }

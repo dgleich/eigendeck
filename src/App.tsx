@@ -71,6 +71,14 @@ if (
     save: saveProject,   // flush + atomic save-in-place to the open file
     // Missing-source registry (#74) — lets E2E assert detect/relocate.
     missingAssets: () => getMissingAssets(),
+    // Relocate-all-by-offset (#74) — E2E hook mirroring what AssetSection does
+    // after the user picks one moved file.
+    relocateByOffset: (skipAssetId: string, oldAbs: string, newAbs: string) =>
+      import('./lib/watcherRegistry').then((m) =>
+        m.relocateMissingByOffset(
+          m.dirname(usePresentationStore.getState().projectPath || ''),
+          skipAssetId, oldAbs, newAbs,
+        )),
   };
 }
 
