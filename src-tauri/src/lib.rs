@@ -180,6 +180,32 @@ fn set_window_above_menubar(app: tauri::AppHandle, label: String) -> Result<(), 
     Ok(())
 }
 
+/// The OS's native window/toolbar background color as "#rrggbb", so the frontend
+/// can paint the toolbar to match native chrome. macOS reads
+/// NSColor.windowBackgroundColor (converted to sRGB — reading components off a
+/// dynamic catalog color directly throws, so the colorUsingColorSpace step is
+/// required). Other platforms return Err and the frontend uses a per-OS fallback.
+#[tauri::command]
+fn system_toolbar_color() -> Result<String, String> {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::{NSColor, NSColorSpace};
+        // windowBackgroundColor is a dynamic catalog color; convert to sRGB so
+        // its r/g/b components are readable. Resolves under the current appearance.
+        let base = unsafe { NSColor::windowBackgroundColor() };
+        let srgb = unsafe { NSColorSpace::sRGBColorSpace() };
+        let rgb = unsafe { base.colorUsingColorSpace(&srgb) }
+            .ok_or_else(|| "windowBackgroundColor → sRGB conversion failed".to_string())?;
+        let c = |v: f64| (v * 255.0).round().clamp(0.0, 255.0) as u8;
+        let (r, g, b) = unsafe { (rgb.redComponent(), rgb.greenComponent(), rgb.blueComponent()) };
+        Ok(format!("#{:02x}{:02x}{:02x}", c(r), c(g), c(b)))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("native toolbar color is implemented on macOS only".to_string())
+    }
+}
+
 /// Check if displays are mirrored and return info about available displays.
 #[tauri::command]
 fn check_display_mirroring() -> Result<serde_json::Value, String> {
@@ -576,6 +602,7 @@ pub fn run() {
             pasteboard::pasteboard_list_drag_types,
             pasteboard::pasteboard_read_drag_type,
             set_window_above_menubar,
+            system_toolbar_color,
             check_display_mirroring,
             disable_display_mirroring,
             enable_display_mirroring,

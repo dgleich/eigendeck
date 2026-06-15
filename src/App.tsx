@@ -596,20 +596,40 @@ function App() {
     }).catch((e) => { console.error('[boot] tauri core import failed:', e); });
     syncRecentMenu();
     // Toolbar chrome: paint the toolbars in the platform's native window/toolbar
-    // color so the app reads as native (macOS light gray, Windows Mica-ish,
-    // Linux/Adwaita). Per-OS defaults (the literal NSColor/GTK pull needs native
-    // code per platform — these are calibrated to match in light mode).
+    // color. We set a per-OS DEFAULT immediately, then override it with the
+    // ACTUAL system color pulled from the native API (macOS: NSColor.window
+    // BackgroundColor via the `system_toolbar_color` command). The default is
+    // only a fallback for non-macOS / when the native read fails.
     try {
       const ua = navigator.userAgent;
       const plat = /Mac/i.test(ua) ? 'mac' : /Win/i.test(ua) ? 'win' : 'linux';
-      const chrome = {
+      const fallback = {
         mac:   { bg: '#ececec', border: '#c9c9c9' },
         win:   { bg: '#f3f3f3', border: '#e1e1e1' },
         linux: { bg: '#f6f5f4', border: '#d8d4d0' },
       }[plat]!;
       const root = document.documentElement.style;
-      root.setProperty('--toolbar-bg', chrome.bg);
-      root.setProperty('--toolbar-border', chrome.border);
+      const darken = (hex: string, amt: number): string => {
+        const m = /^#([0-9a-f]{6})$/i.exec(hex);
+        if (!m) return hex;
+        const n = parseInt(m[1], 16);
+        const ch = (sh: number) => Math.max(0, Math.min(255, ((n >> sh) & 0xff) - amt));
+        return `#${[16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, '0')).join('')}`;
+      };
+      const apply = (bg: string, border: string) => {
+        root.setProperty('--toolbar-bg', bg);
+        root.setProperty('--toolbar-border', border);
+      };
+      apply(fallback.bg, fallback.border);  // immediate default
+      // Override with the REAL native color (macOS); keep the default otherwise.
+      import('@tauri-apps/api/core')
+        .then(({ invoke }) => invoke<string>('system_toolbar_color'))
+        .then((hex) => {
+          if (typeof hex === 'string' && /^#[0-9a-f]{6}$/i.test(hex)) {
+            apply(hex, darken(hex, 30));
+          }
+        })
+        .catch(() => { /* non-macOS / native read failed → keep the default */ });
     } catch { /* non-browser env */ }
     // Restore saved window position/size
     (async () => {
