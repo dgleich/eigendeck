@@ -45,6 +45,7 @@ import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
 import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss } from './types/presentation';
 import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
+import { getMissingAssets } from './lib/missingAssets';
 
 // Wire built-in element types into the sync/link lifecycle registry once, at
 // module load — before any free/merge action can fire.
@@ -68,6 +69,8 @@ if (
     store: usePresentationStore,
     flush: flushToSqlite,
     save: saveProject,   // flush + atomic save-in-place to the open file
+    // Missing-source registry (#74) — lets E2E assert detect/relocate.
+    missingAssets: () => getMissingAssets(),
   };
 }
 

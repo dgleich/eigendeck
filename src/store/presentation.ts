@@ -1229,6 +1229,9 @@ export async function closeSqliteProject(): Promise<void> {
       const { closeWatcherRegistry } = await import('../lib/watcherRegistry');
       closeWatcherRegistry(projectId);
     }
+    // Drop missing-source flags so they don't leak into the next deck (#74).
+    const { clearAllMissing } = await import('../lib/missingAssets');
+    clearAllMissing();
     await invoke('db_close');
     sqliteDbPath = null;
   } catch (e) {

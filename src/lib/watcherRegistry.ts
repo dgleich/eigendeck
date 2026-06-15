@@ -21,6 +21,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { invalidateRenderedAsset } from './assetRenderer';
 import { effectiveAutoReload, getPreference } from './preferences';
+import { markAssetMissing, markAssetFound } from './missingAssets';
 
 // Verbose logging surfaces in the in-app Debug Console (View menu)
 // because console.log is intercepted there. Prefix `[watcher]` so the
@@ -172,6 +173,7 @@ class WatcherRegistry {
       const mtime = st?.mtime ? st.mtime.toISOString() : null;
       wlog(`handleChange read ${bytes.length} bytes from "${absPath}" mtime=${mtime} → fanout to ${entry.assets.size} asset(s)`);
       for (const { assetId, path } of entry.assets.values()) {
+        markAssetFound(assetId);  // a successful read means the source is back
         try {
           const writtenId = await invoke<string>('db_store_asset', {
             path,
@@ -190,7 +192,13 @@ class WatcherRegistry {
         }
       }
     } catch (e) {
+      // Read failed — the source was deleted/renamed/made unreadable while we
+      // were watching it. Flag every asset on this path as missing (#74). The
+      // last-loaded snapshot stays in the DB, so the slide keeps rendering.
       console.warn(`[watcher] readFile/stat "${absPath}" FAILED:`, e);
+      for (const { assetId, path } of entry.assets.values()) {
+        markAssetMissing(assetId, path);
+      }
     }
   }
 
@@ -300,13 +308,24 @@ export async function scanForChangedAssets(
   if (linked.length === 0) return { checked: 0, reloaded: 0 };
   const { stat, readFile } = await import('@tauri-apps/plugin-fs');
   for (const a of linked) {
+    const absPath = resolvePosixPath(projectDir, a.external_path);
+    // Existence check is UNGATED by the auto-reload toggle: a missing source
+    // is worth flagging even when you've opted out of live reloads (#74).
+    let st;
+    try {
+      st = await stat(absPath);
+    } catch (e) {
+      markAssetMissing(a.asset_id, a.path ?? a.external_path);
+      wlog(`  source-missing ${a.asset_id.slice(0, 8)} path="${a.path}" abs="${absPath}": ${e}`);
+      continue;
+    }
+    markAssetFound(a.asset_id);  // present on disk — clear any stale flag
+    // The RELOAD is gated: don't pull new bytes for assets you've opted out of.
     if (!effectiveAutoReload(a.auto_reload, presOverride, globalDefault)) {
       wlog(`  skip ${a.asset_id.slice(0, 8)} — auto_reload resolves to OFF (per-asset='${a.auto_reload ?? 'default'}', per-pres='${presOverride ?? 'default'}')`);
       continue;
     }
-    const absPath = resolvePosixPath(projectDir, a.external_path);
     try {
-      const st = await stat(absPath);
       const diskMtime = st?.mtime ? st.mtime.toISOString() : null;
       if (diskMtime && diskMtime !== a.external_mtime) {
         // mtime moved — read bytes and compare hash before deciding
@@ -341,6 +360,8 @@ export async function scanForChangedAssets(
         wlog(`  unchanged ${a.asset_id.slice(0, 8)} path="${a.path}" mtime=${diskMtime}`);
       }
     } catch (e) {
+      // The file passed stat() but vanished/erred during read — treat as missing.
+      markAssetMissing(a.asset_id, a.path ?? a.external_path);
       wlog(`  source-missing ${a.asset_id.slice(0, 8)} path="${a.path}" abs="${absPath}": ${e}`);
     }
   }

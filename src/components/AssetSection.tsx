@@ -16,6 +16,7 @@ import { invalidateRenderedAsset } from '../lib/assetRenderer';
 import { dirname, resolvePosixPath } from '../lib/watcherRegistry';
 import { effectiveAutoReload, usePreference } from '../lib/preferences';
 import { computeAssetUsage } from '../lib/assetUsage';
+import { useAssetMissing, markAssetMissing, markAssetFound } from '../lib/missingAssets';
 
 interface AssetMeta {
   asset_id: string;
@@ -101,6 +102,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
   const [meta, setMeta] = useState<AssetMeta | null>(null);
   const [history, setHistory] = useState<AssetVersion[]>([]);
   const [reloading, setReloading] = useState(false);
+  const isMissing = useAssetMissing(assetId);
   const [globalAutoReload] = usePreference('autoReloadAssets');
   const presOverride = usePresentationStore((s) => s.presentation?.config?.autoReloadAssets ?? null);
 
@@ -147,8 +149,44 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
         autoReload: null,
       });
       await invalidateRenderedAsset(meta.asset_id);
+      markAssetFound(meta.asset_id);  // read succeeded — source is back (#74)
     } catch (e) {
       console.warn('[AssetSection] reload failed:', e);
+      markAssetMissing(meta.asset_id, meta.path ?? meta.external_path);  // #74
+    } finally {
+      setReloading(false);
+    }
+  }, [meta, projectPath]);
+
+  /** Relocate (#74): point a missing asset at a new file on disk. Reads the
+   *  chosen file, re-stores it under the same asset_id with the new absolute
+   *  path as external_path (resolvePosixPath passes absolute paths through, so
+   *  watching resumes), then clears the missing flag. */
+  const relocate = useCallback(async () => {
+    if (!meta || !projectPath) return;
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const picked = await open({ title: 'Locate source file', multiple: false, directory: false });
+    if (!picked || typeof picked !== 'string') return;
+    setReloading(true);
+    try {
+      const { readFile, stat } = await import('@tauri-apps/plugin-fs');
+      const bytes = await readFile(picked);
+      const st = await stat(picked).catch(() => null);
+      const mtime = st?.mtime ? st.mtime.toISOString() : null;
+      await invoke('db_store_asset', {
+        path: meta.path,
+        data: Array.from(bytes),
+        mimeType: meta.mime_type ?? 'application/octet-stream',
+        externalPath: picked,            // absolute — resolvePosixPath returns as-is
+        externalMtime: mtime,
+        assetId: meta.asset_id,
+        autoReload: null,
+      });
+      await invalidateRenderedAsset(meta.asset_id);
+      markAssetFound(meta.asset_id);
+      window.dispatchEvent(new CustomEvent('eigendeck:asset-changed', { detail: { assetId: meta.asset_id } }));
+    } catch (e) {
+      console.warn('[AssetSection] relocate failed:', e);
     } finally {
       setReloading(false);
     }
@@ -326,6 +364,33 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
           <div style={{ color: '#999' }}>Embedded snapshot — no linked source file</div>
         )}
       </div>
+
+      {/* Missing-source alert (#74): the linked file is gone from disk. The
+          last-loaded snapshot is still shown, so nothing is lost — but offer a
+          Relocate so the user can re-point the link to the file's new home. */}
+      {isMissing && meta.external_path && projectPath && (
+        <div style={{
+          fontSize: 11, padding: '6px 8px',
+          background: '#fef2f2', border: '1px solid #fca5a5',
+          borderRadius: 3, color: '#991b1b',
+          display: 'flex', flexDirection: 'column', gap: 6,
+        }}>
+          <span>
+            ⚠ Source file is missing from disk. Showing the last-loaded snapshot —
+            edits to the original won't appear until you relocate it.
+          </span>
+          <button
+            onClick={relocate}
+            disabled={reloading}
+            style={{
+              alignSelf: 'flex-start', padding: '3px 10px', fontSize: 11,
+              background: '#dc2626', color: '#fff',
+              border: 'none', borderRadius: 3, cursor: 'pointer',
+            }}>
+            Relocate…
+          </button>
+        </div>
+      )}
 
       {/* Asset tracking is impossible in unnamed presentations: the
           source file path can't be resolved without a project dir on
