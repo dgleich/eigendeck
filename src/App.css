@@ -2593,15 +2593,27 @@
 .welcome-recent-empty { font-size: 12px; color: #9ca3af; }
 .welcome-recent-list { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow-y: auto; }
 .welcome-recent-item {
-  width: 100%; text-align: left; display: flex; flex-direction: column;
-  padding: 6px 8px; border: none; background: none; border-radius: 6px; cursor: pointer;
+  width: 100%; text-align: left; display: flex; flex-direction: column; gap: 3px;
+  padding: 9px 10px; border: none; background: none; border-radius: 8px; cursor: pointer;
 }
-.welcome-recent-item:hover { background: #f3f4f6; }
-.welcome-recent-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.welcome-recent-name { font-size: 13px; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.welcome-recent-date { font-size: 11px; color: #9ca3af; flex-shrink: 0; }
-.welcome-recent-date.missing { color: #dc2626; }
-.welcome-recent-path { font-size: 11px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.welcome-recent-item:hover { background: #eef2f7; }
+.welcome-recent-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.welcome-recent-name {
+  font-size: 14px; font-weight: 600; color: #111827; letter-spacing: -0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.welcome-recent-date { font-size: 12px; color: #9ca3af; flex-shrink: 0; }
+.welcome-recent-date.missing { color: #dc2626; font-weight: 500; }
+.welcome-recent-file {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px; color: #4b5563;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.welcome-recent-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px; color: #aab0ba;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .welcome-scratch {
   margin-top: 10px;
   background: none; border: none; padding: 2px 0;

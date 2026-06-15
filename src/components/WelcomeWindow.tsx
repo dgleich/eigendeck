@@ -75,7 +75,8 @@ export function WelcomeWindow() {
                       <span className="welcome-recent-name">{r.title?.trim() || baseName(r.path)}</span>
                       <span className={`welcome-recent-date${m?.missing ? ' missing' : ''}`}>{date}</span>
                     </span>
-                    <span className="welcome-recent-path">{fileName(r.path)} · {dirOf(r.path)}</span>
+                    <span className="welcome-recent-file">{fileName(r.path)}</span>
+                    <span className="welcome-recent-path">{dirOf(r.path)}</span>
                   </button>
                 </li>
               );
