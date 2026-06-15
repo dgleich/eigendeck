@@ -38,6 +38,7 @@ gitignore/
 
 # Auth tokens
 .gh_token
+.github_token
 
 # Website repo (separate GitHub repo, hosted on Cloudflare Pages)
 website/
