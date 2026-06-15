@@ -97,7 +97,7 @@ describe('named text size system', () => {
     expect(effectiveTextPresetSize('body', null)).toBe(48);
     expect(effectiveTextPresetSize('annotation', null)).toBe(32); // annotation → 'note'
     expect(effectiveTextPresetSize('footnote', null)).toBe(24);
-    expect(effectiveTextPresetSize('hype', null)).toBe(96);
+    expect(effectiveTextPresetSize('hype', null)).toBe(48); // hype (sticky note) → 'body'
     // textbox shares the 'body' size — deck override on body propagates
     expect(effectiveTextPresetSize('textbox', { textSizes: { body: 50 } })).toBe(50);
     // annotation maps to 'note' — overriding body doesn't change annotation
