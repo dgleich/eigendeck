@@ -1023,9 +1023,15 @@ export function DraggableBox({
             const sid = syncId || _syncId;
             // A sync partner (synced/freed group) OR, for the promote case, an
             // animation-link partner sharing this linkId.
+            //
+            // Sync case: count the WHOLE group across slides — don't require a
+            // DIFFERENT id. After save→reopen, synced instances correctly share
+            // ONE canonical id (one row, many junctions — the storage model), so
+            // an `el.id !== elementId` partner check finds nothing and wrongly
+            // hides the S badge. A group of >1 instance always has a partner.
             const hasPartner = sid
-              ? slides.some((s) => s.elements.some((el) =>
-                  el.id !== elementId && (el.syncId === sid || (el as any)._syncId === sid)))
+              ? slides.reduce((n, s) => n + s.elements.filter((el) =>
+                  el.syncId === sid || (el as any)._syncId === sid).length, 0) > 1
               : slides.some((s) => s.elements.some((el) =>
                   el.id !== elementId && el.linkId === linkId));
             if (!hasPartner) return null;
