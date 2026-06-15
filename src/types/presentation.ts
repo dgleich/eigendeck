@@ -191,6 +191,10 @@ export interface TextElement extends BaseElement {
    *  'shadow' = a soft drop shadow; 'glow' = a high-contrast halo (color is
    *  auto-chosen opposite the text luminance). Unset = none. */
   textEffect?: 'shadow' | 'glow';
+  /** Drop shadow on the box itself (the background panel) — independent of
+   *  textEffect. Only meaningful when backgroundColor is set; the inspector only
+   *  offers it then. Unset = no box shadow. */
+  boxShadow?: boolean;
   /** Rotation in degrees (clockwise) for the whole text box — the background
    *  panel tilts with the text (e.g. an angled sticky-note Hype callout, #8).
    *  Unset/0 = upright. */
@@ -235,20 +239,17 @@ export function textEffectCss(effect: 'shadow' | 'glow' | undefined, color: stri
   return undefined;
 }
 
-/** Shadow/glow to apply to the TEXT itself. Same as textEffectCss, EXCEPT: when
- *  the element has a background AND the effect is 'shadow', the shadow belongs on
- *  the BOX (see textBoxShadowCss) — a solid panel casts a drop shadow like a
- *  card; a text-shadow on top of it is pointless — so we suppress it here. */
-export function textShadowCss(el: { textEffect?: 'shadow' | 'glow'; backgroundColor?: string }, color: string): string | undefined {
-  if (el.textEffect === 'shadow' && el.backgroundColor) return undefined;
+/** Shadow/glow to apply to the TEXT itself (the `textEffect` Effect control).
+ *  Independent of the box shadow. */
+export function textShadowCss(el: { textEffect?: 'shadow' | 'glow' }, color: string): string | undefined {
   return textEffectCss(el.textEffect, color);
 }
 
 /** CSS `box-shadow` for a text element's BOX: a drop shadow on the background
- *  panel when the 'shadow' effect is on AND a background is set. Undefined
- *  otherwise (no panel to shadow). */
-export function textBoxShadowCss(el: { textEffect?: 'shadow' | 'glow'; backgroundColor?: string }): string | undefined {
-  return el.textEffect === 'shadow' && el.backgroundColor ? '0 4px 14px rgba(0,0,0,0.28)' : undefined;
+ *  panel (the explicit `boxShadow` toggle). Only when a background is set —
+ *  there's no panel to shadow otherwise. */
+export function textBoxShadowCss(el: { boxShadow?: boolean; backgroundColor?: string }): string | undefined {
+  return el.boxShadow && el.backgroundColor ? '0 4px 14px rgba(0,0,0,0.28)' : undefined;
 }
 
 /**

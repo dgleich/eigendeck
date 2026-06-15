@@ -148,7 +148,8 @@ All elements share these base fields:
 - `verticalAlign`: `"top"` | `"middle"` | `"bottom"` — vertical text alignment within the box. Title and footnote default to `"bottom"`.
 - `backgroundColor`: string (CSS color) — fill behind the text box (e.g., a caption panel over a busy background). Absent = transparent.
 - `backgroundOpacity`: number 0–1 (default 1) — opacity applied to `backgroundColor` (combined into rgba at render, so the text itself isn't faded).
-- `textEffect`: `"shadow"` | `"glow"` — legibility decoration. `"glow"` = high-contrast halo on the text (white or black, auto-chosen opposite the text color's luminance). `"shadow"` = a drop shadow: on the **text** (`text-shadow`) when there's no `backgroundColor`, or on the **box** (`box-shadow`, like a card/sticky-note) when a `backgroundColor` is set (the text-shadow is suppressed then). Absent = none. Applied across editor/present/export.
+- `textEffect`: `"shadow"` | `"glow"` — decoration on the **text**. `"shadow"` = soft `text-shadow`; `"glow"` = high-contrast halo (white or black, auto-chosen opposite the text color's luminance). Absent = none.
+- `boxShadow`: boolean — a drop shadow on the **box** (the background panel), like a card/sticky-note. Independent of `textEffect`; only has effect when `backgroundColor` is set (the inspector only offers it then). Absent/false = none.
 - `rotation`: number (degrees, clockwise) — tilts the WHOLE text box, background panel included (angled sticky-note callout). Absent/0 = upright. Hype elements default to `-4`. Applied as a `rotate()` transform across editor/present/export.
 
 **HTML content**: The `html` field supports basic HTML:

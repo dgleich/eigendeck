@@ -424,7 +424,7 @@ export function PropertiesPanel() {
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                       <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 6px',
                         background: !selectedEl.backgroundColor ? '#3b82f6' : undefined, color: !selectedEl.backgroundColor ? '#fff' : undefined }}
-                        onClick={() => updateElement(selectedEl.id, { backgroundColor: undefined, backgroundOpacity: undefined } as any)}>None</button>
+                        onClick={() => updateElement(selectedEl.id, { backgroundColor: undefined, backgroundOpacity: undefined, boxShadow: undefined } as any)}>None</button>
                       {TEXT_BG_COLORS.map((c) => (
                         <button key={c} className={`prop-color-swatch ${selectedEl.backgroundColor === c ? 'active' : ''}`}
                           style={{ background: c }} onClick={() => updateElement(selectedEl.id, { backgroundColor: c } as any)} />
@@ -435,14 +435,28 @@ export function PropertiesPanel() {
                         style={{ width: 24, height: 24, padding: 0, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }} />
                     </div>
                     {selectedEl.backgroundColor && (
-                      <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        Opacity
-                        <input type="range" min={0} max={1} step={0.05} value={selectedEl.backgroundOpacity ?? 1}
-                          onPointerDown={pauseUndo} onPointerUp={resumeUndo}
-                          onChange={(e) => updateElement(selectedEl.id, { backgroundOpacity: parseFloat(e.target.value) } as any)}
-                          style={{ flex: 1 }} />
-                        <span style={{ fontSize: 11, color: '#999' }}>{Math.round((selectedEl.backgroundOpacity ?? 1) * 100)}%</span>
-                      </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          Opacity
+                          <input type="range" min={0} max={1} step={0.05} value={selectedEl.backgroundOpacity ?? 1}
+                            onPointerDown={pauseUndo} onPointerUp={resumeUndo}
+                            onChange={(e) => updateElement(selectedEl.id, { backgroundOpacity: parseFloat(e.target.value) } as any)}
+                            style={{ flex: 1 }} />
+                          <input type="number" min={0} max={100} step={1}
+                            value={Math.round((selectedEl.backgroundOpacity ?? 1) * 100)}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10);
+                              if (Number.isFinite(v)) updateElement(selectedEl.id, { backgroundOpacity: Math.max(0, Math.min(100, v)) / 100 } as any);
+                            }}
+                            style={{ width: 44, fontSize: 12, padding: '2px 4px' }} />
+                          <span style={{ fontSize: 11, color: '#999' }}>%</span>
+                        </label>
+                        <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <input type="checkbox" checked={!!selectedEl.boxShadow}
+                            onChange={(e) => updateElement(selectedEl.id, { boxShadow: e.target.checked || undefined } as any)} />
+                          Box shadow
+                        </label>
+                      </div>
                     )}
                   </div>
                 </PropSection>

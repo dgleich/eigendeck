@@ -54,16 +54,15 @@ function textEffectCss(el, color) {
   return '';
 }
 
-// Text-shadow for the TEXT — suppressed when there's a background + 'shadow'
-// (the box-shadow handles it instead). Mirrors textShadowCss().
+// Text-shadow for the TEXT (the Effect control). Mirrors textShadowCss().
 function textShadowCss(el, color) {
-  if (el && el.textEffect === 'shadow' && el.backgroundColor) return '';
   return textEffectCss(el, color);
 }
 
-// Box-shadow for the text BOX panel (background + 'shadow'). Mirrors textBoxShadowCss().
+// Box-shadow for the text BOX panel (the explicit boxShadow toggle + a
+// background). Mirrors textBoxShadowCss().
 function textBoxShadowCss(el) {
-  return el && el.textEffect === 'shadow' && el.backgroundColor ? '0 4px 14px rgba(0,0,0,0.28)' : '';
+  return el && el.boxShadow && el.backgroundColor ? '0 4px 14px rgba(0,0,0,0.28)' : '';
 }
 
 /**

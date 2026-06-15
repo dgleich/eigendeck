@@ -221,28 +221,22 @@ describe('text element rotation (#8 angled callouts)', () => {
   });
 });
 
-describe('textShadowCss / textBoxShadowCss (box vs text shadow)', () => {
-  it('no background + shadow → text-shadow on the text, no box-shadow', async () => {
-    const { textShadowCss, textBoxShadowCss } = await import('./presentation');
-    const el = { textEffect: 'shadow' as const };
-    expect(textShadowCss(el, '#000')).toBe('0 2px 4px rgba(0,0,0,0.45)');
-    expect(textBoxShadowCss(el)).toBeUndefined();
-  });
-  it('background + shadow → box-shadow on the box, NO text-shadow', async () => {
-    const { textShadowCss, textBoxShadowCss } = await import('./presentation');
-    const el = { textEffect: 'shadow' as const, backgroundColor: '#fde047' };
-    expect(textShadowCss(el, '#000')).toBeUndefined();
-    expect(textBoxShadowCss(el)).toBe('0 4px 14px rgba(0,0,0,0.28)');
-  });
-  it('glow is always a text effect, never a box-shadow (even with a background)', async () => {
-    const { textShadowCss, textBoxShadowCss } = await import('./presentation');
-    const el = { textEffect: 'glow' as const, backgroundColor: '#fde047' };
-    expect(textShadowCss(el, '#111')).toContain('#ffffff');
-    expect(textBoxShadowCss(el)).toBeUndefined();
-  });
-  it('no effect → neither', async () => {
-    const { textShadowCss, textBoxShadowCss } = await import('./presentation');
+describe('textShadowCss / textBoxShadowCss (independent text vs box shadow)', () => {
+  it('textEffect drives the text shadow, independent of background', async () => {
+    const { textShadowCss } = await import('./presentation');
+    expect(textShadowCss({ textEffect: 'shadow' }, '#000')).toBe('0 2px 4px rgba(0,0,0,0.45)');
+    // still a text-shadow even with a background (the box shadow is separate now)
+    expect(textShadowCss({ textEffect: 'shadow', backgroundColor: '#fde047' } as any, '#000'))
+      .toBe('0 2px 4px rgba(0,0,0,0.45)');
+    expect(textShadowCss({ textEffect: 'glow' }, '#111')).toContain('#ffffff');
     expect(textShadowCss({}, '#000')).toBeUndefined();
+  });
+  it('boxShadow toggle drives the box shadow, only with a background', async () => {
+    const { textBoxShadowCss } = await import('./presentation');
+    expect(textBoxShadowCss({ boxShadow: true, backgroundColor: '#fde047' }))
+      .toBe('0 4px 14px rgba(0,0,0,0.28)');
+    expect(textBoxShadowCss({ boxShadow: true })).toBeUndefined();       // no panel to shadow
+    expect(textBoxShadowCss({ backgroundColor: '#fde047' })).toBeUndefined(); // toggle off
     expect(textBoxShadowCss({})).toBeUndefined();
   });
 });
