@@ -116,7 +116,8 @@ describe('backward compatibility', () => {
     const legacyConfig = { transition: 'slide', backgroundTransition: 'fade', width: 1920, height: 1080 };
     expect(fontForPreset('title', legacySlide, legacyConfig).id).toBe('ptsans');
     expect(fontForPreset('body', legacySlide, legacyConfig).id).toBe('ptsans');
-    expect(fontForPreset('hype', legacySlide, legacyConfig).id).toBe('ptsans');
+    // hype (sticky note) defaults to Shantell when no font is set
+    expect(fontForPreset('hype', legacySlide, legacyConfig).id).toBe('shantell');
     expect(fontForPreset('footnote', legacySlide, legacyConfig).id).toBe('ptsans');
   });
 
