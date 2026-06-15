@@ -603,16 +603,11 @@ function App() {
     try {
       const ua = navigator.userAgent;
       const plat = /Mac/i.test(ua) ? 'mac' : /Win/i.test(ua) ? 'win' : 'linux';
-      // TEMP DEBUG: glaring magenta fallback so it's unmistakable when the native
-      // read DIDN'T run (toolbar magenta = fallback; gray = native worked).
-      // Revert to the calibrated grays below once verified.
-      const DEBUG_FALLBACK = true;
-      const realFallback = {
+      const fallback = {
         mac:   { bg: '#ececec', border: '#c9c9c9' },
         win:   { bg: '#f3f3f3', border: '#e1e1e1' },
         linux: { bg: '#f6f5f4', border: '#d8d4d0' },
       }[plat]!;
-      const fallback = DEBUG_FALLBACK ? { bg: '#ff00ff', border: '#cc00cc' } : realFallback;
       const root = document.documentElement.style;
       const darken = (hex: string, amt: number): string => {
         const m = /^#([0-9a-f]{6})$/i.exec(hex);
@@ -621,8 +616,8 @@ function App() {
         const ch = (sh: number) => Math.max(0, Math.min(255, ((n >> sh) & 0xff) - amt));
         return `#${[16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, '0')).join('')}`;
       };
-      // Blend toward white by `frac` — proportional so an already-light base
-      // doesn't clamp to pure white (the inactive-window lightening).
+      // Blend toward white by `frac` — proportional so a light base doesn't clamp
+      // to pure white (the inactive-window lightening).
       const lighten = (hex: string, frac: number): string => {
         const m = /^#([0-9a-f]{6})$/i.exec(hex);
         if (!m) return hex;
@@ -630,38 +625,30 @@ function App() {
         const ch = (sh: number) => { const v = (n >> sh) & 0xff; return Math.round(v + (255 - v) * frac); };
         return `#${[16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, '0')).join('')}`;
       };
-      // TEMPORARY debug badge (bottom-right) showing the resolved toolbar color
-      // and where it came from. Remove once verified on all platforms.
-      const dbg = document.createElement('div');
-      dbg.style.cssText = 'position:fixed;bottom:4px;right:4px;z-index:99999;'
-        + 'font:10px/1.4 monospace;padding:3px 7px;border-radius:4px;pointer-events:none;'
-        + 'background:#111;color:#7CFC00;box-shadow:0 1px 4px rgba(0,0,0,.4)';
-      document.body.appendChild(dbg);
-      const debugShow = (bg: string, source: string) => {
-        dbg.textContent = `toolbar ${bg} (${source})`;
-        dbg.style.borderLeft = `12px solid ${bg}`;
-        console.log(`[toolbar-color] ${source} → ${bg}`);
+      const luminance = (hex: string): number => {
+        const m = /^#([0-9a-f]{6})$/i.exec(hex); if (!m) return 255;
+        const n = parseInt(m[1], 16);
+        return 0.299 * ((n >> 16) & 0xff) + 0.587 * ((n >> 8) & 0xff) + 0.114 * (n & 0xff);
       };
-      const apply = (bg: string, border: string, source: string) => {
+      const apply = (bg: string, border: string) => {
         root.setProperty('--toolbar-bg', bg);
         root.setProperty('--toolbar-border', border);
-        // macOS lightens the window chrome when the window is inactive — derive a
-        // lighter variant (no single native "inactive window" NSColor exists; the
-        // system computes it for native chrome, so we mimic by lightening).
         root.setProperty('--toolbar-bg-inactive', lighten(bg, 0.35));
         root.setProperty('--toolbar-border-inactive', lighten(border, 0.3));
-        debugShow(bg, source);
       };
-      apply(fallback.bg, fallback.border, `${plat} fallback`);  // immediate default
-      // Override with the REAL native color (per-platform command); keep default otherwise.
+      apply(fallback.bg, fallback.border);  // immediate default
+      // The app's content is light-only, so only adopt the native color when it's
+      // LIGHT. In macOS dark mode the native read returns a dark color, which would
+      // clash with the light content (dark toolbar / light everything) — so we keep
+      // the light fallback there. A real dark mode would theme the whole app.
       import('@tauri-apps/api/core')
         .then(({ invoke }) => invoke<string>('system_toolbar_color'))
         .then((hex) => {
-          if (typeof hex === 'string' && /^#[0-9a-f]{6}$/i.test(hex)) {
-            apply(hex, darken(hex, 30), `${plat} native`);
+          if (typeof hex === 'string' && /^#[0-9a-f]{6}$/i.test(hex) && luminance(hex) > 150) {
+            apply(hex, darken(hex, 30));
           }
         })
-        .catch((e) => { console.log('[toolbar-color] native read failed:', e); });
+        .catch(() => { /* non-macOS / native read failed → keep the default */ });
     } catch { /* non-browser env */ }
     // Restore saved window position/size
     (async () => {
