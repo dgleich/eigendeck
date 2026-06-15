@@ -100,9 +100,11 @@
 }
 
 /* Toolbar */
-/* Inactive window: macOS tints the chrome a touch grayer — swap both bars. */
+/* Inactive window: macOS tints the chrome a touch grayer — swap the bars and
+   the welcome backdrop. */
 body.window-inactive .toolbar,
-body.window-inactive .editor-actions {
+body.window-inactive .editor-actions,
+body.window-inactive .welcome-root {
   background: var(--toolbar-bg-inactive);
   border-bottom-color: var(--toolbar-border-inactive);
 }
@@ -2585,7 +2587,8 @@ body.window-inactive .editor-actions {
 .welcome-root {
   position: fixed; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  background: #f3f4f6;
+  /* Match the window/toolbar chrome (active vs inactive). */
+  background: var(--toolbar-bg, #fdfdfd);
 }
 .welcome-card {
   display: flex; width: 760px; max-width: 94vw; max-height: 86vh;
