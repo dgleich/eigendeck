@@ -601,54 +601,19 @@ function App() {
     // BackgroundColor via the `system_toolbar_color` command). The default is
     // only a fallback for non-macOS / when the native read fails.
     try {
+      // Toolbar chrome: a clean per-OS light gray so the bar reads as native
+      // (vs pure white). App is pinned to light mode (see `color-scheme: light`);
+      // native vibrancy + dark mode are tracked in #76.
       const ua = navigator.userAgent;
       const plat = /Mac/i.test(ua) ? 'mac' : /Win/i.test(ua) ? 'win' : 'linux';
-      const fallback = {
-        mac:   { bg: '#ececec', border: '#c9c9c9' },
+      const chrome = {
+        mac:   { bg: '#ececec', border: '#cfcfcf' },
         win:   { bg: '#f3f3f3', border: '#e1e1e1' },
         linux: { bg: '#f6f5f4', border: '#d8d4d0' },
       }[plat]!;
       const root = document.documentElement.style;
-      const darken = (hex: string, amt: number): string => {
-        const m = /^#([0-9a-f]{6})$/i.exec(hex);
-        if (!m) return hex;
-        const n = parseInt(m[1], 16);
-        const ch = (sh: number) => Math.max(0, Math.min(255, ((n >> sh) & 0xff) - amt));
-        return `#${[16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, '0')).join('')}`;
-      };
-      // Blend toward white by `frac` — proportional so a light base doesn't clamp
-      // to pure white (the inactive-window lightening).
-      const lighten = (hex: string, frac: number): string => {
-        const m = /^#([0-9a-f]{6})$/i.exec(hex);
-        if (!m) return hex;
-        const n = parseInt(m[1], 16);
-        const ch = (sh: number) => { const v = (n >> sh) & 0xff; return Math.round(v + (255 - v) * frac); };
-        return `#${[16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, '0')).join('')}`;
-      };
-      const luminance = (hex: string): number => {
-        const m = /^#([0-9a-f]{6})$/i.exec(hex); if (!m) return 255;
-        const n = parseInt(m[1], 16);
-        return 0.299 * ((n >> 16) & 0xff) + 0.587 * ((n >> 8) & 0xff) + 0.114 * (n & 0xff);
-      };
-      const apply = (bg: string, border: string) => {
-        root.setProperty('--toolbar-bg', bg);
-        root.setProperty('--toolbar-border', border);
-        root.setProperty('--toolbar-bg-inactive', lighten(bg, 0.35));
-        root.setProperty('--toolbar-border-inactive', lighten(border, 0.3));
-      };
-      apply(fallback.bg, fallback.border);  // immediate default
-      // The app's content is light-only, so only adopt the native color when it's
-      // LIGHT. In macOS dark mode the native read returns a dark color, which would
-      // clash with the light content (dark toolbar / light everything) — so we keep
-      // the light fallback there. A real dark mode would theme the whole app.
-      import('@tauri-apps/api/core')
-        .then(({ invoke }) => invoke<string>('system_toolbar_color'))
-        .then((hex) => {
-          if (typeof hex === 'string' && /^#[0-9a-f]{6}$/i.test(hex) && luminance(hex) > 150) {
-            apply(hex, darken(hex, 30));
-          }
-        })
-        .catch(() => { /* non-macOS / native read failed → keep the default */ });
+      root.setProperty('--toolbar-bg', chrome.bg);
+      root.setProperty('--toolbar-border', chrome.border);
     } catch { /* non-browser env */ }
     // Restore saved window position/size
     (async () => {
@@ -665,31 +630,6 @@ function App() {
   }, []);
 
   // SQLite DB is closed from Rust via on_window_event(Destroyed) — no JS handler needed.
-
-  // Active/inactive window chrome (macOS lightens the toolbar when the window
-  // isn't focused). Toggle `window-inactive` on <body>; CSS swaps to the lighter
-  // --toolbar-bg-inactive. Tauri's onFocusChanged is authoritative; DOM
-  // focus/blur is a fallback for non-Tauri / extra reliability.
-  useEffect(() => {
-    const setActive = (active: boolean) =>
-      document.body.classList.toggle('window-inactive', !active);
-    setActive(typeof document !== 'undefined' ? document.hasFocus() : true);
-    let unlisten: (() => void) | undefined;
-    import('@tauri-apps/api/window')
-      .then(({ getCurrentWindow }) =>
-        getCurrentWindow().onFocusChanged(({ payload }) => setActive(payload)))
-      .then((u) => { unlisten = u; })
-      .catch(() => { /* not in Tauri */ });
-    const onFocus = () => setActive(true);
-    const onBlur = () => setActive(false);
-    window.addEventListener('focus', onFocus);
-    window.addEventListener('blur', onBlur);
-    return () => {
-      unlisten?.();
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('blur', onBlur);
-    };
-  }, []);
 
   // Save window position/size on move/resize (debounced)
   useEffect(() => {
