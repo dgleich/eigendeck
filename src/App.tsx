@@ -595,6 +595,22 @@ function App() {
       } catch (e) { console.error('[boot] take_launch_file failed:', e); }
     }).catch((e) => { console.error('[boot] tauri core import failed:', e); });
     syncRecentMenu();
+    // Toolbar chrome: paint the toolbars in the platform's native window/toolbar
+    // color so the app reads as native (macOS light gray, Windows Mica-ish,
+    // Linux/Adwaita). Per-OS defaults (the literal NSColor/GTK pull needs native
+    // code per platform — these are calibrated to match in light mode).
+    try {
+      const ua = navigator.userAgent;
+      const plat = /Mac/i.test(ua) ? 'mac' : /Win/i.test(ua) ? 'win' : 'linux';
+      const chrome = {
+        mac:   { bg: '#ececec', border: '#c9c9c9' },
+        win:   { bg: '#f3f3f3', border: '#e1e1e1' },
+        linux: { bg: '#f6f5f4', border: '#d8d4d0' },
+      }[plat]!;
+      const root = document.documentElement.style;
+      root.setProperty('--toolbar-bg', chrome.bg);
+      root.setProperty('--toolbar-border', chrome.border);
+    } catch { /* non-browser env */ }
     // Restore saved window position/size
     (async () => {
       try {

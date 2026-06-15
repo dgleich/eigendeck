@@ -97,8 +97,9 @@
   justify-content: space-between;
   height: 44px;
   padding: 0 12px;
-  background: #fff;
-  border-bottom: 1px solid #ddd;
+  /* Native window/toolbar color per platform (set at boot from --toolbar-bg). */
+  background: var(--toolbar-bg, #f3f3f3);
+  border-bottom: 1px solid var(--toolbar-border, #ddd);
   gap: 8px;
   flex-shrink: 0;
   position: relative;
@@ -145,18 +146,18 @@
 
 .toolbar button {
   padding: 4px 12px;
-  /* Light-gray raised chip so buttons read as distinct from the white toolbar
-     bar (they previously blended in — only a faint border separated them). */
+  /* White raised control on the native gray toolbar — pops against the bar
+     (the inverse of a gray chip on white). */
   border: 1px solid #c4c9ce;
   border-radius: 4px;
-  background: #eef0f2;
+  background: #ffffff;
   cursor: pointer;
   font-size: 13px;
   color: #1a1a1a;
 }
 
 .toolbar button:hover {
-  background: #e2e5e8;
+  background: #f0f1f3;
   border-color: #9aa1a8;
 }
 
@@ -425,8 +426,9 @@
   /* row-gap between wrapped rows; larger column-gap separates the groups. */
   gap: 6px 16px;
   padding: 6px 12px;
-  background: #fff;
-  border-bottom: 1px solid #eee;
+  /* Same native toolbar color as the top bar. */
+  background: var(--toolbar-bg, #f3f3f3);
+  border-bottom: 1px solid var(--toolbar-border, #eee);
   flex-shrink: 0;
   /* Wrap by GROUP, not by button: when the bar is too narrow, a whole group
      drops to the next row — buttons never split mid-group (#72). */
@@ -438,10 +440,10 @@
 
 .editor-actions button {
   padding: 3px 8px;
-  /* Light-gray raised chip — a bit more contrast from the white toolbar. */
+  /* White raised control on the native gray toolbar. */
   border: 1px solid #c4c9ce;
   border-radius: 4px;
-  background: #eef0f2;
+  background: #ffffff;
   cursor: pointer;
   font-size: 12px;
   color: #1a1a1a;
@@ -449,7 +451,7 @@
 }
 
 .editor-actions button:hover {
-  background: #e2e5e8;
+  background: #f0f1f3;
   border-color: #9aa1a8;
 }
 
