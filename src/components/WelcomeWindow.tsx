@@ -41,48 +41,57 @@ export function WelcomeWindow() {
   return (
     <div className="welcome-root">
       <div className="welcome-card">
-        <div className="welcome-title">Eigendeck</div>
-        <div className="welcome-subtitle">Open or create a presentation to begin.</div>
+        {/* Left: brand + the two primary actions, kept in a narrow column. */}
+        <div className="welcome-left">
+          <div className="welcome-brand">
+            <img className="welcome-logo" src="/eigendeck-logo.png" alt="" />
+            <span className="welcome-wordmark">Eigendeck</span>
+          </div>
+          <div className="welcome-subtitle">Open or create a presentation to begin.</div>
 
-        <div className="welcome-actions">
-          <button className="welcome-btn primary" onClick={() => void createProject()}>
-            <span className="welcome-btn-main">New Presentation…</span>
-            <span className="welcome-btn-sub">Choose where to save it</span>
-          </button>
-          <button className="welcome-btn" onClick={() => void openProject()}>
-            <span className="welcome-btn-main">Open…</span>
-            <span className="welcome-btn-sub">Browse for an .eigendeck file</span>
-          </button>
+          <div className="welcome-actions">
+            <button className="welcome-btn primary" onClick={() => void createProject()}>
+              <span className="welcome-btn-main">New Presentation…</span>
+              <span className="welcome-btn-sub">Choose where to save it</span>
+            </button>
+            <button className="welcome-btn" onClick={() => void openProject()}>
+              <span className="welcome-btn-main">Open…</span>
+              <span className="welcome-btn-sub">Browse for an .eigendeck file</span>
+            </button>
+            <button className="welcome-btn" onClick={() => void createScratchProject()}
+              title="Create a disk-anchored scratch deck without choosing a path (Save As later to give it a home)">
+              <span className="welcome-btn-main">Scratch Deck</span>
+              <span className="welcome-btn-sub">Scribble now, save it later</span>
+            </button>
+          </div>
         </div>
 
-        <button className="welcome-scratch" onClick={() => void createScratchProject()}
-          title="Create a disk-anchored scratch deck without choosing a path (Save As later to give it a home)">
-          or start a scratch deck →
-        </button>
-
-        <div className="welcome-recent-head">Recent</div>
-        {recents.length === 0 ? (
-          <div className="welcome-recent-empty">No recent presentations yet.</div>
-        ) : (
-          <ul className="welcome-recent-list">
-            {recents.map((r) => {
-              const m = meta[r.path];
-              const date = m?.missing ? 'missing' : (m?.mtime != null ? fmtDate(m.mtime) : '');
-              return (
-                <li key={r.path}>
-                  <button className="welcome-recent-item" onClick={() => void openRecentProject(r.path)} title={r.path}>
-                    <span className="welcome-recent-row">
-                      <span className="welcome-recent-name">{r.title?.trim() || baseName(r.path)}</span>
-                      <span className={`welcome-recent-date${m?.missing ? ' missing' : ''}`}>{date}</span>
-                    </span>
-                    <span className="welcome-recent-file">{fileName(r.path)}</span>
-                    <span className="welcome-recent-path">{dirOf(r.path)}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        {/* Right: the recent list gets the wide pane (room for long paths). */}
+        <div className="welcome-right">
+          <div className="welcome-recent-head">Recent</div>
+          {recents.length === 0 ? (
+            <div className="welcome-recent-empty">No recent presentations yet.</div>
+          ) : (
+            <ul className="welcome-recent-list">
+              {recents.map((r) => {
+                const m = meta[r.path];
+                const date = m?.missing ? 'missing' : (m?.mtime != null ? fmtDate(m.mtime) : '');
+                return (
+                  <li key={r.path}>
+                    <button className="welcome-recent-item" onClick={() => void openRecentProject(r.path)} title={r.path}>
+                      <span className="welcome-recent-row">
+                        <span className="welcome-recent-name">{r.title?.trim() || baseName(r.path)}</span>
+                        <span className={`welcome-recent-date${m?.missing ? ' missing' : ''}`}>{date}</span>
+                      </span>
+                      <span className="welcome-recent-file">{fileName(r.path)}</span>
+                      <span className="welcome-recent-path">{dirOf(r.path)}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );
