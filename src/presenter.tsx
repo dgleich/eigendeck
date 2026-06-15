@@ -8,6 +8,7 @@ import { useEffect, useState, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { listen, emitTo } from '@tauri-apps/api/event';
 import { getSlideNumber } from './types/presentation';
+import { resolveTheme } from './lib/themes';
 import { useDemoUrl } from './lib/demoAssets';
 import { useImageSrc } from './lib/imageSrc';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from './lib/videoPlayback';
@@ -106,7 +107,8 @@ function PresenterApp() {
       <div style={{ width: slideW * scale, height: slideH * scale }}>
         <div
           className="present-slide"
-          style={{ width: slideW, height: slideH, transform: `scale(${scale})`, transformOrigin: 'top left' }}
+          style={{ width: slideW, height: slideH, transform: `scale(${scale})`, transformOrigin: 'top left',
+            backgroundColor: resolveTheme(presentation.theme, slide.theme).background }}
         >
           {slide.elements.map((el, idx) => (
             <PresenterElement key={el.id} element={el} zIndex={idx + 10} projectPath={projectPath}

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
+import { resolveTheme } from '../lib/themes';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useImageSrc } from '../lib/imageSrc';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
@@ -122,7 +123,8 @@ export function PresentMode() {
         <div className="present-slide-wrapper" style={{ width: slideW * scale, height: slideH * scale }}>
           <div
             className="present-slide"
-            style={{ width: slideW, height: slideH, transform: `scale(${scale})`, transformOrigin: 'top left' }}
+            style={{ width: slideW, height: slideH, transform: `scale(${scale})`, transformOrigin: 'top left',
+              backgroundColor: resolveTheme(presentation.theme, slide.theme).background }}
           >
             {/* Fading out elements (from previous slide, no match in current) */}
             {linkedTransitions.fadeOut.map((el, idx) => (
