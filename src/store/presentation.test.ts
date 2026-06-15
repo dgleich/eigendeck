@@ -717,3 +717,50 @@ describe('undo transactions: pauseUndo/resumeUndo = one step, pre-state preserve
     expect((els()[0] as { html?: string }).html).toBe('C');
   });
 });
+
+import { undoWithNav, redoWithNav } from './presentation';
+
+describe('undo/redo follows the change to its slide', () => {
+  function setup() {
+    usePresentationStore.setState({
+      presentation: { ...createDefaultPresentation(), slides: [
+        { id: 's0', notes: '', elements: [{ id: 'e0', type: 'text', preset: 'body', html: 'zero', position: { x: 0, y: 0, width: 10, height: 10 } }] } as any,
+        { id: 's1', notes: '', elements: [{ id: 'e1', type: 'text', preset: 'body', html: 'one', position: { x: 0, y: 0, width: 10, height: 10 } }] } as any,
+      ] },
+      currentSlideIndex: 0,
+    });
+    usePresentationStore.temporal.getState().clear();
+  }
+  const idx = () => usePresentationStore.getState().currentSlideIndex;
+
+  it('jumps to the other slide when the undone change was off-screen', () => {
+    setup();
+    // change an element on slide 1 (one deterministic undo step)
+    usePresentationStore.getState().selectSlide(1);
+    pauseUndo();
+    usePresentationStore.getState().updateElement('e1', { html: 'one-edited' } as any);
+    resumeUndo();
+    // navigate back to slide 0, then undo
+    usePresentationStore.getState().selectSlide(0);
+    expect(idx()).toBe(0);
+    undoWithNav();
+    expect(idx()).toBe(1); // jumped to the slide whose content was reverted
+    expect((usePresentationStore.getState().presentation.slides[1].elements[0] as any).html).toBe('one');
+
+    // redo also follows
+    usePresentationStore.getState().selectSlide(0);
+    redoWithNav();
+    expect(idx()).toBe(1);
+    expect((usePresentationStore.getState().presentation.slides[1].elements[0] as any).html).toBe('one-edited');
+  });
+
+  it('stays put when the change is on the current slide', () => {
+    setup();
+    pauseUndo();
+    usePresentationStore.getState().updateElement('e0', { html: 'zero-edited' } as any);
+    resumeUndo();
+    expect(idx()).toBe(0);
+    undoWithNav();
+    expect(idx()).toBe(0); // current slide changed → no jump
+  });
+});

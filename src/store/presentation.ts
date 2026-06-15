@@ -870,6 +870,44 @@ export function resumeUndo() {
   });
 }
 
+// Undo/redo that FOLLOWS the change: if the reverted edit is on a different
+// slide than the one you're viewing, jump to it so the change is visible. A
+// silent off-slide undo looks like a no-op and invites over-undoing. Stays put
+// when the current slide itself changed (you already see it) or nothing visible
+// changed (e.g. a config-only edit).
+function firstChangedSlide(before: Slide[], after: Slide[]): number | null {
+  const n = Math.max(before.length, after.length);
+  for (let i = 0; i < n; i++) {
+    if (JSON.stringify(before[i]) !== JSON.stringify(after[i])) return i;
+  }
+  return null;
+}
+
+function followUndoChange(beforeSlides: Slide[], curIdx: number): void {
+  const st = usePresentationStore.getState();
+  const after = st.presentation.slides;
+  // The slide you're on changed → you already see it, don't yank focus.
+  if (JSON.stringify(beforeSlides[curIdx]) !== JSON.stringify(after[curIdx])) return;
+  const changed = firstChangedSlide(beforeSlides, after);
+  if (changed === null) return;
+  const target = Math.max(0, Math.min(changed, after.length - 1));
+  if (target !== curIdx) st.selectSlide(target);
+}
+
+export function undoWithNav(): void {
+  const before = usePresentationStore.getState().presentation.slides;
+  const cur = usePresentationStore.getState().currentSlideIndex;
+  usePresentationStore.temporal.getState().undo();
+  followUndoChange(before, cur);
+}
+
+export function redoWithNav(): void {
+  const before = usePresentationStore.getState().presentation.slides;
+  const cur = usePresentationStore.getState().currentSlideIndex;
+  usePresentationStore.temporal.getState().redo();
+  followUndoChange(before, cur);
+}
+
 // ============================================================================
 // SQLite incremental write-through
 // ============================================================================

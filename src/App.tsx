@@ -39,7 +39,7 @@ import {
   openRecentProject,
   syncRecentMenu,
 } from './store/fileOps';
-import { flushToSqlite, pauseUndo, resumeUndo } from './store/presentation';
+import { flushToSqlite, pauseUndo, resumeUndo, undoWithNav, redoWithNav } from './store/presentation';
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
@@ -758,8 +758,8 @@ function App() {
       // not jump out and undo a slide-level action. The store-level undo/redo
       // only applies outside text editing (the text edit commits as one store
       // step on blur, which the store undo then handles). (#55 / text undo)
-      if (!inEditable && e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); usePresentationStore.temporal.getState().undo(); }
-      if (!inEditable && ((e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) || (e.key === 'y' && (e.ctrlKey || e.metaKey)))) { e.preventDefault(); usePresentationStore.temporal.getState().redo(); }
+      if (!inEditable && e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); undoWithNav(); }
+      if (!inEditable && ((e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) || (e.key === 'y' && (e.ctrlKey || e.metaKey)))) { e.preventDefault(); redoWithNav(); }
       if (inEditable && (e.ctrlKey || e.metaKey)) {
         const key = e.key.toLowerCase();
         if (key === 'b') { e.preventDefault(); document.execCommand('bold'); }
