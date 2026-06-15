@@ -908,6 +908,41 @@ export function redoWithNav(): void {
   followUndoChange(before, cur);
 }
 
+// Cross-session undo: prime zundo's pastStates from the deck's persisted edit
+// history. The bitemporal schema versions every save, and the backend can
+// reconstruct the deck as-of any past timestamp (db_get_state_at), so we walk
+// the recorded edit points (db_get_history_timestamps) and build undo snapshots.
+// The most recent timestamp is the loaded (current) state, so pastStates are the
+// ones BEFORE it. Capped so a long history doesn't blow up open time / memory.
+const UNDO_SEED_LIMIT = 40;
+
+export async function seedUndoHistory(): Promise<number> {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const raw = await invoke<string>('db_get_history_timestamps');
+    const points = JSON.parse(raw) as { timestamp: string }[];
+    if (!Array.isArray(points) || points.length <= 1) return 0;
+    // Drop the latest (== current state); keep the most recent N prior points.
+    const prior = points.slice(0, -1).slice(-UNDO_SEED_LIMIT);
+    const snapshots: { presentation: Presentation }[] = [];
+    for (const p of prior) {
+      try {
+        const pres = JSON.parse(await invoke<string>('db_get_state_at', { at: p.timestamp })) as Presentation;
+        if (pres && Array.isArray(pres.slides)) snapshots.push({ presentation: pres });
+      } catch { /* skip an unreconstructable point */ }
+    }
+    if (snapshots.length === 0) return 0;
+    // Only seed if nothing has been recorded yet (don't clobber live edits the
+    // user made in the brief window before this async warmup finished).
+    const t = usePresentationStore.temporal.getState();
+    if (t.pastStates.length > 0) return 0;
+    usePresentationStore.temporal.setState({ pastStates: snapshots, futureStates: [] });
+    return snapshots.length;
+  } catch {
+    return 0;
+  }
+}
+
 // ============================================================================
 // SQLite incremental write-through
 // ============================================================================
@@ -1261,6 +1296,11 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     // re-render through the iframe pool on first slide paint.
     const { warmMathCacheFromSqlite } = await import('../lib/mathjaxRenderer');
     void warmMathCacheFromSqlite();
+
+    // Seed the undo stack from the deck's persisted edit history so Cmd+Z works
+    // ACROSS sessions (undo back to how the deck looked at earlier saves). The
+    // schema is bitemporal, so we reconstruct as-of snapshots. Async + capped.
+    void seedUndoHistory();
 
     // Scan linked assets for disk changes that happened while the file
     // was closed; reload any whose mtime moved. Async + non-blocking —
