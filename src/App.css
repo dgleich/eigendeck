@@ -145,17 +145,19 @@
 
 .toolbar button {
   padding: 4px 12px;
-  border: 1px solid #ccc;
+  /* Light-gray raised chip so buttons read as distinct from the white toolbar
+     bar (they previously blended in — only a faint border separated them). */
+  border: 1px solid #c4c9ce;
   border-radius: 4px;
-  background: #fff;
+  background: #eef0f2;
   cursor: pointer;
   font-size: 13px;
   color: #1a1a1a;
 }
 
 .toolbar button:hover {
-  background: #f5f5f5;
-  border-color: #999;
+  background: #e2e5e8;
+  border-color: #9aa1a8;
 }
 
 .meta-input {
@@ -436,9 +438,10 @@
 
 .editor-actions button {
   padding: 3px 8px;
-  border: 1px solid #ccc;
+  /* Light-gray raised chip — a bit more contrast from the white toolbar. */
+  border: 1px solid #c4c9ce;
   border-radius: 4px;
-  background: #fff;
+  background: #eef0f2;
   cursor: pointer;
   font-size: 12px;
   color: #1a1a1a;
@@ -446,7 +449,8 @@
 }
 
 .editor-actions button:hover {
-  background: #f5f5f5;
+  background: #e2e5e8;
+  border-color: #9aa1a8;
 }
 
 .editor-actions button:disabled {
