@@ -5,12 +5,38 @@
 import { useEffect, useState } from 'react';
 import { createProject, createScratchProject, openProject, openRecentProject, getRecentProjects, type RecentProject } from '../store/fileOps';
 
+type FileMeta = { mtime: number | null; missing: boolean };
+
 export function WelcomeWindow() {
   const [recents, setRecents] = useState<RecentProject[]>([]);
-  useEffect(() => { setRecents(getRecentProjects()); }, []);
+  const [meta, setMeta] = useState<Record<string, FileMeta>>({});
 
+  useEffect(() => {
+    const list = getRecentProjects();
+    setRecents(list);
+    // Stat each recent file for its true last-edit time (mtime) and to detect
+    // ones that have been moved/deleted.
+    (async () => {
+      try {
+        const { stat } = await import('@tauri-apps/plugin-fs');
+        const out: Record<string, FileMeta> = {};
+        await Promise.all(list.map(async (r) => {
+          try {
+            const st = await stat(r.path);
+            out[r.path] = { mtime: st.mtime ? new Date(st.mtime).getTime() : null, missing: false };
+          } catch {
+            out[r.path] = { mtime: null, missing: true };
+          }
+        }));
+        setMeta(out);
+      } catch { /* not in Tauri */ }
+    })();
+  }, []);
+
+  const fileName = (p: string) => p.split(/[\\/]/).pop() || p;
   const baseName = (p: string) => p.replace(/\.eigendeck$/i, '').split(/[\\/]/).pop() || p;
   const dirOf = (p: string) => p.replace(/[\\/][^\\/]+$/, '');
+  const fmtDate = (ms: number) => new Date(ms).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 
   return (
     <div className="welcome-root">
@@ -39,14 +65,21 @@ export function WelcomeWindow() {
           <div className="welcome-recent-empty">No recent presentations yet.</div>
         ) : (
           <ul className="welcome-recent-list">
-            {recents.map((r) => (
-              <li key={r.path}>
-                <button className="welcome-recent-item" onClick={() => void openRecentProject(r.path)} title={r.path}>
-                  <span className="welcome-recent-name">{r.title?.trim() || baseName(r.path)}</span>
-                  <span className="welcome-recent-path">{dirOf(r.path)}</span>
-                </button>
-              </li>
-            ))}
+            {recents.map((r) => {
+              const m = meta[r.path];
+              const date = m?.missing ? 'missing' : (m?.mtime != null ? fmtDate(m.mtime) : '');
+              return (
+                <li key={r.path}>
+                  <button className="welcome-recent-item" onClick={() => void openRecentProject(r.path)} title={r.path}>
+                    <span className="welcome-recent-row">
+                      <span className="welcome-recent-name">{r.title?.trim() || baseName(r.path)}</span>
+                      <span className={`welcome-recent-date${m?.missing ? ' missing' : ''}`}>{date}</span>
+                    </span>
+                    <span className="welcome-recent-path">{fileName(r.path)} · {dirOf(r.path)}</span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

@@ -131,9 +131,11 @@ export async function createProject(): Promise<void> {
  */
 export async function createScratchProject(): Promise<void> {
   try {
-    const { appLocalDataDir, join } = await import('@tauri-apps/api/path');
+    const { documentDir, join } = await import('@tauri-apps/api/path');
     const { mkdir } = await import('@tauri-apps/plugin-fs');
-    const dir = await join(await appLocalDataDir(), 'scratch');
+    // ~/Documents/Eigendeck — a real, user-visible, cross-platform home (macOS,
+    // Windows, Linux XDG) so scratch decks are easy to find and keep.
+    const dir = await join(await documentDir(), 'Eigendeck');
     await mkdir(dir, { recursive: true }).catch(() => { /* already exists */ });
     const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ').replace(/:/g, '-');
     const title = `Scratch ${stamp}`;

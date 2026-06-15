@@ -2597,7 +2597,10 @@
   padding: 6px 8px; border: none; background: none; border-radius: 6px; cursor: pointer;
 }
 .welcome-recent-item:hover { background: #f3f4f6; }
-.welcome-recent-name { font-size: 13px; color: #1f2937; }
+.welcome-recent-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.welcome-recent-name { font-size: 13px; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.welcome-recent-date { font-size: 11px; color: #9ca3af; flex-shrink: 0; }
+.welcome-recent-date.missing { color: #dc2626; }
 .welcome-recent-path { font-size: 11px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .welcome-scratch {
   margin-top: 10px;
