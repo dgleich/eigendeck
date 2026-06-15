@@ -1135,12 +1135,14 @@ function App() {
         <div className="sidebar-resize-handle" onPointerDown={handleResizeStart} />
         <div className="editor-area">
           <div className="editor-actions">
+            <div className="tb-group">
             <button title="Add title text" onClick={() => store.addElement(createTextElement('title'))}>+ Title</button>
             <button title="Add body text" onClick={() => store.addElement(createTextElement('body'))}>+ Body</button>
             <button title="Add text box" onClick={() => store.addElement(createTextElement('textbox'))}>+ Text</button>
             <button title="Add annotation (small, blue, italic)" onClick={() => store.addElement(createTextElement('annotation'))}>+ Note</button>
             <button title="Add footnote (small, grey, narrow)" onClick={() => store.addElement(createTextElement('footnote'))}>+ Footnote</button>
-            <span className="divider" />
+            </div>
+            <div className="tb-group">
             <button title="Add arrow" onClick={() => store.addElement({ id: crypto.randomUUID(), type: 'arrow', x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: '#2563eb', strokeWidth: 4, headSize: 16 })}>+ Arrow</button>
             <button title="Add cover-up rectangle (white)" onClick={() => {
               const sel = store.selectedObject;
@@ -1199,6 +1201,8 @@ function App() {
                 }
               }
             }}>+ Image</button>
+            </div>
+            <div className="tb-group">
             <button title="Add demo HTML" onClick={async () => {
               const { open } = await import('@tauri-apps/plugin-dialog');
               const selected = await open({ title: 'Select Demo', filters: [{ name: 'HTML', extensions: ['html'] }] });
@@ -1247,8 +1251,6 @@ function App() {
                 console.error('Failed to add demo:', err);
               }
             }}>+ Demo</button>
-            <button title="Add a movie — file or URL (YouTube/Vimeo/PeerTube)"
-              onClick={() => { setVideoUrl(''); setVideoModalOpen(true); }}>+ Video</button>
             <button title="Add Jupyter notebook" onClick={async () => {
               const { open } = await import('@tauri-apps/plugin-dialog');
               const selected = await open({ title: 'Select Notebook', filters: [{ name: 'Notebook', extensions: ['ipynb'] }] });
@@ -1276,6 +1278,9 @@ function App() {
                 console.error('Failed to add notebook:', err);
               }
             }}>+ Notebook</button>
+            <button title="Add a movie — file or URL (YouTube/Vimeo/PeerTube)"
+              onClick={() => { setVideoUrl(''); setVideoModalOpen(true); }}>+ Video</button>
+            </div>
           </div>
           <SlideEditor />
           <NotesPanel />
