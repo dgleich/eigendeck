@@ -11,7 +11,7 @@ import { useImageSrc } from '../lib/imageSrc';
 import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 
-import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import { buildTextElementSvgMarkup } from './TextElementSvg';
 import { TextFormatToolbar } from './TextFormatToolbar';
@@ -73,6 +73,7 @@ export function SlideElementRenderer({
           position={element.position} zIndex={zIndex} scale={scale}
           className={`el-text el-preset-${element.preset}`}
           isSelected={isSelected}
+          boxStyle={{ backgroundColor: textBackgroundCss(element) }}
           linkId={element.linkId} syncId={element.syncId}
           _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
           dataValign={element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined)}
@@ -807,7 +808,7 @@ function TextContent({
 // ============================================
 export function DraggableBox({
   elementId, position: pos, zIndex, scale, className, children, isSelected,
-  linkId, syncId, _linkId, _syncId, dataValign, onEdit,
+  linkId, syncId, _linkId, _syncId, dataValign, onEdit, boxStyle,
   onSelect, onDelete, onPositionChange,
 }: {
   elementId: string;
@@ -816,6 +817,7 @@ export function DraggableBox({
   linkId?: string; syncId?: string; _linkId?: string; _syncId?: string;
   dataValign?: string;
   onEdit?: () => void;
+  boxStyle?: React.CSSProperties;
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onPositionChange: (pos: ElementPosition) => void;
 }) {
@@ -957,6 +959,7 @@ export function DraggableBox({
         // position. A separate compositor layer carries its full drawing
         // rect — overflow included — and moves as a clean unit. Issue #61.
         transform: 'translateZ(0)',
+        ...boxStyle,
       }}
       onPointerDown={handlePointerDown}
       onClick={(e) => e.stopPropagation()}

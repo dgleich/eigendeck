@@ -145,6 +145,8 @@ All elements share these base fields:
 - `fontFamily`: string (e.g., `"'PT Sans Narrow', sans-serif"`)
 - `color`: string (CSS color, e.g., `"#dc2626"`)
 - `verticalAlign`: `"top"` | `"middle"` | `"bottom"` — vertical text alignment within the box. Title and footnote default to `"bottom"`.
+- `backgroundColor`: string (CSS color) — fill behind the text box (e.g., a caption panel over a busy background). Absent = transparent.
+- `backgroundOpacity`: number 0–1 (default 1) — opacity applied to `backgroundColor` (combined into rgba at render, so the text itself isn't faded).
 
 **HTML content**: The `html` field supports basic HTML:
 - `<b>bold</b>`, `<i>italic</i>`, `<s>strikethrough</s>`

@@ -21,6 +21,21 @@ const TEXT_PRESET_STYLES = {
   footnote:   { fontSize: 24, fontFamily: "'PT Sans Narrow', sans-serif", fontWeight: 'normal', fontStyle: 'normal', color: '#888' },
 };
 
+// Effective text-element background (colour + opacity → rgba), or '' when none.
+// Kept self-contained so the CLI exporter can use it without the TS module.
+// Mirrors textBackgroundCss() in types/presentation.ts.
+function textBgCss(el) {
+  if (!el || !el.backgroundColor) return '';
+  const a = el.backgroundOpacity == null ? 1 : el.backgroundOpacity;
+  if (a >= 1) return el.backgroundColor;
+  const hex = el.backgroundColor.replace('#', '');
+  if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+    const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
+  return el.backgroundColor;
+}
+
 /**
  * HTML-escape a string for use in a srcdoc attribute.
  */
@@ -203,7 +218,8 @@ export async function buildExportHtml(opts) {
           // We just wrap it in a positioned div.
           if (renderTextElement) {
             const svgMarkup = await renderTextElement(el, slide);
-            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;">` +
+            const bg = textBgCss(el);
+            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;${bg ? `background:${bg};` : ''}">` +
               svgMarkup + `</div>`;
             break;
           }
@@ -224,7 +240,8 @@ export async function buildExportHtml(opts) {
                              valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
           const resolvedFont = resolveFont ? resolveFont(el.preset, slide) : ps.fontFamily;
           const fontFamily = el.fontFamily || resolvedFont;
-          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">` +
+          const bgLegacy = textBgCss(el);
+          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
             `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;">${textHtml}</div>` +
             `</div></div>`;

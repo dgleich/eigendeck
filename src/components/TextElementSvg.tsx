@@ -14,7 +14,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { TextElement, Slide, PresentationConfig } from '../types/presentation';
-import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import {
@@ -166,6 +166,7 @@ export function TextElementSvg({
       style={{
         position: 'absolute', left: element.position.x, top: element.position.y,
         width: element.position.width, height: element.position.height,
+        backgroundColor: textBackgroundCss(element),
         ...(zIndex !== undefined ? { zIndex } : {}),
         ...styleOverride,
       }}

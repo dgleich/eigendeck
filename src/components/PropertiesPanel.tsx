@@ -14,6 +14,13 @@ const ARROW_COLORS = [
   '#2563eb', '#9333ea', '#222222', '#6b7280',
 ];
 
+// Common text-background fills: white/dark panels for legibility over busy
+// backgrounds, plus a few tints + a highlighter yellow.
+const TEXT_BG_COLORS = [
+  '#ffffff', '#000000', '#1f2937', '#f3f4f6',
+  '#fff3b0', '#dbeafe', '#fee2e2', '#dcfce7',
+];
+
 export function PropertiesPanel() {
   const {
     presentation, currentSlideIndex, selectedObject, inspectorTab, setInspectorTab,
@@ -402,6 +409,32 @@ export function PropertiesPanel() {
                         </button>
                       );
                     })}
+                  </div>
+                </PropSection>
+                <PropSection label="Background">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 6px',
+                        background: !selectedEl.backgroundColor ? '#3b82f6' : undefined, color: !selectedEl.backgroundColor ? '#fff' : undefined }}
+                        onClick={() => updateElement(selectedEl.id, { backgroundColor: undefined, backgroundOpacity: undefined } as any)}>None</button>
+                      {TEXT_BG_COLORS.map((c) => (
+                        <button key={c} className={`prop-color-swatch ${selectedEl.backgroundColor === c ? 'active' : ''}`}
+                          style={{ background: c }} onClick={() => updateElement(selectedEl.id, { backgroundColor: c } as any)} />
+                      ))}
+                      <input type="color" title="Custom colour"
+                        value={selectedEl.backgroundColor && /^#[0-9a-fA-F]{6}$/.test(selectedEl.backgroundColor) ? selectedEl.backgroundColor : '#000000'}
+                        onChange={(e) => updateElement(selectedEl.id, { backgroundColor: e.target.value } as any)}
+                        style={{ width: 24, height: 24, padding: 0, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }} />
+                    </div>
+                    {selectedEl.backgroundColor && (
+                      <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        Opacity
+                        <input type="range" min={0} max={1} step={0.05} value={selectedEl.backgroundOpacity ?? 1}
+                          onChange={(e) => updateElement(selectedEl.id, { backgroundOpacity: parseFloat(e.target.value) } as any)}
+                          style={{ flex: 1 }} />
+                        <span style={{ fontSize: 11, color: '#999' }}>{Math.round((selectedEl.backgroundOpacity ?? 1) * 100)}%</span>
+                      </label>
+                    )}
                   </div>
                 </PropSection>
               </>

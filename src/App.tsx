@@ -43,7 +43,7 @@ import { flushToSqlite } from './store/presentation';
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
-import { TEXT_PRESET_STYLES, effectiveFontSize } from './types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss } from './types/presentation';
 import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
 
 // Wire built-in element types into the sync/link lifecycle registry once, at
@@ -98,7 +98,8 @@ export function renderSlideForPrint(
       // it (browser copy only includes parent comments when the selection
       // spans them), so this benefits the common whole-paragraph copy case.
       const _effSize1 = effectiveFontSize(el, cfg);
-      inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">` +
+      const _bg1 = textBackgroundCss(el);
+      inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${_bg1 ? `background:${_bg1};` : ''}">` +
         `<div style="width:100%;height:100%;${valignStyle}">` +
         `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${_effSize1}px;color:${color};line-height:1.3;padding:8px 12px;">${markAsEigendeck(el.html || '')}</div>` +
         `</div></div>`;

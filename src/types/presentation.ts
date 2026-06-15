@@ -178,6 +178,27 @@ export interface TextElement extends BaseElement {
   fontFamily?: string;
   color?: string;
   verticalAlign?: VerticalAlign;
+  /** Fill behind the text (e.g. a caption panel over a busy background). A CSS
+   *  color; combined with backgroundOpacity at render. Unset = transparent. */
+  backgroundColor?: string;
+  /** Opacity of backgroundColor, 0–1 (default 1). Lets text sit on a
+   *  translucent panel without fading the text itself. */
+  backgroundOpacity?: number;
+}
+
+/** Effective CSS background for a text element (colour + opacity → rgba), or
+ *  undefined when no background is set. Shared by every render path (editor,
+ *  present/presenter, export) so they stay consistent. */
+export function textBackgroundCss(el: { backgroundColor?: string; backgroundOpacity?: number }): string | undefined {
+  if (!el.backgroundColor) return undefined;
+  const a = el.backgroundOpacity ?? 1;
+  if (a >= 1) return el.backgroundColor;
+  const hex = el.backgroundColor.replace('#', '');
+  if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+    const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
+  return el.backgroundColor; // non-hex colour: opacity not applied
 }
 
 export interface ImageElement extends BaseElement {
