@@ -751,10 +751,15 @@ function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 's' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); flushToSqlite().then(() => saveProject()); }
-      if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); usePresentationStore.temporal.getState().undo(); }
-      if ((e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) || (e.key === 'y' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); usePresentationStore.temporal.getState().redo(); }
       const inEditable = !!(e.target as HTMLElement).closest('[contenteditable="true"]');
+      if (e.key === 's' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); flushToSqlite().then(() => saveProject()); }
+      // Undo/redo: while editing a text box, let the BROWSER do native
+      // character-level undo/redo — people expect Cmd+Z to undo their TYPING,
+      // not jump out and undo a slide-level action. The store-level undo/redo
+      // only applies outside text editing (the text edit commits as one store
+      // step on blur, which the store undo then handles). (#55 / text undo)
+      if (!inEditable && e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); usePresentationStore.temporal.getState().undo(); }
+      if (!inEditable && ((e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) || (e.key === 'y' && (e.ctrlKey || e.metaKey)))) { e.preventDefault(); usePresentationStore.temporal.getState().redo(); }
       if (inEditable && (e.ctrlKey || e.metaKey)) {
         const key = e.key.toLowerCase();
         if (key === 'b') { e.preventDefault(); document.execCommand('bold'); }
