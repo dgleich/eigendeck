@@ -111,7 +111,8 @@ export function renderSlideForPrint(
       const _effSize1 = effectiveFontSize(el, cfg);
       const _bg1 = textBackgroundCss(el);
       const _fx1 = textEffectCss(el.textEffect, color);
-      inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${_bg1 ? `background:${_bg1};` : ''}">` +
+      const _rot1 = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
+      inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${_bg1 ? `background:${_bg1};` : ''}${_rot1}">` +
         `<div style="width:100%;height:100%;${valignStyle}">` +
         `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${_effSize1}px;color:${color};line-height:1.3;padding:8px 12px;${_fx1 ? `text-shadow:${_fx1};` : ''}">${markAsEigendeck(el.html || '')}</div>` +
         `</div></div>`;
@@ -341,7 +342,8 @@ async function printToPdf() {
           const fontSize = effectiveFontSize(el, presentation.config);
           const presetFontFamily = fontFamilyForPreset(fontForPreset(el.preset, slide, presentation.config), el.preset);
           const _fx2 = textEffectCss(el.textEffect, color);
-          inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};overflow:hidden;">` +
+          const _rot2 = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
+          inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};overflow:hidden;${_rot2}">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
             `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:1.3;padding:${px2in(8)} ${px2in(12)};${_fx2 ? `text-shadow:${_fx2};` : ''}">${markAsEigendeck(el.html || '')}</div>` +
             `</div></div>`;

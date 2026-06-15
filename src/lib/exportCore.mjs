@@ -237,7 +237,8 @@ export async function buildExportHtml(opts) {
           if (renderTextElement) {
             const svgMarkup = await renderTextElement(el, slide);
             const bg = textBgCss(el);
-            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;${bg ? `background:${bg};` : ''}">` +
+            const rot = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
+            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;${bg ? `background:${bg};` : ''}${rot}">` +
               svgMarkup + `</div>`;
             break;
           }
@@ -260,7 +261,8 @@ export async function buildExportHtml(opts) {
           const fontFamily = el.fontFamily || resolvedFont;
           const bgLegacy = textBgCss(el);
           const fxLegacy = textEffectCss(el, el.color || ps.color);
-          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}">` +
+          const rotLegacy = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
+          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}${rotLegacy}">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
             `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${textHtml}</div>` +
             `</div></div>`;

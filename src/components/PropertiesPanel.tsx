@@ -461,6 +461,21 @@ export function PropertiesPanel() {
                     })}
                   </div>
                 </PropSection>
+                <PropSection label="Rotation">
+                  {/* Tilt the whole text box (background + text), e.g. an angled
+                      sticky-note Hype callout (#8). */}
+                  <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input type="range" min={-45} max={45} step={1}
+                      value={selectedEl.rotation || 0}
+                      onChange={(e) => updateElement(selectedEl.id, { rotation: parseInt(e.target.value) || 0 } as any)}
+                      style={{ flex: 1 }} />
+                    <input className="prop-input-sm" type="number" min={-180} max={180}
+                      value={selectedEl.rotation || 0}
+                      onChange={(e) => updateElement(selectedEl.id, { rotation: parseInt(e.target.value) || 0 } as any)}
+                      style={{ width: 48 }} />
+                    <span style={{ fontSize: 11, color: '#999' }}>&deg;</span>
+                  </label>
+                </PropSection>
               </>
             )}
 

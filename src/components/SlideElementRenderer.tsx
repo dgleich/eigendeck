@@ -74,6 +74,7 @@ export function SlideElementRenderer({
           className={`el-text el-preset-${element.preset}`}
           isSelected={isSelected}
           boxStyle={{ backgroundColor: textBackgroundCss(element) }}
+          rotation={element.rotation}
           linkId={element.linkId} syncId={element.syncId}
           _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
           dataValign={element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined)}
@@ -809,7 +810,7 @@ function TextContent({
 // ============================================
 export function DraggableBox({
   elementId, position: pos, zIndex, scale, className, children, isSelected,
-  linkId, syncId, _linkId, _syncId, dataValign, onEdit, boxStyle,
+  linkId, syncId, _linkId, _syncId, dataValign, onEdit, boxStyle, rotation,
   onSelect, onDelete, onPositionChange,
 }: {
   elementId: string;
@@ -819,6 +820,8 @@ export function DraggableBox({
   dataValign?: string;
   onEdit?: () => void;
   boxStyle?: React.CSSProperties;
+  /** Rotation in degrees for the whole box (text/sticky-note tilt). */
+  rotation?: number;
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onPositionChange: (pos: ElementPosition) => void;
 }) {
@@ -959,7 +962,8 @@ export function DraggableBox({
         // box when the element moves, leaving a ghost trace at the old
         // position. A separate compositor layer carries its full drawing
         // rect — overflow included — and moves as a clean unit. Issue #61.
-        transform: 'translateZ(0)',
+        // A rotation (sticky-note tilt, #8) composes with the layer hint.
+        transform: rotation ? `rotate(${rotation}deg) translateZ(0)` : 'translateZ(0)',
         ...boxStyle,
       }}
       onPointerDown={handlePointerDown}

@@ -168,6 +168,7 @@ export function TextElementSvg({
         position: 'absolute', left: element.position.x, top: element.position.y,
         width: element.position.width, height: element.position.height,
         backgroundColor: textBackgroundCss(element),
+        ...(element.rotation ? { transform: `rotate(${element.rotation}deg)` } : {}),
         ...(zIndex !== undefined ? { zIndex } : {}),
         ...styleOverride,
       }}

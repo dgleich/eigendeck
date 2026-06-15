@@ -138,7 +138,7 @@ All elements share these base fields:
 | `textbox`    | 48       | PT Sans             | normal     | normal    | #222    | `y:300, h:300` |
 | `annotation` | 32       | PT Sans             | normal     | italic    | #2563eb | `y:700, h:150` |
 | `footnote`   | 24       | PT Sans Narrow      | normal     | normal    | #888    | `y:1020, h:44` (bottom-aligned) |
-| `hype`       | 48 (body) | Shantell (or hypeFont) | normal  | normal    | #1a1a1a | `x:720,y:360, 560×360` — **sticky note**: seeded with `backgroundColor:"#fde047"` (bright yellow) + Shantell Sans |
+| `hype`       | 48 (body) | Shantell (or hypeFont) | normal  | normal    | #1a1a1a | `x:720,y:360, 560×360` — **sticky note**: seeded with `backgroundColor:"#fde047"` (bright yellow) + Shantell Sans + `rotation:-4` (jaunty tilt) |
 
 **Optional overrides** (only include if different from preset default):
 - `fontSizeName`: one of `"footnote"`, `"note"`, `"body"` — picks a named size from the deck's type scale, overriding the preset's default size. `"title"` and `"hype"` are intentionally excluded; the numeric `fontSize` covers those cases.
@@ -149,6 +149,7 @@ All elements share these base fields:
 - `backgroundColor`: string (CSS color) — fill behind the text box (e.g., a caption panel over a busy background). Absent = transparent.
 - `backgroundOpacity`: number 0–1 (default 1) — opacity applied to `backgroundColor` (combined into rgba at render, so the text itself isn't faded).
 - `textEffect`: `"shadow"` | `"glow"` — legibility decoration over busy backgrounds. `"shadow"` = soft drop shadow; `"glow"` = high-contrast halo (white or black, auto-chosen opposite the text color's luminance). Absent = none. Rendered as `text-shadow` across editor/present/export.
+- `rotation`: number (degrees, clockwise) — tilts the WHOLE text box, background panel included (angled sticky-note callout). Absent/0 = upright. Hype elements default to `-4`. Applied as a `rotate()` transform across editor/present/export.
 
 **HTML content**: The `html` field supports basic HTML:
 - `<b>bold</b>`, `<i>italic</i>`, `<s>strikethrough</s>`

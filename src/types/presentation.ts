@@ -191,6 +191,10 @@ export interface TextElement extends BaseElement {
    *  'shadow' = a soft drop shadow; 'glow' = a high-contrast halo (color is
    *  auto-chosen opposite the text luminance). Unset = none. */
   textEffect?: 'shadow' | 'glow';
+  /** Rotation in degrees (clockwise) for the whole text box — the background
+   *  panel tilts with the text (e.g. an angled sticky-note Hype callout, #8).
+   *  Unset/0 = upright. */
+  rotation?: number;
 }
 
 /** Effective CSS background for a text element (colour + opacity → rgba), or
@@ -553,8 +557,9 @@ export function createTextElement(preset: TextPreset, overrides?: Partial<Elemen
     html: defaultText[preset],
     position: { ...defaults[preset], ...overrides },
     // Hype = sticky note: seed the bright-yellow fill (Shantell font comes from
-    // the preset / hype font role).
-    ...(preset === 'hype' ? { backgroundColor: '#fde047' } : {}),
+    // the preset / hype font role) + a jaunty tilt so it reads as a tacked-on
+    // callout (#8). Per-element rotation is editable in the inspector.
+    ...(preset === 'hype' ? { backgroundColor: '#fde047', rotation: -4 } : {}),
   };
 }
 

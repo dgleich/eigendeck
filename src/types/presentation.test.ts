@@ -205,3 +205,18 @@ describe('textEffectCss (#73 text shadow/glow)', () => {
     expect(textEffectCss('glow', 'rebeccapurple')).toContain('#ffffff');
   });
 });
+
+describe('text element rotation (#8 angled callouts)', () => {
+  it('hype defaults to a -4° tilt + yellow background', async () => {
+    const { createTextElement } = await import('./presentation');
+    const h = createTextElement('hype');
+    expect(h.rotation).toBe(-4);
+    expect(h.backgroundColor).toBe('#fde047');
+  });
+  it('non-hype text presets have no rotation by default', async () => {
+    const { createTextElement } = await import('./presentation');
+    for (const p of ['title', 'body', 'textbox', 'annotation', 'footnote'] as const) {
+      expect(createTextElement(p).rotation).toBeUndefined();
+    }
+  });
+});
