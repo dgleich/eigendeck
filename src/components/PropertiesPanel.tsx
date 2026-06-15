@@ -624,7 +624,9 @@ function DemoPieceProperties({ element }: { element: Extract<import('../types/pr
         ]);
         setDemoPath(meta?.path ?? '');
         const html = new TextDecoder().decode(new Uint8Array(data));
-        const matches = html.matchAll(/piece\s*===?\s*['"](\w+)['"]/g);
+        // [\w-]+ not \w+ so hyphenated piece names (e.g. "force-graph") aren't
+        // truncated at the hyphen (#44).
+        const matches = html.matchAll(/piece\s*===?\s*['"]([\w-]+)['"]/g);
         const pieces = [...new Set([...matches].map((m: RegExpMatchArray) => m[1]))];
         setAvailablePieces(pieces);
       } catch { setAvailablePieces([]); }
