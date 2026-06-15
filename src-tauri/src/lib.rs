@@ -186,7 +186,11 @@ fn set_window_above_menubar(app: tauri::AppHandle, label: String) -> Result<(), 
 /// dynamic catalog color directly throws, so the colorUsingColorSpace step is
 /// required). Other platforms return Err and the frontend uses a per-OS fallback.
 #[tauri::command]
-fn system_toolbar_color() -> Result<String, String> {
+fn system_toolbar_color(app: tauri::AppHandle) -> Result<String, String> {
+    let _ = &app;
+    let to_hex = |r: u8, g: u8, b: u8| format!("#{:02x}{:02x}{:02x}", r, g, b);
+    let to255 = |v: f64| (v * 255.0).round().clamp(0.0, 255.0) as u8;
+
     #[cfg(target_os = "macos")]
     {
         use objc2_app_kit::{NSColor, NSColorSpace};
@@ -196,13 +200,46 @@ fn system_toolbar_color() -> Result<String, String> {
         let srgb = unsafe { NSColorSpace::sRGBColorSpace() };
         let rgb = unsafe { base.colorUsingColorSpace(&srgb) }
             .ok_or_else(|| "windowBackgroundColor → sRGB conversion failed".to_string())?;
-        let c = |v: f64| (v * 255.0).round().clamp(0.0, 255.0) as u8;
         let (r, g, b) = unsafe { (rgb.redComponent(), rgb.greenComponent(), rgb.blueComponent()) };
-        Ok(format!("#{:02x}{:02x}{:02x}", c(r), c(g), c(b)))
+        Ok(to_hex(to255(r), to255(g), to255(b)))
     }
-    #[cfg(not(target_os = "macos"))]
+
+    #[cfg(target_os = "linux")]
     {
-        Err("native toolbar color is implemented on macOS only".to_string())
+        // GTK is not thread-safe — read the theme color on the main thread.
+        let (tx, rx) = std::sync::mpsc::channel();
+        app.run_on_main_thread(move || {
+            use gtk::prelude::*;
+            let res = (|| -> Result<(u8, u8, u8), String> {
+                // A throwaway (never-shown) top-level resolves the active theme's
+                // named colors; theme_bg_color = the window/headerbar background.
+                let win = gtk::Window::new(gtk::WindowType::Popup);
+                let ctx = win.style_context();
+                let rgba = ctx.lookup_color("theme_bg_color")
+                    .ok_or_else(|| "theme_bg_color not found".to_string())?;
+                Ok((to255(rgba.red() as f64), to255(rgba.green() as f64), to255(rgba.blue() as f64)))
+            })();
+            let _ = tx.send(res);
+        }).map_err(|e| e.to_string())?;
+        let (r, g, b) = rx.recv().map_err(|e| e.to_string())??;
+        Ok(to_hex(r, g, b))
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        // COLOR_3DFACE = the classic window/control chrome color (~#F0F0F0).
+        use windows::Win32::UI::WindowsAndMessaging::{GetSysColor, COLOR_3DFACE};
+        let c = unsafe { GetSysColor(COLOR_3DFACE) }; // COLORREF: 0x00BBGGRR
+        let r = (c & 0xff) as u8;
+        let g = ((c >> 8) & 0xff) as u8;
+        let b = ((c >> 16) & 0xff) as u8;
+        Ok(to_hex(r, g, b))
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    {
+        let _ = (to_hex, to255);
+        Err("native toolbar color not implemented for this platform".to_string())
     }
 }
 

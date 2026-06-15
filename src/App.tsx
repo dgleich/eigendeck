@@ -616,20 +616,47 @@ function App() {
         const ch = (sh: number) => Math.max(0, Math.min(255, ((n >> sh) & 0xff) - amt));
         return `#${[16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, '0')).join('')}`;
       };
-      const apply = (bg: string, border: string) => {
+      // Blend toward white by `frac` — proportional so an already-light base
+      // doesn't clamp to pure white (the inactive-window lightening).
+      const lighten = (hex: string, frac: number): string => {
+        const m = /^#([0-9a-f]{6})$/i.exec(hex);
+        if (!m) return hex;
+        const n = parseInt(m[1], 16);
+        const ch = (sh: number) => { const v = (n >> sh) & 0xff; return Math.round(v + (255 - v) * frac); };
+        return `#${[16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, '0')).join('')}`;
+      };
+      // TEMPORARY debug badge (bottom-right) showing the resolved toolbar color
+      // and where it came from. Remove once verified on all platforms.
+      const dbg = document.createElement('div');
+      dbg.style.cssText = 'position:fixed;bottom:4px;right:4px;z-index:99999;'
+        + 'font:10px/1.4 monospace;padding:3px 7px;border-radius:4px;pointer-events:none;'
+        + 'background:#111;color:#7CFC00;box-shadow:0 1px 4px rgba(0,0,0,.4)';
+      document.body.appendChild(dbg);
+      const debugShow = (bg: string, source: string) => {
+        dbg.textContent = `toolbar ${bg} (${source})`;
+        dbg.style.borderLeft = `12px solid ${bg}`;
+        console.log(`[toolbar-color] ${source} → ${bg}`);
+      };
+      const apply = (bg: string, border: string, source: string) => {
         root.setProperty('--toolbar-bg', bg);
         root.setProperty('--toolbar-border', border);
+        // macOS lightens the window chrome when the window is inactive — derive a
+        // lighter variant (no single native "inactive window" NSColor exists; the
+        // system computes it for native chrome, so we mimic by lightening).
+        root.setProperty('--toolbar-bg-inactive', lighten(bg, 0.35));
+        root.setProperty('--toolbar-border-inactive', lighten(border, 0.3));
+        debugShow(bg, source);
       };
-      apply(fallback.bg, fallback.border);  // immediate default
-      // Override with the REAL native color (macOS); keep the default otherwise.
+      apply(fallback.bg, fallback.border, `${plat} fallback`);  // immediate default
+      // Override with the REAL native color (per-platform command); keep default otherwise.
       import('@tauri-apps/api/core')
         .then(({ invoke }) => invoke<string>('system_toolbar_color'))
         .then((hex) => {
           if (typeof hex === 'string' && /^#[0-9a-f]{6}$/i.test(hex)) {
-            apply(hex, darken(hex, 30));
+            apply(hex, darken(hex, 30), `${plat} native`);
           }
         })
-        .catch(() => { /* non-macOS / native read failed → keep the default */ });
+        .catch((e) => { console.log('[toolbar-color] native read failed:', e); });
     } catch { /* non-browser env */ }
     // Restore saved window position/size
     (async () => {
@@ -646,6 +673,31 @@ function App() {
   }, []);
 
   // SQLite DB is closed from Rust via on_window_event(Destroyed) — no JS handler needed.
+
+  // Active/inactive window chrome (macOS lightens the toolbar when the window
+  // isn't focused). Toggle `window-inactive` on <body>; CSS swaps to the lighter
+  // --toolbar-bg-inactive. Tauri's onFocusChanged is authoritative; DOM
+  // focus/blur is a fallback for non-Tauri / extra reliability.
+  useEffect(() => {
+    const setActive = (active: boolean) =>
+      document.body.classList.toggle('window-inactive', !active);
+    setActive(typeof document !== 'undefined' ? document.hasFocus() : true);
+    let unlisten: (() => void) | undefined;
+    import('@tauri-apps/api/window')
+      .then(({ getCurrentWindow }) =>
+        getCurrentWindow().onFocusChanged(({ payload }) => setActive(payload)))
+      .then((u) => { unlisten = u; })
+      .catch(() => { /* not in Tauri */ });
+    const onFocus = () => setActive(true);
+    const onBlur = () => setActive(false);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      unlisten?.();
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
 
   // Save window position/size on move/resize (debounced)
   useEffect(() => {

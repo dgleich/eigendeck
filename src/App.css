@@ -91,6 +91,13 @@
 }
 
 /* Toolbar */
+/* When the window loses focus, macOS lightens its chrome — mirror that. */
+body.window-inactive .toolbar,
+body.window-inactive .editor-actions {
+  background: var(--toolbar-bg-inactive, var(--toolbar-bg, #f3f3f3));
+  border-bottom-color: var(--toolbar-border-inactive, var(--toolbar-border, #ddd));
+}
+
 .toolbar {
   display: flex;
   align-items: center;

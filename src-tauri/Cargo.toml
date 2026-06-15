@@ -55,3 +55,11 @@ objc2 = "0.6"
 objc2-foundation = { version = "0.3", features = ["NSString"] }
 objc2-app-kit = { version = "0.3", features = ["NSAlert", "NSWindow", "NSResponder", "NSApplication", "NSColor", "NSColorSpace"] }
 
+# Native toolbar-color read: GTK theme color on Linux (version matches wry/tao).
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+
+# Native toolbar-color read: GetSysColor on Windows (version matches wry/tao).
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.61", features = ["Win32_UI_WindowsAndMessaging", "Win32_Foundation"] }
+
