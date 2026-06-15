@@ -156,6 +156,7 @@ export function createSeededPresentation(): Presentation {
 // these afterwards left them in the TDZ ("Cannot access uninitialized
 // variable") and the whole app failed to boot.
 const UNDO_DEBOUNCE_MS = 200;
+const UNDO_LIMIT = 100;
 
 /** Leading-edge debounce: first call fires immediately, subsequent
  *  calls within `ms` are dropped, then the gate resets after `ms`
@@ -800,7 +801,7 @@ export const usePresentationStore = create<PresentationState>()(
       partialize: (state) => ({
         presentation: state.presentation,
       }),
-      limit: 100,
+      limit: UNDO_LIMIT,
       equality: (past, current) =>
         JSON.stringify(past) === JSON.stringify(current),
       // Coalesce rapid-fire set() calls into a single undo entry.
@@ -831,13 +832,42 @@ export const usePresentationStore = create<PresentationState>()(
 );
 
 // Helper: pause undo tracking (call before continuous operations like drags)
+// Undo "transaction" for a continuous gesture (drag, resize, slider) so it
+// becomes EXACTLY ONE undo step. pause() alone is not enough: zundo records the
+// pre-change state only when a tracked set() fires, so pausing BEFORE the first
+// change means the pre-gesture state is never captured — undo then reverted the
+// PREVIOUS action too (e.g. dragging a freshly-added element then Cmd-Z deleted
+// it; #55). So we snapshot the pre-gesture state ourselves and push it as one
+// entry on resume. Ref-counted so nested pause/resume is safe.
+let undoTxnSnapshot: { presentation: Presentation } | null = null;
+let undoTxnDepth = 0;
+
 export function pauseUndo() {
-  usePresentationStore.temporal.getState().pause();
+  if (undoTxnDepth === 0) {
+    undoTxnSnapshot = { presentation: usePresentationStore.getState().presentation };
+    usePresentationStore.temporal.getState().pause();
+  }
+  undoTxnDepth++;
 }
 
-// Helper: resume undo tracking (call when operation completes)
+// Resume undo tracking (call when the gesture completes). Records the pre-gesture
+// snapshot as a single undo entry (unless nothing actually changed).
 export function resumeUndo() {
-  usePresentationStore.temporal.getState().resume();
+  if (undoTxnDepth === 0) return;
+  undoTxnDepth--;
+  if (undoTxnDepth > 0) return;
+  const temporal = usePresentationStore.temporal;
+  temporal.getState().resume();
+  const pre = undoTxnSnapshot;
+  undoTxnSnapshot = null;
+  if (!pre) return;
+  const cur = usePresentationStore.getState().presentation;
+  // No-op gesture (e.g. click without drag) → don't push an empty undo step.
+  if (JSON.stringify(pre.presentation) === JSON.stringify(cur)) return;
+  temporal.setState({
+    pastStates: [...temporal.getState().pastStates, pre].slice(-UNDO_LIMIT),
+    futureStates: [],  // a fresh action invalidates the redo stack
+  });
 }
 
 // ============================================================================

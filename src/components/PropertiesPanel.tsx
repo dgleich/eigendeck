@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { usePresentationStore } from '../store/presentation';
+import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, parsePalette, type NamedSize } from '../types/presentation';
 import { BUILT_IN_THEMES } from '../lib/themes';
 import { FONT_PACKAGES } from '../lib/fonts';
@@ -379,6 +379,7 @@ export function PropertiesPanel() {
                       Opacity
                       <input type="range" min={0} max={1} step={0.05}
                         value={selectedEl.opacity ?? 1}
+                        onPointerDown={pauseUndo} onPointerUp={resumeUndo}
                         onChange={(e) => updateElement(selectedEl.id, { opacity: parseFloat(e.target.value) } as any)}
                         style={{ marginLeft: 6, width: 80 }} />
                       <span style={{ fontSize: 11, color: '#999', marginLeft: 4 }}>{Math.round((selectedEl.opacity ?? 1) * 100)}%</span>
@@ -437,6 +438,7 @@ export function PropertiesPanel() {
                       <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                         Opacity
                         <input type="range" min={0} max={1} step={0.05} value={selectedEl.backgroundOpacity ?? 1}
+                          onPointerDown={pauseUndo} onPointerUp={resumeUndo}
                           onChange={(e) => updateElement(selectedEl.id, { backgroundOpacity: parseFloat(e.target.value) } as any)}
                           style={{ flex: 1 }} />
                         <span style={{ fontSize: 11, color: '#999' }}>{Math.round((selectedEl.backgroundOpacity ?? 1) * 100)}%</span>
@@ -467,6 +469,7 @@ export function PropertiesPanel() {
                   <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <input type="range" min={-45} max={45} step={1}
                       value={selectedEl.rotation || 0}
+                      onPointerDown={pauseUndo} onPointerUp={resumeUndo}
                       onChange={(e) => updateElement(selectedEl.id, { rotation: parseInt(e.target.value) || 0 } as any)}
                       style={{ flex: 1 }} />
                     <input className="prop-input-sm" type="number" min={-180} max={180}

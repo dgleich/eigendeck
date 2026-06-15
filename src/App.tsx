@@ -39,7 +39,7 @@ import {
   openRecentProject,
   syncRecentMenu,
 } from './store/fileOps';
-import { flushToSqlite } from './store/presentation';
+import { flushToSqlite, pauseUndo, resumeUndo } from './store/presentation';
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
@@ -71,6 +71,9 @@ if (
     save: saveProject,   // flush + atomic save-in-place to the open file
     // Missing-source registry (#74) — lets E2E assert detect/relocate.
     missingAssets: () => getMissingAssets(),
+    // Undo-gesture transaction helpers (#55) — lets E2E exercise the real
+    // pause/resume the canvas drag + inspector sliders use.
+    pauseUndo, resumeUndo,
     // Relocate-all-by-offset (#74) — E2E hook mirroring what AssetSection does
     // after the user picks one moved file.
     relocateByOffset: (skipAssetId: string, oldAbs: string, newAbs: string) =>

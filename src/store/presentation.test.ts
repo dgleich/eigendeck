@@ -650,3 +650,70 @@ describe('presentation store', () => {
     });
   });
 });
+
+import { pauseUndo, resumeUndo } from './presentation';
+
+describe('undo transactions: pauseUndo/resumeUndo = one step, pre-state preserved (#55)', () => {
+  beforeEach(() => {
+    usePresentationStore.setState({
+      presentation: { ...createDefaultPresentation(), slides: [{ id: 's0', elements: [], notes: '' } as any] },
+      currentSlideIndex: 0,
+    });
+    usePresentationStore.temporal.getState().clear();
+  });
+
+  const past = () => usePresentationStore.temporal.getState().pastStates.length;
+  const els = () => usePresentationStore.getState().presentation.slides[0].elements;
+
+  it('a paused gesture is ONE undo step and does NOT delete the element', () => {
+    // Baseline element at x=100, clean history (clear() after setState isolates
+    // the transaction from the debounced add-snapshot).
+    usePresentationStore.setState({
+      presentation: { ...createDefaultPresentation(), slides: [{ id: 's0', notes: '',
+        elements: [{ id: 'a', type: 'text', preset: 'body', html: 'A', position: { x: 100, y: 100, width: 200, height: 80 } }] } as any] },
+      currentSlideIndex: 0,
+    });
+    usePresentationStore.temporal.getState().clear();
+    expect(past()).toBe(0);
+
+    // simulate a drag: pause, many position updates, resume
+    pauseUndo();
+    for (let x = 140; x <= 500; x += 90) {
+      usePresentationStore.getState().updateElement('a', { position: { x, y: 100, width: 200, height: 80 } } as any);
+    }
+    resumeUndo();
+    expect(els()[0].position.x).toBe(500);
+    expect(past()).toBe(1); // exactly ONE undo entry for the whole gesture
+
+    // undo the drag → element STILL present at the pre-drag position.
+    // (The bug this fixes: undo deleted the element / reverted past the add.)
+    usePresentationStore.temporal.getState().undo();
+    expect(els().find((e) => e.id === 'a')).toBeDefined();
+    expect(els()[0].position.x).toBe(100);
+
+    // redo round-trips back to the dragged position
+    usePresentationStore.temporal.getState().redo();
+    expect(els()[0].position.x).toBe(500);
+  });
+
+  it('a no-op gesture (pause/resume with no change) pushes no undo entry', () => {
+    usePresentationStore.getState().addElement({ id: 'b', type: 'text', preset: 'body', html: 'B', position: { x: 0, y: 0, width: 10, height: 10 } } as any);
+    const before = past();
+    pauseUndo();
+    resumeUndo(); // nothing changed
+    expect(past()).toBe(before);
+  });
+
+  it('nested pause/resume records a single step', () => {
+    usePresentationStore.getState().addElement({ id: 'c', type: 'text', preset: 'body', html: 'C', position: { x: 0, y: 0, width: 10, height: 10 } } as any);
+    const before = past();
+    pauseUndo();
+    pauseUndo();
+    usePresentationStore.getState().updateElement('c', { html: 'C2' } as any);
+    resumeUndo();
+    resumeUndo();
+    expect(past()).toBe(before + 1);
+    usePresentationStore.temporal.getState().undo();
+    expect((els()[0] as { html?: string }).html).toBe('C');
+  });
+});
