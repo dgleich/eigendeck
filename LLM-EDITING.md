@@ -137,7 +137,7 @@ All elements share these base fields:
 | `textbox`    | 48       | PT Sans             | normal     | normal    | #222    | `y:300, h:300` |
 | `annotation` | 32       | PT Sans             | normal     | italic    | #2563eb | `y:700, h:150` |
 | `footnote`   | 24       | PT Sans Narrow      | normal     | normal    | #888    | `y:1020, h:44` (bottom-aligned) |
-| `hype`       | 96       | PT Sans (or hypeFont) | bold     | normal    | #e53e3e | `y:400, h:280` (oversized callouts) |
+| `hype`       | 48 (body) | Shantell (or hypeFont) | normal  | normal    | #1a1a1a | `x:720,y:360, 560×360` — **sticky note**: seeded with `backgroundColor:"#fde047"` (bright yellow) + Shantell Sans |
 
 **Optional overrides** (only include if different from preset default):
 - `fontSizeName`: one of `"footnote"`, `"note"`, `"body"` — picks a named size from the deck's type scale, overriding the preset's default size. `"title"` and `"hype"` are intentionally excluded; the numeric `fontSize` covers those cases.

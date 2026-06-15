@@ -304,7 +304,9 @@ export function fontForPreset(preset, slide, presentationDefaults) {
     : 'body';
   const slideKey = role === 'title' ? 'titleFont' : role === 'hype' ? 'hypeFont' : 'bodyFont';
   const presKey = role === 'title' ? 'defaultTitleFont' : role === 'hype' ? 'defaultHypeFont' : 'defaultBodyFont';
-  return resolveFontPackage((slide && slide[slideKey]) ?? (presentationDefaults && presentationDefaults[presKey]));
+  // Hype (sticky note) defaults to Shantell Sans when nothing overrides it.
+  const fallback = role === 'hype' ? 'shantell' : undefined;
+  return resolveFontPackage((slide && slide[slideKey]) ?? (presentationDefaults && presentationDefaults[presKey]) ?? fallback);
 }
 
 /** Build a CSS font-family string for a preset, honoring the narrow variant for footnote. */

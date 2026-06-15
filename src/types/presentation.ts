@@ -104,13 +104,16 @@ export const TEXT_PRESET_STYLES: Record<TextPreset, {
     color: '#888',
   },
   hype: {
+    // Sticky-note style: bright-yellow fill (set on creation), Shantell Sans
+    // (hand-drawn) by default, dark text, and a smaller size than the old
+    // splashy 96px hype.
     label: 'Hype',
-    sizeName: 'hype',
-    fontSize: DEFAULT_TEXT_SIZES.hype,
-    fontFamily: "'PT Sans', sans-serif",
-    fontWeight: '700',
+    sizeName: 'body',
+    fontSize: DEFAULT_TEXT_SIZES.body,
+    fontFamily: "'Shantell Sans', sans-serif",
+    fontWeight: 'normal',
     fontStyle: 'normal',
-    color: '#e53e3e',
+    color: '#1a1a1a',
   },
 };
 
@@ -474,7 +477,7 @@ export function createTextElement(preset: TextPreset, overrides?: Partial<Elemen
     textbox:    { x: 200, y: 300, width: 800,  height: 300 },
     annotation: { x: 200, y: 700, width: 600,  height: 150 },
     footnote:   { x: 80,  y: 1020, width: 1000, height: 44  },
-    hype:       { x: 200, y: 400, width: 1520, height: 280 },
+    hype:       { x: 720, y: 360, width: 560,  height: 360 },
   };
 
   const defaultText: Record<TextPreset, string> = {
@@ -492,6 +495,9 @@ export function createTextElement(preset: TextPreset, overrides?: Partial<Elemen
     preset,
     html: defaultText[preset],
     position: { ...defaults[preset], ...overrides },
+    // Hype = sticky note: seed the bright-yellow fill (Shantell font comes from
+    // the preset / hype font role).
+    ...(preset === 'hype' ? { backgroundColor: '#fde047' } : {}),
   };
 }
 

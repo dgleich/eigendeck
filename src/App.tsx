@@ -1201,6 +1201,7 @@ function App() {
                 }
               }
             }}>+ Image</button>
+            <button title="Add a Hype sticky note (yellow, Shantell)" onClick={() => store.addElement(createTextElement('hype'))}>+ Hype</button>
             </div>
             <div className="tb-group">
             <button title="Add demo HTML" onClick={async () => {
