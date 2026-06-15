@@ -160,3 +160,28 @@ describe('named text size system', () => {
     void _bad;
   });
 });
+
+describe('parsePalette (#2 custom palette)', () => {
+  it('parses comma / space / newline separated hex with or without #', async () => {
+    const { parsePalette } = await import('./presentation');
+    expect(parsePalette('#ff0000, #00ff00 #0000ff')).toEqual(['#ff0000', '#00ff00', '#0000ff']);
+    expect(parsePalette('ff0000\n00ff00')).toEqual(['#ff0000', '#00ff00']);
+  });
+  it('expands 3-digit shorthand and lowercases', async () => {
+    const { parsePalette } = await import('./presentation');
+    expect(parsePalette('#ABC #F00')).toEqual(['#aabbcc', '#ff0000']);
+  });
+  it('dedupes order-preserving and skips junk', async () => {
+    const { parsePalette } = await import('./presentation');
+    expect(parsePalette('#fff, white, #FFF, notacolor, #123456')).toEqual(['#ffffff', '#123456']);
+  });
+  it('caps the count', async () => {
+    const { parsePalette } = await import('./presentation');
+    const many = Array.from({ length: 50 }, (_, i) => '#' + i.toString(16).padStart(6, '0')).join(' ');
+    expect(parsePalette(many, 8)).toHaveLength(8);
+  });
+  it('returns [] for empty', async () => {
+    const { parsePalette } = await import('./presentation');
+    expect(parsePalette('')).toEqual([]);
+  });
+});

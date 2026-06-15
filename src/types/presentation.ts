@@ -204,6 +204,32 @@ export function textBackgroundCss(el: { backgroundColor?: string; backgroundOpac
   return el.backgroundColor; // non-hex colour: opacity not applied
 }
 
+/**
+ * Parse a pasted color palette (#2) into a normalized list of #rrggbb hex
+ * strings. Accepts colors separated by commas / whitespace / newlines /
+ * semicolons, with or without a leading '#', in 3- or 6-digit hex. Expands
+ * shorthand (#abc → #aabbcc), lowercases, dedupes (order-preserving), and
+ * caps the count so a giant paste can't blow up the toolbar.
+ */
+export function parsePalette(input: string, max = 24): string[] {
+  if (!input) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of input.split(/[\s,;]+/)) {
+    const tok = raw.trim().replace(/^#/, '');
+    let hex: string | null = null;
+    if (/^[0-9a-fA-F]{6}$/.test(tok)) hex = tok.toLowerCase();
+    else if (/^[0-9a-fA-F]{3}$/.test(tok)) hex = tok.toLowerCase().split('').map((c) => c + c).join('');
+    if (!hex) continue;
+    const norm = '#' + hex;
+    if (seen.has(norm)) continue;
+    seen.add(norm);
+    out.push(norm);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 export interface ImageElement extends BaseElement {
   type: 'image';
   /**
@@ -447,6 +473,10 @@ export interface PresentationConfig {
   // Affects text presets (via effectiveTextPresetSize) AND notebook
   // fontSizeName resolution AND anything else that picks by name.
   textSizes?: Partial<Record<NamedSize, number>>;
+  // Per-presentation custom color palette (#2). Hex colors (#rrggbb) the user
+  // pastes in the Deck inspector — e.g. university brand colors. Surfaced as an
+  // extra swatch row in the text-color toolbar. Absent = just the built-ins.
+  customPalette?: string[];
   // Per-presentation override for the file-watching auto-reload behavior.
   // 'on'/'off' override the global pref; absent = follow global. Per-asset
   // assets.auto_reload still overrides this. See effectiveAutoReload().

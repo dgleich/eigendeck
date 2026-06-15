@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { usePresentationStore } from '../store/presentation';
 
 const COLORS = [
   { color: '#222222', label: 'Black' },
@@ -28,6 +29,8 @@ export function TextFormatToolbar(_props: Props) {
   const [colorOpen, setColorOpen] = useState(false);
   const [lastColor, setLastColor] = useState('#2563eb');
   const savedRange = useRef<Range | null>(null);
+  // Per-presentation custom palette (#2) — shown as a leading row of swatches.
+  const customPalette = usePresentationStore((s) => s.presentation?.config?.customPalette);
 
   // Continuously save the selection from the contentEditable
   useEffect(() => {
@@ -81,6 +84,20 @@ export function TextFormatToolbar(_props: Props) {
         </button>
         {colorOpen && (
           <div className="tf-color-dropdown">
+            {customPalette && customPalette.length > 0 && (
+              <>
+                {customPalette.map((c) => (
+                  <button
+                    key={'custom-' + c}
+                    className="tf-color-swatch"
+                    style={{ background: c, border: '1px solid #94a3b8', boxShadow: '0 0 0 1px #fff inset' }}
+                    title={`Deck palette ${c}`}
+                    onClick={() => { exec('foreColor', c); setLastColor(c); setColorOpen(false); }}
+                  />
+                ))}
+                <div style={{ gridColumn: '1 / -1', height: 0, borderTop: '1px solid #e5e7eb', margin: '2px 0' }} />
+              </>
+            )}
             {COLORS.map((c) => (
               <button
                 key={c.color}

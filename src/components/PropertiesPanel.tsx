@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
-import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, type NamedSize } from '../types/presentation';
+import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, parsePalette, type NamedSize } from '../types/presentation';
 import { BUILT_IN_THEMES } from '../lib/themes';
 import { FONT_PACKAGES } from '../lib/fonts';
 import { listMonoEligible } from '../lib/notebookFonts';
@@ -257,6 +257,13 @@ export function PropertiesPanel() {
                   (notebooks, future text presets retrofit, etc.).
                   Blank cell = fall back to the built-in default. */}
               <TextSizesEditor config={presentation.config} updateConfig={updateConfig} />
+            </PropSection>
+            <PropSection label="Color Palette">
+              {/* #2 — paste university/brand hex colors; they show as an extra
+                  swatch row in the text-color toolbar. */}
+              <PaletteEditor
+                value={presentation.config.customPalette}
+                onChange={(p) => updateConfig({ customPalette: p })} />
             </PropSection>
             <PropSection label="Author">
               <input className="prop-input" value={presentation.config.author || ''}
@@ -679,6 +686,49 @@ function DemoPieceProperties({ element }: { element: Extract<import('../types/pr
  *  px-value spinner. Blank cell falls through to DEFAULT_TEXT_SIZES.
  *  Setting a value to the default also strips the override so the
  *  cascade resumes (matches the default-setting cascade rules). */
+/** #2 — paste a list of hex colors that become an extra row in the text-color
+ *  toolbar (e.g. university brand colors). Live-parses; shows a swatch preview. */
+function PaletteEditor({ value, onChange }: {
+  value: string[] | undefined;
+  onChange: (palette: string[] | undefined) => void;
+}) {
+  const [draft, setDraft] = useState((value ?? []).join('  '));
+  // Resync when the deck's palette changes from elsewhere (load, undo).
+  useEffect(() => { setDraft((value ?? []).join('  ')); }, [value]);
+  const parsed = parsePalette(draft);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <textarea
+        className="prop-input"
+        value={draft}
+        placeholder="#0b3d91  #c8102e  #f5f5f5"
+        spellCheck={false}
+        rows={2}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          const p = parsePalette(e.target.value);
+          onChange(p.length ? p : undefined);
+        }}
+        style={{ fontFamily: 'monospace', fontSize: 11, resize: 'vertical' }}
+      />
+      {parsed.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {parsed.map((c) => (
+            <span key={c} title={c} style={{
+              width: 18, height: 18, borderRadius: 3, background: c,
+              border: '1px solid rgba(0,0,0,0.2)',
+            }} />
+          ))}
+        </div>
+      )}
+      <HelpText inline style={{ fontSize: 10 }}>
+        Paste hex colors (3- or 6-digit, with or without #). They appear as a
+        swatch row when you edit text. {parsed.length} color{parsed.length === 1 ? '' : 's'}.
+      </HelpText>
+    </div>
+  );
+}
+
 function TextSizesEditor({ config, updateConfig }: {
   config: import('../types/presentation').PresentationConfig;
   updateConfig: (changes: Partial<import('../types/presentation').PresentationConfig>) => void;
