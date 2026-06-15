@@ -595,26 +595,6 @@ function App() {
       } catch (e) { console.error('[boot] take_launch_file failed:', e); }
     }).catch((e) => { console.error('[boot] tauri core import failed:', e); });
     syncRecentMenu();
-    // Toolbar chrome: paint the toolbars in the platform's native window/toolbar
-    // color. We set a per-OS DEFAULT immediately, then override it with the
-    // ACTUAL system color pulled from the native API (macOS: NSColor.window
-    // BackgroundColor via the `system_toolbar_color` command). The default is
-    // only a fallback for non-macOS / when the native read fails.
-    try {
-      // Toolbar chrome: a clean per-OS light gray so the bar reads as native
-      // (vs pure white). App is pinned to light mode (see `color-scheme: light`);
-      // native vibrancy + dark mode are tracked in #76.
-      const ua = navigator.userAgent;
-      const plat = /Mac/i.test(ua) ? 'mac' : /Win/i.test(ua) ? 'win' : 'linux';
-      const chrome = {
-        mac:   { bg: '#ececec', border: '#cfcfcf' },
-        win:   { bg: '#f3f3f3', border: '#e1e1e1' },
-        linux: { bg: '#f6f5f4', border: '#d8d4d0' },
-      }[plat]!;
-      const root = document.documentElement.style;
-      root.setProperty('--toolbar-bg', chrome.bg);
-      root.setProperty('--toolbar-border', chrome.border);
-    } catch { /* non-browser env */ }
     // Restore saved window position/size
     (async () => {
       try {
@@ -630,6 +610,30 @@ function App() {
   }, []);
 
   // SQLite DB is closed from Rust via on_window_event(Destroyed) — no JS handler needed.
+
+  // Active/inactive toolbar tint (matches macOS chrome). Toggle `window-inactive`
+  // on <body>; CSS swaps --toolbar-bg → --toolbar-bg-inactive. Tauri's
+  // onFocusChanged is authoritative; DOM focus/blur is a fallback.
+  useEffect(() => {
+    const setActive = (active: boolean) =>
+      document.body.classList.toggle('window-inactive', !active);
+    setActive(typeof document !== 'undefined' ? document.hasFocus() : true);
+    let unlisten: (() => void) | undefined;
+    import('@tauri-apps/api/window')
+      .then(({ getCurrentWindow }) =>
+        getCurrentWindow().onFocusChanged(({ payload }) => setActive(payload)))
+      .then((u) => { unlisten = u; })
+      .catch(() => { /* not in Tauri */ });
+    const onFocus = () => setActive(true);
+    const onBlur = () => setActive(false);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      unlisten?.();
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
 
   // Save window position/size on move/resize (debounced)
   useEffect(() => {

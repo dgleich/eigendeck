@@ -8,6 +8,11 @@
      (scrollbars, form controls) light even when the OS is in dark mode.
      Native dark mode / vibrancy is tracked in #76. */
   color-scheme: light;
+  /* Toolbar chrome — sampled from the macOS toolbar (active vs inactive). */
+  --toolbar-bg: #fdfdfd;
+  --toolbar-border: #e2e2e2;
+  --toolbar-bg-inactive: #e7e8e8;
+  --toolbar-border-inactive: #d4d5d5;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans',
     'Helvetica Neue', Arial, sans-serif;
@@ -95,15 +100,21 @@
 }
 
 /* Toolbar */
+/* Inactive window: macOS tints the chrome a touch grayer — swap both bars. */
+body.window-inactive .toolbar,
+body.window-inactive .editor-actions {
+  background: var(--toolbar-bg-inactive);
+  border-bottom-color: var(--toolbar-border-inactive);
+}
+
 .toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 44px;
   padding: 0 12px;
-  /* Native window/toolbar color per platform (set at boot from --toolbar-bg). */
-  background: var(--toolbar-bg, #f3f3f3);
-  border-bottom: 1px solid var(--toolbar-border, #ddd);
+  background: var(--toolbar-bg, #fdfdfd);
+  border-bottom: 1px solid var(--toolbar-border, #e2e2e2);
   gap: 8px;
   flex-shrink: 0;
   position: relative;
