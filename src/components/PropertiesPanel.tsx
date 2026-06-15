@@ -765,6 +765,13 @@ function FontSizeRow({ element, updateElement, config }: {
 }) {
   const effective = effectiveFontSize(element, config);
   const isOverride = element.fontSize != null;
+  // The px input keeps its own draft string so the user can clear it and type
+  // multi-digit values whose intermediate states are out of range (e.g.
+  // backspacing "48" to "4" to "36"). Committing only on a VALID value, and
+  // the controlled-value-rejects-edits bug (#23) goes away. Resync from the
+  // canonical size whenever it changes externally (named buttons, undo, sync).
+  const [draft, setDraft] = useState(String(effective));
+  useEffect(() => { setDraft(String(effective)); }, [effective]);
   // For text elements, the "no override" name is the preset's sizeName.
   // For notebooks, it's 'note'. Used for button highlighting only.
   const fallbackName: NamedSize =
@@ -806,10 +813,12 @@ function FontSizeRow({ element, updateElement, config }: {
       <input
         type="number"
         min={8} max={200} step={1}
-        value={effective}
+        value={draft}
         onChange={(e) => {
-          const v = parseInt(e.target.value, 10);
-          if (!Number.isFinite(v) || v < 8 || v > 200) return;
+          const raw = e.target.value;
+          setDraft(raw);                       // always reflect what's typed
+          const v = parseInt(raw, 10);
+          if (!Number.isFinite(v) || v < 8 || v > 200) return;  // wait for a valid value
           const matchingName = NAMED_SIZE_OPTIONS.find(
             (n) => resolveNamedSize(n, config) === v,
           );
@@ -822,6 +831,7 @@ function FontSizeRow({ element, updateElement, config }: {
             updateElement(element.id, { fontSize: v, fontSizeName: undefined } as Partial<typeof element>);
           }
         }}
+        onBlur={() => setDraft(String(effective))}  // snap a half-typed/invalid draft back
         style={{ width: 44, padding: '3px 4px', fontSize: 12, marginLeft: 4 }}
         title="Custom size in pixels — overrides the named choice"
       />
