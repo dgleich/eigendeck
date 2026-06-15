@@ -9,6 +9,7 @@ import ReactDOM from 'react-dom/client';
 import { listen, emitTo } from '@tauri-apps/api/event';
 import { getSlideNumber } from './types/presentation';
 import { resolveTheme } from './lib/themes';
+import { NotebookContent } from './components/notebook/NotebookContent';
 import { useDemoUrl } from './lib/demoAssets';
 import { useImageSrc } from './lib/imageSrc';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from './lib/videoPlayback';
@@ -147,6 +148,18 @@ function PresenterElement({ element: el, zIndex, slide, presentationConfig, pres
 
     case 'video':
       return <PresenterVideo element={el} zIndex={zIndex} />;
+
+    case 'notebook':
+      // Was missing — notebooks rendered as blank in the presenter window.
+      // Mirror PresentMode's notebook case.
+      return (
+        <div className="el-notebook" style={{
+          position: 'absolute', left: pos.x, top: pos.y,
+          width: pos.width, height: pos.height, zIndex,
+        }}>
+          <NotebookContent element={el} interactive={true} mode="present" />
+        </div>
+      );
 
     case 'cover':
       return (
