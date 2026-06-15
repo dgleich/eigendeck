@@ -834,13 +834,13 @@
 
 .slide-element .el-resize-handle {
   position: absolute;
-  bottom: -5px;
-  right: -5px;
-  width: 10px;
-  height: 10px;
+  bottom: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
   background: #3b82f6;
-  border: 1.5px solid #fff;
-  border-radius: 2px;
+  border: 2px solid #fff;
+  border-radius: 3px;
   cursor: nwse-resize;
   display: none;
   z-index: 12;
