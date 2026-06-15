@@ -419,6 +419,7 @@
 .editor-actions {
   display: flex;
   align-items: center;
+  justify-content: center;
   /* row-gap between wrapped rows; larger column-gap separates the groups. */
   gap: 6px 16px;
   padding: 6px 12px;
