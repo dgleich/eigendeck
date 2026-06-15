@@ -196,11 +196,11 @@ fn system_toolbar_color(app: tauri::AppHandle) -> Result<String, String> {
         use objc2_app_kit::{NSColor, NSColorSpace};
         // windowBackgroundColor is a dynamic catalog color; convert to sRGB so
         // its r/g/b components are readable. Resolves under the current appearance.
-        let base = unsafe { NSColor::windowBackgroundColor() };
-        let srgb = unsafe { NSColorSpace::sRGBColorSpace() };
-        let rgb = unsafe { base.colorUsingColorSpace(&srgb) }
+        let base = NSColor::windowBackgroundColor();
+        let srgb = NSColorSpace::sRGBColorSpace();
+        let rgb = base.colorUsingColorSpace(&srgb)
             .ok_or_else(|| "windowBackgroundColor → sRGB conversion failed".to_string())?;
-        let (r, g, b) = unsafe { (rgb.redComponent(), rgb.greenComponent(), rgb.blueComponent()) };
+        let (r, g, b) = (rgb.redComponent(), rgb.greenComponent(), rgb.blueComponent());
         Ok(to_hex(to255(r), to255(g), to255(b)))
     }
 

@@ -603,11 +603,16 @@ function App() {
     try {
       const ua = navigator.userAgent;
       const plat = /Mac/i.test(ua) ? 'mac' : /Win/i.test(ua) ? 'win' : 'linux';
-      const fallback = {
+      // TEMP DEBUG: glaring magenta fallback so it's unmistakable when the native
+      // read DIDN'T run (toolbar magenta = fallback; gray = native worked).
+      // Revert to the calibrated grays below once verified.
+      const DEBUG_FALLBACK = true;
+      const realFallback = {
         mac:   { bg: '#ececec', border: '#c9c9c9' },
         win:   { bg: '#f3f3f3', border: '#e1e1e1' },
         linux: { bg: '#f6f5f4', border: '#d8d4d0' },
       }[plat]!;
+      const fallback = DEBUG_FALLBACK ? { bg: '#ff00ff', border: '#cc00cc' } : realFallback;
       const root = document.documentElement.style;
       const darken = (hex: string, amt: number): string => {
         const m = /^#([0-9a-f]{6})$/i.exec(hex);
