@@ -220,3 +220,29 @@ describe('text element rotation (#8 angled callouts)', () => {
     }
   });
 });
+
+describe('textShadowCss / textBoxShadowCss (box vs text shadow)', () => {
+  it('no background + shadow → text-shadow on the text, no box-shadow', async () => {
+    const { textShadowCss, textBoxShadowCss } = await import('./presentation');
+    const el = { textEffect: 'shadow' as const };
+    expect(textShadowCss(el, '#000')).toBe('0 2px 4px rgba(0,0,0,0.45)');
+    expect(textBoxShadowCss(el)).toBeUndefined();
+  });
+  it('background + shadow → box-shadow on the box, NO text-shadow', async () => {
+    const { textShadowCss, textBoxShadowCss } = await import('./presentation');
+    const el = { textEffect: 'shadow' as const, backgroundColor: '#fde047' };
+    expect(textShadowCss(el, '#000')).toBeUndefined();
+    expect(textBoxShadowCss(el)).toBe('0 4px 14px rgba(0,0,0,0.28)');
+  });
+  it('glow is always a text effect, never a box-shadow (even with a background)', async () => {
+    const { textShadowCss, textBoxShadowCss } = await import('./presentation');
+    const el = { textEffect: 'glow' as const, backgroundColor: '#fde047' };
+    expect(textShadowCss(el, '#111')).toContain('#ffffff');
+    expect(textBoxShadowCss(el)).toBeUndefined();
+  });
+  it('no effect → neither', async () => {
+    const { textShadowCss, textBoxShadowCss } = await import('./presentation');
+    expect(textShadowCss({}, '#000')).toBeUndefined();
+    expect(textBoxShadowCss({})).toBeUndefined();
+  });
+});

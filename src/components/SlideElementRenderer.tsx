@@ -11,7 +11,7 @@ import { useImageSrc } from '../lib/imageSrc';
 import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 
-import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textEffectCss } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import { buildTextElementSvgMarkup } from './TextElementSvg';
 import { TextFormatToolbar } from './TextFormatToolbar';
@@ -73,7 +73,7 @@ export function SlideElementRenderer({
           position={element.position} zIndex={zIndex} scale={scale}
           className={`el-text el-preset-${element.preset}`}
           isSelected={isSelected}
-          boxStyle={{ backgroundColor: textBackgroundCss(element) }}
+          boxStyle={{ backgroundColor: textBackgroundCss(element), boxShadow: textBoxShadowCss(element) }}
           rotation={element.rotation}
           linkId={element.linkId} syncId={element.syncId}
           _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
@@ -542,7 +542,7 @@ function TextContent({
     padding: '8px 12px',
     outline: 'none',
     overflow: 'hidden',
-    textShadow: textEffectCss(element.textEffect, color),
+    textShadow: textShadowCss(element, color),
     cursor: editing ? 'text' : 'inherit',
   };
 

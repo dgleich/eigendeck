@@ -14,7 +14,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { TextElement, Slide, PresentationConfig } from '../types/presentation';
-import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textEffectCss } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import {
@@ -85,7 +85,7 @@ export function buildTextElementSvgMarkup(
   renderedHtml: string,
   ctx: { fontFamily: string; fontSize: number; fontWeight: string; fontStyle: string; color: string; valign?: string },
 ): string {
-  const textShadow = textEffectCss(element.textEffect, ctx.color);
+  const textShadow = textShadowCss(element, ctx.color);
   const w = element.position.width;
   const h = element.position.height;
   // Alt text comes from the SOURCE element.html (with $..$), not the
@@ -168,6 +168,7 @@ export function TextElementSvg({
         position: 'absolute', left: element.position.x, top: element.position.y,
         width: element.position.width, height: element.position.height,
         backgroundColor: textBackgroundCss(element),
+        boxShadow: textBoxShadowCss(element),
         ...(element.rotation ? { transform: `rotate(${element.rotation}deg)` } : {}),
         ...(zIndex !== undefined ? { zIndex } : {}),
         ...styleOverride,

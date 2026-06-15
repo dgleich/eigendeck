@@ -54,6 +54,18 @@ function textEffectCss(el, color) {
   return '';
 }
 
+// Text-shadow for the TEXT — suppressed when there's a background + 'shadow'
+// (the box-shadow handles it instead). Mirrors textShadowCss().
+function textShadowCss(el, color) {
+  if (el && el.textEffect === 'shadow' && el.backgroundColor) return '';
+  return textEffectCss(el, color);
+}
+
+// Box-shadow for the text BOX panel (background + 'shadow'). Mirrors textBoxShadowCss().
+function textBoxShadowCss(el) {
+  return el && el.textEffect === 'shadow' && el.backgroundColor ? '0 4px 14px rgba(0,0,0,0.28)' : '';
+}
+
 /**
  * HTML-escape a string for use in a srcdoc attribute.
  */
@@ -237,8 +249,9 @@ export async function buildExportHtml(opts) {
           if (renderTextElement) {
             const svgMarkup = await renderTextElement(el, slide);
             const bg = textBgCss(el);
+            const sh = textBoxShadowCss(el);
             const rot = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
-            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;${bg ? `background:${bg};` : ''}${rot}">` +
+            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;${bg ? `background:${bg};` : ''}${sh ? `box-shadow:${sh};` : ''}${rot}">` +
               svgMarkup + `</div>`;
             break;
           }
@@ -260,9 +273,10 @@ export async function buildExportHtml(opts) {
           const resolvedFont = resolveFont ? resolveFont(el.preset, slide) : ps.fontFamily;
           const fontFamily = el.fontFamily || resolvedFont;
           const bgLegacy = textBgCss(el);
-          const fxLegacy = textEffectCss(el, el.color || ps.color);
+          const fxLegacy = textShadowCss(el, el.color || ps.color);
+          const shLegacy = textBoxShadowCss(el);
           const rotLegacy = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
-          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}${rotLegacy}">` +
+          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}${shLegacy ? `box-shadow:${shLegacy};` : ''}${rotLegacy}">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
             `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${textHtml}</div>` +
             `</div></div>`;

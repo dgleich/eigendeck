@@ -235,6 +235,22 @@ export function textEffectCss(effect: 'shadow' | 'glow' | undefined, color: stri
   return undefined;
 }
 
+/** Shadow/glow to apply to the TEXT itself. Same as textEffectCss, EXCEPT: when
+ *  the element has a background AND the effect is 'shadow', the shadow belongs on
+ *  the BOX (see textBoxShadowCss) — a solid panel casts a drop shadow like a
+ *  card; a text-shadow on top of it is pointless — so we suppress it here. */
+export function textShadowCss(el: { textEffect?: 'shadow' | 'glow'; backgroundColor?: string }, color: string): string | undefined {
+  if (el.textEffect === 'shadow' && el.backgroundColor) return undefined;
+  return textEffectCss(el.textEffect, color);
+}
+
+/** CSS `box-shadow` for a text element's BOX: a drop shadow on the background
+ *  panel when the 'shadow' effect is on AND a background is set. Undefined
+ *  otherwise (no panel to shadow). */
+export function textBoxShadowCss(el: { textEffect?: 'shadow' | 'glow'; backgroundColor?: string }): string | undefined {
+  return el.textEffect === 'shadow' && el.backgroundColor ? '0 4px 14px rgba(0,0,0,0.28)' : undefined;
+}
+
 /**
  * Parse a pasted color palette (#2) into a normalized list of #rrggbb hex
  * strings. Accepts colors separated by commas / whitespace / newlines /
