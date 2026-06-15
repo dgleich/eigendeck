@@ -43,7 +43,7 @@ import { flushToSqlite } from './store/presentation';
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
-import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss } from './types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textEffectCss } from './types/presentation';
 import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
 import { getMissingAssets } from './lib/missingAssets';
 
@@ -102,9 +102,10 @@ export function renderSlideForPrint(
       // spans them), so this benefits the common whole-paragraph copy case.
       const _effSize1 = effectiveFontSize(el, cfg);
       const _bg1 = textBackgroundCss(el);
+      const _fx1 = textEffectCss(el.textEffect, color);
       inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${_bg1 ? `background:${_bg1};` : ''}">` +
         `<div style="width:100%;height:100%;${valignStyle}">` +
-        `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${_effSize1}px;color:${color};line-height:1.3;padding:8px 12px;">${markAsEigendeck(el.html || '')}</div>` +
+        `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${_effSize1}px;color:${color};line-height:1.3;padding:8px 12px;${_fx1 ? `text-shadow:${_fx1};` : ''}">${markAsEigendeck(el.html || '')}</div>` +
         `</div></div>`;
     } else if (el.type === 'image') {
       const src = imageCache.get(el.assetId);
@@ -331,9 +332,10 @@ async function printToPdf() {
           const color = el.color || themeColorForPreset(theme, el.preset);
           const fontSize = effectiveFontSize(el, presentation.config);
           const presetFontFamily = fontFamilyForPreset(fontForPreset(el.preset, slide, presentation.config), el.preset);
+          const _fx2 = textEffectCss(el.textEffect, color);
           inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};overflow:hidden;">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:1.3;padding:${px2in(8)} ${px2in(12)};">${markAsEigendeck(el.html || '')}</div>` +
+            `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:1.3;padding:${px2in(8)} ${px2in(12)};${_fx2 ? `text-shadow:${_fx2};` : ''}">${markAsEigendeck(el.html || '')}</div>` +
             `</div></div>`;
         } else if (el.type === 'image') {
           const src = imageCache.get(el.assetId);

@@ -14,7 +14,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { TextElement, Slide, PresentationConfig } from '../types/presentation';
-import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textEffectCss } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import {
@@ -85,6 +85,7 @@ export function buildTextElementSvgMarkup(
   renderedHtml: string,
   ctx: { fontFamily: string; fontSize: number; fontWeight: string; fontStyle: string; color: string; valign?: string },
 ): string {
+  const textShadow = textEffectCss(element.textEffect, ctx.color);
   const w = element.position.width;
   const h = element.position.height;
   // Alt text comes from the SOURCE element.html (with $..$), not the
@@ -98,7 +99,7 @@ export function buildTextElementSvgMarkup(
       `<title>${escText(alt)}</title>` +
       `<foreignObject x="0" y="0" width="${w}" height="${h}" overflow="visible">` +
         `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(ctx.valign)};overflow:visible;box-sizing:border-box;">` +
-          `<div style="width:100%;font-family:${ctx.fontFamily};font-size:${ctx.fontSize}px;font-weight:${ctx.fontWeight};font-style:${ctx.fontStyle};color:${ctx.color};line-height:1.3;padding:8px 12px;">` +
+          `<div style="width:100%;font-family:${ctx.fontFamily};font-size:${ctx.fontSize}px;font-weight:${ctx.fontWeight};font-style:${ctx.fontStyle};color:${ctx.color};line-height:1.3;padding:8px 12px;${textShadow ? `text-shadow:${textShadow};` : ''}">` +
             (renderedHtml || '') +
           `</div>` +
         `</div>` +

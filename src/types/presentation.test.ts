@@ -185,3 +185,23 @@ describe('parsePalette (#2 custom palette)', () => {
     expect(parsePalette('')).toEqual([]);
   });
 });
+
+describe('textEffectCss (#73 text shadow/glow)', () => {
+  it('returns undefined for no effect', async () => {
+    const { textEffectCss } = await import('./presentation');
+    expect(textEffectCss(undefined, '#000000')).toBeUndefined();
+  });
+  it('shadow is a fixed drop shadow', async () => {
+    const { textEffectCss } = await import('./presentation');
+    expect(textEffectCss('shadow', '#123456')).toBe('0 2px 4px rgba(0,0,0,0.45)');
+  });
+  it('glow halo is white for dark text, black for light text', async () => {
+    const { textEffectCss } = await import('./presentation');
+    expect(textEffectCss('glow', '#111111')).toContain('#ffffff');
+    expect(textEffectCss('glow', '#eeeeee')).toContain('#000000');
+  });
+  it('glow falls back to white halo for non-hex colors', async () => {
+    const { textEffectCss } = await import('./presentation');
+    expect(textEffectCss('glow', 'rebeccapurple')).toContain('#ffffff');
+  });
+});

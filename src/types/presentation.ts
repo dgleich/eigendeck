@@ -187,6 +187,10 @@ export interface TextElement extends BaseElement {
   /** Opacity of backgroundColor, 0–1 (default 1). Lets text sit on a
    *  translucent panel without fading the text itself. */
   backgroundOpacity?: number;
+  /** Optional text decoration for legibility over busy backgrounds (#73):
+   *  'shadow' = a soft drop shadow; 'glow' = a high-contrast halo (color is
+   *  auto-chosen opposite the text luminance). Unset = none. */
+  textEffect?: 'shadow' | 'glow';
 }
 
 /** Effective CSS background for a text element (colour + opacity → rgba), or
@@ -202,6 +206,29 @@ export function textBackgroundCss(el: { backgroundColor?: string; backgroundOpac
     return `rgba(${r}, ${g}, ${b}, ${a})`;
   }
   return el.backgroundColor; // non-hex colour: opacity not applied
+}
+
+/** Pick a halo color (white or black) that contrasts with `color`, for the
+ *  glow effect. Non-hex / unparseable colors default to a white halo. */
+function haloFor(color: string): string {
+  const hex = (color || '').replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return '#ffffff';
+  const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+  // Rec. 601 luma; dark text → light halo, light text → dark halo.
+  const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+  return luma < 140 ? '#ffffff' : '#000000';
+}
+
+/** CSS `text-shadow` value for a text element's effect (#73), or undefined for
+ *  none. `color` is the resolved text color (drives the glow halo). Shared by
+ *  every render path so editor / present / export stay identical. */
+export function textEffectCss(effect: 'shadow' | 'glow' | undefined, color: string): string | undefined {
+  if (effect === 'shadow') return '0 2px 4px rgba(0,0,0,0.45)';
+  if (effect === 'glow') {
+    const h = haloFor(color);
+    return `0 0 3px ${h}, 0 0 6px ${h}, 0 0 10px ${h}`;
+  }
+  return undefined;
 }
 
 /**

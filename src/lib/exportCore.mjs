@@ -36,6 +36,24 @@ function textBgCss(el) {
   return el.backgroundColor;
 }
 
+// Text legibility effect (#73): drop shadow or high-contrast glow. Self-
+// contained mirror of textEffectCss() in types/presentation.ts (this .mjs is
+// shared with the offline export tool and can't import the TS module).
+function textEffectCss(el, color) {
+  const fx = el && el.textEffect;
+  if (fx === 'shadow') return '0 2px 4px rgba(0,0,0,0.45)';
+  if (fx === 'glow') {
+    const hex = (color || '').replace('#', '');
+    let halo = '#ffffff';
+    if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+      const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+      halo = (0.299 * r + 0.587 * g + 0.114 * b) < 140 ? '#ffffff' : '#000000';
+    }
+    return `0 0 3px ${halo}, 0 0 6px ${halo}, 0 0 10px ${halo}`;
+  }
+  return '';
+}
+
 /**
  * HTML-escape a string for use in a srcdoc attribute.
  */
@@ -241,9 +259,10 @@ export async function buildExportHtml(opts) {
           const resolvedFont = resolveFont ? resolveFont(el.preset, slide) : ps.fontFamily;
           const fontFamily = el.fontFamily || resolvedFont;
           const bgLegacy = textBgCss(el);
+          const fxLegacy = textEffectCss(el, el.color || ps.color);
           inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;">${textHtml}</div>` +
+            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${textHtml}</div>` +
             `</div></div>`;
           break;
         }

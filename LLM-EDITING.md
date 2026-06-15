@@ -148,6 +148,7 @@ All elements share these base fields:
 - `verticalAlign`: `"top"` | `"middle"` | `"bottom"` — vertical text alignment within the box. Title and footnote default to `"bottom"`.
 - `backgroundColor`: string (CSS color) — fill behind the text box (e.g., a caption panel over a busy background). Absent = transparent.
 - `backgroundOpacity`: number 0–1 (default 1) — opacity applied to `backgroundColor` (combined into rgba at render, so the text itself isn't faded).
+- `textEffect`: `"shadow"` | `"glow"` — legibility decoration over busy backgrounds. `"shadow"` = soft drop shadow; `"glow"` = high-contrast halo (white or black, auto-chosen opposite the text color's luminance). Absent = none. Rendered as `text-shadow` across editor/present/export.
 
 **HTML content**: The `html` field supports basic HTML:
 - `<b>bold</b>`, `<i>italic</i>`, `<s>strikethrough</s>`

@@ -444,6 +444,23 @@ export function PropertiesPanel() {
                     )}
                   </div>
                 </PropSection>
+                <PropSection label="Effect">
+                  {/* #73 — legibility over busy backgrounds: drop shadow or a
+                      high-contrast glow (halo auto-chosen vs the text color). */}
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {([['none', 'None'], ['shadow', 'Shadow'], ['glow', 'Glow']] as const).map(([val, label]) => {
+                      const active = (selectedEl.textEffect ?? 'none') === val;
+                      return (
+                        <button key={val} className="prop-zbtn"
+                          style={{ fontSize: 11, width: 'auto', padding: '3px 10px',
+                            background: active ? '#3b82f6' : undefined, color: active ? '#fff' : undefined }}
+                          onClick={() => updateElement(selectedEl.id, { textEffect: val === 'none' ? undefined : val } as any)}>
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </PropSection>
               </>
             )}
 
