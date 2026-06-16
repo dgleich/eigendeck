@@ -189,3 +189,16 @@ most cases. Variation is mostly in **trigger** and **target**:
 2. **Permissions UX** — fork E above.
 3. **First three plugins to ship** — pick from the catalog. Probably CC image (proves network + image insertion) + blur (proves transform) + one diagram generator (SMILES or Mermaid — proves svg-output + persisted state for re-edit).
 4. **Whether persisted state needs schema support** — `pluginState: { pluginId, version, input }` on ImageElement might be enough, or we need a separate `plugins` table for cross-element state.
+
+## TODO: Mermaid diagram plugin (catalog #15)
+
+Build a plugin that renders [Mermaid](https://mermaid.js.org/) source (flowcharts,
+sequence/state/class diagrams, gantt, etc.) into an editable slide element.
+
+- **Kind:** `insert` (toolbar button "+ Diagram") + `transform`-style re-edit (Cmd+E on the element re-opens the editor pre-filled).
+- **Output:** SVG → routed through the existing `source_id` + asset cache / raster pipeline like every other svg-output plugin.
+- **State:** persist the Mermaid source as `pluginState: { pluginId: 'mermaid', version, input: { src } }` so re-opening restores the editor and re-renders deterministically.
+- **Rendering:** `mermaid.render()` runs entirely client-side (no network) — good first proof of the svg-output + persisted-state path, no permissions needed. Run it in the sandboxed plugin iframe and `postMessage` the SVG back.
+- **Editor UX:** split pane — Mermaid source on the left, live SVG preview on the right; "Insert"/"Apply" returns `{kind:'svg', svg, state:{src}}`.
+- **Theming:** consider passing the deck palette / fonts into Mermaid's theme config so diagrams match the deck (PT Sans, custom colors).
+- This is a strong candidate for the "first three plugins to ship" diagram-generator slot (see Open question #3) — pure client-side, exercises svg-output + re-editable persisted state without the network/permissions complexity.
