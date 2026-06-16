@@ -51,6 +51,12 @@ export interface PrefSchema {
    *  paragraphs that explain what a toggle does). On by default; experienced
    *  users can turn it off for a denser inspector. */
   showHelpText: boolean;
+  /** Insert-action ids hidden from the editor toolbar (see
+   *  src/lib/insertItems.ts for the id list). A *hidden* list, not a
+   *  visible one, so element types added in future releases show up on
+   *  the toolbar by default. The native "Insert" menu ignores this — it
+   *  always lists every action. Default [] (everything on the toolbar). */
+  hiddenToolbarItems: string[];
 }
 
 export interface JupyterServerEntry {
@@ -79,6 +85,7 @@ const DEFAULTS: PrefSchema = {
   jupyterServers: [],
   defaultNotebookEditable: false,
   showHelpText: true,
+  hiddenToolbarItems: [],
 };
 
 const KEY_PREFIX = 'eigendeck:pref:';

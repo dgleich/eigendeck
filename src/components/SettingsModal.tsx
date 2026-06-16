@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { usePreference, type JupyterServerEntry } from '../lib/preferences';
 import { DEFAULT_TEXT_SIZES, type NamedSize } from '../types/presentation';
+import { INSERT_ITEMS, INSERT_GROUP_ORDER, type InsertGroup } from '../lib/insertItems';
 
 type Tab = 'general' | 'servers';
 
@@ -67,6 +68,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <AutoReloadAssetsSetting />
               <ShowHelpTextSetting />
+              <ToolbarButtonsSetting />
               <DefaultNotebookEditableSetting />
               <DefaultTextSizesSetting />
               <MathPreambleSetting />
@@ -394,6 +396,53 @@ function DefaultNotebookEditableSetting() {
           </div>
         </div>
       </label>
+    </div>
+  );
+}
+
+const TOOLBAR_GROUP_LABELS: Record<InsertGroup, string> = {
+  text: 'Text',
+  objects: 'Objects',
+  embeds: 'Embeds',
+};
+
+function ToolbarButtonsSetting() {
+  const [hidden, setHidden] = usePreference('hiddenToolbarItems');
+  const setShown = (id: string, show: boolean) => {
+    if (show) setHidden(hidden.filter((h) => h !== id));
+    else if (!hidden.includes(id)) setHidden([...hidden, id]);
+  };
+  return (
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Toolbar buttons</div>
+      <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>
+        Choose which "+ Insert" buttons appear on the editor toolbar. Unchecked
+        items are still available from the <strong>Insert</strong> menu — this
+        only declutters the toolbar.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {INSERT_GROUP_ORDER.map((group) => (
+          <div key={group}>
+            <div style={{
+              fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5,
+              color: '#9ca3af', marginBottom: 4,
+            }}>{TOOLBAR_GROUP_LABELS[group]}</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 18px' }}>
+              {INSERT_ITEMS.filter((it) => it.group === group).map((it) => (
+                <label key={it.id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', minWidth: 100 }}
+                  title={it.tooltip}>
+                  <input
+                    type="checkbox"
+                    checked={!hidden.includes(it.id)}
+                    onChange={(e) => setShown(it.id, e.target.checked)} />
+                  {it.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -29,6 +29,8 @@ import { PromoteChooser } from './components/PromoteChooser';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
 import type { SlideElement } from './types/presentation';
+import { usePreference } from './lib/preferences';
+import { INSERT_ITEMS, INSERT_GROUP_ORDER } from './lib/insertItems';
 import {
   saveProject,
   saveAsProject,
@@ -560,6 +562,168 @@ function App() {
   const [multiMonitorPresenting, setMultiMonitorPresenting] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
+  // Which "+ Insert" buttons are hidden from the editor toolbar. The
+  // Insert menu (native) always lists everything; this only declutters
+  // the toolbar. See src/lib/insertItems.ts + Settings → Toolbar buttons.
+  const [hiddenToolbarItems] = usePreference('hiddenToolbarItems');
+
+  // ---- Insert actions -----------------------------------------------------
+  // Single dispatch for both the toolbar buttons and the native Insert menu.
+  // Each reads fresh store state via getState() so it's safe to call from the
+  // menu-event listener (which captures the first-render closure).
+
+  const addImageFromPicker = async () => {
+    const store = usePresentationStore.getState();
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const selected = await open({ title: 'Select Image', filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'pdf'] }] });
+    if (!selected) return;
+    const fullPath = selected as string;
+    const relativePath = relPath(store.projectPath, fullPath);
+    const ext = fullPath.split('.').pop()?.toLowerCase() || 'png';
+    const mime = ext === 'svg' ? 'image/svg+xml'
+      : ext === 'pdf' ? 'application/pdf'
+      : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    let bytes: Uint8Array | null = null;
+    let assetId: string | null = null;
+    try {
+      const { readFile } = await import('@tauri-apps/plugin-fs');
+      bytes = await readFile(fullPath);
+      // Picker insertion: track the source link so the file
+      // watcher picks up edits to the original file on disk.
+      // Routed through collision check; user may cancel.
+      const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
+      const r = await storeAssetWithCollisionCheck({
+        path: relativePath, data: bytes, mimeType: mime,
+        externalPath: relativePath, externalMtime: null,
+      });
+      if (r.cancelled) return;
+      assetId = r.assetId;
+    } catch (err) { console.error('Failed to store image:', err); return; }
+    if (!assetId) return;
+    const { detectAssetKind } = await import('./lib/assetCache');
+    const kind = detectAssetKind(relativePath, mime);
+    store.addElement({
+      id: crypto.randomUUID(), type: 'image',
+      assetId,
+      kind,
+      position: { x: 360, y: 200, width: 1200, height: 680 },
+    });
+    if (kind === 'svg' && bytes) {
+      const { handleSvgExternalRefs, invalidateRenderedAsset } = await import('./lib/assetRenderer');
+      const updated = await handleSvgExternalRefs(bytes, relativePath, fullPath);
+      if (updated) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        // Embed snapshot clears the source link (no more watching).
+        // Same assetId — embed is a new version of the same asset.
+        await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });
+        await invalidateRenderedAsset(assetId);
+      }
+    }
+  };
+
+  const addDemoFromPicker = async () => {
+    const store = usePresentationStore.getState();
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const selected = await open({ title: 'Select Demo', filters: [{ name: 'HTML', extensions: ['html'] }] });
+    if (!selected) return;
+    const fullPath = selected as string;
+    const relativePath = relPath(store.projectPath, fullPath);
+    // Store demo HTML as SQLite asset
+    try {
+      const { readFile, readTextFile } = await import('@tauri-apps/plugin-fs');
+      const bytes = await readFile(fullPath);
+      // Demo HTML — pass externalPath so the file watcher subscribes
+      // and the inspector's Watch toggle is meaningful.
+      const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
+      const r = await storeAssetWithCollisionCheck({
+        path: relativePath, data: bytes, mimeType: 'text/html',
+        externalPath: relativePath, externalMtime: null,
+      });
+      if (r.cancelled) return;
+      const assetId = r.assetId;
+
+      // Check if this is a demo-piece demo
+      const html = await readTextFile(fullPath);
+      const pieceMatches = html.matchAll(/piece\s*===?\s*['"](\w+)['"]/g);
+      const pieces = [...new Set([...pieceMatches].map(m => m[1]))];
+
+      if (pieces.length > 0 && html.includes('BroadcastChannel')) {
+        let x = 80;
+        for (const piece of pieces) {
+          const width = Math.floor((1760 - (pieces.length - 1) * 40) / pieces.length);
+          store.addElement({
+            id: crypto.randomUUID(), type: 'demo-piece' as any,
+            piece, assetId,
+            position: { x, y: 200, width, height: 700 },
+          });
+          x += width + 40;
+        }
+      } else {
+        store.addElement({ id: crypto.randomUUID(), type: 'demo', assetId, position: { x: 80, y: 200, width: 1760, height: 700 } });
+      }
+    } catch (err) {
+      console.error('Failed to add demo:', err);
+    }
+  };
+
+  const addNotebookFromPicker = async () => {
+    const store = usePresentationStore.getState();
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const selected = await open({ title: 'Select Notebook', filters: [{ name: 'Notebook', extensions: ['ipynb'] }] });
+    if (!selected) return;
+    const fullPath = selected as string;
+    const relativePath = relPath(store.projectPath, fullPath);
+    try {
+      const { readFile } = await import('@tauri-apps/plugin-fs');
+      const bytes = await readFile(fullPath);
+      // Track the source link so the file watcher reloads when the
+      // user re-saves the notebook from JupyterLab.
+      const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
+      const r = await storeAssetWithCollisionCheck({
+        path: relativePath, data: bytes,
+        mimeType: 'application/x-ipynb+json',
+        externalPath: relativePath, externalMtime: null,
+      });
+      if (r.cancelled) return;
+      store.addElement({
+        id: crypto.randomUUID(), type: 'notebook',
+        assetId: r.assetId,
+        position: { x: 80, y: 200, width: 1760, height: 700 },
+      });
+    } catch (err) {
+      console.error('Failed to add notebook:', err);
+    }
+  };
+
+  const runInsert = (id: string) => {
+    const store = usePresentationStore.getState();
+    switch (id) {
+      case 'title': store.addElement(createTextElement('title')); break;
+      case 'body': store.addElement(createTextElement('body')); break;
+      case 'textbox': store.addElement(createTextElement('textbox')); break;
+      case 'note': store.addElement(createTextElement('annotation')); break;
+      case 'footnote': store.addElement(createTextElement('footnote')); break;
+      case 'hype': store.addElement(createTextElement('hype')); break;
+      case 'arrow':
+        store.addElement({ id: crypto.randomUUID(), type: 'arrow', x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: '#2563eb', strokeWidth: 4, headSize: 16 });
+        break;
+      case 'cover': {
+        const sel = store.selectedObject;
+        const slide = store.presentation.slides[store.currentSlideIndex];
+        let pos = { x: 200, y: 300, width: 600, height: 400 };
+        if (sel?.type === 'element') {
+          const el = slide.elements.find((e) => e.id === sel.id);
+          if (el) pos = { ...el.position };
+        }
+        store.addElement({ id: crypto.randomUUID(), type: 'cover' as any, position: pos });
+        break;
+      }
+      case 'image': void addImageFromPicker(); break;
+      case 'demo': void addDemoFromPicker(); break;
+      case 'notebook': void addNotebookFromPicker(); break;
+      case 'video': setVideoUrl(''); setVideoModalOpen(true); break;
+    }
+  };
 
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
@@ -1037,6 +1201,12 @@ function App() {
   // Native menu events
   useEffect(() => {
     const unlisten = listen<string>('menu-event', (event) => {
+      // Native "Insert" menu items (always available, ignore toolbar
+      // visibility) — route through the shared insert dispatcher.
+      if (event.payload.startsWith('insert-')) {
+        runInsert(event.payload.slice('insert-'.length));
+        return;
+      }
       switch (event.payload) {
         case 'new-project': createProject(); break;
         case 'open-project': openProject(); break;
@@ -1183,153 +1353,20 @@ function App() {
         <div className="sidebar-resize-handle" onPointerDown={handleResizeStart} />
         <div className="editor-area">
           <div className="editor-actions">
-            <div className="tb-group">
-            <button title="Add title text" onClick={() => store.addElement(createTextElement('title'))}>+ Title</button>
-            <button title="Add body text" onClick={() => store.addElement(createTextElement('body'))}>+ Body</button>
-            <button title="Add text box" onClick={() => store.addElement(createTextElement('textbox'))}>+ Text</button>
-            <button title="Add annotation (small, blue, italic)" onClick={() => store.addElement(createTextElement('annotation'))}>+ Note</button>
-            <button title="Add footnote (small, grey, narrow)" onClick={() => store.addElement(createTextElement('footnote'))}>+ Footnote</button>
-            </div>
-            <div className="tb-group">
-            <button title="Add arrow" onClick={() => store.addElement({ id: crypto.randomUUID(), type: 'arrow', x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: '#2563eb', strokeWidth: 4, headSize: 16 })}>+ Arrow</button>
-            <button title="Add cover-up rectangle (white)" onClick={() => {
-              const sel = store.selectedObject;
-              const slide = store.presentation.slides[store.currentSlideIndex];
-              let pos = { x: 200, y: 300, width: 600, height: 400 };
-              if (sel?.type === 'element') {
-                const el = slide.elements.find((e) => e.id === sel.id);
-                if (el) pos = { ...el.position };
-              }
-              store.addElement({ id: crypto.randomUUID(), type: 'cover' as any, position: pos });
-            }}>+ Cover</button>
-            <button title="Add image / vector / PDF from file" onClick={async () => {
-              const { open } = await import('@tauri-apps/plugin-dialog');
-              const selected = await open({ title: 'Select Image', filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'pdf'] }] });
-              if (!selected) return;
-              const fullPath = selected as string;
-              const relativePath = relPath(store.projectPath, fullPath);
-              const ext = fullPath.split('.').pop()?.toLowerCase() || 'png';
-              const mime = ext === 'svg' ? 'image/svg+xml'
-                : ext === 'pdf' ? 'application/pdf'
-                : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-              let bytes: Uint8Array | null = null;
-              let assetId: string | null = null;
-              try {
-                const { readFile } = await import('@tauri-apps/plugin-fs');
-                bytes = await readFile(fullPath);
-                // Picker insertion: track the source link so the file
-                // watcher picks up edits to the original file on disk.
-                // Routed through collision check; user may cancel.
-                const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
-                const r = await storeAssetWithCollisionCheck({
-                  path: relativePath, data: bytes, mimeType: mime,
-                  externalPath: relativePath, externalMtime: null,
-                });
-                if (r.cancelled) return;
-                assetId = r.assetId;
-              } catch (err) { console.error('Failed to store image:', err); return; }
-              if (!assetId) return;
-              const { detectAssetKind } = await import('./lib/assetCache');
-              const kind = detectAssetKind(relativePath, mime);
-              store.addElement({
-                id: crypto.randomUUID(), type: 'image',
-                assetId,
-                kind,
-                position: { x: 360, y: 200, width: 1200, height: 680 },
-              });
-              if (kind === 'svg' && bytes) {
-                const { handleSvgExternalRefs, invalidateRenderedAsset } = await import('./lib/assetRenderer');
-                const updated = await handleSvgExternalRefs(bytes, relativePath, fullPath);
-                if (updated) {
-                  const { invoke } = await import('@tauri-apps/api/core');
-                  // Embed snapshot clears the source link (no more watching).
-                  // Same assetId — embed is a new version of the same asset.
-                  await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });
-                  await invalidateRenderedAsset(assetId);
-                }
-              }
-            }}>+ Image</button>
-            <button title="Add a Hype sticky note (yellow, Shantell)" onClick={() => store.addElement(createTextElement('hype'))}>+ Hype</button>
-            </div>
-            <div className="tb-group">
-            <button title="Add demo HTML" onClick={async () => {
-              const { open } = await import('@tauri-apps/plugin-dialog');
-              const selected = await open({ title: 'Select Demo', filters: [{ name: 'HTML', extensions: ['html'] }] });
-              if (!selected) return;
-              const fullPath = selected as string;
-              const relativePath = relPath(store.projectPath, fullPath);
-
-              // Store demo HTML as SQLite asset
-              try {
-                const { readFile, readTextFile } = await import('@tauri-apps/plugin-fs');
-                const bytes = await readFile(fullPath);
-                // Demo HTML — pass externalPath so the file watcher
-                // subscribes and the inspector's Watch toggle is
-                // meaningful. Same pattern as image file-picker
-                // insertion. externalMtime stays null at insertion;
-                // scan-on-load records it without re-rendering
-                // (watcher does a hash check before invalidating).
-                const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
-                const r = await storeAssetWithCollisionCheck({
-                  path: relativePath, data: bytes, mimeType: 'text/html',
-                  externalPath: relativePath, externalMtime: null,
-                });
-                if (r.cancelled) return;
-                const assetId = r.assetId;
-
-                // Check if this is a demo-piece demo
-                const html = await readTextFile(fullPath);
-                const pieceMatches = html.matchAll(/piece\s*===?\s*['"](\w+)['"]/g);
-                const pieces = [...new Set([...pieceMatches].map(m => m[1]))];
-
-                if (pieces.length > 0 && html.includes('BroadcastChannel')) {
-                  let x = 80;
-                  for (const piece of pieces) {
-                    const width = Math.floor((1760 - (pieces.length - 1) * 40) / pieces.length);
-                    store.addElement({
-                      id: crypto.randomUUID(), type: 'demo-piece' as any,
-                      piece, assetId,
-                      position: { x, y: 200, width, height: 700 },
-                    });
-                    x += width + 40;
-                  }
-                } else {
-                  store.addElement({ id: crypto.randomUUID(), type: 'demo', assetId, position: { x: 80, y: 200, width: 1760, height: 700 } });
-                }
-              } catch (err) {
-                console.error('Failed to add demo:', err);
-              }
-            }}>+ Demo</button>
-            <button title="Add Jupyter notebook" onClick={async () => {
-              const { open } = await import('@tauri-apps/plugin-dialog');
-              const selected = await open({ title: 'Select Notebook', filters: [{ name: 'Notebook', extensions: ['ipynb'] }] });
-              if (!selected) return;
-              const fullPath = selected as string;
-              const relativePath = relPath(store.projectPath, fullPath);
-              try {
-                const { readFile } = await import('@tauri-apps/plugin-fs');
-                const bytes = await readFile(fullPath);
-                // Track the source link so the file watcher reloads
-                // when the user re-saves the notebook from JupyterLab.
-                const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
-                const r = await storeAssetWithCollisionCheck({
-                  path: relativePath, data: bytes,
-                  mimeType: 'application/x-ipynb+json',
-                  externalPath: relativePath, externalMtime: null,
-                });
-                if (r.cancelled) return;
-                store.addElement({
-                  id: crypto.randomUUID(), type: 'notebook',
-                  assetId: r.assetId,
-                  position: { x: 80, y: 200, width: 1760, height: 700 },
-                });
-              } catch (err) {
-                console.error('Failed to add notebook:', err);
-              }
-            }}>+ Notebook</button>
-            <button title="Add a movie — file or URL (YouTube/Vimeo/PeerTube)"
-              onClick={() => { setVideoUrl(''); setVideoModalOpen(true); }}>+ Video</button>
-            </div>
+            {INSERT_GROUP_ORDER.map((group) => {
+              const items = INSERT_ITEMS.filter(
+                (it) => it.group === group && !hiddenToolbarItems.includes(it.id));
+              if (items.length === 0) return null;
+              return (
+                <div className="tb-group" key={group}>
+                  {items.map((it) => (
+                    <button key={it.id} title={it.tooltip} onClick={() => runInsert(it.id)}>
+                      + {it.label}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
           </div>
           <SlideEditor />
           <NotesPanel />

@@ -487,6 +487,28 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .select_all()
         .build().map_err(|e| e.to_string())?;
 
+    // Insert menu — every insertable element type, ALWAYS available
+    // regardless of which buttons the user hid from the editor toolbar
+    // (Settings → Toolbar buttons). Ids mirror src/lib/insertItems.ts,
+    // prefixed `insert-`; the JS `menu-event` handler routes them through
+    // `runInsert`. Items that open a file dialog get an ellipsis.
+    let insert_menu = SubmenuBuilder::new(app, "Insert")
+        .item(&MenuItemBuilder::new("Title").id("insert-title").build(app).map_err(|e| e.to_string())?)
+        .item(&MenuItemBuilder::new("Body").id("insert-body").build(app).map_err(|e| e.to_string())?)
+        .item(&MenuItemBuilder::new("Text Box").id("insert-textbox").build(app).map_err(|e| e.to_string())?)
+        .item(&MenuItemBuilder::new("Note").id("insert-note").build(app).map_err(|e| e.to_string())?)
+        .item(&MenuItemBuilder::new("Footnote").id("insert-footnote").build(app).map_err(|e| e.to_string())?)
+        .separator()
+        .item(&MenuItemBuilder::new("Arrow").id("insert-arrow").build(app).map_err(|e| e.to_string())?)
+        .item(&MenuItemBuilder::new("Cover Rectangle").id("insert-cover").build(app).map_err(|e| e.to_string())?)
+        .item(&MenuItemBuilder::new("Image…").id("insert-image").build(app).map_err(|e| e.to_string())?)
+        .item(&MenuItemBuilder::new("Hype Note").id("insert-hype").build(app).map_err(|e| e.to_string())?)
+        .separator()
+        .item(&MenuItemBuilder::new("Demo (HTML)…").id("insert-demo").build(app).map_err(|e| e.to_string())?)
+        .item(&MenuItemBuilder::new("Notebook…").id("insert-notebook").build(app).map_err(|e| e.to_string())?)
+        .item(&MenuItemBuilder::new("Video…").id("insert-video").build(app).map_err(|e| e.to_string())?)
+        .build().map_err(|e| e.to_string())?;
+
     let present_item = MenuItemBuilder::new("Present Mode").id("present").accelerator("F5")
         .build(app).map_err(|e| e.to_string())?;
     let speaker_item = MenuItemBuilder::new("Toggle Speaker Notes").id("speaker").accelerator("CmdOrCtrl+Shift+S")
@@ -552,6 +574,7 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .item(&app_menu)
         .item(&file_menu)
         .item(&edit_menu)
+        .item(&insert_menu)
         .item(&view_menu)
         .item(&slide_menu)
         .item(&window_menu);
