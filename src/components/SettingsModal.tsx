@@ -13,7 +13,7 @@ import { usePreference, type JupyterServerEntry } from '../lib/preferences';
 import { DEFAULT_TEXT_SIZES, type NamedSize } from '../types/presentation';
 import { INSERT_ITEMS, INSERT_GROUP_ORDER, type InsertGroup } from '../lib/insertItems';
 
-type Tab = 'general' | 'servers';
+type Tab = 'general' | 'toolbar' | 'servers';
 
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [tab, setTab] = useState<Tab>('general');
@@ -61,6 +61,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           padding: '0 18px',
         }}>
           <TabButton active={tab === 'general'} onClick={() => setTab('general')}>General</TabButton>
+          <TabButton active={tab === 'toolbar'} onClick={() => setTab('toolbar')}>Toolbar</TabButton>
           <TabButton active={tab === 'servers'} onClick={() => setTab('servers')}>Jupyter servers</TabButton>
         </div>
         <div style={{ padding: '14px 18px', overflowY: 'auto', flex: '1 1 auto' }}>
@@ -68,12 +69,12 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <AutoReloadAssetsSetting />
               <ShowHelpTextSetting />
-              <ToolbarButtonsSetting />
               <DefaultNotebookEditableSetting />
               <DefaultTextSizesSetting />
               <MathPreambleSetting />
             </div>
           )}
+          {tab === 'toolbar' && <ToolbarButtonsSetting />}
           {tab === 'servers' && <JupyterServersSetting />}
         </div>
       </div>
