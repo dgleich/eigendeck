@@ -41,7 +41,10 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
         style={{
           background: '#fff', borderRadius: 8,
           width: 640, maxWidth: '90vw',
-          maxHeight: '85vh',
+          // Fixed height so switching tabs never resizes the modal — the
+          // body scrolls instead of the dialog jumping. Capped to the
+          // viewport on short screens.
+          height: 560, maxHeight: '85vh',
           boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
           display: 'flex', flexDirection: 'column',
         }}>
@@ -64,7 +67,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           <TabButton active={tab === 'toolbar'} onClick={() => setTab('toolbar')}>Toolbar</TabButton>
           <TabButton active={tab === 'servers'} onClick={() => setTab('servers')}>Jupyter servers</TabButton>
         </div>
-        <div style={{ padding: '14px 18px', overflowY: 'auto', flex: '1 1 auto' }}>
+        <div style={{ padding: '14px 18px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
           {tab === 'general' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <AutoReloadAssetsSetting />

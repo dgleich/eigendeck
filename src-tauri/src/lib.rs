@@ -575,8 +575,8 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .item(&file_menu)
         .item(&edit_menu)
         .item(&insert_menu)
-        .item(&view_menu)
         .item(&slide_menu)
+        .item(&view_menu)
         .item(&window_menu);
     if let Some(ref dm) = debug_menu {
         bar = bar.item(dm);
