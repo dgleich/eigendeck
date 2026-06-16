@@ -21,6 +21,12 @@ const TEXT_BG_COLORS = [
   '#fff3b0', '#dbeafe', '#fee2e2', '#dcfce7',
 ];
 
+const TEXT_COLORS = [
+  '#1a1a1a', '#6b7280', '#9ca3af', '#ffffff',
+  '#dc2626', '#ea580c', '#16a34a', '#0d9488',
+  '#2563eb', '#9333ea',
+];
+
 export function PropertiesPanel() {
   const {
     presentation, currentSlideIndex, selectedObject, inspectorTab, setInspectorTab,
@@ -419,6 +425,29 @@ export function PropertiesPanel() {
                     })}
                   </div>
                 </PropSection>
+                <PropSection label="Text Color">
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 6px',
+                      background: !selectedEl.color ? '#3b82f6' : undefined, color: !selectedEl.color ? '#fff' : undefined }}
+                      title="Use the theme's default text color"
+                      onClick={() => updateElement(selectedEl.id, { color: undefined } as any)}>Auto</button>
+                    {/* Deck palette first (ringed), then the built-in text colors. */}
+                    {(presentation.config.customPalette ?? []).map((c) => (
+                      <button key={`cp-${c}`} className={`prop-color-swatch ${selectedEl.color === c ? 'active' : ''}`}
+                        style={{ background: c, boxShadow: '0 0 0 1px #94a3b8 inset' }} title={`Deck palette ${c}`}
+                        onClick={() => updateElement(selectedEl.id, { color: c } as any)} />
+                    ))}
+                    {TEXT_COLORS.map((c) => (
+                      <button key={c} className={`prop-color-swatch ${selectedEl.color === c ? 'active' : ''}`}
+                        style={{ background: c, border: c === '#ffffff' ? '1px solid #ccc' : undefined }}
+                        onClick={() => updateElement(selectedEl.id, { color: c } as any)} />
+                    ))}
+                    <input type="color" title="Custom colour"
+                      value={selectedEl.color && /^#[0-9a-fA-F]{6}$/.test(selectedEl.color) ? selectedEl.color : '#000000'}
+                      onChange={(e) => updateElement(selectedEl.id, { color: e.target.value } as any)}
+                      style={{ width: 24, height: 24, padding: 0, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }} />
+                  </div>
+                </PropSection>
                 <PropSection label="Background">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -441,7 +470,7 @@ export function PropertiesPanel() {
                           <input type="range" min={0} max={1} step={0.05} value={selectedEl.backgroundOpacity ?? 1}
                             onPointerDown={pauseUndo} onPointerUp={resumeUndo}
                             onChange={(e) => updateElement(selectedEl.id, { backgroundOpacity: parseFloat(e.target.value) } as any)}
-                            style={{ flex: 1 }} />
+                            style={{ width: 84 }} />
                           <input type="number" min={0} max={100} step={1}
                             value={Math.round((selectedEl.backgroundOpacity ?? 1) * 100)}
                             onChange={(e) => {
