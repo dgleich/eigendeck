@@ -27,6 +27,22 @@ const TEXT_COLORS = [
   '#2563eb', '#9333ea',
 ];
 
+/** Strip per-run inline text colors (the format toolbar's foreColor produces
+ *  `<span style="color:…">` / `<font color>`) so the element-level Text Color
+ *  governs the whole element uniformly. DOM-based so it handles nested markup. */
+function stripInlineTextColors(html: string): string {
+  if (typeof document === 'undefined' || !html) return html;
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  div.querySelectorAll('*').forEach((node) => {
+    const el = node as HTMLElement;
+    el.style?.removeProperty('color');
+    el.removeAttribute('color');                 // legacy <font color="…">
+    if (el.getAttribute('style') === '') el.removeAttribute('style');
+  });
+  return div.innerHTML;
+}
+
 export function PropertiesPanel() {
   const {
     presentation, currentSlideIndex, selectedObject, inspectorTab, setInspectorTab,
@@ -446,6 +462,11 @@ export function PropertiesPanel() {
                       value={selectedEl.color && /^#[0-9a-fA-F]{6}$/.test(selectedEl.color) ? selectedEl.color : '#000000'}
                       onChange={(e) => updateElement(selectedEl.id, { color: e.target.value } as any)}
                       style={{ width: 24, height: 24, padding: 0, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }} />
+                    <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
+                      title="Remove per-word inline colors set with the format toolbar, so the whole element uses the Text Color above"
+                      onClick={() => updateElement(selectedEl.id, { html: stripInlineTextColors(selectedEl.html) } as any)}>
+                      Clear inline
+                    </button>
                   </div>
                 </PropSection>
                 <PropSection label="Background">
@@ -464,23 +485,23 @@ export function PropertiesPanel() {
                         style={{ width: 24, height: 24, padding: 0, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }} />
                     </div>
                     {selectedEl.backgroundColor && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                        <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          Opacity
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 12, color: '#374151' }}>Opacity</span>
                           <input type="range" min={0} max={1} step={0.05} value={selectedEl.backgroundOpacity ?? 1}
                             onPointerDown={pauseUndo} onPointerUp={resumeUndo}
                             onChange={(e) => updateElement(selectedEl.id, { backgroundOpacity: parseFloat(e.target.value) } as any)}
-                            style={{ width: 84 }} />
-                          <input type="number" min={0} max={100} step={1}
+                            style={{ flex: 1, minWidth: 0, accentColor: '#2563eb' }} />
+                          <input className="prop-num" type="number" min={0} max={100} step={1}
+                            style={{ width: 32 }}
                             value={Math.round((selectedEl.backgroundOpacity ?? 1) * 100)}
                             onChange={(e) => {
                               const v = parseInt(e.target.value, 10);
                               if (Number.isFinite(v)) updateElement(selectedEl.id, { backgroundOpacity: Math.max(0, Math.min(100, v)) / 100 } as any);
-                            }}
-                            style={{ width: 44, fontSize: 12, padding: '2px 4px' }} />
-                          <span style={{ fontSize: 11, color: '#999' }}>%</span>
-                        </label>
-                        <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            }} />
+                          <span style={{ fontSize: 11, color: '#9ca3af' }}>%</span>
+                        </div>
+                        <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 7 }}>
                           <input type="checkbox" checked={!!selectedEl.boxShadow}
                             onChange={(e) => updateElement(selectedEl.id, { boxShadow: e.target.checked || undefined } as any)} />
                           Box shadow
@@ -962,7 +983,8 @@ function FontSizeRow({ element, updateElement, config }: {
           }
         }}
         onBlur={() => setDraft(String(effective))}  // snap a half-typed/invalid draft back
-        style={{ width: 44, padding: '3px 4px', fontSize: 12, marginLeft: 4 }}
+        className="prop-num"
+        style={{ width: 44, marginLeft: 4 }}
         title="Custom size in pixels — overrides the named choice"
       />
       <span style={{ fontSize: 10, color: '#9ca3af', marginLeft: -2 }}>px</span>

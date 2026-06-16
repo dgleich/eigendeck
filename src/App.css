@@ -1961,6 +1961,38 @@ body.window-inactive .welcome-root {
   background: #fff;
   color: #1a1a1a;
   text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.prop-input-sm::-webkit-inner-spin-button,
+.prop-input-sm::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Compact, spinner-free number input for inspector value fields. */
+.prop-num {
+  width: 38px;
+  padding: 2px 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 11px;
+  text-align: right;
+  color: #1a1a1a;
+  background: #fff;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.prop-num::-webkit-inner-spin-button,
+.prop-num::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+/* Full-width slider used in the inspector. */
+.prop-range {
+  width: 100%;
+  accent-color: #2563eb;
+  margin: 2px 0 0;
 }
 
 .prop-grid {
