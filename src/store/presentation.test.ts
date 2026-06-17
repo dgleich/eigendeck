@@ -764,3 +764,39 @@ describe('undo/redo follows the change to its slide', () => {
     expect(idx()).toBe(0); // current slide changed → no jump
   });
 });
+
+describe('alignment grid view flags', () => {
+  beforeEach(() => {
+    usePresentationStore.setState({ snapToGrid: false, showGrid: false });
+  });
+
+  it('defaults both grid flags off', () => {
+    const s = usePresentationStore.getState();
+    expect(s.snapToGrid).toBe(false);
+    expect(s.showGrid).toBe(false);
+  });
+
+  it('toggleSnapToGrid flips snapToGrid only', () => {
+    usePresentationStore.getState().toggleSnapToGrid();
+    expect(usePresentationStore.getState().snapToGrid).toBe(true);
+    expect(usePresentationStore.getState().showGrid).toBe(false);
+    usePresentationStore.getState().toggleSnapToGrid();
+    expect(usePresentationStore.getState().snapToGrid).toBe(false);
+  });
+
+  it('toggleShowGrid flips showGrid only', () => {
+    usePresentationStore.getState().toggleShowGrid();
+    expect(usePresentationStore.getState().showGrid).toBe(true);
+    expect(usePresentationStore.getState().snapToGrid).toBe(false);
+    usePresentationStore.getState().toggleShowGrid();
+    expect(usePresentationStore.getState().showGrid).toBe(false);
+  });
+
+  it('grid flags are not undoable (toggling does not create an undo step)', () => {
+    const before = usePresentationStore.temporal.getState().pastStates.length;
+    usePresentationStore.getState().toggleSnapToGrid();
+    usePresentationStore.getState().toggleShowGrid();
+    const after = usePresentationStore.temporal.getState().pastStates.length;
+    expect(after).toBe(before);
+  });
+});

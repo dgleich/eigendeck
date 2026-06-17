@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { getPreference } from '../lib/preferences';
+import { snapToGrid } from '../lib/grid';
 import { useDemoUrl } from '../lib/demoAssets';
 import { capturePreview } from '../lib/previewCache';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
@@ -813,9 +814,7 @@ function TextContent({
 // `bypass` (⌘ held during the drag) skips snapping for free placement.
 function snapCoord(v: number, bypass: boolean): number {
   if (bypass || !usePresentationStore.getState().snapToGrid) return v;
-  const g = getPreference('gridSpacing');
-  if (!g || g < 2) return v;
-  return Math.round(v / g) * g;
+  return snapToGrid(v, getPreference('gridSpacing'));
 }
 
 export function DraggableBox({

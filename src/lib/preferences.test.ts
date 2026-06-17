@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { effectiveAutoReload } from './preferences';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { effectiveAutoReload, getPreference, setPreference } from './preferences';
 
 // Cascade is downward-only: any layer can refuse, no layer overrides
 // a refusal above. Per-asset and per-presentation can opt OUT but not
@@ -99,5 +99,18 @@ describe('effectiveAutoReload', () => {
     it('empty string is not "off"', () => {
       expect(effectiveAutoReload('', null, true)).toBe(true);
     });
+  });
+});
+
+describe('gridSpacing preference', () => {
+  beforeEach(() => { localStorage.clear(); });
+
+  it('defaults to 40px when unset', () => {
+    expect(getPreference('gridSpacing')).toBe(40);
+  });
+
+  it('round-trips a custom spacing', () => {
+    setPreference('gridSpacing', 80);
+    expect(getPreference('gridSpacing')).toBe(80);
   });
 });

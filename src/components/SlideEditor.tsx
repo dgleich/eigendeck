@@ -656,7 +656,7 @@ export function SlideEditor() {
               behind elements (zIndex 1), non-interactive. Dots sit at each
               grid intersection from the top-left origin. */}
           {showGrid && gridSpacing >= 2 && (
-            <div style={{
+            <div data-grid-overlay style={{
               position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
               backgroundImage: 'radial-gradient(circle, rgba(100,116,139,0.5) 2px, transparent 2px)',
               backgroundSize: `${gridSpacing}px ${gridSpacing}px`,
