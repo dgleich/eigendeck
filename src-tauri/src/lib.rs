@@ -1,7 +1,7 @@
 
 pub mod storage;
 
-use tauri::menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+use tauri::menu::{AboutMetadata, CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager};
 
 mod debug;
@@ -524,12 +524,22 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build(app).map_err(|e| e.to_string())?;
     let devtools_item = MenuItemBuilder::new("Developer Tools").id("devtools").accelerator("CmdOrCtrl+Alt+I")
         .build(app).map_err(|e| e.to_string())?;
+    // Alignment grid (editor-only). Check items — muda toggles the checkmark
+    // on click; the catch-all menu-event handler relays the id to JS, which
+    // flips the matching store flag. Both default unchecked = store default.
+    let snap_grid_item = CheckMenuItemBuilder::new("Snap to Grid").id("toggle-snap-grid")
+        .build(app).map_err(|e| e.to_string())?;
+    let show_grid_item = CheckMenuItemBuilder::new("Show Grid Points").id("toggle-show-grid")
+        .build(app).map_err(|e| e.to_string())?;
 
     let view_menu = SubmenuBuilder::new(app, "View")
         .item(&present_item)
         .item(&speaker_item)
         .item(&inspector_item)
         .item(&history_item)
+        .separator()
+        .item(&snap_grid_item)
+        .item(&show_grid_item)
         .separator()
         .item(&decorations_item)
         .separator()

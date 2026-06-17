@@ -51,6 +51,10 @@ export interface PrefSchema {
    *  paragraphs that explain what a toggle does). On by default; experienced
    *  users can turn it off for a denser inspector. */
   showHelpText: boolean;
+  /** Spacing (in slide-space px) of the editor alignment grid. The single
+   *  global knob for snap-to-grid; whether snapping/the overlay are ON is
+   *  per-session UI state (View menu), not persisted. Default 40. */
+  gridSpacing: number;
   /** Insert-action ids hidden from the editor toolbar (see
    *  src/lib/insertItems.ts for the id list). A *hidden* list, not a
    *  visible one, so element types added in future releases show up on
@@ -85,6 +89,7 @@ const DEFAULTS: PrefSchema = {
   jupyterServers: [],
   defaultNotebookEditable: false,
   showHelpText: true,
+  gridSpacing: 40,
   hiddenToolbarItems: [],
 };
 

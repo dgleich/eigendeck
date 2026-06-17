@@ -1219,6 +1219,8 @@ function App() {
         case 'present': startPresenting(); break;
         case 'inspector': usePresentationStore.getState().toggleProperties(); break;
         case 'history': usePresentationStore.getState().toggleHistory(); break;
+        case 'toggle-snap-grid': usePresentationStore.getState().toggleSnapToGrid(); break;
+        case 'toggle-show-grid': usePresentationStore.getState().toggleShowGrid(); break;
         case 'toggle-decorations': (async () => {
           try {
             const { getCurrentWindow } = await import('@tauri-apps/api/window');

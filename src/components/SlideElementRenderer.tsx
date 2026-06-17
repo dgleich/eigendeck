@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
+import { getPreference } from '../lib/preferences';
 import { useDemoUrl } from '../lib/demoAssets';
 import { capturePreview } from '../lib/previewCache';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
@@ -808,6 +809,15 @@ function TextContent({
 // ============================================
 // Draggable + resizable box
 // ============================================
+// Snap a slide-space coordinate to the alignment grid when snap-to-grid is on.
+// `bypass` (⌘ held during the drag) skips snapping for free placement.
+function snapCoord(v: number, bypass: boolean): number {
+  if (bypass || !usePresentationStore.getState().snapToGrid) return v;
+  const g = getPreference('gridSpacing');
+  if (!g || g < 2) return v;
+  return Math.round(v / g) * g;
+}
+
 export function DraggableBox({
   elementId, position: pos, zIndex, scale, className, children, isSelected,
   linkId, syncId, _linkId, _syncId, dataValign, onEdit, boxStyle, rotation,
@@ -906,7 +916,7 @@ export function DraggableBox({
             if (dx > dy) newY = dragStart.current.posY;
             else newX = dragStart.current.posX;
           }
-          onPositionChange({ ...pos, x: newX, y: newY });
+          onPositionChange({ ...pos, x: snapCoord(newX, me.metaKey), y: snapCoord(newY, me.metaKey) });
         };
         const handleUp = () => {
           blocker?.remove();
@@ -930,10 +940,12 @@ export function DraggableBox({
       blocker.style.cssText = 'position:fixed;inset:0;z-index:99999;cursor:nwse-resize;';
       document.body.appendChild(blocker);
       const handleMove = (me: PointerEvent) => {
+        const rawW = Math.round(resizeStart.current.w + (me.clientX - resizeStart.current.x) / scale);
+        const rawH = Math.round(resizeStart.current.h + (me.clientY - resizeStart.current.y) / scale);
         onPositionChange({
           ...pos,
-          width: Math.max(50, Math.round(resizeStart.current.w + (me.clientX - resizeStart.current.x) / scale)),
-          height: Math.max(30, Math.round(resizeStart.current.h + (me.clientY - resizeStart.current.y) / scale)),
+          width: Math.max(50, snapCoord(rawW, me.metaKey)),
+          height: Math.max(30, snapCoord(rawH, me.metaKey)),
         });
       };
       const handleUp = () => {

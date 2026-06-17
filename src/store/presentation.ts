@@ -33,6 +33,11 @@ interface PresentationState {
   showProperties: boolean;
   inspectorTab: InspectorTab;
   showHistory: boolean;
+  // Editor-only alignment grid. Session state (default off, toggled from the
+  // View menu); the grid SPACING is a persisted app preference (gridSpacing).
+  // Never affects present/export.
+  snapToGrid: boolean;
+  showGrid: boolean;
 
   // Presentation actions
   setPresentation: (p: Presentation) => void;
@@ -89,6 +94,8 @@ interface PresentationState {
   toggleProperties: () => void;
   setInspectorTab: (tab: InspectorTab) => void;
   toggleHistory: () => void;
+  toggleSnapToGrid: () => void;
+  toggleShowGrid: () => void;
 }
 
 function updateCurrentSlide(
@@ -185,6 +192,8 @@ export const usePresentationStore = create<PresentationState>()(
       showProperties: false,
       inspectorTab: 'slide',
       showHistory: false,
+      snapToGrid: false,
+      showGrid: false,
 
       setPresentation: (presentation) => {
         set({ presentation, currentSlideIndex: 0, isDirty: false, selectedObject: { type: 'slide' } });
@@ -796,6 +805,10 @@ export const usePresentationStore = create<PresentationState>()(
         set((state) => ({ showProperties: !state.showProperties })),
       toggleHistory: () =>
         set((state) => ({ showHistory: !state.showHistory })),
+      toggleSnapToGrid: () =>
+        set((state) => ({ snapToGrid: !state.snapToGrid })),
+      toggleShowGrid: () =>
+        set((state) => ({ showGrid: !state.showGrid })),
     }),
     {
       partialize: (state) => ({

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { usePresentationStore } from '../store/presentation';
+import { usePreference } from '../lib/preferences';
 import { relPath } from '../App';
 import { useDemoUrl } from '../lib/demoAssets';
 import { SlideElementRenderer } from './SlideElementRenderer';
@@ -20,7 +21,9 @@ export function SlideEditor() {
     presentation, currentSlideIndex,
     addElement, updateElement, deleteElement,
     selectObject, toggleSelectElement, selectedObject, projectPath,
+    showGrid,
   } = usePresentationStore();
+  const [gridSpacing] = usePreference('gridSpacing');
 
   const slide = presentation.slides[currentSlideIndex];
   const containerRef = useRef<HTMLDivElement>(null);
@@ -649,6 +652,17 @@ export function SlideEditor() {
           onPointerDown={handleCanvasPointerDown}
           onContextMenu={handleCanvasContextMenu}
         >
+          {/* Alignment grid dots — editor-only (never in present/export),
+              behind elements (zIndex 1), non-interactive. Dots sit at each
+              grid intersection from the top-left origin. */}
+          {showGrid && gridSpacing >= 2 && (
+            <div style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
+              backgroundImage: 'radial-gradient(circle, rgba(100,116,139,0.5) 2px, transparent 2px)',
+              backgroundSize: `${gridSpacing}px ${gridSpacing}px`,
+              backgroundPosition: '0 0',
+            }} />
+          )}
           {slide.elements.map((el, idx) => {
             const isSelected = selectedObject?.type === 'element' && selectedObject.id === el.id
               || selectedObject?.type === 'multi' && selectedObject.ids.includes(el.id);

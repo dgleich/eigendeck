@@ -72,6 +72,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <AutoReloadAssetsSetting />
               <ShowHelpTextSetting />
+              <GridSpacingSetting />
               <DefaultNotebookEditableSetting />
               <DefaultTextSizesSetting />
               <MathPreambleSetting />
@@ -446,6 +447,34 @@ function ToolbarButtonsSetting() {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function GridSpacingSetting() {
+  const [value, setValue] = usePreference('gridSpacing');
+  return (
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Alignment grid spacing (px)</div>
+      <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>
+        Spacing of the editor alignment grid, in slide pixels (the slide is 1920×1080).
+        Turn the grid on per-session from <strong>View → Show Grid Points</strong> and
+        <strong> View → Snap to Grid</strong>; hold ⌘ while dragging to bypass snapping.
+        Editor-only — never shown when presenting or exporting.
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <input
+          type="number"
+          min={4} max={480} step={1}
+          value={value}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            if (Number.isFinite(v) && v >= 4 && v <= 480) setValue(v);
+          }}
+          style={{ width: 64, padding: '3px 6px', fontSize: 12 }}
+        />
+        <span style={{ fontSize: 11, color: '#9ca3af' }}>px</span>
       </div>
     </div>
   );
