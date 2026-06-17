@@ -11,6 +11,8 @@
     "core:window:allow-current-monitor",
     "core:window:allow-set-fullscreen",
     "core:window:allow-set-simple-fullscreen",
+    "core:window:allow-is-decorated",
+    "core:window:allow-set-decorations",
     "core:window:allow-close",
     "core:webview:default",
     "core:webview:allow-create-webview-window",

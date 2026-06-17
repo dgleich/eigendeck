@@ -1220,10 +1220,18 @@ function App() {
         case 'inspector': usePresentationStore.getState().toggleProperties(); break;
         case 'history': usePresentationStore.getState().toggleHistory(); break;
         case 'toggle-decorations': (async () => {
-          const { getCurrentWindow } = await import('@tauri-apps/api/window');
-          const win = getCurrentWindow();
-          const current = await win.isDecorated();
-          await win.setDecorations(!current);
+          try {
+            const { getCurrentWindow } = await import('@tauri-apps/api/window');
+            const win = getCurrentWindow();
+            const current = await win.isDecorated();
+            await win.setDecorations(!current);
+          } catch (e) {
+            // Was failing silently when the window capability wasn't granted
+            // (needs core:window:allow-set-decorations). Surface it now.
+            console.error('Toggle window chrome failed:', e);
+            const { showToast } = await import('./lib/toasts');
+            showToast({ message: `Couldn't toggle window chrome: ${e}`, kind: 'error' });
+          }
         })(); break;
         case 'debug-console': window.dispatchEvent(new CustomEvent('toggle-debug-console')); break;
         case 'settings':
