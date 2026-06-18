@@ -28,6 +28,9 @@ to people building presentations.
   YouTube/Vimeo/PeerTube embeds, the playback options (loop, ping-pong,
   speed, autoplay, controls, muted, captions), and how thumbnails/export
   work.
+- [Cut, copy, and paste](clipboard.md) — what paste does on the canvas vs.
+  in a text box, pasting images/SVG/PDF, and pasting a spreadsheet/HTML
+  selection as a deck-font picture (with the Google Sheets gridline caveat).
 
 (More topics are added as design decisions get nailed down.)
 
