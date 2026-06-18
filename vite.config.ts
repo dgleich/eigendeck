@@ -9,6 +9,12 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
   plugins: [react()],
 
+  // Relative asset paths so the packaged Tauri app resolves bundled assets
+  // against the loaded HTML (absolute "/assets/..." can blank-screen in the
+  // packaged webview). From PR #71 (tunnellm). The other half of that PR —
+  // moving UNDO_DEBOUNCE_MS above the store init — is already in main.
+  base: './',
+
   build: {
     rollupOptions: {
       input: {
