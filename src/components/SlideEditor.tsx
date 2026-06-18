@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { usePreference } from '../lib/preferences';
-import { htmlTableToSvg, looksLikeTableHtml } from '../lib/tableToSvg';
+import { captureHtmlToPng, looksLikeRichHtml } from '../lib/htmlPasteCapture';
 import { relPath } from '../App';
 import { useDemoUrl } from '../lib/demoAssets';
 import { SlideElementRenderer } from './SlideElementRenderer';
@@ -183,31 +183,29 @@ export function SlideEditor() {
       // Google Sheets (and other HTML-only tables): no image on the clipboard,
       // but a <table> in text/html. Render it to a self-contained SVG and
       // insert through the same path as an Excel/Pages SVG paste.
-      if ((!picked || !pickedFormat) && looksLikeTableHtml(htmlEarly)) {
-        const { resolveFontPackage, bareFamilyName, embeddedFontFaceCSSForId } = await import('../lib/fonts');
+      // General rich-HTML paste: render it in the deck font and screenshot to a
+      // PNG, then insert as an image. Handles tables, lists, formatted blocks,
+      // etc. — the browser does the layout (far more robust than parsing one
+      // app's markup). Static snapshot, so thumbnails/present/export work for free.
+      if ((!picked || !pickedFormat) && looksLikeRichHtml(htmlEarly)) {
+        const { resolveFontPackage, bareFamilyName } = await import('../lib/fonts');
         const cfg = usePresentationStore.getState().presentation.config;
-        const pkg = resolveFontPackage(cfg?.defaultBodyFont);
-        const t = htmlTableToSvg(htmlEarly, { fallbackFamily: bareFamilyName(pkg) });
-        if (t) {
+        const family = bareFamilyName(resolveFontPackage(cfg?.defaultBodyFont));
+        const cap = await captureHtmlToPng(htmlEarly, { fontFamily: `'${family}', sans-serif`, scale: 4 });
+        if (cap) {
           e.preventDefault();
-          // Embed the deck body font (only the faces used) so the table renders
-          // in the deck font when the source (Sheets) font isn't a system font.
-          // An <img>-rendered SVG can't reach the page's @font-face fonts.
-          const { css } = await embeddedFontFaceCSSForId(pkg.id, { bold: t.usesBold, italic: t.usesItalic });
-          const svg = css ? t.svg.replace(/(<svg\b[^>]*>)/, `$1<defs><style>${css}</style></defs>`) : t.svg;
-          // Scale the native table up for slide readability, capped to the slide.
-          const SCALE = 3.5;
-          let w = t.width * SCALE, h = t.height * SCALE;
+          // Slide-space box at ~3x the CSS render (capture is 4x → crisp), capped.
+          const SCALE = 3;
+          let w = cap.width * SCALE, h = cap.height * SCALE;
           const k = Math.min(1, 1600 / w, 900 / h);
           w = Math.round(w * k); h = Math.round(h * k);
           const pos = {
             x: Math.round((SLIDE_WIDTH - w) / 2), y: Math.round((SLIDE_HEIGHT - h) / 2),
             width: w, height: h,
           };
-          const fileName = `pasted-table-${Date.now()}.svg`;
-          const bytes = new TextEncoder().encode(svg);
-          plog(`pasted HTML table → svg ${t.cols}x${t.rows} font=${bareFamilyName(pkg)} bold=${t.usesBold} italic=${t.usesItalic}`);
-          await insertPastedAsset(`images/${fileName}`, bytes, 'image/svg+xml', fileName, pos);
+          const fileName = `pasted-html-${Date.now()}.png`;
+          plog(`pasted HTML → png ${cap.width}x${cap.height} font=${family}`);
+          await insertPastedAsset(`images/${fileName}`, cap.bytes, 'image/png', fileName, pos);
           return;
         }
       }
