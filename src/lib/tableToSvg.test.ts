@@ -50,3 +50,27 @@ describe('htmlTableToSvg — Google Sheets', () => {
     expect(htmlTableToSvg('<div>no table here</div>')).toBeNull();
   });
 });
+
+describe('htmlTableToSvg — cell styling', () => {
+  const STYLED = `<table><colgroup><col width="120"/><col width="120"/></colgroup><tbody>` +
+    `<tr style="height:30px;">` +
+    `<td style="font-weight:700;background-color:rgb(255,235,59);color:rgb(33,33,33);text-align:center;vertical-align:middle;">Header</td>` +
+    `<td style="font-style:italic;color:rgb(220,38,38);">italic red</td>` +
+    `</tr></tbody></table>`;
+  const r = htmlTableToSvg(STYLED)!;
+
+  it('picks up bold + italic', () => {
+    expect(r.svg).toMatch(/font-weight="bold"[^>]*>Header<\/text>/);
+    expect(r.svg).toMatch(/font-style="italic"[^>]*>italic red<\/text>/);
+  });
+  it('fills the cell background', () => {
+    expect(r.svg).toMatch(/<rect[^>]*fill="rgb\(255, 235, 59\)"/);
+  });
+  it('applies per-cell text color', () => {
+    expect(r.svg).toMatch(/fill="rgb\(33, 33, 33\)"[^>]*>Header<\/text>/);
+    expect(r.svg).toMatch(/fill="rgb\(220, 38, 38\)"[^>]*>italic red<\/text>/);
+  });
+  it('center-aligns when text-align:center', () => {
+    expect(r.svg).toMatch(/text-anchor="middle"[^>]*>Header<\/text>/);
+  });
+});

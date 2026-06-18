@@ -7,8 +7,13 @@
 // in WebKit (tainted canvas), which would break sidebar thumbnails and PDF
 // export. Native SVG rasterizes cleanly and scales crisply.
 //
-// Scope: a flat grid of cells. colspan/rowspan are treated as 1x1 for now
-// (Sheets emits simple grids for a range copy); merged cells can come later.
+// Styling picked up per cell from inline `style`: font-weight (bold),
+// font-style (italic), color, background-color, text-align, vertical-align,
+// font-size; plus the table-level font-family / font-size as defaults. Cell
+// borders use Sheets' default grey (the source carries them in a <style> rule
+// that isn't reachable on an unrendered DOM).
+//
+// Scope: a flat grid of cells. colspan/rowspan are treated as 1x1 for now.
 
 export interface TableSvg {
   svg: string;
@@ -20,18 +25,16 @@ export interface TableSvg {
 }
 
 interface Opts {
-  /** Default column width (px) when <col width> is absent. */
   defaultColWidth?: number;
-  /** Default row height (px) when the row has no explicit height. */
   defaultRowHeight?: number;
-  /** Cell text padding (px). */
   pad?: number;
-  /** Font size (px). Sheets default is 10pt ≈ 13px. */
+  /** Fallback font size (px) when neither cell nor table specify one. */
   fontSize?: number;
-  /** Font family baked into the SVG text. */
+  /** Fallback font family when the table doesn't specify one. */
   fontFamily?: string;
-  /** Grid line color. */
   borderColor?: string;
+  /** Default text color when a cell has no explicit color. */
+  textColor?: string;
 }
 
 const DEFAULTS: Required<Opts> = {
@@ -41,6 +44,7 @@ const DEFAULTS: Required<Opts> = {
   fontSize: 13,
   fontFamily: "'PT Sans', Arial, sans-serif",
   borderColor: '#cccccc',
+  textColor: '#1a1a1a',
 };
 
 function esc(s: string): string {
@@ -54,10 +58,29 @@ function pxFromStyle(style: string | null, prop: string): number | null {
   return m ? parseFloat(m[1]) : null;
 }
 
-function alignFromStyle(style: string | null): 'left' | 'right' | 'center' {
-  if (!style) return 'left';
-  const m = /text-align\s*:\s*(left|right|center)/i.exec(style);
-  return (m ? m[1] : 'left') as 'left' | 'right' | 'center';
+/** Parse a CSS length ("10pt" | "13px" | "1.2em") to px (pt→px at 96/72). */
+function fontSizePx(v: string | undefined, emBase: number): number | null {
+  if (!v) return null;
+  let m = /([0-9.]+)pt/i.exec(v); if (m) return parseFloat(m[1]) * (96 / 72);
+  m = /([0-9.]+)px/i.exec(v); if (m) return parseFloat(m[1]);
+  m = /([0-9.]+)em/i.exec(v); if (m) return parseFloat(m[1]) * emBase;
+  return null;
+}
+
+function isBold(weight: string | undefined): boolean {
+  if (!weight) return false;
+  if (weight === 'bold' || weight === 'bolder') return true;
+  const n = parseInt(weight, 10);
+  return Number.isFinite(n) && n >= 600;
+}
+
+/** A visible background = set, not transparent, not white. */
+function visibleBg(bg: string | undefined): string | null {
+  if (!bg) return null;
+  const v = bg.trim().toLowerCase();
+  if (!v || v === 'transparent' || v === 'rgba(0, 0, 0, 0)') return null;
+  if (v === '#fff' || v === '#ffffff' || v === 'white' || v === 'rgb(255, 255, 255)') return null;
+  return bg;
 }
 
 /**
@@ -68,14 +91,15 @@ export function htmlTableToSvg(html: string, opts: Opts = {}): TableSvg | null {
   const o = { ...DEFAULTS, ...opts };
   if (typeof DOMParser === 'undefined') return null;
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const table = doc.querySelector('table');
+  const table = doc.querySelector('table') as HTMLTableElement | null;
   if (!table) return null;
 
   const rowEls = Array.from(table.querySelectorAll('tr'));
   if (rowEls.length === 0) return null;
 
-  // Column widths from <colgroup><col width>, else default. Grid is sized to
-  // the widest row's cell count.
+  const tableFontFamily = table.style.fontFamily || o.fontFamily;
+  const tableFontSize = fontSizePx(table.style.fontSize, o.fontSize) ?? o.fontSize;
+
   const colEls = Array.from(table.querySelectorAll('colgroup > col'));
   const cellCount = Math.max(...rowEls.map((tr) => tr.querySelectorAll('td,th').length));
   if (cellCount === 0) return null;
@@ -94,28 +118,40 @@ export function htmlTableToSvg(html: string, opts: Opts = {}): TableSvg | null {
   let y = 0;
   for (const tr of rowEls) {
     const rowH = pxFromStyle(tr.getAttribute('style'), 'height') || o.defaultRowHeight;
-    const cells = Array.from(tr.querySelectorAll('td,th'));
+    const cells = Array.from(tr.querySelectorAll('td,th')) as HTMLTableCellElement[];
     for (let c = 0; c < cellCount; c++) {
       const x = colX[c];
       const w = colWidths[c];
+      const td = cells[c];
+      const st = td?.style;
+      const bg = st ? visibleBg(st.backgroundColor) : null;
       rects.push(
-        `<rect x="${x}" y="${y}" width="${w}" height="${rowH}" fill="none" ` +
+        `<rect x="${x}" y="${y}" width="${w}" height="${rowH}" fill="${bg || 'none'}" ` +
         `stroke="${o.borderColor}" stroke-width="1" shape-rendering="crispEdges"/>`,
       );
-      const td = cells[c];
       const text = td ? (td.textContent || '').trim() : '';
-      if (text) {
-        const isHeader = td!.tagName.toLowerCase() === 'th';
-        const align = alignFromStyle(td!.getAttribute('style'));
-        let tx = x + o.pad;
-        let anchor = 'start';
-        if (align === 'right') { tx = x + w - o.pad; anchor = 'end'; }
+      if (text && st) {
+        const align = (st.textAlign || (td.tagName.toLowerCase() === 'th' ? 'center' : 'left')) as string;
+        const valign = st.verticalAlign || 'bottom';
+        const size = fontSizePx(st.fontSize, tableFontSize) ?? tableFontSize;
+        const family = st.fontFamily || tableFontFamily;
+        const bold = isBold(st.fontWeight) || td.tagName.toLowerCase() === 'th';
+        const italic = st.fontStyle === 'italic' || st.fontStyle === 'oblique';
+        const color = st.color || o.textColor;
+
+        let tx = x + o.pad, anchor = 'start';
+        if (align === 'right' || align === 'end') { tx = x + w - o.pad; anchor = 'end'; }
         else if (align === 'center') { tx = x + w / 2; anchor = 'middle'; }
-        // vertical-align bottom (Sheets default): baseline near the cell bottom.
-        const ty = y + rowH - o.pad;
+
+        let ty: number;
+        if (valign === 'top') ty = y + o.pad + size * 0.82;
+        else if (valign === 'middle') ty = y + rowH / 2 + size * 0.32;
+        else ty = y + rowH - o.pad; // bottom (Sheets default)
+
         texts.push(
-          `<text x="${tx}" y="${ty}" font-family="${o.fontFamily}" font-size="${o.fontSize}" ` +
-          `text-anchor="${anchor}"${isHeader ? ' font-weight="bold"' : ''} fill="#1a1a1a">${esc(text)}</text>`,
+          `<text x="${tx}" y="${ty}" font-family="${esc(family)}" font-size="${Math.round(size)}" ` +
+          `text-anchor="${anchor}"${bold ? ' font-weight="bold"' : ''}` +
+          `${italic ? ' font-style="italic"' : ''} fill="${esc(color)}">${esc(text)}</text>`,
         );
       }
     }
