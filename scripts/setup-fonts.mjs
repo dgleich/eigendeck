@@ -89,19 +89,35 @@ function main() {
   // async resources that the Worker stub can't provide. The nosre builds
   // omit a11y/sre/explorer/menu entirely. They must be built first via:
   //   node mathjax-fonts/mathjax-shantell/build/build-all-nosre.cjs
-  if (ensureMathjaxFontsRepo()) {
-    for (const id of MATHJAX_FONTS_PACKAGES) {
-      const filename = `tex-mml-svg-mathjax-${id}-nosre.js`;
-      const src = join(MATHJAX_FONTS_DIR, `mathjax-${id}`, filename);
-      if (!existsSync(src)) {
-        log(`WARN: missing ${id} nosre bundle at ${src} (run build-all-nosre.cjs)`);
-        continue;
-      }
-      copyBundle(src, join(PUBLIC_MATHJAX, filename), id);
+  //
+  // FAIL LOUDLY: every package listed here is REQUIRED. Previously a missing
+  // bundle (or a failed clone) only logged a WARN and exited 0 — so a release
+  // build would go green and silently ship an app with broken math. Now any
+  // missing bundle aborts with a non-zero exit so CI catches it.
+  if (!ensureMathjaxFontsRepo()) {
+    console.error(`[setup-fonts] FATAL: could not obtain mathjax-fonts (clone failed and no local copy at ${MATHJAX_FONTS_DIR}).`);
+    process.exit(1);
+  }
+
+  const missing = [];
+  for (const id of MATHJAX_FONTS_PACKAGES) {
+    const filename = `tex-mml-svg-mathjax-${id}-nosre.js`;
+    const src = join(MATHJAX_FONTS_DIR, `mathjax-${id}`, filename);
+    if (!existsSync(src) || !copyBundle(src, join(PUBLIC_MATHJAX, filename), id)) {
+      missing.push(id);
     }
   }
 
-  log('Done.');
+  if (missing.length) {
+    console.error(
+      `[setup-fonts] FATAL: ${missing.length} required MathJax bundle(s) missing: ${missing.join(', ')}.\n` +
+      `  Each must exist at mathjax-<id>/tex-mml-svg-mathjax-<id>-nosre.js in mathjax-fonts ` +
+      `(commit the prebuilt bundles, or run mathjax-shantell/build/build-all-nosre.cjs).`,
+    );
+    process.exit(1);
+  }
+
+  log(`Done — ${MATHJAX_FONTS_PACKAGES.length} MathJax bundles copied.`);
 }
 
 main();
