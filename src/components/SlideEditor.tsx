@@ -653,12 +653,15 @@ export function SlideEditor() {
           onContextMenu={handleCanvasContextMenu}
         >
           {/* Alignment grid dots — editor-only (never in present/export),
-              behind elements (zIndex 1), non-interactive. Dots sit at each
-              grid intersection from the top-left origin. */}
+              behind elements (zIndex 1), non-interactive. `circle at 0 0`
+              puts each dot at the tile's TOP-LEFT corner, so dots land on
+              multiples of gridSpacing (0, g, 2g…) — exactly the coordinates
+              snapToGrid() rounds to. (Plain `circle` centers the dot in the
+              tile, offsetting dots by half a cell from the snap targets.) */}
           {showGrid && gridSpacing >= 2 && (
             <div data-grid-overlay style={{
               position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
-              backgroundImage: 'radial-gradient(circle, rgba(100,116,139,0.5) 2px, transparent 2px)',
+              backgroundImage: 'radial-gradient(circle at 0 0, rgba(100,116,139,0.5) 2px, transparent 2px)',
               backgroundSize: `${gridSpacing}px ${gridSpacing}px`,
               backgroundPosition: '0 0',
             }} />

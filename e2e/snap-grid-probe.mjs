@@ -46,6 +46,19 @@ await sleep(300);
 if(!await gridOverlayPresent(sid)) fail('grid overlay missing after Show Grid Points ON');
 console.log('  overlay shows only when Show Grid Points is on ✓');
 
+// Dots must land on the grid CORNERS (multiples of spacing) — the same
+// coordinates snapToGrid() rounds to. A plain centered `radial-gradient`
+// offsets dots by half a cell, so they wouldn't line up with snapping.
+const ov = JSON.parse(await exec(sid, "const d=document.querySelector('[data-grid-overlay]'); const cs=getComputedStyle(d); return JSON.stringify({size:cs.backgroundSize, img:cs.backgroundImage});"));
+if(!ov.size.includes('80px')) fail(`grid backgroundSize not 80px (gridSpacing): ${ov.size}`);
+if(!/at 0px 0px|at 0 0/.test(ov.img)) fail(`grid dots not corner-aligned (expected 'at 0 0'): ${ov.img}`);
+console.log('  dots are corner-aligned to the grid spacing ✓');
+
+// NOTE: the native View-menu checkmark sync (CheckMenuItem ↔ store flag) is
+// NOT covered here — tauri-driver can't drive native menus. It's pinned by
+// building the items with .checked(false) so the initial state matches the
+// store default; muda keeps them in sync per click after that.
+
 // --- snap math (real drag) ---------------------------------------------
 const off = JSON.parse(await exec(sid, dragScript(false)));
 if(off.x===100 && off.y===100) fail('drag did not move the element');

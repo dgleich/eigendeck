@@ -526,11 +526,14 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build(app).map_err(|e| e.to_string())?;
     // Alignment grid (editor-only). Check items — muda toggles the checkmark
     // on click; the catch-all menu-event handler relays the id to JS, which
-    // flips the matching store flag. Both default unchecked = store default.
+    // flips the matching store flag. checked(false) is REQUIRED: without it
+    // the items render CHECKED at launch while the store starts false, so the
+    // checkmark is inverted forever. Pinning the initial state to false (the
+    // store default) keeps muda's per-click toggle in sync with the store.
     let snap_grid_item = CheckMenuItemBuilder::new("Snap to Grid").id("toggle-snap-grid")
-        .build(app).map_err(|e| e.to_string())?;
+        .checked(false).build(app).map_err(|e| e.to_string())?;
     let show_grid_item = CheckMenuItemBuilder::new("Show Grid Points").id("toggle-show-grid")
-        .build(app).map_err(|e| e.to_string())?;
+        .checked(false).build(app).map_err(|e| e.to_string())?;
 
     let view_menu = SubmenuBuilder::new(app, "View")
         .item(&present_item)
