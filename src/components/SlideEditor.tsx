@@ -661,7 +661,7 @@ export function SlideEditor() {
           {showGrid && gridSpacing >= 2 && (
             <div data-grid-overlay style={{
               position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
-              backgroundImage: 'radial-gradient(circle at 0 0, rgba(100,116,139,0.5) 2px, transparent 2px)',
+              backgroundImage: 'radial-gradient(circle at 0 0, rgba(100,116,139,0.6) 3px, transparent 3px)',
               backgroundSize: `${gridSpacing}px ${gridSpacing}px`,
               backgroundPosition: '0 0',
             }} />
