@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { usePreference } from '../lib/preferences';
+import { htmlTableToSvg, looksLikeTableHtml } from '../lib/tableToSvg';
 import { relPath } from '../App';
 import { useDemoUrl } from '../lib/demoAssets';
 import { SlideElementRenderer } from './SlideElementRenderer';
@@ -58,6 +59,12 @@ export function SlideEditor() {
 
       const T_PASTE = performance.now();
       plog('paste-handler started');
+
+      // Capture text/html NOW — clipboardData can be neutered after the awaits
+      // below. Used for the Google-Sheets table fallback: Sheets puts only
+      // text/html + text/plain on the clipboard (no image), so the image
+      // paths below all miss and we render the HTML table to SVG instead.
+      const htmlEarly = e.clipboardData?.getData('text/html') || '';
 
       // Native NSPasteboard path FIRST: WebKit's clipboardData /
       // navigator.clipboard.read() filter out non-standard UTIs (notably
@@ -173,6 +180,30 @@ export function SlideEditor() {
         }
       }
 
+      // Google Sheets (and other HTML-only tables): no image on the clipboard,
+      // but a <table> in text/html. Render it to a self-contained SVG and
+      // insert through the same path as an Excel/Pages SVG paste.
+      if ((!picked || !pickedFormat) && looksLikeTableHtml(htmlEarly)) {
+        const t = htmlTableToSvg(htmlEarly);
+        if (t) {
+          e.preventDefault();
+          // Scale the native table up for slide readability, capped to the slide.
+          const SCALE = 3.5;
+          let w = t.width * SCALE, h = t.height * SCALE;
+          const k = Math.min(1, 1600 / w, 900 / h);
+          w = Math.round(w * k); h = Math.round(h * k);
+          const pos = {
+            x: Math.round((SLIDE_WIDTH - w) / 2), y: Math.round((SLIDE_HEIGHT - h) / 2),
+            width: w, height: h,
+          };
+          const fileName = `pasted-table-${Date.now()}.svg`;
+          const bytes = new TextEncoder().encode(t.svg);
+          plog(`pasted HTML table → svg ${t.cols}x${t.rows} (native ${t.width}x${t.height})`);
+          await insertPastedAsset(`images/${fileName}`, bytes, 'image/svg+xml', fileName, pos);
+          return;
+        }
+      }
+
       if (!picked || !pickedFormat) { plog('nothing pasteable in clipboard'); return; }
       e.preventDefault();
       const blob = picked.getAsFile();
@@ -188,6 +219,7 @@ export function SlideEditor() {
     /** Shared between sync + async paste paths. */
     const insertPastedAsset = async (
       relativePath: string, bytes: Uint8Array, mime: string, fileName: string,
+      position?: { x: number; y: number; width: number; height: number },
     ): Promise<void> => {
       let assetId: string;
       try {
@@ -210,7 +242,7 @@ export function SlideEditor() {
         id: crypto.randomUUID(), type: 'image',
         assetId,
         kind,
-        position: { x: 360, y: 200, width: 1200, height: 680 },
+        position: position ?? { x: 360, y: 200, width: 1200, height: 680 },
       });
       plog(`addElement: ${(performance.now() - tAdd).toFixed(0)}ms`);
       if (kind === 'svg') {
