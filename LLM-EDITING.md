@@ -133,11 +133,11 @@ All elements share these base fields:
 
 | Preset       | fontSize | fontFamily          | fontWeight | fontStyle | color   | Default position |
 |-------------|----------|---------------------|------------|-----------|---------|-----------------|
-| `title`      | 72       | PT Sans             | bold       | normal    | #222    | `y:20, h:200` (bottom-aligned) |
-| `body`       | 48       | PT Sans             | normal     | normal    | #222    | `y:180, h:800` |
-| `textbox`    | 48       | PT Sans             | normal     | normal    | #222    | `y:300, h:300` |
-| `annotation` | 32       | PT Sans             | normal     | italic    | #2563eb | `y:700, h:150` |
-| `footnote`   | 24       | PT Sans Narrow      | normal     | normal    | #888    | `y:1020, h:44` (bottom-aligned) |
+| `title`      | 72       | PT Sans             | bold       | normal    | #222    | `y: 40, h:200` (bottom-aligned) |
+| `body`       | 48       | PT Sans             | normal     | normal    | #222    | `y:240, h:760` |
+| `textbox`    | 48       | PT Sans             | normal     | normal    | #222    | `y:320, h:320` |
+| `annotation` | 32       | PT Sans             | normal     | italic    | #2563eb | `y:720, h:160` |
+| `footnote`   | 24       | PT Sans Narrow      | normal     | normal    | #888    | `y:1040, h:40` (bottom-aligned) |
 | `hype`       | 48 (body) | Shantell (or hypeFont) | normal  | normal    | #1a1a1a | `x:720,y:360, 560×360` — **sticky note**: seeded with `backgroundColor:"#fde047"` (bright yellow) + Shantell Sans + `rotation:-4` (jaunty tilt) |
 
 **Optional overrides** (only include if different from preset default):
@@ -391,10 +391,10 @@ Slides with the same `groupId` form a group:
 - All positions and sizes are in this coordinate space
 - The app scales the canvas to fit the screen
 
-**Typical layout guidelines:**
-- Title at top: `y: 20`, full width: `x: 80, width: 1760, height: 200`
-- Body text below title: `y: 220`
-- Footer area: `y: 1020+`
+**Typical layout guidelines** (all on the 40px grid):
+- Title at top: `y: 40`, full width: `x: 80, width: 1760, height: 200`
+- Body text below title: `y: 240`
+- Footer area: `y: 1040+`
 - Centered content: `x: 160-360` with `width: 1200-1600`
 - Side margins: at least 80px
 
@@ -429,7 +429,7 @@ Every `id` must be unique. Use UUID v4 format:
       "type": "text",
       "preset": "footnote",
       "html": "Based on Gleich et al., SISC 2015",
-      "position": { "x": 80, "y": 1020, "width": 1000, "height": 44 },
+      "position": { "x": 80, "y": 1040, "width": 1000, "height": 40 },
       "verticalAlign": "bottom"
     }
   ],

@@ -549,13 +549,15 @@ export interface Presentation {
 // ============================================
 
 export function createTextElement(preset: TextPreset, overrides?: Partial<ElementPosition>): TextElement {
+  // All positions snap to the 40px alignment grid (the editor's snap-to-grid
+  // default) so freshly-inserted elements line up out of the box.
   const defaults: Record<TextPreset, ElementPosition> = {
-    title:      { x: 80,  y: 20,  width: 1760, height: 200 },
-    body:       { x: 80,  y: 215, width: 1760, height: 765 },
-    textbox:    { x: 200, y: 300, width: 800,  height: 300 },
-    annotation: { x: 200, y: 700, width: 600,  height: 150 },
-    footnote:   { x: 80,  y: 1020, width: 1000, height: 44  },
-    hype:       { x: 720, y: 360, width: 560,  height: 360 },
+    title:      { x: 80,  y: 40,   width: 1760, height: 200 },
+    body:       { x: 80,  y: 240,  width: 1760, height: 760 },
+    textbox:    { x: 200, y: 320,  width: 800,  height: 320 },
+    annotation: { x: 200, y: 720,  width: 600,  height: 160 },
+    footnote:   { x: 80,  y: 1040, width: 1000, height: 40  },
+    hype:       { x: 720, y: 360,  width: 560,  height: 360 },
   };
 
   const defaultText: Record<TextPreset, string> = {
@@ -588,7 +590,7 @@ export function createDefaultPresentation(): Presentation {
       {
         id: crypto.randomUUID(),
         elements: [
-          createTextElement('title', { x: 160, y: 400, width: 1600, height: 140 }),
+          createTextElement('title', { x: 160, y: 400, width: 1600, height: 160 }),
         ],
         notes: '',
       },

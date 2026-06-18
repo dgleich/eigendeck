@@ -240,3 +240,14 @@ describe('textShadowCss / textBoxShadowCss (independent text vs box shadow)', ()
     expect(textBoxShadowCss({})).toBeUndefined();
   });
 });
+
+describe('default insert positions snap to the 40px grid', () => {
+  it('every text preset default is grid-aligned (x/y/width/height % 40 === 0)', async () => {
+    const { createTextElement } = await import('./presentation');
+    for (const preset of ['title', 'body', 'textbox', 'annotation', 'footnote', 'hype'] as const) {
+      const { x, y, width, height } = createTextElement(preset).position;
+      expect({ preset, x: x % 40, y: y % 40, w: width % 40, h: height % 40 })
+        .toEqual({ preset, x: 0, y: 0, w: 0, h: 0 });
+    }
+  });
+});

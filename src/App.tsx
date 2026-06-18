@@ -654,12 +654,12 @@ function App() {
           store.addElement({
             id: crypto.randomUUID(), type: 'demo-piece' as any,
             piece, assetId,
-            position: { x, y: 200, width, height: 700 },
+            position: { x, y: 200, width, height: 720 },
           });
           x += width + 40;
         }
       } else {
-        store.addElement({ id: crypto.randomUUID(), type: 'demo', assetId, position: { x: 80, y: 200, width: 1760, height: 700 } });
+        store.addElement({ id: crypto.randomUUID(), type: 'demo', assetId, position: { x: 80, y: 200, width: 1760, height: 720 } });
       }
     } catch (err) {
       console.error('Failed to add demo:', err);
@@ -688,7 +688,7 @@ function App() {
       store.addElement({
         id: crypto.randomUUID(), type: 'notebook',
         assetId: r.assetId,
-        position: { x: 80, y: 200, width: 1760, height: 700 },
+        position: { x: 80, y: 200, width: 1760, height: 720 },
       });
     } catch (err) {
       console.error('Failed to add notebook:', err);
@@ -710,7 +710,7 @@ function App() {
       case 'cover': {
         const sel = store.selectedObject;
         const slide = store.presentation.slides[store.currentSlideIndex];
-        let pos = { x: 200, y: 300, width: 600, height: 400 };
+        let pos = { x: 200, y: 320, width: 600, height: 400 };
         if (sel?.type === 'element') {
           const el = slide.elements.find((e) => e.id === sel.id);
           if (el) pos = { ...el.position };
