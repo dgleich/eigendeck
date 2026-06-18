@@ -73,4 +73,36 @@ describe('htmlTableToSvg — cell styling', () => {
   it('center-aligns when text-align:center', () => {
     expect(r.svg).toMatch(/text-anchor="middle"[^>]*>Header<\/text>/);
   });
+
+  it('reports which faces are used (for selective embedding)', () => {
+    expect(r.usesBold).toBe(true);
+    expect(r.usesItalic).toBe(true);
+  });
+});
+
+describe('htmlTableToSvg — font cascade', () => {
+  it('source font first, deck fallback, then generic', () => {
+    const arial = htmlTableToSvg(SHEETS_HTML)!; // table style has font-family:Arial
+    expect(arial.svg).toContain(`font-family="Arial, 'PT Sans', sans-serif"`);
+    expect(arial.usesBold).toBe(false);
+    expect(arial.usesItalic).toBe(false);
+  });
+
+  it("a non-system source font (Roboto) still cascades to the deck font", () => {
+    const html = `<table style="font-family:Roboto"><tbody><tr><td>x</td></tr></tbody></table>`;
+    const r = htmlTableToSvg(html)!;
+    expect(r.svg).toContain(`font-family="Roboto, 'PT Sans', sans-serif"`);
+  });
+
+  it('honours a custom deck fallback family', () => {
+    const html = `<table><tbody><tr><td>x</td></tr></tbody></table>`;
+    const r = htmlTableToSvg(html, { fallbackFamily: 'Lato' })!;
+    expect(r.svg).toContain(`font-family="Lato, sans-serif"`);
+  });
+
+  it('no source font → deck fallback + generic only', () => {
+    const html = `<table><tbody><tr><td>x</td></tr></tbody></table>`;
+    const r = htmlTableToSvg(html)!;
+    expect(r.svg).toContain(`font-family="'PT Sans', sans-serif"`);
+  });
 });

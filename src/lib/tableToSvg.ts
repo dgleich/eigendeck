@@ -8,10 +8,15 @@
 // export. Native SVG rasterizes cleanly and scales crisply.
 //
 // Styling picked up per cell from inline `style`: font-weight (bold),
-// font-style (italic), color, background-color, text-align, vertical-align,
-// font-size; plus the table-level font-family / font-size as defaults. Cell
-// borders use Sheets' default grey (the source carries them in a <style> rule
-// that isn't reachable on an unrendered DOM).
+// font-style (italic), color, background-color, vertical-align, font-size,
+// text-align, and font-family.
+//
+// FONTS: an <img>-rendered SVG can only use SYSTEM fonts or fonts embedded in
+// the SVG. So each cell's font-family is a cascade: the source (Sheets) font
+// first (used when it's a real system font like Arial / Courier New), then the
+// deck's body font (which the caller embeds via @font-face — guaranteed
+// present, matches the slides), then a generic. `usesBold`/`usesItalic` tell
+// the caller which faces to embed.
 //
 // Scope: a flat grid of cells. colspan/rowspan are treated as 1x1 for now.
 
@@ -22,18 +27,20 @@ export interface TableSvg {
   height: number;
   rows: number;
   cols: number;
+  /** Whether any cell is bold / italic — caller embeds only the needed faces. */
+  usesBold: boolean;
+  usesItalic: boolean;
 }
 
 interface Opts {
   defaultColWidth?: number;
   defaultRowHeight?: number;
   pad?: number;
-  /** Fallback font size (px) when neither cell nor table specify one. */
   fontSize?: number;
-  /** Fallback font family when the table doesn't specify one. */
-  fontFamily?: string;
+  /** Deck body-font family — the fallback used when the source font isn't
+   *  available. The caller embeds this family's @font-face into the SVG. */
+  fallbackFamily?: string;
   borderColor?: string;
-  /** Default text color when a cell has no explicit color. */
   textColor?: string;
 }
 
@@ -42,7 +49,7 @@ const DEFAULTS: Required<Opts> = {
   defaultRowHeight: 21,
   pad: 4,
   fontSize: 13,
-  fontFamily: "'PT Sans', Arial, sans-serif",
+  fallbackFamily: 'PT Sans',
   borderColor: '#cccccc',
   textColor: '#1a1a1a',
 };
@@ -58,7 +65,6 @@ function pxFromStyle(style: string | null, prop: string): number | null {
   return m ? parseFloat(m[1]) : null;
 }
 
-/** Parse a CSS length ("10pt" | "13px" | "1.2em") to px (pt→px at 96/72). */
 function fontSizePx(v: string | undefined, emBase: number): number | null {
   if (!v) return null;
   let m = /([0-9.]+)pt/i.exec(v); if (m) return parseFloat(m[1]) * (96 / 72);
@@ -74,13 +80,26 @@ function isBold(weight: string | undefined): boolean {
   return Number.isFinite(n) && n >= 600;
 }
 
-/** A visible background = set, not transparent, not white. */
 function visibleBg(bg: string | undefined): string | null {
   if (!bg) return null;
   const v = bg.trim().toLowerCase();
   if (!v || v === 'transparent' || v === 'rgba(0, 0, 0, 0)') return null;
   if (v === '#fff' || v === '#ffffff' || v === 'white' || v === 'rgb(255, 255, 255)') return null;
   return bg;
+}
+
+function quoteFamily(f: string): string {
+  return /^[a-zA-Z][\w-]*$/.test(f) ? f : `'${f.replace(/'/g, '')}'`;
+}
+
+/** source font (if any) → deck fallback → generic. */
+function fontStack(src: string | undefined, fallback: string): string {
+  const parts: string[] = [];
+  const s = (src || '').split(',')[0].trim().replace(/^['"]|['"]$/g, '');
+  if (s && s.toLowerCase() !== fallback.toLowerCase()) parts.push(quoteFamily(s));
+  parts.push(quoteFamily(fallback));
+  parts.push('sans-serif');
+  return parts.join(', ');
 }
 
 /**
@@ -97,7 +116,7 @@ export function htmlTableToSvg(html: string, opts: Opts = {}): TableSvg | null {
   const rowEls = Array.from(table.querySelectorAll('tr'));
   if (rowEls.length === 0) return null;
 
-  const tableFontFamily = table.style.fontFamily || o.fontFamily;
+  const tableSrcFamily = table.style.fontFamily || '';
   const tableFontSize = fontSizePx(table.style.fontSize, o.fontSize) ?? o.fontSize;
 
   const colEls = Array.from(table.querySelectorAll('colgroup > col'));
@@ -115,6 +134,8 @@ export function htmlTableToSvg(html: string, opts: Opts = {}): TableSvg | null {
 
   const rects: string[] = [];
   const texts: string[] = [];
+  let usesBold = false;
+  let usesItalic = false;
   let y = 0;
   for (const tr of rowEls) {
     const rowH = pxFromStyle(tr.getAttribute('style'), 'height') || o.defaultRowHeight;
@@ -131,13 +152,16 @@ export function htmlTableToSvg(html: string, opts: Opts = {}): TableSvg | null {
       );
       const text = td ? (td.textContent || '').trim() : '';
       if (text && st) {
-        const align = (st.textAlign || (td.tagName.toLowerCase() === 'th' ? 'center' : 'left')) as string;
+        const isTh = td.tagName.toLowerCase() === 'th';
+        const align = (st.textAlign || (isTh ? 'center' : 'left')) as string;
         const valign = st.verticalAlign || 'bottom';
         const size = fontSizePx(st.fontSize, tableFontSize) ?? tableFontSize;
-        const family = st.fontFamily || tableFontFamily;
-        const bold = isBold(st.fontWeight) || td.tagName.toLowerCase() === 'th';
+        const bold = isBold(st.fontWeight) || isTh;
         const italic = st.fontStyle === 'italic' || st.fontStyle === 'oblique';
         const color = st.color || o.textColor;
+        if (bold) usesBold = true;
+        if (italic) usesItalic = true;
+        const family = fontStack(st.fontFamily || tableSrcFamily, o.fallbackFamily);
 
         let tx = x + o.pad, anchor = 'start';
         if (align === 'right' || align === 'end') { tx = x + w - o.pad; anchor = 'end'; }
@@ -146,7 +170,7 @@ export function htmlTableToSvg(html: string, opts: Opts = {}): TableSvg | null {
         let ty: number;
         if (valign === 'top') ty = y + o.pad + size * 0.82;
         else if (valign === 'middle') ty = y + rowH / 2 + size * 0.32;
-        else ty = y + rowH - o.pad; // bottom (Sheets default)
+        else ty = y + rowH - o.pad;
 
         texts.push(
           `<text x="${tx}" y="${ty}" font-family="${esc(family)}" font-size="${Math.round(size)}" ` +
@@ -166,7 +190,7 @@ export function htmlTableToSvg(html: string, opts: Opts = {}): TableSvg | null {
     rects.join('') + texts.join('') +
     `</svg>`;
 
-  return { svg, width: totalW, height: totalH, rows: rowEls.length, cols: cellCount };
+  return { svg, width: totalW, height: totalH, rows: rowEls.length, cols: cellCount, usesBold, usesItalic };
 }
 
 /** Quick check: does this clipboard HTML contain a table worth converting? */

@@ -184,9 +184,17 @@ export function SlideEditor() {
       // but a <table> in text/html. Render it to a self-contained SVG and
       // insert through the same path as an Excel/Pages SVG paste.
       if ((!picked || !pickedFormat) && looksLikeTableHtml(htmlEarly)) {
-        const t = htmlTableToSvg(htmlEarly);
+        const { resolveFontPackage, bareFamilyName, embeddedFontFaceCSSForId } = await import('../lib/fonts');
+        const cfg = usePresentationStore.getState().presentation.config;
+        const pkg = resolveFontPackage(cfg?.defaultBodyFont);
+        const t = htmlTableToSvg(htmlEarly, { fallbackFamily: bareFamilyName(pkg) });
         if (t) {
           e.preventDefault();
+          // Embed the deck body font (only the faces used) so the table renders
+          // in the deck font when the source (Sheets) font isn't a system font.
+          // An <img>-rendered SVG can't reach the page's @font-face fonts.
+          const { css } = await embeddedFontFaceCSSForId(pkg.id, { bold: t.usesBold, italic: t.usesItalic });
+          const svg = css ? t.svg.replace(/(<svg\b[^>]*>)/, `$1<defs><style>${css}</style></defs>`) : t.svg;
           // Scale the native table up for slide readability, capped to the slide.
           const SCALE = 3.5;
           let w = t.width * SCALE, h = t.height * SCALE;
@@ -197,8 +205,8 @@ export function SlideEditor() {
             width: w, height: h,
           };
           const fileName = `pasted-table-${Date.now()}.svg`;
-          const bytes = new TextEncoder().encode(t.svg);
-          plog(`pasted HTML table → svg ${t.cols}x${t.rows} (native ${t.width}x${t.height})`);
+          const bytes = new TextEncoder().encode(svg);
+          plog(`pasted HTML table → svg ${t.cols}x${t.rows} font=${bareFamilyName(pkg)} bold=${t.usesBold} italic=${t.usesItalic}`);
           await insertPastedAsset(`images/${fileName}`, bytes, 'image/svg+xml', fileName, pos);
           return;
         }
