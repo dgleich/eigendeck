@@ -254,19 +254,19 @@ function monitorContains(mon: Monitor, x: number, y: number): boolean {
  * where cross-display moves usually go wrong. Monitors are matched by GEOMETRY,
  * not by name (names are often empty or duplicated on real hardware).
  */
-export async function swapPresenterDisplay(): Promise<string> {
-  if (!presenterWindow) return 'BAIL: no presenter window handle (presenterWindow is null)';
+export async function swapPresenterDisplay(): Promise<void> {
+  if (!presenterWindow) { console.warn('[multi-monitor] swap: no presenter window open'); return; }
   try {
     const monitors = await availableMonitors();
-    if (monitors.length < 2) return `BAIL: need 2+ monitors, have ${monitors.length}`;
+    if (monitors.length < 2) { console.warn('[multi-monitor] swap: need 2+ monitors, have', monitors.length); return; }
 
     const mainWin = getCurrentWindow();
     const mainPos = await mainWin.outerPosition(); // physical, top-left of main window
     const mainMon = monitors.find((m) => monitorContains(m, mainPos.x, mainPos.y)) || monitors[0];
     const otherMon = monitors.find((m) => m !== mainMon);
-    if (!otherMon) return 'BAIL: could not find a second monitor distinct from the main one';
+    if (!otherMon) { console.warn('[multi-monitor] swap: could not find a second monitor'); return; }
 
-    const before = await presenterWindow.outerPosition();
+    console.log('[multi-monitor] swap: speaker on', mainMon.name, '-> slides here; speaker to', otherMon.name);
     // Move the main (speaker) window onto the other display.
     await mainWin.setPosition(new PhysicalPosition(otherMon.position.x, otherMon.position.y));
     // Move + size the projector window onto the (now vacated) main display.
@@ -274,17 +274,8 @@ export async function swapPresenterDisplay(): Promise<string> {
     await presenterWindow.setSize(new PhysicalSize(mainMon.size.width, mainMon.size.height));
     // Re-assert the above-the-menubar level so it covers the new display fully.
     try { await invoke('set_window_above_menubar', { label: 'presenter' }); } catch { /* best effort */ }
-    const after = await presenterWindow.outerPosition();
-
-    const msg =
-      `mainWin@(${mainPos.x},${mainPos.y}) on mon "${mainMon.name}"(${mainMon.position.x},${mainMon.position.y})\n` +
-      `other mon "${otherMon.name}"(${otherMon.position.x},${otherMon.position.y})\n` +
-      `presenter moved (${before.x},${before.y}) -> requested (${mainMon.position.x},${mainMon.position.y}) -> now (${after.x},${after.y})`;
-    console.log('[multi-monitor] swap:', msg);
-    return 'OK\n' + msg;
   } catch (e) {
     console.error('[multi-monitor] swap displays failed:', e);
-    return 'ERROR: ' + (e instanceof Error ? e.message : String(e));
   }
 }
 
