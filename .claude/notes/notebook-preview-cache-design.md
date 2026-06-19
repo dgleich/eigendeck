@@ -94,6 +94,26 @@ size: `db_list_asset_cache_variants(key)` → find the `preview` row → fetch i
 `URL.createObjectURL` a Blob. Memo the blob URL per key; invalidate when the
 preview is (re)written. Helper: `loadPreviewUrl(key)` in previewCache.ts.
 
+## Multi-phase elements need MULTIPLE previews (one per phase)
+
+The `asset_cache` PK is `(source_id, variant, width, height)` — so there's room
+for **many** previews per element, keyed by `variant`. v1 uses a single
+`variant: 'preview'` (one picture per element). A **multi-phase demo** (e.g. a
+demo-piece shown as different `piece`s across build slides, or a demo with N
+internal states) needs **one screenshot per phase** → key by a phase-aware
+variant: `variant = 'preview:' + <phaseKey>`.
+
+- demo-piece phase key = `element.piece`; full-demo phases = a phase index/id.
+- Notebooks are usually single-phase (synced instances share view), BUT a
+  notebook whose per-build instances differ (e.g. different `visibleCells`)
+  is ALSO multi-phase and would want `preview:<phaseKey>` per view.
+- API change when we do this: `capturePreview(el, innerSelector, variant?)` and
+  `loadPreviewUrl(key, variant?)` take the variant; `previewKey` stays the
+  element's sync identity. Consumers (sidebar/picker) pass the phase they show.
+
+So: not a capacity limit — just a keying choice. v1 ships one 'preview'; multi-
+phase is a variant suffix away.
+
 ## Generalize to demos
 Same `captureElementPreview` + `db_put_asset_cache`, keyed by `syncId ?? id`,
 variant `preview`. Demos differ in two ways:
