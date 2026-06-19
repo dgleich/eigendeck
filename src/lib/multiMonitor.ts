@@ -203,11 +203,14 @@ export async function openPresenterWindow(
       }
     }
 
-    // Send presentation data
+    // Send presentation data. `windowed` tells the projector webview it's the
+    // chromeless screen-share window, so it can show a drag handle (a chromeless
+    // window has no title bar to grab).
     await emitTo('presenter', 'presenter:init', {
       presentation,
       currentIndex,
       projectPath,
+      windowed,
     });
 
     return true;

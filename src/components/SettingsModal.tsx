@@ -72,6 +72,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <AutoReloadAssetsSetting />
               <DefaultNotebookEditableSetting />
+              <TryProjectorModeSetting />
               <DefaultTextSizesSetting />
               <MathPreambleSetting />
             </div>
@@ -500,6 +501,31 @@ function ShowHelpTextSetting() {
             The grey paragraphs under inspector controls that explain what each
             option does. On by default; turn off for a denser inspector once
             you know your way around.
+          </div>
+        </div>
+      </label>
+    </div>
+  );
+}
+
+function TryProjectorModeSetting() {
+  const [value, setValue] = usePreference('tryProjectorMode');
+  return (
+    <div>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={value}
+          onChange={(e) => setValue(e.target.checked)}
+          style={{ marginTop: 3 }} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Present will try projector mode</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+            When you start Present Mode (F5) and a second display is connected,
+            open the live slide there fullscreen with the speaker view on this
+            screen. Turn off to always present in a single window on the current
+            screen. (The “Screen Share Presentation” and “Present in This Window”
+            menu items are explicit and ignore this.)
           </div>
         </div>
       </label>

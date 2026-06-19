@@ -29,7 +29,7 @@ import { PromoteChooser } from './components/PromoteChooser';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
 import type { SlideElement } from './types/presentation';
-import { usePreference } from './lib/preferences';
+import { usePreference, getPreference } from './lib/preferences';
 import { INSERT_ITEMS, INSERT_GROUP_ORDER } from './lib/insertItems';
 import {
   saveProject,
@@ -913,25 +913,31 @@ function App() {
     setUnsavedDialog(null);
   }, []);
 
-  // Start presenting — try multi-monitor first, fall back to single window
+  // Start presenting — try projector mode (multi-monitor) first when enabled,
+  // fall back to single window. The "Present will try projector mode" pref gates
+  // whether we even look for a second display.
   const startPresenting = useCallback(async () => {
     const state = usePresentationStore.getState();
-    try {
-      console.log('[present] Attempting multi-monitor...');
-      const opened = await openPresenterWindow(
-        state.presentation,
-        state.currentSlideIndex,
-        state.projectPath
-      );
-      if (opened) {
-        console.log('[present] Multi-monitor presenter opened');
-        setMultiMonitorPresenting(true);
-        state.setPresenting(true);
-        return;
+    if (getPreference('tryProjectorMode')) {
+      try {
+        console.log('[present] Attempting multi-monitor...');
+        const opened = await openPresenterWindow(
+          state.presentation,
+          state.currentSlideIndex,
+          state.projectPath
+        );
+        if (opened) {
+          console.log('[present] Multi-monitor presenter opened');
+          setMultiMonitorPresenting(true);
+          state.setPresenting(true);
+          return;
+        }
+        console.log('[present] No secondary monitor, using single-window');
+      } catch (e) {
+        console.log('[present] Multi-monitor not available:', e);
       }
-      console.log('[present] No secondary monitor, using single-window');
-    } catch (e) {
-      console.log('[present] Multi-monitor not available:', e);
+    } else {
+      console.log('[present] Projector mode disabled by preference — single-window');
     }
     // Fallback: single-window fullscreen
     state.setPresenting(true);

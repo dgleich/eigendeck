@@ -511,8 +511,9 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
 
     let present_item = MenuItemBuilder::new("Present Mode").id("present").accelerator("F5")
         .build(app).map_err(|e| e.to_string())?;
-    // DEBUG: explicit single-window live present (bypasses multi-monitor).
-    let test_present_single_item = MenuItemBuilder::new("Test Present (1-window)").id("test-present-single")
+    // Explicit single-window present on the current screen — bypasses projector
+    // mode regardless of the "Present will try projector mode" preference.
+    let test_present_single_item = MenuItemBuilder::new("Present in This Window").id("test-present-single")
         .build(app).map_err(|e| e.to_string())?;
     // Screen-share presentation: dual-window present on a single screen — a
     // chromeless, non-fullscreen live-slide window (shareable over Zoom/Meet)

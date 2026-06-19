@@ -24,11 +24,12 @@ initRuntime();
 function PresenterApp() {
   const [ready, setReady] = useState(false);
   const [index, setIndex] = useState(0);
+  const [windowed, setWindowed] = useState(false);
 
   useEffect(() => {
     const unsubs: (() => void)[] = [];
     (async () => {
-      unsubs.push(await listen<{ presentation: Presentation; currentIndex: number; projectPath: string | null }>(
+      unsubs.push(await listen<{ presentation: Presentation; currentIndex: number; projectPath: string | null; windowed?: boolean }>(
         'presenter:init', async (event) => {
           // Warm the math cache from the shared DB so PresentMode's text
           // renders from cached SVGs (cold projector would otherwise re-render
@@ -41,6 +42,7 @@ function PresenterApp() {
             projectPath: event.payload.projectPath,
           });
           setIndex(event.payload.currentIndex);
+          setWindowed(!!event.payload.windowed);
           setReady(true);
         }));
       unsubs.push(await listen<{ index: number }>('presenter:goto', (event) => {
@@ -73,7 +75,25 @@ function PresenterApp() {
     );
   }
 
-  return <PresentMode controlledIndex={index} onExit={onExit} onNavigate={onNavigate} />;
+  return (
+    <>
+      {/* Chromeless screen-share window has no title bar — give it an invisible
+          top strip to drag the window by (data-tauri-drag-region). Thin and
+          transparent so it doesn't show in the shared slide; sits above the
+          slide content. Only in windowed (screen-share) mode. */}
+      {windowed && (
+        <div
+          data-tauri-drag-region
+          title="Drag to move the presentation window"
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, height: 22,
+            zIndex: 10000, cursor: 'grab',
+          }}
+        />
+      )}
+      <PresentMode controlledIndex={index} onExit={onExit} onNavigate={onNavigate} />
+    </>
+  );
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<PresenterApp />);
