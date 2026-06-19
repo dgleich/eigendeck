@@ -48,6 +48,8 @@ pdfium-render = { version = "0.9", features = ["thread_safe"] }
 # png too for encoding the rendered bitmap into the asset_cache.
 # Cargo unifies features so both crates see the merged set.
 image = { version = "0.25", default-features = false, features = ["png"] }
+# Cross-platform system-clipboard image write (copy an element to other apps).
+arboard = { version = "3", default-features = false, features = ["image-data"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = "0.24"
