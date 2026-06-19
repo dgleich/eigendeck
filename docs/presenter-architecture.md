@@ -48,8 +48,10 @@ The single-window present and the projector (secondary monitor) render the
 - **Uncontrolled** (no `controlledIndex`) = single-window: owns keyboard nav;
   Escape exits present mode.
 - **Controlled** (`controlledIndex` set) = projector: index comes from the
-  speaker window's events; keyboard nav is off; Escape calls `onExit` (close the
-  projector window).
+  speaker window's events. Keyboard nav still works but is *forwarded*: a key on
+  the projector emits `presenter:nav` to the main window, which navigates and
+  echoes `presenter:goto` back (one source of truth — the projector never sets
+  its own index). Escape calls `onExit` (close the projector window).
 
 The slide-change transition runs in a `useLayoutEffect` keyed on the index, so
 it fires identically for local navigation and for the controlled prop.
@@ -62,6 +64,29 @@ it fires identically for local navigation and for the controlled prop.
 
 Element rendering itself lives in `PresentSlide.tsx` (`PresentElement`,
 prop-driven, reads no store), used by `PresentMode` for both windows.
+
+### The transition renders ONE stable-keyed list — don't re-bucket
+The slide-change transition classifies each element (fading in, animating
+position via a linked partner, static cover / carried-over element) but renders
+**all current-slide elements from a single list over `slide.elements`, keyed by
+`el.id`, in true z-order** — the per-element *style* encodes its role. Leaving
+elements (on the previous slide only) are a separate transient list.
+
+> **Gotcha — never move an element between separate `.map()` blocks across the
+> transition.** The original code rendered four buckets (fade-out / linked /
+> fade-in / unlinked) as separate lists, each with bucket-relative z-indices. A
+> linked element (e.g. a title or demo that animates across slides) lived in the
+> fade-in/linked block *during* the transition and the unlinked block *after*
+> settle — a different list, so React **unmounted and re-created it**. Two bugs
+> fell out of this:
+> - **z-jump**: bucket-relative z (linked +10, unlinked +200) didn't match true
+>   z-order, so a linked title sat *under* its unlinked image mid-transition,
+>   then snapped on top at settle ("image fades in on top, then jumps behind").
+> - **iframe flash**: re-creating a `demo`/`video`/`notebook` element reloads its
+>   iframe → one blank frame as it finishes fading in.
+>
+> One stable-keyed list fixes both: an element never changes key or tree
+> position, so iframes are never remounted, and z-index is always true z-order.
 
 ## One static renderer for sidebar + speaker view
 
@@ -98,6 +123,19 @@ write-throughs each to SQLite (`math_cache`). The cache is **per-webview**:
 > Clearing it wiped the warmed-from-SQLite SVGs, forcing the cold projector to
 > re-render and time out (5s) on complex display math → raw `$$…$$` spliced back
 > in and overflowing the slide (the "mathjax spillover").
+
+> **Gotcha — the WRITE and READ paths must key by the SAME preamble.** Because
+> the key includes the preamble, the cache only works if the write uses the same
+> preamble string the read uses. `renderMathInHtml` (write) must pass the deck
+> preamble through to `renderMath` — it once didn't, so writes keyed under `""`
+> while `renderMathInHtmlSync` / warm-from-SQLite read under the real preamble.
+> Result: a 100% cache miss in present mode → every expression re-rendered live
+> → custom-macro math failed (preamble not yet registered) → raw-LaTeX cruft on
+> slides that render fine in the editor. Keep the key consistent across paths.
+>
+> Relatedly, `setMathPreamble` waits for the iframe to ACK that the preamble is
+> registered (`preamble-applied`) before renders proceed — otherwise a fresh
+> window renders custom-macro math before the macros exist.
 
 ## Window close is scoped to `main`
 

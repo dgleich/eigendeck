@@ -3,10 +3,11 @@ import { usePresentationStore } from '../store/presentation';
 import { resolveTheme } from '../lib/themes';
 import { SpeakerPanel } from './SpeakerView';
 import { getSlideNumber } from '../types/presentation';
-import type { Slide, SlideElement } from '../types/presentation';
+import type { SlideElement } from '../types/presentation';
 // Live-present element rendering is shared with the projector window
 // (src/presenter.tsx) via PresentSlide — one renderer, no drift.
 import { PresentElement, PresentControllerIframe, type PresentCtx } from './PresentSlide';
+import { planPresentTransition } from '../lib/presentTransition';
 
 const TRANSITION_MS = 300;
 
@@ -154,32 +155,16 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
   if (!slide) return null;
 
   const prevSlide = prevIndex !== null ? presentation.slides[prevIndex] : null;
-  // Element ids present on the previous slide too. A SYNCED element (one element
-  // shown on several slides \u2014 same id, no linkId) must stay STATIC across the
-  // transition: it's literally the same element, so fading it in/out each step
-  // makes it flicker ("wiggle") between consecutive slides of a build.
-  const prevIds = new Set(prevSlide ? prevSlide.elements.map((e) => e.id) : []);
   const { author, venue } = presentation.config;
   const meta = [author, venue].filter(Boolean).join(' \u00B7 ');
   const ctx: PresentCtx = { slide, presentationConfig: presentation.config, presentationTheme: presentation.theme };
 
-  // Diff linked elements between prev and current slide
-  const linkedTransitions = computeLinkedTransitions(prevSlide, slide);
-
-  // z-index MUST come from the element's TRUE slide z-order (its index in
-  // slide.elements), NOT from a per-bucket counter. Otherwise a linked element
-  // (fadeIn/linked bucket) and its unlinked slide-mates get z from different
-  // bucket ranges, so stacking is wrong DURING the transition and then snaps
-  // when everything collapses to one bucket at settle — the "image on top, then
-  // jumps behind the title" glitch (a linked title sat below its unlinked image
-  // mid-transition). Keyed by id; fall back to prev-slide order for fade-outs.
-  const zOrder = new Map(slide.elements.map((e, i) => [e.id, i]));
-  const prevZOrder = new Map((prevSlide?.elements ?? []).map((e, i) => [e.id, i]));
-  const zOf = (id: string) => zOrder.get(id) ?? 0;
-  const prevZOf = (id: string) => prevZOrder.get(id) ?? 0;
-  // current element id → its matched partner on the previous slide (position
-  // animation). Lets us render ALL current elements from one stable list.
-  const linkedFrom = new Map(linkedTransitions.linked.map(({ from, to }) => [to.id, from]));
+  // The transition plan: every current element with its true z-order and role
+  // (static / fade / linked), plus the elements leaving. Pure + unit-tested
+  // (src/lib/presentTransition.ts); rendered as ONE stable list keyed by id, so
+  // iframes never remount and z-order stays correct. See
+  // docs/presenter-architecture.md.
+  const plan = planPresentTransition(prevSlide, slide);
 
   return (
     <div className={`present-mode ${showSpeaker ? 'with-speaker' : ''}`}>
@@ -193,11 +178,11 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
             {/* Elements LEAVING (on the previous slide, linked but no match on
                 this one) — fade out. Transient; rendered separately because they
                 aren't in the current slide's element list. */}
-            {linkedTransitions.fadeOut.map((el) => (
+            {plan.fadeOut.map(({ element: el, z }) => (
               <PresentElement
                 key={`fadeout-${el.id}`}
                 element={el}
-                zIndex={prevZOf(el.id)}
+                zIndex={z}
                 ctx={ctx}
                 style={{
                   opacity: animating ? 0 : 1,
@@ -216,12 +201,9 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
                   • linked (matched partner on prev slide) → animate position
                   • cover / synced-from-prev → static (instant, no fade)
                   • genuinely new → fade in */}
-            {slide.elements.map((el) => {
-              const z = zOf(el.id);
-              const from = linkedFrom.get(el.id);
-
+            {plan.items.map(({ element: el, z, role, from }) => {
               // Linked arrow → interpolate its endpoints (or static if unmoved).
-              if (from && el.type === 'arrow' && from.type === 'arrow') {
+              if (role === 'linked' && from && el.type === 'arrow' && from.type === 'arrow') {
                 const moved = !(from.x1 === el.x1 && from.y1 === el.y1 &&
                   from.x2 === el.x2 && from.y2 === el.y2);
                 if (moved) {
@@ -234,7 +216,7 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
               }
 
               // Linked (non-arrow) → animate position/size from the prev partner.
-              if (from) {
+              if (role === 'linked' && from) {
                 const fromPos = getElementBounds(from);
                 const toPos = getElementBounds(el);
                 const isStatic = fromPos.x === toPos.x && fromPos.y === toPos.y &&
@@ -256,16 +238,14 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
                 );
               }
 
-              // Not linked. Covers + elements carried over from the previous
-              // slide (same id) stay static; everything genuinely new fades in.
-              const isStatic = el.type === 'cover' || prevIds.has(el.id);
+              // role 'static' (cover / carried-over) → instant; 'fade' → fade in.
               return (
                 <PresentElement
                   key={el.id}
                   element={el}
                   zIndex={z}
                   ctx={ctx}
-                  style={isStatic ? { opacity: 1 } : {
+                  style={role === 'static' ? { opacity: 1 } : {
                     opacity: prevIndex !== null ? (animating ? 1 : 0) : 1,
                     transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
                   }}
@@ -302,52 +282,6 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
 // ============================================
 // Compute linked object transitions
 // ============================================
-
-interface LinkedTransitions {
-  linked: { from: SlideElement; to: SlideElement }[];
-  fadeIn: SlideElement[];
-  fadeOut: SlideElement[];
-  unlinked: SlideElement[];
-}
-
-function computeLinkedTransitions(prevSlide: Slide | null, currentSlide: Slide): LinkedTransitions {
-  const result: LinkedTransitions = { linked: [], fadeIn: [], fadeOut: [], unlinked: [] };
-
-  if (!prevSlide) {
-    // No previous slide — everything just appears
-    result.unlinked = currentSlide.elements;
-    return result;
-  }
-
-  const prevByLinkId = new Map<string, SlideElement>();
-  const prevUnlinked = new Set<string>(); // track prev elements without linkId
-  for (const el of prevSlide.elements) {
-    if (el.linkId) prevByLinkId.set(el.linkId, el);
-    else prevUnlinked.add(el.id);
-  }
-
-  const matchedPrevLinkIds = new Set<string>();
-
-  for (const el of currentSlide.elements) {
-    if (el.linkId && prevByLinkId.has(el.linkId)) {
-      result.linked.push({ from: prevByLinkId.get(el.linkId)!, to: el });
-      matchedPrevLinkIds.add(el.linkId);
-    } else if (el.linkId) {
-      result.fadeIn.push(el);
-    } else {
-      result.unlinked.push(el);
-    }
-  }
-
-  // Previous elements with linkId that have no match in current — fade out
-  for (const el of prevSlide.elements) {
-    if (el.linkId && !matchedPrevLinkIds.has(el.linkId)) {
-      result.fadeOut.push(el);
-    }
-  }
-
-  return result;
-}
 
 function getElementBounds(el: SlideElement): { x: number; y: number; w: number; h: number } {
   if (el.type === 'arrow') {
