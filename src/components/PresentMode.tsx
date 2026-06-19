@@ -154,6 +154,11 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
   if (!slide) return null;
 
   const prevSlide = prevIndex !== null ? presentation.slides[prevIndex] : null;
+  // Element ids present on the previous slide too. A SYNCED element (one element
+  // shown on several slides \u2014 same id, no linkId) must stay STATIC across the
+  // transition: it's literally the same element, so fading it in/out each step
+  // makes it flicker ("wiggle") between consecutive slides of a build.
+  const prevIds = new Set(prevSlide ? prevSlide.elements.map((e) => e.id) : []);
   const { author, venue } = presentation.config;
   const meta = [author, venue].filter(Boolean).join(' \u00B7 ');
   const ctx: PresentCtx = { slide, presentationConfig: presentation.config, presentationTheme: presentation.theme };
@@ -253,21 +258,26 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
               />
             ))}
 
-            {/* Unlinked elements (no linkId, current slide only). Cover masks
-                appear INSTANTLY — no fade — so a reveal doesn't flash its
-                hidden content while the cover fades in. */}
-            {linkedTransitions.unlinked.map((el, idx) => (
-              <PresentElement
-                key={el.id}
-                element={el}
-                zIndex={idx + 200}
-                ctx={ctx}
-                style={el.type === 'cover' ? { opacity: 1 } : {
-                  opacity: prevIndex !== null ? (animating ? 1 : 0) : 1,
-                  transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
-                }}
-              />
-            ))}
+            {/* Unlinked elements (no linkId, current slide only). Two cases
+                render STATIC (opacity 1, no fade): cover masks (so a reveal
+                doesn't flash its hidden content while the cover fades in), and
+                SYNCED elements that were also on the previous slide (same id —
+                fading them would flicker the shared element between build steps). */}
+            {linkedTransitions.unlinked.map((el, idx) => {
+              const isStatic = el.type === 'cover' || prevIds.has(el.id);
+              return (
+                <PresentElement
+                  key={el.id}
+                  element={el}
+                  zIndex={idx + 200}
+                  ctx={ctx}
+                  style={isStatic ? { opacity: 1 } : {
+                    opacity: prevIndex !== null ? (animating ? 1 : 0) : 1,
+                    transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
+                  }}
+                />
+              );
+            })}
 
             {/* Hidden controller iframes for demo-piece elements,
                 deduped by assetId. */}
