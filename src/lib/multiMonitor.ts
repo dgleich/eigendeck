@@ -93,16 +93,18 @@ export async function openPresenterWindow(
   presentation: Presentation,
   currentIndex: number,
   projectPath: string | null,
-  opts?: { testMode?: boolean }
+  opts?: { windowed?: boolean }
 ): Promise<boolean> {
-  // TEST MODE (debug): open the presenter as a normal windowed, non-fullscreen
-  // second window on the SAME monitor — so the dual-window flow (speaker view +
-  // live projector view) can be exercised without a real projector. Skips
-  // mirror handling, projector detection, and the above-the-menubar fullscreen.
-  const testMode = !!opts?.testMode;
+  // WINDOWED MODE (screen-share presentation): open the presenter as a normal,
+  // chromeless, non-fullscreen window on the CURRENT monitor — so it can be
+  // shared as a single window over Zoom/Meet without going fullscreen and taking
+  // over the whole display. The main window keeps the speaker view. Skips mirror
+  // handling, projector detection, and the above-the-menubar fullscreen that the
+  // real dual-monitor path uses.
+  const windowed = !!opts?.windowed;
 
   // Check if displays are mirrored — if so, disable mirroring first
-  if (!testMode) try {
+  if (!windowed) try {
     const mirrorInfo = await invoke<{ isMirrored: boolean; displayCount: number }>('check_display_mirroring');
     console.log('[multi-monitor] Mirror info:', mirrorInfo);
 
@@ -120,9 +122,9 @@ export async function openPresenterWindow(
     console.warn('[multi-monitor] Mirror check failed:', e);
   }
 
-  const projector = testMode ? null : await detectProjector();
+  const projector = windowed ? null : await detectProjector();
 
-  if (!testMode && !projector) {
+  if (!windowed && !projector) {
     // If we disabled mirroring but still can't find a second monitor, re-enable
     if (wasMirrored) {
       try { await invoke('enable_display_mirroring'); wasMirrored = false; } catch { /* ignore */ }
@@ -134,13 +136,23 @@ export async function openPresenterWindow(
     // Close existing presenter window if any
     await closePresenterWindow();
 
-    if (testMode) {
-      console.log('[multi-monitor] TEST MODE — opening windowed presenter on the current monitor');
+    if (windowed) {
+      // Size the window to the slide's aspect ratio so the shared window shows
+      // the slide edge-to-edge with no letterboxing. Chromeless (decorations:
+      // false) so what you share over Zoom is just the slide — no title bar.
+      const aw = presentation.config.width || 1280;
+      const ah = presentation.config.height || 720;
+      const winW = 1280;
+      const winH = Math.round(winW * (ah / aw));
+      console.log(`[multi-monitor] SCREEN-SHARE MODE — windowed chromeless presenter ${winW}x${winH} on the current monitor`);
       presenterWindow = new WebviewWindow('presenter', {
         url: '/presenter.html',
-        title: 'Eigendeck Presenter (TEST)',
-        x: 120, y: 120, width: 1000, height: 620,
-        fullscreen: false, decorations: true, alwaysOnTop: true, focus: true,
+        // Title shows in the OS/Zoom "share a window" picker — keep it findable.
+        title: 'Eigendeck Presentation',
+        x: 120, y: 120, width: winW, height: winH,
+        // Not fullscreen, no chrome, not pinned on top (so Zoom's share toolbar
+        // stays reachable); focus it so it's visible to grab for sharing.
+        fullscreen: false, decorations: false, alwaysOnTop: false, focus: true,
       });
     } else {
       // Create presenter window on the secondary monitor
@@ -181,8 +193,8 @@ export async function openPresenterWindow(
 
     // Set window level above the menu bar so it covers the secondary monitor fully.
     // This is how Keynote/PowerPoint do it — no fullscreen API, just a high window level.
-    // Skipped in test mode so the windowed presenter stays movable/visible.
-    if (!testMode) {
+    // Skipped for the windowed screen-share presenter (it's a normal window).
+    if (!windowed) {
       console.log('[multi-monitor] Window ready, setting window level above menu bar');
       try {
         await invoke('set_window_above_menubar', { label: 'presenter' });

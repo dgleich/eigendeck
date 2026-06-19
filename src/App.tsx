@@ -937,17 +937,17 @@ function App() {
     state.setPresenting(true);
   }, []);
 
-  // DEBUG: force the dual-window present flow on a single screen — opens the
-  // projector as a normal windowed (non-fullscreen) second window and shows the
-  // speaker view in the main window. Lets us exercise the 2-window flow without
-  // a real projector. `skipWindow` (used by e2e) shows only the speaker view.
-  const startPresentingTest = useCallback(async (skipWindow = false) => {
+  // Screen-share presentation: dual-window present on a SINGLE screen — opens the
+  // live slide as a chromeless, non-fullscreen window (shareable over Zoom/Meet
+  // without taking over the whole display) and shows the speaker view in the main
+  // window. `skipWindow` (used by e2e) shows only the speaker view, no projector.
+  const startScreenSharePresenting = useCallback(async (skipWindow = false) => {
     const state = usePresentationStore.getState();
     if (!skipWindow) {
       try {
-        await openPresenterWindow(state.presentation, state.currentSlideIndex, state.projectPath, { testMode: true });
+        await openPresenterWindow(state.presentation, state.currentSlideIndex, state.projectPath, { windowed: true });
       } catch (e) {
-        console.warn('[present] test presenter window failed:', e);
+        console.warn('[present] screen-share presenter window failed:', e);
       }
     }
     setMultiMonitorPresenting(true);
@@ -961,20 +961,21 @@ function App() {
     usePresentationStore.getState().setPresenting(true);
   }, []);
 
-  // Debug/e2e hooks to trigger the test present views.
+  // Window-event hooks: screen-share present (also used by e2e via skipWindow)
+  // and the single-window debug present.
   useEffect(() => {
     const handler = (e: Event) => {
       const skip = !!(e as CustomEvent).detail?.skipWindow;
-      flushToSqlite().then(() => startPresentingTest(skip));
+      flushToSqlite().then(() => startScreenSharePresenting(skip));
     };
     const single = () => flushToSqlite().then(() => startPresentingSingle());
-    window.addEventListener('eigendeck:test-presenter', handler);
+    window.addEventListener('eigendeck:screen-share-present', handler);
     window.addEventListener('eigendeck:test-present-single', single);
     return () => {
-      window.removeEventListener('eigendeck:test-presenter', handler);
+      window.removeEventListener('eigendeck:screen-share-present', handler);
       window.removeEventListener('eigendeck:test-present-single', single);
     };
-  }, [startPresentingTest, startPresentingSingle]);
+  }, [startScreenSharePresenting, startPresentingSingle]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1256,7 +1257,7 @@ function App() {
         case 'export-pdf-screenshots': exportPdfScreenshots(); break;
         case 'import-html': importFromHtml(); break;
         case 'present': startPresenting(); break;
-        case 'test-presenter': flushToSqlite().then(() => startPresentingTest()); break;
+        case 'screen-share-present': flushToSqlite().then(() => startScreenSharePresenting()); break;
         case 'test-present-single': flushToSqlite().then(() => startPresentingSingle()); break;
         case 'inspector': usePresentationStore.getState().toggleProperties(); break;
         case 'history': usePresentationStore.getState().toggleHistory(); break;
