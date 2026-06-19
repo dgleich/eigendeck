@@ -61,6 +61,13 @@ export interface PrefSchema {
    *  the toolbar by default. The native "Insert" menu ignores this — it
    *  always lists every action. Default [] (everything on the toolbar). */
   hiddenToolbarItems: string[];
+  /** Whether Present Mode (F5) attempts the dual-monitor "projector mode":
+   *  detect a second display and open the live slide there fullscreen with
+   *  the speaker view on the main screen. When false, Present Mode always
+   *  presents single-window on the current screen (no second-display
+   *  detection). Default true. The "Present in This Window" and "Screen
+   *  Share Presentation" menu items are explicit and ignore this. */
+  tryProjectorMode: boolean;
 }
 
 export interface JupyterServerEntry {
@@ -91,6 +98,7 @@ const DEFAULTS: PrefSchema = {
   showHelpText: true,
   gridSpacing: 40,
   hiddenToolbarItems: [],
+  tryProjectorMode: true,
 };
 
 const KEY_PREFIX = 'eigendeck:pref:';

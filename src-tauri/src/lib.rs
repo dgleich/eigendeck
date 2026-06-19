@@ -511,6 +511,15 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
 
     let present_item = MenuItemBuilder::new("Present Mode").id("present").accelerator("F5")
         .build(app).map_err(|e| e.to_string())?;
+    // Explicit single-window present on the current screen — bypasses projector
+    // mode regardless of the "Present will try projector mode" preference.
+    let test_present_single_item = MenuItemBuilder::new("Present in This Window").id("test-present-single")
+        .build(app).map_err(|e| e.to_string())?;
+    // Screen-share presentation: dual-window present on a single screen — a
+    // chromeless, non-fullscreen live-slide window (shareable over Zoom/Meet)
+    // plus the speaker view in the main window.
+    let screen_share_item = MenuItemBuilder::new("Screen Share Presentation").id("screen-share-present")
+        .build(app).map_err(|e| e.to_string())?;
     let speaker_item = MenuItemBuilder::new("Toggle Speaker Notes").id("speaker").accelerator("CmdOrCtrl+Shift+S")
         .build(app).map_err(|e| e.to_string())?;
     // No accelerator — Cmd+I is handled in JS (italic in contentEditable, inspector otherwise)
@@ -537,6 +546,9 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
 
     let view_menu = SubmenuBuilder::new(app, "View")
         .item(&present_item)
+        .item(&screen_share_item)
+        .item(&test_present_single_item)
+        .separator()
         .item(&speaker_item)
         .item(&inspector_item)
         .item(&history_item)
@@ -764,14 +776,30 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            // Close handling is scoped to the MAIN window. The secondary
+            // presenter window (dual-screen / test mode) must close on its own
+            // WITHOUT running the main window's unsaved-changes-then-quit flow —
+            // otherwise closing the projector window quit the whole app. It also
+            // must not close the shared DB.
+            let is_main = window.label() == "main";
             match event {
                 tauri::WindowEvent::CloseRequested { api, .. } => {
-                    // Ask the frontend if there are unsaved changes
-                    let _ = window.emit("check-close", ());
-                    api.prevent_close();
+                    if is_main {
+                        // Ask the frontend if there are unsaved changes.
+                        let _ = window.emit("check-close", ());
+                        api.prevent_close();
+                    } else {
+                        // Presenter window closing → tell the main window to
+                        // leave the dual-screen speaker view; let it close.
+                        if let Some(main) = window.app_handle().get_webview_window("main") {
+                            let _ = main.emit("presenter:closed", ());
+                        }
+                    }
                 }
                 tauri::WindowEvent::Destroyed => {
-                    let _ = storage::close_db();
+                    if is_main {
+                        let _ = storage::close_db();
+                    }
                 }
                 _ => {}
             }

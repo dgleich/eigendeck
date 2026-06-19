@@ -2336,6 +2336,7 @@ body.window-inactive .welcome-root {
 
 .speaker-timer button,
 .speaker-nav button,
+.speaker-swap,
 .speaker-exit {
   padding: 6px 14px;
   border: 1px solid #555;
@@ -2348,6 +2349,7 @@ body.window-inactive .welcome-root {
 
 .speaker-timer button:hover,
 .speaker-nav button:hover:not(:disabled),
+.speaker-swap:hover,
 .speaker-exit:hover {
   background: #444;
 }
@@ -2404,11 +2406,8 @@ body.window-inactive .welcome-root {
   background: #000;
   border-radius: 4px;
   overflow: hidden;
-  aspect-ratio: 16 / 9;
-}
-
-.speaker-preview-small {
-  max-height: 300px;
+  /* No fixed aspect-ratio: the SlideThumbnail fills the width and takes the
+     deck's own aspect ratio, so the box sizes to the slide (no truncation). */
 }
 
 .speaker-preview-empty {

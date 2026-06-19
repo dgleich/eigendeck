@@ -29,7 +29,7 @@ import { PromoteChooser } from './components/PromoteChooser';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
 import type { SlideElement } from './types/presentation';
-import { usePreference } from './lib/preferences';
+import { usePreference, getPreference } from './lib/preferences';
 import { INSERT_ITEMS, INSERT_GROUP_ORDER } from './lib/insertItems';
 import {
   saveProject,
@@ -913,29 +913,75 @@ function App() {
     setUnsavedDialog(null);
   }, []);
 
-  // Start presenting — try multi-monitor first, fall back to single window
+  // Start presenting — try projector mode (multi-monitor) first when enabled,
+  // fall back to single window. The "Present will try projector mode" pref gates
+  // whether we even look for a second display.
   const startPresenting = useCallback(async () => {
     const state = usePresentationStore.getState();
-    try {
-      console.log('[present] Attempting multi-monitor...');
-      const opened = await openPresenterWindow(
-        state.presentation,
-        state.currentSlideIndex,
-        state.projectPath
-      );
-      if (opened) {
-        console.log('[present] Multi-monitor presenter opened');
-        setMultiMonitorPresenting(true);
-        state.setPresenting(true);
-        return;
+    if (getPreference('tryProjectorMode')) {
+      try {
+        console.log('[present] Attempting multi-monitor...');
+        const opened = await openPresenterWindow(
+          state.presentation,
+          state.currentSlideIndex,
+          state.projectPath
+        );
+        if (opened) {
+          console.log('[present] Multi-monitor presenter opened');
+          setMultiMonitorPresenting(true);
+          state.setPresenting(true);
+          return;
+        }
+        console.log('[present] No secondary monitor, using single-window');
+      } catch (e) {
+        console.log('[present] Multi-monitor not available:', e);
       }
-      console.log('[present] No secondary monitor, using single-window');
-    } catch (e) {
-      console.log('[present] Multi-monitor not available:', e);
+    } else {
+      console.log('[present] Projector mode disabled by preference — single-window');
     }
     // Fallback: single-window fullscreen
     state.setPresenting(true);
   }, []);
+
+  // Screen-share presentation: dual-window present on a SINGLE screen — opens the
+  // live slide as a chromeless, non-fullscreen window (shareable over Zoom/Meet
+  // without taking over the whole display) and shows the speaker view in the main
+  // window. `skipWindow` (used by e2e) shows only the speaker view, no projector.
+  const startScreenSharePresenting = useCallback(async (skipWindow = false) => {
+    const state = usePresentationStore.getState();
+    if (!skipWindow) {
+      try {
+        await openPresenterWindow(state.presentation, state.currentSlideIndex, state.projectPath, { windowed: true });
+      } catch (e) {
+        console.warn('[present] screen-share presenter window failed:', e);
+      }
+    }
+    setMultiMonitorPresenting(true);
+    state.setPresenting(true);
+  }, []);
+
+  // DEBUG: force the SINGLE-window live present, bypassing multi-monitor
+  // detection entirely — the explicit counterpart to the 2-window test.
+  const startPresentingSingle = useCallback(() => {
+    setMultiMonitorPresenting(false);
+    usePresentationStore.getState().setPresenting(true);
+  }, []);
+
+  // Window-event hooks: screen-share present (also used by e2e via skipWindow)
+  // and the single-window debug present.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const skip = !!(e as CustomEvent).detail?.skipWindow;
+      flushToSqlite().then(() => startScreenSharePresenting(skip));
+    };
+    const single = () => flushToSqlite().then(() => startPresentingSingle());
+    window.addEventListener('eigendeck:screen-share-present', handler);
+    window.addEventListener('eigendeck:test-present-single', single);
+    return () => {
+      window.removeEventListener('eigendeck:screen-share-present', handler);
+      window.removeEventListener('eigendeck:test-present-single', single);
+    };
+  }, [startScreenSharePresenting, startPresentingSingle]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1217,6 +1263,8 @@ function App() {
         case 'export-pdf-screenshots': exportPdfScreenshots(); break;
         case 'import-html': importFromHtml(); break;
         case 'present': startPresenting(); break;
+        case 'screen-share-present': flushToSqlite().then(() => startScreenSharePresenting()); break;
+        case 'test-present-single': flushToSqlite().then(() => startPresentingSingle()); break;
         case 'inspector': usePresentationStore.getState().toggleProperties(); break;
         case 'history': usePresentationStore.getState().toggleHistory(); break;
         case 'toggle-snap-grid': usePresentationStore.getState().toggleSnapToGrid(); break;

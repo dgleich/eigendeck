@@ -6,9 +6,13 @@
  * navigation controls.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import { usePresentationStore } from '../store/presentation';
-import { getSlideNumber, TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
-import { navigatePresenter, closePresenterWindow } from '../lib/multiMonitor';
+import { getSlideNumber } from '../types/presentation';
+import { navigatePresenter, closePresenterWindow, swapPresenterDisplay } from '../lib/multiMonitor';
+import { availableMonitors } from '@tauri-apps/api/window';
+import { SlideThumbnail } from './SlideThumbnail';
+import { ASSET_TIER } from '../lib/assetCache';
 
 export function SpeakerMode() {
   const { presentation, setPresenting } = usePresentationStore();
@@ -17,6 +21,12 @@ export function SpeakerMode() {
   );
   const [elapsed, setElapsed] = useState(0);
   const [timerRunning, setTimerRunning] = useState(true);
+  // Swap Displays only makes sense with a real second monitor (the dual-screen
+  // projector path), not the single-screen screen-share window.
+  const [canSwap, setCanSwap] = useState(false);
+  useEffect(() => {
+    availableMonitors().then((m) => setCanSwap(m.length >= 2)).catch(() => setCanSwap(false));
+  }, []);
   const startTime = useRef(Date.now());
   const timerRef = useRef<number | null>(null);
 
@@ -62,6 +72,13 @@ export function SpeakerMode() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goNext, goPrev, goTo, totalSlides, setPresenting]);
 
+  // The projector window forwards its own keyboard/clicker presses here (it
+  // doesn't own the index). Drive the same goTo so both windows stay in sync.
+  useEffect(() => {
+    const unlistenP = listen<{ index: number }>('presenter:nav', (e) => goTo(e.payload.index));
+    return () => { unlistenP.then((fn) => fn()); };
+  }, [goTo]);
+
   const slide = presentation.slides[currentIndex];
   const nextSlide = currentIndex < totalSlides - 1 ? presentation.slides[currentIndex + 1] : null;
 
@@ -87,9 +104,16 @@ export function SpeakerMode() {
           Slide {currentIndex + 1} / {totalSlides}
           {' '}(#{getSlideNumber(presentation.slides, currentIndex)})
         </div>
-        <button className="speaker-exit" onClick={() => { closePresenterWindow(); setPresenting(false); }}>
-          End Presentation
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {canSwap && (
+            <button className="speaker-swap" onClick={() => { void swapPresenterDisplay(); }} title="Swap which display shows the slides vs the speaker view">
+              Swap Displays
+            </button>
+          )}
+          <button className="speaker-exit" onClick={() => { closePresenterWindow(); setPresenting(false); }}>
+            End Presentation
+          </button>
+        </div>
       </div>
 
       <div className="speaker-body">
@@ -97,14 +121,7 @@ export function SpeakerMode() {
         <div className="speaker-current">
           <div className="speaker-preview-label">Current Slide</div>
           <div className="speaker-preview">
-            <div style={{
-              width: 1920, height: 1080, transform: 'scale(0.35)', transformOrigin: 'top left',
-              background: '#fff', position: 'relative', border: '1px solid #ddd',
-            }}>
-              {slide?.elements.map((el, idx) => (
-                <SpeakerPreviewElement key={el.id} element={el} zIndex={idx} />
-              ))}
-            </div>
+            {slide && <SlideThumbnail presentation={presentation} slide={slide} imageTier={ASSET_TIER.full} />}
           </div>
           {/* Notes */}
           <div className="speaker-notes">
@@ -120,14 +137,7 @@ export function SpeakerMode() {
           <div className="speaker-preview-label">Next Slide</div>
           {nextSlide ? (
             <div className="speaker-preview speaker-preview-small">
-              <div style={{
-                width: 1920, height: 1080, transform: 'scale(0.25)', transformOrigin: 'top left',
-                background: '#fff', position: 'relative', border: '1px solid #ddd',
-              }}>
-                {nextSlide.elements.map((el, idx) => (
-                  <SpeakerPreviewElement key={el.id} element={el} zIndex={idx} />
-                ))}
-              </div>
+              <SlideThumbnail presentation={presentation} slide={nextSlide} imageTier={ASSET_TIER.full} />
             </div>
           ) : (
             <div className="speaker-preview-empty">End of presentation</div>
@@ -141,42 +151,4 @@ export function SpeakerMode() {
       </div>
     </div>
   );
-}
-
-/** Simplified element preview for speaker view (no interactivity, no MathJax) */
-function SpeakerPreviewElement({ element: el, zIndex }: { element: import('../types/presentation').SlideElement; zIndex: number }) {
-  const p = el.position;
-  const config = usePresentationStore.getState().presentation.config;
-
-  switch (el.type) {
-    case 'text': {
-      const ps = TEXT_PRESET_STYLES[el.preset];
-      return (
-        <div style={{
-          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-          fontFamily: el.fontFamily || ps.fontFamily, fontWeight: ps.fontWeight,
-          fontStyle: ps.fontStyle, fontSize: effectiveFontSize(el, config),
-          color: el.color || ps.color, lineHeight: 1.3, overflow: 'hidden', padding: '8px 12px',
-          zIndex,
-        }} dangerouslySetInnerHTML={{ __html: el.html }} />
-      );
-    }
-    case 'image':
-      return <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: '#f0f0f0', zIndex }} />;
-    case 'cover':
-      return <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: el.color || '#fff', zIndex }} />;
-    case 'demo': case 'demo-piece':
-      return <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: '#e8f4f8', border: '1px dashed #93c5fd', zIndex }} />;
-    case 'video':
-      return <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: '#1f2937', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex }}>▶</div>;
-    case 'arrow': {
-      const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 3 } = el;
-      return (
-        <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex }}>
-          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={strokeWidth} />
-        </svg>
-      );
-    }
-    default: return null;
-  }
 }

@@ -1,24 +1,41 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { resolveTheme } from '../lib/themes';
-import { useDemoUrl } from '../lib/demoAssets';
-import { useImageSrc } from '../lib/imageSrc';
-import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
-import { buildEmbedSrc } from '../lib/videoEmbed';
 import { SpeakerPanel } from './SpeakerView';
 import { getSlideNumber } from '../types/presentation';
-import type { Slide, SlideElement, TextElement } from '../types/presentation';
-import { TextElementSvg } from './TextElementSvg';
-import { NotebookContent } from './notebook/NotebookContent';
+import type { SlideElement } from '../types/presentation';
+// Live-present element rendering is shared with the projector window
+// (src/presenter.tsx) via PresentSlide — one renderer, no drift.
+import { PresentElement, PresentControllerIframe, type PresentCtx } from './PresentSlide';
+import { planPresentTransition } from '../lib/presentTransition';
 
 const TRANSITION_MS = 300;
 
-export function PresentMode() {
-  const { presentation, setPresenting, selectSlide, projectPath } =
+/**
+ * The single live presentation viewer — used by BOTH the single-window present
+ * (main window, self-navigated) AND the projector window (src/presenter.tsx,
+ * navigated externally via `controlledIndex`). Same transitions, same
+ * rendering, no drift.
+ *
+ * - Uncontrolled (no `controlledIndex`): owns navigation + keyboard, Escape
+ *   exits present mode.
+ * - Controlled (`controlledIndex` set): index comes from the prop (the speaker
+ *   window's events). Keyboard nav still WORKS here, but instead of moving a
+ *   local index it forwards the target slide to the owner via `onNavigate` (the
+ *   projector tells the speaker window, which navigates and echoes back) — so a
+ *   clicker/keyboard focused on the projector drives the deck too. Escape calls
+ *   `onExit` (close the projector window).
+ */
+export function PresentMode({ controlledIndex, onExit, onNavigate }: {
+  controlledIndex?: number; onExit?: () => void; onNavigate?: (index: number) => void;
+} = {}) {
+  const { presentation, setPresenting, selectSlide } =
     usePresentationStore();
-  const [currentIndex, setCurrentIndex] = useState(
+  const controlled = controlledIndex !== undefined;
+  const [localIndex, setLocalIndex] = useState(
     usePresentationStore.getState().currentSlideIndex
   );
+  const currentIndex = controlled ? controlledIndex! : localIndex;
   const [showSpeaker, setShowSpeaker] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -27,6 +44,7 @@ export function PresentMode() {
   const [prevIndex, setPrevIndex] = useState<number | null>(null);
   const [animating, setAnimating] = useState(false);
   const animTimerRef = useRef<number | null>(null);
+  const shownIndexRef = useRef(currentIndex);
 
   const totalSlides = presentation.slides.length;
   const slideW = presentation.config.width;
@@ -45,27 +63,49 @@ export function PresentMode() {
     return () => observer.disconnect();
   }, [slideW, slideH]);
 
+  // Run the slide-change transition whenever the index changes — for LOCAL
+  // navigation AND for the controlled prop (projector), so both windows
+  // animate identically.
+  //
+  // useLayoutEffect (NOT useEffect): it runs after render but BEFORE the
+  // browser paints. The render right after an index change still has the new
+  // elements at opacity 1 (prevIndex is null); if we set the "entering" state
+  // in a post-paint useEffect, that opacity-1 frame PAINTS first → the slide
+  // pops into view, then jumps to 0 and fades in. Setting prevIndex/animating
+  // here re-renders to opacity 0 before paint, so the first painted frame is
+  // already the start of the fade — no pop.
+  useLayoutEffect(() => {
+    const prev = shownIndexRef.current;
+    if (prev === currentIndex) return;
+    shownIndexRef.current = currentIndex;
+    if (animTimerRef.current) clearTimeout(animTimerRef.current);
+    setPrevIndex(prev);
+    setAnimating(false);
+    const raf = requestAnimationFrame(() => {
+      setAnimating(true);
+      animTimerRef.current = window.setTimeout(() => {
+        setAnimating(false);
+        setPrevIndex(null);
+        animTimerRef.current = null;
+      }, TRANSITION_MS);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [currentIndex]);
+
   const goTo = useCallback(
     (index: number) => {
       if (index < 0 || index >= totalSlides) return;
       if (index === currentIndex) return;
-      if (animTimerRef.current) clearTimeout(animTimerRef.current);
-
-      setPrevIndex(currentIndex);
-      setCurrentIndex(index);
+      if (controlled) {
+        // Projector window: we don't own the index. Forward the request to the
+        // main (speaker) window, which navigates and echoes presenter:goto back.
+        onNavigate?.(index);
+        return;
+      }
+      setLocalIndex(index);
       selectSlide(index);
-
-      // Start animation — after a frame so the DOM has both slides
-      requestAnimationFrame(() => {
-        setAnimating(true);
-        animTimerRef.current = window.setTimeout(() => {
-          setAnimating(false);
-          setPrevIndex(null);
-          animTimerRef.current = null;
-        }, TRANSITION_MS);
-      });
     },
-    [currentIndex, totalSlides, selectSlide]
+    [controlled, currentIndex, totalSlides, selectSlide, onNavigate]
   );
 
   const goNext = useCallback(() => goTo(currentIndex + 1), [currentIndex, goTo]);
@@ -73,8 +113,10 @@ export function PresentMode() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape always exits present mode, even from a focused editor.
-      if (e.key === 'Escape') { setPresenting(false); return; }
+      // Escape: exit present (main) or close the projector window (controlled).
+      if (e.key === 'Escape') { if (onExit) onExit(); else setPresenting(false); return; }
+      // NOTE: controlled (projector) windows still navigate via the keyboard —
+      // goTo() forwards the target to the speaker window when controlled.
       // When focus is in a text-entry context (a notebook code cell's
       // CodeMirror editor, an input, etc.), let it handle the key —
       // otherwise Space/arrows get hijacked for slide navigation and
@@ -92,14 +134,16 @@ export function PresentMode() {
         case 'ArrowLeft': case 'ArrowUp': case 'PageUp':
           e.preventDefault(); goPrev(); break;
         case 's': case 'S':
-          e.preventDefault(); setShowSpeaker((prev) => !prev); break;
+          // Inline speaker panel only makes sense in the single-window present.
+          if (!controlled) { e.preventDefault(); setShowSpeaker((prev) => !prev); }
+          break;
         case 'Home': e.preventDefault(); goTo(0); break;
         case 'End': e.preventDefault(); goTo(totalSlides - 1); break;
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goNext, goPrev, goTo, totalSlides, setPresenting]);
+  }, [goNext, goPrev, goTo, totalSlides, setPresenting, controlled, onExit]);
 
   useEffect(() => {
     return () => {
@@ -113,9 +157,14 @@ export function PresentMode() {
   const prevSlide = prevIndex !== null ? presentation.slides[prevIndex] : null;
   const { author, venue } = presentation.config;
   const meta = [author, venue].filter(Boolean).join(' \u00B7 ');
+  const ctx: PresentCtx = { slide, presentationConfig: presentation.config, presentationTheme: presentation.theme };
 
-  // Diff linked elements between prev and current slide
-  const linkedTransitions = computeLinkedTransitions(prevSlide, slide);
+  // The transition plan: every current element with its true z-order and role
+  // (static / fade / linked), plus the elements leaving. Pure + unit-tested
+  // (src/lib/presentTransition.ts); rendered as ONE stable list keyed by id, so
+  // iframes never remount and z-order stays correct. See
+  // docs/presenter-architecture.md.
+  const plan = planPresentTransition(prevSlide, slide);
 
   return (
     <div className={`present-mode ${showSpeaker ? 'with-speaker' : ''}`}>
@@ -126,13 +175,15 @@ export function PresentMode() {
             style={{ width: slideW, height: slideH, transform: `scale(${scale})`, transformOrigin: 'top left',
               backgroundColor: resolveTheme(presentation.theme, slide.theme).background }}
           >
-            {/* Fading out elements (from previous slide, no match in current) */}
-            {linkedTransitions.fadeOut.map((el, idx) => (
+            {/* Elements LEAVING (on the previous slide, linked but no match on
+                this one) — fade out. Transient; rendered separately because they
+                aren't in the current slide's element list. */}
+            {plan.fadeOut.map(({ element: el, z }) => (
               <PresentElement
                 key={`fadeout-${el.id}`}
                 element={el}
-                zIndex={idx + 1}
-                projectPath={projectPath}
+                zIndex={z}
+                ctx={ctx}
                 style={{
                   opacity: animating ? 0 : 1,
                   transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
@@ -140,86 +191,67 @@ export function PresentMode() {
               />
             ))}
 
-            {/* Linked elements that animate position/size */}
-            {linkedTransitions.linked.map(({ from, to }, idx) => {
-              // Arrows: interpolate coordinates via rAF
-              if (from.type === 'arrow' && to.type === 'arrow') {
-                // If arrow hasn't moved, render statically
-                const arrowStatic = from.x1 === to.x1 && from.y1 === to.y1 &&
-                  from.x2 === to.x2 && from.y2 === to.y2;
-                if (arrowStatic) {
+            {/* ALL current-slide elements in ONE list, keyed by el.id in true
+                z-order. Critically, an element NEVER changes its key or its
+                position in the tree across the transition (entering → settled),
+                so iframes (demo / video / notebook) are never unmounted and
+                re-created — that remount is what made HTML demos blank for one
+                frame as they finished fading ("flash"). The per-element style
+                encodes its transition role:
+                  • linked (matched partner on prev slide) → animate position
+                  • cover / synced-from-prev → static (instant, no fade)
+                  • genuinely new → fade in */}
+            {plan.items.map(({ element: el, z, role, from }) => {
+              // Linked arrow → interpolate its endpoints (or static if unmoved).
+              if (role === 'linked' && from && el.type === 'arrow' && from.type === 'arrow') {
+                const moved = !(from.x1 === el.x1 && from.y1 === el.y1 &&
+                  from.x2 === el.x2 && from.y2 === el.y2);
+                if (moved) {
                   return (
-                    <PresentElement key={`linked-${to.id}`} element={to} zIndex={idx + 10}
-                      projectPath={projectPath} />
+                    <AnimatedArrow key={el.id} from={from} to={el} zIndex={z}
+                      animating={animating} hasPrev={prevIndex !== null} />
                   );
                 }
-                return (
-                  <AnimatedArrow
-                    key={`linked-arrow-${to.id}`}
-                    from={from}
-                    to={to}
-                    zIndex={idx + 10}
-                    animating={animating}
-                    hasPrev={prevIndex !== null}
-                  />
-                );
+                return <PresentElement key={el.id} element={el} zIndex={z} ctx={ctx} />;
               }
 
-              const displayEl = to;
-              const fromPos = getElementBounds(from);
-              const toPos = getElementBounds(to);
-
-              // If position hasn't changed, render statically — no transition, no flicker
-              const isStatic = fromPos.x === toPos.x && fromPos.y === toPos.y &&
-                fromPos.w === toPos.w && fromPos.h === toPos.h;
-
-              return (
-                <PresentElement
-                  key={`linked-${to.id}`}
-                  element={displayEl}
-                  zIndex={idx + 10}
-                  projectPath={projectPath}
-                  style={isStatic ? {} : {
-                    // Start at old position, transition to new
-                    ...(prevIndex !== null ? {
+              // Linked (non-arrow) → animate position/size from the prev partner.
+              if (role === 'linked' && from) {
+                const fromPos = getElementBounds(from);
+                const toPos = getElementBounds(el);
+                const isStatic = fromPos.x === toPos.x && fromPos.y === toPos.y &&
+                  fromPos.w === toPos.w && fromPos.h === toPos.h;
+                return (
+                  <PresentElement
+                    key={el.id}
+                    element={el}
+                    zIndex={z}
+                    ctx={ctx}
+                    style={isStatic ? {} : (prevIndex !== null ? {
                       left: animating ? toPos.x : fromPos.x,
                       top: animating ? toPos.y : fromPos.y,
                       width: animating ? toPos.w : fromPos.w,
                       height: animating ? toPos.h : fromPos.h,
                       transition: animating ? `left ${TRANSITION_MS}ms ease-in-out, top ${TRANSITION_MS}ms ease-in-out, width ${TRANSITION_MS}ms ease-in-out, height ${TRANSITION_MS}ms ease-in-out, opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
-                    } : {}),
+                    } : {})}
+                  />
+                );
+              }
+
+              // role 'static' (cover / carried-over) → instant; 'fade' → fade in.
+              return (
+                <PresentElement
+                  key={el.id}
+                  element={el}
+                  zIndex={z}
+                  ctx={ctx}
+                  style={role === 'static' ? { opacity: 1 } : {
+                    opacity: prevIndex !== null ? (animating ? 1 : 0) : 1,
+                    transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
                   }}
                 />
               );
             })}
-
-            {/* Fading in elements (new in current slide, no match in previous) */}
-            {linkedTransitions.fadeIn.map((el, idx) => (
-              <PresentElement
-                key={`fadein-${el.id}`}
-                element={el}
-                zIndex={idx + 100}
-                projectPath={projectPath}
-                style={{
-                  opacity: animating ? 1 : (prevIndex !== null ? 0 : 1),
-                  transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
-                }}
-              />
-            ))}
-
-            {/* Unlinked elements (no linkId, current slide only) */}
-            {linkedTransitions.unlinked.map((el, idx) => (
-              <PresentElement
-                key={el.id}
-                element={el}
-                zIndex={idx + 200}
-                projectPath={projectPath}
-                style={{
-                  opacity: prevIndex !== null ? (animating ? 1 : 0) : 1,
-                  transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
-                }}
-              />
-            ))}
 
             {/* Hidden controller iframes for demo-piece elements,
                 deduped by assetId. */}
@@ -251,52 +283,6 @@ export function PresentMode() {
 // Compute linked object transitions
 // ============================================
 
-interface LinkedTransitions {
-  linked: { from: SlideElement; to: SlideElement }[];
-  fadeIn: SlideElement[];
-  fadeOut: SlideElement[];
-  unlinked: SlideElement[];
-}
-
-function computeLinkedTransitions(prevSlide: Slide | null, currentSlide: Slide): LinkedTransitions {
-  const result: LinkedTransitions = { linked: [], fadeIn: [], fadeOut: [], unlinked: [] };
-
-  if (!prevSlide) {
-    // No previous slide — everything just appears
-    result.unlinked = currentSlide.elements;
-    return result;
-  }
-
-  const prevByLinkId = new Map<string, SlideElement>();
-  const prevUnlinked = new Set<string>(); // track prev elements without linkId
-  for (const el of prevSlide.elements) {
-    if (el.linkId) prevByLinkId.set(el.linkId, el);
-    else prevUnlinked.add(el.id);
-  }
-
-  const matchedPrevLinkIds = new Set<string>();
-
-  for (const el of currentSlide.elements) {
-    if (el.linkId && prevByLinkId.has(el.linkId)) {
-      result.linked.push({ from: prevByLinkId.get(el.linkId)!, to: el });
-      matchedPrevLinkIds.add(el.linkId);
-    } else if (el.linkId) {
-      result.fadeIn.push(el);
-    } else {
-      result.unlinked.push(el);
-    }
-  }
-
-  // Previous elements with linkId that have no match in current — fade out
-  for (const el of prevSlide.elements) {
-    if (el.linkId && !matchedPrevLinkIds.has(el.linkId)) {
-      result.fadeOut.push(el);
-    }
-  }
-
-  return result;
-}
-
 function getElementBounds(el: SlideElement): { x: number; y: number; w: number; h: number } {
   if (el.type === 'arrow') {
     const { x1, y1, x2, y2 } = el;
@@ -309,88 +295,6 @@ function getElementBounds(el: SlideElement): { x: number; y: number; w: number; 
     };
   }
   return { x: el.position.x, y: el.position.y, w: el.position.width, h: el.position.height };
-}
-
-// ============================================
-// Present element renderers
-// ============================================
-
-function PresentElement({ element: el, zIndex, style }: {
-  element: SlideElement; zIndex: number; projectPath?: string | null;
-  style?: React.CSSProperties;
-}) {
-  const pos = el.position;
-
-  switch (el.type) {
-    case 'text':
-      return <PresentTextElement element={el} zIndex={zIndex} style={style} />;
-
-    case 'image':
-      return <PresentImage element={el} zIndex={zIndex} style={style} />;
-
-    case 'demo':
-      return <PresentDemoIframe assetId={el.assetId} pos={pos} zIndex={zIndex} style={style} />;
-
-    case 'demo-piece':
-      return <PresentDemoIframe assetId={el.assetId} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} style={style} />;
-
-    case 'video':
-      return <PresentVideo element={el} zIndex={zIndex} style={style} />;
-
-    case 'notebook':
-      return (
-        <div className="el-notebook" style={{
-          position: 'absolute', left: pos.x, top: pos.y,
-          width: pos.width, height: pos.height, zIndex,
-          ...style,
-        }}>
-          <NotebookContent element={el} interactive={true} mode="present" />
-        </div>
-      );
-
-    case 'cover':
-      return (
-        <div style={{
-          position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-          background: el.color || '#ffffff', zIndex,
-          ...style,
-        }} />
-      );
-
-    case 'arrow': {
-      const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;
-      const angle = Math.atan2(y2 - y1, x2 - x1);
-      const ha = Math.PI / 6;
-      return (
-        <svg style={{
-          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-          pointerEvents: 'none', overflow: 'visible', zIndex,
-          ...style,
-        }}>
-          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={strokeWidth} />
-          <polygon points={`${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}`} fill={color} />
-        </svg>
-      );
-    }
-  }
-}
-
-function PresentTextElement({ element: el, zIndex, style }: { element: TextElement; zIndex: number; style?: React.CSSProperties }) {
-  // Reuse the same SVG/foreignObject + iframe-pool pipeline that the
-  // editor and sidebar use. Per-preset math fonts work in present mode too.
-  const { presentation, currentSlideIndex } = usePresentationStore.getState();
-  const slide = presentation.slides[currentSlideIndex];
-  if (!slide) return null;
-  return (
-    <TextElementSvg
-      element={el} slide={slide}
-      presentationTheme={presentation.theme}
-      presentationConfig={presentation.config}
-      className={`el-text el-preset-${el.preset}`}
-      zIndex={zIndex}
-      styleOverride={style}
-    />
-  );
 }
 
 // ============================================
@@ -463,100 +367,5 @@ function AnimatedArrow({ from, to, zIndex, animating, hasPrev }: {
       <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={strokeWidth} />
       <polygon points={`${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}`} fill={color} />
     </svg>
-  );
-}
-
-// ============================================
-// Demo iframe components (use hooks for blob URLs)
-// ============================================
-
-function PresentImage({ element: el, zIndex, style }: {
-  element: Extract<SlideElement, { type: 'image' }>; zIndex: number; style?: React.CSSProperties;
-}) {
-  const pos = el.position;
-  const src = useImageSrc(el.assetId, el.kind, {
-    displayWidth: el.position.width,
-    displayHeight: el.position.height,
-    snapshotVariant: el.snapshotVariant,
-  });
-  if (!src) return null;
-  return (
-    <img src={src} alt="" style={{
-      position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-      objectFit: 'contain', zIndex,
-      ...(el.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
-      ...(el.borderRadius ? { borderRadius: el.borderRadius } : {}),
-      ...(el.opacity != null && el.opacity < 1 ? { opacity: el.opacity } : {}),
-      ...(el.rotation ? { transform: `rotate(${el.rotation}deg)` } : {}),
-      ...style,
-    }} />
-  );
-}
-
-function PresentVideo({ element: el, zIndex, style }: {
-  element: Extract<SlideElement, { type: 'video' }>; zIndex: number; style?: React.CSSProperties;
-}) {
-  const pos = el.position;
-  const ref = useRef<HTMLVideoElement>(null);
-  const embedRef = useRef<HTMLIFrameElement>(null);
-  const src = useDemoUrl(el.assetId);
-  const captionsSrc = useDemoUrl(el.captionsAssetId);
-  const embedSrc = el.kind === 'embed' ? buildEmbedSrc(el) : null;
-  usePlaybackRate(ref, el.playbackRate ?? 1, src);
-  usePingPong(ref, !!el.pingPong, el.playbackRate ?? 1, src);
-  useEmbedSpeed(embedRef, el.provider, el.playbackRate ?? 1, embedSrc);
-  const box: React.CSSProperties = {
-    position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-    objectFit: 'contain', background: '#000', zIndex, ...style,
-  };
-  if (el.kind === 'embed') {
-    if (!embedSrc) return null;
-    return <iframe key={embedSrc} ref={embedRef} src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-      style={{ ...box, border: 'none' }} />;
-  }
-  if (!src) return null;
-  return (
-    <video ref={ref} src={src} playsInline
-      loop={!!el.loop && !el.pingPong}
-      muted={!!el.muted}
-      autoPlay={!!el.autoplay}
-      controls={!!el.controls}
-      // Chrome-free (no controls): click the video to play/pause, else it's
-      // unstartable in present mode.
-      onClick={el.controls ? undefined : () => togglePlay(ref.current)}
-      style={el.controls ? box : { ...box, cursor: 'pointer' }}>
-      {el.captions && captionsSrc && (
-        <track kind="captions" src={captionsSrc} srcLang="en" label={el.captionsLabel || 'Captions'} default />
-      )}
-    </video>
-  );
-}
-
-function PresentDemoIframe({ assetId, hash, title, pos, zIndex, style }: {
-  assetId: string; hash?: string; title?: string;
-  pos: { x: number; y: number; width: number; height: number };
-  zIndex: number; style?: React.CSSProperties;
-}) {
-  const src = useDemoUrl(assetId, hash);
-  if (!src) return null;
-  return (
-    <iframe src={src} sandbox="allow-scripts allow-same-origin" title={title || 'demo'} style={{
-      position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-      border: 'none', zIndex,
-      ...style,
-    }} />
-  );
-}
-
-function PresentControllerIframe({ assetId }: { assetId: string }) {
-  const src = useDemoUrl(assetId, 'role=controller');
-  if (!src) return null;
-  return (
-    <iframe
-      src={src}
-      sandbox="allow-scripts allow-same-origin"
-      title={`controller: ${assetId.slice(0, 8)}`}
-      style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }}
-    />
   );
 }

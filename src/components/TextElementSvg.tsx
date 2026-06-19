@@ -19,6 +19,7 @@ import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import {
   renderMathInHtml as renderMathInIframe,
+  renderMathInHtmlSync,
   containsMath as containsMathExpr,
 } from '../lib/mathjaxRenderer';
 
@@ -140,9 +141,15 @@ export function TextElementSvg({
 
   const valign = element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined);
 
-  // Pre-render math via per-preset iframe pool. Falls back to raw source
-  // while pending so the element doesn't go blank.
-  const [renderedHtml, setRenderedHtml] = useState<string>(element.html || '');
+  // Pre-render math via per-preset iframe pool. The INITIAL value pulls any
+  // already-cached SVGs synchronously (renderMathInHtmlSync) so warmed math
+  // paints in the FIRST frame — no "slide appears, then math fades in" flash
+  // (the projector warms its cache from SQLite, so this is a full hit there).
+  // Uncached expressions stay raw and the async effect below fills them in.
+  const [renderedHtml, setRenderedHtml] = useState<string>(() => {
+    if (!containsMathExpr(element.html)) return element.html || '';
+    return renderMathInHtmlSync(element.html, mathBundleId, presentationConfig.mathPreamble) ?? (element.html || '');
+  });
   useEffect(() => {
     let cancelled = false;
     if (!containsMathExpr(element.html)) {

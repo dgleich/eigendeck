@@ -1,127 +1,10 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { usePresentationStore } from '../store/presentation';
-import { getSlideNumber, isGroupChild, type SlideElement } from '../types/presentation';
-import { resolveTheme } from '../lib/themes';
-import { TextElementSvg } from './TextElementSvg';
-import { useRenderedAsset } from '../lib/assetRenderer';
-import { ASSET_TIER } from '../lib/assetCache';
-import { useAssetFileWatcher } from '../lib/assetWatcher';
+import { getSlideNumber, isGroupChild } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
-import { ElementPreviewImg } from './ElementPreviewImg';
-import { VideoThumb } from './VideoThumb';
+import { SlideThumbnail } from './SlideThumbnail';
 
-/**
- * Thumbnail-tier image cell for the sidebar. Pulls a cached 256-px PNG from
- * asset_cache (rendering on first display); falls back to a "loading" tile
- * while the render is in flight and a plain "IMG" placeholder if no source.
- * Same code path serves raster + svg + (future) pdf via ImageElement.kind.
- */
-function SidebarImageThumb({ element }: { element: Extract<SlideElement, { type: 'image' }> }) {
-  const p = element.position;
-  const kind = element.kind ?? 'raster';
-  const url = useRenderedAsset(element.assetId, kind, ASSET_TIER.thumb, ASSET_TIER.thumb, element.snapshotVariant);
-  // Auto-reload the asset when the user re-saves its source file on disk.
-  // No-op when the asset wasn't drag/picker-inserted (no external link).
-  useAssetFileWatcher(element.assetId, element.id);
-  return (
-    <div style={{
-      position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-      overflow: 'hidden',
-      background: url ? 'transparent' : '#f0f0f0',
-      border: url ? 'none' : '1px solid #ddd', borderRadius: 2,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      {url ? (
-        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-      ) : (
-        <span style={{ fontSize: 24, color: '#aaa' }}>IMG</span>
-      )}
-    </div>
-  );
-}
-
-/** Demo placeholder in the sidebar. Renders a labeled tile and
- *  ALSO subscribes the file watcher for the demo's external_path.
- *  Without the hook call, demo assets with external_path set would
- *  never get watched — useAssetFileWatcher subscriptions live in
- *  the components that mount the element. */
-function SidebarDemoTile({ element }: { element: Extract<SlideElement, { type: 'demo' }> }) {
-  const p = element.position;
-  useAssetFileWatcher(element.assetId, element.id);
-  return (
-    <div style={{
-      position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-      overflow: 'hidden', background: '#fff',
-    }}>
-      <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
-        <div style={{ width: '100%', height: '100%', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', fontSize: 20,
-          color: '#60a5fa', background: '#e8f4f8', border: '1px dashed #93c5fd' }}>DEMO</div>
-      } />
-    </div>
-  );
-}
-
-/** Demo-piece placeholder — same subscribe-then-render pattern. */
-function SidebarDemoPieceTile({ element }: { element: Extract<SlideElement, { type: 'demo-piece' }> }) {
-  const p = element.position;
-  useAssetFileWatcher(element.assetId, element.id);
-  return (
-    <div style={{
-      position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-      overflow: 'hidden', background: '#fff',
-    }}>
-      <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
-        <div style={{ width: '100%', height: '100%', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', fontSize: 16,
-          color: '#7c3aed', background: '#f0e8f8', border: '1px dashed #a78bfa' }}>{element.piece}</div>
-      } />
-    </div>
-  );
-}
-
-/** Video thumbnail — shows the cached poster-frame preview, and subscribes the
- *  file watcher for the video's external file so it reloads on disk changes. */
-function SidebarVideoTile({ element }: { element: Extract<SlideElement, { type: 'video' }> }) {
-  const p = element.position;
-  useAssetFileWatcher(element.assetId, element.id);
-  useAssetFileWatcher(element.captionsAssetId, element.id);  // watch the .vtt sidecar too
-  return (
-    <div style={{
-      position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-      overflow: 'hidden', background: '#000',
-    }}>
-      <VideoThumb element={element} />
-    </div>
-  );
-}
-
-/** Notebook thumbnail — shows the cached preview image, and (crucially)
- *  subscribes the file watcher for the notebook's external .ipynb so it
- *  auto-reloads on disk changes. Like images/demos, the watcher lives in the
- *  always-rendered sidebar thumb, so it covers notebooks on every slide. */
-function SidebarNotebookThumb({ element }: { element: Extract<SlideElement, { type: 'notebook' }> }) {
-  const p = element.position;
-  useAssetFileWatcher(element.assetId, element.id);
-  return (
-    <div style={{
-      position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-      overflow: 'hidden', background: '#fff',
-    }}>
-      <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
-        <div style={{ width: '100%', height: '100%', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', fontSize: 64,
-          color: '#86c986', background: '#eef7ee' }}>NB</div>
-      } />
-    </div>
-  );
-}
-
-const SLIDE_WIDTH = 1920;
-const SLIDE_HEIGHT = 1080;
 const THUMB_WIDTH = 166;
-const THUMB_SCALE = THUMB_WIDTH / SLIDE_WIDTH;
-const THUMB_HEIGHT = SLIDE_HEIGHT * THUMB_SCALE;
 
 export function SlideSidebar() {
   const {
@@ -214,57 +97,7 @@ export function SlideSidebar() {
             }}
           >
             <span className="slide-number">{child ? '' : slideNum}</span>
-            <div className="slide-thumb-clip" style={{ width: THUMB_WIDTH, height: THUMB_HEIGHT }}>
-              <div
-                className="slide-thumb-render"
-                style={{
-                  width: SLIDE_WIDTH, height: SLIDE_HEIGHT,
-                  transform: `scale(${THUMB_SCALE})`, transformOrigin: 'top left',
-                  position: 'relative', background: resolveTheme(presentation.theme, slide.theme).background,
-                }}
-              >
-                {/* Elements */}
-                {slide.elements.map((el) => {
-                  const p = el.position;
-                  switch (el.type) {
-                    case 'text':
-                      return (
-                        <TextElementSvg key={el.id}
-                          element={el} slide={slide}
-                          presentationTheme={presentation.theme}
-                          presentationConfig={presentation.config} />
-                      );
-                    case 'image':
-                      return <SidebarImageThumb key={el.id} element={el} />;
-                    case 'arrow': {
-                      const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 3 } = el;
-                      return (
-                        <svg key={el.id} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
-                          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={strokeWidth} />
-                        </svg>
-                      );
-                    }
-                    case 'demo':
-                      return <SidebarDemoTile key={el.id} element={el} />;
-                    case 'demo-piece':
-                      return <SidebarDemoPieceTile key={el.id} element={el} />;
-                    case 'notebook':
-                      return <SidebarNotebookThumb key={el.id} element={el} />;
-                    case 'video':
-                      return <SidebarVideoTile key={el.id} element={el} />;
-                    case 'cover':
-                      return (
-                        <div key={el.id} style={{
-                          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-                          background: el.color || '#fff', border: '1px solid #ddd',
-                        }} />
-                      );
-                    default:
-                      return null;
-                  }
-                })}
-              </div>
-            </div>
+            <SlideThumbnail presentation={presentation} slide={slide} width={THUMB_WIDTH} />
             <div className="slide-actions">
               <button onClick={(e) => { e.stopPropagation(); duplicateSlide(index); }} title="Duplicate">D</button>
               <button onClick={(e) => { e.stopPropagation(); if (presentation.slides.length > 1 && confirm('Delete this slide?')) deleteSlide(index); }} title="Delete">X</button>

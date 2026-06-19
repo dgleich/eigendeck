@@ -119,6 +119,7 @@ interface Pool {
   pending: Map<string, PendingRequest>;
   cache: Map<string, RenderResult>;  // key = `${display}:${tex}`
   appliedPreamble: string;           // last preamble we sent to this iframe
+  preambleReady?: Promise<void>;     // resolves when appliedPreamble is REGISTERED in the iframe
 }
 
 const pools = new Map<string, Pool>();
@@ -216,13 +217,34 @@ function getOrCreatePool(bundleId: string): Pool {
  */
 export async function setMathPreamble(preamble: string, bundleId: string): Promise<void> {
   const pool = getOrCreatePool(bundleId);
-  if (pool.appliedPreamble === preamble) return;
-  await pool.ready;
+  // Already applied (or in-flight) for this exact preamble: reuse the same
+  // readiness promise so every caller waits for the SAME registration.
+  if (pool.appliedPreamble === preamble && pool.preambleReady) return pool.preambleReady;
   pool.appliedPreamble = preamble;
-  pool.iframe.contentWindow?.postMessage({ type: 'preamble', tex: preamble }, '*');
-  // Invalidate cache: previously-rendered SVGs were rendered without (or
-  // with the previous) preamble, so commands like \R wouldn't have resolved.
-  pool.cache.clear();
+  const p = (async () => {
+    await pool.ready;
+    // Wait for the iframe to ACK that the preamble is registered. Without this,
+    // renders fire before the macros exist (a fresh present/projector window) →
+    // undefined control sequence → raw-LaTeX cruft. A safety timeout keeps a
+    // missed ack from hanging renders forever.
+    await new Promise<void>((resolve) => {
+      const handler = (ev: MessageEvent) => {
+        const m = ev.data;
+        if (m && m.type === 'preamble-applied' && m.bundle === bundleId) {
+          window.removeEventListener('message', handler);
+          resolve();
+        }
+      };
+      window.addEventListener('message', handler);
+      setTimeout(() => { window.removeEventListener('message', handler); resolve(); }, 6000);
+      pool.iframe.contentWindow?.postMessage({ type: 'preamble', tex: preamble }, '*');
+    });
+  })();
+  pool.preambleReady = p;
+  return p;
+  // NOTE: we do NOT clear pool.cache here. The cache key already includes the
+  // preamble (mathCacheKey(tex, bundle, display, preamble)), so entries are
+  // namespaced by preamble and can never be served for a different one.
 }
 
 export async function renderMath(
@@ -232,8 +254,9 @@ export async function renderMath(
   preamble?: string,
 ): Promise<RenderResult> {
   const pool = getOrCreatePool(bundleId);
-  // Apply preamble before any render call (if needed).
-  if (preamble && pool.appliedPreamble !== preamble) {
+  // Apply preamble AND wait for the iframe to register it before rendering.
+  // Idempotent: returns immediately once registered for this preamble.
+  if (preamble) {
     await setMathPreamble(preamble, bundleId);
   }
   const effectivePreamble = preamble || '';
@@ -267,6 +290,21 @@ export function containsMath(text: string): boolean {
 }
 
 /**
+ * Contain a math expression that FAILED to render. We splice the raw source
+ * back so the author can see what broke — but clipped to the element's width on
+ * a single line (with an ellipsis) and flagged red, so a failure can NEVER spill
+ * its raw LaTeX across the slide. (Successful math keeps overflow:visible for
+ * italic ink overhang — #61 — so the clip is scoped to the fallback only.)
+ * `block` picks a block wrapper for display math vs inline for inline math.
+ */
+function failedMathFallback(raw: string, block: boolean): string {
+  const tag = block ? 'div' : 'span';
+  const disp = block ? 'block' : 'inline-block';
+  const safe = raw.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<${tag} style="display:${disp};max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;vertical-align:bottom;color:#c0392b;" title="This math failed to render — check the expression and the deck's LaTeX preamble.">${safe}</${tag}>`;
+}
+
+/**
  * Walk an HTML string, find $..$ and $$..$$ math expressions, render each
  * with the given bundle, and splice the resulting SVG markup back in.
  * Skips inside HTML tags (matching renderMathInHtml in src/lib/mathjax.ts).
@@ -295,11 +333,15 @@ export async function renderMathInHtml(html: string, bundleId: string, preamble?
       if (end !== -1) {
         const tex = html.slice(i + 2, end);
         try {
-          const { svg } = await renderMath(tex, bundleId, true);
+          // Pass `preamble` so the cache is keyed by the SAME preamble the read
+          // path (renderMathInHtmlSync / warm-from-SQLite) uses. Without it the
+          // write keyed under "" and every present-mode lookup missed → endless
+          // live re-rendering of already-cached math.
+          const { svg } = await renderMath(tex, bundleId, true, preamble);
           parts.push(`<div style="text-align:center;">${svg}</div>`);
         } catch (e) {
           console.warn('Display math render failed:', e);
-          parts.push(`$$${tex}$$`);
+          parts.push(failedMathFallback(`$$${tex}$$`, true));
         }
         i = end + 2;
         continue;
@@ -312,7 +354,7 @@ export async function renderMathInHtml(html: string, bundleId: string, preamble?
       if (end !== -1 && !html.slice(i + 1, end).includes('\n')) {
         const tex = html.slice(i + 1, end);
         try {
-          const r = await renderMath(tex, bundleId, false);
+          const r = await renderMath(tex, bundleId, false, preamble);
           // Match the inline-math styling from the existing renderer
           // (vertical-align baseline tweak so it sits on the text line)
           const valign = r.valign || '-0.025ex';
@@ -325,7 +367,7 @@ export async function renderMathInHtml(html: string, bundleId: string, preamble?
           parts.push(svg);
         } catch (e) {
           console.warn('Inline math render failed:', e);
-          parts.push(`$${tex}$`);
+          parts.push(failedMathFallback(`$${tex}$`, false));
         }
         i = end + 1;
         continue;
@@ -336,6 +378,57 @@ export async function renderMathInHtml(html: string, bundleId: string, preamble?
     i++;
   }
 
+  return parts.join('');
+}
+
+/**
+ * Synchronous, cache-ONLY version of renderMathInHtml. Returns HTML with every
+ * ALREADY-CACHED expression spliced to its SVG and any uncached ones left as
+ * raw source (the async renderMathInHtml fills those in afterward). Returns
+ * null if the bundle's pool doesn't exist yet (nothing to hit).
+ *
+ * This lets TextElementSvg show warmed math IMMEDIATELY on mount instead of
+ * flashing raw-source → SVG (renderMath is async even on a cache hit). On a
+ * warm window (e.g. the projector after warmMathCacheFromSqlite), everything is
+ * a hit, so there's no flash at all.
+ */
+export function renderMathInHtmlSync(html: string, bundleId: string, preamble?: string): string | null {
+  if (!containsMath(html)) return html;
+  const pool = pools.get(bundleId);
+  if (!pool) return null;
+  const eff = preamble || '';
+  const parts: string[] = [];
+  let i = 0;
+  while (i < html.length) {
+    if (html[i] === '<') {
+      const tagEnd = html.indexOf('>', i);
+      if (tagEnd !== -1) { parts.push(html.slice(i, tagEnd + 1)); i = tagEnd + 1; continue; }
+    }
+    if (html[i] === '$' && html[i + 1] === '$') {
+      const end = html.indexOf('$$', i + 2);
+      if (end !== -1) {
+        const tex = html.slice(i + 2, end);
+        const hit = pool.cache.get(mathCacheKey(tex, bundleId, true, eff));
+        parts.push(hit ? `<div style="text-align:center;">${hit.svg}</div>` : `$$${tex}$$`);
+        i = end + 2; continue;
+      }
+    }
+    if (html[i] === '$') {
+      const end = html.indexOf('$', i + 1);
+      if (end !== -1 && !html.slice(i + 1, end).includes('\n')) {
+        const tex = html.slice(i + 1, end);
+        const hit = pool.cache.get(mathCacheKey(tex, bundleId, false, eff));
+        if (hit) {
+          const valign = hit.valign || '-0.025ex';
+          parts.push(hit.svg.replace(/^<svg/, `<svg overflow="visible" style="display:inline;vertical-align:${valign};overflow:visible"`));
+        } else {
+          parts.push(`$${tex}$`);
+        }
+        i = end + 1; continue;
+      }
+    }
+    parts.push(html[i]); i++;
+  }
   return parts.join('');
 }
 
