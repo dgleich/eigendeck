@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { resolveTheme } from '../lib/themes';
 import { SpeakerPanel } from './SpeakerView';
@@ -61,9 +61,16 @@ export function PresentMode({ controlledIndex, onExit }: {
 
   // Run the slide-change transition whenever the index changes — for LOCAL
   // navigation AND for the controlled prop (projector), so both windows
-  // animate identically. (Previously this lived inside goTo, so the projector,
-  // which doesn't call goTo, got no animation + hard-swap flashes.)
-  useEffect(() => {
+  // animate identically.
+  //
+  // useLayoutEffect (NOT useEffect): it runs after render but BEFORE the
+  // browser paints. The render right after an index change still has the new
+  // elements at opacity 1 (prevIndex is null); if we set the "entering" state
+  // in a post-paint useEffect, that opacity-1 frame PAINTS first → the slide
+  // pops into view, then jumps to 0 and fades in. Setting prevIndex/animating
+  // here re-renders to opacity 0 before paint, so the first painted frame is
+  // already the start of the fade — no pop.
+  useLayoutEffect(() => {
     const prev = shownIndexRef.current;
     if (prev === currentIndex) return;
     shownIndexRef.current = currentIndex;
