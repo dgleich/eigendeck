@@ -92,10 +92,17 @@ export async function detectProjector(): Promise<MonitorInfo | null> {
 export async function openPresenterWindow(
   presentation: Presentation,
   currentIndex: number,
-  projectPath: string | null
+  projectPath: string | null,
+  opts?: { testMode?: boolean }
 ): Promise<boolean> {
+  // TEST MODE (debug): open the presenter as a normal windowed, non-fullscreen
+  // second window on the SAME monitor — so the dual-window flow (speaker view +
+  // live projector view) can be exercised without a real projector. Skips
+  // mirror handling, projector detection, and the above-the-menubar fullscreen.
+  const testMode = !!opts?.testMode;
+
   // Check if displays are mirrored — if so, disable mirroring first
-  try {
+  if (!testMode) try {
     const mirrorInfo = await invoke<{ isMirrored: boolean; displayCount: number }>('check_display_mirroring');
     console.log('[multi-monitor] Mirror info:', mirrorInfo);
 
@@ -113,9 +120,9 @@ export async function openPresenterWindow(
     console.warn('[multi-monitor] Mirror check failed:', e);
   }
 
-  const projector = await detectProjector();
+  const projector = testMode ? null : await detectProjector();
 
-  if (!projector) {
+  if (!testMode && !projector) {
     // If we disabled mirroring but still can't find a second monitor, re-enable
     if (wasMirrored) {
       try { await invoke('enable_display_mirroring'); wasMirrored = false; } catch { /* ignore */ }
@@ -127,26 +134,36 @@ export async function openPresenterWindow(
     // Close existing presenter window if any
     await closePresenterWindow();
 
-    // Create presenter window on the secondary monitor
-    // Tauri window position uses logical pixels; monitor API returns physical pixels
-    const s = projector.scaleFactor || 1;
-    const logX = Math.round(projector.x / s);
-    const logY = Math.round(projector.y / s);
-    const logW = Math.round(projector.width / s);
-    const logH = Math.round(projector.height / s);
-    console.log(`[multi-monitor] Opening presenter on "${projector.name}" physical=(${projector.x}, ${projector.y}) ${projector.width}x${projector.height} scale=${s} logical=(${logX}, ${logY}) ${logW}x${logH}`);
-    presenterWindow = new WebviewWindow('presenter', {
-      url: '/presenter.html',
-      title: 'Eigendeck Presenter',
-      x: logX,
-      y: logY,
-      width: logW,
-      height: logH,
-      fullscreen: false, // Position first, fullscreen after
-      decorations: false,
-      alwaysOnTop: true,
-      focus: false,
-    });
+    if (testMode) {
+      console.log('[multi-monitor] TEST MODE — opening windowed presenter on the current monitor');
+      presenterWindow = new WebviewWindow('presenter', {
+        url: '/presenter.html',
+        title: 'Eigendeck Presenter (TEST)',
+        x: 120, y: 120, width: 1000, height: 620,
+        fullscreen: false, decorations: true, alwaysOnTop: true, focus: true,
+      });
+    } else {
+      // Create presenter window on the secondary monitor
+      // Tauri window position uses logical pixels; monitor API returns physical pixels
+      const s = projector!.scaleFactor || 1;
+      const logX = Math.round(projector!.x / s);
+      const logY = Math.round(projector!.y / s);
+      const logW = Math.round(projector!.width / s);
+      const logH = Math.round(projector!.height / s);
+      console.log(`[multi-monitor] Opening presenter on "${projector!.name}" physical=(${projector!.x}, ${projector!.y}) ${projector!.width}x${projector!.height} scale=${s} logical=(${logX}, ${logY}) ${logW}x${logH}`);
+      presenterWindow = new WebviewWindow('presenter', {
+        url: '/presenter.html',
+        title: 'Eigendeck Presenter',
+        x: logX,
+        y: logY,
+        width: logW,
+        height: logH,
+        fullscreen: false, // Position first, fullscreen after
+        decorations: false,
+        alwaysOnTop: true,
+        focus: false,
+      });
+    }
 
     // Wait for the presenter window to signal ready
     const readyPromise = new Promise<void>((resolve) => {
@@ -164,11 +181,14 @@ export async function openPresenterWindow(
 
     // Set window level above the menu bar so it covers the secondary monitor fully.
     // This is how Keynote/PowerPoint do it — no fullscreen API, just a high window level.
-    console.log('[multi-monitor] Window ready, setting window level above menu bar');
-    try {
-      await invoke('set_window_above_menubar', { label: 'presenter' });
-    } catch (e) {
-      console.warn('[multi-monitor] Could not set window level:', e);
+    // Skipped in test mode so the windowed presenter stays movable/visible.
+    if (!testMode) {
+      console.log('[multi-monitor] Window ready, setting window level above menu bar');
+      try {
+        await invoke('set_window_above_menubar', { label: 'presenter' });
+      } catch (e) {
+        console.warn('[multi-monitor] Could not set window level:', e);
+      }
     }
 
     // Send presentation data

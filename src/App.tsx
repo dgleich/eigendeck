@@ -937,6 +937,33 @@ function App() {
     state.setPresenting(true);
   }, []);
 
+  // DEBUG: force the dual-window present flow on a single screen — opens the
+  // projector as a normal windowed (non-fullscreen) second window and shows the
+  // speaker view in the main window. Lets us exercise the 2-window flow without
+  // a real projector. `skipWindow` (used by e2e) shows only the speaker view.
+  const startPresentingTest = useCallback(async (skipWindow = false) => {
+    const state = usePresentationStore.getState();
+    if (!skipWindow) {
+      try {
+        await openPresenterWindow(state.presentation, state.currentSlideIndex, state.projectPath, { testMode: true });
+      } catch (e) {
+        console.warn('[present] test presenter window failed:', e);
+      }
+    }
+    setMultiMonitorPresenting(true);
+    state.setPresenting(true);
+  }, []);
+
+  // Debug/e2e hook to trigger the test presenter view.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const skip = !!(e as CustomEvent).detail?.skipWindow;
+      flushToSqlite().then(() => startPresentingTest(skip));
+    };
+    window.addEventListener('eigendeck:test-presenter', handler);
+    return () => window.removeEventListener('eigendeck:test-presenter', handler);
+  }, [startPresentingTest]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1217,6 +1244,7 @@ function App() {
         case 'export-pdf-screenshots': exportPdfScreenshots(); break;
         case 'import-html': importFromHtml(); break;
         case 'present': startPresenting(); break;
+        case 'test-presenter': flushToSqlite().then(() => startPresentingTest()); break;
         case 'inspector': usePresentationStore.getState().toggleProperties(); break;
         case 'history': usePresentationStore.getState().toggleHistory(); break;
         case 'toggle-snap-grid': usePresentationStore.getState().toggleSnapToGrid(); break;

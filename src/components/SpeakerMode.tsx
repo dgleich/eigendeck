@@ -7,8 +7,9 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
-import { getSlideNumber, TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
+import { getSlideNumber } from '../types/presentation';
 import { navigatePresenter, closePresenterWindow } from '../lib/multiMonitor';
+import { SlideThumbnail } from './SlideThumbnail';
 
 export function SpeakerMode() {
   const { presentation, setPresenting } = usePresentationStore();
@@ -97,14 +98,7 @@ export function SpeakerMode() {
         <div className="speaker-current">
           <div className="speaker-preview-label">Current Slide</div>
           <div className="speaker-preview">
-            <div style={{
-              width: 1920, height: 1080, transform: 'scale(0.35)', transformOrigin: 'top left',
-              background: '#fff', position: 'relative', border: '1px solid #ddd',
-            }}>
-              {slide?.elements.map((el, idx) => (
-                <SpeakerPreviewElement key={el.id} element={el} zIndex={idx} />
-              ))}
-            </div>
+            {slide && <SlideThumbnail presentation={presentation} slide={slide} width={720} />}
           </div>
           {/* Notes */}
           <div className="speaker-notes">
@@ -120,14 +114,7 @@ export function SpeakerMode() {
           <div className="speaker-preview-label">Next Slide</div>
           {nextSlide ? (
             <div className="speaker-preview speaker-preview-small">
-              <div style={{
-                width: 1920, height: 1080, transform: 'scale(0.25)', transformOrigin: 'top left',
-                background: '#fff', position: 'relative', border: '1px solid #ddd',
-              }}>
-                {nextSlide.elements.map((el, idx) => (
-                  <SpeakerPreviewElement key={el.id} element={el} zIndex={idx} />
-                ))}
-              </div>
+              <SlideThumbnail presentation={presentation} slide={nextSlide} width={480} />
             </div>
           ) : (
             <div className="speaker-preview-empty">End of presentation</div>
@@ -141,42 +128,4 @@ export function SpeakerMode() {
       </div>
     </div>
   );
-}
-
-/** Simplified element preview for speaker view (no interactivity, no MathJax) */
-function SpeakerPreviewElement({ element: el, zIndex }: { element: import('../types/presentation').SlideElement; zIndex: number }) {
-  const p = el.position;
-  const config = usePresentationStore.getState().presentation.config;
-
-  switch (el.type) {
-    case 'text': {
-      const ps = TEXT_PRESET_STYLES[el.preset];
-      return (
-        <div style={{
-          position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
-          fontFamily: el.fontFamily || ps.fontFamily, fontWeight: ps.fontWeight,
-          fontStyle: ps.fontStyle, fontSize: effectiveFontSize(el, config),
-          color: el.color || ps.color, lineHeight: 1.3, overflow: 'hidden', padding: '8px 12px',
-          zIndex,
-        }} dangerouslySetInnerHTML={{ __html: el.html }} />
-      );
-    }
-    case 'image':
-      return <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: '#f0f0f0', zIndex }} />;
-    case 'cover':
-      return <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: el.color || '#fff', zIndex }} />;
-    case 'demo': case 'demo-piece':
-      return <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: '#e8f4f8', border: '1px dashed #93c5fd', zIndex }} />;
-    case 'video':
-      return <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: '#1f2937', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex }}>▶</div>;
-    case 'arrow': {
-      const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 3 } = el;
-      return (
-        <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex }}>
-          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={strokeWidth} />
-        </svg>
-      );
-    }
-    default: return null;
-  }
 }

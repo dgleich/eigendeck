@@ -1,20 +1,17 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { resolveTheme } from '../lib/themes';
-import { useDemoUrl } from '../lib/demoAssets';
-import { useImageSrc } from '../lib/imageSrc';
-import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
-import { buildEmbedSrc } from '../lib/videoEmbed';
 import { SpeakerPanel } from './SpeakerView';
 import { getSlideNumber } from '../types/presentation';
-import type { Slide, SlideElement, TextElement } from '../types/presentation';
-import { TextElementSvg } from './TextElementSvg';
-import { NotebookContent } from './notebook/NotebookContent';
+import type { Slide, SlideElement } from '../types/presentation';
+// Live-present element rendering is shared with the projector window
+// (src/presenter.tsx) via PresentSlide — one renderer, no drift.
+import { PresentElement, PresentControllerIframe, type PresentCtx } from './PresentSlide';
 
 const TRANSITION_MS = 300;
 
 export function PresentMode() {
-  const { presentation, setPresenting, selectSlide, projectPath } =
+  const { presentation, setPresenting, selectSlide } =
     usePresentationStore();
   const [currentIndex, setCurrentIndex] = useState(
     usePresentationStore.getState().currentSlideIndex
@@ -113,6 +110,7 @@ export function PresentMode() {
   const prevSlide = prevIndex !== null ? presentation.slides[prevIndex] : null;
   const { author, venue } = presentation.config;
   const meta = [author, venue].filter(Boolean).join(' \u00B7 ');
+  const ctx: PresentCtx = { slide, presentationConfig: presentation.config, presentationTheme: presentation.theme };
 
   // Diff linked elements between prev and current slide
   const linkedTransitions = computeLinkedTransitions(prevSlide, slide);
@@ -132,7 +130,7 @@ export function PresentMode() {
                 key={`fadeout-${el.id}`}
                 element={el}
                 zIndex={idx + 1}
-                projectPath={projectPath}
+                ctx={ctx}
                 style={{
                   opacity: animating ? 0 : 1,
                   transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
@@ -150,7 +148,7 @@ export function PresentMode() {
                 if (arrowStatic) {
                   return (
                     <PresentElement key={`linked-${to.id}`} element={to} zIndex={idx + 10}
-                      projectPath={projectPath} />
+                      ctx={ctx} />
                   );
                 }
                 return (
@@ -178,7 +176,7 @@ export function PresentMode() {
                   key={`linked-${to.id}`}
                   element={displayEl}
                   zIndex={idx + 10}
-                  projectPath={projectPath}
+                  ctx={ctx}
                   style={isStatic ? {} : {
                     // Start at old position, transition to new
                     ...(prevIndex !== null ? {
@@ -199,7 +197,7 @@ export function PresentMode() {
                 key={`fadein-${el.id}`}
                 element={el}
                 zIndex={idx + 100}
-                projectPath={projectPath}
+                ctx={ctx}
                 style={{
                   opacity: animating ? 1 : (prevIndex !== null ? 0 : 1),
                   transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
@@ -213,7 +211,7 @@ export function PresentMode() {
                 key={el.id}
                 element={el}
                 zIndex={idx + 200}
-                projectPath={projectPath}
+                ctx={ctx}
                 style={{
                   opacity: prevIndex !== null ? (animating ? 1 : 0) : 1,
                   transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
@@ -312,88 +310,6 @@ function getElementBounds(el: SlideElement): { x: number; y: number; w: number; 
 }
 
 // ============================================
-// Present element renderers
-// ============================================
-
-function PresentElement({ element: el, zIndex, style }: {
-  element: SlideElement; zIndex: number; projectPath?: string | null;
-  style?: React.CSSProperties;
-}) {
-  const pos = el.position;
-
-  switch (el.type) {
-    case 'text':
-      return <PresentTextElement element={el} zIndex={zIndex} style={style} />;
-
-    case 'image':
-      return <PresentImage element={el} zIndex={zIndex} style={style} />;
-
-    case 'demo':
-      return <PresentDemoIframe assetId={el.assetId} pos={pos} zIndex={zIndex} style={style} />;
-
-    case 'demo-piece':
-      return <PresentDemoIframe assetId={el.assetId} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} style={style} />;
-
-    case 'video':
-      return <PresentVideo element={el} zIndex={zIndex} style={style} />;
-
-    case 'notebook':
-      return (
-        <div className="el-notebook" style={{
-          position: 'absolute', left: pos.x, top: pos.y,
-          width: pos.width, height: pos.height, zIndex,
-          ...style,
-        }}>
-          <NotebookContent element={el} interactive={true} mode="present" />
-        </div>
-      );
-
-    case 'cover':
-      return (
-        <div style={{
-          position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-          background: el.color || '#ffffff', zIndex,
-          ...style,
-        }} />
-      );
-
-    case 'arrow': {
-      const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;
-      const angle = Math.atan2(y2 - y1, x2 - x1);
-      const ha = Math.PI / 6;
-      return (
-        <svg style={{
-          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-          pointerEvents: 'none', overflow: 'visible', zIndex,
-          ...style,
-        }}>
-          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={strokeWidth} />
-          <polygon points={`${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}`} fill={color} />
-        </svg>
-      );
-    }
-  }
-}
-
-function PresentTextElement({ element: el, zIndex, style }: { element: TextElement; zIndex: number; style?: React.CSSProperties }) {
-  // Reuse the same SVG/foreignObject + iframe-pool pipeline that the
-  // editor and sidebar use. Per-preset math fonts work in present mode too.
-  const { presentation, currentSlideIndex } = usePresentationStore.getState();
-  const slide = presentation.slides[currentSlideIndex];
-  if (!slide) return null;
-  return (
-    <TextElementSvg
-      element={el} slide={slide}
-      presentationTheme={presentation.theme}
-      presentationConfig={presentation.config}
-      className={`el-text el-preset-${el.preset}`}
-      zIndex={zIndex}
-      styleOverride={style}
-    />
-  );
-}
-
-// ============================================
 // Animated arrow — interpolates x1/y1/x2/y2 via rAF
 // ============================================
 
@@ -463,100 +379,5 @@ function AnimatedArrow({ from, to, zIndex, animating, hasPrev }: {
       <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={strokeWidth} />
       <polygon points={`${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}`} fill={color} />
     </svg>
-  );
-}
-
-// ============================================
-// Demo iframe components (use hooks for blob URLs)
-// ============================================
-
-function PresentImage({ element: el, zIndex, style }: {
-  element: Extract<SlideElement, { type: 'image' }>; zIndex: number; style?: React.CSSProperties;
-}) {
-  const pos = el.position;
-  const src = useImageSrc(el.assetId, el.kind, {
-    displayWidth: el.position.width,
-    displayHeight: el.position.height,
-    snapshotVariant: el.snapshotVariant,
-  });
-  if (!src) return null;
-  return (
-    <img src={src} alt="" style={{
-      position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-      objectFit: 'contain', zIndex,
-      ...(el.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
-      ...(el.borderRadius ? { borderRadius: el.borderRadius } : {}),
-      ...(el.opacity != null && el.opacity < 1 ? { opacity: el.opacity } : {}),
-      ...(el.rotation ? { transform: `rotate(${el.rotation}deg)` } : {}),
-      ...style,
-    }} />
-  );
-}
-
-function PresentVideo({ element: el, zIndex, style }: {
-  element: Extract<SlideElement, { type: 'video' }>; zIndex: number; style?: React.CSSProperties;
-}) {
-  const pos = el.position;
-  const ref = useRef<HTMLVideoElement>(null);
-  const embedRef = useRef<HTMLIFrameElement>(null);
-  const src = useDemoUrl(el.assetId);
-  const captionsSrc = useDemoUrl(el.captionsAssetId);
-  const embedSrc = el.kind === 'embed' ? buildEmbedSrc(el) : null;
-  usePlaybackRate(ref, el.playbackRate ?? 1, src);
-  usePingPong(ref, !!el.pingPong, el.playbackRate ?? 1, src);
-  useEmbedSpeed(embedRef, el.provider, el.playbackRate ?? 1, embedSrc);
-  const box: React.CSSProperties = {
-    position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-    objectFit: 'contain', background: '#000', zIndex, ...style,
-  };
-  if (el.kind === 'embed') {
-    if (!embedSrc) return null;
-    return <iframe key={embedSrc} ref={embedRef} src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-      style={{ ...box, border: 'none' }} />;
-  }
-  if (!src) return null;
-  return (
-    <video ref={ref} src={src} playsInline
-      loop={!!el.loop && !el.pingPong}
-      muted={!!el.muted}
-      autoPlay={!!el.autoplay}
-      controls={!!el.controls}
-      // Chrome-free (no controls): click the video to play/pause, else it's
-      // unstartable in present mode.
-      onClick={el.controls ? undefined : () => togglePlay(ref.current)}
-      style={el.controls ? box : { ...box, cursor: 'pointer' }}>
-      {el.captions && captionsSrc && (
-        <track kind="captions" src={captionsSrc} srcLang="en" label={el.captionsLabel || 'Captions'} default />
-      )}
-    </video>
-  );
-}
-
-function PresentDemoIframe({ assetId, hash, title, pos, zIndex, style }: {
-  assetId: string; hash?: string; title?: string;
-  pos: { x: number; y: number; width: number; height: number };
-  zIndex: number; style?: React.CSSProperties;
-}) {
-  const src = useDemoUrl(assetId, hash);
-  if (!src) return null;
-  return (
-    <iframe src={src} sandbox="allow-scripts allow-same-origin" title={title || 'demo'} style={{
-      position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-      border: 'none', zIndex,
-      ...style,
-    }} />
-  );
-}
-
-function PresentControllerIframe({ assetId }: { assetId: string }) {
-  const src = useDemoUrl(assetId, 'role=controller');
-  if (!src) return null;
-  return (
-    <iframe
-      src={src}
-      sandbox="allow-scripts allow-same-origin"
-      title={`controller: ${assetId.slice(0, 8)}`}
-      style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }}
-    />
   );
 }
