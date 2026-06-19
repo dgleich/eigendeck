@@ -5,7 +5,7 @@
 // window (fed by Tauri events into local state). This is what kills the old
 // duplicate renderer drift (demos/notebooks breaking only on the projector).
 
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useImageSrc } from '../lib/imageSrc';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
@@ -89,28 +89,15 @@ function PresentImage({ element: el, zIndex, style }: {
   const src = useImageSrc(el.assetId, el.kind, {
     displayWidth: el.position.width, displayHeight: el.position.height, snapshotVariant: el.snapshotVariant,
   });
-  // Image bytes resolve asynchronously (asset fetch / PDF render). Track decode
-  // so we can FADE the image in rather than letting it pop to full opacity. A
-  // late-loading image that pops appears "on top" of a still-fading title (the
-  // opaque image shows through the not-yet-opaque text), then recedes once the
-  // title finishes — the z-overlap-race glitch. Fading it removes the pop.
-  const [loaded, setLoaded] = useState(false);
   if (!src) return null;
-  // Opacity the element should settle at: the bucket's fade opacity if present,
-  // else the element's own opacity, else 1. We ramp to it on decode.
-  const settledOpacity = (style && 'opacity' in style ? style.opacity
-    : (el.opacity != null && el.opacity < 1 ? el.opacity : 1));
   return (
-    <img src={src} alt="" onLoad={() => setLoaded(true)} style={{
+    <img src={src} alt="" style={{
       position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, objectFit: 'contain', zIndex,
       ...(el.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
       ...(el.borderRadius ? { borderRadius: el.borderRadius } : {}),
+      ...(el.opacity != null && el.opacity < 1 ? { opacity: el.opacity } : {}),
       ...(el.rotation ? { transform: `rotate(${el.rotation}deg)` } : {}),
       ...style,
-      // Override opacity/transition AFTER the bucket style: fade in on decode,
-      // composing with any bucket transition (so linked position anims survive).
-      opacity: loaded ? settledOpacity : 0,
-      transition: [style?.transition, 'opacity 250ms ease-in-out'].filter(Boolean).join(', '),
     }} />
   );
 }
