@@ -166,6 +166,18 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
   // Diff linked elements between prev and current slide
   const linkedTransitions = computeLinkedTransitions(prevSlide, slide);
 
+  // z-index MUST come from the element's TRUE slide z-order (its index in
+  // slide.elements), NOT from a per-bucket counter. Otherwise a linked element
+  // (fadeIn/linked bucket) and its unlinked slide-mates get z from different
+  // bucket ranges, so stacking is wrong DURING the transition and then snaps
+  // when everything collapses to one bucket at settle — the "image on top, then
+  // jumps behind the title" glitch (a linked title sat below its unlinked image
+  // mid-transition). Keyed by id; fall back to prev-slide order for fade-outs.
+  const zOrder = new Map(slide.elements.map((e, i) => [e.id, i]));
+  const prevZOrder = new Map((prevSlide?.elements ?? []).map((e, i) => [e.id, i]));
+  const zOf = (id: string) => zOrder.get(id) ?? 0;
+  const prevZOf = (id: string) => prevZOrder.get(id) ?? 0;
+
   return (
     <div className={`present-mode ${showSpeaker ? 'with-speaker' : ''}`}>
       <div className="present-viewport" ref={viewportRef}>
@@ -176,11 +188,11 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
               backgroundColor: resolveTheme(presentation.theme, slide.theme).background }}
           >
             {/* Fading out elements (from previous slide, no match in current) */}
-            {linkedTransitions.fadeOut.map((el, idx) => (
+            {linkedTransitions.fadeOut.map((el) => (
               <PresentElement
                 key={`fadeout-${el.id}`}
                 element={el}
-                zIndex={idx + 1}
+                zIndex={prevZOf(el.id)}
                 ctx={ctx}
                 style={{
                   opacity: animating ? 0 : 1,
@@ -190,7 +202,7 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
             ))}
 
             {/* Linked elements that animate position/size */}
-            {linkedTransitions.linked.map(({ from, to }, idx) => {
+            {linkedTransitions.linked.map(({ from, to }) => {
               // Arrows: interpolate coordinates via rAF
               if (from.type === 'arrow' && to.type === 'arrow') {
                 // If arrow hasn't moved, render statically
@@ -198,7 +210,7 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
                   from.x2 === to.x2 && from.y2 === to.y2;
                 if (arrowStatic) {
                   return (
-                    <PresentElement key={`linked-${to.id}`} element={to} zIndex={idx + 10}
+                    <PresentElement key={`linked-${to.id}`} element={to} zIndex={zOf(to.id)}
                       ctx={ctx} />
                   );
                 }
@@ -207,7 +219,7 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
                     key={`linked-arrow-${to.id}`}
                     from={from}
                     to={to}
-                    zIndex={idx + 10}
+                    zIndex={zOf(to.id)}
                     animating={animating}
                     hasPrev={prevIndex !== null}
                   />
@@ -226,7 +238,7 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
                 <PresentElement
                   key={`linked-${to.id}`}
                   element={displayEl}
-                  zIndex={idx + 10}
+                  zIndex={zOf(to.id)}
                   ctx={ctx}
                   style={isStatic ? {} : {
                     // Start at old position, transition to new
@@ -245,11 +257,11 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
             {/* Fading in elements (new in current slide, no match in previous).
                 Cover elements are masks for progressive reveals — they must
                 appear INSTANTLY (a fading cover defeats the reveal). */}
-            {linkedTransitions.fadeIn.map((el, idx) => (
+            {linkedTransitions.fadeIn.map((el) => (
               <PresentElement
                 key={`fadein-${el.id}`}
                 element={el}
-                zIndex={idx + 100}
+                zIndex={zOf(el.id)}
                 ctx={ctx}
                 style={el.type === 'cover' ? { opacity: 1 } : {
                   opacity: animating ? 1 : (prevIndex !== null ? 0 : 1),
@@ -263,13 +275,13 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
                 doesn't flash its hidden content while the cover fades in), and
                 SYNCED elements that were also on the previous slide (same id —
                 fading them would flicker the shared element between build steps). */}
-            {linkedTransitions.unlinked.map((el, idx) => {
+            {linkedTransitions.unlinked.map((el) => {
               const isStatic = el.type === 'cover' || prevIds.has(el.id);
               return (
                 <PresentElement
                   key={el.id}
                   element={el}
-                  zIndex={idx + 200}
+                  zIndex={zOf(el.id)}
                   ctx={ctx}
                   style={isStatic ? { opacity: 1 } : {
                     opacity: prevIndex !== null ? (animating ? 1 : 0) : 1,
