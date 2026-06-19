@@ -6,7 +6,7 @@
  */
 import { availableMonitors, currentMonitor, getCurrentWindow } from '@tauri-apps/api/window';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
-import { LogicalPosition, LogicalSize } from '@tauri-apps/api/dpi';
+import { PhysicalPosition, PhysicalSize } from '@tauri-apps/api/dpi';
 import { emitTo, listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import type { Monitor } from '@tauri-apps/api/window';
@@ -235,15 +235,10 @@ export async function navigatePresenter(index: number): Promise<void> {
   }
 }
 
-/** Monitor bounds in logical pixels (what window position/size APIs expect). */
-function logicalBounds(mon: Monitor): { x: number; y: number; w: number; h: number } {
-  const s = mon.scaleFactor || 1;
-  return {
-    x: Math.round(mon.position.x / s),
-    y: Math.round(mon.position.y / s),
-    w: Math.round(mon.size.width / s),
-    h: Math.round(mon.size.height / s),
-  };
+/** Does this monitor's (physical) bounds contain the given physical point? */
+function monitorContains(mon: Monitor, x: number, y: number): boolean {
+  return x >= mon.position.x && x < mon.position.x + mon.size.width &&
+         y >= mon.position.y && y < mon.position.y + mon.size.height;
 }
 
 /**
@@ -253,28 +248,35 @@ function logicalBounds(mon: Monitor): { x: number; y: number; w: number; h: numb
  * the projector was on; re-asserts the projector's above-the-menubar level on
  * its new display. No-op unless the dual-monitor projector window is open and
  * there are at least two monitors.
+ *
+ * Everything is done in PHYSICAL coordinates (monitor.position/size and
+ * window.outerPosition are physical) — no logical/scale conversion, which is
+ * where cross-display moves usually go wrong. Monitors are matched by GEOMETRY,
+ * not by name (names are often empty or duplicated on real hardware).
  */
 export async function swapPresenterDisplay(): Promise<void> {
-  if (!presenterWindow) return;
+  if (!presenterWindow) { console.warn('[multi-monitor] swap: no presenter window open'); return; }
   try {
     const monitors = await availableMonitors();
-    if (monitors.length < 2) return;
+    if (monitors.length < 2) { console.warn('[multi-monitor] swap: need 2+ monitors, have', monitors.length); return; }
+
     const mainWin = getCurrentWindow();
-    const mainMon = await currentMonitor(); // monitor the main window is on
-    if (!mainMon) return;
-    const otherMon = monitors.find((m) => m.name !== mainMon.name);
-    if (!otherMon) return;
+    const mainPos = await mainWin.outerPosition(); // physical, top-left of main window
+    const mainMon = monitors.find((m) => monitorContains(m, mainPos.x, mainPos.y)) || monitors[0];
+    const otherMon = monitors.find((m) => m !== mainMon);
+    if (!otherMon) { console.warn('[multi-monitor] swap: could not find a second monitor'); return; }
 
-    const toProjector = logicalBounds(mainMon);   // live slides go to the main's screen
-    const toMain = logicalBounds(otherMon);        // speaker view goes to the other screen
+    console.log('[multi-monitor] swap: speaker is on', mainMon.name, `(${mainMon.position.x},${mainMon.position.y})`,
+      '-> moving slides here, speaker to', otherMon.name, `(${otherMon.position.x},${otherMon.position.y})`);
 
-    // Move the main (speaker) window onto the other display first.
-    await mainWin.setPosition(new LogicalPosition(toMain.x, toMain.y));
+    // Move the main (speaker) window onto the other display.
+    await mainWin.setPosition(new PhysicalPosition(otherMon.position.x, otherMon.position.y));
     // Move + size the projector window onto the (now vacated) main display.
-    await presenterWindow.setPosition(new LogicalPosition(toProjector.x, toProjector.y));
-    await presenterWindow.setSize(new LogicalSize(toProjector.w, toProjector.h));
+    await presenterWindow.setPosition(new PhysicalPosition(mainMon.position.x, mainMon.position.y));
+    await presenterWindow.setSize(new PhysicalSize(mainMon.size.width, mainMon.size.height));
     // Re-assert the above-the-menubar level so it covers the new display fully.
     try { await invoke('set_window_above_menubar', { label: 'presenter' }); } catch { /* best effort */ }
+    console.log('[multi-monitor] swap: done');
   } catch (e) {
     console.error('[multi-monitor] swap displays failed:', e);
   }
