@@ -954,15 +954,27 @@ function App() {
     state.setPresenting(true);
   }, []);
 
-  // Debug/e2e hook to trigger the test presenter view.
+  // DEBUG: force the SINGLE-window live present, bypassing multi-monitor
+  // detection entirely — the explicit counterpart to the 2-window test.
+  const startPresentingSingle = useCallback(() => {
+    setMultiMonitorPresenting(false);
+    usePresentationStore.getState().setPresenting(true);
+  }, []);
+
+  // Debug/e2e hooks to trigger the test present views.
   useEffect(() => {
     const handler = (e: Event) => {
       const skip = !!(e as CustomEvent).detail?.skipWindow;
       flushToSqlite().then(() => startPresentingTest(skip));
     };
+    const single = () => flushToSqlite().then(() => startPresentingSingle());
     window.addEventListener('eigendeck:test-presenter', handler);
-    return () => window.removeEventListener('eigendeck:test-presenter', handler);
-  }, [startPresentingTest]);
+    window.addEventListener('eigendeck:test-present-single', single);
+    return () => {
+      window.removeEventListener('eigendeck:test-presenter', handler);
+      window.removeEventListener('eigendeck:test-present-single', single);
+    };
+  }, [startPresentingTest, startPresentingSingle]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1245,6 +1257,7 @@ function App() {
         case 'import-html': importFromHtml(); break;
         case 'present': startPresenting(); break;
         case 'test-presenter': flushToSqlite().then(() => startPresentingTest()); break;
+        case 'test-present-single': flushToSqlite().then(() => startPresentingSingle()); break;
         case 'inspector': usePresentationStore.getState().toggleProperties(); break;
         case 'history': usePresentationStore.getState().toggleHistory(); break;
         case 'toggle-snap-grid': usePresentationStore.getState().toggleSnapToGrid(); break;
