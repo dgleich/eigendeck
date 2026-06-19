@@ -1,18 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import { injectFontFaces } from "./lib/fonts";
-import { discoverAllServers } from "./lib/serverDiscovery";
+import { initRuntime } from "./lib/runtime";
 
-// Register @font-face declarations for all bundled font packages.
-// Browser will lazy-load the actual font files when CSS references them.
-injectFontFaces();
-
-// Refresh the Jupyter server registry's availableKernels + lastSeenAt
-// in the background so the topbar status pill shows current state
-// without the user having to click "Refresh all" manually. Fire and
-// forget — the pill reads from preferences and updates reactively.
-void discoverAllServers();
+// Shared boot (fonts + Jupyter server discovery). The projector window runs the
+// SAME initRuntime() so the two windows can't diverge on setup.
+initRuntime();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

@@ -10,12 +10,28 @@ import { PresentElement, PresentControllerIframe, type PresentCtx } from './Pres
 
 const TRANSITION_MS = 300;
 
-export function PresentMode() {
+/**
+ * The single live presentation viewer — used by BOTH the single-window present
+ * (main window, self-navigated) AND the projector window (src/presenter.tsx,
+ * navigated externally via `controlledIndex`). Same transitions, same
+ * rendering, no drift.
+ *
+ * - Uncontrolled (no `controlledIndex`): owns navigation + keyboard, Escape
+ *   exits present mode.
+ * - Controlled (`controlledIndex` set): index comes from the prop (the speaker
+ *   window's events); keyboard nav is off; Escape calls `onExit` (close the
+ *   projector window).
+ */
+export function PresentMode({ controlledIndex, onExit }: {
+  controlledIndex?: number; onExit?: () => void;
+} = {}) {
   const { presentation, setPresenting, selectSlide } =
     usePresentationStore();
-  const [currentIndex, setCurrentIndex] = useState(
+  const controlled = controlledIndex !== undefined;
+  const [localIndex, setLocalIndex] = useState(
     usePresentationStore.getState().currentSlideIndex
   );
+  const currentIndex = controlled ? controlledIndex! : localIndex;
   const [showSpeaker, setShowSpeaker] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -24,6 +40,7 @@ export function PresentMode() {
   const [prevIndex, setPrevIndex] = useState<number | null>(null);
   const [animating, setAnimating] = useState(false);
   const animTimerRef = useRef<number | null>(null);
+  const shownIndexRef = useRef(currentIndex);
 
   const totalSlides = presentation.slides.length;
   const slideW = presentation.config.width;
@@ -42,27 +59,37 @@ export function PresentMode() {
     return () => observer.disconnect();
   }, [slideW, slideH]);
 
+  // Run the slide-change transition whenever the index changes — for LOCAL
+  // navigation AND for the controlled prop (projector), so both windows
+  // animate identically. (Previously this lived inside goTo, so the projector,
+  // which doesn't call goTo, got no animation + hard-swap flashes.)
+  useEffect(() => {
+    const prev = shownIndexRef.current;
+    if (prev === currentIndex) return;
+    shownIndexRef.current = currentIndex;
+    if (animTimerRef.current) clearTimeout(animTimerRef.current);
+    setPrevIndex(prev);
+    setAnimating(false);
+    const raf = requestAnimationFrame(() => {
+      setAnimating(true);
+      animTimerRef.current = window.setTimeout(() => {
+        setAnimating(false);
+        setPrevIndex(null);
+        animTimerRef.current = null;
+      }, TRANSITION_MS);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [currentIndex]);
+
   const goTo = useCallback(
     (index: number) => {
+      if (controlled) return; // projector window: navigation is external
       if (index < 0 || index >= totalSlides) return;
       if (index === currentIndex) return;
-      if (animTimerRef.current) clearTimeout(animTimerRef.current);
-
-      setPrevIndex(currentIndex);
-      setCurrentIndex(index);
+      setLocalIndex(index);
       selectSlide(index);
-
-      // Start animation — after a frame so the DOM has both slides
-      requestAnimationFrame(() => {
-        setAnimating(true);
-        animTimerRef.current = window.setTimeout(() => {
-          setAnimating(false);
-          setPrevIndex(null);
-          animTimerRef.current = null;
-        }, TRANSITION_MS);
-      });
     },
-    [currentIndex, totalSlides, selectSlide]
+    [controlled, currentIndex, totalSlides, selectSlide]
   );
 
   const goNext = useCallback(() => goTo(currentIndex + 1), [currentIndex, goTo]);
@@ -70,8 +97,9 @@ export function PresentMode() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape always exits present mode, even from a focused editor.
-      if (e.key === 'Escape') { setPresenting(false); return; }
+      // Escape: exit present (main) or close the projector window (controlled).
+      if (e.key === 'Escape') { if (onExit) onExit(); else setPresenting(false); return; }
+      if (controlled) return; // projector: nav driven by the speaker window
       // When focus is in a text-entry context (a notebook code cell's
       // CodeMirror editor, an input, etc.), let it handle the key —
       // otherwise Space/arrows get hijacked for slide navigation and
@@ -96,7 +124,7 @@ export function PresentMode() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goNext, goPrev, goTo, totalSlides, setPresenting]);
+  }, [goNext, goPrev, goTo, totalSlides, setPresenting, controlled, onExit]);
 
   useEffect(() => {
     return () => {

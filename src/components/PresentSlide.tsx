@@ -6,12 +6,10 @@
 // duplicate renderer drift (demos/notebooks breaking only on the projector).
 
 import { useRef } from 'react';
-import { resolveTheme } from '../lib/themes';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useImageSrc } from '../lib/imageSrc';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
 import { buildEmbedSrc } from '../lib/videoEmbed';
-import { getSlideNumber } from '../types/presentation';
 import type { Presentation, Slide, SlideElement, TextElement } from '../types/presentation';
 import { TextElementSvg } from './TextElementSvg';
 import { NotebookContent } from './notebook/NotebookContent';
@@ -158,53 +156,5 @@ export function PresentControllerIframe({ assetId }: { assetId: string }) {
   return (
     <iframe src={src} sandbox="allow-scripts allow-same-origin" title={`controller: ${assetId.slice(0, 8)}`}
       style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }} />
-  );
-}
-
-/** The full contents of a presented slide (elements + demo-piece controllers +
- *  footer), with NO transition animation. Used by the presenter window. The
- *  single-window PresentMode renders elements itself (it layers slide-change
- *  animations on top) but via the SAME PresentElement above. */
-export function PresentSlideContent({ presentation, slide, currentIndex, ctx }: {
-  presentation: Presentation; slide: Slide; currentIndex: number; ctx: PresentCtx;
-}) {
-  const { author, venue } = presentation.config;
-  const meta = [author, venue].filter(Boolean).join(' · ');
-  const controllers = Array.from(new Set(
-    slide.elements.filter((el) => el.type === 'demo-piece').map((el) => (el as Extract<SlideElement, { type: 'demo-piece' }>).assetId),
-  ));
-  return (
-    <>
-      {slide.elements.map((el, idx) => (
-        <PresentElement key={el.id} element={el} zIndex={idx + 10} ctx={ctx} />
-      ))}
-      {controllers.map((assetId) => (
-        <PresentControllerIframe key={`controller-${assetId}`} assetId={assetId} />
-      ))}
-      <div className="slide-footer" style={{ zIndex: 1000 }}>
-        <span className="slide-footer-meta">{meta}</span>
-        <span className="slide-footer-number">{getSlideNumber(presentation.slides, currentIndex)}</span>
-      </div>
-    </>
-  );
-}
-
-/** Convenience: a fully scaled, centered presented slide (viewport + scale +
- *  themed background + content). Used by the presenter window. */
-export function PresentSlideStage({ presentation, slide, currentIndex, scale }: {
-  presentation: Presentation; slide: Slide; currentIndex: number; scale: number;
-}) {
-  const slideW = presentation.config.width;
-  const slideH = presentation.config.height;
-  const ctx: PresentCtx = { slide, presentationConfig: presentation.config, presentationTheme: presentation.theme };
-  return (
-    <div style={{ width: slideW * scale, height: slideH * scale }}>
-      <div className="present-slide" style={{
-        width: slideW, height: slideH, transform: `scale(${scale})`, transformOrigin: 'top left',
-        backgroundColor: resolveTheme(presentation.theme, slide.theme).background,
-      }}>
-        <PresentSlideContent presentation={presentation} slide={slide} currentIndex={currentIndex} ctx={ctx} />
-      </div>
-    </div>
   );
 }
