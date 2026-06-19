@@ -105,7 +105,7 @@ export function SpeakerMode() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {canSwap && (
-            <button onClick={() => { void swapPresenterDisplay(); }} title="Swap which display shows the slides vs the speaker view">
+            <button className="speaker-swap" onClick={() => { void swapPresenterDisplay(); }} title="Swap which display shows the slides vs the speaker view">
               Swap Displays
             </button>
           )}

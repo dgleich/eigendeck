@@ -2336,6 +2336,7 @@ body.window-inactive .welcome-root {
 
 .speaker-timer button,
 .speaker-nav button,
+.speaker-swap,
 .speaker-exit {
   padding: 6px 14px;
   border: 1px solid #555;
@@ -2348,6 +2349,7 @@ body.window-inactive .welcome-root {
 
 .speaker-timer button:hover,
 .speaker-nav button:hover:not(:disabled),
+.speaker-swap:hover,
 .speaker-exit:hover {
   background: #444;
 }
