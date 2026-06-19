@@ -4,10 +4,12 @@
  * Detects secondary monitors, opens a presenter window on the projector,
  * and coordinates navigation via Tauri events.
  */
-import { availableMonitors, currentMonitor } from '@tauri-apps/api/window';
+import { availableMonitors, currentMonitor, getCurrentWindow } from '@tauri-apps/api/window';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { LogicalPosition, LogicalSize } from '@tauri-apps/api/dpi';
 import { emitTo, listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
+import type { Monitor } from '@tauri-apps/api/window';
 import type { Presentation } from '../types/presentation';
 
 let presenterWindow: WebviewWindow | null = null;
@@ -230,6 +232,51 @@ export async function navigatePresenter(index: number): Promise<void> {
     await emitTo('presenter', 'presenter:goto', { index });
   } catch (e) {
     console.error('Failed to navigate presenter:', e);
+  }
+}
+
+/** Monitor bounds in logical pixels (what window position/size APIs expect). */
+function logicalBounds(mon: Monitor): { x: number; y: number; w: number; h: number } {
+  const s = mon.scaleFactor || 1;
+  return {
+    x: Math.round(mon.position.x / s),
+    y: Math.round(mon.position.y / s),
+    w: Math.round(mon.size.width / s),
+    h: Math.round(mon.size.height / s),
+  };
+}
+
+/**
+ * Swap which physical display shows the live slides vs the speaker view
+ * (Keynote-style "Swap Displays"). Moves the projector (live) window onto the
+ * monitor the main/speaker window is on, and the main window onto the monitor
+ * the projector was on; re-asserts the projector's above-the-menubar level on
+ * its new display. No-op unless the dual-monitor projector window is open and
+ * there are at least two monitors.
+ */
+export async function swapPresenterDisplay(): Promise<void> {
+  if (!presenterWindow) return;
+  try {
+    const monitors = await availableMonitors();
+    if (monitors.length < 2) return;
+    const mainWin = getCurrentWindow();
+    const mainMon = await currentMonitor(); // monitor the main window is on
+    if (!mainMon) return;
+    const otherMon = monitors.find((m) => m.name !== mainMon.name);
+    if (!otherMon) return;
+
+    const toProjector = logicalBounds(mainMon);   // live slides go to the main's screen
+    const toMain = logicalBounds(otherMon);        // speaker view goes to the other screen
+
+    // Move the main (speaker) window onto the other display first.
+    await mainWin.setPosition(new LogicalPosition(toMain.x, toMain.y));
+    // Move + size the projector window onto the (now vacated) main display.
+    await presenterWindow.setPosition(new LogicalPosition(toProjector.x, toProjector.y));
+    await presenterWindow.setSize(new LogicalSize(toProjector.w, toProjector.h));
+    // Re-assert the above-the-menubar level so it covers the new display fully.
+    try { await invoke('set_window_above_menubar', { label: 'presenter' }); } catch { /* best effort */ }
+  } catch (e) {
+    console.error('[multi-monitor] swap displays failed:', e);
   }
 }
 

@@ -9,7 +9,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { usePresentationStore } from '../store/presentation';
 import { getSlideNumber } from '../types/presentation';
-import { navigatePresenter, closePresenterWindow } from '../lib/multiMonitor';
+import { navigatePresenter, closePresenterWindow, swapPresenterDisplay } from '../lib/multiMonitor';
+import { availableMonitors } from '@tauri-apps/api/window';
 import { SlideThumbnail } from './SlideThumbnail';
 
 export function SpeakerMode() {
@@ -19,6 +20,12 @@ export function SpeakerMode() {
   );
   const [elapsed, setElapsed] = useState(0);
   const [timerRunning, setTimerRunning] = useState(true);
+  // Swap Displays only makes sense with a real second monitor (the dual-screen
+  // projector path), not the single-screen screen-share window.
+  const [canSwap, setCanSwap] = useState(false);
+  useEffect(() => {
+    availableMonitors().then((m) => setCanSwap(m.length >= 2)).catch(() => setCanSwap(false));
+  }, []);
   const startTime = useRef(Date.now());
   const timerRef = useRef<number | null>(null);
 
@@ -96,9 +103,16 @@ export function SpeakerMode() {
           Slide {currentIndex + 1} / {totalSlides}
           {' '}(#{getSlideNumber(presentation.slides, currentIndex)})
         </div>
-        <button className="speaker-exit" onClick={() => { closePresenterWindow(); setPresenting(false); }}>
-          End Presentation
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {canSwap && (
+            <button onClick={() => { void swapPresenterDisplay(); }} title="Swap which display shows the slides vs the speaker view">
+              Swap Displays
+            </button>
+          )}
+          <button className="speaker-exit" onClick={() => { closePresenterWindow(); setPresenting(false); }}>
+            End Presentation
+          </button>
+        </div>
       </div>
 
       <div className="speaker-body">
