@@ -237,28 +237,32 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
               );
             })}
 
-            {/* Fading in elements (new in current slide, no match in previous) */}
+            {/* Fading in elements (new in current slide, no match in previous).
+                Cover elements are masks for progressive reveals — they must
+                appear INSTANTLY (a fading cover defeats the reveal). */}
             {linkedTransitions.fadeIn.map((el, idx) => (
               <PresentElement
                 key={`fadein-${el.id}`}
                 element={el}
                 zIndex={idx + 100}
                 ctx={ctx}
-                style={{
+                style={el.type === 'cover' ? { opacity: 1 } : {
                   opacity: animating ? 1 : (prevIndex !== null ? 0 : 1),
                   transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
                 }}
               />
             ))}
 
-            {/* Unlinked elements (no linkId, current slide only) */}
+            {/* Unlinked elements (no linkId, current slide only). Cover masks
+                appear INSTANTLY — no fade — so a reveal doesn't flash its
+                hidden content while the cover fades in. */}
             {linkedTransitions.unlinked.map((el, idx) => (
               <PresentElement
                 key={el.id}
                 element={el}
                 zIndex={idx + 200}
                 ctx={ctx}
-                style={{
+                style={el.type === 'cover' ? { opacity: 1 } : {
                   opacity: prevIndex !== null ? (animating ? 1 : 0) : 1,
                   transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
                 }}
