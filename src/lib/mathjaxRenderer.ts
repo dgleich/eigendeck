@@ -272,6 +272,21 @@ export function containsMath(text: string): boolean {
 }
 
 /**
+ * Contain a math expression that FAILED to render. We splice the raw source
+ * back so the author can see what broke — but clipped to the element's width on
+ * a single line (with an ellipsis) and flagged red, so a failure can NEVER spill
+ * its raw LaTeX across the slide. (Successful math keeps overflow:visible for
+ * italic ink overhang — #61 — so the clip is scoped to the fallback only.)
+ * `block` picks a block wrapper for display math vs inline for inline math.
+ */
+function failedMathFallback(raw: string, block: boolean): string {
+  const tag = block ? 'div' : 'span';
+  const disp = block ? 'block' : 'inline-block';
+  const safe = raw.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<${tag} style="display:${disp};max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;vertical-align:bottom;color:#c0392b;" title="This math failed to render — check the expression and the deck's LaTeX preamble.">${safe}</${tag}>`;
+}
+
+/**
  * Walk an HTML string, find $..$ and $$..$$ math expressions, render each
  * with the given bundle, and splice the resulting SVG markup back in.
  * Skips inside HTML tags (matching renderMathInHtml in src/lib/mathjax.ts).
@@ -304,7 +319,7 @@ export async function renderMathInHtml(html: string, bundleId: string, preamble?
           parts.push(`<div style="text-align:center;">${svg}</div>`);
         } catch (e) {
           console.warn('Display math render failed:', e);
-          parts.push(`$$${tex}$$`);
+          parts.push(failedMathFallback(`$$${tex}$$`, true));
         }
         i = end + 2;
         continue;
@@ -330,7 +345,7 @@ export async function renderMathInHtml(html: string, bundleId: string, preamble?
           parts.push(svg);
         } catch (e) {
           console.warn('Inline math render failed:', e);
-          parts.push(`$${tex}$`);
+          parts.push(failedMathFallback(`$${tex}$`, false));
         }
         i = end + 1;
         continue;

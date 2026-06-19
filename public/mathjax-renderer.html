@@ -91,6 +91,49 @@
   // every math call. Caller sends {type:'preamble', tex} when it changes.
   var appliedPreamble = '';
 
+  // Split a preamble into individual definition statements so one malformed
+  // macro can't doom the rest. Each statement starts with a \newcommand-family
+  // control word and runs until the next one (continuation lines stay attached).
+  function splitPreamble(tex) {
+    var re = /\\(?:re|provide)?newcommand|\\def|\\DeclareMathOperator\*?|\\let/g;
+    var idxs = [], m;
+    while ((m = re.exec(tex))) idxs.push(m.index);
+    if (!idxs.length) return [tex];
+    var out = [];
+    if (idxs[0] > 0) out.push(tex.slice(0, idxs[0])); // leading non-def text
+    for (var k = 0; k < idxs.length; k++) {
+      out.push(tex.slice(idxs[k], k + 1 < idxs.length ? idxs[k + 1] : tex.length));
+    }
+    return out;
+  }
+
+  // Fallback when the whole preamble fails to render (e.g. a syntax error like
+  // `\newcommand{\foo}(...}`): apply statements one at a time, skipping any that
+  // error, so the GOOD macros still register and only the broken line is lost.
+  function applyPreamblePerStatement(tex) {
+    var MJ = window.MathJax;
+    var stmts = splitPreamble(tex);
+    var ok = 0, bad = 0;
+    var chain = Promise.resolve();
+    stmts.forEach(function (s) {
+      var t = (s || '').trim();
+      if (!t) return;
+      chain = chain.then(function () {
+        try { MJ.texReset(); } catch (e) { /* ignore */ }
+        return Promise.race([
+          MJ.tex2svgPromise(t, { display: false }),
+          new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 2000); }),
+        ]).then(function () { ok++; }, function (e) {
+          bad++; dbg('preamble statement skipped: ' + t.slice(0, 60) + ' — ' + String(e && e.message || e));
+        });
+      });
+    });
+    chain.then(function () {
+      appliedPreamble = tex; // best-effort: the good macros are registered
+      dbg('preamble applied per-statement: ' + ok + ' ok, ' + bad + ' skipped');
+    });
+  }
+
   window.addEventListener('message', function (event) {
     const msg = event.data;
     if (!msg) return;
@@ -111,7 +154,8 @@
         ]).then(function () {
           appliedPreamble = tex;
         }).catch(function (e) {
-          dbg('preamble error: ' + String(e && e.message || e));
+          dbg('preamble error (whole): ' + String(e && e.message || e) + ' — retrying per-statement');
+          applyPreamblePerStatement(tex);
         });
       } catch (e) {
         dbg('preamble sync throw: ' + String(e && e.message || e));
