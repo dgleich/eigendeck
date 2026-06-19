@@ -548,6 +548,7 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .item(&present_item)
         .item(&screen_share_item)
         .item(&test_present_single_item)
+        .separator()
         .item(&speaker_item)
         .item(&inspector_item)
         .item(&history_item)
