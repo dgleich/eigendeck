@@ -14,6 +14,7 @@ import type { Presentation } from './types/presentation';
 import { PresentSlideStage } from './components/PresentSlide';
 import { injectFontFaces } from './lib/fonts';
 import { discoverAllServers } from './lib/serverDiscovery';
+import { warmMathCacheFromSqlite } from './lib/mathjaxRenderer';
 import './App.css';
 
 function PresenterApp() {
@@ -27,7 +28,13 @@ function PresenterApp() {
     const unsubs: (() => void)[] = [];
     (async () => {
       unsubs.push(await listen<{ presentation: Presentation; currentIndex: number; projectPath: string | null }>(
-        'presenter:init', (event) => {
+        'presenter:init', async (event) => {
+          // Warm the math cache from SQLite FIRST. This is a cold, separate
+          // webview, so without this it re-renders every $..$ via iframes and
+          // complex display equations hit the 5s render timeout — leaving the
+          // RAW LaTeX spliced back in (the "mathjax spillover"). The editor
+          // already persisted every rendered SVG to the shared DB.
+          try { await warmMathCacheFromSqlite(); } catch { /* best effort */ }
           setPresentation(event.payload.presentation);
           setCurrentIndex(event.payload.currentIndex);
         }));
