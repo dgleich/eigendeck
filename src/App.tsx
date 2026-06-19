@@ -45,6 +45,7 @@ import { flushToSqlite, pauseUndo, resumeUndo, undoWithNav, redoWithNav } from '
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
+import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement } from './lib/elementClipboard';
 import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss } from './types/presentation';
 import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
 import { getMissingAssets } from './lib/missingAssets';
@@ -1071,13 +1072,21 @@ function App() {
         const slide = state.presentation.slides[state.currentSlideIndex];
         if (sel?.type === 'element') {
           const el = slide.elements.find((el) => el.id === sel.id);
-          if (el) clipboardRef.current = { type: 'elements', data: [JSON.parse(JSON.stringify(el))], fromSlideIndex: state.currentSlideIndex, fromSlideId: slide.id };
+          if (el) {
+            clipboardRef.current = { type: 'elements', data: [JSON.parse(JSON.stringify(el))], fromSlideIndex: state.currentSlideIndex, fromSlideId: slide.id };
+            // Asset elements (image/SVG) also go to the system clipboard + the
+            // cross-window internal clip (carries the bytes for cross-deck paste).
+            // Anything else clears the internal clip so a stale image can't paste.
+            if (isCopyableAsset(el)) void copyAssetElement(el); else void clearInternalClip();
+          }
         } else if (sel?.type === 'multi') {
           clipboardRef.current = { type: 'elements', data: slide.elements
             .filter((el) => sel.ids.includes(el.id))
             .map((el) => JSON.parse(JSON.stringify(el))), fromSlideIndex: state.currentSlideIndex, fromSlideId: slide.id };
+          void clearInternalClip();
         } else if (!sel || sel.type === 'slide') {
           clipboardRef.current = { type: 'slide', data: JSON.parse(JSON.stringify(slide)) };
+          void clearInternalClip();
         }
       }
       // Paste (Cmd+V): handled by paste event listener below (not keydown)
@@ -1086,15 +1095,33 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     // Internal element/slide paste — runs on the paste event so it doesn't
     // block the system clipboard (image paste in SlideEditor gets first pick)
-    const handlePaste = (e: ClipboardEvent) => {
+    const handlePaste = async (e: ClipboardEvent) => {
       if ((e.target as HTMLElement).closest('[contenteditable="true"]')) return;
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
-      // If system clipboard has an image, let SlideEditor handle it
+      // Capture (synchronously, before any await) whether the SYSTEM clipboard
+      // carries an image — clipboardData is neutered after an await.
+      let sysImage = false;
       if (e.clipboardData?.items) {
         for (const item of Array.from(e.clipboardData.items)) {
-          if (item.type.startsWith('image/')) return;
+          if (item.type.startsWith('image/')) { sysImage = true; break; }
         }
       }
+      // Asset round-trip (image/SVG) via the internal clip — works cross-deck
+      // and cross-window, storing the bytes into THIS deck. Preferred over both
+      // the system image and the in-app clipboardRef. Staleness-checked in Rust,
+      // so a foreign copy after an eigendeck copy falls through to SlideEditor.
+      const pastedAsset = await pasteAssetElement();
+      if (pastedAsset) {
+        e.preventDefault();
+        const state = usePresentationStore.getState();
+        const p = (pastedAsset as { position?: { x: number; y: number; width: number; height: number } }).position;
+        if (p) (pastedAsset as { position: typeof p }).position = { ...p, x: p.x + 40, y: p.y + 40 };
+        state.addElement(pastedAsset);
+        state.selectObject({ type: 'element', id: pastedAsset.id });
+        return;
+      }
+      // Foreign system image → let SlideEditor handle it.
+      if (sysImage) return;
       const clip = clipboardRef.current;
       if (clip?.type === 'elements') {
         e.preventDefault();
