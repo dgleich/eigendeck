@@ -220,9 +220,14 @@ export async function setMathPreamble(preamble: string, bundleId: string): Promi
   await pool.ready;
   pool.appliedPreamble = preamble;
   pool.iframe.contentWindow?.postMessage({ type: 'preamble', tex: preamble }, '*');
-  // Invalidate cache: previously-rendered SVGs were rendered without (or
-  // with the previous) preamble, so commands like \R wouldn't have resolved.
-  pool.cache.clear();
+  // NOTE: we do NOT clear pool.cache here. The cache key already includes the
+  // preamble (mathCacheKey(tex, bundle, display, preamble)), so entries are
+  // namespaced by preamble and can never be served for a different one — a
+  // render with a new preamble computes a different key and misses cleanly.
+  // The old clear() wiped VALID entries, including the SVGs warmed from SQLite
+  // (warmMathCacheFromSqlite) on the cold presenter window — which then
+  // re-rendered live, hit the 5s timeout on complex display math, and spilled
+  // the raw LaTeX. Keeping the cache means the persisted SVGs are actually used.
 }
 
 export async function renderMath(
