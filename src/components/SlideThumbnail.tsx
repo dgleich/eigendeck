@@ -9,6 +9,7 @@
 // for the B-renderer, the LIVE present view). Live vs static are deliberately
 // separate: you can't run live demo iframes in a 50-slide sidebar.
 
+import { useLayoutEffect, useRef, useState } from 'react';
 import { resolveTheme } from '../lib/themes';
 import { TextElementSvg } from './TextElementSvg';
 import { useRenderedAsset } from '../lib/assetRenderer';
@@ -18,32 +19,68 @@ import { ElementPreviewImg } from './ElementPreviewImg';
 import { VideoThumb } from './VideoThumb';
 import type { Presentation, Slide, SlideElement } from '../types/presentation';
 
-const SLIDE_WIDTH = 1920;
-const SLIDE_HEIGHT = 1080;
-
-/** A static, scaled snapshot of one slide, `width` px wide. */
-export function SlideThumbnail({ presentation, slide, width }: {
-  presentation: Presentation; slide: Slide; width: number;
+/**
+ * A static, scaled snapshot of one slide.
+ *
+ * - Pass `width` (px) for a FIXED-size thumbnail (the sidebar, whose column is a
+ *   known width).
+ * - Omit `width` for a RESPONSIVE thumbnail that fills its parent's width and
+ *   takes the deck's aspect ratio (the speaker view). This avoids the
+ *   fixed-width-inside-a-flex-box mismatch that clipped the next-slide preview.
+ *
+ * `imageTier` is the max px (long edge) raster images render at; defaults to the
+ * small sidebar thumb tier. The speaker view passes ASSET_TIER.full so the
+ * current/next previews use crisp, slide-native images instead of 256px ones.
+ */
+export function SlideThumbnail({ presentation, slide, width, imageTier = ASSET_TIER.thumb }: {
+  presentation: Presentation; slide: Slide; width?: number; imageTier?: number;
 }) {
-  const scale = width / SLIDE_WIDTH;
-  const height = SLIDE_HEIGHT * scale;
+  const slideW = presentation.config.width || 1920;
+  const slideH = presentation.config.height || 1080;
+
+  // Responsive mode measures the rendered width; fixed mode uses the prop.
+  const ref = useRef<HTMLDivElement>(null);
+  const [measuredW, setMeasuredW] = useState(0);
+  useLayoutEffect(() => {
+    if (width !== undefined) return; // fixed-size: no observer needed
+    const el = ref.current;
+    if (!el) return;
+    setMeasuredW(el.clientWidth);
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) setMeasuredW(e.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [width]);
+
+  const renderW = width !== undefined ? width : measuredW;
+  const scale = renderW / slideW;
+  // Fixed: explicit box. Responsive: fill width, height from the deck ratio
+  // (set even before measuring so the box doesn't collapse on first paint).
+  const outerStyle: React.CSSProperties = width !== undefined
+    ? { width, height: slideH * scale }
+    : { width: '100%', aspectRatio: `${slideW} / ${slideH}` };
+
   return (
-    <div className="slide-thumb-clip" style={{ width, height }}>
-      <div className="slide-thumb-render" style={{
-        width: SLIDE_WIDTH, height: SLIDE_HEIGHT,
-        transform: `scale(${scale})`, transformOrigin: 'top left',
-        position: 'relative', background: resolveTheme(presentation.theme, slide.theme).background,
-      }}>
-        {slide.elements.map((el) => (
-          <ThumbElement key={el.id} element={el} slide={slide} presentation={presentation} />
-        ))}
-      </div>
+    <div ref={ref} className="slide-thumb-clip" style={{ ...outerStyle, position: 'relative' }}>
+      {renderW > 0 && (
+        <div className="slide-thumb-render" style={{
+          width: slideW, height: slideH,
+          transform: `scale(${scale})`, transformOrigin: 'top left',
+          position: 'absolute', top: 0, left: 0,
+          background: resolveTheme(presentation.theme, slide.theme).background,
+        }}>
+          {slide.elements.map((el) => (
+            <ThumbElement key={el.id} element={el} slide={slide} presentation={presentation} imageTier={imageTier} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function ThumbElement({ element: el, slide, presentation }: {
-  element: SlideElement; slide: Slide; presentation: Presentation;
+function ThumbElement({ element: el, slide, presentation, imageTier }: {
+  element: SlideElement; slide: Slide; presentation: Presentation; imageTier: number;
 }) {
   const p = el.position;
   switch (el.type) {
@@ -53,7 +90,7 @@ function ThumbElement({ element: el, slide, presentation }: {
           presentationTheme={presentation.theme} presentationConfig={presentation.config} />
       );
     case 'image':
-      return <ThumbImage element={el} />;
+      return <ThumbImage element={el} imageTier={imageTier} />;
     case 'arrow': {
       const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 3 } = el;
       return (
@@ -79,10 +116,10 @@ function ThumbElement({ element: el, slide, presentation }: {
   }
 }
 
-function ThumbImage({ element }: { element: Extract<SlideElement, { type: 'image' }> }) {
+function ThumbImage({ element, imageTier }: { element: Extract<SlideElement, { type: 'image' }>; imageTier: number }) {
   const p = element.position;
   const kind = element.kind ?? 'raster';
-  const url = useRenderedAsset(element.assetId, kind, ASSET_TIER.thumb, ASSET_TIER.thumb, element.snapshotVariant);
+  const url = useRenderedAsset(element.assetId, kind, imageTier, imageTier, element.snapshotVariant);
   useAssetFileWatcher(element.assetId, element.id);
   return (
     <div style={{

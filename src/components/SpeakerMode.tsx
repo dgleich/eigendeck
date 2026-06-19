@@ -12,6 +12,7 @@ import { getSlideNumber } from '../types/presentation';
 import { navigatePresenter, closePresenterWindow, swapPresenterDisplay } from '../lib/multiMonitor';
 import { availableMonitors } from '@tauri-apps/api/window';
 import { SlideThumbnail } from './SlideThumbnail';
+import { ASSET_TIER } from '../lib/assetCache';
 
 export function SpeakerMode() {
   const { presentation, setPresenting } = usePresentationStore();
@@ -120,7 +121,7 @@ export function SpeakerMode() {
         <div className="speaker-current">
           <div className="speaker-preview-label">Current Slide</div>
           <div className="speaker-preview">
-            {slide && <SlideThumbnail presentation={presentation} slide={slide} width={720} />}
+            {slide && <SlideThumbnail presentation={presentation} slide={slide} imageTier={ASSET_TIER.full} />}
           </div>
           {/* Notes */}
           <div className="speaker-notes">
@@ -136,7 +137,7 @@ export function SpeakerMode() {
           <div className="speaker-preview-label">Next Slide</div>
           {nextSlide ? (
             <div className="speaker-preview speaker-preview-small">
-              <SlideThumbnail presentation={presentation} slide={nextSlide} width={480} />
+              <SlideThumbnail presentation={presentation} slide={nextSlide} imageTier={ASSET_TIER.full} />
             </div>
           ) : (
             <div className="speaker-preview-empty">End of presentation</div>
