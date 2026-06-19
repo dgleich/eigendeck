@@ -177,6 +177,9 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
   const prevZOrder = new Map((prevSlide?.elements ?? []).map((e, i) => [e.id, i]));
   const zOf = (id: string) => zOrder.get(id) ?? 0;
   const prevZOf = (id: string) => prevZOrder.get(id) ?? 0;
+  // current element id → its matched partner on the previous slide (position
+  // animation). Lets us render ALL current elements from one stable list.
+  const linkedFrom = new Map(linkedTransitions.linked.map(({ from, to }) => [to.id, from]));
 
   return (
     <div className={`present-mode ${showSpeaker ? 'with-speaker' : ''}`}>
@@ -187,7 +190,9 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
             style={{ width: slideW, height: slideH, transform: `scale(${scale})`, transformOrigin: 'top left',
               backgroundColor: resolveTheme(presentation.theme, slide.theme).background }}
           >
-            {/* Fading out elements (from previous slide, no match in current) */}
+            {/* Elements LEAVING (on the previous slide, linked but no match on
+                this one) — fade out. Transient; rendered separately because they
+                aren't in the current slide's element list. */}
             {linkedTransitions.fadeOut.map((el) => (
               <PresentElement
                 key={`fadeout-${el.id}`}
@@ -201,87 +206,64 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
               />
             ))}
 
-            {/* Linked elements that animate position/size */}
-            {linkedTransitions.linked.map(({ from, to }) => {
-              // Arrows: interpolate coordinates via rAF
-              if (from.type === 'arrow' && to.type === 'arrow') {
-                // If arrow hasn't moved, render statically
-                const arrowStatic = from.x1 === to.x1 && from.y1 === to.y1 &&
-                  from.x2 === to.x2 && from.y2 === to.y2;
-                if (arrowStatic) {
+            {/* ALL current-slide elements in ONE list, keyed by el.id in true
+                z-order. Critically, an element NEVER changes its key or its
+                position in the tree across the transition (entering → settled),
+                so iframes (demo / video / notebook) are never unmounted and
+                re-created — that remount is what made HTML demos blank for one
+                frame as they finished fading ("flash"). The per-element style
+                encodes its transition role:
+                  • linked (matched partner on prev slide) → animate position
+                  • cover / synced-from-prev → static (instant, no fade)
+                  • genuinely new → fade in */}
+            {slide.elements.map((el) => {
+              const z = zOf(el.id);
+              const from = linkedFrom.get(el.id);
+
+              // Linked arrow → interpolate its endpoints (or static if unmoved).
+              if (from && el.type === 'arrow' && from.type === 'arrow') {
+                const moved = !(from.x1 === el.x1 && from.y1 === el.y1 &&
+                  from.x2 === el.x2 && from.y2 === el.y2);
+                if (moved) {
                   return (
-                    <PresentElement key={`linked-${to.id}`} element={to} zIndex={zOf(to.id)}
-                      ctx={ctx} />
+                    <AnimatedArrow key={el.id} from={from} to={el} zIndex={z}
+                      animating={animating} hasPrev={prevIndex !== null} />
                   );
                 }
-                return (
-                  <AnimatedArrow
-                    key={`linked-arrow-${to.id}`}
-                    from={from}
-                    to={to}
-                    zIndex={zOf(to.id)}
-                    animating={animating}
-                    hasPrev={prevIndex !== null}
-                  />
-                );
+                return <PresentElement key={el.id} element={el} zIndex={z} ctx={ctx} />;
               }
 
-              const displayEl = to;
-              const fromPos = getElementBounds(from);
-              const toPos = getElementBounds(to);
-
-              // If position hasn't changed, render statically — no transition, no flicker
-              const isStatic = fromPos.x === toPos.x && fromPos.y === toPos.y &&
-                fromPos.w === toPos.w && fromPos.h === toPos.h;
-
-              return (
-                <PresentElement
-                  key={`linked-${to.id}`}
-                  element={displayEl}
-                  zIndex={zOf(to.id)}
-                  ctx={ctx}
-                  style={isStatic ? {} : {
-                    // Start at old position, transition to new
-                    ...(prevIndex !== null ? {
+              // Linked (non-arrow) → animate position/size from the prev partner.
+              if (from) {
+                const fromPos = getElementBounds(from);
+                const toPos = getElementBounds(el);
+                const isStatic = fromPos.x === toPos.x && fromPos.y === toPos.y &&
+                  fromPos.w === toPos.w && fromPos.h === toPos.h;
+                return (
+                  <PresentElement
+                    key={el.id}
+                    element={el}
+                    zIndex={z}
+                    ctx={ctx}
+                    style={isStatic ? {} : (prevIndex !== null ? {
                       left: animating ? toPos.x : fromPos.x,
                       top: animating ? toPos.y : fromPos.y,
                       width: animating ? toPos.w : fromPos.w,
                       height: animating ? toPos.h : fromPos.h,
                       transition: animating ? `left ${TRANSITION_MS}ms ease-in-out, top ${TRANSITION_MS}ms ease-in-out, width ${TRANSITION_MS}ms ease-in-out, height ${TRANSITION_MS}ms ease-in-out, opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
-                    } : {}),
-                  }}
-                />
-              );
-            })}
+                    } : {})}
+                  />
+                );
+              }
 
-            {/* Fading in elements (new in current slide, no match in previous).
-                Cover elements are masks for progressive reveals — they must
-                appear INSTANTLY (a fading cover defeats the reveal). */}
-            {linkedTransitions.fadeIn.map((el) => (
-              <PresentElement
-                key={`fadein-${el.id}`}
-                element={el}
-                zIndex={zOf(el.id)}
-                ctx={ctx}
-                style={el.type === 'cover' ? { opacity: 1 } : {
-                  opacity: animating ? 1 : (prevIndex !== null ? 0 : 1),
-                  transition: animating ? `opacity ${TRANSITION_MS}ms ease-in-out` : undefined,
-                }}
-              />
-            ))}
-
-            {/* Unlinked elements (no linkId, current slide only). Two cases
-                render STATIC (opacity 1, no fade): cover masks (so a reveal
-                doesn't flash its hidden content while the cover fades in), and
-                SYNCED elements that were also on the previous slide (same id —
-                fading them would flicker the shared element between build steps). */}
-            {linkedTransitions.unlinked.map((el) => {
+              // Not linked. Covers + elements carried over from the previous
+              // slide (same id) stay static; everything genuinely new fades in.
               const isStatic = el.type === 'cover' || prevIds.has(el.id);
               return (
                 <PresentElement
                   key={el.id}
                   element={el}
-                  zIndex={zOf(el.id)}
+                  zIndex={z}
                   ctx={ctx}
                   style={isStatic ? { opacity: 1 } : {
                     opacity: prevIndex !== null ? (animating ? 1 : 0) : 1,
