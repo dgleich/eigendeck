@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Eigendeck",
-  "version": "26.6.18",
+  "version": "26.6.19",
   "identifier": "com.dgleich.eigendeck",
   "build": {
     "beforeDevCommand": "npm run dev",
