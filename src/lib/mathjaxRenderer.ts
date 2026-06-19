@@ -119,6 +119,7 @@ interface Pool {
   pending: Map<string, PendingRequest>;
   cache: Map<string, RenderResult>;  // key = `${display}:${tex}`
   appliedPreamble: string;           // last preamble we sent to this iframe
+  preambleReady?: Promise<void>;     // resolves when appliedPreamble is REGISTERED in the iframe
 }
 
 const pools = new Map<string, Pool>();
@@ -216,18 +217,34 @@ function getOrCreatePool(bundleId: string): Pool {
  */
 export async function setMathPreamble(preamble: string, bundleId: string): Promise<void> {
   const pool = getOrCreatePool(bundleId);
-  if (pool.appliedPreamble === preamble) return;
-  await pool.ready;
+  // Already applied (or in-flight) for this exact preamble: reuse the same
+  // readiness promise so every caller waits for the SAME registration.
+  if (pool.appliedPreamble === preamble && pool.preambleReady) return pool.preambleReady;
   pool.appliedPreamble = preamble;
-  pool.iframe.contentWindow?.postMessage({ type: 'preamble', tex: preamble }, '*');
+  const p = (async () => {
+    await pool.ready;
+    // Wait for the iframe to ACK that the preamble is registered. Without this,
+    // renders fire before the macros exist (a fresh present/projector window) →
+    // undefined control sequence → raw-LaTeX cruft. A safety timeout keeps a
+    // missed ack from hanging renders forever.
+    await new Promise<void>((resolve) => {
+      const handler = (ev: MessageEvent) => {
+        const m = ev.data;
+        if (m && m.type === 'preamble-applied' && m.bundle === bundleId) {
+          window.removeEventListener('message', handler);
+          resolve();
+        }
+      };
+      window.addEventListener('message', handler);
+      setTimeout(() => { window.removeEventListener('message', handler); resolve(); }, 6000);
+      pool.iframe.contentWindow?.postMessage({ type: 'preamble', tex: preamble }, '*');
+    });
+  })();
+  pool.preambleReady = p;
+  return p;
   // NOTE: we do NOT clear pool.cache here. The cache key already includes the
   // preamble (mathCacheKey(tex, bundle, display, preamble)), so entries are
-  // namespaced by preamble and can never be served for a different one — a
-  // render with a new preamble computes a different key and misses cleanly.
-  // The old clear() wiped VALID entries, including the SVGs warmed from SQLite
-  // (warmMathCacheFromSqlite) on the cold presenter window — which then
-  // re-rendered live, hit the 5s timeout on complex display math, and spilled
-  // the raw LaTeX. Keeping the cache means the persisted SVGs are actually used.
+  // namespaced by preamble and can never be served for a different one.
 }
 
 export async function renderMath(
@@ -237,8 +254,9 @@ export async function renderMath(
   preamble?: string,
 ): Promise<RenderResult> {
   const pool = getOrCreatePool(bundleId);
-  // Apply preamble before any render call (if needed).
-  if (preamble && pool.appliedPreamble !== preamble) {
+  // Apply preamble AND wait for the iframe to register it before rendering.
+  // Idempotent: returns immediately once registered for this preamble.
+  if (preamble) {
     await setMathPreamble(preamble, bundleId);
   }
   const effectivePreamble = preamble || '';
@@ -315,7 +333,11 @@ export async function renderMathInHtml(html: string, bundleId: string, preamble?
       if (end !== -1) {
         const tex = html.slice(i + 2, end);
         try {
-          const { svg } = await renderMath(tex, bundleId, true);
+          // Pass `preamble` so the cache is keyed by the SAME preamble the read
+          // path (renderMathInHtmlSync / warm-from-SQLite) uses. Without it the
+          // write keyed under "" and every present-mode lookup missed → endless
+          // live re-rendering of already-cached math.
+          const { svg } = await renderMath(tex, bundleId, true, preamble);
           parts.push(`<div style="text-align:center;">${svg}</div>`);
         } catch (e) {
           console.warn('Display math render failed:', e);
@@ -332,7 +354,7 @@ export async function renderMathInHtml(html: string, bundleId: string, preamble?
       if (end !== -1 && !html.slice(i + 1, end).includes('\n')) {
         const tex = html.slice(i + 1, end);
         try {
-          const r = await renderMath(tex, bundleId, false);
+          const r = await renderMath(tex, bundleId, false, preamble);
           // Match the inline-math styling from the existing renderer
           // (vertical-align baseline tweak so it sits on the text line)
           const valign = r.valign || '-0.025ex';

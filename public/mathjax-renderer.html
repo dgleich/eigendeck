@@ -79,6 +79,11 @@
   // parent's devtools, hence this postMessage shim.
   function dbg(msg) { parent.postMessage({ type: 'log', bundle: bundle, msg: String(msg) }, '*'); }
 
+  // Tell the parent the preamble is registered, so it can hold renders until
+  // macros exist (else a fresh window renders custom-macro math before the
+  // preamble lands → undefined control sequence → raw-LaTeX cruft).
+  function ackPreamble() { parent.postMessage({ type: 'preamble-applied', bundle: bundle }, '*'); }
+
   // Catch any unhandled errors inside the iframe and report them up
   window.addEventListener('error', function (e) {
     dbg('iframe error: ' + (e.message || 'unknown') + ' at ' + (e.filename || '?') + ':' + (e.lineno || '?'));
@@ -131,6 +136,7 @@
     chain.then(function () {
       appliedPreamble = tex; // best-effort: the good macros are registered
       dbg('preamble applied per-statement: ' + ok + ' ok, ' + bad + ' skipped');
+      ackPreamble();
     });
   }
 
@@ -139,10 +145,11 @@
     if (!msg) return;
     if (msg.type === 'preamble') {
       const tex = String(msg.tex || '');
-      if (tex === appliedPreamble) return;
+      if (tex === appliedPreamble) { ackPreamble(); return; }
       const MJ = window.MathJax;
       if (!MJ || !MJ.tex2svgPromise) {
         dbg('preamble queued: MathJax not ready');
+        ackPreamble(); // unblock the parent; renders will fail per-call instead
         return;
       }
       try {
@@ -153,12 +160,14 @@
           new Promise((_, reject) => setTimeout(() => reject(new Error('preamble timeout')), 4000)),
         ]).then(function () {
           appliedPreamble = tex;
+          ackPreamble();
         }).catch(function (e) {
           dbg('preamble error (whole): ' + String(e && e.message || e) + ' — retrying per-statement');
-          applyPreamblePerStatement(tex);
+          applyPreamblePerStatement(tex); // acks when done
         });
       } catch (e) {
         dbg('preamble sync throw: ' + String(e && e.message || e));
+        ackPreamble();
       }
       return;
     }
