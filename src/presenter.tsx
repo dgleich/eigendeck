@@ -60,6 +60,11 @@ function PresenterApp() {
     await getCurrentWindow().close();
   };
 
+  // Keyboard/clicker focused on the projector window: forward the requested
+  // slide to the main (speaker) window, which owns the index and echoes back a
+  // presenter:goto. Single source of truth — the projector never sets its own.
+  const onNavigate = (target: number) => { void emitTo('main', 'presenter:nav', { index: target }); };
+
   if (!ready) {
     return (
       <div style={{ width: '100vw', height: '100vh', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 24, fontFamily: 'system-ui' }}>
@@ -68,7 +73,7 @@ function PresenterApp() {
     );
   }
 
-  return <PresentMode controlledIndex={index} onExit={onExit} />;
+  return <PresentMode controlledIndex={index} onExit={onExit} onNavigate={onNavigate} />;
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<PresenterApp />);

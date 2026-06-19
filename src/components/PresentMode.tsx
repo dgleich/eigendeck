@@ -19,11 +19,14 @@ const TRANSITION_MS = 300;
  * - Uncontrolled (no `controlledIndex`): owns navigation + keyboard, Escape
  *   exits present mode.
  * - Controlled (`controlledIndex` set): index comes from the prop (the speaker
- *   window's events); keyboard nav is off; Escape calls `onExit` (close the
- *   projector window).
+ *   window's events). Keyboard nav still WORKS here, but instead of moving a
+ *   local index it forwards the target slide to the owner via `onNavigate` (the
+ *   projector tells the speaker window, which navigates and echoes back) — so a
+ *   clicker/keyboard focused on the projector drives the deck too. Escape calls
+ *   `onExit` (close the projector window).
  */
-export function PresentMode({ controlledIndex, onExit }: {
-  controlledIndex?: number; onExit?: () => void;
+export function PresentMode({ controlledIndex, onExit, onNavigate }: {
+  controlledIndex?: number; onExit?: () => void; onNavigate?: (index: number) => void;
 } = {}) {
   const { presentation, setPresenting, selectSlide } =
     usePresentationStore();
@@ -90,13 +93,18 @@ export function PresentMode({ controlledIndex, onExit }: {
 
   const goTo = useCallback(
     (index: number) => {
-      if (controlled) return; // projector window: navigation is external
       if (index < 0 || index >= totalSlides) return;
       if (index === currentIndex) return;
+      if (controlled) {
+        // Projector window: we don't own the index. Forward the request to the
+        // main (speaker) window, which navigates and echoes presenter:goto back.
+        onNavigate?.(index);
+        return;
+      }
       setLocalIndex(index);
       selectSlide(index);
     },
-    [controlled, currentIndex, totalSlides, selectSlide]
+    [controlled, currentIndex, totalSlides, selectSlide, onNavigate]
   );
 
   const goNext = useCallback(() => goTo(currentIndex + 1), [currentIndex, goTo]);
@@ -106,7 +114,8 @@ export function PresentMode({ controlledIndex, onExit }: {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Escape: exit present (main) or close the projector window (controlled).
       if (e.key === 'Escape') { if (onExit) onExit(); else setPresenting(false); return; }
-      if (controlled) return; // projector: nav driven by the speaker window
+      // NOTE: controlled (projector) windows still navigate via the keyboard —
+      // goTo() forwards the target to the speaker window when controlled.
       // When focus is in a text-entry context (a notebook code cell's
       // CodeMirror editor, an input, etc.), let it handle the key —
       // otherwise Space/arrows get hijacked for slide navigation and
@@ -124,7 +133,9 @@ export function PresentMode({ controlledIndex, onExit }: {
         case 'ArrowLeft': case 'ArrowUp': case 'PageUp':
           e.preventDefault(); goPrev(); break;
         case 's': case 'S':
-          e.preventDefault(); setShowSpeaker((prev) => !prev); break;
+          // Inline speaker panel only makes sense in the single-window present.
+          if (!controlled) { e.preventDefault(); setShowSpeaker((prev) => !prev); }
+          break;
         case 'Home': e.preventDefault(); goTo(0); break;
         case 'End': e.preventDefault(); goTo(totalSlides - 1); break;
       }

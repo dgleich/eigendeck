@@ -6,6 +6,7 @@
  * navigation controls.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import { usePresentationStore } from '../store/presentation';
 import { getSlideNumber } from '../types/presentation';
 import { navigatePresenter, closePresenterWindow } from '../lib/multiMonitor';
@@ -62,6 +63,13 @@ export function SpeakerMode() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goNext, goPrev, goTo, totalSlides, setPresenting]);
+
+  // The projector window forwards its own keyboard/clicker presses here (it
+  // doesn't own the index). Drive the same goTo so both windows stay in sync.
+  useEffect(() => {
+    const unlistenP = listen<{ index: number }>('presenter:nav', (e) => goTo(e.payload.index));
+    return () => { unlistenP.then((fn) => fn()); };
+  }, [goTo]);
 
   const slide = presentation.slides[currentIndex];
   const nextSlide = currentIndex < totalSlides - 1 ? presentation.slides[currentIndex + 1] : null;
