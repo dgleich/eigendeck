@@ -796,10 +796,8 @@ pub fn run() {
                         }
                     }
                 }
-                tauri::WindowEvent::Destroyed => {
-                    if is_main {
-                        let _ = storage::close_db();
-                    }
+                tauri::WindowEvent::Destroyed if is_main => {
+                    let _ = storage::close_db();
                 }
                 _ => {}
             }
