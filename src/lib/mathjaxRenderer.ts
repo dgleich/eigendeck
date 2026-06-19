@@ -344,6 +344,57 @@ export async function renderMathInHtml(html: string, bundleId: string, preamble?
   return parts.join('');
 }
 
+/**
+ * Synchronous, cache-ONLY version of renderMathInHtml. Returns HTML with every
+ * ALREADY-CACHED expression spliced to its SVG and any uncached ones left as
+ * raw source (the async renderMathInHtml fills those in afterward). Returns
+ * null if the bundle's pool doesn't exist yet (nothing to hit).
+ *
+ * This lets TextElementSvg show warmed math IMMEDIATELY on mount instead of
+ * flashing raw-source → SVG (renderMath is async even on a cache hit). On a
+ * warm window (e.g. the projector after warmMathCacheFromSqlite), everything is
+ * a hit, so there's no flash at all.
+ */
+export function renderMathInHtmlSync(html: string, bundleId: string, preamble?: string): string | null {
+  if (!containsMath(html)) return html;
+  const pool = pools.get(bundleId);
+  if (!pool) return null;
+  const eff = preamble || '';
+  const parts: string[] = [];
+  let i = 0;
+  while (i < html.length) {
+    if (html[i] === '<') {
+      const tagEnd = html.indexOf('>', i);
+      if (tagEnd !== -1) { parts.push(html.slice(i, tagEnd + 1)); i = tagEnd + 1; continue; }
+    }
+    if (html[i] === '$' && html[i + 1] === '$') {
+      const end = html.indexOf('$$', i + 2);
+      if (end !== -1) {
+        const tex = html.slice(i + 2, end);
+        const hit = pool.cache.get(mathCacheKey(tex, bundleId, true, eff));
+        parts.push(hit ? `<div style="text-align:center;">${hit.svg}</div>` : `$$${tex}$$`);
+        i = end + 2; continue;
+      }
+    }
+    if (html[i] === '$') {
+      const end = html.indexOf('$', i + 1);
+      if (end !== -1 && !html.slice(i + 1, end).includes('\n')) {
+        const tex = html.slice(i + 1, end);
+        const hit = pool.cache.get(mathCacheKey(tex, bundleId, false, eff));
+        if (hit) {
+          const valign = hit.valign || '-0.025ex';
+          parts.push(hit.svg.replace(/^<svg/, `<svg overflow="visible" style="display:inline;vertical-align:${valign};overflow:visible"`));
+        } else {
+          parts.push(`$${tex}$`);
+        }
+        i = end + 1; continue;
+      }
+    }
+    parts.push(html[i]); i++;
+  }
+  return parts.join('');
+}
+
 /** For debugging / dev: list which bundles have been loaded. */
 export function loadedBundles(): string[] {
   return [...pools.keys()];
