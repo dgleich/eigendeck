@@ -12,6 +12,8 @@ import ReactDOM from 'react-dom/client';
 import { listen, emitTo } from '@tauri-apps/api/event';
 import type { Presentation } from './types/presentation';
 import { PresentSlideStage } from './components/PresentSlide';
+import { injectFontFaces } from './lib/fonts';
+import { discoverAllServers } from './lib/serverDiscovery';
 import './App.css';
 
 function PresenterApp() {
@@ -87,5 +89,13 @@ function PresenterApp() {
     </div>
   );
 }
+
+// The projector window is a SEPARATE webview, so it must do the same boot
+// setup the main window does (src/main.tsx) — otherwise bundled fonts / math
+// fonts don't load here and text renders with fallbacks (the 2-window-only
+// "glitch" that didn't appear in single-window present). Server discovery lets
+// live notebooks on the projector reach their kernels too.
+injectFontFaces();
+void discoverAllServers();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<PresenterApp />);
