@@ -61,7 +61,10 @@ export async function copyAssetElement(el: SlideElement): Promise<boolean> {
   try {
     const meta = await invoke<AssetMeta | null>('db_get_asset_meta_by_id', { assetId });
     const kind = (el as { kind?: string }).kind;
-    const mime = meta?.mime_type || (kind === 'svg' ? 'image/svg+xml' : 'image/png');
+    // Fall back from kind when asset meta is missing — must distinguish pdf, or
+    // build_reps would send it down the raster (PNG) branch instead of the PDF one.
+    const mime = meta?.mime_type
+      || (kind === 'svg' ? 'image/svg+xml' : kind === 'pdf' ? 'application/pdf' : 'image/png');
     let sourceDeckId: string | null = null;
     try { sourceDeckId = await invoke<string>('db_get_project_id'); } catch { /* unsaved deck */ }
     const payload: AssetClipPayload = {
