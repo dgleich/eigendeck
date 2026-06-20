@@ -129,7 +129,7 @@ fn clipboard_generation(app: &tauri::AppHandle) -> i64 {
         let _ = app.run_on_main_thread(move || {
             use objc2_app_kit::NSPasteboard;
             let pb = NSPasteboard::generalPasteboard();
-            let _ = tx.send(pb.changeCount());
+            let _ = tx.send(pb.changeCount() as i64);
         });
         rx.recv().unwrap_or(-1)
     }
