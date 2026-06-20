@@ -627,7 +627,6 @@ pub fn run() {
             clip::clip_copy_asset,
             clip::clip_peek_internal,
             clip::clip_paste_asset,
-            clip::clip_write_html,
             clip::clip_clear_internal,
             set_window_above_menubar,
             check_display_mirroring,
