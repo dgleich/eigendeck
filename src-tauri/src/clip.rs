@@ -104,7 +104,9 @@ pub fn clip_paste_asset(path: String) -> Result<Option<PastedAsset>, String> {
             _ => return Ok(None),
         }
     };
-    let asset_id = storage::db_store_asset(path, bytes, mime.clone(), None, None, None, None, None)?;
+    // Dedupe by content hash: pasting the same image repeatedly reuses one
+    // asset instead of piling up identical copies in the deck.
+    let asset_id = storage::store_asset_deduped(path, bytes, mime.clone())?;
     Ok(Some(PastedAsset { asset_id, payload, mime }))
 }
 

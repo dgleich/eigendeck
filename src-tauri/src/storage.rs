@@ -2061,6 +2061,27 @@ pub fn db_free_element(
 /// Returns the asset_id that was written to (whether passed-in or
 /// generated). Frontend callers should remember it on the element so
 /// subsequent reads / restores target the same identity.
+/// Store asset bytes, but DEDUPE by content hash: if a current asset with the
+/// same bytes already exists, reuse its asset_id instead of inserting a copy.
+/// Used by paste so pasting the same image N times doesn't store N copies —
+/// multiple elements just share one asset (the correct model). Not a Tauri
+/// command (called from Rust, e.g. clip_paste_asset).
+pub fn store_asset_deduped(path: String, data: Vec<u8>, mime_type: String) -> Result<String, String> {
+    let hash = sha256_hex(&data);
+    let existing: Option<String> = with_db(|conn| {
+        conn.query_row(
+            "SELECT asset_id FROM assets WHERE hash = ?1 AND valid_to IS NULL LIMIT 1",
+            params![&hash],
+            |r| r.get(0),
+        )
+        .optional()
+    })?;
+    if let Some(id) = existing {
+        return Ok(id);
+    }
+    db_store_asset(path, data, mime_type, None, None, None, None, None)
+}
+
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub fn db_store_asset(
