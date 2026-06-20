@@ -69,3 +69,31 @@ system clipboard is shared, unlike the per-window `clipboardRef`).
   ClipboardItems is unreliable in WebKit — prefer the native Rust command.
 - The existing `clipboardRef` path can stay as a fast same-window in-app path,
   but the system-clipboard write is what enables cross-deck / cross-app paste.
+
+## Status / decisions (2026-06-20)
+
+Implemented & rig-verified (in-app): image/SVG cross-deck copy/paste round-trip
+(internal clip carries bytes → stored in destination deck, detached id/assetId),
+paste dedup by content hash, no double-paste. System-clipboard write moved to the
+'copy' EVENT (race-free): text → clipboardData.setData('text/html') (+plain),
+image → preventDefault + native arboard write.
+
+**Text-box math does NOT paste into Keynote/PowerPoint — known limitation,
+deferred.** Reason: text boxes render as HTML inside an SVG <foreignObject>, and
+Keynote/PowerPoint/Illustrator don't render foreignObject. Inline-SVG-in-HTML is
+also ignored by those apps. They only accept REAL (path/text) SVG or an image.
+
+Decision (user, 2026-06-20): keep text = **HTML only** for now (works in
+Docs/Word; math drops in Keynote/PPT). Revisit with the image route later.
+
+**Deferred fix when revisited:** also put a high-res PNG (captureHtmlToPng) on
+the clipboard for text boxes via a macOS multi-format NSPasteboard write
+(public.html + public.utf8-plain-text + public.png) — or an NSPasteboardItem with
+both reps — so Keynote/PPT get the rendered math while Docs/Word keep editable
+HTML. arboard can't combine html+image in one write, so this needs native
+multi-format. (clip_write_html exists but is currently unused — text uses web
+setData.)
+
+**To verify (user):** copying a real SVG *image* element into Keynote should
+work — it's true SVG written to the pasteboard as public.svg-image (mac_write_svg
+in clip.rs), unlike the foreignObject text case.
