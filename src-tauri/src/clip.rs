@@ -61,8 +61,11 @@ pub fn clip_copy_asset(
     mime: String,
 ) -> Result<(), String> {
     let bytes = storage::db_get_asset_bytes_by_id(asset_id)?;
-    // System clipboard (best effort — must not block the internal round-trip).
-    if let Err(e) = write_system_image(&app, &bytes, &mime) {
+    // System clipboard: put MULTIPLE representations on it (the native format +
+    // a PNG raster) so each target app pastes the format it understands —
+    // PDF/SVG into Keynote, PNG into apps that only take images. Best effort.
+    let reps = build_reps(&app, &bytes, &mime);
+    if let Err(e) = write_system(&app, &reps) {
         eprintln!("[clip] system clipboard write failed: {e}");
     }
     // Capture the clipboard generation AFTER our write, so a later foreign copy
@@ -151,48 +154,90 @@ fn clipboard_generation(app: &tauri::AppHandle) -> i64 {
     }
 }
 
-/// Put the element's asset on the SYSTEM clipboard. Raster → decoded to RGBA and
-/// set via arboard (cross-platform). SVG → native UTI on macOS; no-op elsewhere
-/// (the eigendeck round-trip still works through the internal clip).
-fn write_system_image(_app: &tauri::AppHandle, bytes: &[u8], mime: &str) -> Result<(), String> {
-    if mime == "image/svg+xml" {
-        #[cfg(target_os = "macos")]
-        {
-            return mac_write_svg(_app, bytes);
+/// Build the clipboard representations (uti, bytes) for an asset: the native
+/// format plus a PNG raster where we can produce one in Rust.
+///   - PDF   → com.adobe.pdf + public.png (pdfium raster)
+///   - SVG   → public.svg-image (vector apps; no Rust SVG rasterizer, so no PNG)
+///   - PNG   → public.png
+///   - other raster → public.png (decoded)
+fn build_reps(app: &tauri::AppHandle, bytes: &[u8], mime: &str) -> Vec<(String, Vec<u8>)> {
+    let mut reps: Vec<(String, Vec<u8>)> = Vec::new();
+    match mime {
+        "application/pdf" => {
+            reps.push(("com.adobe.pdf".to_string(), bytes.to_vec()));
+            match crate::pdf::render_first_page_png(app, bytes, 1600, 1200) {
+                Ok(png) => reps.push(("public.png".to_string(), png)),
+                Err(e) => eprintln!("[clip] pdf raster for clipboard failed: {e}"),
+            }
         }
-        #[cfg(not(target_os = "macos"))]
-        {
-            return Ok(());
-        }
+        "image/svg+xml" => reps.push(("public.svg-image".to_string(), bytes.to_vec())),
+        "image/png" => reps.push(("public.png".to_string(), bytes.to_vec())),
+        _ => match to_png(bytes) {
+            Ok(png) => reps.push(("public.png".to_string(), png)),
+            Err(_) => reps.push(("public.png".to_string(), bytes.to_vec())),
+        },
     }
-    let img = image::load_from_memory(bytes)
-        .map_err(|e| format!("decode image for clipboard: {e}"))?
-        .to_rgba8();
-    let (w, h) = img.dimensions();
-    let mut cb = arboard::Clipboard::new().map_err(|e| e.to_string())?;
-    cb.set_image(arboard::ImageData {
-        width: w as usize,
-        height: h as usize,
-        bytes: std::borrow::Cow::Owned(img.into_raw()),
-    })
-    .map_err(|e| e.to_string())?;
-    Ok(())
+    reps
 }
 
-/// macOS: offer the SVG under `public.svg-image` so vector apps receive the SVG.
+/// Re-encode arbitrary raster bytes (jpeg/gif/webp/...) to PNG.
+fn to_png(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    let img = image::load_from_memory(bytes).map_err(|e| e.to_string())?;
+    let mut out = std::io::Cursor::new(Vec::new());
+    img.write_to(&mut out, image::ImageFormat::Png).map_err(|e| e.to_string())?;
+    Ok(out.into_inner())
+}
+
+/// Write the representations to the SYSTEM clipboard. macOS: all of them, as one
+/// multi-type pasteboard write (so apps pick PDF/SVG/PNG as they prefer).
+/// Other platforms: arboard sets the single PNG raster (true multi-format needs
+/// per-OS native code — deferred; PNG covers the common case).
+fn write_system(_app: &tauri::AppHandle, reps: &[(String, Vec<u8>)]) -> Result<(), String> {
+    if reps.is_empty() {
+        return Ok(());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        return mac_write_multi(_app, reps.to_vec());
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        if let Some((_, png)) = reps.iter().find(|(u, _)| u == "public.png") {
+            let img = image::load_from_memory(png).map_err(|e| e.to_string())?.to_rgba8();
+            let (w, h) = img.dimensions();
+            let mut cb = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+            cb.set_image(arboard::ImageData {
+                width: w as usize,
+                height: h as usize,
+                bytes: std::borrow::Cow::Owned(img.into_raw()),
+            })
+            .map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
+}
+
+/// macOS multi-type pasteboard write: declare all UTIs, then set each one's data
+/// on the general pasteboard so a paste target can choose its preferred format.
 #[cfg(target_os = "macos")]
-fn mac_write_svg(app: &tauri::AppHandle, bytes: &[u8]) -> Result<(), String> {
+fn mac_write_multi(app: &tauri::AppHandle, reps: Vec<(String, Vec<u8>)>) -> Result<(), String> {
     use std::sync::mpsc;
-    let bytes = bytes.to_vec();
     let (tx, rx) = mpsc::channel::<Result<(), String>>();
     let _ = app.run_on_main_thread(move || {
         use objc2_app_kit::NSPasteboard;
         use objc2_foundation::{NSData, NSString};
         let pb = NSPasteboard::generalPasteboard();
+        // clearContents() once, then setData per UTI — the same pattern as the
+        // single-type write that already works; each setData registers its type.
         pb.clearContents();
-        let ty = NSString::from_str("public.svg-image");
-        let data = NSData::with_bytes(&bytes);
-        let ok = pb.setData_forType(Some(&data), &ty);
+        let mut ok = true;
+        for (uti, bytes) in reps.iter() {
+            let ty = NSString::from_str(uti);
+            let data = NSData::with_bytes(bytes);
+            if !pb.setData_forType(Some(&data), &ty) {
+                ok = false;
+            }
+        }
         let _ = tx.send(if ok { Ok(()) } else { Err("setData failed".into()) });
     });
     rx.recv().unwrap_or_else(|_| Err("main-thread dispatch failed".into()))

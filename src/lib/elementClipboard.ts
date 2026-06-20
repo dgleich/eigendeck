@@ -45,6 +45,7 @@ function extFromMime(mime: string, path?: string): string {
   if (path && path.includes('.')) return path.split('.').pop()!.toLowerCase();
   switch (mime) {
     case 'image/svg+xml': return 'svg';
+    case 'application/pdf': return 'pdf';
     case 'image/jpeg': return 'jpg';
     case 'image/gif': return 'gif';
     case 'image/webp': return 'webp';
