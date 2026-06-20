@@ -9,6 +9,7 @@ import { getSlideNumber, createTextElement } from '../types/presentation';
 import { resolveTheme } from '../lib/themes';
 import { detectAssetKind } from '../lib/assetCache';
 import { hasFreshInternalAsset } from '../lib/elementClipboard';
+import { hasEigendeckMarker } from '../lib/clipboard';
 import { handleSvgExternalRefs, invalidateRenderedAsset } from '../lib/assetRenderer';
 import type { SlideElement } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
@@ -194,7 +195,7 @@ export function SlideEditor() {
       // PNG, then insert as an image. Handles tables, lists, formatted blocks,
       // etc. — the browser does the layout (far more robust than parsing one
       // app's markup). Static snapshot, so thumbnails/present/export work for free.
-      if ((!picked || !pickedFormat) && looksLikeRichHtml(htmlEarly)) {
+      if ((!picked || !pickedFormat) && looksLikeRichHtml(htmlEarly) && !hasEigendeckMarker(htmlEarly)) {
         const { resolveFontPackage, bareFamilyName } = await import('../lib/fonts');
         const cfg = usePresentationStore.getState().presentation.config;
         const family = bareFamilyName(resolveFontPackage(cfg?.defaultBodyFont));

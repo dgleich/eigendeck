@@ -45,7 +45,7 @@ import { flushToSqlite, pauseUndo, resumeUndo, undoWithNav, redoWithNav } from '
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
-import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement } from './lib/elementClipboard';
+import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement, copyTextElementHtml } from './lib/elementClipboard';
 import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss } from './types/presentation';
 import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
 import { getMissingAssets } from './lib/missingAssets';
@@ -1074,10 +1074,16 @@ function App() {
           const el = slide.elements.find((el) => el.id === sel.id);
           if (el) {
             clipboardRef.current = { type: 'elements', data: [JSON.parse(JSON.stringify(el))], fromSlideIndex: state.currentSlideIndex, fromSlideId: slide.id };
-            // Asset elements (image/SVG) also go to the system clipboard + the
-            // cross-window internal clip (carries the bytes for cross-deck paste).
-            // Anything else clears the internal clip so a stale image can't paste.
-            if (isCopyableAsset(el)) void copyAssetElement(el); else void clearInternalClip();
+            // Asset elements (image/SVG) → system clipboard + cross-window
+            // internal clip (carries bytes for cross-deck paste). Text elements
+            // → system clipboard as rich HTML (paste into other apps). Either
+            // way, clear the internal asset clip for non-asset copies.
+            if (isCopyableAsset(el)) {
+              void copyAssetElement(el);
+            } else {
+              void clearInternalClip();
+              if (el.type === 'text') void copyTextElementHtml(el, slide, state.presentation.config, state.presentation.theme);
+            }
           }
         } else if (sel?.type === 'multi') {
           clipboardRef.current = { type: 'elements', data: slide.elements

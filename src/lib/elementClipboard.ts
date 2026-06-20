@@ -10,7 +10,12 @@
 // copy correctly wins.
 
 import { invoke } from '@tauri-apps/api/core';
-import type { SlideElement } from '../types/presentation';
+import type { SlideElement, TextElement, Slide, PresentationConfig } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
+import { resolveTheme, themeColorForPreset } from './themes';
+import { fontForPreset, fontFamilyForPreset } from './fonts';
+import { renderMathInHtml, containsMath } from './mathjaxRenderer';
+import { markAsEigendeck } from './clipboard';
 
 const PAYLOAD_V = 1;
 
@@ -73,6 +78,43 @@ export async function copyAssetElement(el: SlideElement): Promise<boolean> {
  *  element, so a later paste doesn't resurrect a stale image. */
 export async function clearInternalClip(): Promise<void> {
   try { await invoke('clip_clear_internal'); } catch { /* ignore */ }
+}
+
+function plainTextFromHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6])>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/** Copy a TEXT element to the system clipboard as rich text/html (formatting
+ *  preserved, math rendered to inline SVG) + a plain-text fallback, so it pastes
+ *  into other apps (Docs / Word / Slides / mail). The HTML carries the eigendeck
+ *  marker so pasting back into eigendeck takes the in-app element path instead of
+ *  the rich-HTML→image route. */
+export async function copyTextElementHtml(
+  el: TextElement, slide: Slide, config: PresentationConfig, theme: string,
+): Promise<boolean> {
+  try {
+    const preset = TEXT_PRESET_STYLES[el.preset];
+    const pkg = fontForPreset(el.preset, slide, config);
+    const fontFamily = el.fontFamily || fontFamilyForPreset(pkg, el.preset);
+    const fontSize = effectiveFontSize(el, config);
+    const color = el.color || themeColorForPreset(resolveTheme(theme, slide.theme), el.preset);
+    const rendered = containsMath(el.html)
+      ? await renderMathInHtml(el.html, pkg.id, config.mathPreamble)
+      : (el.html || '');
+    const styled =
+      `<div style="font-family:${fontFamily};font-size:${fontSize}px;font-weight:${preset.fontWeight};` +
+      `font-style:${preset.fontStyle};color:${color};line-height:1.3;">${rendered}</div>`;
+    await invoke('clip_write_html', { html: markAsEigendeck(styled), plain: plainTextFromHtml(el.html || '') });
+    return true;
+  } catch (e) {
+    console.warn('[clip] copyTextElementHtml failed:', e);
+    return false;
+  }
 }
 
 /** Is there a FRESH internal asset clip right now? (staleness-checked in Rust).

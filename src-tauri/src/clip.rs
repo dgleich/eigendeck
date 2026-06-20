@@ -110,6 +110,16 @@ pub fn clip_paste_asset(path: String) -> Result<Option<PastedAsset>, String> {
     Ok(Some(PastedAsset { asset_id, payload, mime }))
 }
 
+/// Put rich text on the SYSTEM clipboard as text/html (+ a plain-text fallback)
+/// so a text element pastes into other apps (Docs / Word / Slides / mail) as
+/// formatted text. Cross-platform via arboard.
+#[tauri::command]
+pub fn clip_write_html(html: String, plain: String) -> Result<(), String> {
+    let mut cb = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+    cb.set_html(html, Some(plain)).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn clip_clear_internal() -> Result<(), String> {
     let mut g = INTERNAL_CLIP.lock().map_err(|e| e.to_string())?;
