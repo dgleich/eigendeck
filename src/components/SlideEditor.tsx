@@ -8,6 +8,8 @@ import { SlideElementRenderer } from './SlideElementRenderer';
 import { getSlideNumber, createTextElement } from '../types/presentation';
 import { resolveTheme } from '../lib/themes';
 import { detectAssetKind } from '../lib/assetCache';
+import { hasFreshInternalAsset } from '../lib/elementClipboard';
+import { hasEigendeckMarker } from '../lib/clipboard';
 import { handleSvgExternalRefs, invalidateRenderedAsset } from '../lib/assetRenderer';
 import type { SlideElement } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
@@ -56,6 +58,12 @@ export function SlideEditor() {
     const handlePaste = async (e: ClipboardEvent) => {
       // Don't intercept paste if user is editing a text element
       if ((e.target as HTMLElement).closest('[contenteditable="true"]')) return;
+
+      // If a FRESH eigendeck asset is on the internal clip, the App-level paste
+      // handler restores it (with attributes, into this deck). Defer so we don't
+      // ALSO paste the system-clipboard copy of it — that was the double-paste.
+      // (Staleness-checked in Rust, so a foreign image still falls through here.)
+      if (await hasFreshInternalAsset()) return;
 
       const T_PASTE = performance.now();
       plog('paste-handler started');
@@ -187,7 +195,7 @@ export function SlideEditor() {
       // PNG, then insert as an image. Handles tables, lists, formatted blocks,
       // etc. — the browser does the layout (far more robust than parsing one
       // app's markup). Static snapshot, so thumbnails/present/export work for free.
-      if ((!picked || !pickedFormat) && looksLikeRichHtml(htmlEarly)) {
+      if ((!picked || !pickedFormat) && looksLikeRichHtml(htmlEarly) && !hasEigendeckMarker(htmlEarly)) {
         const { resolveFontPackage, bareFamilyName } = await import('../lib/fonts');
         const cfg = usePresentationStore.getState().presentation.config;
         const family = bareFamilyName(resolveFontPackage(cfg?.defaultBodyFont));

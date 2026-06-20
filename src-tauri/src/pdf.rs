@@ -65,6 +65,15 @@ fn resolve_pdfium_dylib(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     ))
 }
 
+/// Rasterize a PDF's first page to PNG bytes (for the clipboard's raster
+/// fallback). All-Rust via pdfium.
+pub fn render_first_page_png(
+    app: &tauri::AppHandle, pdf_bytes: &[u8], max_width: u32, max_height: u32,
+) -> Result<Vec<u8>, String> {
+    let pdfium = get_pdfium(app)?;
+    render_page_inner(pdfium, pdf_bytes, 0, max_width, max_height)
+}
+
 fn get_pdfium(app: &tauri::AppHandle) -> Result<&'static Pdfium, String> {
     let init = PDFIUM.get_or_init(|| {
         let lib_path = resolve_pdfium_dylib(app)?;

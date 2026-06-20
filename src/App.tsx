@@ -45,6 +45,7 @@ import { flushToSqlite, pauseUndo, resumeUndo, undoWithNav, redoWithNav } from '
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
+import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement, textElementClipboardHtml } from './lib/elementClipboard';
 import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss } from './types/presentation';
 import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
 import { getMissingAssets } from './lib/missingAssets';
@@ -1071,13 +1072,21 @@ function App() {
         const slide = state.presentation.slides[state.currentSlideIndex];
         if (sel?.type === 'element') {
           const el = slide.elements.find((el) => el.id === sel.id);
-          if (el) clipboardRef.current = { type: 'elements', data: [JSON.parse(JSON.stringify(el))], fromSlideIndex: state.currentSlideIndex, fromSlideId: slide.id };
+          if (el) {
+            clipboardRef.current = { type: 'elements', data: [JSON.parse(JSON.stringify(el))], fromSlideIndex: state.currentSlideIndex, fromSlideId: slide.id };
+          }
+          // NOTE: the SYSTEM-clipboard write (rich HTML for text, image bytes +
+          // internal clip for assets) happens in the 'copy' EVENT handler below,
+          // not here — writing on keydown races (and loses to) the browser's own
+          // copy. See onCopy.
         } else if (sel?.type === 'multi') {
           clipboardRef.current = { type: 'elements', data: slide.elements
             .filter((el) => sel.ids.includes(el.id))
             .map((el) => JSON.parse(JSON.stringify(el))), fromSlideIndex: state.currentSlideIndex, fromSlideId: slide.id };
+          void clearInternalClip();
         } else if (!sel || sel.type === 'slide') {
           clipboardRef.current = { type: 'slide', data: JSON.parse(JSON.stringify(slide)) };
+          void clearInternalClip();
         }
       }
       // Paste (Cmd+V): handled by paste event listener below (not keydown)
@@ -1086,15 +1095,33 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     // Internal element/slide paste — runs on the paste event so it doesn't
     // block the system clipboard (image paste in SlideEditor gets first pick)
-    const handlePaste = (e: ClipboardEvent) => {
+    const handlePaste = async (e: ClipboardEvent) => {
       if ((e.target as HTMLElement).closest('[contenteditable="true"]')) return;
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
-      // If system clipboard has an image, let SlideEditor handle it
+      // Capture (synchronously, before any await) whether the SYSTEM clipboard
+      // carries an image — clipboardData is neutered after an await.
+      let sysImage = false;
       if (e.clipboardData?.items) {
         for (const item of Array.from(e.clipboardData.items)) {
-          if (item.type.startsWith('image/')) return;
+          if (item.type.startsWith('image/')) { sysImage = true; break; }
         }
       }
+      // Asset round-trip (image/SVG) via the internal clip — works cross-deck
+      // and cross-window, storing the bytes into THIS deck. Preferred over both
+      // the system image and the in-app clipboardRef. Staleness-checked in Rust,
+      // so a foreign copy after an eigendeck copy falls through to SlideEditor.
+      const pastedAsset = await pasteAssetElement();
+      if (pastedAsset) {
+        e.preventDefault();
+        const state = usePresentationStore.getState();
+        const p = (pastedAsset as { position?: { x: number; y: number; width: number; height: number } }).position;
+        if (p) (pastedAsset as { position: typeof p }).position = { ...p, x: p.x + 40, y: p.y + 40 };
+        state.addElement(pastedAsset);
+        state.selectObject({ type: 'element', id: pastedAsset.id });
+        return;
+      }
+      // Foreign system image → let SlideEditor handle it.
+      if (sysImage) return;
       const clip = clipboardRef.current;
       if (clip?.type === 'elements') {
         e.preventDefault();
@@ -1144,9 +1171,40 @@ function App() {
       }
     };
     window.addEventListener('paste', handlePaste);
+
+    // SYSTEM-clipboard write happens on the 'copy' EVENT (race-free): for text,
+    // setData('text/html') — the WebKit-reliable path; for image/SVG,
+    // preventDefault so the browser doesn't clobber our native arboard write,
+    // then copyAssetElement (system image + cross-window internal clip).
+    const handleCopy = (e: ClipboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.('[contenteditable="true"]')) return; // text editing → native selection copy
+      if (t && ['INPUT', 'TEXTAREA'].includes(t.tagName)) return;
+      const state = usePresentationStore.getState();
+      const sel = state.selectedObject;
+      if (sel?.type !== 'element') { void clearInternalClip(); return; }
+      const slide = state.presentation.slides[state.currentSlideIndex];
+      const el = slide?.elements.find((x) => x.id === sel.id);
+      if (!el) return;
+      if (el.type === 'text' && e.clipboardData) {
+        const { html, plain } = textElementClipboardHtml(el, slide, state.presentation.config, state.presentation.theme);
+        e.preventDefault();
+        e.clipboardData.setData('text/html', html);
+        e.clipboardData.setData('text/plain', plain);
+        void clearInternalClip();
+      } else if (isCopyableAsset(el)) {
+        e.preventDefault();
+        void copyAssetElement(el);
+      } else {
+        void clearInternalClip();
+      }
+    };
+    window.addEventListener('copy', handleCopy);
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('paste', handlePaste);
+      window.removeEventListener('copy', handleCopy);
     };
   }, []);
 

@@ -4,6 +4,7 @@ pub mod storage;
 use tauri::menu::{AboutMetadata, CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager};
 
+mod clip;
 mod debug;
 mod pasteboard;
 mod pdf;
@@ -623,6 +624,10 @@ pub fn run() {
             pasteboard::pasteboard_read_type,
             pasteboard::pasteboard_list_drag_types,
             pasteboard::pasteboard_read_drag_type,
+            clip::clip_copy_asset,
+            clip::clip_peek_internal,
+            clip::clip_paste_asset,
+            clip::clip_clear_internal,
             set_window_above_menubar,
             check_display_mirroring,
             disable_display_mirroring,
