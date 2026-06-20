@@ -207,24 +207,29 @@ fn write_system(_app: &tauri::AppHandle, reps: &[(String, Vec<u8>)]) -> Result<(
     }
 }
 
-/// macOS multi-type pasteboard write: declare all UTIs, then set each one's data
-/// on the general pasteboard so a paste target can choose its preferred format.
+/// macOS multi-type pasteboard write. declareTypes FIRST, in preference order
+/// (most-preferred UTI first — `reps` is already ordered, e.g. com.adobe.pdf
+/// before public.png), so all representations are registered and a paste target
+/// gets its preferred one. Then setData for each. (declareTypes is the
+/// documented way to put multiple types on the pasteboard — a bare setData loop
+/// doesn't reliably register more than one.)
 #[cfg(target_os = "macos")]
 fn mac_write_multi(app: &tauri::AppHandle, reps: Vec<(String, Vec<u8>)>) -> Result<(), String> {
     use std::sync::mpsc;
     let (tx, rx) = mpsc::channel::<Result<(), String>>();
     let _ = app.run_on_main_thread(move || {
         use objc2_app_kit::NSPasteboard;
-        use objc2_foundation::{NSData, NSString};
+        use objc2_foundation::{NSArray, NSData, NSString};
         let pb = NSPasteboard::generalPasteboard();
-        // clearContents() once, then setData per UTI — the same pattern as the
-        // single-type write that already works; each setData registers its type.
         pb.clearContents();
+        let types: Vec<objc2::rc::Retained<NSString>> =
+            reps.iter().map(|(u, _)| NSString::from_str(u)).collect();
+        let arr = NSArray::from_retained_slice(&types);
+        let _ = pb.declareTypes_owner(&arr, None);
         let mut ok = true;
-        for (uti, bytes) in reps.iter() {
-            let ty = NSString::from_str(uti);
+        for ((_, bytes), ty) in reps.iter().zip(types.iter()) {
             let data = NSData::with_bytes(bytes);
-            if !pb.setData_forType(Some(&data), &ty) {
+            if !pb.setData_forType(Some(&data), ty) {
                 ok = false;
             }
         }
