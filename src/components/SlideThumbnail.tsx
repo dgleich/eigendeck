@@ -108,8 +108,10 @@ function ThumbElement({ element: el, slide, presentation, imageTier }: {
     case 'video':
       return <ThumbVideo element={el} />;
     case 'cover':
+      // Match the slide background (it's a reveal mask) — no border, so the
+      // static render matches the live slide / speaker view. Explicit color wins.
       return (
-        <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: el.color || '#fff', border: '1px solid #ddd' }} />
+        <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: el.color || resolveTheme(presentation.theme, slide.theme).background }} />
       );
     default:
       return null;

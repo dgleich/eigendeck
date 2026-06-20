@@ -6,6 +6,7 @@
 // duplicate renderer drift (demos/notebooks breaking only on the projector).
 
 import { useRef } from 'react';
+import { resolveTheme } from '../lib/themes';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useImageSrc } from '../lib/imageSrc';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
@@ -48,7 +49,10 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
       return (
         <div style={{
           position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-          background: el.color || '#ffffff', zIndex, ...style,
+          // Default a cover to the slide's background so it hides content
+          // seamlessly (a cover is a reveal mask). Explicit color still wins.
+          background: el.color || resolveTheme(ctx.presentationTheme, ctx.slide.theme).background,
+          zIndex, ...style,
         }} />
       );
     case 'arrow': {

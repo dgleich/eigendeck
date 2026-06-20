@@ -30,6 +30,8 @@ interface Props {
   scale: number;
   projectPath: string | null;
   isSelected: boolean;
+  /** Resolved slide background — a cover with no explicit color matches it. */
+  slideBackground?: string;
   onUpdate: (changes: Partial<SlideElement>) => void;
   onDelete: () => void;
   onSelect: (e?: { shiftKey: boolean }) => void;
@@ -65,7 +67,7 @@ export function InteractLockBar({ scale, onLock, children }: {
 }
 
 export function SlideElementRenderer({
-  element, zIndex, scale, projectPath, isSelected, onUpdate, onDelete, onSelect,
+  element, zIndex, scale, projectPath, isSelected, slideBackground, onUpdate, onDelete, onSelect,
 }: Props) {
   switch (element.type) {
     case 'text':
@@ -152,7 +154,10 @@ export function SlideElementRenderer({
         >
           <div style={{
             width: '100%', height: '100%',
-            background: element.color || '#ffffff',
+            // Match the slide background (a cover is a reveal mask). The .el-cover
+            // CSS draws a dashed outline so it stays visible/selectable in the
+            // editor even when the fill matches the background.
+            background: element.color || slideBackground || '#ffffff',
             pointerEvents: 'none',
           }} />
         </DraggableBox>
