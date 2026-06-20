@@ -723,6 +723,7 @@ export function SlideEditor() {
                 scale={scale}
                 projectPath={projectPath}
                 isSelected={isSelected}
+                slideBackground={resolveTheme(presentation.theme, slide.theme).background}
                 onUpdate={(changes) => updateElement(el.id, changes)}
                 onDelete={() => deleteElement(el.id)}
                 onSelect={(e) => {
