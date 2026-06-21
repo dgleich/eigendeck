@@ -225,7 +225,9 @@ fn mac_write_multi(app: &tauri::AppHandle, reps: Vec<(String, Vec<u8>)>) -> Resu
         let types: Vec<objc2::rc::Retained<NSString>> =
             reps.iter().map(|(u, _)| NSString::from_str(u)).collect();
         let arr = NSArray::from_retained_slice(&types);
-        let _ = pb.declareTypes_owner(&arr, None);
+        // declareTypes_owner is marked unsafe in objc2 (owner-param contract);
+        // we pass None for the owner, which is safe.
+        let _ = unsafe { pb.declareTypes_owner(&arr, None) };
         let mut ok = true;
         for ((_, bytes), ty) in reps.iter().zip(types.iter()) {
             let data = NSData::with_bytes(bytes);
