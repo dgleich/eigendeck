@@ -21,7 +21,56 @@ import {
 import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { buildTextElementSvgMarkup } from '../components/TextElementSvg';
-import type { TextElement, Slide } from '../types/presentation';
+import { previewKey, loadPreviewDataUrl } from '../lib/previewCache';
+import { ASSET_TIER } from '../lib/assetCache';
+import { renderAsset } from '../lib/assetRenderer';
+import type { TextElement, Slide, SlideElement } from '../types/presentation';
+
+/** PNG bytes → base64 data: URL (for inlining a rasterized preview in the
+ *  exported HTML, where a blob: URL wouldn't survive in the written file). */
+function pngBytesToDataUrl(bytes: Uint8Array): string {
+  let binary = '';
+  for (let k = 0; k < bytes.length; k += 8192) {
+    binary += String.fromCharCode(...bytes.slice(k, k + 8192));
+  }
+  return `data:image/png;base64,${btoa(binary)}`;
+}
+
+/**
+ * Resolve an element's preview PNG to a base64 data: URL for export, mirroring
+ * what the static on-screen renderer (SlideThumbnail) shows:
+ *   - image kind:'pdf' → the pdfium-rasterized PNG (asset_cache '_', rendered
+ *     on demand if not yet cached);
+ *   - notebook / video  → the proactively-cached preview PNG (asset_cache
+ *     'preview', keyed by the element's sync identity).
+ * Returns null on a miss (caller falls back to a placeholder).
+ */
+async function getElementPreviewDataUrl(el: SlideElement): Promise<string | null> {
+  try {
+    if (el.type === 'image' && el.kind === 'pdf') {
+      // Render (or cache-hit) the PDF's first page at the full tier, then read
+      // the cached PNG bytes back as a data URL. renderAsset returns a blob
+      // URL; we want bytes that embed in the file, so read the cache directly.
+      await renderAsset({
+        assetId: el.assetId, kind: 'pdf',
+        variant: el.snapshotVariant ?? '_',
+        maxWidth: ASSET_TIER.full, maxHeight: ASSET_TIER.full,
+      });
+      const buf = await invoke<ArrayBuffer>('db_get_asset_cache_bytes', {
+        sourceId: el.assetId, variant: el.snapshotVariant ?? '_',
+        width: ASSET_TIER.full, height: ASSET_TIER.full,
+      });
+      const bytes = new Uint8Array(buf);
+      return bytes.length ? pngBytesToDataUrl(bytes) : null;
+    }
+    if (el.type === 'notebook' || el.type === 'video') {
+      return await loadPreviewDataUrl(previewKey(el));
+    }
+  } catch (e) {
+    console.warn('getElementPreviewDataUrl failed:', e);
+  }
+  return null;
+}
 
 async function showError(msg: string) {
   await message(msg, { title: 'Error', kind: 'error' });
@@ -295,6 +344,10 @@ export async function exportPresentation(): Promise<void> {
       // iframe pool — see makeTextElementRenderer.
       renderTextElement: makeTextElementRenderer(presentation),
       fontFacesCss,
+      // Rasterized/cached preview PNGs for elements that can't be rendered
+      // statically from source bytes in a plain <img> (pdf images, notebooks,
+      // file videos). Mirrors the static on-screen renderer (SlideThumbnail).
+      getElementPreview: getElementPreviewDataUrl,
     });
 
     await writeTextFile(selected as string, html);
