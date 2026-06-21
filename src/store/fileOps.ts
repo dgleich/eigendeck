@@ -24,7 +24,8 @@ import { buildTextElementSvgMarkup } from '../components/TextElementSvg';
 import { previewKey, loadPreviewDataUrl } from '../lib/previewCache';
 import { ASSET_TIER } from '../lib/assetCache';
 import { renderAsset } from '../lib/assetRenderer';
-import type { TextElement, Slide, SlideElement } from '../types/presentation';
+import type { TextElement, Slide, SlideElement, NotebookElement } from '../types/presentation';
+import { renderNotebookElementHtml } from '../lib/notebookExport';
 
 /** PNG bytes → base64 data: URL (for inlining a rasterized preview in the
  *  exported HTML, where a blob: URL wouldn't survive in the written file). */
@@ -70,6 +71,25 @@ async function getElementPreviewDataUrl(el: SlideElement): Promise<string | null
     console.warn('getElementPreviewDataUrl failed:', e);
   }
   return null;
+}
+
+/** Asset-bytes resolver for the notebook export builder. Handles two
+ *  kinds of keys:
+ *   - a normal asset id (the .ipynb) → db_get_asset_by_id;
+ *   - the `overlay-<elementKey>` convention the builder uses to ask for a
+ *     notebook's recording overlay → resolve the element's OWNED overlay
+ *     asset id (db_get_owned_asset_id, the same lookup useOverlay does)
+ *     and fetch that, so legacy/random overlay ids still resolve.
+ *  Throws on a miss (the builder treats that as "no overlay" / fails the
+ *  whole notebook → caller falls back to the PNG). */
+async function getNotebookAssetBytes(assetId: string): Promise<ArrayBuffer> {
+  if (assetId.startsWith('overlay-')) {
+    const ownerElementId = assetId.slice('overlay-'.length);
+    const ownedId = await invoke<string | null>('db_get_owned_asset_id', { ownerElementId });
+    if (!ownedId) throw new Error(`no overlay for ${ownerElementId}`);
+    return invoke<ArrayBuffer>('db_get_asset_by_id', { assetId: ownedId });
+  }
+  return invoke<ArrayBuffer>('db_get_asset_by_id', { assetId });
 }
 
 async function showError(msg: string) {
@@ -348,6 +368,21 @@ export async function exportPresentation(): Promise<void> {
       // statically from source bytes in a plain <img> (pdf images, notebooks,
       // file videos). Mirrors the static on-screen renderer (SlideThumbnail).
       getElementPreview: getElementPreviewDataUrl,
+      // Full-fidelity, scrollable notebook render (recorded outputs, no
+      // kernel) through the same React components as the live view. Falls
+      // back to the preview PNG / placeholder when this returns null.
+      renderNotebookElement: async (el: SlideElement, slide: Slide) => {
+        if (el.type !== 'notebook') return null;
+        const nb = el as NotebookElement;
+        try {
+          return await renderNotebookElementHtml(
+            nb, slide, presentation, getNotebookAssetBytes,
+          );
+        } catch (e) {
+          console.error('renderNotebookElement failed:', e);
+          return null;
+        }
+      },
     });
 
     await writeTextFile(selected as string, html);

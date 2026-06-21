@@ -283,6 +283,17 @@ export async function buildExportHtml(opts) {
      * Signature: (element, slide) => Promise<string | null> | string | null
      */
     getElementPreview,
+    /**
+     * Optional: per-notebook-element renderer that returns the COMPLETE
+     * inner HTML (typically a srcdoc <iframe>) for a notebook element —
+     * scrollable, full-fidelity cells/outputs rendered through the same
+     * React components as the live view. When provided (app export) and it
+     * returns HTML, it's used in preference to the preview PNG. The
+     * CLI/headless paths pass nothing → preview PNG / placeholder.
+     *
+     * Signature: (element, slide) => Promise<string | null> | string | null
+     */
+    renderNotebookElement,
   } = opts;
 
   const W = presentation.config?.width || 1920;
@@ -407,9 +418,25 @@ export async function buildExportHtml(opts) {
           } catch (e) { console.error('Demo piece export failed:', e); }
           break;
         case 'notebook': {
+          // Three-tier, full-fidelity → preview → placeholder:
+          //   1. renderNotebookElement (app export): a scrollable,
+          //      explorable render of the actual cells/outputs through the
+          //      same React components as the live view (no kernel needed —
+          //      recorded outputs are shown). Wrapped in an absolutely-
+          //      positioned box at the element's coordinates.
+          //   2. the proactively-cached preview PNG (warm cache / CLI).
+          //   3. a visible "NB" placeholder (cold export).
+          let nbHtml = null;
+          if (renderNotebookElement) {
+            try { nbHtml = await renderNotebookElement(el, slide); }
+            catch (e) { console.error('Notebook export render failed:', e); }
+          }
+          if (nbHtml) {
+            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">${nbHtml}</div>`;
+            break;
+          }
           // Static snapshot: the proactively-cached preview PNG (the same
-          // bytes SlideThumbnail shows). Notebooks can't run live in a
-          // self-contained HTML export, so we embed the rendered picture.
+          // bytes SlideThumbnail shows).
           const previewSrc = getElementPreview ? await getElementPreview(el, slide) : null;
           if (previewSrc) {
             inner += `<img src="${previewSrc}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;" />`;
