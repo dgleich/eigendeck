@@ -56,6 +56,37 @@ Different output media, not the same thing rendered three ways:
 So they share intent ("render a slide") but not mechanism. The leverage is the
 **contract + an enforcement test**, not a merge.
 
+## Math: pre-rendered SVG only — NEVER a MathJax CDN/runtime fallback
+
+**Hard rule: no export path may inject a MathJax CDN or any client-side MathJax
+runtime.** Math is composited to **SVG before it leaves the app** and ships
+inline. There used to be a `<script src=".../mathjax@3...">` fallback for
+cold-cache misses — it was deleted because every kind of "fallback to MathJax"
+is a bug source:
+
+- **Network dependency** — breaks the self-contained `.html` promise (no math
+  offline / behind a firewall / after the CDN moves).
+- **Wrong fonts** — CDN/default MathJax renders with *its* fonts, not the deck's,
+  silently defeating the 10 shipped PT-Sans-family bundles. The output looks
+  different from the editor.
+- **Detection heuristics misfire** — "is there leftover `$…$`?" scans
+  false-positive on ordinary prose ("costs $5 and $10") and inject a runtime
+  into a deck with no math at all.
+
+How each path gets SVG instead (all 10 shipped font bundles in `public/mathjax/`):
+
+- **A (app)** pre-renders every text box via the warm iframe pool → SVG.
+- **A (CLI `export-cli.ts`)** consults the `math_cache`, and renders any miss
+  via **WebKit** (`renderMathInHtml`) — it runs in the Tauri webview.
+- **A (`tools/export-eigendeck.mjs`)** is pure Node with no WebKit, so on a
+  genuine cold miss it ships the `$tex$` **source verbatim** (honest, dev-only) —
+  it does NOT reach for a CDN. Warm the `math_cache` (open + save the deck) to
+  get SVG.
+- **B / C** screenshot live elements, so math is already rendered on-canvas.
+
+If a future cold-render path is ever wanted, render to SVG locally from the
+**shipped** bundles (per `bundleId`) — never a network MathJax.
+
 ## THE CONTRACT — adding a new element type is cross-cutting
 
 A new element type MUST be handled everywhere it can appear, or it's silently
