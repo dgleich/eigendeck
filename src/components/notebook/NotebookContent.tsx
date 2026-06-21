@@ -13,6 +13,7 @@
 // accept clicks immediately in PresentMode.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import './notebook.css';
 import { CodeCell } from './CodeCell';
 import { MarkdownCell } from './MarkdownCell';
 import { RawCell } from './RawCell';
