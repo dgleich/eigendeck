@@ -14,13 +14,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # One Universal binary (Intel + Apple Silicon) — packaged on the
-          # native ARM runner. Replaces the separate aarch64 + x86_64 builds;
-          # the standalone x86_64-CROSS DMG was the flaky one (bundle_dmg.sh /
-          # hdiutil failing only on the cross-arch package).
+          # Per-arch macOS builds (NOT universal): the universal target only
+          # lipo's the MAIN binary, not the second `eigendeck-cli`, so its
+          # bundle fails. Per-arch builds the .app (incl. eigendeck-cli) fine;
+          # the only issue is the x86_64 DMG step flaking on hdiutil — handled
+          # by the retry chain below.
           - platform: 'macos-latest'
-            args: '--target universal-apple-darwin'
-            label: 'macOS-Universal'
+            args: '--target aarch64-apple-darwin'
+            label: 'macOS-ARM64'
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin'
+            label: 'macOS-x64'
           - platform: 'ubuntu-22.04'
             args: ''
             label: 'Linux-x64'
@@ -61,7 +65,44 @@ jobs:
       - name: Setup MathJax bundle
         run: npm run setup
 
-      - name: Build Tauri app
+      # tauri-action builds + bundles + uploads to ONE draft release per tag
+      # (idempotent: it reuses an existing draft and uploads missing assets).
+      # macOS DMG packaging (bundle_dmg.sh / hdiutil) flakes intermittently, so
+      # we retry the whole step up to 3x — a re-run recompiles from the warm
+      # cargo cache and re-bundles, giving hdiutil another attempt. The first
+      # two attempts swallow failure (continue-on-error); the third is the
+      # gate, so the job only fails if all three fail.
+      - name: Build Tauri app (attempt 1)
+        id: build1
+        continue-on-error: true
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Eigendeck ${{ github.ref_name }}'
+          releaseBody: 'See the assets for download links.'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      - name: Build Tauri app (attempt 2)
+        id: build2
+        if: steps.build1.outcome == 'failure'
+        continue-on-error: true
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Eigendeck ${{ github.ref_name }}'
+          releaseBody: 'See the assets for download links.'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      - name: Build Tauri app (attempt 3)
+        if: steps.build1.outcome == 'failure' && steps.build2.outcome == 'failure'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
