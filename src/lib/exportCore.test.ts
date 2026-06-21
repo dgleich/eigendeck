@@ -143,10 +143,24 @@ describe('buildExportHtml contract — every element type renders', () => {
     expect(inner).toContain('>PDF</div>');
   });
 
-  it('notebook renders the preview PNG', async () => {
+  it('notebook renders the preview PNG (no renderNotebookElement)', async () => {
     const html = await build();
     const inner = sliceSlide(html, types.indexOf('notebook'));
     expect(inner).toContain('data:image/png;base64');
+  });
+
+  it('notebook embeds renderNotebookElement HTML when provided', async () => {
+    const html = await buildExportHtml({
+      presentation: makePresentation(),
+      readFile: async () => new Uint8Array([1, 2, 3, 4]),
+      readTextFile: async () => '<html></html>',
+      getElementPreview: async () => ONE_PX_PNG,
+      renderNotebookElement: async () => '<div>NB-RENDERED</div>',
+    });
+    const inner = sliceSlide(html, types.indexOf('notebook'));
+    expect(inner).toContain('NB-RENDERED');
+    // The full-fidelity render wins over the preview PNG.
+    expect(inner).not.toContain('data:image/png;base64');
   });
 
   it('video embed renders a provider iframe', async () => {
