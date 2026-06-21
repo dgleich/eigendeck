@@ -37,6 +37,7 @@ import {
   openProject,
   createProject,
   exportPresentation,
+  buildPresentationExportHtml,
   importFromHtml,
   openRecentProject,
   syncRecentMenu,
@@ -72,6 +73,13 @@ if (
     store: usePresentationStore,
     flush: flushToSqlite,
     save: saveProject,   // flush + atomic save-in-place to the open file
+    // Interactive-HTML export builder (dialog-free) — lets E2E verify the real
+    // invoke-backed export pipeline (notebook/preview/asset reads) end to end
+    // without a native save dialog.
+    exportHtml: () => {
+      const s = usePresentationStore.getState();
+      return buildPresentationExportHtml(s.presentation, s.projectPath);
+    },
     // Missing-source registry (#74) — lets E2E assert detect/relocate.
     missingAssets: () => getMissingAssets(),
     // Undo-gesture transaction helpers (#55) — lets E2E exercise the real
