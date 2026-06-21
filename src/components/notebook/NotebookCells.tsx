@@ -46,7 +46,7 @@ export interface NotebookCellsLive {
 
 export function NotebookCells({
   merged, language, highlight, dark, baseSize, showLineNumbers,
-  hideHeader, kernelDisplayName, highlights, live, loading, error,
+  hideHeader, kernelDisplayName, highlights, markdowns, live, loading, error,
 }: {
   merged: MergedCell[];
   language: string | null;
@@ -60,6 +60,10 @@ export function NotebookCells({
    *  same cell key NotebookCells uses (`i<index>` / `a<id>`). When a
    *  key is present its HTML is passed to CodeCell as highlightedHtml. */
   highlights?: Map<string, string>;
+  /** Pre-rendered markdown HTML (export/static path), keyed by the same
+   *  cell key. Markdown's async `marked` render can't run under
+   *  renderToStaticMarkup, so the export resolves it up front. */
+  markdowns?: Map<string, string>;
   /** Present = interactive (live view). Absent = read-only (export). */
   live?: NotebookCellsLive;
   /** Live-only status rows. */
@@ -82,7 +86,7 @@ export function NotebookCells({
         {merged.map((m) => {
           if (m.origin === 'ipynb') {
             const c = m.cell;
-            if (c.kind === 'markdown') return <MarkdownCell key={`i${c.index}`} cell={{ ...c, source: m.source }} />;
+            if (c.kind === 'markdown') return <MarkdownCell key={`i${c.index}`} cell={{ ...c, source: m.source }} prerenderedHtml={markdowns?.get(`i${c.index}`)} />;
             if (c.kind === 'raw') return <RawCell key={`i${c.index}`} cell={{ ...c, source: m.source }} />;
             const key = `i${c.index}`;
             if (live) {
@@ -133,7 +137,8 @@ export function NotebookCells({
           const key = `a${a.id}`;
           if (a.cellType === 'markdown') {
             const src = live ? (live.working.get(key) ?? a.source) : a.source;
-            return <MarkdownCell key={key} cell={{ kind: 'markdown', index: -1, source: src }} />;
+            return <MarkdownCell key={key} cell={{ kind: 'markdown', index: -1, source: src }}
+              prerenderedHtml={live ? undefined : markdowns?.get(key)} />;
           }
           const synth: CodeCellT = {
             kind: 'code', index: -1,
