@@ -144,8 +144,11 @@ describe('buildExportHtml', () => {
 
     expect(restored.slides[0].elements[0].html).toContain('$x^2 + y^2 = z^2$');
     expect(restored.config.mathPreamble).toBe('\\newcommand{\\R}{\\mathbb{R}}');
-    // Should include MathJax CDN fallback since math wasn't pre-rendered
-    expect(html).toContain('mathjax@3');
+    // Exports are self-contained SVG — never a MathJax CDN/runtime. With no
+    // renderMath provided, the unrendered $tex$ ships verbatim (honest), but no
+    // network MathJax is pulled in.
+    expect(html).not.toContain('mathjax@3');
+    expect(html).not.toContain('jsdelivr');
   });
 
   it('round-trips with demo and demo-piece elements', async () => {

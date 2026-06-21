@@ -112,11 +112,16 @@ Legend: PASS / FAIL / CONCERN. Format 1 = Interactive HTML (`buildExportHtml`),
    missed expressions stay as literal `$$\sqrt{\pi}$$` text.
    *Repro:* export a never-opened deck offline (`export-stress` cold) → 52
    misses, no MathJax, raw `\sqrt` on slides.
-   *Fix:* have the miss path signal "unrendered" (so the CDN fallback turns on),
-   or always include the MathJax fallback when any `$`-math exists and the
-   renderer can't guarantee a hit. The in-editor GUI export avoids this because
-   its pool is already warm — but the documented offline `eigendeck-cli` path
-   does not.
+   *Resolution (chosen):* **delete the MathJax-CDN fallback entirely** — it was
+   network-dependent, rendered with the wrong (default) font, not the deck's, and
+   its `$…$` detector false-positived on prose like "$5 and $10". Exports are
+   self-contained SVG: the GUI export pre-renders every box via the warm iframe
+   pool, and the CLI (`export-cli.ts`) renders cache misses via WebKit
+   (`renderMathInHtml`) — both cover all 10 shipped font bundles. Only the
+   pure-Node `tools/export-eigendeck.mjs` test harness still ships `$tex$`
+   verbatim on a genuine cold miss (no WebKit), which is honest and dev-only.
+   See `docs/export-architecture.md` for why no export path needs MathJax at
+   runtime.
 
 ### P2 — papercuts / hygiene
 

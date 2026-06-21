@@ -191,8 +191,8 @@ describe('buildExportHtml — theme backgrounds (P0-1 / P1-5)', () => {
   });
 });
 
-describe('buildExportHtml — cold-cache math fallback (P1-6)', () => {
-  it('injects the MathJax CDN when raw $…$ survives into the output', async () => {
+describe('buildExportHtml — no MathJax CDN', () => {
+  it('never injects a MathJax CDN; ships $tex$ verbatim on a cold cache miss', async () => {
     const pres: Presentation = {
       title: 'math', theme: 'white',
       slides: [{
@@ -205,13 +205,16 @@ describe('buildExportHtml — cold-cache math fallback (P1-6)', () => {
       config: { transition: 'slide', backgroundTransition: 'fade', width: 1920, height: 1080 },
     };
     // renderMath returns the source unchanged on a "miss" without throwing —
-    // the exact cold-export scenario. The post-pass must still flip the flag.
+    // the cold-export scenario. Exports stay self-contained SVG: no CDN, no
+    // MathJax runtime. The unresolved source just ships as-is (honest, rare).
     const html = await buildExportHtml({
       presentation: pres,
       readFile: async () => new Uint8Array([1]),
       readTextFile: async () => '',
       renderMath: async (h: string) => h,
     });
-    expect(html).toContain('cdn.jsdelivr.net/npm/mathjax');
+    expect(html).not.toContain('cdn.jsdelivr.net');
+    expect(html).not.toContain('jsdelivr');
+    expect(html).toContain('e^{i\\pi}+1=0'); // source preserved, not dropped
   });
 });

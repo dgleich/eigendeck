@@ -315,7 +315,6 @@ export async function buildExportHtml(opts) {
   }
 
   const slideHtml = [];
-  let hasUnrenderedMath = false;
 
   for (let i = 0; i < presentation.slides.length; i++) {
     const slide = presentation.slides[i];
@@ -346,9 +345,7 @@ export async function buildExportHtml(opts) {
           if (renderMath && /\$[^$]+\$|\$\$[\s\S]+?\$\$/.test(textHtml)) {
             const bundleId = resolveMathBundle ? resolveMathBundle(el.preset, slide) : undefined;
             try { textHtml = await renderMath(textHtml, bundleId); }
-            catch (e) { console.warn('Math render failed:', e); hasUnrenderedMath = true; }
-          } else if (/\$[^$]+\$|\$\$[\s\S]+?\$\$/.test(textHtml)) {
-            hasUnrenderedMath = true;
+            catch (e) { console.warn('Math render failed:', e); }
           }
           const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
           const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
@@ -489,24 +486,12 @@ export async function buildExportHtml(opts) {
     slideHtml.push(`<div class="slide" data-index="${i}" style="background:${slideBg};">${inner}</div>`);
   }
 
-  // P1-6: if any rendered slide HTML still carries raw $$…$$ / $…$ (a cold/
-  // offline export where the math renderer returned the source on a cache
-  // miss without throwing), flip hasUnrenderedMath so the MathJax-CDN fallback
-  // is injected — otherwise literal LaTeX ships in the output.
-  if (!hasUnrenderedMath &&
-      slideHtml.some((s) => /\$\$[\s\S]+?\$\$|\$[^$\n]+?\$/.test(s))) {
-    hasUnrenderedMath = true;
-  }
-
-  // If math wasn't pre-rendered, include MathJax CDN as a fallback
-  const mathjaxCDN = hasUnrenderedMath ? `<script>
-window.MathJax = {
-  tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
-  svg: { fontCache: 'global' },
-  startup: { typeset: true }
-};
-</script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>` : '';
+  // Math is composited to SVG before it reaches here: the app pre-renders every
+  // text box via the iframe pool, and the CLI/headless paths consult the
+  // math_cache (and render any miss themselves). Exports are therefore
+  // self-contained SVG — no MathJax runtime, no CDN. A genuine cache miss in a
+  // never-opened deck ships its $tex$ source verbatim (rare, and honest) rather
+  // than pulling a wrong-font, network-dependent MathJax off a CDN.
 
   // Embed source JSON for round-trip import
   const sourceB64 = (typeof btoa !== 'undefined')
@@ -564,7 +549,6 @@ li { margin-bottom: 0.15em; list-style-position: inside; }
   #nav-bar button { padding: 8px 16px; font-size: 16px; min-width: 44px; }
 }
 </style>
-${mathjaxCDN}
 </head>
 <body>
 <div id="viewport">
