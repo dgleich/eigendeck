@@ -13,6 +13,22 @@
  * @property {((preamble: string) => Promise<void>) | null} applyMathPreamble - Optional: register math macros
  */
 
+// Built-in theme backgrounds. Self-contained mirror of BUILT_IN_THEMES in
+// src/lib/themes.ts (this .mjs is shared with the offline export tool and can't
+// import the TS module). Keep in sync with that file's `colors.background`.
+const THEME_BACKGROUNDS = {
+  white: '#ffffff',
+  light: '#f5f0e8',
+  dark: '#1a1a2e',
+  black: '#000000',
+};
+
+/** Resolve the effective slide background colour from the slide/deck theme. */
+function themeBackground(presentation, slide) {
+  const name = (slide && slide.theme) || (presentation && presentation.theme) || 'white';
+  return THEME_BACKGROUNDS[name] || THEME_BACKGROUNDS.white;
+}
+
 const TEXT_PRESET_STYLES = {
   title:      { fontSize: 72, fontFamily: "'PT Sans', sans-serif", fontWeight: '700', fontStyle: 'normal', color: '#222' },
   body:       { fontSize: 48, fontFamily: "'PT Sans', sans-serif", fontWeight: 'normal', fontStyle: 'normal', color: '#222' },
@@ -74,6 +90,62 @@ export function htmlEscapeForSrcdoc(s) {
     .replace(/"/g, '&quot;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+/**
+ * Build the provider iframe `src` for an embed-kind video element. Self-
+ * contained mirror of buildEmbedSrc() in src/lib/videoEmbed.ts (this .mjs is
+ * shared with the offline export tool and can't import the TS module). Keep in
+ * sync with that file. Returns null when the URL isn't a recognized provider.
+ */
+export function videoEmbedUrl(el) {
+  if (!el || !el.url) return null;
+  let u;
+  try { u = new URL(String(el.url).trim()); } catch { return null; }
+  const host = u.hostname.replace(/^www\./, '');
+  let provider = null, id = null, origin = null;
+  if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
+    const v = u.searchParams.get('v');
+    if (v) { provider = 'youtube'; id = v; }
+    else { const m = u.pathname.match(/^\/(?:embed|shorts|live)\/([\w-]+)/); if (m) { provider = 'youtube'; id = m[1]; } }
+  } else if (host === 'youtu.be') {
+    const i = u.pathname.slice(1).split('/')[0]; if (i) { provider = 'youtube'; id = i; }
+  } else if (host === 'vimeo.com' || host === 'player.vimeo.com') {
+    const m = u.pathname.match(/(\d+)/); if (m) { provider = 'vimeo'; id = m[1]; }
+  } else {
+    const pt = u.pathname.match(/\/(?:w|videos\/(?:watch|embed))\/([\w-]+)/);
+    if (pt) { provider = 'peertube'; id = pt[1]; origin = u.origin; }
+  }
+  if (!provider || !id) return null;
+
+  const p = new URLSearchParams();
+  const showControls = !!el.controls || !el.autoplay;
+  if (provider === 'youtube') {
+    if (el.autoplay) p.set('autoplay', '1');
+    if (el.muted) p.set('mute', '1');
+    if (el.loop) { p.set('loop', '1'); p.set('playlist', id); }
+    p.set('controls', showControls ? '1' : '0');
+    if (el.captions) p.set('cc_load_policy', '1');
+    p.set('rel', '0');
+    return `https://www.youtube-nocookie.com/embed/${id}?${p.toString()}`;
+  }
+  if (provider === 'vimeo') {
+    if (el.autoplay) p.set('autoplay', '1');
+    if (el.muted) p.set('muted', '1');
+    if (el.loop) p.set('loop', '1');
+    if (!showControls) p.set('controls', '0');
+    if (el.captions) p.set('texttrack', 'en');
+    return `https://player.vimeo.com/video/${id}?${p.toString()}`;
+  }
+  // PeerTube
+  const base = origin || u.origin;
+  if (!base) return null;
+  if (el.autoplay) p.set('autoplay', '1');
+  if (el.muted) p.set('muted', '1');
+  if (el.loop) p.set('loop', '1');
+  if (!showControls) p.set('controls', '0');
+  if (el.captions) p.set('subtitle', 'en');
+  return `${base}/videos/embed/${id}?${p.toString()}`;
 }
 
 /**
@@ -199,6 +271,29 @@ export async function buildExportHtml(opts) {
      * to embed in <head>. If omitted, uses Google Fonts CDN for PT Sans only.
      */
     fontFacesCss,
+    /**
+     * Optional: per-element preview-PNG fetcher. Returns a base64 `data:` URL
+     * for the element's cached/rasterized preview image (the SAME bytes the
+     * static on-screen renderer shows), or null on a miss. Used for element
+     * types that can't be rendered statically from their source bytes in a
+     * plain `<img>`:
+     *   - notebook  → the proactively-cached preview PNG (asset_cache 'preview')
+     *   - video (file) → poster/preview frame
+     *   - image kind:'pdf' → the pdfium-rasterized PNG (asset_cache '_')
+     * Signature: (element, slide) => Promise<string | null> | string | null
+     */
+    getElementPreview,
+    /**
+     * Optional: per-notebook-element renderer that returns the COMPLETE
+     * inner HTML (typically a srcdoc <iframe>) for a notebook element —
+     * scrollable, full-fidelity cells/outputs rendered through the same
+     * React components as the live view. When provided (app export) and it
+     * returns HTML, it's used in preference to the preview PNG. The
+     * CLI/headless paths pass nothing → preview PNG / placeholder.
+     *
+     * Signature: (element, slide) => Promise<string | null> | string | null
+     */
+    renderNotebookElement,
   } = opts;
 
   const W = presentation.config?.width || 1920;
@@ -231,7 +326,6 @@ export async function buildExportHtml(opts) {
   }
 
   const slideHtml = [];
-  let hasUnrenderedMath = false;
 
   for (let i = 0; i < presentation.slides.length; i++) {
     const slide = presentation.slides[i];
@@ -262,9 +356,7 @@ export async function buildExportHtml(opts) {
           if (renderMath && /\$[^$]+\$|\$\$[\s\S]+?\$\$/.test(textHtml)) {
             const bundleId = resolveMathBundle ? resolveMathBundle(el.preset, slide) : undefined;
             try { textHtml = await renderMath(textHtml, bundleId); }
-            catch (e) { console.warn('Math render failed:', e); hasUnrenderedMath = true; }
-          } else if (/\$[^$]+\$|\$\$[\s\S]+?\$\$/.test(textHtml)) {
-            hasUnrenderedMath = true;
+            catch (e) { console.warn('Math render failed:', e); }
           }
           const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
           const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
@@ -282,7 +374,21 @@ export async function buildExportHtml(opts) {
           break;
         }
         case 'image': {
-          const imgSrc = await getImageDataUrl(el.src);
+          // PDF-kind images can't render as data:application/pdf in <img>; the
+          // editor shows the pdfium-rasterized PNG from asset_cache. Inline that
+          // same preview PNG. If no preview is available (cold export, never
+          // rasterized) emit a visible placeholder rather than the raw PDF
+          // bytes — a data:image/pdf in <img> ships a broken/blank image.
+          let imgSrc;
+          if (el.kind === 'pdf') {
+            imgSrc = getElementPreview ? await getElementPreview(el, slide) : null;
+            if (!imgSrc) {
+              inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#aaa;font-size:24px;font-family:sans-serif;border:1px solid #ddd;">PDF</div>`;
+              break;
+            }
+          } else {
+            imgSrc = await getImageDataUrl(el.src);
+          }
           const imgStyles = [
             `position:absolute`, `left:${p.x}px`, `top:${p.y}px`,
             `width:${p.width}px`, `height:${p.height}px`, `object-fit:contain`,
@@ -311,8 +417,70 @@ export async function buildExportHtml(opts) {
             inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
           } catch (e) { console.error('Demo piece export failed:', e); }
           break;
+        case 'notebook': {
+          // Three-tier, full-fidelity → preview → placeholder:
+          //   1. renderNotebookElement (app export): a scrollable,
+          //      explorable render of the actual cells/outputs through the
+          //      same React components as the live view (no kernel needed —
+          //      recorded outputs are shown). Wrapped in an absolutely-
+          //      positioned box at the element's coordinates.
+          //   2. the proactively-cached preview PNG (warm cache / CLI).
+          //   3. a visible "NB" placeholder (cold export).
+          let nbHtml = null;
+          if (renderNotebookElement) {
+            try { nbHtml = await renderNotebookElement(el, slide); }
+            catch (e) { console.error('Notebook export render failed:', e); }
+          }
+          if (nbHtml) {
+            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">${nbHtml}</div>`;
+            break;
+          }
+          // Static snapshot: the proactively-cached preview PNG (the same
+          // bytes SlideThumbnail shows).
+          const previewSrc = getElementPreview ? await getElementPreview(el, slide) : null;
+          if (previewSrc) {
+            inner += `<img src="${previewSrc}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;" />`;
+          } else {
+            // No cached preview (deck never opened / exported cold). Emit a
+            // visible placeholder so the element isn't silently dropped.
+            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#eef7ee;color:#86c986;font-size:64px;font-family:sans-serif;">NB</div>`;
+          }
+          break;
+        }
+        case 'video': {
+          if (el.kind === 'embed' && el.url) {
+            // Hosted embed (YouTube/Vimeo/PeerTube): emit the provider iframe so
+            // the video is playable in the exported HTML.
+            const embedSrc = videoEmbedUrl(el);
+            if (embedSrc) {
+              inner += `<iframe src="${embedSrc}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+            } else {
+              inner += `<a href="${el.url}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;text-decoration:none;">&#9654; Video</a>`;
+            }
+          } else if (el.kind === 'file' && el.src) {
+            // Local file: inline the asset as a playable <video>.
+            try {
+              const videoSrc = await getImageDataUrl(el.src);
+              const attrs = [];
+              if (el.controls) attrs.push('controls');
+              if (el.loop) attrs.push('loop');
+              if (el.autoplay) attrs.push('autoplay');
+              if (el.muted || el.autoplay) attrs.push('muted');
+              inner += `<video src="${videoSrc}" ${attrs.join(' ')} style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;background:#000;"></video>`;
+            } catch (e) { console.error('Video export failed:', e); }
+          } else {
+            // Unknown/poster-only: try a cached preview, else a placeholder.
+            const previewSrc = getElementPreview ? await getElementPreview(el, slide) : null;
+            if (previewSrc) {
+              inner += `<img src="${previewSrc}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;background:#000;" />`;
+            } else {
+              inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;">&#9654; Video</div>`;
+            }
+          }
+          break;
+        }
         case 'cover':
-          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:${el.color || '#ffffff'};"></div>`;
+          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:${el.color || themeBackground(presentation, slide)};"></div>`;
           break;
         case 'arrow': {
           const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
@@ -339,18 +507,18 @@ export async function buildExportHtml(opts) {
     }
 
     inner += `<div class="slide-footer"><span class="slide-footer-meta">${meta}</span><span class="slide-footer-number">${i + 1}</span></div>`;
-    slideHtml.push(`<div class="slide" data-index="${i}">${inner}</div>`);
+    // P0-1: emit the per-slide theme background on the wrapper so dark/black/
+    // light themes don't export white-on-white. CSS no longer forces #fff.
+    const slideBg = themeBackground(presentation, slide);
+    slideHtml.push(`<div class="slide" data-index="${i}" style="background:${slideBg};">${inner}</div>`);
   }
 
-  // If math wasn't pre-rendered, include MathJax CDN as a fallback
-  const mathjaxCDN = hasUnrenderedMath ? `<script>
-window.MathJax = {
-  tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
-  svg: { fontCache: 'global' },
-  startup: { typeset: true }
-};
-</script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>` : '';
+  // Math is composited to SVG before it reaches here: the app pre-renders every
+  // text box via the iframe pool, and the CLI/headless paths consult the
+  // math_cache (and render any miss themselves). Exports are therefore
+  // self-contained SVG — no MathJax runtime, no CDN. A genuine cache miss in a
+  // never-opened deck ships its $tex$ source verbatim (rare, and honest) rather
+  // than pulling a wrong-font, network-dependent MathJax off a CDN.
 
   // Embed source JSON for round-trip import
   const sourceB64 = (typeof btoa !== 'undefined')
@@ -369,7 +537,7 @@ ${fontFacesCss || `@import url('https://fonts.googleapis.com/css2?family=PT+Sans
 body { background: #000; overflow: hidden; font-family: 'PT Sans', sans-serif; }
 #viewport { width: 100vw; height: 100vh; position: relative; }
 .slide {
-  width: ${W}px; height: ${H}px; background: #fff; position: absolute;
+  width: ${W}px; height: ${H}px; position: absolute;
   top: 50%; left: 50%; transform-origin: center center; display: none; overflow: hidden;
 }
 .slide.active { display: block; }
@@ -408,7 +576,6 @@ li { margin-bottom: 0.15em; list-style-position: inside; }
   #nav-bar button { padding: 8px 16px; font-size: 16px; min-width: 44px; }
 }
 </style>
-${mathjaxCDN}
 </head>
 <body>
 <div id="viewport">

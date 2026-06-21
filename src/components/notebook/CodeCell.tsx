@@ -60,6 +60,12 @@ export interface CodeCellProps {
   added?: boolean;
   /** edited: revert to saved source. added: delete the cell. */
   onRevert?: () => void;
+  /** Pre-resolved highlighted source HTML (the same markup the async
+   *  highlightCode path produces). Used by the static HTML export,
+   *  where the async useEffect can't run under renderToStaticMarkup.
+   *  When set, it's used directly (no async highlight); when absent,
+   *  the existing async behavior is unchanged. */
+  highlightedHtml?: string;
 }
 
 export function CodeCell({
@@ -67,6 +73,7 @@ export function CodeCell({
   language, highlight = true, dark = false,
   editable = false, showLineNumbers = false,
   fontSize = 32, onEdit, onCommit, edited, added, onRevert,
+  highlightedHtml,
 }: CodeCellProps) {
   const effectiveSource = source ?? cell.source;
   // Strip ONE trailing newline for DISPLAY (static + editor) so a cell that
@@ -86,13 +93,20 @@ export function CodeCell({
   // cell goes back to static).
   const [highlighted, setHighlighted] = useState<string | null>(null);
   useEffect(() => {
+    // A pre-resolved highlight (export path) means we don't run the async
+    // highlighter — the static markup is supplied directly.
+    if (highlightedHtml != null) return;
     if (!highlight || editable) { setHighlighted(null); return; }
     let cancelled = false;
     highlightCode(displaySource, language ?? null).then((html) => {
       if (!cancelled) setHighlighted(html);
     });
     return () => { cancelled = true; };
-  }, [displaySource, language, highlight, editable]);
+  }, [displaySource, language, highlight, editable, highlightedHtml]);
+
+  // Effective highlighted markup: the pre-resolved prop wins (export),
+  // else the async-resolved state (live).
+  const effectiveHighlighted = highlightedHtml ?? highlighted;
 
   // Visual distinction: appended (live-authored) > edited (overlay) >
   // pristine. Drives the left accent + tag.
@@ -132,8 +146,8 @@ export function CodeCell({
                    keeps it the same height as a one-line code cell instead of
                    collapsing to padding. */
                 ? <code>{' '}</code>
-                : highlight && highlighted != null
-                  ? <code className="hljs" dangerouslySetInnerHTML={{ __html: highlighted }} />
+                : highlight && effectiveHighlighted != null
+                  ? <code className="hljs" dangerouslySetInnerHTML={{ __html: effectiveHighlighted }} />
                   : <code>{displaySource}</code>}
             </pre>
           )}

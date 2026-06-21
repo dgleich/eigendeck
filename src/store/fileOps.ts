@@ -21,7 +21,76 @@ import {
 import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { buildTextElementSvgMarkup } from '../components/TextElementSvg';
-import type { TextElement, Slide } from '../types/presentation';
+import { previewKey, loadPreviewDataUrl } from '../lib/previewCache';
+import { ASSET_TIER } from '../lib/assetCache';
+import { renderAsset } from '../lib/assetRenderer';
+import type { TextElement, Slide, SlideElement, NotebookElement } from '../types/presentation';
+import { renderNotebookElementHtml } from '../lib/notebookExport';
+
+/** PNG bytes → base64 data: URL (for inlining a rasterized preview in the
+ *  exported HTML, where a blob: URL wouldn't survive in the written file). */
+function pngBytesToDataUrl(bytes: Uint8Array): string {
+  let binary = '';
+  for (let k = 0; k < bytes.length; k += 8192) {
+    binary += String.fromCharCode(...bytes.slice(k, k + 8192));
+  }
+  return `data:image/png;base64,${btoa(binary)}`;
+}
+
+/**
+ * Resolve an element's preview PNG to a base64 data: URL for export, mirroring
+ * what the static on-screen renderer (SlideThumbnail) shows:
+ *   - image kind:'pdf' → the pdfium-rasterized PNG (asset_cache '_', rendered
+ *     on demand if not yet cached);
+ *   - notebook / video  → the proactively-cached preview PNG (asset_cache
+ *     'preview', keyed by the element's sync identity).
+ * Returns null on a miss (caller falls back to a placeholder).
+ */
+async function getElementPreviewDataUrl(el: SlideElement): Promise<string | null> {
+  try {
+    if (el.type === 'image' && el.kind === 'pdf') {
+      // Render (or cache-hit) the PDF's first page at the full tier, then read
+      // the cached PNG bytes back as a data URL. renderAsset returns a blob
+      // URL; we want bytes that embed in the file, so read the cache directly.
+      await renderAsset({
+        assetId: el.assetId, kind: 'pdf',
+        variant: el.snapshotVariant ?? '_',
+        maxWidth: ASSET_TIER.full, maxHeight: ASSET_TIER.full,
+      });
+      const buf = await invoke<ArrayBuffer>('db_get_asset_cache_bytes', {
+        sourceId: el.assetId, variant: el.snapshotVariant ?? '_',
+        width: ASSET_TIER.full, height: ASSET_TIER.full,
+      });
+      const bytes = new Uint8Array(buf);
+      return bytes.length ? pngBytesToDataUrl(bytes) : null;
+    }
+    if (el.type === 'notebook' || el.type === 'video') {
+      return await loadPreviewDataUrl(previewKey(el));
+    }
+  } catch (e) {
+    console.warn('getElementPreviewDataUrl failed:', e);
+  }
+  return null;
+}
+
+/** Asset-bytes resolver for the notebook export builder. Handles two
+ *  kinds of keys:
+ *   - a normal asset id (the .ipynb) → db_get_asset_by_id;
+ *   - the `overlay-<elementKey>` convention the builder uses to ask for a
+ *     notebook's recording overlay → resolve the element's OWNED overlay
+ *     asset id (db_get_owned_asset_id, the same lookup useOverlay does)
+ *     and fetch that, so legacy/random overlay ids still resolve.
+ *  Throws on a miss (the builder treats that as "no overlay" / fails the
+ *  whole notebook → caller falls back to the PNG). */
+async function getNotebookAssetBytes(assetId: string): Promise<ArrayBuffer> {
+  if (assetId.startsWith('overlay-')) {
+    const ownerElementId = assetId.slice('overlay-'.length);
+    const ownedId = await invoke<string | null>('db_get_owned_asset_id', { ownerElementId });
+    if (!ownedId) throw new Error(`no overlay for ${ownerElementId}`);
+    return invoke<ArrayBuffer>('db_get_asset_by_id', { assetId: ownedId });
+  }
+  return invoke<ArrayBuffer>('db_get_asset_by_id', { assetId });
+}
 
 async function showError(msg: string) {
   await message(msg, { title: 'Error', kind: 'error' });
@@ -249,6 +318,75 @@ export function makeTextElementRenderer(presentation: Presentation) {
   };
 }
 
+/**
+ * Build the full interactive-HTML export for a presentation, with the REAL
+ * callbacks: asset reads via `invoke`, per-text SVG via the iframe pool,
+ * full-fidelity notebook renders, cached previews, and embedded fonts.
+ *
+ * Dialog-free and disk-free on purpose, so it's testable: the E2E seam
+ * (`window.__eigendeck.exportHtml`) calls THIS to verify the live
+ * invoke-backed pipeline end-to-end without a native save dialog.
+ */
+export async function buildPresentationExportHtml(
+  presentation: Presentation,
+  projectPath: string | null,
+): Promise<string> {
+  // Embed @font-face data URLs for all fonts actually used.
+  const fontFacesCss = await buildEmbeddedFontFacesCSS(presentation);
+
+  // Read assets from SQLite for inlining
+  return buildExportHtml({
+    presentation,
+    readFile: async (path: string) => {
+      try {
+        const data = await invoke<number[]>('db_get_asset', { path });
+        return new Uint8Array(data);
+      } catch {
+        // Fallback: try reading from disk (for unpacked assets)
+        if (projectPath) {
+          const { readFile } = await import('@tauri-apps/plugin-fs');
+          return readFile(`${projectPath}/${path}`);
+        }
+        throw new Error(`Asset not found: ${path}`);
+      }
+    },
+    readTextFile: async (path: string) => {
+      try {
+        const data = await invoke<number[]>('db_get_asset', { path });
+        return new TextDecoder().decode(new Uint8Array(data));
+      } catch {
+        if (projectPath) {
+          return readTextFile(`${projectPath}/${path}`);
+        }
+        throw new Error(`Asset not found: ${path}`);
+      }
+    },
+    // Pre-render each text element to its own self-contained SVG via the
+    // iframe pool — see makeTextElementRenderer.
+    renderTextElement: makeTextElementRenderer(presentation),
+    fontFacesCss,
+    // Rasterized/cached preview PNGs for elements that can't be rendered
+    // statically from source bytes in a plain <img> (pdf images, notebooks,
+    // file videos). Mirrors the static on-screen renderer (SlideThumbnail).
+    getElementPreview: getElementPreviewDataUrl,
+    // Full-fidelity, scrollable notebook render (recorded outputs, no
+    // kernel) through the same React components as the live view. Falls
+    // back to the preview PNG / placeholder when this returns null.
+    renderNotebookElement: async (el: SlideElement, slide: Slide) => {
+      if (el.type !== 'notebook') return null;
+      const nb = el as NotebookElement;
+      try {
+        return await renderNotebookElementHtml(
+          nb, slide, presentation, getNotebookAssetBytes,
+        );
+      } catch (e) {
+        console.error('renderNotebookElement failed:', e);
+        return null;
+      }
+    },
+  });
+}
+
 export async function exportPresentation(): Promise<void> {
   const store = usePresentationStore.getState();
   const { presentation, projectPath } = store;
@@ -261,42 +399,7 @@ export async function exportPresentation(): Promise<void> {
   if (!selected) return;
 
   try {
-    // Embed @font-face data URLs for all fonts actually used.
-    const fontFacesCss = await buildEmbeddedFontFacesCSS(presentation);
-
-    // Read assets from SQLite for inlining
-    const html = await buildExportHtml({
-      presentation,
-      readFile: async (path: string) => {
-        try {
-          const data = await invoke<number[]>('db_get_asset', { path });
-          return new Uint8Array(data);
-        } catch {
-          // Fallback: try reading from disk (for unpacked assets)
-          if (projectPath) {
-            const { readFile } = await import('@tauri-apps/plugin-fs');
-            return readFile(`${projectPath}/${path}`);
-          }
-          throw new Error(`Asset not found: ${path}`);
-        }
-      },
-      readTextFile: async (path: string) => {
-        try {
-          const data = await invoke<number[]>('db_get_asset', { path });
-          return new TextDecoder().decode(new Uint8Array(data));
-        } catch {
-          if (projectPath) {
-            return readTextFile(`${projectPath}/${path}`);
-          }
-          throw new Error(`Asset not found: ${path}`);
-        }
-      },
-      // Pre-render each text element to its own self-contained SVG via the
-      // iframe pool — see makeTextElementRenderer.
-      renderTextElement: makeTextElementRenderer(presentation),
-      fontFacesCss,
-    });
-
+    const html = await buildPresentationExportHtml(presentation, projectPath);
     await writeTextFile(selected as string, html);
   } catch (e) {
     await showError(`Failed to export: ${e}`);

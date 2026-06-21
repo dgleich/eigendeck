@@ -37,6 +37,7 @@ import {
   openProject,
   createProject,
   exportPresentation,
+  buildPresentationExportHtml,
   importFromHtml,
   openRecentProject,
   syncRecentMenu,
@@ -46,7 +47,7 @@ import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
 import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement, textElementClipboardHtml } from './lib/elementClipboard';
-import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss } from './types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textShadowCss } from './types/presentation';
 import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
 import { getMissingAssets } from './lib/missingAssets';
 
@@ -72,6 +73,13 @@ if (
     store: usePresentationStore,
     flush: flushToSqlite,
     save: saveProject,   // flush + atomic save-in-place to the open file
+    // Interactive-HTML export builder (dialog-free) — lets E2E verify the real
+    // invoke-backed export pipeline (notebook/preview/asset reads) end to end
+    // without a native save dialog.
+    exportHtml: () => {
+      const s = usePresentationStore.getState();
+      return buildPresentationExportHtml(s.presentation, s.projectPath);
+    },
     // Missing-source registry (#74) — lets E2E assert detect/relocate.
     missingAssets: () => getMissingAssets(),
     // Undo-gesture transaction helpers (#55) — lets E2E exercise the real
@@ -86,63 +94,6 @@ if (
           skipAssetId, oldAbs, newAbs,
         )),
   };
-}
-
-/** Render a single slide to HTML for PDF/print export */
-export function renderSlideForPrint(
-  slide: import('./types/presentation').Slide,
-  presentationTheme: string,
-  imageCache: Map<string, string>,
-  presentationConfig?: import('./types/presentation').PresentationConfig
-): string {
-  const W = 1920, H = 1080;
-  const theme = resolveTheme(presentationTheme, slide.theme);
-  const cfg = presentationConfig || {} as import('./types/presentation').PresentationConfig;
-  let inner = '';
-  for (const el of slide.elements) {
-    const p = el.position;
-    if (el.type === 'text') {
-      const ps = TEXT_PRESET_STYLES[el.preset] || TEXT_PRESET_STYLES.body;
-      const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
-      const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
-                         valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
-      const color = el.color || themeColorForPreset(theme, el.preset);
-      const presetFontFamily = fontFamilyForPreset(fontForPreset(el.preset, slide, cfg), el.preset);
-      // markAsEigendeck wraps el.html with the clipboard-marker comment
-      // so a full-element copy from a browser viewing this exported page
-      // round-trips through eigendeck paste with inline markup preserved.
-      // Comment is invisible in render; partial sub-selections won't carry
-      // it (browser copy only includes parent comments when the selection
-      // spans them), so this benefits the common whole-paragraph copy case.
-      const _effSize1 = effectiveFontSize(el, cfg);
-      const _bg1 = textBackgroundCss(el);
-      const _fx1 = textShadowCss(el, color);
-      const _sh1 = textBoxShadowCss(el);
-      const _rot1 = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
-      inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${_bg1 ? `background:${_bg1};` : ''}${_sh1 ? `box-shadow:${_sh1};` : ''}${_rot1}">` +
-        `<div style="width:100%;height:100%;${valignStyle}">` +
-        `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${_effSize1}px;color:${color};line-height:1.3;padding:8px 12px;${_fx1 ? `text-shadow:${_fx1};` : ''}">${markAsEigendeck(el.html || '')}</div>` +
-        `</div></div>`;
-    } else if (el.type === 'image') {
-      const src = imageCache.get(el.assetId);
-      if (src) inner += `<img src="${src}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;" />`;
-    } else if (el.type === 'arrow') {
-      const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
-      const angle = Math.atan2(y2 - y1, x2 - x1);
-      const ha = Math.PI / 6;
-      inner += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;">` +
-        `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${strokeWidth}"/>` +
-        `<polygon points="${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}" fill="${color}"/>` +
-        `</svg>`;
-    } else if (el.type === 'cover') {
-      inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:${el.color || theme.background};"></div>`;
-    } else if (el.type === 'demo' || el.type === 'demo-piece') {
-      inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:#f8f8f8;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#999;font-size:24px;font-family:system-ui;">Interactive Demo</div>`;
-    } else if (el.type === 'video') {
-      inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:#000;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-family:system-ui;">&#9654; Video</div>`;
-    }
-  }
-  return `<div class="print-slide" style="width:${W}px;height:${H}px;position:relative;overflow:hidden;background:${theme.background};page-break-after:always;">${inner}</div>`;
 }
 
 /** Export slides as print-ready HTML: vector text + screenshots of demos */
@@ -235,17 +186,22 @@ async function printToPdf() {
   });
   if (!selected) return;
 
-  // Check if any slides have demos
-  const hasDemos = presentation.slides.some(s =>
-    s.elements.some(e => e.type === 'demo' || e.type === 'demo-piece' || e.type === 'video'));
+  // "Live" element types baked into the PDF as static screenshots (they can't
+  // be interactive in print). Notebook included (P0-2) — previously dropped.
+  const isLiveElement = (t: string) =>
+    t === 'demo' || t === 'demo-piece' || t === 'video' || t === 'notebook';
 
-  // Prefer the proactively-cached preview for each demo — no flip-through for
-  // demos that already have one. Only the misses need a live capture.
+  // Check if any slides have live elements
+  const hasDemos = presentation.slides.some(s =>
+    s.elements.some(e => isLiveElement(e.type)));
+
+  // Prefer the proactively-cached preview for each live element — no flip-through
+  // for those that already have one. Only the misses need a live capture.
   const demoScreenshots = new Map<string, string>(); // slideId:elementId → dataUrl
   if (hasDemos) {
     for (const slide of presentation.slides) {
       for (const el of slide.elements) {
-        if (el.type === 'demo' || el.type === 'demo-piece' || el.type === 'video') {
+        if (isLiveElement(el.type)) {
           const cached = await loadPreviewDataUrl(previewKey(el));
           if (cached) demoScreenshots.set(`${slide.id}:${el.id}`, cached);
         }
@@ -253,7 +209,7 @@ async function printToPdf() {
     }
   }
   const needsLiveCapture = presentation.slides.some(s =>
-    s.elements.some(e => (e.type === 'demo' || e.type === 'demo-piece' || e.type === 'video')
+    s.elements.some(e => isLiveElement(e.type)
       && !demoScreenshots.has(`${s.id}:${e.id}`)));
 
   if (needsLiveCapture) {
@@ -273,6 +229,27 @@ async function printToPdf() {
       for (const el of slide.elements) {
         if (el.type === 'image' && !imageCache.has(el.assetId)) {
           try {
+            // PDF-kind images can't inline as data:application/pdf in <img> —
+            // use the pdfium-rasterized PNG (asset_cache), same as the editor.
+            if (el.kind === 'pdf') {
+              const { renderAsset } = await import('./lib/assetRenderer');
+              const { ASSET_TIER } = await import('./lib/assetCache');
+              await renderAsset({
+                assetId: el.assetId, kind: 'pdf', variant: el.snapshotVariant ?? '_',
+                maxWidth: ASSET_TIER.full, maxHeight: ASSET_TIER.full,
+              });
+              const buf = await invoke<ArrayBuffer>('db_get_asset_cache_bytes', {
+                sourceId: el.assetId, variant: el.snapshotVariant ?? '_',
+                width: ASSET_TIER.full, height: ASSET_TIER.full,
+              });
+              const cbytes = new Uint8Array(buf);
+              if (cbytes.length) {
+                let cbin = '';
+                for (let k = 0; k < cbytes.length; k += 8192) cbin += String.fromCharCode(...cbytes.slice(k, k + 8192));
+                imageCache.set(el.assetId, `data:image/png;base64,${btoa(cbin)}`);
+              }
+              continue;
+            }
             const meta = await invoke<{ mime_type: string | null; path: string | null } | null>(
               'db_get_asset_meta_by_id', { assetId: el.assetId },
             );
@@ -303,7 +280,7 @@ async function printToPdf() {
       for (let i = 0; i < presentation.slides.length; i++) {
         const slide = presentation.slides[i];
         const demoEls = slide.elements.filter(e =>
-          (e.type === 'demo' || e.type === 'demo-piece' || e.type === 'video')
+          isLiveElement(e.type)
           && !demoScreenshots.has(`${slide.id}:${e.id}`));
         if (demoEls.length === 0) continue;
 
@@ -361,6 +338,8 @@ async function printToPdf() {
             if ((el as any).shadow) styles.push('filter:drop-shadow(2px 4px 8px rgba(0,0,0,0.3))');
             if ((el as any).borderRadius) styles.push(`border-radius:${px2in((el as any).borderRadius)}`);
             if ((el as any).opacity != null && (el as any).opacity < 1) styles.push(`opacity:${(el as any).opacity}`);
+            // P2-7: honor image rotation (was lost in the print path).
+            if ((el as any).rotation) styles.push(`transform:rotate(${(el as any).rotation}deg)`);
             inner += `<img src="${src}" style="${styles.join(';')};" />`;
           }
         } else if (el.type === 'arrow') {
@@ -374,12 +353,14 @@ async function printToPdf() {
             `</svg>`;
         } else if (el.type === 'cover') {
           inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};background:${el.color || theme.background};"></div>`;
-        } else if (el.type === 'demo' || el.type === 'demo-piece' || el.type === 'video') {
+        } else if (isLiveElement(el.type)) {
+          // P0-2: notebook joins demo/demo-piece/video as a baked screenshot.
           const screenshot = demoScreenshots.get(`${slide.id}:${el.id}`);
           if (screenshot) {
             inner += `<img src="${screenshot}" style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};" />`;
           } else {
-            inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};background:#f8f8f8;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#999;font-size:${px2pt(24)};font-family:system-ui;">Interactive Demo</div>`;
+            const label = el.type === 'notebook' ? 'Notebook' : el.type === 'video' ? 'Video' : 'Interactive Demo';
+            inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};background:#f8f8f8;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#999;font-size:${px2pt(24)};font-family:system-ui;">${label}</div>`;
           }
         }
       }

@@ -4,10 +4,10 @@
 // merge precedence/ordering, and edge cases. Do not duplicate the
 // existing tests.
 //
-// Where current behavior is arguably a bug or a gap, the test ASSERTS
-// the current behavior (so the suite is green against the lib as it
-// stands) and a sibling `it.skip` documents the DESIRED behavior with a
-// TODO so the gap stays visible. Real bugs are recorded in
+// Where merge degrades on input the app can't actually produce (e.g. a
+// stale overlay anchored past the .ipynb's end), the test pins the
+// GRACEFUL degradation and notes why the state is unreachable, rather
+// than treating it as a real scenario. Real bugs are recorded in
 // .claude/notes/notebook-recording-test-plan.md, not hidden.
 
 import { describe, it, expect } from 'vitest';
@@ -667,38 +667,36 @@ describe('mergeNotebook — appended ordering', () => {
 });
 
 // =====================================================================
-// mergeNotebook — orphan anchors (the documented GAP)
+// mergeNotebook — orphan anchors (DEFENSIVE: unreachable via the app)
 // =====================================================================
+//
+// An "orphan" is an appended cell anchored to an index the .ipynb no longer
+// has. This state is NOT reachable through the app: appending a cell requires
+// the notebook to be editable, and editable turns file-watching + auto_reload
+// OFF (the BUG-2 invariant in NotebookContent), so the .ipynb is frozen and its
+// indices can't drift under an appended cell. Any path that DOES change the
+// .ipynb while appended cells exist (explicit reload / restore / re-enabling
+// Watch) routes through an in-session content-change that calls clearOverlay(),
+// dropping the whole overlay first. So the only way to reach an orphan is to
+// hand mergeNotebook a synthetic stale overlay, as these tests do — they pin
+// that mergeNotebook DEGRADES GRACEFULLY (drops the orphan, never throws)
+// rather than documenting a real scenario.
 
-describe('mergeNotebook — orphan anchors (appended anchored to a missing index)', () => {
-  it('CURRENT BEHAVIOR: an appended cell anchored to a nonexistent index vanishes', () => {
+describe('mergeNotebook — orphan anchors (defensive: unreachable in-app)', () => {
+  it('an appended cell anchored to a nonexistent index is dropped (no throw)', () => {
     const r = emptyOverlay();
     r.appendedCells = [{ id: 'orphan', afterIndex: 99, cellType: 'code', source: 'lost' }];
     const merged = mergeNotebook(realNotebook(), r);
-    // only the 3 ipynb cells; the orphan is silently dropped.
+    // only the 3 ipynb cells; the synthetic orphan is dropped.
     expect(merged).toHaveLength(3);
     expect(merged.some((c) => c.origin === 'appended')).toBe(false);
   });
 
-  it('CURRENT BEHAVIOR: negative-anchor appended cell vanishes (not treated as top)', () => {
+  it('a negative-anchor appended cell is dropped (not treated as top)', () => {
     const r = emptyOverlay();
     r.appendedCells = [{ id: 'neg', afterIndex: -1, cellType: 'code', source: 'lost' }];
     const merged = mergeNotebook(realNotebook(), r);
     expect(merged.some((c) => c.origin === 'appended')).toBe(false);
-  });
-
-  // DESIRED behavior per the plan: orphaned appended cells should still be
-  // emitted (e.g. flushed to the tail with a "detached" marker) so the
-  // user never silently loses live-authored content when the .ipynb shrinks.
-  // See notebook-recording-test-plan.md → P5 "index-drift".
-  it.skip('DESIRED: orphaned appended cells are emitted at the tail as detached (TODO: implement tail-emit + detached flag)', () => {
-    const r = emptyOverlay();
-    r.appendedCells = [{ id: 'orphan', afterIndex: 99, cellType: 'code', source: 'lost' }];
-    const merged = mergeNotebook(realNotebook(), r);
-    const orphan = merged.find((c) => c.origin === 'appended' && c.appended.id === 'orphan');
-    expect(orphan).toBeDefined();
-    // expected future shape: a `detached: true` flag on the merged appended cell.
-    // expect((orphan as { detached?: boolean }).detached).toBe(true);
   });
 });
 

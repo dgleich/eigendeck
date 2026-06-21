@@ -13,16 +13,18 @@
 // accept clicks immediately in PresentMode.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import './notebook.css';
 import { CodeCell } from './CodeCell';
 import { MarkdownCell } from './MarkdownCell';
 import { RawCell } from './RawCell';
+import { NotebookCells, RunningState } from './NotebookCells';
 import { useNotebook } from '../../lib/useNotebook';
 import { useOverlay } from '../../lib/useOverlay';
 import { capturePreview } from '../../lib/previewCache';
 import { useKernel, KernelStatus } from '../../lib/useKernel';
 import { resolveNotebookKernel, ResolvedExternal } from '../../lib/notebookKernel';
 import { usePreference } from '../../lib/preferences';
-import { Cell, CellOutput, CodeCell as CodeCellT, Notebook } from '../../lib/notebookFormat';
+import { Cell, CellOutput, Notebook } from '../../lib/notebookFormat';
 import {
   mergeNotebook, MergedCell, notebookSourceSignature, overlaySourceChanged,
   serializeOverlay,
@@ -164,7 +166,7 @@ function filterCells(cells: Cell[], element: NotebookElement): Cell[] {
 }
 
 /** Apply the same filters to the merged render list (external path). */
-function filterMerged(merged: MergedCell[], element: NotebookElement): MergedCell[] {
+export function filterMerged(merged: MergedCell[], element: NotebookElement): MergedCell[] {
   return merged.filter((m) => {
     if (m.origin === 'ipynb') {
       if (element.visibleCells && element.visibleCells.length > 0
@@ -178,11 +180,6 @@ function filterMerged(merged: MergedCell[], element: NotebookElement): MergedCel
     return true;
   });
 }
-
-/** Transient per-cell run status (the [*] spinner) — keyed by a string
- *  cell key (index for .ipynb cells, id for appended). Not persisted;
- *  outputs themselves live in the overlay. */
-type RunningState = { running: boolean; count: number | '*' | null };
 
 function ExternalKernelBody({
   element, mode, notebook, loading, error, interactive, editable, resolved, preamble, autoRun,
@@ -344,98 +341,21 @@ function ExternalKernelBody({
   return (
     <>
       <StatusDot status={kernel.status} />
-      {!hideHeader && (
-        <div className="nb-header">
-          <span className="nb-kernel-label">
-            {kernelDisplayName || resolved.kernelName}
-          </span>
-        </div>
-      )}
-      <div className="nb-body" style={{ pointerEvents: interactive ? 'auto' : 'none' }}>
-        {loading && <div className="nb-status">Loading…</div>}
-        {error && <div className="nb-status nb-error">Parse error: {error.message}</div>}
-        {merged.map((m) => {
-          if (m.origin === 'ipynb') {
-            const c = m.cell;
-            if (c.kind === 'markdown') return <MarkdownCell key={`i${c.index}`} cell={{ ...c, source: m.source }} />;
-            if (c.kind === 'raw') return <RawCell key={`i${c.index}`} cell={{ ...c, source: m.source }} />;
-            const key = `i${c.index}`;
-            const run = running.get(key);
-            const wsrc = working.get(key);
-            return (
-              <CodeCell key={key}
-                cell={c as CodeCellT}
-                source={wsrc ?? m.source}
-                liveOutputs={m.outputs}
-                liveExecutionCount={run?.count ?? m.executionCount}
-                running={run?.running ?? false}
-                onRun={() => execute(key, working.get(key) ?? m.source, (o, cnt) => ov.recordOutput(c.index, o, cnt))}
-                language={language}
-                highlight={highlight}
-                dark={dark}
-                editable={editable && interactive}
-                showLineNumbers={element.showLineNumbers}
-                fontSize={baseSize}
-                onEdit={(next) => setWorking((p) => new Map(p).set(key, next))}
-                onCommit={() => { const w = working.get(key); if (w !== undefined) ov.setEdit(c.index, w, c.source); }}
-                edited={m.edited}
-                onRevert={() => { setWorking((p) => { const n = new Map(p); n.delete(key); return n; }); ov.revertEdit(c.index); }}
-              />
-            );
-          }
-          // appended cell
-          const a = m.appended;
-          const key = `a${a.id}`;
-          if (a.cellType === 'markdown') {
-            return <MarkdownCell key={key} cell={{ kind: 'markdown', index: -1, source: working.get(key) ?? a.source }} />;
-          }
-          const run = running.get(key);
-          const synth: CodeCellT = {
-            kind: 'code', index: -1,
-            source: a.source,
-            executionCount: a.executionCount ?? null,
-            outputs: a.outputs ?? [],
-          };
-          return (
-            <CodeCell key={key}
-              cell={synth}
-              source={working.get(key) ?? a.source}
-              liveOutputs={a.outputs ?? []}
-              liveExecutionCount={run?.count ?? a.executionCount ?? null}
-              running={run?.running ?? false}
-              onRun={() => execute(key, working.get(key) ?? a.source, (o, cnt) => ov.recordAppendedOutput(a.id, o, cnt))}
-              language={language}
-              highlight={highlight}
-              dark={dark}
-              editable={editable && interactive}
-              showLineNumbers={element.showLineNumbers}
-              fontSize={baseSize}
-              added
-              onEdit={(next) => setWorking((p) => new Map(p).set(key, next))}
-              onCommit={() => { const w = working.get(key); if (w !== undefined) ov.setAppendedSource(a.id, w); }}
-              onRevert={() => ov.removeAppended(a.id)}
-            />
-          );
-        })}
-        {/* "+ Cell" lives at the END of the body (not the header) so it's
-            available even when the kernel header is hidden. */}
-        {editable && interactive && (
-          <button className="nb-add-cell" title="Add a code cell at the end"
-            onClick={() => ov.addAppended(lastIpynbIndex(merged), 'code')}>
-            + []
-          </button>
-        )}
-      </div>
+      <NotebookCells
+        merged={merged}
+        language={language}
+        highlight={highlight}
+        dark={dark}
+        baseSize={baseSize}
+        showLineNumbers={element.showLineNumbers}
+        hideHeader={hideHeader}
+        kernelDisplayName={kernelDisplayName || resolved.kernelName}
+        loading={loading}
+        error={error}
+        live={{ running, working, editable: editable && interactive, interactive, execute, setWorking, ov }}
+      />
     </>
   );
-}
-
-/** Highest .ipynb cell index in the merged list, for anchoring a new
- *  appended cell at the end. null when there are no .ipynb cells. */
-function lastIpynbIndex(merged: MergedCell[]): number | null {
-  let last: number | null = null;
-  for (const m of merged) if (m.origin === 'ipynb') last = m.cell.index;
-  return last;
 }
 
 /** Human-readable status, used only as the dot's hover title. */
