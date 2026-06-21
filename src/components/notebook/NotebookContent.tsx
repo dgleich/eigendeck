@@ -352,7 +352,7 @@ function ExternalKernelBody({
         kernelDisplayName={kernelDisplayName || resolved.kernelName}
         loading={loading}
         error={error}
-        live={{ running, working, editable: editable && interactive, execute, setWorking, ov }}
+        live={{ running, working, editable: editable && interactive, interactive, execute, setWorking, ov }}
       />
     </>
   );

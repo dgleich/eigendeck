@@ -35,6 +35,10 @@ export interface NotebookCellsLive {
   running: Map<string, RunningState>;
   working: Map<string, string>;
   editable: boolean;
+  /** The notebook body captures pointer events only when interacting (after
+   *  double-click in the editor, or always in present). False lets the
+   *  DraggableBox handle dragging — see CLAUDE.md rule #8. */
+  interactive: boolean;
   execute: (
     key: string,
     source: string,
@@ -70,7 +74,12 @@ export function NotebookCells({
   loading?: boolean;
   error?: Error | null;
 }) {
-  const interactive = live != null;
+  // Pointer-events gate. In the LIVE editor the body must NOT capture events
+  // until interacting (after double-click), so the DraggableBox can drag — see
+  // CLAUDE.md rule #8. In the EXPORT (no live, no DraggableBox) the body must
+  // capture so the notebook stays scrollable/selectable. So: live → gate on
+  // live.interactive; export → always 'auto'.
+  const captures = live ? live.interactive : true;
   return (
     <>
       {!hideHeader && (
@@ -80,7 +89,7 @@ export function NotebookCells({
           </span>
         </div>
       )}
-      <div className="nb-body" style={{ pointerEvents: interactive ? 'auto' : 'none' }}>
+      <div className="nb-body" style={{ pointerEvents: captures ? 'auto' : 'none' }}>
         {loading && <div className="nb-status">Loading…</div>}
         {error && <div className="nb-status nb-error">Parse error: {error.message}</div>}
         {merged.map((m) => {
