@@ -14,12 +14,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # One Universal binary (Intel + Apple Silicon) — packaged on the
+          # native ARM runner. Replaces the separate aarch64 + x86_64 builds;
+          # the standalone x86_64-CROSS DMG was the flaky one (bundle_dmg.sh /
+          # hdiutil failing only on the cross-arch package).
           - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin'
-            label: 'macOS-ARM64'
-          - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'
-            label: 'macOS-x64'
+            args: '--target universal-apple-darwin'
+            label: 'macOS-Universal'
           - platform: 'ubuntu-22.04'
             args: ''
             label: 'Linux-x64'
