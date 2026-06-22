@@ -6,13 +6,25 @@
 /* REQUIRED: html/body need explicit 100% size or the iframe collapses. */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { width: 100%; height: 100%; }
-body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
+
+/* Eigendeck injects the deck's fonts (@font-face) + theme as CSS custom
+   properties so a demo can MATCH the slide. Opt in with var(--eigendeck-*,
+   fallback) — the fallback keeps the demo working when opened standalone.
+   Available: --eigendeck-bg / -fg / -heading / -accent / -muted,
+   --eigendeck-font / -narrow / -mono, --eigendeck-base-size. */
+body {
+  font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif;
+  color: var(--eigendeck-fg, #222);
+  background: var(--eigendeck-bg, #fafafa);
+  overflow: hidden;
+}
 
 /* PREFIX every selector with a unique demo name to avoid clashes. */
 .starter-main {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
-  background: #fafafa; color: #222;
+  background: var(--eigendeck-bg, #fafafa);
+  color: var(--eigendeck-fg, #222);
 }
 </style>
 <!-- Load any CDN libraries here, before the script:

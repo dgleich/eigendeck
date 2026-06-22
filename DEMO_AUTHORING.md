@@ -180,6 +180,47 @@ const channel = new BroadcastChannel('eigendeck-demo:mydemo.html');
 ```
 Use a hardcoded filename for the channel name. The bootstrap patches `URLSearchParams` and adds a unique per-slide prefix to `BroadcastChannel` automatically.
 
+## Matching the deck — fonts & theme
+
+A demo runs in an isolated iframe, so it doesn't automatically see the deck's
+fonts or theme. Eigendeck injects two things into every demo (editor, presenter,
+and export) so a demo can match the slide it's on:
+
+1. **`@font-face` for the deck's fonts** — so `font-family: 'PT Sans'` (or
+   whatever the slide uses) actually resolves inside the iframe. **This is
+   automatic** — if your demo already names a deck font, it just works; no change
+   needed.
+
+2. **The resolved theme as CSS custom properties** — *opt in* by using them
+   (with a fallback so the demo still works opened standalone):
+
+   | Variable | What |
+   |---|---|
+   | `--eigendeck-bg` | slide background |
+   | `--eigendeck-fg` | body text color |
+   | `--eigendeck-heading` | title color |
+   | `--eigendeck-accent` | accent / annotation color |
+   | `--eigendeck-muted` | muted / footnote color |
+   | `--eigendeck-font` | body font family (e.g. `'PT Sans'`) |
+   | `--eigendeck-narrow` | narrow variant, if the font has one |
+   | `--eigendeck-mono` | monospace/code font family |
+   | `--eigendeck-base-size` | deck body font size (px) |
+
+   ```css
+   body {
+     background: var(--eigendeck-bg, #fff);
+     color:      var(--eigendeck-fg, #222);
+     font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif;
+   }
+   ```
+
+   The vars update **live** when the slide/deck theme changes (the demo isn't
+   reloaded), so a demo authored against them tracks dark/light themes for free.
+
+   These are **opt-in**: a demo that hard-codes `background:#fff` keeps that white
+   background — switch to `var(--eigendeck-bg, #fff)` to follow the theme. See
+   `demo-starter.html` (from **File → Install LLM Tools**) for the pattern.
+
 ## Critical Rules
 
 1. **`html, body { width: 100%; height: 100%; }`** — Without this, iframe content collapses to zero height.
