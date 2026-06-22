@@ -102,7 +102,12 @@ function main() {
   const missing = [];
   for (const id of MATHJAX_FONTS_PACKAGES) {
     const filename = `tex-mml-svg-mathjax-${id}-nosre.js`;
-    const src = join(MATHJAX_FONTS_DIR, `mathjax-${id}`, filename);
+    // New mathjax-fonts layout commits the prebuilt -nosre bundles at the REPO
+    // ROOT; older checkouts keep them per-package under mathjax-<id>/. Prefer
+    // root, fall back to the subdir.
+    const rootSrc = join(MATHJAX_FONTS_DIR, filename);
+    const subSrc = join(MATHJAX_FONTS_DIR, `mathjax-${id}`, filename);
+    const src = existsSync(rootSrc) ? rootSrc : subSrc;
     if (!existsSync(src) || !copyBundle(src, join(PUBLIC_MATHJAX, filename), id)) {
       missing.push(id);
     }
@@ -111,8 +116,9 @@ function main() {
   if (missing.length) {
     console.error(
       `[setup-fonts] FATAL: ${missing.length} required MathJax bundle(s) missing: ${missing.join(', ')}.\n` +
-      `  Each must exist at mathjax-<id>/tex-mml-svg-mathjax-<id>-nosre.js in mathjax-fonts ` +
-      `(commit the prebuilt bundles, or run mathjax-shantell/build/build-all-nosre.cjs).`,
+      `  Each must exist at tex-mml-svg-mathjax-<id>-nosre.js in the mathjax-fonts repo root ` +
+      `(or the legacy mathjax-<id>/ subdir). Pull mathjax-fonts (it now commits the ` +
+      `prebuilt -nosre bundles), or rebuild via mathjax-shantell/build/build-all-nosre.cjs.`,
     );
     process.exit(1);
   }
