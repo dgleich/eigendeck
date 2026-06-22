@@ -11,7 +11,7 @@ const ABOUT_CREDITS: &str = "Created by David Gleich\n\n\
 Built with Tauri, React, Zustand, Vite, CodeMirror, MathJax, highlight.js, \
 marked, modern-screenshot, SQLite (rusqlite), and PDFium.\n\n\
 Fonts — all SIL OFL 1.1: PT Sans, PT Sans Narrow, PT Mono, Lato, Shantell Sans, \
-Source Sans, Source Code, Noto Sans, Libertinus, Libertinus Sans, Computer \
+Source Sans 3, Source Code Pro, Noto Sans, Libertinus, Libertinus Sans, Computer \
 Modern Sans, Computer Modern Concrete, Computer Modern Typewriter, Fira Code, \
 IBM Plex Mono, Inconsolata, JetBrains Mono.\n\n\
 Math is set with MathJax using custom math-font packs matched to these fonts.";

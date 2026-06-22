@@ -98,7 +98,7 @@ export const FONT_PACKAGES = [
   },
   {
     id: 'source-sans',
-    label: 'Source Sans',
+    label: 'Source Sans 3',
     family: "'Source Sans 3', sans-serif",
     mathjaxBundle: 'tex-mml-svg-mathjax-source-sans-nosre.js',
     files: {
