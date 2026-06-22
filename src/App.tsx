@@ -43,6 +43,8 @@ import {
   syncRecentMenu,
 } from './store/fileOps';
 import { flushToSqlite, pauseUndo, resumeUndo, undoWithNav, redoWithNav } from './store/presentation';
+import { withBusy } from './store/busy';
+import { BusyOverlay } from './components/BusyOverlay';
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
@@ -569,14 +571,17 @@ function App() {
     let assetId: string | null = null;
     try {
       const { readFile } = await import('@tauri-apps/plugin-fs');
-      bytes = await readFile(fullPath);
+      const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
       // Picker insertion: track the source link so the file
       // watcher picks up edits to the original file on disk.
-      // Routed through collision check; user may cancel.
-      const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
-      const r = await storeAssetWithCollisionCheck({
-        path: relativePath, data: bytes, mimeType: mime,
-        externalPath: relativePath, externalMtime: null,
+      // Routed through collision check; user may cancel. A big image/PDF can
+      // take a few seconds to read + embed — show the busy overlay.
+      const r = await withBusy('Importing image…', async () => {
+        bytes = await readFile(fullPath);
+        return storeAssetWithCollisionCheck({
+          path: relativePath, data: bytes, mimeType: mime,
+          externalPath: relativePath, externalMtime: null,
+        });
       });
       if (r.cancelled) return;
       assetId = r.assetId;
@@ -1413,14 +1418,14 @@ function App() {
       : ext === 'm4v' ? 'video/x-m4v' : (ext === 'ogv' || ext === 'ogg') ? 'video/ogg' : 'video/mp4';
     try {
       const { readFile } = await import('@tauri-apps/plugin-fs');
-      const bytes = await readFile(fullPath);
+      const bytes = await withBusy('Reading video…', () => readFile(fullPath));
       const mb = bytes.length / (1024 * 1024);
       if (mb > 250) {
         const ok = await confirm(`This video is ${mb.toFixed(0)} MB. It will be embedded in the deck file, making it large. Continue?`, { title: 'Large video', kind: 'warning' });
         if (!ok) return;
       }
       const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
-      const r = await storeAssetWithCollisionCheck({ path: relativePath, data: bytes, mimeType: mime, externalPath: relativePath, externalMtime: null });
+      const r = await withBusy('Importing video…', () => storeAssetWithCollisionCheck({ path: relativePath, data: bytes, mimeType: mime, externalPath: relativePath, externalMtime: null }));
       if (r.cancelled) return;
       store.addElement({ id: crypto.randomUUID(), type: 'video', kind: 'file', assetId: r.assetId, controls: true, position: { x: 360, y: 200, width: 1200, height: 680 } });
     } catch (err) { console.error('Failed to add video:', err); }
@@ -1442,6 +1447,7 @@ function App() {
     <div className="app">
       <DebugMenu />
       <ToastHost />
+      <BusyOverlay />
       <Toolbar />
       <div className="main-area">
         <div style={{ width: sidebarWidth, minWidth: 150, maxWidth: 400, flexShrink: 0 }}>
