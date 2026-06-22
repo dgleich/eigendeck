@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<!--
+  Bundled into Contents/Resources/Credits.html. The macOS standard About panel
+  (orderFrontStandardAboutPanel) auto-loads this when AboutMetadata.credits is
+  None (see src/lib.rs), and renders it with its own CSS — so the credits are
+  centered. Keep the content in sync with ABOUT_CREDITS in src/lib.rs (that
+  string is the Windows/Linux fallback, where this file isn't used).
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body {
+    font-family: -apple-system, "Helvetica Neue", sans-serif;
+    text-align: center;
+    color: #333;
+    margin: 0;
+    padding: 6px 4px;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  h2 { font-size: 11px; font-weight: 700; margin: 12px 0 3px; }
+  p { margin: 5px 14px; }
+  .dim { color: #8a8a8a; }
+</style>
+</head>
+<body>
+  <p><b>Created by David Gleich</b></p>
+  <p>Build presentations with embedded interactive HTML demos and LaTeX math.</p>
+
+  <h2>Open source</h2>
+  <p>Tauri, React, Zustand, Vite, CodeMirror, MathJax, highlight.js, marked,
+     modern-screenshot, SQLite (rusqlite), and PDFium.</p>
+
+  <h2>Fonts <span class="dim">— all SIL OFL 1.1</span></h2>
+  <p>PT Sans, PT Sans Narrow, PT Mono, Lato, Shantell Sans, Source Sans 3,
+     Source Code Pro, Noto Sans, Libertinus, Libertinus Sans, Computer Modern
+     Sans, Computer Modern Concrete, Computer Modern Typewriter, Fira Code,
+     IBM Plex Mono, Inconsolata, JetBrains Mono.</p>
+
+  <p class="dim">Math is set with MathJax using custom math-font packs matched
+     to these fonts.</p>
+</body>
+</html>

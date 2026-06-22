@@ -46,7 +46,8 @@
     ],
     "resources": [
       "resources/pdfium/*",
-      "resources/llm-tools/*"
+      "resources/llm-tools/*",
+      "Credits.html"
     ],
     "fileAssociations": [
       {

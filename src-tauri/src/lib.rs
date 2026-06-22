@@ -450,7 +450,11 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .website(Some("https://github.com/dgleich/eigendeck"))
         .website_label(Some("GitHub"))
         .comments(Some(ABOUT_CREDITS))
-        .credits(Some(ABOUT_CREDITS))
+        // NB: do NOT set .credits() — leaving it None lets the macOS standard
+        // About panel auto-load Contents/Resources/Credits.html (bundled), which
+        // renders with its own CSS (centered). Setting credits here would pass a
+        // plain left-aligned NSAttributedString that overrides the bundled file.
+        // (comments above still carries the credits text on Windows/Linux.)
         .icon(app_about_icon())
         .build();
     let app_menu = SubmenuBuilder::new(app, "Eigendeck")
