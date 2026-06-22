@@ -2094,6 +2094,26 @@ pub fn db_store_asset(
     auto_reload: Option<String>,
     owner_element_id: Option<String>,
 ) -> Result<String, String> {
+    store_asset_core(
+        path, data, mime_type, external_path, external_mtime, asset_id, auto_reload,
+        owner_element_id,
+    )
+}
+
+/// Inner implementation shared by the legacy `db_store_asset` (args path,
+/// kept for back-compat + small/legacy callers + tests) and the raw-body
+/// `db_store_asset_raw` (memcpy path for large assets — see #174).
+#[allow(clippy::too_many_arguments)]
+fn store_asset_core(
+    path: String,
+    data: Vec<u8>,
+    mime_type: String,
+    external_path: Option<String>,
+    external_mtime: Option<String>,
+    asset_id: Option<String>,
+    auto_reload: Option<String>,
+    owner_element_id: Option<String>,
+) -> Result<String, String> {
     with_db(|conn| {
         let new_hash = sha256_hex(&data);
         let size = data.len() as i64;
@@ -2202,6 +2222,59 @@ pub fn db_store_asset(
         tx.commit()?;
         Ok(id)
     })
+}
+
+/// Metadata for `db_store_asset_raw`, carried base64-encoded in the
+/// `x-asset-meta` request header (the bytes themselves are the raw body).
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawAssetMeta {
+    path: String,
+    mime_type: String, // serde camelCase → "mimeType"
+    #[serde(default)]
+    external_path: Option<String>,
+    #[serde(default)]
+    external_mtime: Option<String>,
+    #[serde(default)]
+    asset_id: Option<String>,
+    #[serde(default)]
+    auto_reload: Option<String>,
+    #[serde(default)]
+    owner_element_id: Option<String>,
+}
+
+/// Store an asset whose bytes arrive as the RAW request body (memcpy),
+/// with the small metadata in a base64-JSON `x-asset-meta` header. This
+/// is the WRITE mirror of `db_get_asset_by_id`'s `tauri::ipc::Response`
+/// READ path — it avoids the ~300ms/MB JSON args path that made a 100MB
+/// video import take ~30s (#174).
+#[tauri::command]
+pub fn db_store_asset_raw(request: tauri::ipc::Request<'_>) -> Result<String, String> {
+    let data: Vec<u8> = match request.body() {
+        tauri::ipc::InvokeBody::Raw(b) => b.clone(),
+        _ => return Err("db_store_asset_raw: expected a raw byte body".into()),
+    };
+    let hdr = request
+        .headers()
+        .get("x-asset-meta")
+        .and_then(|v| v.to_str().ok())
+        .ok_or("db_store_asset_raw: missing x-asset-meta header")?;
+    use base64::Engine;
+    let json = base64::engine::general_purpose::STANDARD
+        .decode(hdr)
+        .map_err(|e| format!("bad x-asset-meta base64: {e}"))?;
+    let m: RawAssetMeta =
+        serde_json::from_slice(&json).map_err(|e| format!("bad x-asset-meta json: {e}"))?;
+    store_asset_core(
+        m.path,
+        data,
+        m.mime_type,
+        m.external_path,
+        m.external_mtime,
+        m.asset_id,
+        m.auto_reload,
+        m.owner_element_id,
+    )
 }
 
 /// Read the current bytes of an asset by its path label (legacy lookup).

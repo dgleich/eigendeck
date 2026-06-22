@@ -46,6 +46,22 @@ interface StoreArgs {
   externalMtime: string | null;
 }
 
+/** Store asset bytes via the raw-body IPC (memcpy) — bytes in the request
+ *  body, metadata in a base64 JSON header. Avoids the ~300ms/MB args path
+ *  that froze the UI on large assets (#174). */
+export async function storeAssetRaw(meta: {
+  path: string; mimeType: string;
+  externalPath?: string | null; externalMtime?: string | null;
+  assetId?: string | null; autoReload?: string | null; ownerElementId?: string | null;
+}, data: Uint8Array): Promise<string> {
+  const json = JSON.stringify(meta);
+  // base64(UTF-8(json)); json is small (paths/strings), so this is cheap.
+  const metaB64 = btoa(String.fromCharCode(...new TextEncoder().encode(json)));
+  // The Uint8Array is the PAYLOAD (not nested in an object) → Tauri sends it
+  // as the raw request body (memcpy). Metadata rides in the header.
+  return invoke<string>('db_store_asset_raw', data, { headers: { 'x-asset-meta': metaB64 } });
+}
+
 interface StoreResult {
   /** Asset id under which the bytes are stored. Caller puts this on the
    *  new element so future renders bind unambiguously. */
@@ -158,7 +174,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
     // from subscribing (per-pres OFF wins over null per-asset), so
     // there's no auto-update — but the user can explicitly pull a
     // fresh version from disk via Reload-now whenever they want.
-    await invoke('db_store_asset', { ...toStoreArgs(args), assetId });
+    await storeAssetRaw({ path: args.path, mimeType: args.mimeType, externalPath: args.externalPath, externalMtime: args.externalMtime, assetId }, args.data);
     ilog(`per-pres auto-reload OFF: fresh independent asset ${assetId.slice(0, 8)} at "${args.path}" (link preserved for manual Reload-now, watcher blocked by cascade)`);
     maybeWarnUnsavedProject(args.externalPath);
     return { assetId, path: args.path, cancelled: false };
@@ -169,7 +185,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
 
   if (!meta) {
     // No existing asset at this path → simple insertion.
-    const assetId = await invoke<string>('db_store_asset', toStoreArgs(args));
+    const assetId = await storeAssetRaw({ path: args.path, mimeType: args.mimeType, externalPath: args.externalPath, externalMtime: args.externalMtime }, args.data);
     ilog(`new asset at "${args.path}" → ${assetId.slice(0, 8)}`);
     maybeWarnUnsavedProject(args.externalPath);
     return { assetId, path: args.path, cancelled: false };
@@ -191,7 +207,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
     // existing assetId (will dedup if current also matches original;
     // otherwise effectively reverts current to original).
     ilog(`new bytes match original (original_hash=${original?.hash?.slice(0, 8) ?? 'n/a'} == new_hash=${newHash.slice(0, 8)}) → silent store on existing asset`);
-    const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
+    const assetId = await storeAssetRaw({ path: args.path, mimeType: args.mimeType, externalPath: args.externalPath, externalMtime: args.externalMtime, assetId: meta.asset_id }, args.data);
     // Only invalidate when current bytes actually CHANGE. The common
     // case here is the user re-adding the same file they already have:
     // db_store_asset short-circuits (newHash === current hash) and we
@@ -210,7 +226,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   const projectId = await currentProjectId();
   if (projectId && acceptedProjects.has(projectId)) {
     ilog(`auto-update previously accepted for project ${projectId.slice(0, 8)} → silent store, no dialog`);
-    const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
+    const assetId = await storeAssetRaw({ path: args.path, mimeType: args.mimeType, externalPath: args.externalPath, externalMtime: args.externalMtime, assetId: meta.asset_id }, args.data);
     if (newHash !== meta.hash) await invalidateRenderedAsset(meta.asset_id);
     maybeWarnUnsavedProject(args.externalPath);
     return { assetId, path: args.path, cancelled: false };
@@ -221,7 +237,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   if (slidesUsing.length === 0) {
     // Orphan: asset has versions but no element references it. No
     // surprise to surface. Store a new version of the orphan.
-    const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
+    const assetId = await storeAssetRaw({ path: args.path, mimeType: args.mimeType, externalPath: args.externalPath, externalMtime: args.externalMtime, assetId: meta.asset_id }, args.data);
     if (newHash !== meta.hash) await invalidateRenderedAsset(meta.asset_id);
     return { assetId, path: args.path, cancelled: false };
   }
@@ -251,7 +267,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
     // slides' main-window <img> blob URLs cached the OLD bytes via
     // useAssetUrl; without invalidation they keep showing stale until
     // next reload.
-    const assetId = await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: meta.asset_id });
+    const assetId = await storeAssetRaw({ path: args.path, mimeType: args.mimeType, externalPath: args.externalPath, externalMtime: args.externalMtime, assetId: meta.asset_id }, args.data);
     await invalidateRenderedAsset(meta.asset_id);
     ilog(`accept: stored on existing asset_id=${meta.asset_id.slice(0, 8)} + invalidated cache`);
     maybeWarnUnsavedProject(args.externalPath);
@@ -286,7 +302,7 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   ilog(`revert: creating NEW asset_id=${newAssetId.slice(0, 8)} at path="${args.path}" with new bytes (link preserved)`);
   // external_path IS preserved (same rationale as PowerPoint mode):
   // Reload-now is a useful manual affordance. Cascade blocks watcher.
-  await invoke<string>('db_store_asset', { ...toStoreArgs(args), assetId: newAssetId });
+  await storeAssetRaw({ path: args.path, mimeType: args.mimeType, externalPath: args.externalPath, externalMtime: args.externalMtime, assetId: newAssetId }, args.data);
   usePresentationStore.getState().updateConfig({ autoReloadAssets: 'off' });
   ilog(`revert: per-presentation auto-reload set to OFF`);
   // Revert path turns auto-reload OFF for the presentation, so the
@@ -296,19 +312,6 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   maybeWarnUnsavedProject(args.externalPath);
 
   return { assetId: newAssetId, path: args.path, cancelled: false };
-}
-
-function toStoreArgs(a: StoreArgs): Record<string, unknown> {
-  return {
-    path: a.path,
-    // Pass the Uint8Array straight through — Tauri v2 transfers it as raw
-    // bytes (Vec<u8>). The old Array.from(…) built a multi-million-element
-    // number[] and JSON-serialized it, freezing the UI on large assets (#174).
-    data: a.data,
-    mimeType: a.mimeType,
-    externalPath: a.externalPath,
-    externalMtime: a.externalMtime,
-  };
 }
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {

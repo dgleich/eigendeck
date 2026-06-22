@@ -13,6 +13,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { HelpText } from './HelpText';
 import { invalidateRenderedAsset } from '../lib/assetRenderer';
+import { storeAssetRaw } from '../lib/assetInsert';
 import { dirname, resolvePosixPath } from '../lib/watcherRegistry';
 import { effectiveAutoReload, usePreference } from '../lib/preferences';
 import { computeAssetUsage } from '../lib/assetUsage';
@@ -139,15 +140,14 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
       const bytes = await readFile(absPath);
       const st = await stat(absPath).catch(() => null);
       const mtime = st?.mtime ? st.mtime.toISOString() : null;
-      await invoke('db_store_asset', {
-        path: meta.path,
-        data: bytes,
+      await storeAssetRaw({
+        path: meta.path ?? '',
         mimeType: meta.mime_type ?? 'application/octet-stream',
         externalPath: meta.external_path,
         externalMtime: mtime,
         assetId: meta.asset_id,
         autoReload: null,
-      });
+      }, bytes);
       await invalidateRenderedAsset(meta.asset_id);
       markAssetFound(meta.asset_id);  // read succeeded — source is back (#74)
     } catch (e) {
@@ -173,15 +173,14 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
       const bytes = await readFile(picked);
       const st = await stat(picked).catch(() => null);
       const mtime = st?.mtime ? st.mtime.toISOString() : null;
-      await invoke('db_store_asset', {
-        path: meta.path,
-        data: bytes,
+      await storeAssetRaw({
+        path: meta.path ?? '',
         mimeType: meta.mime_type ?? 'application/octet-stream',
         externalPath: picked,            // absolute — resolvePosixPath returns as-is
         externalMtime: mtime,
         assetId: meta.asset_id,
         autoReload: null,
-      });
+      }, bytes);
       await invalidateRenderedAsset(meta.asset_id);
       markAssetFound(meta.asset_id);
       window.dispatchEvent(new CustomEvent('eigendeck:asset-changed', { detail: { assetId: meta.asset_id } }));

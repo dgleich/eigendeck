@@ -671,6 +671,7 @@ pub fn run() {
             storage::db_update_z_order,
             storage::db_free_element,
             storage::db_store_asset,
+            storage::db_store_asset_raw,
             storage::db_get_asset,
             storage::db_get_asset_by_id,
             storage::db_get_owned_asset_id,

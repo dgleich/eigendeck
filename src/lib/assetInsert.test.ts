@@ -83,7 +83,10 @@ describe('storeAssetWithCollisionCheck — invalidation gating', () => {
         // Single-version history; original = current; original.hash === newHash.
         return [{ asset_id: 'existing-id', valid_from: 't0', valid_to: null, size: bytes.length, hash, mime_type: 'image/png', external_mtime: null }];
       }
-      if (cmd === 'db_store_asset') return 'existing-id';
+      // storeAssetRaw → invoke('db_store_asset_raw', dataUint8Array, {headers}).
+      // The mock keys on the command name (first arg), so the new call
+      // shape (cmd, data, options) still resolves here.
+      if (cmd === 'db_store_asset_raw') return 'existing-id';
       if (cmd === 'db_get_project_id') return 'project-1';
       throw new Error(`unexpected invoke: ${cmd}`);
     });
@@ -98,6 +101,13 @@ describe('storeAssetWithCollisionCheck — invalidation gating', () => {
 
     expect(result.cancelled).toBe(false);
     expect(result.assetId).toBe('existing-id');
+    // New call shape: bytes are the raw 2nd arg (memcpy body), metadata
+    // rides in the x-asset-meta header — not the old (cmd, {path,data,…}).
+    expect(mockedInvoke).toHaveBeenCalledWith(
+      'db_store_asset_raw',
+      bytes,
+      expect.objectContaining({ headers: expect.objectContaining({ 'x-asset-meta': expect.any(String) }) }),
+    );
     // The critical assertion: cache was NOT invalidated because the
     // bytes didn't change. If this regresses, every no-op re-add of a
     // big PDF triggers a 40s pdfium re-parse on next render.
@@ -126,7 +136,10 @@ describe('storeAssetWithCollisionCheck — invalidation gating', () => {
           { asset_id: 'existing-id', valid_from: 't0', valid_to: 't1', size: 5, hash: originalHash, mime_type: 'image/png', external_mtime: null },
         ];
       }
-      if (cmd === 'db_store_asset') return 'existing-id';
+      // storeAssetRaw → invoke('db_store_asset_raw', dataUint8Array, {headers}).
+      // The mock keys on the command name (first arg), so the new call
+      // shape (cmd, data, options) still resolves here.
+      if (cmd === 'db_store_asset_raw') return 'existing-id';
       if (cmd === 'db_get_project_id') return 'project-1';
       throw new Error(`unexpected invoke: ${cmd}`);
     });

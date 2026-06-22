@@ -634,10 +634,10 @@ function App() {
       const { handleSvgExternalRefs, invalidateRenderedAsset } = await import('./lib/assetRenderer');
       const updated = await handleSvgExternalRefs(bytes, relativePath, fullPath);
       if (updated) {
-        const { invoke } = await import('@tauri-apps/api/core');
+        const { storeAssetRaw } = await import('./lib/assetInsert');
         // Embed snapshot clears the source link (no more watching).
         // Same assetId — embed is a new version of the same asset.
-        await invoke('db_store_asset', { path: relativePath, data: updated, mimeType: mime, externalPath: null, externalMtime: null, assetId });
+        await storeAssetRaw({ path: relativePath, mimeType: mime, externalPath: null, externalMtime: null, assetId }, updated);
         await invalidateRenderedAsset(assetId);
       }
     }
