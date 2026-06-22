@@ -9,11 +9,11 @@ Eigendeck is a Tauri v2 desktop app for building presentations with embedded int
 - **Frontend**: React + TypeScript + Vite
 - **Backend**: Tauri v2 (Rust)
 - **Text editing**: Native contentEditable (no TipTap)
-- **Math**: MathJax 4 with custom PT Sans math font (SVG output)
+- **Math**: MathJax 4 with custom math-font packs — one per text font (SVG output)
 - **Presentation**: Custom renderer (no reveal.js)
 - **State**: Zustand + zundo (undo/redo)
 - **Testing**: Vitest with jsdom
-- **Fonts**: PT Sans, PT Sans Narrow (bundled TTF)
+- **Fonts**: 16 bundled families (PT Sans/Narrow/Mono, Lato, Shantell, Source Sans/Code, Noto Sans, Libertinus/Sans, Latin Modern Sans, Concrete+Euler, CMU Typewriter, Fira Code, IBM Plex Mono, Inconsolata, JetBrains Mono) — mostly SIL OFL; each has a matching MathJax math pack. See `src/lib/fontRegistry.mjs`.
 
 ## Prerequisites
 
@@ -57,7 +57,7 @@ cd src-tauri && cargo check && cargo clippy -- -D warnings
   - `types/` — Presentation/Slide/Element TypeScript types
   - `lib/` — MathJax integration (mathjax.ts)
 - `src-tauri/` — Rust backend, Tauri config, native menu
-- `public/fonts/` — PT Sans font files
+- `public/fonts/` — bundled font families (16 of them; see `fontRegistry.mjs`)
 - `public/mathjax/` — MathJax bundle (gitignored, copy from mathjax-ptsans-bundle/)
 - `mathjax-ptsans-bundle/` — MathJax source + build configs
 - `examples/` — 3 example presentations
