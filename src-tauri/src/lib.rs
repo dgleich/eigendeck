@@ -1,8 +1,25 @@
 
 pub mod storage;
 
-use tauri::menu::{CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+use tauri::menu::{AboutMetadataBuilder, CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+use tauri::image::Image;
 use tauri::{Emitter, Manager};
+
+/// Credits shown in the native About panel (macOS `credits` area; folded into
+/// `comments` for the Windows/Linux dialogs, where `credits` is unsupported).
+const ABOUT_CREDITS: &str = "Created by David Gleich\n\n\
+Built with Tauri, React, Zustand, Vite, CodeMirror, MathJax, highlight.js, \
+marked, modern-screenshot, SQLite (rusqlite), and PDFium.\n\n\
+Fonts: PT Sans & PT Sans Narrow, and the MathJax math-font packs — SIL OFL 1.1.";
+
+/// The app icon as a tauri Image, decoded from the bundled PNG via the `image`
+/// crate. Set explicitly so the native About panel shows the real icon even in
+/// `tauri dev` (where there's no bundle .icns to auto-pick).
+fn app_about_icon() -> Option<Image<'static>> {
+    let img = image::load_from_memory(include_bytes!("../icons/128x128.png")).ok()?.to_rgba8();
+    let (w, h) = img.dimensions();
+    Some(Image::new_owned(img.into_raw(), w, h))
+}
 
 mod clip;
 mod debug;
@@ -418,11 +435,22 @@ fn update_recent_menu(app: tauri::AppHandle, projects: Vec<serde_json::Value>) -
 
 /// Build the complete application menu bar. Called from both setup() and update_recent_menu().
 fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Submenu<tauri::Wry>>) -> Result<tauri::menu::Menu<tauri::Wry>, String> {
+    // Native, cross-platform About panel (macOS standard panel; built-in dialog
+    // on Windows/Linux) — with the real icon, author, copyright, website, and
+    // the OSS + fonts credits.
+    let about_meta = AboutMetadataBuilder::new()
+        .name(Some("Eigendeck"))
+        .version(Some(env!("CARGO_PKG_VERSION")))
+        .authors(Some(vec!["David Gleich".to_string()]))
+        .copyright(Some("© 2026 David Gleich"))
+        .website(Some("https://github.com/dgleich/eigendeck"))
+        .website_label(Some("GitHub"))
+        .comments(Some(ABOUT_CREDITS))
+        .credits(Some(ABOUT_CREDITS))
+        .icon(app_about_icon())
+        .build();
     let app_menu = SubmenuBuilder::new(app, "Eigendeck")
-        // Routes to the rich React AboutModal (id `about-eigendeck`) instead of
-        // the bare native panel, so we can credit the bundled OSS + fonts.
-        .item(&MenuItemBuilder::new("About Eigendeck").id("about-eigendeck")
-            .build(app).map_err(|e| e.to_string())?)
+        .about(Some(about_meta))
         .separator()
         .services()
         .separator()
@@ -596,15 +624,12 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .minimize().maximize().separator().close_window()
         .build().map_err(|e| e.to_string())?;
 
-    // Help menu — last in the bar (macOS convention). Both items route to the
-    // frontend via the catch-all `menu-event` emit: `help-github` opens the
-    // repo URL with the opener plugin; `about-eigendeck` opens the AboutModal
-    // (same id the Eigendeck-menu About item uses).
+    // Help menu — last in the bar (macOS convention). Placeholder for now (the
+    // user manual is TODO, #93); the OSS/font credits live in the native About
+    // panel (Eigendeck → About Eigendeck). `help-github` opens the repo URL via
+    // the opener plugin (routed through the catch-all `menu-event` emit).
     let help_menu = SubmenuBuilder::new(app, "Help")
         .item(&MenuItemBuilder::new("Eigendeck on GitHub").id("help-github")
-            .build(app).map_err(|e| e.to_string())?)
-        .separator()
-        .item(&MenuItemBuilder::new("Acknowledgements…").id("about-eigendeck")
             .build(app).map_err(|e| e.to_string())?)
         .build()
         .map_err(|e| e.to_string())?;
