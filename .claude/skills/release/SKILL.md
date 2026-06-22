@@ -26,8 +26,9 @@ The open-source + font list lives in THREE places that must agree:
 - `ABOUT_CREDITS` in `src-tauri/src/lib.rs` — the Windows/Linux About text.
 - the **Fonts** line in `CLAUDE.md`.
 
-All bundled fonts are **SIL OFL 1.1**; the font set is `src/lib/fontRegistry.mjs`
-(16 families). Keep the credit names matching the picker labels.
+All bundled fonts are **SIL OFL 1.1**; the set is `src/lib/fontRegistry.mjs` —
+**10 font families** (`FONT_PACKAGES`, each with a math pack) + monospace code
+fonts (`MONO_FONT_PACKAGES`, no math). Keep credit names matching the picker labels.
 
 ### 3. Bump the version everywhere
 Same YY.M.D (today's date) in ALL of:

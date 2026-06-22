@@ -21,7 +21,7 @@
 
 ## Features
 
-- **LaTeX math, matched to your type** — MathJax 4 with **16 bundled font families**, each paired with a custom math font so equations match the body text (PT Sans, Lato, Source Sans 3, Libertinus, Computer Modern, Noto Sans, Shantell, and more)
+- **LaTeX math, matched to your type** — MathJax 4 with **10 font families**, each paired with a custom math font so equations match the body text (PT Sans, Lato, Source Sans 3, Libertinus, Computer Modern Sans/Concrete, Noto Sans, Shantell, …), plus monospace fonts for code and notebooks
 - **Live IPython / Jupyter notebooks** — embed runnable notebooks (Pyodide/JupyterLite in-app, or an external Jupyter kernel); they render, scroll, and execute during your talk, and export as scrollable HTML
 - **Embedded interactive demos** — drop in HTML files with D3, Canvas, or WebGL that run live; split a demo into independently positionable pieces
 - **Video** — local files or YouTube / Vimeo / PeerTube embeds

@@ -10,10 +10,11 @@ use tauri::{Emitter, Manager};
 const ABOUT_CREDITS: &str = "Created by David Gleich\n\n\
 Built with Tauri, React, Zustand, Vite, CodeMirror, MathJax, highlight.js, \
 marked, modern-screenshot, SQLite (rusqlite), and PDFium.\n\n\
-Fonts — all SIL OFL 1.1: PT Sans, PT Sans Narrow, PT Mono, Lato, Shantell Sans, \
-Source Sans 3, Source Code Pro, Noto Sans, Libertinus, Libertinus Sans, Computer \
-Modern Sans, Computer Modern Concrete, Computer Modern Typewriter, Fira Code, \
-IBM Plex Mono, Inconsolata, JetBrains Mono.\n\n\
+Font families (SIL OFL 1.1, each with a matching math font): PT Sans, Lato, \
+Libertinus, Libertinus Sans, Computer Modern Sans, Noto Sans, Source Sans 3, \
+Source Code Pro, Shantell Sans, Computer Modern Concrete.\n\n\
+Monospace / code fonts (SIL OFL 1.1): Fira Code, IBM Plex Mono, Inconsolata, \
+JetBrains Mono, PT Mono, Computer Modern Typewriter.\n\n\
 Math is set with MathJax using custom math-font packs matched to these fonts.";
 
 /// The app icon as a tauri Image, decoded from the bundled PNG via the `image`
