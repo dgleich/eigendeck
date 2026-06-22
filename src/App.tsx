@@ -637,7 +637,7 @@ function App() {
         const { invoke } = await import('@tauri-apps/api/core');
         // Embed snapshot clears the source link (no more watching).
         // Same assetId — embed is a new version of the same asset.
-        await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });
+        await invoke('db_store_asset', { path: relativePath, data: updated, mimeType: mime, externalPath: null, externalMtime: null, assetId });
         await invalidateRenderedAsset(assetId);
       }
     }

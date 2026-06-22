@@ -240,11 +240,10 @@ export function SlideEditor() {
         const { invoke } = await import('@tauri-apps/api/core');
         // Paste: no source-on-disk path; pass null for externalPath so the
         // asset isn't watched (clipboard contents have no file to watch).
-        const tArr = performance.now();
-        const dataArr = Array.from(bytes);
-        plog(`Array.from(bytes) ${(bytes.length / 1024).toFixed(0)}KB → ${(performance.now() - tArr).toFixed(0)}ms`);
         const tStore = performance.now();
-        assetId = await invoke<string>('db_store_asset', { path: relativePath, data: dataArr, mimeType: mime, externalPath: null, externalMtime: null });
+        // Pass the Uint8Array directly — Tauri v2 sends it as raw bytes, so we
+        // skip the Array.from(…)→number[]→JSON step that froze the UI (#174).
+        assetId = await invoke<string>('db_store_asset', { path: relativePath, data: bytes, mimeType: mime, externalPath: null, externalMtime: null });
         plog(`db_store_asset: ${(performance.now() - tStore).toFixed(0)}ms`);
       } catch (e) {
         console.error('Failed to store pasted image:', e);

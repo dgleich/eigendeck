@@ -301,7 +301,10 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
 function toStoreArgs(a: StoreArgs): Record<string, unknown> {
   return {
     path: a.path,
-    data: Array.from(a.data),
+    // Pass the Uint8Array straight through — Tauri v2 transfers it as raw
+    // bytes (Vec<u8>). The old Array.from(…) built a multi-million-element
+    // number[] and JSON-serialized it, freezing the UI on large assets (#174).
+    data: a.data,
     mimeType: a.mimeType,
     externalPath: a.externalPath,
     externalMtime: a.externalMtime,

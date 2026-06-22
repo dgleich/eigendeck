@@ -141,7 +141,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
       const mtime = st?.mtime ? st.mtime.toISOString() : null;
       await invoke('db_store_asset', {
         path: meta.path,
-        data: Array.from(bytes),
+        data: bytes,
         mimeType: meta.mime_type ?? 'application/octet-stream',
         externalPath: meta.external_path,
         externalMtime: mtime,
@@ -175,7 +175,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
       const mtime = st?.mtime ? st.mtime.toISOString() : null;
       await invoke('db_store_asset', {
         path: meta.path,
-        data: Array.from(bytes),
+        data: bytes,
         mimeType: meta.mime_type ?? 'application/octet-stream',
         externalPath: picked,            // absolute — resolvePosixPath returns as-is
         externalMtime: mtime,
