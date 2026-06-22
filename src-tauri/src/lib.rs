@@ -1,7 +1,7 @@
 
 pub mod storage;
 
-use tauri::menu::{AboutMetadata, CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+use tauri::menu::{CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager};
 
 mod clip;
@@ -419,11 +419,10 @@ fn update_recent_menu(app: tauri::AppHandle, projects: Vec<serde_json::Value>) -
 /// Build the complete application menu bar. Called from both setup() and update_recent_menu().
 fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Submenu<tauri::Wry>>) -> Result<tauri::menu::Menu<tauri::Wry>, String> {
     let app_menu = SubmenuBuilder::new(app, "Eigendeck")
-        .about(Some(AboutMetadata {
-            name: Some("Eigendeck".into()),
-            version: Some(app.package_info().version.to_string()),
-            ..Default::default()
-        }))
+        // Routes to the rich React AboutModal (id `about-eigendeck`) instead of
+        // the bare native panel, so we can credit the bundled OSS + fonts.
+        .item(&MenuItemBuilder::new("About Eigendeck").id("about-eigendeck")
+            .build(app).map_err(|e| e.to_string())?)
         .separator()
         .services()
         .separator()
@@ -597,6 +596,19 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .minimize().maximize().separator().close_window()
         .build().map_err(|e| e.to_string())?;
 
+    // Help menu — last in the bar (macOS convention). Both items route to the
+    // frontend via the catch-all `menu-event` emit: `help-github` opens the
+    // repo URL with the opener plugin; `about-eigendeck` opens the AboutModal
+    // (same id the Eigendeck-menu About item uses).
+    let help_menu = SubmenuBuilder::new(app, "Help")
+        .item(&MenuItemBuilder::new("Eigendeck on GitHub").id("help-github")
+            .build(app).map_err(|e| e.to_string())?)
+        .separator()
+        .item(&MenuItemBuilder::new("Acknowledgements…").id("about-eigendeck")
+            .build(app).map_err(|e| e.to_string())?)
+        .build()
+        .map_err(|e| e.to_string())?;
+
     // Debug submenu — appended ONLY when launched with --debug. The flag is
     // read inside debug::attach_submenu_if_enabled; lib.rs never sees the bool.
     let debug_menu = debug::attach_submenu_if_enabled(app)?;
@@ -612,6 +624,8 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
     if let Some(ref dm) = debug_menu {
         bar = bar.item(dm);
     }
+    // Help last (after the optional Debug submenu) — macOS convention.
+    bar = bar.item(&help_menu);
     bar.build().map_err(|e| e.to_string())
 }
 

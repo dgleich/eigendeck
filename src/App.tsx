@@ -17,6 +17,7 @@ import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import { DebugMenu } from './debug';
 import { ToastHost } from './components/ToastHost';
 import { SettingsModal } from './components/SettingsModal';
+import { AboutModal } from './components/AboutModal';
 import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
 import { detachDelta, pasteElementDelta } from './lib/syncLink';
@@ -578,6 +579,7 @@ function App() {
   const [promoteCandidates, setPromoteCandidates] = useState<{ elementId: string; slideNo: number; summary: string }[] | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuEntry[] } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [multiMonitorPresenting, setMultiMonitorPresenting] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
@@ -1367,6 +1369,17 @@ function App() {
         case 'settings':
           setSettingsOpen(true);
           break;
+        case 'about-eigendeck':
+          setAboutOpen(true);
+          break;
+        case 'help-github': (async () => {
+          try {
+            const { openUrl } = await import('@tauri-apps/plugin-opener');
+            await openUrl('https://github.com/dgleich/eigendeck');
+          } catch (e) {
+            console.error('Open GitHub failed:', e);
+          }
+        })(); break;
         case 'presentation-settings':
         case 'deck-properties': {
           const s = usePresentationStore.getState();
@@ -1532,6 +1545,7 @@ function App() {
         />
       )}
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
       {videoModalOpen && (
         <div onClick={() => setVideoModalOpen(false)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
