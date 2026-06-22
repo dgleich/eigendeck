@@ -11,9 +11,9 @@ const ABOUT_CREDITS: &str = "Created by David Gleich\n\n\
 Built with Tauri, React, Zustand, Vite, CodeMirror, MathJax, highlight.js, \
 marked, modern-screenshot, SQLite (rusqlite), and PDFium.\n\n\
 Fonts — all SIL OFL 1.1: PT Sans, PT Sans Narrow, PT Mono, Lato, Shantell Sans, \
-Source Sans, Source Code, Noto Sans, Libertinus, Libertinus Sans, Latin Modern \
-Sans, Concrete + AMS Euler, CMU Typewriter, Fira Code, IBM Plex Mono, \
-Inconsolata, JetBrains Mono.\n\n\
+Source Sans, Source Code, Noto Sans, Libertinus, Libertinus Sans, Computer \
+Modern Sans, Computer Modern Concrete, Computer Modern Typewriter, Fira Code, \
+IBM Plex Mono, Inconsolata, JetBrains Mono.\n\n\
 Math is set with MathJax using custom math-font packs matched to these fonts.";
 
 /// The app icon as a tauri Image, decoded from the bundled PNG via the `image`

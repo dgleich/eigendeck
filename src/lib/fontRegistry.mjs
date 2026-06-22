@@ -70,7 +70,7 @@ export const FONT_PACKAGES = [
   },
   {
     id: 'lm-sans',
-    label: 'CMU Sans',
+    label: 'Computer Modern Sans',
     family: "'CMU Sans Serif', sans-serif",
     mathjaxBundle: 'tex-mml-svg-mathjax-lm-sans-nosre.js',
     files: {
@@ -140,7 +140,7 @@ export const FONT_PACKAGES = [
   },
   {
     id: 'concrete-euler',
-    label: 'CMU Concrete + Euler',
+    label: 'Computer Modern Concrete',
     family: "'CMU Concrete', serif",
     mathjaxBundle: 'tex-mml-svg-mathjax-concrete-euler-nosre.js',
     files: {
@@ -257,7 +257,7 @@ export const MONO_FONT_PACKAGES = [
   },
   {
     id: 'cmu-typewriter',
-    label: 'CMU Typewriter',
+    label: 'Computer Modern Typewriter',
     family: "'CMU Typewriter Text', monospace",
     files: {
       kind: 'static', ext: 'ttf',
