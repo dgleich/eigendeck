@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Allow the app to load the bundled third-party pdfium dylib
+	  (Resources/resources/pdfium/libpdfium.dylib). Without this, macOS
+	  Library Validation rejects it: the app and the dylib are each ad-hoc
+	  signed with DIFFERENT identities (no Team ID), so LV sees a "different
+	  Team IDs" mismatch and refuses to map it — PDFs then fail to render in
+	  the distributed (signed) app, while working fine in `tauri dev` (no LV
+	  enforcement). Disabling LV is the standard fix for bundling a
+	  third-party dylib in a non-notarized, ad-hoc-signed app.
+	-->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+</dict>
+</plist>
