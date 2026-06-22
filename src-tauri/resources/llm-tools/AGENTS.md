@@ -55,7 +55,11 @@ __EIGENDECK_CLI_PATH__ deck.eigendeck compact                 # prune history, s
 Add `--json` to any read verb for machine-readable output.
 
 **Close the deck in the Eigendeck app before editing it from the CLI** — both
-write to the same SQLite file. Re-open it in the app afterwards to see changes.
+write to the same SQLite file, and the app's next save would overwrite your CLI
+edits. The CLI enforces this: write commands **refuse** while the deck is open
+(it detects the app's active WAL sidecar), printing a message. If you're sure the
+app isn't running (e.g. a leftover sidecar from a crash), re-run with `--force`.
+Re-open the deck in the app afterwards to see your changes.
 
 See **LLM-EDITING.md** for the full editing workflow and **SPEC.md** for the
 complete data model (slide/element schema, text presets, themes, config).

@@ -25,8 +25,11 @@ fn main() {
     let json_flag = args.iter().any(|a| a == "--json");
     JSON_OUTPUT.store(json_flag, Ordering::Relaxed);
 
-    // Filter --json from args so it doesn't interfere with verb parsing
-    let args: Vec<String> = args.into_iter().filter(|a| a != "--json").collect();
+    // --force bypasses the "deck is open in the editor" write guard (below).
+    let force = args.iter().any(|a| a == "--force");
+
+    // Filter flags from args so they don't interfere with verb parsing
+    let args: Vec<String> = args.into_iter().filter(|a| a != "--json" && a != "--force").collect();
 
     if args.len() < 3 {
         print_usage();
@@ -35,6 +38,27 @@ fn main() {
 
     let db_path = &args[1];
     let verb = &args[2];
+
+    // Guard: refuse to WRITE to a deck that's open in the GUI app. The app keeps
+    // a live SQLite WAL connection while a deck is open, so `<deck>-wal`/`-shm`
+    // sidecars exist (a clean close removes them). Editing the file underneath
+    // the app would be silently clobbered by the app's next save. Check BEFORE
+    // open_db (which would create our own sidecars). --force overrides.
+    const WRITE_VERBS: &[&str] = &[
+        "set-text", "add", "insert", "remove", "move", "edit",
+        "import", "store-asset", "compact", "unpack",
+    ];
+    if WRITE_VERBS.contains(&verb.as_str()) && !force {
+        let wal = format!("{}-wal", db_path);
+        let shm = format!("{}-shm", db_path);
+        if std::path::Path::new(&wal).exists() || std::path::Path::new(&shm).exists() {
+            eprintln!("Refusing to edit \"{}\": it looks open in Eigendeck (active WAL sidecar).", db_path);
+            eprintln!("Close the deck in the app first. If Eigendeck isn't running, this is a");
+            eprintln!("leftover from an unclean shutdown — open the deck and close it cleanly, or");
+            eprintln!("re-run with --force (which risks the app's next save overwriting CLI edits).");
+            process::exit(1);
+        }
+    }
 
     // Open the database using the library
     if let Err(e) = storage::open_db(db_path) {
@@ -105,7 +129,12 @@ Verbs:
   export json [output.json]     Export as presentation.json
   import json <input.json>      Import from presentation.json
   compact [--all]               Delete history, shrink DB
-  unpack [--demos] [--images]   Extract assets"
+  unpack [--demos] [--images]   Extract assets
+
+Flags:
+  --json                        Machine-readable output (read verbs)
+  --force                       Edit even if the deck is open in Eigendeck (risky:
+                                the app's next save can overwrite CLI edits)"
     );
 }
 
