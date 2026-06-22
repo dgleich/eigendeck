@@ -92,14 +92,20 @@ export function buildTextElementSvgMarkup(
   // Alt text comes from the SOURCE element.html (with $..$), not the
   // post-render html (which would have lost the math source to inline SVGs).
   const alt = altTextFromHtml(element.html);
-  // overflow="visible" attribute (not just CSS) — required for italic-glyph
-  // ink overhang. WebKit enforces UA-style overflow:hidden on <svg>/
-  // <foreignObject> per spec; only the presentation attribute lifts it.
+  // Clip the OUTER box to its bounds (overflow="hidden" attribute, not just CSS —
+  // WebKit's UA stylesheet already forces overflow:hidden on <svg>/<foreignObject>,
+  // and only the presentation attribute can change it). Content that overflows the
+  // box is cut off, matching edit mode (SlideElementRenderer's edit wrapper) and
+  // the editor — true WYSIWYG. This also kills the present-mode "pop" (#79): with
+  // nothing overflowing, the opacity-fade's box-clipped compositor buffer has no
+  // out-of-box ink to reveal late. Italic/integral GLYPH ink overhang is preserved
+  // by the INNER MathJax <svg> keeping overflow:visible (see mathjaxRenderer.ts) —
+  // that ink stays within the box, so this outer clip doesn't touch it.
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="${w}" height="${h}" overflow="visible" role="img" aria-label="${escAttr(alt)}" style="display:block;overflow:visible;">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="${w}" height="${h}" overflow="hidden" role="img" aria-label="${escAttr(alt)}" style="display:block;overflow:hidden;">` +
       `<title>${escText(alt)}</title>` +
-      `<foreignObject x="0" y="0" width="${w}" height="${h}" overflow="visible">` +
-        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(ctx.valign)};overflow:visible;box-sizing:border-box;">` +
+      `<foreignObject x="0" y="0" width="${w}" height="${h}" overflow="hidden">` +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(ctx.valign)};overflow:hidden;box-sizing:border-box;">` +
           `<div style="width:100%;font-family:${ctx.fontFamily};font-size:${ctx.fontSize}px;font-weight:${ctx.fontWeight};font-style:${ctx.fontStyle};color:${ctx.color};line-height:1.3;padding:8px 12px;${textShadow ? `text-shadow:${textShadow};` : ''}">` +
             (renderedHtml || '') +
           `</div>` +
