@@ -556,7 +556,7 @@ export function createTextElement(preset: TextPreset, overrides?: Partial<Elemen
     body:       { x: 80,  y: 240,  width: 1760, height: 760 },
     textbox:    { x: 200, y: 320,  width: 800,  height: 320 },
     annotation: { x: 200, y: 720,  width: 600,  height: 160 },
-    footnote:   { x: 80,  y: 1040, width: 1000, height: 40  },
+    footnote:   { x: 80,  y: 1000, width: 1000, height: 40  },
     hype:       { x: 720, y: 360,  width: 560,  height: 360 },
   };
 
