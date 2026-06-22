@@ -15,7 +15,11 @@ Libertinus, Libertinus Sans, Computer Modern Sans, Noto Sans, Source Sans 3, \
 Source Code Pro, Shantell Sans, Computer Modern Concrete.\n\n\
 Monospace / code fonts (SIL OFL 1.1): Fira Code, IBM Plex Mono, Inconsolata, \
 JetBrains Mono, PT Mono, Computer Modern Typewriter.\n\n\
-Math is set with MathJax using custom math-font packs matched to these fonts.";
+Math is set with MathJax using custom math-font packs matched to these fonts.\n\n\
+Developed with the assistance of Anthropic's Claude (Claude Code). AI-assisted \
+coding means parts of this software may reproduce patterns from copyrighted code \
+without attribution; no claim of original authorship is made over such portions, \
+and credits or corrections are welcome.";
 
 /// The app icon as a tauri Image, decoded from the bundled PNG via the `image`
 /// crate. Set explicitly so the native About panel shows the real icon even in
