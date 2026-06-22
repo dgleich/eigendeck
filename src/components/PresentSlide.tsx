@@ -14,6 +14,7 @@ import { buildEmbedSrc } from '../lib/videoEmbed';
 import type { Presentation, Slide, SlideElement, TextElement } from '../types/presentation';
 import { TextElementSvg } from './TextElementSvg';
 import { NotebookContent } from './notebook/NotebookContent';
+import { useDemoThemeInjection } from '../lib/demoThemeInject';
 
 export interface PresentCtx {
   slide: Slide;
@@ -32,9 +33,9 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
     case 'image':
       return <PresentImage element={el} zIndex={zIndex} style={style} />;
     case 'demo':
-      return <PresentDemoIframe assetId={el.assetId} pos={pos} zIndex={zIndex} style={style} />;
+      return <PresentDemoIframe assetId={el.assetId} pos={pos} zIndex={zIndex} style={style} ctx={ctx} />;
     case 'demo-piece':
-      return <PresentDemoIframe assetId={el.assetId} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} style={style} />;
+      return <PresentDemoIframe assetId={el.assetId} hash={`piece=${el.piece}`} title={`demo-piece: ${el.piece}`} pos={pos} zIndex={zIndex} style={style} ctx={ctx} />;
     case 'video':
       return <PresentVideo element={el} zIndex={zIndex} style={style} />;
     case 'notebook':
@@ -138,14 +139,18 @@ function PresentVideo({ element: el, zIndex, style }: {
   );
 }
 
-function PresentDemoIframe({ assetId, hash, title, pos, zIndex, style }: {
+function PresentDemoIframe({ assetId, hash, title, pos, zIndex, style, ctx }: {
   assetId: string; hash?: string; title?: string;
-  pos: { x: number; y: number; width: number; height: number }; zIndex: number; style?: React.CSSProperties;
+  pos: { x: number; y: number; width: number; height: number }; zIndex: number;
+  style?: React.CSSProperties; ctx?: PresentCtx;
 }) {
   const src = useDemoUrl(assetId, hash);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  // Inject the deck's fonts + theme vars (#86) into the demo's contentDocument.
+  useDemoThemeInjection(iframeRef, ctx?.presentationConfig as any, ctx?.presentationTheme || 'white', ctx?.slide, src);
   if (!src) return null;
   return (
-    <iframe src={src} sandbox="allow-scripts allow-same-origin" title={title || 'demo'} style={{
+    <iframe ref={iframeRef} src={src} sandbox="allow-scripts allow-same-origin" title={title || 'demo'} style={{
       position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, border: 'none', zIndex, ...style,
     }} />
   );

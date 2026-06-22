@@ -21,6 +21,7 @@ import {
 import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { buildTextElementSvgMarkup } from '../components/TextElementSvg';
+import { demoVarsCssForSlide } from '../lib/demoThemeInject';
 import { previewKey, loadPreviewDataUrl } from '../lib/previewCache';
 import { ASSET_TIER } from '../lib/assetCache';
 import { renderAsset } from '../lib/assetRenderer';
@@ -365,6 +366,9 @@ export async function buildPresentationExportHtml(
     // iframe pool — see makeTextElementRenderer.
     renderTextElement: makeTextElementRenderer(presentation),
     fontFacesCss,
+    // Per-slide demo theme vars (#86): demos inherit the deck's fonts + theme
+    // via injected --eigendeck-* custom properties (opt-in in demo CSS).
+    demoThemeVarsCss: (slide: Slide) => demoVarsCssForSlide(presentation.config, presentation.theme, slide),
     // Rasterized/cached preview PNGs for elements that can't be rendered
     // statically from source bytes in a plain <img> (pdf images, notebooks,
     // file videos). Mirrors the static on-screen renderer (SlideThumbnail).

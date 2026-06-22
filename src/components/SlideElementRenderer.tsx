@@ -5,6 +5,7 @@ import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentati
 import { getPreference } from '../lib/preferences';
 import { snapToGrid } from '../lib/grid';
 import { useDemoUrl } from '../lib/demoAssets';
+import { useDemoThemeInjection } from '../lib/demoThemeInject';
 import { capturePreview } from '../lib/previewCache';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
 import { buildEmbedSrc } from '../lib/videoEmbed';
@@ -323,6 +324,11 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
   }, [element.assetId]);
   const src = useDemoUrl(element.assetId);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  // Inject the deck's fonts + theme vars (#86) into the demo's contentDocument.
+  const demoConfig = usePresentationStore((s) => s.presentation.config);
+  const demoTheme = usePresentationStore((s) => s.presentation.theme);
+  const demoSlide = usePresentationStore((s) => s.presentation.slides[s.currentSlideIndex]);
+  useDemoThemeInjection(iframeRef, demoConfig, demoTheme, demoSlide, reloadKey);
   // Proactively cache a PNG preview of the rendered demo (sidebar thumbs /
   // export) once it's loaded + settled. The demo is a same-origin blob iframe,
   // so capturePreview reaches its contentDocument. Debounced; re-runs on
@@ -383,6 +389,12 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
     return () => window.removeEventListener('eigendeck:asset-changed', onChanged as EventListener);
   }, [element.assetId]);
   const src = useDemoUrl(element.assetId, `piece=${element.piece}`);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  // Inject the deck's fonts + theme vars (#86) into the demo's contentDocument.
+  const demoConfig = usePresentationStore((s) => s.presentation.config);
+  const demoTheme = usePresentationStore((s) => s.presentation.theme);
+  const demoSlide = usePresentationStore((s) => s.presentation.slides[s.currentSlideIndex]);
+  useDemoThemeInjection(iframeRef, demoConfig, demoTheme, demoSlide, reloadKey);
   // Cache a preview of the rendered demo-piece (see DemoBox). One 'preview' per
   // element key — no phase variants yet.
   useEffect(() => {
@@ -402,7 +414,7 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
       onPositionChange={(pos) => onUpdate({ position: pos } as any)}
     >
       {src ? (
-        <iframe key={reloadKey} src={src} sandbox="allow-scripts allow-same-origin" title={`demo-piece: ${element.piece}`}
+        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox="allow-scripts allow-same-origin" title={`demo-piece: ${element.piece}`}
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
       ) : <div style={{ padding: 20, color: '#999' }}>Demo piece: #{element.piece}</div>}
       {!interacting && (

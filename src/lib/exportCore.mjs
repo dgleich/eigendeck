@@ -1,3 +1,5 @@
+import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
+
 /**
  * Shared HTML export logic.
  *
@@ -294,6 +296,14 @@ export async function buildExportHtml(opts) {
      * Signature: (element, slide) => Promise<string | null> | string | null
      */
     renderNotebookElement,
+    /**
+     * Optional: per-slide demo theme vars (#86). Returns the
+     * `:root{--eigendeck-*}` block for a slide's resolved theme + fonts, which
+     * is spliced (with `fontFacesCss`) into each demo's srcdoc so demos match
+     * the deck. App export supplies this; the headless CLI omits it (demos then
+     * get fonts only). Signature: (slide) => string | undefined
+     */
+    demoThemeVarsCss,
   } = opts;
 
   const W = presentation.config?.width || 1920;
@@ -402,7 +412,8 @@ export async function buildExportHtml(opts) {
         }
         case 'demo':
           try {
-            const demoHtml = await readTextFile(el.src);
+            let demoHtml = await readTextFile(el.src);
+            demoHtml = injectDemoThemeIntoHtml(demoHtml, fontFacesCss || '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
             const escaped = htmlEscapeForSrcdoc(demoHtml);
             inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
           } catch (e) { console.error('Demo export failed:', e); }
@@ -412,7 +423,8 @@ export async function buildExportHtml(opts) {
           try {
             const demoHtml = await readTextFile(el.demoSrc);
             const channelKey = `slide${i}-${el.demoSrc.replace(/[^a-z0-9]/gi, '')}`;
-            const pieceHtml = injectDemoBootstrap(demoHtml, `#piece=${el.piece}`, channelKey);
+            let pieceHtml = injectDemoBootstrap(demoHtml, `#piece=${el.piece}`, channelKey);
+            pieceHtml = injectDemoThemeIntoHtml(pieceHtml, fontFacesCss || '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
             const escaped = htmlEscapeForSrcdoc(pieceHtml);
             inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
           } catch (e) { console.error('Demo piece export failed:', e); }
