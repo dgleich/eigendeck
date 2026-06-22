@@ -13,7 +13,7 @@ Eigendeck is a Tauri v2 desktop app for building presentations with embedded int
 - **Presentation**: Custom renderer (no reveal.js)
 - **State**: Zustand + zundo (undo/redo)
 - **Testing**: Vitest with jsdom
-- **Fonts**: 16 bundled families (PT Sans/Narrow/Mono, Lato, Shantell, Source Sans/Code, Noto Sans, Libertinus/Sans, Latin Modern Sans, Concrete+Euler, CMU Typewriter, Fira Code, IBM Plex Mono, Inconsolata, JetBrains Mono) — mostly SIL OFL; each has a matching MathJax math pack. See `src/lib/fontRegistry.mjs`.
+- **Fonts**: 16 bundled families (PT Sans/Narrow/Mono, Lato, Shantell, Source Sans/Code, Noto Sans, Libertinus/Sans, Latin Modern Sans, Concrete+Euler, CMU Typewriter, Fira Code, IBM Plex Mono, Inconsolata, JetBrains Mono) — all SIL OFL 1.1; each has a matching MathJax math pack. See `src/lib/fontRegistry.mjs`.
 
 ## Prerequisites
 
