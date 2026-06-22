@@ -418,6 +418,41 @@ ${slideHtmls.join('\n')}
   }
 }
 
+/** File → Install LLM Tools… — pick a folder, write the kit, reveal it. */
+async function installLlmTools() {
+  const { open, message } = await import('@tauri-apps/plugin-dialog');
+  const selected = await open({
+    directory: true,
+    title: 'Choose where to install the LLM tools',
+  });
+  if (!selected) return; // cancelled
+  const targetDir = selected as string;
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const dir = await withBusy('Installing LLM tools…', () =>
+      invoke<string>('install_llm_tools', { targetDir }));
+    await message(
+      `Installed the Eigendeck LLM tools to:\n\n${dir}\n\n` +
+      'Point your AI coding agent (Claude Code, etc.) at this folder — start with AGENTS.md.',
+      { title: 'Install LLM Tools', kind: 'info' },
+    );
+    try {
+      const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
+      await revealItemInDir(dir);
+    } catch {
+      try {
+        const { openPath } = await import('@tauri-apps/plugin-opener');
+        await openPath(dir);
+      } catch { /* reveal is best-effort */ }
+    }
+  } catch (e) {
+    console.error('Install LLM tools failed:', e);
+    await message(`Could not install the LLM tools:\n\n${e}`, {
+      title: 'Install LLM Tools', kind: 'error',
+    });
+  }
+}
+
 /** Build a minimal PDF from JPEG images (one per page) */
 /** @internal — kept for future direct PDF export */
 export function buildPdf(images: Uint8Array[], pageW: number, pageH: number): Uint8Array {
@@ -1306,6 +1341,7 @@ function App() {
         case 'export-pdf': printToPdf(); break;
         case 'export-pdf-screenshots': exportPdfScreenshots(); break;
         case 'import-html': importFromHtml(); break;
+        case 'install-llm-tools': void installLlmTools(); break;
         case 'present': startPresenting(); break;
         case 'screen-share-present': flushToSqlite().then(() => startScreenSharePresenting()); break;
         case 'test-present-single': flushToSqlite().then(() => startPresentingSingle()); break;

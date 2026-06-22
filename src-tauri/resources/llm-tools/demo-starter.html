@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+/* REQUIRED: html/body need explicit 100% size or the iframe collapses. */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; }
+body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
+
+/* PREFIX every selector with a unique demo name to avoid clashes. */
+.starter-main {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: #fafafa; color: #222;
+}
+</style>
+<!-- Load any CDN libraries here, before the script:
+     <script src="https://d3js.org/d3.v7.min.js"></script> -->
+<script>
+(function () {
+  // Standalone demo. For multi-piece demos (controller + viewports over
+  // BroadcastChannel), see DEMO_AUTHORING.md.
+  function setup() {
+    const root = document.createElement('div');
+    root.className = 'starter-main';
+
+    // === Put your demo here ===
+    root.textContent = 'Hello from your demo';
+    // ==========================
+
+    document.body.appendChild(root);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setup);
+  } else {
+    setup();
+  }
+})();
+</script>
+</head>
+<body></body>
+</html>

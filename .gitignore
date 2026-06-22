@@ -46,6 +46,13 @@ website/
 # mathjax-fonts repo (cloned as sibling at setup time)
 mathjax-fonts/
 
+# LLM-tools kit: the 4 docs below are copied from the repo root by build.rs
+# (generated duplicates). AGENTS.md / CLAUDE.md / demo-starter.html stay committed.
+src-tauri/resources/llm-tools/LLM-EDITING.md
+src-tauri/resources/llm-tools/SPEC.md
+src-tauri/resources/llm-tools/DEMO_AUTHORING.md
+src-tauri/resources/llm-tools/DEMO_SPEC.md
+
 # Python bytecode cache (tools/)
 __pycache__/
 

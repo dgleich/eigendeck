@@ -6,6 +6,7 @@ use tauri::{Emitter, Manager};
 
 mod clip;
 mod debug;
+mod llmtools;
 mod pasteboard;
 mod pdf;
 use std::sync::Mutex;
@@ -454,6 +455,8 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build(app).map_err(|e| e.to_string())?;
     let import_item = MenuItemBuilder::new("Import from HTML...").id("import-html")
         .build(app).map_err(|e| e.to_string())?;
+    let install_llm_tools_item = MenuItemBuilder::new("Install LLM Tools…").id("install-llm-tools")
+        .build(app).map_err(|e| e.to_string())?;
     let presentation_settings_item = MenuItemBuilder::new("Presentation Settings...").id("presentation-settings")
         .build(app).map_err(|e| e.to_string())?;
     let gc_assets_item = MenuItemBuilder::new("Compact (Free Unused Assets)").id("gc-assets")
@@ -473,6 +476,8 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .item(&export_pdf_item)
         .item(&export_pdf_ss_item)
         .item(&import_item)
+        .separator()
+        .item(&install_llm_tools_item)
         .separator()
         .item(&presentation_settings_item)
         .item(&gc_assets_item)
@@ -692,6 +697,7 @@ pub fn run() {
             show_unsaved_dialog,
             cli_export_args,
             cli_write_and_exit,
+            llmtools::install_llm_tools,
         ])
         // MUST be the first plugin. A second launch (e.g. double-clicking
         // another .eigendeck while the app is open) forwards its args to THIS
