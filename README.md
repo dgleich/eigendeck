@@ -21,13 +21,16 @@
 
 ## Features
 
-- **LaTeX math** — MathJax 4 with custom font integration (PT Sans, Lato)
-- **Embedded demos** — Drop in HTML files with D3, Canvas, WebGL visualizations that run live during your talk
-- **Freeform canvas** — 1920×1080 canvas, every element positioned freely
-- **Single-file format** — `.eigendeck` SQLite file with temporal versioning and history
-- **Self-contained export** — Export to a single HTML file that works in any browser
-- **Multi-piece demos** — Split interactive demos into independently positionable pieces
-- **Native app** — Built with Tauri v2. Fast, lightweight, macOS/Linux/Windows
+- **LaTeX math, matched to your type** — MathJax 4 with **16 bundled font families**, each paired with a custom math font so equations match the body text (PT Sans, Lato, Source Sans 3, Libertinus, Computer Modern, Noto Sans, Shantell, and more)
+- **Live IPython / Jupyter notebooks** — embed runnable notebooks (Pyodide/JupyterLite in-app, or an external Jupyter kernel); they render, scroll, and execute during your talk, and export as scrollable HTML
+- **Embedded interactive demos** — drop in HTML files with D3, Canvas, or WebGL that run live; split a demo into independently positionable pieces
+- **Video** — local files or YouTube / Vimeo / PeerTube embeds
+- **Dual-monitor presenter** — speaker notes + next-slide preview on one screen, the deck on the projector; or a chromeless screen-share mode
+- **Freeform canvas** — 1920×1080, every element positioned freely; themes, cover/reveal masks, and slide groups for builds
+- **Single-file format** — `.eigendeck` SQLite file with temporal versioning and full edit history
+- **Self-contained export** — interactive single-file HTML (live demos + notebooks), plus print-to-PDF (vector) and quick screenshot PDF
+- **LLM-assisted editing** — `eigendeck-cli` edits decks at rest (every change is undo-safe); **File → Install LLM Tools** drops a ready-to-use kit for Claude Code and other agents
+- **Native app** — built with Tauri v2; fast, lightweight, macOS / Linux / Windows
 
 ## Getting Started
 

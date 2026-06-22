@@ -28,6 +28,10 @@ const MATHJAX_FONTS_DIR = existsSync(SIBLING_DIR) ? SIBLING_DIR
 const PUBLIC_MATHJAX = resolve(REPO_ROOT, 'public/mathjax');
 
 const MATHJAX_FONTS_REPO = 'https://github.com/dgleich/mathjax-fonts.git';
+// Pinned commit for reproducible fresh clones. Bump this when moving to a newer
+// mathjax-fonts build. An existing sibling clone is used as-is (we only warn if
+// its HEAD differs — don't disturb a clone the maintainer develops in).
+const MATHJAX_FONTS_COMMIT = '34075ed04fe7db9153772948c2b1e0938fcd63a0';
 
 // Packages to copy from mathjax-fonts. Source is the -nosre.js bundle (no
 // SpeechRuleEngine — required for Tauri's restricted WebKit Worker). They are
@@ -54,17 +58,30 @@ function log(msg) {
 function ensureMathjaxFontsRepo() {
   if (existsSync(MATHJAX_FONTS_DIR) && statSync(MATHJAX_FONTS_DIR).isDirectory()) {
     log(`Found mathjax-fonts at ${MATHJAX_FONTS_DIR}`);
+    // Use the existing clone as-is (the maintainer may be developing in it), but
+    // flag a drift from the pinned commit so reproducible builds are obvious.
+    try {
+      const head = execSync('git rev-parse HEAD', { cwd: MATHJAX_FONTS_DIR }).toString().trim();
+      if (head !== MATHJAX_FONTS_COMMIT) {
+        log(`NOTE: mathjax-fonts HEAD ${head.slice(0, 9)} ≠ pinned ${MATHJAX_FONTS_COMMIT.slice(0, 9)} — using the working tree as-is. ` +
+            `For the pinned build: (cd "${MATHJAX_FONTS_DIR}" && git checkout ${MATHJAX_FONTS_COMMIT}).`);
+      }
+    } catch { /* not a git checkout / git unavailable — ignore */ }
     return true;
   }
-  log(`Cloning mathjax-fonts into ${MATHJAX_FONTS_DIR}...`);
+  log(`Cloning mathjax-fonts @ ${MATHJAX_FONTS_COMMIT.slice(0, 9)} into ${MATHJAX_FONTS_DIR}...`);
   try {
-    execSync(`git clone --depth 1 ${MATHJAX_FONTS_REPO} "${MATHJAX_FONTS_DIR}"`, {
+    execSync(`git clone ${MATHJAX_FONTS_REPO} "${MATHJAX_FONTS_DIR}"`, {
       stdio: 'inherit',
       cwd: SIBLING_PARENT,
     });
+    execSync(`git checkout ${MATHJAX_FONTS_COMMIT}`, {
+      stdio: 'inherit',
+      cwd: MATHJAX_FONTS_DIR,
+    });
     return true;
   } catch (e) {
-    log(`WARN: failed to clone mathjax-fonts (${e.message})`);
+    log(`WARN: failed to clone/checkout mathjax-fonts (${e.message})`);
     return false;
   }
 }
