@@ -16,10 +16,10 @@ Source Code Pro, Shantell Sans, Computer Modern Concrete.\n\n\
 Monospace / code fonts (SIL OFL 1.1): Fira Code, IBM Plex Mono, Inconsolata, \
 JetBrains Mono, PT Mono, Computer Modern Typewriter.\n\n\
 Math is set with MathJax using custom math-font packs matched to these fonts.\n\n\
-Developed with the assistance of Anthropic's Claude (Claude Code). AI-assisted \
-coding means parts of this software may reproduce patterns from copyrighted code \
-without attribution; no claim of original authorship is made over such portions, \
-and credits or corrections are welcome.";
+Built with LLMs. Developed with the assistance of Anthropic's Claude (Claude Code).\n\n\
+We acknowledge that LLM-assisted coding products pose complex societal questions \
+without clear answers regarding copyrighted code that may have been used in \
+training without acknowledgement.";
 
 /// The app icon as a tauri Image, decoded from the bundled PNG via the `image`
 /// crate. Set explicitly so the native About panel shows the real icon even in
