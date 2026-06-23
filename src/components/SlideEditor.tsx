@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { usePreference } from '../lib/preferences';
+import { extractDemoPieceNames } from '../lib/demoPieces';
 import { captureHtmlToPng, looksLikeRichHtml } from '../lib/htmlPasteCapture';
 import { relPath } from '../App';
 import { useDemoUrl } from '../lib/demoAssets';
@@ -581,8 +582,7 @@ export function SlideEditor() {
 
                   // Detect demo-piece demos
                   const html = await readTextFile(fullPath);
-                  const pieceMatches = html.matchAll(/piece\s*===?\s*['"](\w+)['"]/g);
-                  const pieces = [...new Set([...pieceMatches].map((m: RegExpMatchArray) => m[1]))];
+                  const pieces = extractDemoPieceNames(html);
 
                   if (pieces.length > 0 && html.includes('BroadcastChannel')) {
                     let x = 80;

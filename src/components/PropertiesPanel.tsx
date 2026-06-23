@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, parsePalette, type NamedSize } from '../types/presentation';
 import { BUILT_IN_THEMES } from '../lib/themes';
+import { extractDemoPieceNames } from '../lib/demoPieces';
 import { FONT_PACKAGES } from '../lib/fonts';
 import { listMonoEligible } from '../lib/notebookFonts';
 import type { VerticalAlign } from '../types/presentation';
@@ -723,11 +724,7 @@ function DemoPieceProperties({ element }: { element: Extract<import('../types/pr
         ]);
         setDemoPath(meta?.path ?? '');
         const html = new TextDecoder().decode(new Uint8Array(data));
-        // [\w-]+ not \w+ so hyphenated piece names (e.g. "force-graph") aren't
-        // truncated at the hyphen (#44).
-        const matches = html.matchAll(/piece\s*===?\s*['"]([\w-]+)['"]/g);
-        const pieces = [...new Set([...matches].map((m: RegExpMatchArray) => m[1]))];
-        setAvailablePieces(pieces);
+        setAvailablePieces(extractDemoPieceNames(html));
       } catch { setAvailablePieces([]); }
     })();
   }, [element.assetId]);

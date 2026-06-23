@@ -48,6 +48,7 @@ import { BusyOverlay } from './components/BusyOverlay';
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
+import { extractDemoPieceNames } from './lib/demoPieces';
 import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement, textElementClipboardHtml } from './lib/elementClipboard';
 import { TEXT_PRESET_STYLES, effectiveFontSize, textShadowCss } from './types/presentation';
 import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
@@ -666,8 +667,7 @@ function App() {
 
       // Check if this is a demo-piece demo
       const html = await readTextFile(fullPath);
-      const pieceMatches = html.matchAll(/piece\s*===?\s*['"](\w+)['"]/g);
-      const pieces = [...new Set([...pieceMatches].map(m => m[1]))];
+      const pieces = extractDemoPieceNames(html);
 
       if (pieces.length > 0 && html.includes('BroadcastChannel')) {
         let x = 80;
