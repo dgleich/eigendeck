@@ -5,6 +5,65 @@ End-to-end tests that drive the **real built app** via `tauri-driver` +
 that unit tests (mocked `invoke`) cannot — e.g. overlay load/merge,
 persistence, and the duplicate→share flow.
 
+## Gating suite (`npm run test:e2e`)
+
+`e2e/run-all.sh` is the **gate**: it runs a manifest of pass/fail probes via
+`run-probe.sh`, aggregates results, and exits non-zero if any fail (ending with
+`ALL E2E PASS` on success). `package.json`'s `test:e2e` calls it. Run it with the
+prebuilt app binary:
+
+```bash
+E2E_APP=/tmp/elrig/eigendeck bash e2e/run-all.sh
+```
+
+Each manifest entry is `probe.mjs | deck | extra-env | setup-cmd`:
+- **deck** — when `setup-cmd` is empty, a static source deck (copied into a fresh
+  temp `HOME`). When `setup-cmd` is present, just the BASENAME of the deck to
+  build.
+- **extra-env** — `KEY=val …` passed to the probe (e.g. `E2E_MODE=duplicate`); may
+  reference `$DECK` / `$DECKDIR`.
+- **setup-cmd** — optional shell that BUILDS the deck at `$DECK` (a fixture
+  generator → `eigendeck-cli $DECK import json …`). It has `$DECK`, `$DECKDIR`,
+  `$CLI`, `$ROOT`, and the `import_json <json>` helper in scope. The CLI is
+  auto-located (override with `E2E_CLI`).
+
+Fixture builders: `fixtures/make_roundtrip_decks.py` (sync/link),
+`fixtures/make_link_conflict_deck.py` (nb1=MARK_A / nb2=MARK_B), and
+`fixtures/make_e2e_decks.py` (`shared` / `copypaste` / `export` / `watch` notebook
+decks).
+
+### Not yet gated (intentionally excluded)
+
+These live in `e2e/` but are NOT in `run-all.sh`, by design:
+
+- **overflow-hunt.mjs** — audit/diagnostic: walks a deck and *reports* overflowing
+  text; no PASS/FAIL, always exits 0.
+- **check.mjs** — the generic parameterized DOM asserter; needs `E2E_EXPECT`/
+  `E2E_ABSENT`, not a standalone scenario (it's the engine the other probes
+  predate).
+- **ipc-bytes-probe.mjs** — diagnostic: measures how Tauri IPC accepts byte args
+  (#174). Prints `IPC_BYTES_RESULT` and exits 0 regardless of correctness (only
+  fails on infra/session errors), so it can't gate.
+- **store-timing-probe.mjs** — perf benchmark: times `db_store_asset` for 10/50/
+  100 MB and prints `STORE_TIMING`; exits 0 on success, no behavioral assert.
+- **undo-granularity-probe.mjs** — measurement (#55): prints undo-stack depths
+  for drag/typing coalescing; always exits 0, no pass/fail.
+- **notebook-watch-takecontrol-probe.mjs** — exercises the REAL OS fs-watch
+  (mutate the linked `.ipynb` on disk → notebook reloads). Whether watching is
+  active depends on the per-user `autoReloadAssets` preference, which
+  `run-probe.sh` wipes (`XDG_DATA_HOME`) on every run, so step 1 ("fs-watch
+  reloaded WATCHED1") is non-deterministic in the gate. It passes interactively /
+  with the preference on; the asset-reload merge path it shares is covered
+  deterministically by `notebook-reload-shared-probe.mjs` (which drives the
+  `eigendeck:asset-changed` event directly). Run it standalone via `run-probe.sh`
+  with `E2E_NB=<deckdir>/nb.ipynb` and the `watch` fixture deck.
+- **title-shift-probe.mjs** — #47 visual regression: measures the on-screen glyph
+  rectangle of a title in display (SVG `foreignObject`) vs edit (contentEditable)
+  mode and asserts they don't shift. In this headless WebKit build the display
+  measurement reads `null` (the glyph Range rect isn't resolvable), so it can't
+  gate. The text-render path is covered deterministically by the
+  `buildTextElementSvgMarkup` unit test (`src/components/TextElementSvg.test.ts`).
+
 ## Platform
 
 **Linux only.** `tauri-driver` has no macOS support, so this runs in CI /

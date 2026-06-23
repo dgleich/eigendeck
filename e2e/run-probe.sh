@@ -23,6 +23,23 @@ DECK="${E2E_DECK:?set E2E_DECK}"
 DECKHOME="$(dirname "$DECK")"
 TAURI_DRIVER="$(command -v tauri-driver || echo "$HOME/.cargo/bin/tauri-driver")"
 
+# PRE-CLEAN: a crashed prior probe can leave tauri-driver holding :4444 (and a
+# stale app/WebKitWebDriver), so the next probe's session creation hits the OLD
+# driver → "invalid session id" / wrong-app failures. Kill any leftovers first.
+# Patterns are ANCHORED (^) to the real binaries' argv — an UNanchored pkill -f
+# would match this wrapper's own command line (it embeds the strings
+# "tauri-driver", "WebKitWebDriver", "http.server 1420", "$E2E_APP") and kill
+# itself (rc=137). SERIAL USE ONLY (run-all runs probes one at a time).
+cleanup_rig() {
+  pkill -9 -f "^${TAURI_DRIVER}" 2>/dev/null
+  pkill -9 -f "^/usr/bin/WebKitWebDriver" 2>/dev/null
+  pkill -9 -f "^python3 -m http.server 1420" 2>/dev/null
+  [ -n "$E2E_APP" ] && pkill -9 -f "^${E2E_APP}" 2>/dev/null
+}
+cleanup_rig
+sleep 1
+trap cleanup_rig EXIT
+
 xvfb-run -a -s "-screen 0 1280x900x24" bash -c "
   export WEBKIT_DISABLE_COMPOSITING_MODE=1 WEBKIT_DISABLE_DMABUF_RENDERER=1 LIBGL_ALWAYS_SOFTWARE=1
   # Throwaway cache/data per run — WebKitGTK caches the JS bundle and would serve
@@ -35,6 +52,10 @@ xvfb-run -a -s "-screen 0 1280x900x24" bash -c "
   '$TAURI_DRIVER' --native-driver /usr/bin/WebKitWebDriver >/tmp/e2e-td.log 2>&1 & TD=\$!
   sleep 3
   node '$PROBE'; RC=\$?
-  kill \$TD \$HS 2>/dev/null
+  # Best-effort in-subshell teardown (PID-based, safe): kill the driver + its
+  # children (WebKitWebDriver/app) + the http server. The outer 'trap cleanup_rig
+  # EXIT' then does the thorough anchored global sweep so nothing is orphaned.
+  pkill -9 -P \$TD 2>/dev/null
+  kill -9 \$TD \$HS 2>/dev/null
   exit \$RC
 "
