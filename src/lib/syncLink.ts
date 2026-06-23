@@ -11,7 +11,7 @@
 // link-asymmetry bug #30 and the PropertiesPanel "Unlink" that forgot to
 // remember _linkId). No store, no side effects: trivially unit-testable.
 
-import type { SlideElement } from '../types/presentation';
+import type { Slide, SlideElement } from '../types/presentation';
 
 export type SyncLinkDelta = Partial<
   Pick<SlideElement, 'syncId' | '_syncId' | 'linkId' | '_linkId'>
@@ -50,6 +50,50 @@ export function relinkDelta(el: Pick<SlideElement, '_linkId'>): SyncLinkDelta {
  *  alone (Cmd+D duplicate / paste). */
 export function detachDelta(): SyncLinkDelta {
   return { syncId: undefined, _syncId: undefined, linkId: undefined, _linkId: undefined };
+}
+
+/** After elements are removed (a slide or element is deleted), a sync or link
+ *  group can be left with a SINGLE member — there's nothing to sync or animate
+ *  with anymore. That lone id is an orphan: it still lights the "synced" border
+ *  and the inspector's sync UI even though the element is effectively standalone
+ *  (e.g. duplicate a slide, then delete the copy — the original kept its syncId).
+ *
+ *  This strips the orphaned id — sync and link independently — from every lone
+ *  group across the deck, leaving genuine multi-member groups untouched. A group
+ *  is counted by its identity (`syncId ?? _syncId`, `linkId ?? _linkId`) so a
+ *  member that's only *remembering* the group still keeps a partner alive — the
+ *  SAME membership the sync badge uses, so border + badge stay consistent.
+ *
+ *  Pure; returns a NEW slides array only when something changed (so the store's
+ *  referential-equality checks don't see spurious updates). */
+export function pruneOrphanedGroups(slides: Slide[]): Slide[] {
+  const syncCount = new Map<string, number>();
+  const linkCount = new Map<string, number>();
+  for (const s of slides) for (const el of s.elements) {
+    const sid = el.syncId ?? el._syncId;
+    if (sid) syncCount.set(sid, (syncCount.get(sid) ?? 0) + 1);
+    const lid = el.linkId ?? el._linkId;
+    if (lid) linkCount.set(lid, (linkCount.get(lid) ?? 0) + 1);
+  }
+  let changed = false;
+  const next = slides.map((s) => {
+    let slideChanged = false;
+    const elements = s.elements.map((el) => {
+      const sid = el.syncId ?? el._syncId;
+      const lid = el.linkId ?? el._linkId;
+      const dropSync = sid != null && syncCount.get(sid) === 1;
+      const dropLink = lid != null && linkCount.get(lid) === 1;
+      if (!dropSync && !dropLink) return el;
+      slideChanged = true;
+      const copy: SlideElement = { ...el };
+      if (dropSync) { delete copy.syncId; delete copy._syncId; }
+      if (dropLink) { delete copy.linkId; delete copy._linkId; }
+      return copy;
+    });
+    if (slideChanged) { changed = true; return { ...s, elements }; }
+    return s;
+  });
+  return changed ? next : slides;
 }
 
 /** Decide how a pasted copy of `el` joins (or doesn't join) a group, by where

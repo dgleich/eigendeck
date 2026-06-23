@@ -9,6 +9,7 @@ import {
 } from '../types/presentation';
 import {
   IDENTITY_KEYS, resyncDelta, unlinkDelta, relinkDelta, linkPairDeltas,
+  pruneOrphanedGroups,
 } from '../lib/syncLink';
 import { runFreeHook, runResyncHook, runMergeHook } from '../lib/elementLifecycle';
 
@@ -221,7 +222,10 @@ export const usePresentationStore = create<PresentationState>()(
       deleteSlide: (index) =>
         set((state) => {
           if (state.presentation.slides.length <= 1) return state;
-          const slides = state.presentation.slides.filter((_, i) => i !== index);
+          const filtered = state.presentation.slides.filter((_, i) => i !== index);
+          // Strip syncId/linkId left orphaned (sole member) by the removal, so a
+          // duplicate-then-delete leaves the original genuinely un-synced.
+          const slides = pruneOrphanedGroups(filtered);
           const newIndex = Math.min(index, slides.length - 1);
           return {
             presentation: { ...state.presentation, slides },
@@ -654,22 +658,33 @@ export const usePresentationStore = create<PresentationState>()(
       },
 
       deleteElement: (elementId) =>
-        set((state) => ({
-          ...updateCurrentSlide(state, (slide) => ({
+        set((state) => {
+          const removed = updateCurrentSlide(state, (slide) => ({
             ...slide,
             elements: slide.elements.filter((el) => el.id !== elementId),
-          })),
-          selectedObject: { type: 'slide' },
-        })),
+          }));
+          // Prune across ALL slides — a sync/link partner may be on another slide.
+          const slides = pruneOrphanedGroups(removed.presentation!.slides);
+          return {
+            presentation: { ...removed.presentation!, slides },
+            isDirty: true,
+            selectedObject: { type: 'slide' },
+          };
+        }),
 
       deleteElements: (elementIds) =>
-        set((state) => ({
-          ...updateCurrentSlide(state, (slide) => ({
+        set((state) => {
+          const removed = updateCurrentSlide(state, (slide) => ({
             ...slide,
             elements: slide.elements.filter((el) => !elementIds.includes(el.id)),
-          })),
-          selectedObject: { type: 'slide' },
-        })),
+          }));
+          const slides = pruneOrphanedGroups(removed.presentation!.slides);
+          return {
+            presentation: { ...removed.presentation!, slides },
+            isDirty: true,
+            selectedObject: { type: 'slide' },
+          };
+        }),
 
       moveElementZ: (elementId, direction) =>
         set((state) =>

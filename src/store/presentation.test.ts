@@ -280,6 +280,33 @@ describe('presentation store', () => {
       expect(el2.syncId).toBe(el1.syncId);
     });
 
+    it('un-syncs the original when its only synced partner slide is deleted', () => {
+      const store = usePresentationStore.getState();
+      store.duplicateSlide(0); // [orig, copy] — both synced
+      expect(usePresentationStore.getState().presentation.slides[0].elements[0].syncId).toBeTruthy();
+      // Delete the copy: the original is now the sole member → no longer synced.
+      usePresentationStore.getState().deleteSlide(1);
+      const after = usePresentationStore.getState();
+      expect(after.presentation.slides).toHaveLength(1);
+      const lone = after.presentation.slides[0].elements[0];
+      expect(lone.syncId).toBeUndefined();
+      expect(lone.linkId).toBeUndefined();   // the duplicate-created link is gone too
+      expect((lone as any)._syncId).toBeUndefined();
+    });
+
+    it('keeps the sync when one of THREE synced slides is deleted (partner remains)', () => {
+      const store = usePresentationStore.getState();
+      store.duplicateSlide(0); // [A, A']
+      store.duplicateSlide(0); // [A, A'', A'] — three synced (insert after original)
+      const sid = usePresentationStore.getState().presentation.slides[0].elements[0].syncId;
+      usePresentationStore.getState().deleteSlide(2); // remove one — two still synced
+      const after = usePresentationStore.getState();
+      expect(after.presentation.slides).toHaveLength(2);
+      for (const s of after.presentation.slides) {
+        expect(s.elements[0].syncId).toBe(sid); // group intact
+      }
+    });
+
     it('propagates ALL options (e.g. notebook display flags) between synced instances', () => {
       const store = usePresentationStore.getState();
       store.duplicateSlide(0);   // current slide becomes the copy (index 1)
