@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!--
+  Theme-probe demo for #86. Exercises EVERY injected demo variable + font face,
+  so the editor/present/export injection can be verified end-to-end:
+    colors  : --eigendeck-bg / -fg / -heading / -accent / -muted
+    fonts   : --eigendeck-font (regular / bold / italic), --eigendeck-narrow,
+              --eigendeck-mono
+    metric  : --eigendeck-base-size
+  Every var has a fallback so the demo still renders opened standalone.
+  Element ids are stable so a probe can read computed styles.
+-->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    background: var(--eigendeck-bg, #ffffff);
+    color: var(--eigendeck-fg, #222222);
+    font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif;
+    font-size: var(--eigendeck-base-size, 32px);
+    padding: 4%;
+    overflow: hidden;
+  }
+  #tp-head { color: var(--eigendeck-heading, #111); font-weight: 700; font-size: 1.6em; margin-bottom: .4em; }
+  #tp-reg    { font-weight: 400; font-style: normal; }
+  #tp-bold   { font-weight: 700; font-style: normal; }
+  #tp-italic { font-weight: 400; font-style: italic; }
+  #tp-narrow { font-family: var(--eigendeck-narrow, 'PT Sans Narrow'), sans-serif; }
+  #tp-mono   { font-family: var(--eigendeck-mono, 'Source Code Pro'), monospace; }
+  #tp-accent { color: var(--eigendeck-accent, #2563eb); font-weight: 700; }
+  #tp-muted  { color: var(--eigendeck-muted, #888); }
+  .tp-swatches { display: flex; gap: 12px; margin-top: .6em; }
+  .tp-swatch { width: 90px; height: 56px; border-radius: 6px; border: 1px solid rgba(128,128,128,.5); }
+  #sw-bg      { background: var(--eigendeck-bg, #fff); }
+  #sw-fg      { background: var(--eigendeck-fg, #222); }
+  #sw-heading { background: var(--eigendeck-heading, #111); }
+  #sw-accent  { background: var(--eigendeck-accent, #2563eb); }
+  #sw-muted   { background: var(--eigendeck-muted, #888); }
+</style>
+</head>
+<body>
+  <div id="tp-head">Theme probe — heading</div>
+  <div id="tp-reg">Regular body text in the deck font.</div>
+  <div id="tp-bold">Bold body text in the deck font.</div>
+  <div id="tp-italic">Italic body text in the deck font.</div>
+  <div id="tp-narrow">Narrow variant of the deck font.</div>
+  <div id="tp-mono">mono = code_font(x) // monospace</div>
+  <div><span id="tp-accent">accent</span> &nbsp; <span id="tp-muted">muted</span></div>
+  <div class="tp-swatches">
+    <div class="tp-swatch" id="sw-bg" title="--eigendeck-bg"></div>
+    <div class="tp-swatch" id="sw-fg" title="--eigendeck-fg"></div>
+    <div class="tp-swatch" id="sw-heading" title="--eigendeck-heading"></div>
+    <div class="tp-swatch" id="sw-accent" title="--eigendeck-accent"></div>
+    <div class="tp-swatch" id="sw-muted" title="--eigendeck-muted"></div>
+  </div>
+</body>
+</html>
