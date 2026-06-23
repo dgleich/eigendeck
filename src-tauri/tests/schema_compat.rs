@@ -102,6 +102,20 @@ fn all_committed_example_decks_load_under_current_schema() {
         }
     }
 
+    // Also validate specific committed test-presentation fixtures. NOT a glob:
+    // test-presentations/ holds large regenerable artifacts (pdf-stress-test) we
+    // don't want to load here — list the deck fixtures we DO commit explicitly.
+    for rel in ["test-presentations/font-theme-matrix.eigendeck"] {
+        let src = repo_root.join(rel);
+        if !src.exists() { continue; }
+        let filename = src.file_name().unwrap().to_string_lossy().to_string();
+        let dest = temp_copy(&src, &scratch_dir);
+        match validate_one(&dest) {
+            Ok(()) => { println!("  ✓ {}", filename); tested += 1; }
+            Err(e) => { println!("  ✗ {}: {}", filename, e); failures.push(format!("{}: {}", filename, e)); }
+        }
+    }
+
     // Cleanup (best-effort; OS will reap /tmp anyway).
     let _ = fs::remove_dir_all(&scratch_dir);
 
