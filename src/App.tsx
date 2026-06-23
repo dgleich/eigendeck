@@ -85,6 +85,9 @@ if (
     },
     // Missing-source registry (#74) — lets E2E assert detect/relocate.
     missingAssets: () => getMissingAssets(),
+    // Cached element preview as a data URL (#86) — lets E2E verify a demo's
+    // preview is RE-captured after a theme switch (the bytes must change).
+    previewDataUrl: (key: string) => loadPreviewDataUrl(key),
     // Undo-gesture transaction helpers (#55) — lets E2E exercise the real
     // pause/resume the canvas drag + inspector sliders use.
     pauseUndo, resumeUndo,

@@ -84,4 +84,15 @@ describe('capturePreview source_hash skip', () => {
     await capturePreview(elFor('y'));
     expect((domToDataUrl as any).mock.calls.length).toBe(2);
   });
+
+  it('re-captures when only the cacheSalt changes (theme switch — #86)', async () => {
+    // Same node HTML; the theme lives outside it (CSS vars in the iframe <head>),
+    // so a salt change must still bust the skip and recapture.
+    document.body.innerHTML = '<div data-element-id="z"><p>same</p></div>';
+    await capturePreview(elFor('z'), undefined, 'theme:dark');
+    await capturePreview(elFor('z'), undefined, 'theme:dark');  // unchanged → skip
+    expect((domToDataUrl as any).mock.calls.length).toBe(1);
+    await capturePreview(elFor('z'), undefined, 'theme:light'); // new theme → recapture
+    expect((domToDataUrl as any).mock.calls.length).toBe(2);
+  });
 });

@@ -5,7 +5,7 @@ import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentati
 import { getPreference } from '../lib/preferences';
 import { snapToGrid } from '../lib/grid';
 import { useDemoUrl } from '../lib/demoAssets';
-import { useDemoThemeInjection } from '../lib/demoThemeInject';
+import { useDemoThemeInjection, demoVarsCssForSlide } from '../lib/demoThemeInject';
 import { capturePreview } from '../lib/previewCache';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
 import { buildEmbedSrc } from '../lib/videoEmbed';
@@ -332,13 +332,16 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
   // Proactively cache a PNG preview of the rendered demo (sidebar thumbs /
   // export) once it's loaded + settled. The demo is a same-origin blob iframe,
   // so capturePreview reaches its contentDocument. Debounced; re-runs on
-  // reload/resize. (No phase awareness yet — one 'preview' per element.)
+  // reload/resize AND on theme/font change — the theme is injected as CSS vars in
+  // the iframe <head>, so it isn't in the captured <body> HTML; pass it as the
+  // cache salt so a theme switch busts the preview (#86). (No phase awareness yet.)
+  const themeSalt = demoSlide ? demoVarsCssForSlide(demoConfig, demoTheme, demoSlide) : '';
   useEffect(() => {
     if (!src) return;
-    const t = setTimeout(() => { void capturePreview(element, 'iframe'); }, 900);
+    const t = setTimeout(() => { void capturePreview(element, 'iframe', themeSalt); }, 900);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId]);
+  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId, themeSalt]);
   return (
     <DraggableBox
       elementId={element.id}
@@ -395,14 +398,15 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
   const demoTheme = usePresentationStore((s) => s.presentation.theme);
   const demoSlide = usePresentationStore((s) => s.presentation.slides[s.currentSlideIndex]);
   useDemoThemeInjection(iframeRef, demoConfig, demoTheme, demoSlide, reloadKey);
-  // Cache a preview of the rendered demo-piece (see DemoBox). One 'preview' per
-  // element key — no phase variants yet.
+  // Cache a preview of the rendered demo-piece (see DemoBox). Theme is salted in
+  // so a theme/font switch busts the stale preview (#86). One 'preview' per key.
+  const themeSalt = demoSlide ? demoVarsCssForSlide(demoConfig, demoTheme, demoSlide) : '';
   useEffect(() => {
     if (!src) return;
-    const t = setTimeout(() => { void capturePreview(element, 'iframe'); }, 900);
+    const t = setTimeout(() => { void capturePreview(element, 'iframe', themeSalt); }, 900);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId]);
+  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId, themeSalt]);
   return (
     <DraggableBox
       elementId={element.id}

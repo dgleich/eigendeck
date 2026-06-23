@@ -50,9 +50,14 @@ function hashString(s: string): string {
 /** Capture the element's rendered content to a PNG and store it as the cached
  *  preview. Captures `[data-element-id=el.id]`, or — when `innerSelector` is
  *  given — that descendant (e.g. '.nb-frame', so authoring chrome on the outer
- *  DraggableBox is excluded). No-op if not mounted / no size. Never throws. */
+ *  DraggableBox is excluded). No-op if not mounted / no size. Never throws.
+ *
+ *  `cacheSalt` is mixed into the change-detection hash for content that affects
+ *  the picture but ISN'T in the captured node's own HTML — e.g. a demo's theme
+ *  (#86) is injected as CSS vars in the iframe's <head>, so a theme switch leaves
+ *  the captured <body> HTML identical and would otherwise never recapture. */
 export async function capturePreview(
-  el: SlideElement, innerSelector?: string,
+  el: SlideElement, innerSelector?: string, cacheSalt?: string,
 ): Promise<void> {
   const key = previewKey(el);
   if (inflight.has(key)) return;
@@ -79,7 +84,7 @@ export async function capturePreview(
   // since the last capture. The hash is over the to-be-captured node's HTML +
   // size, so it changes exactly when the picture's structure does. (Canvas
   // pixel state isn't in the HTML — acceptable: a thumbnail is a single frame.)
-  const sig = hashString(`${width}x${height}|${node.outerHTML}`);
+  const sig = hashString(`${width}x${height}|${cacheSalt ?? ''}|${node.outerHTML}`);
   if (lastHash.get(key) === sig) return;
   try {
     const variants = await invoke<CacheVariant[]>('db_list_asset_cache_variants', { sourceId: key });
