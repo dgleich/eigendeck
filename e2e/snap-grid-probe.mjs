@@ -50,9 +50,15 @@ console.log('  overlay shows only when Show Grid Points is on ✓');
 // coordinates snapToGrid() rounds to. A plain centered `radial-gradient`
 // offsets dots by half a cell, so they wouldn't line up with snapping.
 const ov = JSON.parse(await exec(sid, "const d=document.querySelector('[data-grid-overlay]'); const cs=getComputedStyle(d); return JSON.stringify({size:cs.backgroundSize, img:cs.backgroundImage});"));
-if(!ov.size.includes('80px')) fail(`grid backgroundSize not 80px (gridSpacing): ${ov.size}`);
-if(!/at 0px 0px|at 0 0/.test(ov.img)) fail(`grid dots not corner-aligned (expected 'at 0 0'): ${ov.img}`);
-console.log('  dots are corner-aligned to the grid spacing ✓');
+// #89: the overlay is ONE SVG tile (4×80=320px) holding the fine dots AND the
+// coarse "+" crosses in one coordinate system (so the dot can't drift off the
+// cross center — the WKWebView/Retina bug from mixing a gradient + svg layer).
+if(!ov.size.includes('320px')) fail(`grid tile not 4× spacing (expected 320px): ${ov.size}`);
+if(!/svg|data:image/i.test(ov.img)) fail(`grid overlay not an SVG tile: ${ov.img}`);
+const svg = decodeURIComponent(ov.img);
+if(!/M160 \d+V/.test(svg)) fail(`cross not centered on the grid point at 2g=160: ${svg.slice(0,160)}`);
+if(!/cx=['"]?160['"]? cy=['"]?160['"]?/.test(svg)) fail(`no fine dot at the cross center (dot/cross misaligned): ${svg.slice(0,160)}`);
+console.log('  one SVG tile: + crosses with a dot at center, on every 4th grid point ✓ (#89)');
 
 // NOTE: the native View-menu checkmark sync (CheckMenuItem ↔ store flag) is
 // NOT covered here — tauri-driver can't drive native menus. It's pinned by

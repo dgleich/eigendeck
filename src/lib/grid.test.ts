@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { snapToGrid } from './grid';
+import { snapToGrid, gridOverlayStyle } from './grid';
 
 describe('snapToGrid', () => {
   it('rounds to the nearest multiple of the spacing', () => {
@@ -33,5 +33,37 @@ describe('snapToGrid', () => {
   it('returns the value unchanged for a non-finite spacing', () => {
     expect(snapToGrid(137, NaN)).toBe(137);
     expect(snapToGrid(137, Infinity)).toBe(137);
+  });
+});
+
+describe('gridOverlayStyle (#89: small + crosses every 4th, dots+cross in ONE svg)', () => {
+  it('is a single SVG tile sized to 4× the spacing (no second layer to drift)', () => {
+    expect(gridOverlayStyle(80).backgroundImage).toContain('data:image/svg');
+    expect(gridOverlayStyle(80).backgroundImage).not.toContain('radial-gradient');
+    expect(gridOverlayStyle(80).backgroundSize).toBe('320px 320px');
+    expect(gridOverlayStyle(40).backgroundSize).toBe('160px 160px');
+    expect(gridOverlayStyle(80).backgroundPosition).toBe('0 0');
+  });
+
+  it('has an explicit viewBox so it scales identically on every engine/Retina', () => {
+    expect(decodeURIComponent(gridOverlayStyle(80).backgroundImage)).toContain("viewBox='0 0 320 320'");
+  });
+
+  it('draws a small "+" cross centered on the grid point at 2× spacing (2g)', () => {
+    const svg = decodeURIComponent(gridOverlayStyle(80).backgroundImage);
+    expect(svg).toMatch(/M160 \d+V\d+M\d+ 160H\d+/); // arms centered at 160 = 2g
+    expect(decodeURIComponent(gridOverlayStyle(40).backgroundImage)).toMatch(/M80 \d+V/);
+  });
+
+  it('places a fine dot at every grid point AND at the cross center (same svg → aligned)', () => {
+    const svg = decodeURIComponent(gridOverlayStyle(80).backgroundImage);
+    for (const p of [0, 80, 160, 240, 320]) expect(svg).toContain(`cx='${p}'`); // dots every g
+    expect(svg).toContain("cx='160' cy='160'"); // a dot exactly at the cross center (2g,2g)
+  });
+
+  it('draws the cross first and the dots after, so the center dot is the bullseye', () => {
+    const svg = decodeURIComponent(gridOverlayStyle(80).backgroundImage);
+    expect(svg.indexOf('<path')).toBeLessThan(svg.indexOf('<circle'));
+    expect(svg).toContain('rgba(100,116,139,0.55)'); // single light grey for both
   });
 });
