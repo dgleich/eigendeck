@@ -552,12 +552,15 @@ export function createTextElement(preset: TextPreset, overrides?: Partial<Elemen
   // All positions are multiples of 30 — the default alignment-grid spacing — with
   // a 60px (2-cell) outer margin, so freshly-inserted elements sit on the grid
   // and the standard template breathes evenly from the slide edges.
+  // Body starts flush at the title's bottom (no gap). The footnote box is 60px
+  // (2 cells), not 30 — its 24px text needs ~47px once the renderer's line-height
+  // (1.3) and 8px vertical padding are counted, so a 30px box clipped it.
   const defaults: Record<TextPreset, ElementPosition> = {
     title:      { x: 60,  y: 60,   width: 1800, height: 180 },
-    body:       { x: 60,  y: 270,  width: 1800, height: 690 },
+    body:       { x: 60,  y: 240,  width: 1800, height: 720 },
     textbox:    { x: 210, y: 330,  width: 810,  height: 330 },
     annotation: { x: 210, y: 720,  width: 600,  height: 150 },
-    footnote:   { x: 60,  y: 990,  width: 1020, height: 30  },
+    footnote:   { x: 60,  y: 960,  width: 1020, height: 60  },
     hype:       { x: 720, y: 360,  width: 570,  height: 360 },
   };
 

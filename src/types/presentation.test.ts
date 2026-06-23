@@ -261,4 +261,19 @@ describe('default insert positions snap to the 30px grid (the default spacing)',
       expect(y + height).toBeLessThanOrEqual(1080 - 60);
     }
   });
+
+  it('body starts flush at the title bottom (no gap between title and text)', async () => {
+    const { createTextElement } = await import('./presentation');
+    const title = createTextElement('title').position;
+    const body = createTextElement('body').position;
+    expect(body.y).toBe(title.y + title.height);
+  });
+
+  it('the footnote box is tall enough for its text (24px size + line-height + padding)', async () => {
+    const { createTextElement, effectiveTextPresetSize } = await import('./presentation');
+    const { height } = createTextElement('footnote').position;
+    // matches the renderer: line-height 1.3 + 8px top/bottom padding.
+    const needed = effectiveTextPresetSize('footnote') * 1.3 + 16;
+    expect(height).toBeGreaterThanOrEqual(needed);
+  });
 });
