@@ -44,6 +44,22 @@ package). `grep -rn "<old-version>"` to be sure none are missed.
 > `declareTypes_owner` unsafe, library validation). If you touched Rust under a
 > macOS cfg, build on a Mac before tagging.
 
+### 5. Run the FULL e2e suite (Linux only — every release)
+`vitest` only covers pure units; the frontend↔Rust boundary, present mode,
+demo-theme injection, text clipping (#79), notebooks, video, undo, copy/paste,
+asset watch, etc. are only exercised by the **e2e probes** (`e2e/*.mjs`), which
+drive the REAL built app via tauri-driver + WebKitWebDriver + xvfb. These DON'T
+run on the Mac (tauri-driver is Linux-only) and AREN'T in `npm test` — so they
+must be run **here in the container / CI before tagging**, not skipped.
+
+- See the **eigendeck-e2e** skill for provisioning + the harness. The build the
+  rig serves MUST be `VITE_EIGENDECK_SEAM=1 npm run build` (a plain build
+  tree-shakes the `window.__eigendeck` seam out and every probe times out).
+- Run **all** of `e2e/*.mjs` (each is an independent scenario; list in
+  `e2e/README.md`), not just the one you touched — a frontend change can break a
+  far probe. Every probe must print its `*_PASS` / exit 0.
+- A red e2e probe blocks the tag the same as a failing unit test.
+
 ## Tag + build
 ```bash
 git -c safe.directory=/work tag vYY.M.D
