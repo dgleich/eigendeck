@@ -420,7 +420,10 @@ export async function buildExportHtml(opts) {
         case 'demo':
           try {
             let demoHtml = await readTextFile(el.src);
-            demoHtml = injectDemoThemeIntoHtml(demoHtml, fontFacesCss || '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
+            // Fonts are NOT baked here — injected at runtime from the parent's
+            // single #eigendeck-fonts block (see the font-share script). Only the
+            // tiny per-slide theme vars are spliced in.
+            demoHtml = injectDemoThemeIntoHtml(demoHtml, '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
             const escaped = htmlEscapeForSrcdoc(demoHtml);
             inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
           } catch (e) { console.error('Demo export failed:', e); }
@@ -431,7 +434,8 @@ export async function buildExportHtml(opts) {
             const demoHtml = await readTextFile(el.demoSrc);
             const channelKey = `slide${i}-${el.demoSrc.replace(/[^a-z0-9]/gi, '')}`;
             let pieceHtml = injectDemoBootstrap(demoHtml, `#piece=${el.piece}`, channelKey);
-            pieceHtml = injectDemoThemeIntoHtml(pieceHtml, fontFacesCss || '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
+            // Fonts injected at runtime from the parent (see font-share script).
+            pieceHtml = injectDemoThemeIntoHtml(pieceHtml, '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
             const escaped = htmlEscapeForSrcdoc(pieceHtml);
             inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
           } catch (e) { console.error('Demo piece export failed:', e); }
@@ -550,8 +554,13 @@ export async function buildExportHtml(opts) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${presentation.title || 'Presentation'}</title>
+<!-- Deck fonts embedded ONCE here. Demos (same-origin srcdoc iframes) get them
+     injected at runtime from this block (see the font-share script below) rather
+     than each baking the full base64 set into its srcdoc — that duplicated the
+     fonts per iframe and ballooned the export ~20x. -->
+<style id="eigendeck-fonts">${fontFacesCss || ''}</style>
 <style>
-${fontFacesCss || `@import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');`}
+${fontFacesCss ? '' : `@import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');`}
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #000; overflow: hidden; font-family: 'PT Sans', sans-serif; }
 #viewport { width: 100vw; height: 100vh; position: relative; }
@@ -607,6 +616,31 @@ ${slideHtml.join('\n')}
   <button id="nb-next">&rsaquo;</button>
 </div>
 <script>
+// Font share: the deck fonts live ONCE in the parent's #eigendeck-fonts block.
+// Demo iframes are same-origin srcdoc docs, so inject that block into each at
+// runtime instead of baking the (large, base64) font set into every srcdoc —
+// keeps the exported file ~1x the font size instead of ~Nx (one per iframe).
+(function() {
+  var el = document.getElementById('eigendeck-fonts');
+  var FONT_CSS = el ? el.textContent : '';
+  if (!FONT_CSS) return;
+  function inject(ifr) {
+    try {
+      var d = ifr.contentDocument;
+      if (!d || !d.head || d.getElementById('eigendeck-fonts')) return;
+      var s = d.createElement('style');
+      s.id = 'eigendeck-fonts';
+      s.textContent = FONT_CSS;
+      d.head.appendChild(s);
+    } catch (ex) {}
+  }
+  var ifrs = document.querySelectorAll('iframe');
+  for (var i = 0; i < ifrs.length; i++) {
+    inject(ifrs[i]);  // already loaded?
+    ifrs[i].addEventListener('load', (function(f) { return function() { inject(f); }; })(ifrs[i]));
+  }
+})();
+
 // BroadcastChannel relay for demo-piece iframes
 window.addEventListener('message', function(e) {
   if (!e.data || !e.data.__bc) return;
