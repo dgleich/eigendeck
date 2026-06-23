@@ -55,9 +55,17 @@ function hashString(s: string): string {
  *  `cacheSalt` is mixed into the change-detection hash for content that affects
  *  the picture but ISN'T in the captured node's own HTML — e.g. a demo's theme
  *  (#86) is injected as CSS vars in the iframe's <head>, so a theme switch leaves
- *  the captured <body> HTML identical and would otherwise never recapture. */
+ *  the captured <body> HTML identical and would otherwise never recapture.
+ *
+ *  `backgroundColor` fills the capture's backdrop. A demo iframe is TRANSPARENT
+ *  (so the slide shows through live); without this the rasterized PNG keeps that
+ *  transparency and reads as the app's grey wherever it's shown standalone
+ *  (sidebar / link picker / export). Pass the slide's resolved background so the
+ *  thumbnail matches the slide. It's folded into the cache hash too, so changing
+ *  the slide theme re-captures with the new backdrop. */
 export async function capturePreview(
   el: SlideElement, innerSelector?: string, cacheSalt?: string,
+  backgroundColor?: string,
 ): Promise<void> {
   const key = previewKey(el);
   if (inflight.has(key)) return;
@@ -84,7 +92,7 @@ export async function capturePreview(
   // since the last capture. The hash is over the to-be-captured node's HTML +
   // size, so it changes exactly when the picture's structure does. (Canvas
   // pixel state isn't in the HTML — acceptable: a thumbnail is a single frame.)
-  const sig = hashString(`${width}x${height}|${cacheSalt ?? ''}|${node.outerHTML}`);
+  const sig = hashString(`${width}x${height}|${cacheSalt ?? ''}|${backgroundColor ?? ''}|${node.outerHTML}`);
   if (lastHash.get(key) === sig) return;
   try {
     const variants = await invoke<CacheVariant[]>('db_list_asset_cache_variants', { sourceId: key });
@@ -95,7 +103,7 @@ export async function capturePreview(
   inflight.add(key);
   try {
     const { domToDataUrl } = await import('modern-screenshot');
-    const dataUrl = await domToDataUrl(node, { width, height, scale: 1 });
+    const dataUrl = await domToDataUrl(node, { width, height, scale: 1, backgroundColor });
     const bytes = dataUrlToBytes(dataUrl);
     await invoke('db_put_asset_cache', {
       sourceId: key,

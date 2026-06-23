@@ -241,7 +241,43 @@ const fg = getComputedStyle(document.documentElement).getPropertyValue('--eigend
 // or drive your own:  document.documentElement.style.setProperty('--my-color', fg);
 ```
 
-See `demo-starter.html` (from **File → Install LLM Tools**) for the pattern.
+### Controls, labels & canvas text must survive a DARK slide
+
+This is the most common theming mistake: a demo looks fine on the default white
+deck, then **disappears on a dark theme** because its text/UI colors are
+hardcoded dark. The slide background is transparent and can be anything, so:
+
+- **Never hardcode a dark (or light) text color.** Slider labels, value
+  readouts, checkbox captions, legends — color them `var(--eigendeck-fg, #333)`
+  (or `--eigendeck-muted` for secondary text). A hardcoded `#334155` is invisible
+  on a dark slide.
+- **Form controls:** set `accent-color: var(--eigendeck-accent, …)` on
+  `range`/`checkbox` inputs, and give a `range` track an explicit translucent
+  fill so the groove shows on any backdrop (the browser default is near-invisible
+  on dark):
+  ```css
+  input[type=range] {
+    accent-color: var(--eigendeck-accent, #6366f1);
+    background: color-mix(in srgb, var(--eigendeck-fg, #333) 22%, transparent);
+    border-radius: 5px;
+  }
+  label, .value { color: var(--eigendeck-fg, #333); }
+  ```
+- **Canvas drawing:** `ctx.fillStyle`/`strokeStyle` can't read a CSS var directly
+  — pull it once per draw and use it for nodes, axes, and text labels:
+  ```js
+  const fg = getComputedStyle(document.documentElement)
+    .getPropertyValue('--eigendeck-fg').trim() || '#334155';
+  ctx.fillStyle = fg;   // nodes / labels now follow the theme
+  ```
+  Reading it inside the draw function (not once at startup) keeps it correct when
+  the theme switches live. Data-driven colors (heatmaps, category palettes) can
+  stay fixed — only the *chrome* (nodes, axes, gridlines, labels) needs to track
+  the theme.
+
+See `demo-starter.html` (from **File → Install LLM Tools**) for the pattern, and
+`example-demos/magnetic-powers/demos/harper_electron.html` for a worked example
+(theme-aware sliders + canvas).
 
 ## Critical Rules
 

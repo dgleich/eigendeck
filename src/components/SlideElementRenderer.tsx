@@ -336,12 +336,15 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
   // the iframe <head>, so it isn't in the captured <body> HTML; pass it as the
   // cache salt so a theme switch busts the preview (#86). (No phase awareness yet.)
   const themeSalt = demoSlide ? demoVarsCssForSlide(demoConfig, demoTheme, demoSlide) : '';
+  // A demo iframe is transparent; bake the slide's background into the preview
+  // PNG so the thumbnail matches the slide instead of reading as the app's grey.
+  const demoBg = resolveTheme(demoTheme, demoSlide?.theme).background;
   useEffect(() => {
     if (!src) return;
-    const t = setTimeout(() => { void capturePreview(element, 'iframe', themeSalt); }, 900);
+    const t = setTimeout(() => { void capturePreview(element, 'iframe', themeSalt, demoBg); }, 900);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId, themeSalt]);
+  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId, themeSalt, demoBg]);
   return (
     <DraggableBox
       elementId={element.id}
@@ -401,12 +404,13 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
   // Cache a preview of the rendered demo-piece (see DemoBox). Theme is salted in
   // so a theme/font switch busts the stale preview (#86). One 'preview' per key.
   const themeSalt = demoSlide ? demoVarsCssForSlide(demoConfig, demoTheme, demoSlide) : '';
+  const demoBg = resolveTheme(demoTheme, demoSlide?.theme).background; // bake slide bg into the (transparent) preview
   useEffect(() => {
     if (!src) return;
-    const t = setTimeout(() => { void capturePreview(element, 'iframe', themeSalt); }, 900);
+    const t = setTimeout(() => { void capturePreview(element, 'iframe', themeSalt, demoBg); }, 900);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId, themeSalt]);
+  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId, themeSalt, demoBg]);
   return (
     <DraggableBox
       elementId={element.id}
