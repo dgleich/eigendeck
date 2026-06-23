@@ -22,13 +22,20 @@ export function SlideSidebar() {
   const containerRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
 
-  // Scroll the active slide into view when currentSlideIndex changes
+  // Scroll the active slide into view when currentSlideIndex changes — and, if the
+  // sidebar already holds keyboard focus (e.g. arrow-key slide nav), move focus to
+  // the active thumbnail so Backspace deletes the highlighted slide, not the one
+  // that happened to be focused before. Guarded so we never steal focus from the
+  // canvas / a text field during a programmatic selectSlide (undo-nav, etc.).
   useEffect(() => {
     if (!containerRef.current) return;
     const thumbs = containerRef.current.querySelectorAll('.slide-thumbnail');
     const active = thumbs[currentSlideIndex] as HTMLElement | undefined;
     if (active) {
       active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      if (containerRef.current.contains(document.activeElement) && document.activeElement !== active) {
+        active.focus();
+      }
     }
   }, [currentSlideIndex]);
 
@@ -74,7 +81,17 @@ export function SlideSidebar() {
           <div
             key={slide.id}
             className={`slide-thumbnail${index === currentSlideIndex ? ' active' : ''}${dropTarget === index ? ' drag-over' : ''}${dragging === index ? ' dragging' : ''}${child ? ' group-child' : ''}${slide.groupId ? ' in-group' : ''}`}
-            onClick={() => { if (dragging === null) selectSlide(index); }}
+            // Focusable so the slide can be deleted from the keyboard (and so the
+            // sidebar is the keydown target — Backspace deletes the focused slide
+            // instead of triggering the webview's history-back). a11y: keyboard nav.
+            tabIndex={0}
+            onClick={(e) => { if (dragging === null) { selectSlide(index); e.currentTarget.focus(); } }}
+            onKeyDown={(e) => {
+              if ((e.key === 'Delete' || e.key === 'Backspace')) {
+                e.preventDefault(); e.stopPropagation();
+                if (presentation.slides.length > 1) deleteSlide(index);
+              }
+            }}
             onContextMenu={(e) => {
               e.preventDefault();
               selectSlide(index);
