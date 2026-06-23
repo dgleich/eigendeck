@@ -147,3 +147,22 @@ See `../.claude/notes/notebook-edge-cases-findings.md` for findings.
 - **video-playback-probe.mjs** — REAL loop + ping-pong: asserts native loop wraps
   currentTime back to the start, and ping-pong plays forward then reverse-seeks
   back down (rAF runs headlessly). Codec-dependent (uses the webm fixture).
+
+### Demo theme inheritance (#86) + text clipping (#79)
+
+- **demo-theme-verify.mjs** — injects the deck's `@font-face` (shared URL) + theme
+  vars into a demo's `contentDocument`; asserts a theme switch updates the vars
+  LIVE with **no iframe reload** (demo state preserved) and the font loads.
+- **demo-theme-scenario.mjs** — builds a 40-slide deck (10 `FONT_PACKAGES` × 4
+  themes), full-bleed `fixtures/theme-probe-demo.html` per slide; asserts every
+  `--eigendeck-*` color = the slide's theme AND the slide's font face loads
+  (PASS 40/40). Self-contained (builds its own deck).
+- **demo-theme-deck-verify.mjs** — opens an EXISTING deck and verifies each demo
+  matches its slide's theme + font. Point `E2E_DECK` at
+  `test-presentations/font-theme-matrix.eigendeck` (the committed fixture).
+- **present-clip-probe.mjs** — #79 regression: a title that overflows its box is
+  CLIPPED in present mode (rendered box computes `overflow:hidden` AND content
+  genuinely exceeds the box). The deterministic markup guard is the
+  `buildTextElementSvgMarkup` unit test (`src/components/TextElementSvg.test.ts`).
+- **overflow-hunt.mjs** — audit (not pass/fail): walks a deck and reports text
+  elements whose content overflows its box (surfaced the #95 cut-off risk).
