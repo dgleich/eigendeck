@@ -103,6 +103,7 @@ MANIFEST=(
   "notebook-reload-shared-probe.mjs|shared.eigendeck||python3 $EXFIX/make_e2e_decks.py shared \$DECKDIR/d.json; import_json \$DECKDIR/d.json"
   "copypaste-reload.mjs|copypaste.eigendeck||python3 $EXFIX/make_e2e_decks.py copypaste \$DECKDIR/d.json; import_json \$DECKDIR/d.json"
   "export-notebook-probe.mjs|export.eigendeck||python3 $EXFIX/make_e2e_decks.py export \$DECKDIR/d.json; import_json \$DECKDIR/d.json"
+  "export-image-deck-probe.mjs|examples/intro-slide.eigendeck||"
   # notebook-watch-takecontrol is NOT gated — see e2e/README.md "Not yet gated"
   # (real fs-watch depends on the per-user auto-reload preference run-probe wipes).
 

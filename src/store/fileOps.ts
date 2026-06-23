@@ -335,9 +335,45 @@ export async function buildPresentationExportHtml(
   // Embed @font-face data URLs for all fonts actually used.
   const fontFacesCss = await buildEmbeddedFontFacesCSS(presentation);
 
+  // exportCore reads media by PATH (el.src / demo-piece's el.demoSrc), but the
+  // data model stores only assetId (path lives on the asset, looked up by id).
+  // Resolve each media element's assetId → path and hydrate that field, so the
+  // exporter can readFile() it. Unresolved ids stay undefined → exportCore emits
+  // a placeholder rather than crashing.
+  const pathCache = new Map<string, string | undefined>();
+  const pathFor = async (assetId?: string): Promise<string | undefined> => {
+    if (!assetId) return undefined;
+    if (pathCache.has(assetId)) return pathCache.get(assetId);
+    let path: string | undefined;
+    try {
+      const meta = await invoke<{ path?: string | null } | null>('db_get_asset_meta_by_id', { assetId });
+      path = meta?.path ?? undefined;
+    } catch { path = undefined; }
+    pathCache.set(assetId, path);
+    return path;
+  };
+  const hydrateEl = async (e: SlideElement): Promise<SlideElement> => {
+    const m = e as { assetId?: string; src?: string; demoSrc?: string; type: string; kind?: string };
+    if (!m.assetId) return e;
+    if (e.type === 'demo-piece') {
+      return m.demoSrc ? e : ({ ...e, demoSrc: await pathFor(m.assetId) } as unknown as SlideElement);
+    }
+    if (e.type === 'image' || e.type === 'demo' || (e.type === 'video' && e.kind === 'file')) {
+      return m.src ? e : ({ ...e, src: await pathFor(m.assetId) } as unknown as SlideElement);
+    }
+    return e;
+  };
+  const hydrated: Presentation = {
+    ...presentation,
+    slides: await Promise.all(presentation.slides.map(async (s) => ({
+      ...s,
+      elements: await Promise.all(s.elements.map(hydrateEl)),
+    }))),
+  };
+
   // Read assets from SQLite for inlining
   return buildExportHtml({
-    presentation,
+    presentation: hydrated,
     readFile: async (path: string) => {
       try {
         const data = await invoke<number[]>('db_get_asset', { path });

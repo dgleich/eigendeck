@@ -315,6 +315,7 @@ export async function buildExportHtml(opts) {
   // Image cache (data URLs)
   const imageCache = new Map();
   async function getImageDataUrl(src) {
+    if (!src) return null;   // unresolved asset (no path) — caller emits a placeholder, never crash
     if (src.startsWith('data:')) return src;
     if (imageCache.has(src)) return imageCache.get(src);
     try {
@@ -398,6 +399,12 @@ export async function buildExportHtml(opts) {
             }
           } else {
             imgSrc = await getImageDataUrl(el.src);
+            if (!imgSrc) {
+              // Unresolved/missing asset — emit a visible placeholder instead of
+              // a broken <img src="null"> (or crashing the whole export).
+              inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#aaa;font-size:24px;font-family:sans-serif;border:1px solid #ddd;">image</div>`;
+              break;
+            }
           }
           const imgStyles = [
             `position:absolute`, `left:${p.x}px`, `top:${p.y}px`,
