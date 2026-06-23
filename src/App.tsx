@@ -1037,11 +1037,16 @@ function App() {
       if (e.key.toLowerCase() === 'i' && (e.ctrlKey || e.metaKey) && !inEditable) { e.preventDefault(); usePresentationStore.getState().toggleProperties(); }
       if (e.key === 'h' && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); usePresentationStore.getState().toggleHistory(); }
       if (e.key === 'F5') { e.preventDefault(); flushToSqlite().then(() => startPresenting()); }
-      // Delete selected element
+      // Delete selected element. preventDefault is UNCONDITIONAL here (outside
+      // editable fields): the webview treats a bare Backspace as history-back, so
+      // pressing it with a slide selected (or nothing) navigated off the SPA and
+      // blanked the app. Swallow it whenever we're not in a text field; the
+      // sidebar handles slide deletion locally on its focused thumbnail.
       if ((e.key === 'Delete' || e.key === 'Backspace') && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
+        e.preventDefault();
         const sel = usePresentationStore.getState().selectedObject;
-        if (sel?.type === 'element') { e.preventDefault(); usePresentationStore.getState().deleteElement(sel.id); }
-        if (sel?.type === 'multi') { e.preventDefault(); usePresentationStore.getState().deleteElements(sel.ids); }
+        if (sel?.type === 'element') usePresentationStore.getState().deleteElement(sel.id);
+        else if (sel?.type === 'multi') usePresentationStore.getState().deleteElements(sel.ids);
       }
       // Duplicate element (Cmd+D)
       if (e.key === 'd' && (e.ctrlKey || e.metaKey) && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
