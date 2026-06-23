@@ -225,3 +225,11 @@ See `../.claude/notes/notebook-edge-cases-findings.md` for findings.
   `buildTextElementSvgMarkup` unit test (`src/components/TextElementSvg.test.ts`).
 - **overflow-hunt.mjs** — audit (not pass/fail): walks a deck and reports text
   elements whose content overflows its box (surfaced the #95 cut-off risk).
+- **deck-demos-render-probe.mjs** — opens a deck and asserts every demo /
+  demo-piece iframe actually renders (contentDocument reachable + non-empty). Gated
+  against the real talk decks (`magnetic-powers`, `local-networks`) so a broken or
+  re-themed demo is caught. With `E2E_EXPECT=<csv>` it also asserts text appears in
+  a demo body — used with the `hyphenpiece` fixture to prove **hyphenated
+  demo-piece names route end-to-end (#44)**: the demo renders `FORCE-GRAPH-OK`
+  only if `force-graph` wasn't truncated to `force`. (Detection-on-add is covered
+  by the `extractDemoPieceNames` unit test.)

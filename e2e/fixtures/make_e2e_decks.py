@@ -139,6 +139,41 @@ def make_empty():
             "slides": [{"id": "s1", "elements": []}]}
 
 
+def make_hyphenpiece():
+    # Two demo-PIECE elements whose names contain hyphens (#44). The demo reads
+    # `piece` from the hash and renders "<NAME> OK" only on an EXACT match — so if
+    # a hyphenated name were truncated (the #44 bug, 'force-graph' -> 'force') the
+    # matched branch wouldn't fire and the probe's text check fails.
+    demo_html = (
+        "<!DOCTYPE html><html><head><meta charset=utf-8>"
+        "<style>html,body{width:100%;height:100%;margin:0}"
+        ".hp{font:bold 40px sans-serif;padding:20px}</style></head><body><script>\n"
+        "/* BroadcastChannel marker — reads as a multi-piece demo */\n"
+        "var piece = new URLSearchParams(location.hash.slice(1)).get('piece');\n"
+        "var d = document.createElement('div'); d.className='hp';\n"
+        "if (piece === 'force-graph') d.textContent = 'FORCE-GRAPH-OK';\n"
+        "else if (piece === 'bar-chart-2') d.textContent = 'BAR-CHART-2-OK';\n"
+        "else d.textContent = 'UNMATCHED piece=' + piece;\n"
+        "document.body.appendChild(d);\n"
+        "</script></body></html>"
+    )
+    asset_id = "demohp"
+    el = lambda eid, piece, y: {  # noqa: E731
+        "id": eid, "type": "demo-piece", "piece": piece, "assetId": asset_id,
+        "position": {"x": 40, "y": y, "width": 800, "height": 380},
+    }
+    return {
+        "title": "hyphen pieces", "theme": "white", "config": {},
+        "slides": [{"id": "s1", "elements": [
+            el("p1", "force-graph", 40), el("p2", "bar-chart-2", 460),
+        ]}],
+        "assets": [{
+            "assetId": asset_id, "mime": "text/html", "path": "demos/hyph.html",
+            "data": base64.b64encode(demo_html.encode()).decode(),
+        }],
+    }
+
+
 MAKERS = {
     "shared": make_shared,
     "copypaste": make_copypaste,
@@ -146,6 +181,7 @@ MAKERS = {
     "watch": make_watch,
     "empty": make_empty,
     "solo": make_solo,
+    "hyphenpiece": make_hyphenpiece,
 }
 
 if __name__ == "__main__":

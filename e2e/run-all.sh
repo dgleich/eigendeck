@@ -113,6 +113,12 @@ MANIFEST=(
   # ── video (codec-DEPENDENT: need GStreamer plugins; present in this env) ──
   "video-decode-probe.mjs|empty.eigendeck||$EMPTY"
   "video-playback-probe.mjs|empty.eigendeck||$EMPTY"
+
+  # ── demo rendering: the real talk-deck demos actually load/render, + #44
+  #    hyphenated demo-piece names route end-to-end (truncation → UNMATCHED) ──
+  "deck-demos-render-probe.mjs|examples/magnetic-powers.eigendeck||"
+  "deck-demos-render-probe.mjs|examples/local-networks.eigendeck||"
+  "deck-demos-render-probe.mjs|hp.eigendeck|E2E_EXPECT=FORCE-GRAPH-OK,BAR-CHART-2-OK|python3 $EXFIX/make_e2e_decks.py hyphenpiece \$DECKDIR/hp.json; import_json \$DECKDIR/hp.json"
 )
 
 pass=0; fail=0; failed=()
