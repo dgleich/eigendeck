@@ -468,7 +468,10 @@ function GridSpacingSetting() {
         <strong> View → Snap to Grid</strong>; hold ⌘ while dragging to bypass snapping.
         Editor-only — never shown when presenting or exporting.
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      {/* Spinner + presets on one line. Presets: divisors of gcd(1920,1080)=120,
+          so the grid tiles the slide evenly. Finer values (<30) also draw a
+          thicker "+" every 16 cells. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
         <input
           type="number"
           min={4} max={480} step={1}
@@ -479,11 +482,7 @@ function GridSpacingSetting() {
           }}
           style={{ width: 64, padding: '3px 6px', fontSize: 12 }}
         />
-        <span style={{ fontSize: 11, color: '#9ca3af' }}>px</span>
-      </div>
-      {/* Presets: divisors of gcd(1920,1080)=120, so the grid tiles the slide
-          evenly. Finer values (<30) also draw a thicker "+" every 16 cells. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, color: '#9ca3af', marginRight: 4 }}>px</span>
         {[12, 15, 20, 24, 30, 40, 60].map((p) => (
           <button
             key={p}
