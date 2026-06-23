@@ -481,6 +481,28 @@ function GridSpacingSetting() {
         />
         <span style={{ fontSize: 11, color: '#9ca3af' }}>px</span>
       </div>
+      {/* Presets: divisors of gcd(1920,1080)=120, so the grid tiles the slide
+          evenly. Finer values (<30) also draw a thicker "+" every 16 cells. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+        {[12, 15, 20, 24, 30, 40, 60].map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setValue(p)}
+            title={`${p} px — ${1920 / p}×${1080 / p} cells`}
+            style={{
+              padding: '2px 8px', fontSize: 11, cursor: 'pointer',
+              borderRadius: 4,
+              border: value === p ? '1px solid #2563eb' : '1px solid #d1d5db',
+              background: value === p ? '#eff6ff' : '#fff',
+              color: value === p ? '#1d4ed8' : '#374151',
+              fontWeight: value === p ? 600 : 400,
+            }}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

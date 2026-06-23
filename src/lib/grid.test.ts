@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { snapToGrid, gridOverlayStyle } from './grid';
+import { snapToGrid, gridOverlayStyle, gridCenterCross } from './grid';
 
 describe('snapToGrid', () => {
   it('rounds to the nearest multiple of the spacing', () => {
@@ -65,5 +65,35 @@ describe('gridOverlayStyle (#89: small + crosses every 4th, dots+cross in ONE sv
     const svg = decodeURIComponent(gridOverlayStyle(80).backgroundImage);
     expect(svg.indexOf('<path')).toBeLessThan(svg.indexOf('<circle'));
     expect(svg).toContain('rgba(100,116,139,0.55)'); // single light grey for both
+  });
+
+  it('a COARSE grid (spacing ≥ 30) has NO thick "big chunk" cross (single weight)', () => {
+    const svg = decodeURIComponent(gridOverlayStyle(40).backgroundImage);
+    expect(svg).toContain("stroke-width='1'");
+    expect(svg).not.toContain("stroke-width='2'");
+  });
+
+  it('a FINE grid (spacing < 30) spans 16 cells and adds a thicker "+" every 16th cell', () => {
+    const style = gridOverlayStyle(20); // 20 < 30 → fine
+    expect(style.backgroundSize).toBe('320px 320px'); // 16 × 20
+    const svg = decodeURIComponent(style.backgroundImage);
+    expect(svg).toContain("viewBox='0 0 320 320'");
+    // thin crosses (weight 1) plus a THICK cross (weight 2) for the big chunks
+    expect(svg).toContain("stroke-width='1'");
+    expect(svg).toContain("stroke-width='2'");
+    // the thick cross is anchored at the every-16th point (2g,2g)=(40,40)
+    expect(svg).toMatch(/M40 \d+V\d+M\d+ 40H\d+[^]*stroke-width='2'/);
+    // and still a fine dot at that thick-cross center
+    expect(svg).toContain("cx='40' cy='40'");
+  });
+});
+
+describe('gridCenterCross (#89: dead-center marker, inline svg)', () => {
+  it('is a "+" path centered in a 30px box, drawn in the same light grey', () => {
+    const c = gridCenterCross();
+    expect(c.size).toBe(30);
+    expect(c.d).toMatch(/^M15 \d+V\d+M\d+ 15H\d+$/); // arms centered at 15 = box center
+    expect(c.stroke).toBe('rgba(100,116,139,0.55)');
+    expect(c.strokeWidth).toBeGreaterThan(1); // a touch heavier than the grid crosses
   });
 });
