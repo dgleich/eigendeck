@@ -142,18 +142,22 @@ for entry in "${MANIFEST[@]}"; do
   extra_expanded="$(eval echo "$extra")"
   label="$probe"; [ -n "$extra" ] && label="$probe [$extra_expanded]"
   echo "──── $label  ($deck) ────"
-  # Retry once on failure. Driving 30+ heavyweight WebKitGTK sessions back-to-back
-  # in one run occasionally leaves the rig unable to start the NEXT session (the
-  # probe reports "open"/"no seam" or a connection error) — a transient, not a
-  # real assertion failure. A genuinely broken probe fails BOTH attempts; a flake
-  # almost always passes the second. Between tries, reap zombies + let the rig
-  # settle (the run-probe pre-clean handles stale drivers).
-  rc=1
-  for try in 1 2; do
+  # Retry on failure. Driving 30+ heavyweight WebKitGTK sessions back-to-back in
+  # one run periodically leaves the rig unable to START the next session for a
+  # ~1-2 min window (the probe reports "open"/"no seam"/"S1 open" or a connection
+  # error) — a transient, not a real assertion failure. A genuinely broken probe
+  # fails EVERY attempt; a flake passes once the window clears. We try up to 3×
+  # with a GROWING backoff so a retry lands AFTER the bad window, not inside it.
+  rc=1; tries=3
+  for try in $(seq 1 $tries); do
     env $extra_expanded PROBE="$ROOT/e2e/$probe" E2E_DECK="$DECK" bash "$ROOT/e2e/run-probe.sh" 2>&1 | tail -4
     rc=${PIPESTATUS[0]}
     [ "$rc" -eq 0 ] && break
-    [ "$try" -eq 1 ] && { echo "  … $label rc=$rc — retrying once"; wait 2>/dev/null; sleep 3; }
+    if [ "$try" -lt "$tries" ]; then
+      back=$((try*8))   # 8s, 16s — ride out the degraded window before retrying
+      echo "  … $label rc=$rc — retry $((try+1))/$tries in ${back}s"
+      sleep "$back"
+    fi
   done
   rm -rf "$tmpdir"
   if [ "$rc" -eq 0 ]; then echo "  ✓ $label"; pass=$((pass+1)); else echo "  ✗ $label (rc=$rc)"; fail=$((fail+1)); failed+=("$label"); fi
