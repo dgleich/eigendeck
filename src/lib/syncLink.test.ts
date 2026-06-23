@@ -1,8 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   IDENTITY_KEYS, freeDelta, resyncDelta, unlinkDelta, relinkDelta,
-  detachDelta, linkPairDeltas, pasteElementDelta,
+  detachDelta, linkPairDeltas, pasteElementDelta, pruneOrphanedGroups,
 } from './syncLink';
+import type { Slide } from '../types/presentation';
+
+// Minimal slide/element builder for prune tests.
+const slide = (...els: any[]): Slide => ({ id: 's', elements: els, notes: '' } as any);
+const el = (id: string, extra: any = {}) =>
+  ({ id, type: 'text', preset: 'body', html: '', position: { x: 0, y: 0, width: 1, height: 1 }, ...extra });
 
 describe('syncLink delta helpers', () => {
   it('freeDelta drops syncId and remembers it; no-op when not synced', () => {
@@ -106,5 +112,54 @@ describe('IDENTITY_KEYS', () => {
   it('covers exactly the id + sync/link linkage fields', () => {
     expect([...IDENTITY_KEYS].sort()).toEqual(
       ['_linkId', '_syncId', 'id', 'linkId', 'syncId']);
+  });
+});
+
+describe('pruneOrphanedGroups', () => {
+  it('strips a syncId/linkId left with a single member (duplicate→delete)', () => {
+    // One slide whose element kept syncId+linkId after its partner slide was cut.
+    const out = pruneOrphanedGroups([slide(el('a', { syncId: 'g', linkId: 'L' }))]);
+    expect(out[0].elements[0].syncId).toBeUndefined();
+    expect(out[0].elements[0].linkId).toBeUndefined();
+  });
+
+  it('keeps a genuine multi-member group intact', () => {
+    const before = [
+      slide(el('a', { syncId: 'g', linkId: 'L' })),
+      slide(el('b', { syncId: 'g', linkId: 'L' })),
+    ];
+    const out = pruneOrphanedGroups(before);
+    expect(out).toBe(before); // unchanged → same reference
+    expect(out[0].elements[0].syncId).toBe('g');
+  });
+
+  it('counts a REMEMBERED group member (_syncId) as keeping the partner alive', () => {
+    // One active (syncId) + one freed-but-remembering (_syncId) = 2 → not orphaned.
+    const before = [
+      slide(el('a', { syncId: 'g' })),
+      slide(el('b', { _syncId: 'g' })),
+    ];
+    expect(pruneOrphanedGroups(before)).toBe(before);
+  });
+
+  it('drops a lone REMEMBERED-only id too (group truly gone)', () => {
+    const out = pruneOrphanedGroups([slide(el('a', { _syncId: 'g' }))]);
+    expect((out[0].elements[0] as any)._syncId).toBeUndefined();
+  });
+
+  it('prunes sync and link INDEPENDENTLY', () => {
+    // sync group of 2 (kept), link group of 1 (pruned), on the same element.
+    const before = [
+      slide(el('a', { syncId: 'g', linkId: 'L' })),
+      slide(el('b', { syncId: 'g' })),
+    ];
+    const out = pruneOrphanedGroups(before);
+    expect(out[0].elements[0].syncId).toBe('g');     // sync kept
+    expect(out[0].elements[0].linkId).toBeUndefined(); // lone link pruned
+  });
+
+  it('returns the same array reference when nothing is orphaned (no churn)', () => {
+    const before = [slide(el('a'), el('b'))]; // no sync/link at all
+    expect(pruneOrphanedGroups(before)).toBe(before);
   });
 });

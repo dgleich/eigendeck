@@ -62,6 +62,7 @@ MANIFEST=(
   "demo-theme-recapture-probe.mjs|examples/intro-slide.eigendeck||"
 
   # ── editor / store correctness (clean empty deck; probes self-build) ─────
+  "sync-orphan-probe.mjs|examples/intro-slide.eigendeck||"
   "fontsize-probe.mjs|empty.eigendeck||$EMPTY"
   "group-probe.mjs|empty.eigendeck||$EMPTY"
   "kitchensink.mjs|empty.eigendeck||$EMPTY"
