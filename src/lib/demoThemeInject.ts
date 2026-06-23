@@ -48,9 +48,14 @@ export function demoVarsCssForSlide(config: PresentationConfig, theme: string, s
   // Mono pkg carries a full CSS stack ("'Source Code Pro', monospace"); take the
   // first quoted family for the bare --eigendeck-mono name.
   const monoFamily = monoPkg?.family?.match(/'([^']+)'/)?.[1] || undefined;
+  // Only PT Sans ships a real narrow variant. For every other font, fall back to
+  // the body font itself (NOT a clashing 'PT Sans Narrow') so a demo using
+  // var(--eigendeck-narrow) stays in the deck's typeface — same as the footnote
+  // preset's cascade.
+  const narrowFamily = bareNarrowFamilyName(bodyPkg) || bareFamilyName(bodyPkg);
   return demoThemeVarsCss(colors, {
     font: bareFamilyName(bodyPkg),
-    narrow: bareNarrowFamilyName(bodyPkg) || undefined,
+    narrow: narrowFamily,
     mono: monoFamily,
     baseSize: effectiveTextPresetSize('body', config),
   });

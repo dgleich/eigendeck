@@ -74,3 +74,17 @@ describe('demoVarsCssForSlide — every built-in theme maps to its resolved colo
     });
   }
 });
+
+describe('demoVarsCssForSlide — narrow falls back to the body font (only PT Sans has a real narrow)', () => {
+  it('PT Sans → PT Sans Narrow', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const css = demoVarsCssForSlide({} as any, 'white', { id: 's', elements: [], bodyFont: 'ptsans' } as any);
+    expect(css).toContain("--eigendeck-narrow: 'PT Sans Narrow';");
+  });
+  it('a font without a narrow variant → its own family, not PT Sans Narrow', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const css = demoVarsCssForSlide({} as any, 'white', { id: 's', elements: [], bodyFont: 'libertinus' } as any);
+    expect(css).toContain("--eigendeck-narrow: 'Libertinus Serif';");
+    expect(css).not.toContain('PT Sans Narrow');
+  });
+});
