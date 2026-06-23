@@ -15,6 +15,13 @@ A demo is a single HTML file that serves three roles based on URL hash:
 
 All communication between controller and viewports uses `BroadcastChannel`.
 
+**Piece names** can be any string of letters, digits, `_`, and `-`
+(e.g. `graph`, `force-graph`, `bar-chart-2`). When you add a demo to a slide,
+Eigendeck **scans the HTML for your `piece === '...'` checks and auto-creates a
+piece element for each unique name** (as long as the file also uses
+`BroadcastChannel`) — so you just write the branches and the pieces appear. See
+`DEMO_SPEC.md` for the data model.
+
 ## Template
 
 ```html

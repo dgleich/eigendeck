@@ -161,7 +161,19 @@ channel.onmessage = (e) => {
 ```
 
 - `demoSrc`: path to the demo HTML file
-- `piece`: name passed as `#piece=NAME` to the iframe
+- `piece`: name passed as `#piece=NAME` to the iframe. **Names may contain
+  letters, digits, `_`, and `-`** (e.g. `force-graph`, `bar-chart-2`) — match the
+  exact string in your `piece === '...'` checks.
+
+### Auto-detection (when you add a demo)
+
+You usually don't hand-write the `demo-piece` elements. When a demo HTML file is
+**added to a slide** (drag-drop, file import, or paste), Eigendeck scans it for
+`piece === '...'` / `piece == "..."` checks and **auto-creates one `demo-piece`
+element per unique piece name** it finds (laid out side by side), as long as the
+file also references `BroadcastChannel`. So just write the `if (piece === '...')`
+branches and the pieces appear — including hyphenated names like `'force-graph'`.
+(You can still author/edit the elements by hand via the JSON above.)
 
 ### Controller Iframe
 
