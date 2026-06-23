@@ -95,4 +95,17 @@ describe('capturePreview source_hash skip', () => {
     await capturePreview(elFor('z'), undefined, 'theme:light'); // new theme → recapture
     expect((domToDataUrl as any).mock.calls.length).toBe(2);
   });
+
+  it('passes backgroundColor to the rasterizer and re-captures when it changes', async () => {
+    // A transparent demo iframe must bake the slide bg into the PNG, else the
+    // thumbnail reads as the app's grey. The bg is part of the cache key too.
+    document.body.innerHTML = '<div data-element-id="w"><p>same</p></div>';
+    await capturePreview(elFor('w'), undefined, undefined, '#1a1a2e');
+    expect((domToDataUrl as any).mock.calls[0][1].backgroundColor).toBe('#1a1a2e');
+    await capturePreview(elFor('w'), undefined, undefined, '#1a1a2e'); // unchanged → skip
+    expect((domToDataUrl as any).mock.calls.length).toBe(1);
+    await capturePreview(elFor('w'), undefined, undefined, '#ffffff'); // bg change → recapture
+    expect((domToDataUrl as any).mock.calls.length).toBe(2);
+    expect((domToDataUrl as any).mock.calls[1][1].backgroundColor).toBe('#ffffff');
+  });
 });

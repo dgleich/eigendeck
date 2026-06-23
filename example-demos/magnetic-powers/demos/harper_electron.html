@@ -17,17 +17,23 @@ html, body { width:100%; height:100%; overflow:hidden; background: var(--eigende
 .he-prob canvas { width:100%; height:100%; display:block; image-rendering:pixelated; }
 
 /* ── Controls piece ─────────────────────────────── */
+/* Text colours track the deck theme (var(--eigendeck-*)) so labels stay legible
+   on BOTH light and dark slides — a hardcoded dark slate vanishes on dark. The
+   slider track gets an explicit translucent-fg fill so the groove is visible on
+   any background, not just the browser default (near-invisible on dark). */
 .he-controls { width:100%; height:100%; display:flex; flex-direction:column;
   justify-content:center; gap:18px; padding:16px 20px; }
 .he-ctrl-row { display:flex; align-items:center; gap:14px; }
-.he-ctrl-label { font-size:24px; font-weight:700; color:#334155; white-space:nowrap; }
-.he-ctrl-slider { flex:1; height:8px; accent-color:#6366f1; }
-.he-ctrl-val { font-size:24px; color:#6366f1; font-weight:600; min-width:100px; text-align:right; }
-.he-ctrl-time { font-size:22px; color:#94a3b8; min-width:90px; text-align:right; }
+.he-ctrl-label { font-size:24px; font-weight:700; color:var(--eigendeck-fg, #334155); white-space:nowrap; }
+.he-ctrl-slider { flex:1; height:8px; accent-color:var(--eigendeck-accent, #6366f1);
+  background:color-mix(in srgb, var(--eigendeck-fg, #334155) 22%, transparent);
+  border-radius:5px; }
+.he-ctrl-val { font-size:24px; color:var(--eigendeck-accent, #6366f1); font-weight:600; min-width:100px; text-align:right; }
+.he-ctrl-time { font-size:22px; color:var(--eigendeck-muted, #94a3b8); min-width:90px; text-align:right; }
 .he-ctrl-cb-row { display:flex; align-items:center; gap:10px; }
-.he-ctrl-cb-row label { font-size:24px; color:#334155; cursor:pointer;
+.he-ctrl-cb-row label { font-size:24px; color:var(--eigendeck-fg, #334155); cursor:pointer;
   display:flex; align-items:center; gap:8px; user-select:none; }
-.he-ctrl-cb-row input[type=checkbox] { width:22px; height:22px; accent-color:#dc2626; }
+.he-ctrl-cb-row input[type=checkbox] { width:22px; height:22px; accent-color:var(--eigendeck-accent, #dc2626); }
 
 /* ── Hamiltonian piece (grid with edge weights) ── */
 .he-ham { width:100%; height:100%; position:relative; }
@@ -51,6 +57,16 @@ var role = params.get('role');
 var piece = params.get('piece');
 var channelName = 'eigendeck-demo:harper_electron.html';
 var channel = new BroadcastChannel(channelName);
+
+// Read a deck theme colour (injected as a CSS var) so canvas-drawn nodes/labels
+// stay visible on dark slides too; falls back to the original light-theme colour
+// when opened standalone. Read per-draw so it tracks a live theme switch.
+function themeColor(name, fallback) {
+  try {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  } catch (e) { return fallback; }
+}
 
 // ─── Constants ────────────────────────────────────
 var N = 50;        // grid size
@@ -354,6 +370,7 @@ if (piece === 'lattice') {
       }
 
       // 3) Draw nodes at grid intersections
+      var nodeCol = themeColor('--eigendeck-fg', '#334155');
       var nodeR = Math.max(2.5, spacing * 0.06);
       for (var r2 = 0; r2 <= gN; r2++) {
         for (var c2 = 0; c2 <= gN; c2++) {
@@ -361,7 +378,7 @@ if (piece === 'lattice') {
           var ny = gridCy + isoY(r2, c2);
           ctx.beginPath();
           ctx.arc(nx, ny, nodeR, 0, 2 * Math.PI);
-          ctx.fillStyle = '#334155';
+          ctx.fillStyle = nodeCol;
           ctx.fill();
         }
       }
@@ -637,7 +654,8 @@ if (piece === 'hamiltonian') {
 
       var omegaColor = '#6366f1';   // purple-ish for ω (rightward)
       var omegaBarColor = '#e11d48'; // red-ish for ω̄ (leftward)
-      var neutralColor = '#94a3b8';
+      var neutralColor = themeColor('--eigendeck-muted', '#94a3b8');
+      var nodeCol = themeColor('--eigendeck-fg', '#334155');
 
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -696,7 +714,7 @@ if (piece === 'hamiltonian') {
 
             // Label on the right
             ctx.font = fontSize + 'px "PT Sans", sans-serif';
-            ctx.fillStyle = '#64748b';
+            ctx.fillStyle = neutralColor;
             ctx.textAlign = 'left';
             ctx.fillText('1', x1 + spacing * 0.06, (y1 + y2v) / 2);
             ctx.textAlign = 'center';
@@ -711,14 +729,14 @@ if (piece === 'hamiltonian') {
           var ny = oy + r2 * spacing;
           ctx.beginPath();
           ctx.arc(nx, ny, nodeR, 0, 2 * Math.PI);
-          ctx.fillStyle = '#334155';
+          ctx.fillStyle = nodeCol;
           ctx.fill();
         }
       }
 
       // Row labels on the left
       ctx.font = smallFont + 'px "PT Sans", sans-serif';
-      ctx.fillStyle = '#94a3b8';
+      ctx.fillStyle = neutralColor;
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
       for (var r3 = 0; r3 < gN; r3++) {
@@ -900,12 +918,13 @@ function setupStandalone() {
     }
 
     // Nodes
+    var nodeCol = themeColor('--eigendeck-fg', '#334155');
     var nodeR = Math.max(2.5, spacing*0.06);
     for (var r2 = 0; r2 <= gN; r2++) {
       for (var c2 = 0; c2 <= gN; c2++) {
         ctx.beginPath();
         ctx.arc(gridCx+isoX(r2,c2), gridCy+isoY(r2,c2), nodeR, 0, 2*Math.PI);
-        ctx.fillStyle = '#334155'; ctx.fill();
+        ctx.fillStyle = nodeCol; ctx.fill();
       }
     }
 
