@@ -18,29 +18,26 @@ import { effectiveTextPresetSize } from '../types/presentation';
 import { resolveTheme } from './themes';
 import {
   fontForPreset, bareFamilyName, bareNarrowFamilyName,
-  resolveMonoFontPackage, buildEmbeddedFontFacesCSS,
-  collectUsedFontIds,
+  resolveMonoFontPackage, allFontFacesCSS,
 } from './fonts';
 import { demoThemeVarsCss, injectDemoThemeIntoDoc } from './demoTheme.mjs';
 
-// ---- @font-face (data: URLs) — heavy; memoized per used-font-id set ----------
-const fontFacesCache = new Map<string, Promise<string>>();
-
-/** Data-URL @font-face CSS for the fonts a slide uses (deck defaults + the
- *  slide's per-role overrides). Cached by the set of used font ids so we
- *  fetch+base64 each font at most once. */
-export function demoFontFacesCss(config: PresentationConfig, slide: Slide): Promise<string> {
-  const mini = { config, slides: [slide] };
-  const key = collectUsedFontIds(mini).slice().sort().join(',');
-  let p = fontFacesCache.get(key);
-  if (!p) {
-    p = buildEmbeddedFontFacesCSS(mini).catch((e) => {
-      console.warn('[demoTheme] font-face build failed:', e);
-      return '';
-    });
-    fontFacesCache.set(key, p);
-  }
-  return p;
+// ---- @font-face by shared URL (NOT data URLs) --------------------------------
+// The registry's @font-face block references /fonts/<id>/<file>; the MAIN
+// document already loads those, so WebKit has them cached. We rewrite the
+// relative path to an absolute same-origin URL so it resolves inside the demo's
+// blob iframe too — then the browser fetches each font file ONCE and reuses it
+// across every demo iframe AND the main doc (no per-iframe byte duplication).
+// (Export embeds data: URLs instead, via fileOps' fontFacesCss opt, because an
+// exported HTML file must be self-contained/offline.)
+let _urlFacesCache: string | null = null;
+export function demoFontFacesCss(): string {
+  if (_urlFacesCache != null) return _urlFacesCache;
+  const origin = (typeof location !== 'undefined' && location.origin) ? location.origin : '';
+  // registry emits url('/fonts/...') — make it absolute so the blob iframe (whose
+  // base URL is the blob, not the app) resolves it against the app origin.
+  _urlFacesCache = allFontFacesCSS().split("url('/fonts/").join(`url('${origin}/fonts/`);
+  return _urlFacesCache;
 }
 
 /** The :root{--eigendeck-*} block for a slide's resolved theme + fonts. */
@@ -75,7 +72,7 @@ export function useDemoThemeInjection(
   useEffect(() => {
     if (!slide) return;
     let cancelled = false;
-    let fontFacesCss = '';
+    const fontFacesCss = demoFontFacesCss(); // sync; shared-URL @font-face
 
     const inject = () => {
       const ifr = iframeRef.current;
@@ -86,14 +83,7 @@ export function useDemoThemeInjection(
       injectDemoThemeIntoDoc(doc, fontFacesCss, varsCss);
     };
 
-    // Fonts resolve async; inject vars immediately, then again once fonts land.
     inject();
-    void demoFontFacesCss(config, slide).then((css) => {
-      if (cancelled) return;
-      fontFacesCss = css;
-      inject();
-    });
-
     // The iframe may load after this effect runs (blob load is async) — inject
     // on load too, and retry a few frames in case load already fired.
     const ifr = iframeRef.current;

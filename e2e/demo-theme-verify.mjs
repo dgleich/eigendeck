@@ -46,6 +46,15 @@ await sleep(1200);
 const after = await exec(sid, `return ${readState}`);
 console.log('  AFTER  '+JSON.stringify(after));
 console.log('  noReload='+(before.mark===after.mark));
+// Confirm the URL-referenced font actually loads inside the iframe (not embedded).
+const fontCheck = await exec(sid, `
+  const ifr=[...document.querySelectorAll('.slide-canvas iframe')].find(f=>{try{return f.contentDocument&&f.contentDocument.getElementById('eigendeck-demo-fonts')}catch(e){return false}});
+  if(!ifr) return {err:'no ifr'};
+  const doc=ifr.contentDocument;
+  try{ await doc.fonts.load('40px "PT Sans"'); return {loaded:doc.fonts.check('40px \\'PT Sans\\'')}; }
+  catch(e){ return {err:String(e.message)}; }
+`);
+console.log('  fontCheck='+JSON.stringify(fontCheck));
 console.log('VERIFY_DONE');
 await fetch(`${BASE}/session/${sid}`,{method:'DELETE'}).catch(()=>{});
 process.exit(0);
