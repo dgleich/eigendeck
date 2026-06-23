@@ -182,44 +182,59 @@ Use a hardcoded filename for the channel name. The bootstrap patches `URLSearchP
 
 ## Matching the deck — fonts & theme
 
-A demo runs in an isolated iframe, so it doesn't automatically see the deck's
-fonts or theme. Eigendeck injects two things into every demo (editor, presenter,
-and export) so a demo can match the slide it's on:
+A demo runs in an isolated iframe over the slide. Two rules make it match the
+deck automatically — the most important one is **don't paint a background**.
 
-1. **`@font-face` for the deck's fonts** — so `font-family: 'PT Sans'` (or
-   whatever the slide uses) actually resolves inside the iframe. **This is
-   automatic** — if your demo already names a deck font, it just works; no change
-   needed.
+1. **Don't set a background — let it be transparent.** A demo iframe is
+   transparent, so if you DON'T set `background` on `html`/`body` (or your
+   full-size container), the **slide's background shows straight through**. That's
+   automatic background matching on every theme, with zero CSS and no fallback to
+   keep in sync. Only set a background when you specifically need to *cover* slide
+   content behind the demo, or to guarantee contrast for a busy visualization.
 
-2. **The resolved theme as CSS custom properties** — *opt in* by using them
-   (with a fallback so the demo still works opened standalone):
-
-   | Variable | What |
-   |---|---|
-   | `--eigendeck-bg` | slide background |
-   | `--eigendeck-fg` | body text color |
-   | `--eigendeck-heading` | title color |
-   | `--eigendeck-accent` | accent / annotation color |
-   | `--eigendeck-muted` | muted / footnote color |
-   | `--eigendeck-font` | body font family (e.g. `'PT Sans'`) |
-   | `--eigendeck-narrow` | narrow variant, if the font has one |
-   | `--eigendeck-mono` | monospace/code font family |
-   | `--eigendeck-base-size` | deck body font size (px) |
+2. **Fonts resolve automatically.** Eigendeck injects `@font-face` for the deck's
+   fonts into every demo (editor, presenter, export), so `font-family: 'PT Sans'`
+   (or whatever the slide uses) just works — no change needed. For text drawn
+   over the transparent background, set `color: var(--eigendeck-fg, #222)` so it
+   stays readable on light AND dark slides.
 
    ```css
    body {
-     background: var(--eigendeck-bg, #fff);
-     color:      var(--eigendeck-fg, #222);
+     /* no background → the slide shows through and matches any theme */
+     color: var(--eigendeck-fg, #222);
      font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif;
    }
    ```
 
-   The vars update **live** when the slide/deck theme changes (the demo isn't
-   reloaded), so a demo authored against them tracks dark/light themes for free.
+### When you DO need theme colors
 
-   These are **opt-in**: a demo that hard-codes `background:#fff` keeps that white
-   background — switch to `var(--eigendeck-bg, #fff)` to follow the theme. See
-   `demo-starter.html` (from **File → Install LLM Tools**) for the pattern.
+The resolved theme is also injected as CSS custom properties — use them when a
+demo needs an explicit background, text/stroke colors, or sizing that tracks the
+deck (with a fallback so it still works opened standalone):
+
+| Variable | What |
+|---|---|
+| `--eigendeck-bg` | slide background |
+| `--eigendeck-fg` | body text color |
+| `--eigendeck-heading` | title color |
+| `--eigendeck-accent` | accent / annotation color |
+| `--eigendeck-muted` | muted / footnote color |
+| `--eigendeck-font` | body font family (e.g. `'PT Sans'`) |
+| `--eigendeck-narrow` | narrow variant (falls back to the body font) |
+| `--eigendeck-mono` | monospace/code font family |
+| `--eigendeck-base-size` | deck body font size (px) |
+
+The vars update **live** when the slide/deck theme changes (the demo isn't
+reloaded), so a demo authored against them tracks dark/light themes for free. You
+can also read or change them programmatically for dynamic effects, e.g.
+
+```js
+const fg = getComputedStyle(document.documentElement).getPropertyValue('--eigendeck-fg').trim();
+// d3 strokes that follow the theme:  .attr('stroke', 'var(--eigendeck-fg)')
+// or drive your own:  document.documentElement.style.setProperty('--my-color', fg);
+```
+
+See `demo-starter.html` (from **File → Install LLM Tools**) for the pattern.
 
 ## Critical Rules
 
