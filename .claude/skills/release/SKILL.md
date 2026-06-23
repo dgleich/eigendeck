@@ -52,12 +52,17 @@ drive the REAL built app via tauri-driver + WebKitWebDriver + xvfb. These DON'T
 run on the Mac (tauri-driver is Linux-only) and AREN'T in `npm test` — so they
 must be run **here in the container / CI before tagging**, not skipped.
 
-- See the **eigendeck-e2e** skill for provisioning + the harness. The build the
-  rig serves MUST be `VITE_EIGENDECK_SEAM=1 npm run build` (a plain build
-  tree-shakes the `window.__eigendeck` seam out and every probe times out).
-- Run **all** of `e2e/*.mjs` (each is an independent scenario; list in
-  `e2e/README.md`), not just the one you touched — a frontend change can break a
-  far probe. Every probe must print its `*_PASS` / exit 0.
+```bash
+VITE_EIGENDECK_SEAM=1 npm run build        # REQUIRED — plain build omits the seam
+npm run test:e2e                            # = bash e2e/run-all.sh → "ALL E2E PASS" / exit 0
+```
+- `test:e2e` runs the gating manifest in `e2e/run-all.sh` (one probe per real
+  feature: present mode, demo-theme injection, #79 clipping, …) and exits
+  non-zero if any fail. See the **eigendeck-e2e** skill for provisioning
+  (`E2E_APP` must be built; the rig is Linux-only — never the Mac).
+- The manifest is a curated subset, NOT yet every `e2e/*.mjs` — when you touch a
+  feature with a bespoke probe (notebook/video/undo/etc.), run that probe too
+  (see `e2e/README.md`) and add it to the manifest.
 - A red e2e probe blocks the tag the same as a failing unit test.
 
 ## Tag + build

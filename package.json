@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "setup": "node scripts/setup-fonts.mjs",
     "tauri": "tauri",
-    "export": "node tools/export-eigendeck.mjs"
+    "export": "node tools/export-eigendeck.mjs",
+    "test:e2e": "bash e2e/run-all.sh"
   },
   "engines": {
     "node": ">=20.0.0"
