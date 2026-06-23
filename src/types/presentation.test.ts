@@ -241,13 +241,24 @@ describe('textShadowCss / textBoxShadowCss (independent text vs box shadow)', ()
   });
 });
 
-describe('default insert positions snap to the 40px grid', () => {
-  it('every text preset default is grid-aligned (x/y/width/height % 40 === 0)', async () => {
+describe('default insert positions snap to the 30px grid (the default spacing)', () => {
+  it('every text preset default is grid-aligned (x/y/width/height % 30 === 0)', async () => {
     const { createTextElement } = await import('./presentation');
     for (const preset of ['title', 'body', 'textbox', 'annotation', 'footnote', 'hype'] as const) {
       const { x, y, width, height } = createTextElement(preset).position;
-      expect({ preset, x: x % 40, y: y % 40, w: width % 40, h: height % 40 })
+      expect({ preset, x: x % 30, y: y % 30, w: width % 30, h: height % 30 })
         .toEqual({ preset, x: 0, y: 0, w: 0, h: 0 });
+    }
+  });
+
+  it('keeps a 60px (2-cell) outer margin: nothing runs into the slide edges', async () => {
+    const { createTextElement } = await import('./presentation');
+    for (const preset of ['title', 'body', 'footnote'] as const) {
+      const { x, y, width, height } = createTextElement(preset).position;
+      expect(x).toBeGreaterThanOrEqual(60);
+      expect(y).toBeGreaterThanOrEqual(60);
+      expect(x + width).toBeLessThanOrEqual(1920 - 60);
+      expect(y + height).toBeLessThanOrEqual(1080 - 60);
     }
   });
 });

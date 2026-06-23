@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { usePreference } from '../lib/preferences';
 import { extractDemoPieceNames } from '../lib/demoPieces';
-import { gridOverlayStyle, gridCenterCross } from '../lib/grid';
+import { gridOverlaySvg } from '../lib/grid';
 import { captureHtmlToPng, looksLikeRichHtml } from '../lib/htmlPasteCapture';
 import { relPath } from '../App';
 import { useDemoUrl } from '../lib/demoAssets';
@@ -704,35 +704,18 @@ export function SlideEditor() {
               multiples of gridSpacing (0, g, 2g…) — exactly the coordinates
               snapToGrid() rounds to. (Plain `circle` centers the dot in the
               tile, offsetting dots by half a cell from the snap targets.) */}
+          {/* The WHOLE overlay — dots, coarse "+" crosses, the every-16 "big
+              chunk" cross, AND the dead-center "+" — is ONE inline <svg> covering
+              the slide, so everything shares one raster and the center mark can't
+              drift off the dot grid on Retina (#89). dangerouslySetInnerHTML is
+              safe: the markup is built from numbers + a constant colour. */}
           {showGrid && gridSpacing >= 2 && (
-            <div data-grid-overlay style={{
-              position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
-              ...gridOverlayStyle(gridSpacing),
-            }} />
+            <div
+              data-grid-overlay
+              style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}
+              dangerouslySetInnerHTML={{ __html: gridOverlaySvg(gridSpacing, SLIDE_WIDTH, SLIDE_HEIGHT) }}
+            />
           )}
-          {/* A single "+" marking the dead center of the slide (#89 follow-up).
-              An INLINE <svg> (not a CSS background) so it shares the canvas' pixel
-              rounding and can't drift off the grid on Retina, unlike a second
-              background-image layer would. Centered with translate(-50%,-50%). */}
-          {showGrid && (() => {
-            const cc = gridCenterCross();
-            return (
-              <svg
-                data-grid-center
-                width={cc.size} height={cc.size}
-                viewBox={`0 0 ${cc.size} ${cc.size}`}
-                style={{
-                  position: 'absolute', left: '50%', top: '50%',
-                  transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 1,
-                }}
-              >
-                <path
-                  d={cc.d} stroke={cc.stroke} strokeWidth={cc.strokeWidth}
-                  fill="none"
-                />
-              </svg>
-            );
-          })()}
           {slide.elements.map((el, idx) => {
             const isSelected = selectedObject?.type === 'element' && selectedObject.id === el.id
               || selectedObject?.type === 'multi' && selectedObject.ids.includes(el.id);

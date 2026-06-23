@@ -96,7 +96,7 @@ const DEFAULTS: PrefSchema = {
   jupyterServers: [],
   defaultNotebookEditable: false,
   showHelpText: true,
-  gridSpacing: 40,
+  gridSpacing: 30,   // 960×540 (slide center) is a grid point at 30 → center "+" sits on a dot
   hiddenToolbarItems: [],
   tryProjectorMode: true,
 };

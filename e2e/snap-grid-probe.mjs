@@ -46,19 +46,19 @@ await sleep(300);
 if(!await gridOverlayPresent(sid)) fail('grid overlay missing after Show Grid Points ON');
 console.log('  overlay shows only when Show Grid Points is on ✓');
 
-// Dots must land on the grid CORNERS (multiples of spacing) — the same
-// coordinates snapToGrid() rounds to. A plain centered `radial-gradient`
-// offsets dots by half a cell, so they wouldn't line up with snapping.
-const ov = JSON.parse(await exec(sid, "const d=document.querySelector('[data-grid-overlay]'); const cs=getComputedStyle(d); return JSON.stringify({size:cs.backgroundSize, img:cs.backgroundImage});"));
-// #89: the overlay is ONE SVG tile (4×80=320px) holding the fine dots AND the
-// coarse "+" crosses in one coordinate system (so the dot can't drift off the
-// cross center — the WKWebView/Retina bug from mixing a gradient + svg layer).
-if(!ov.size.includes('320px')) fail(`grid tile not 4× spacing (expected 320px): ${ov.size}`);
-if(!/svg|data:image/i.test(ov.img)) fail(`grid overlay not an SVG tile: ${ov.img}`);
-const svg = decodeURIComponent(ov.img);
-if(!/M160 \d+V/.test(svg)) fail(`cross not centered on the grid point at 2g=160: ${svg.slice(0,160)}`);
-if(!/cx=['"]?160['"]? cy=['"]?160['"]?/.test(svg)) fail(`no fine dot at the cross center (dot/cross misaligned): ${svg.slice(0,160)}`);
-console.log('  one SVG tile: + crosses with a dot at center, on every 4th grid point ✓ (#89)');
+// #89: the WHOLE overlay is ONE inline <svg> covering the slide — a tiling
+// <pattern> for the dots + coarse "+" crosses, PLUS the dead-center "+", all in
+// one coordinate system / one raster so the center mark can't drift off the dot
+// grid (the WKWebView/Retina bug from mixing a background tile + a separate
+// element). Read the inline markup, not a CSS background.
+const svg = await exec(sid, "const d=document.querySelector('[data-grid-overlay]'); return d ? d.innerHTML : '';");
+if(!/^<svg/.test(svg)) fail(`grid overlay is not an inline <svg>: ${String(svg).slice(0,80)}`);
+if(!/<pattern id=['"]?eigendeck-grid/.test(svg)) fail(`overlay has no tiling <pattern>: ${svg.slice(0,160)}`);
+if(!/width=['"]?320['"]? height=['"]?320['"]?/.test(svg)) fail(`pattern tile not 4× spacing (expected 320): ${svg.slice(0,200)}`);
+if(!/M160 \d+V/.test(svg)) fail(`coarse cross not centered on the grid point at 2g=160: ${svg.slice(0,200)}`);
+// the dead-center "+" must sit at the true slide center (960,540), in the SAME svg
+if(!/M960 \d+V\d+M\d+ 540H\d+/.test(svg)) fail(`dead-center "+" not at slide center 960,540: ${svg.slice(-200)}`);
+console.log('  one inline svg: tiled dots/crosses + a dead-center "+" at 960,540 ✓ (#89)');
 
 // NOTE: the native View-menu checkmark sync (CheckMenuItem ↔ store flag) is
 // NOT covered here — tauri-driver can't drive native menus. It's pinned by

@@ -105,8 +105,8 @@ describe('effectiveAutoReload', () => {
 describe('gridSpacing preference', () => {
   beforeEach(() => { localStorage.clear(); });
 
-  it('defaults to 40px when unset', () => {
-    expect(getPreference('gridSpacing')).toBe(40);
+  it('defaults to 30px when unset (slide center 960×540 is a grid point at 30)', () => {
+    expect(getPreference('gridSpacing')).toBe(30);
   });
 
   it('round-trips a custom spacing', () => {
