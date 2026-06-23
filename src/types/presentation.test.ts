@@ -269,11 +269,19 @@ describe('default insert positions snap to the 30px grid (the default spacing)',
     expect(body.y).toBe(title.y + title.height);
   });
 
-  it('the footnote box is tall enough for its text (24px size + line-height + padding)', async () => {
-    const { createTextElement, effectiveTextPresetSize } = await import('./presentation');
+  it('the footnote renders tight (no padding, single line-height) and fits its box', async () => {
+    const { createTextElement, effectiveTextPresetSize, textPresetBoxCss } = await import('./presentation');
+    const box = textPresetBoxCss('footnote');
+    expect(box).toEqual({ lineHeight: 1, padY: 0, padX: 0 }); // tight per the user's call
     const { height } = createTextElement('footnote').position;
-    // matches the renderer: line-height 1.3 + 8px top/bottom padding.
-    const needed = effectiveTextPresetSize('footnote') * 1.3 + 16;
+    const needed = effectiveTextPresetSize('footnote') * box.lineHeight + 2 * box.padY;
     expect(height).toBeGreaterThanOrEqual(needed);
+  });
+
+  it('only the footnote is tight; other presets keep the comfortable padding', async () => {
+    const { textPresetBoxCss } = await import('./presentation');
+    for (const preset of ['title', 'body', 'textbox', 'annotation', 'hype'] as const) {
+      expect(textPresetBoxCss(preset)).toEqual({ lineHeight: 1.3, padY: 8, padX: 12 });
+    }
   });
 });

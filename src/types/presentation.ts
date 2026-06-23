@@ -117,6 +117,17 @@ export const TEXT_PRESET_STYLES: Record<TextPreset, {
   },
 };
 
+/** Inner-box layout (line spacing + padding, in px) for a text preset's
+ *  rendered HTML. Footnote renders TIGHT — no padding, single line-height — so a
+ *  one-line 24px footnote fills its slim box flush on the grid; every other
+ *  preset keeps the comfortable 1.3 line-height + 8/12px padding. Used by BOTH
+ *  the live editor (SlideElementRenderer) and the SVG/export path
+ *  (TextElementSvg) so they stay WYSIWYG-identical. */
+export function textPresetBoxCss(preset: TextPreset): { lineHeight: number; padY: number; padX: number } {
+  if (preset === 'footnote') return { lineHeight: 1, padY: 0, padX: 0 };
+  return { lineHeight: 1.3, padY: 8, padX: 12 };
+}
+
 /** Resolve the effective px size for a text preset, honoring the
  *  deck's textSizes override. Use this instead of
  *  TEXT_PRESET_STYLES[preset].fontSize anywhere a config is in scope. */
@@ -552,15 +563,16 @@ export function createTextElement(preset: TextPreset, overrides?: Partial<Elemen
   // All positions are multiples of 30 — the default alignment-grid spacing — with
   // a 60px (2-cell) outer margin, so freshly-inserted elements sit on the grid
   // and the standard template breathes evenly from the slide edges.
-  // Body starts flush at the title's bottom (no gap). The footnote box is 60px
-  // (2 cells), not 30 — its 24px text needs ~47px once the renderer's line-height
-  // (1.3) and 8px vertical padding are counted, so a 30px box clipped it.
+  // Body starts flush at the title's bottom (no gap) and grows down to the
+  // footnote. The footnote renders TIGHT (no padding, single line-height — see
+  // textPresetBoxCss), so its 24px text fits a slim 30px box flush on the 60px
+  // bottom margin.
   const defaults: Record<TextPreset, ElementPosition> = {
     title:      { x: 60,  y: 60,   width: 1800, height: 180 },
-    body:       { x: 60,  y: 240,  width: 1800, height: 720 },
+    body:       { x: 60,  y: 240,  width: 1800, height: 750 },
     textbox:    { x: 210, y: 330,  width: 810,  height: 330 },
     annotation: { x: 210, y: 720,  width: 600,  height: 150 },
-    footnote:   { x: 60,  y: 960,  width: 1020, height: 60  },
+    footnote:   { x: 60,  y: 990,  width: 1020, height: 30  },
     hype:       { x: 720, y: 360,  width: 570,  height: 360 },
   };
 

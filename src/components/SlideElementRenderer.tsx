@@ -14,7 +14,7 @@ import { useImageSrc } from '../lib/imageSrc';
 import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 
-import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss, textPresetBoxCss } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import { buildTextElementSvgMarkup } from './TextElementSvg';
 import { TextFormatToolbar } from './TextFormatToolbar';
@@ -558,11 +558,12 @@ function TextContent({
 
   const valign = element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined);
 
+  const boxCss = textPresetBoxCss(element.preset);
   const style: React.CSSProperties = {
     width: '100%',
     fontFamily, fontSize, fontWeight, fontStyle, color,
-    lineHeight: 1.3,
-    padding: '8px 12px',
+    lineHeight: boxCss.lineHeight,
+    padding: `${boxCss.padY}px ${boxCss.padX}px`,
     outline: 'none',
     overflow: 'hidden',
     textShadow: textShadowCss(element, color),
