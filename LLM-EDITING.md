@@ -133,12 +133,14 @@ All elements share these base fields:
 
 | Preset       | fontSize | fontFamily          | fontWeight | fontStyle | color   | Default position |
 |-------------|----------|---------------------|------------|-----------|---------|-----------------|
-| `title`      | 72       | PT Sans             | bold       | normal    | #222    | `y: 40, h:200` (bottom-aligned) |
-| `body`       | 48       | PT Sans             | normal     | normal    | #222    | `y:240, h:760` |
-| `textbox`    | 48       | PT Sans             | normal     | normal    | #222    | `y:320, h:320` |
-| `annotation` | 32       | PT Sans             | normal     | italic    | #2563eb | `y:720, h:160` |
-| `footnote`   | 24       | PT Sans Narrow      | normal     | normal    | #888    | `y:1040, h:40` (bottom-aligned) |
-| `hype`       | 48 (body) | Shantell (or hypeFont) | normal  | normal    | #1a1a1a | `x:720,y:360, 560×360` — **sticky note**: seeded with `backgroundColor:"#fde047"` (bright yellow) + Shantell Sans + `rotation:-4` (jaunty tilt) |
+| `title`      | 72       | PT Sans             | bold       | normal    | #222    | `x:60, y: 60, 1800×180` (bottom-aligned) |
+| `body`       | 48       | PT Sans             | normal     | normal    | #222    | `x:60, y:240, 1800×750` (flush under the title) |
+| `textbox`    | 48       | PT Sans             | normal     | normal    | #222    | `x:210, y:330, 810×330` |
+| `annotation` | 32       | PT Sans             | normal     | italic    | #2563eb | `x:210, y:720, 600×150` |
+| `footnote`   | 24       | PT Sans Narrow      | normal     | normal    | #888    | `x:60, y:990, 1020×30` (bottom-aligned; renders tight — no padding, 1.0 line-height) |
+| `hype`       | 48 (body) | Shantell (or hypeFont) | normal  | normal    | #1a1a1a | `x:720,y:360, 570×360` — **sticky note**: seeded with `backgroundColor:"#fde047"` (bright yellow) + Shantell Sans + `rotation:-4` (jaunty tilt) |
+
+Defaults sit on the **30px** alignment grid with a 60px (2-cell) outer margin.
 
 **Optional overrides** (only include if different from preset default):
 - `fontSizeName`: one of `"footnote"`, `"note"`, `"body"` — picks a named size from the deck's type scale, overriding the preset's default size. `"title"` and `"hype"` are intentionally excluded; the numeric `fontSize` covers those cases.
@@ -391,12 +393,12 @@ Slides with the same `groupId` form a group:
 - All positions and sizes are in this coordinate space
 - The app scales the canvas to fit the screen
 
-**Typical layout guidelines** (all on the 40px grid):
-- Title at top: `y: 40`, full width: `x: 80, width: 1760, height: 200`
-- Body text below title: `y: 240`
-- Footer area: `y: 1040+`
-- Centered content: `x: 160-360` with `width: 1200-1600`
-- Side margins: at least 80px
+**Typical layout guidelines** (all on the 30px grid, 60px outer margin):
+- Title at top: `y: 60`, full width: `x: 60, width: 1800, height: 180`
+- Body text flush below title: `y: 240`, grows down to the footnote
+- Footnote area: `y: 990, height: 30` (tight; bottom-aligned on the 60px margin)
+- Centered content: `x: 150-360` with `width: 1200-1620`
+- Side margins: at least 60px (2 grid cells)
 
 ## Generating UUIDs
 
