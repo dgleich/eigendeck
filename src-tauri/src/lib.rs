@@ -637,12 +637,17 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .minimize().maximize().separator().close_window()
         .build().map_err(|e| e.to_string())?;
 
-    // Help menu — last in the bar (macOS convention). Placeholder for now (the
-    // user manual is TODO, #93); the OSS/font credits live in the native About
-    // panel (Eigendeck → About Eigendeck). `help-github` opens the repo URL via
-    // the opener plugin (routed through the catch-all `menu-event` emit).
+    // Help menu — last in the bar (macOS convention). Each item opens a URL via
+    // the opener plugin, routed through the catch-all `menu-event` emit (handled
+    // in App.tsx). The OSS/font credits live in the native About panel
+    // (Eigendeck → About Eigendeck).
     let help_menu = SubmenuBuilder::new(app, "Help")
-        .item(&MenuItemBuilder::new("Eigendeck on GitHub").id("help-github")
+        .item(&MenuItemBuilder::new("Learning about Eigendeck").id("help-learning")
+            .build(app).map_err(|e| e.to_string())?)
+        .item(&MenuItemBuilder::new("Manual").id("help-manual")
+            .build(app).map_err(|e| e.to_string())?)
+        .separator()
+        .item(&MenuItemBuilder::new("Report a Bug…").id("help-report-bug")
             .build(app).map_err(|e| e.to_string())?)
         .build()
         .map_err(|e| e.to_string())?;

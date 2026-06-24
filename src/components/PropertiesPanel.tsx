@@ -15,11 +15,20 @@ const ARROW_COLORS = [
   '#2563eb', '#9333ea', '#222222', '#6b7280',
 ];
 
-// Common text-background fills: white/dark panels for legibility over busy
-// backgrounds, plus a few tints + a highlighter yellow.
+// Fill palette for panels/masks — text-box backgrounds AND cover rectangles.
+// Organized in bands: neutrals, soft tints (legible panels over busy slides),
+// medium tints, then a few deep saturated fills. The swatch row wraps.
 const TEXT_BG_COLORS = [
-  '#ffffff', '#000000', '#1f2937', '#f3f4f6',
-  '#fff3b0', '#dbeafe', '#fee2e2', '#dcfce7',
+  // neutrals
+  '#ffffff', '#f3f4f6', '#d1d5db', '#9ca3af', '#374151', '#000000',
+  // soft tints + highlighter
+  '#fee2e2', '#ffedd5', '#fef9c3', '#fff3b0', '#dcfce7', '#ccfbf1',
+  '#cffafe', '#dbeafe', '#e0e7ff', '#ede9fe', '#fae8ff', '#fce7f3',
+  // medium tints
+  '#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#7dd3fc',
+  '#93c5fd', '#a5b4fc', '#c4b5fd', '#f0abfc', '#f9a8d4',
+  // deep / saturated
+  '#b91c1c', '#15803d', '#1d4ed8', '#6d28d9',
 ];
 
 const TEXT_COLORS = [
@@ -644,6 +653,28 @@ export function PropertiesPanel() {
                     onChange={(e) => updateElement(selectedEl.id, { headSize: parseInt(e.target.value) || 16 } as any)} />
                 </PropSection>
               </>
+            )}
+
+            {selectedEl.type === 'cover' && (
+              <PropSection label="Color">
+                {/* A cover is a reveal mask. With no color it matches the slide
+                    background (so it's invisible until you want to tint it). */}
+                <div className="prop-color-row">
+                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '1px 6px',
+                    background: !selectedEl.color ? '#3b82f6' : undefined, color: !selectedEl.color ? '#fff' : undefined }}
+                    onClick={() => updateElement(selectedEl.id, { color: undefined } as any)}
+                    title="Match the slide background (invisible mask)">Match</button>
+                  {TEXT_BG_COLORS.map((c) => (
+                    <button key={c} className={`prop-color-swatch ${selectedEl.color === c ? 'active' : ''}`}
+                      style={{ background: c, border: c === '#ffffff' ? '1px solid #ccc' : undefined }}
+                      onClick={() => updateElement(selectedEl.id, { color: c } as any)} />
+                  ))}
+                  <input type="color" title="Custom colour"
+                    value={selectedEl.color && /^#[0-9a-fA-F]{6}$/.test(selectedEl.color) ? selectedEl.color : '#ffffff'}
+                    onChange={(e) => updateElement(selectedEl.id, { color: e.target.value } as any)}
+                    style={{ width: 24, height: 24, padding: 0, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }} />
+                </div>
+              </PropSection>
             )}
 
             {/* Cross-slide relationships — sync (same element, shared position)

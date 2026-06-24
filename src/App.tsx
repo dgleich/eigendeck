@@ -1375,14 +1375,22 @@ function App() {
         case 'settings':
           setSettingsOpen(true);
           break;
-        case 'help-github': (async () => {
-          try {
-            const { openUrl } = await import('@tauri-apps/plugin-opener');
-            await openUrl('https://github.com/dgleich/eigendeck');
-          } catch (e) {
-            console.error('Open GitHub failed:', e);
-          }
-        })(); break;
+        case 'help-learning':
+        case 'help-manual':
+        case 'help-report-bug': {
+          const url = event.payload === 'help-learning' ? 'https://eigendeck.dev/learning'
+            : event.payload === 'help-manual' ? 'https://eigendeck.dev/manual'
+            : 'https://github.com/dgleich/eigendeck/issues';
+          (async () => {
+            try {
+              const { openUrl } = await import('@tauri-apps/plugin-opener');
+              await openUrl(url);
+            } catch (e) {
+              console.error('Open help URL failed:', e);
+            }
+          })();
+          break;
+        }
         case 'presentation-settings':
         case 'deck-properties': {
           const s = usePresentationStore.getState();

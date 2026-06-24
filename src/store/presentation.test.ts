@@ -194,6 +194,19 @@ describe('presentation store', () => {
     expect(usePresentationStore.getState().isDirty).toBe(false);
   });
 
+  it('a cover element accepts and persists a custom color (#90)', () => {
+    const store = usePresentationStore.getState();
+    store.addElement({ id: 'cov', type: 'cover', position: { x: 0, y: 0, width: 200, height: 100 } } as any);
+    let cov = usePresentationStore.getState().presentation.slides[0].elements.find((e) => e.id === 'cov');
+    expect(cov && (cov as any).color).toBeUndefined(); // defaults to matching the slide
+    store.updateElement('cov', { color: '#fde047' } as any);
+    cov = usePresentationStore.getState().presentation.slides[0].elements.find((e) => e.id === 'cov');
+    expect((cov as any).color).toBe('#fde047');
+    store.updateElement('cov', { color: undefined } as any); // back to "match slide"
+    cov = usePresentationStore.getState().presentation.slides[0].elements.find((e) => e.id === 'cov');
+    expect((cov as any).color).toBeUndefined();
+  });
+
   it('toggles presenting mode', () => {
     usePresentationStore.getState().setPresenting(true);
     expect(usePresentationStore.getState().isPresenting).toBe(true);
