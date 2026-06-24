@@ -40,6 +40,7 @@ rm -f showcase.eigendeck*
 #    The rig (tauri-driver + WebKitWebDriver + xvfb + http.server :1420) lives at
 #    ../../e2e/run-probe.sh and needs the debug app built with the seam:
 #       VITE_EIGENDECK_SEAM=1 npm run build && (cd ../../src-tauri && cargo build)
+E2E_APP=$PWD/../../src-tauri/target/debug/eigendeck \
 PROBE=$PWD/export-showcase.mjs E2E_DECK=$PWD/showcase.eigendeck \
   OUT=$PWD/showcase.html SHOTS=0,1 bash ../../e2e/run-probe.sh
 
@@ -56,6 +57,7 @@ HTML export can't render math). To change one, edit the `TITLE` / `DEMO` arrays 
 `harvest-equations.mjs`, then:
 
 ```bash
+E2E_APP=$PWD/../../src-tauri/target/debug/eigendeck \
 PROBE=$PWD/harvest-equations.mjs E2E_DECK=<scratch.eigendeck> bash ../../e2e/run-probe.sh
 ```
 
