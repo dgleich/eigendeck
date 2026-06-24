@@ -1,0 +1,136 @@
+// Build the eigendeck.dev manual from docs/manual/*.md into the website repo
+// (../website, the eigendeck-web checkout). Static HTML, no client framework —
+// Cloudflare Pages serves it as-is. Run from the repo root:
+//
+//   node tools/build-manual.mjs
+//   cd website && git add -A && git commit -m "manual: rebuild" && git push
+//
+// Source of truth is docs/manual/. This converts each page to a styled HTML doc
+// (site nav + manual sidebar), rewrites .md links to .html, copies images, and
+// also emits a /learning landing page (Help → "Learning about Eigendeck").
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, copyFileSync, rmSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { marked } from 'marked';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const SRC = resolve(ROOT, 'docs/manual');
+const OUT = resolve(ROOT, 'website/manual');
+const LEARN = resolve(ROOT, 'website/learning');
+const GH = 'https://github.com/dgleich/eigendeck/blob/main';
+
+// Ordered table of contents → sidebar. `file` is the source md (README → index).
+const TOC = [
+  { section: 'Start here', pages: [
+    { file: 'README.md', out: 'index.html', title: 'Overview' },
+    { file: 'philosophy.md', out: 'philosophy.html', title: 'Philosophy' },
+    { file: 'building-a-presentation.md', out: 'building-a-presentation.html', title: 'Building a presentation' },
+    { file: 'building-demos-with-llms.md', out: 'building-demos-with-llms.html', title: 'Building demos with LLMs' },
+  ]},
+  { section: 'Elements & features', pages: [
+    { file: 'elements.md', out: 'elements.html', title: 'Elements' },
+    { file: 'styles-and-fonts.md', out: 'styles-and-fonts.html', title: 'Styles and fonts' },
+    { file: 'text-sizes.md', out: 'text-sizes.html', title: 'Text sizes' },
+    { file: 'notebooks.md', out: 'notebooks.html', title: 'Notebooks' },
+    { file: 'notebook-servers.md', out: 'notebook-servers.html', title: 'Jupyter servers' },
+    { file: 'videos.md', out: 'videos.html', title: 'Videos' },
+    { file: 'assets.md', out: 'assets.html', title: 'Watched assets' },
+    { file: 'sync-and-link.md', out: 'sync-and-link.html', title: 'Sync and link' },
+    { file: 'clipboard.md', out: 'clipboard.html', title: 'Cut, copy, and paste' },
+  ]},
+];
+const MD_TO_HTML = new Map(TOC.flatMap((s) => s.pages).map((p) => [p.file, p.out]));
+
+// Rewrite intra-manual + repo links in rendered HTML.
+function rewriteLinks(html) {
+  return html.replace(/href="([^"]+)"/g, (m, href) => {
+    // ../../FOO.md (repo-root docs not on the site) → GitHub
+    let mm = href.match(/^\.\.\/\.\.\/(.+\.md)(#.*)?$/);
+    if (mm) return `href="${GH}/${mm[1]}${mm[2] || ''}" target="_blank" rel="noopener"`;
+    // local manual .md (optionally with #anchor) → mapped .html
+    mm = href.match(/^([\w-]+\.md)(#.*)?$/);
+    if (mm && MD_TO_HTML.has(mm[1])) return `href="${MD_TO_HTML.get(mm[1])}${mm[2] || ''}"`;
+    return m;
+  });
+}
+
+function sidebar(activeOut) {
+  let s = '<nav class="manual-nav"><a class="manual-home" href="/">&larr; eigendeck.dev</a>';
+  for (const sec of TOC) {
+    s += `<div class="manual-nav-section">${sec.section}</div><ul>`;
+    for (const p of sec.pages) {
+      const cls = p.out === activeOut ? ' class="active"' : '';
+      s += `<li><a${cls} href="${p.out}">${p.title}</a></li>`;
+    }
+    s += '</ul>';
+  }
+  return s + '</nav>';
+}
+
+function page({ title, bodyHtml, activeOut, sidebar: withSidebar = true }) {
+  const layout = withSidebar
+    ? `<div class="manual-layout">${sidebar(activeOut)}<main class="manual-content">${bodyHtml}</main></div>`
+    : `<div class="manual-layout learn"><main class="manual-content">${bodyHtml}</main></div>`;
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title} — Eigendeck manual</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/manual.css">
+</head>
+<body class="manual">
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="logo"><img src="/logo-icon.svg" alt="" class="logo-icon">Eigendeck</a>
+      <div class="nav-links">
+        <a href="/manual/">Manual</a>
+        <a href="/learning/">Learning</a>
+        <a href="https://github.com/dgleich/eigendeck" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </nav>
+  ${layout}
+</body>
+</html>
+`;
+}
+
+// --- build ---------------------------------------------------------------
+rmSync(OUT, { recursive: true, force: true });
+mkdirSync(OUT, { recursive: true });
+mkdirSync(LEARN, { recursive: true });
+
+for (const sec of TOC) for (const p of sec.pages) {
+  const md = readFileSync(resolve(SRC, p.file), 'utf-8');
+  const title = (md.match(/^#\s+(.+)$/m)?.[1] || p.title).replace(/\s*\(.*?\)\s*$/, '').trim();
+  const body = rewriteLinks(marked.parse(md));
+  writeFileSync(resolve(OUT, p.out), page({ title, bodyHtml: body, activeOut: p.out }));
+}
+
+// images
+const imgSrc = resolve(SRC, 'images/welcome');
+const imgOut = resolve(OUT, 'images/welcome');
+mkdirSync(imgOut, { recursive: true });
+for (const f of readdirSync(imgSrc)) copyFileSync(resolve(imgSrc, f), resolve(imgOut, f));
+
+// /learning landing — gentle on-ramp into the manual.
+const learnBody = `
+<header class="learn-hero">
+  <p class="eyebrow">Learning Eigendeck</p>
+  <h1>Build interactive show-and-tell talks.</h1>
+  <p class="subtitle">Eigendeck is for demonstrating ideas live, not just describing them. Here's how to get going.</p>
+</header>
+<div class="learn-cards">
+  <a class="learn-card" href="/manual/philosophy.html"><h3>Philosophy &rarr;</h3><p>What Eigendeck is for: show <em>and</em> tell, a slide as a stage not a snapshot.</p></a>
+  <a class="learn-card" href="/manual/building-a-presentation.html"><h3>Build your first deck &rarr;</h3><p>A slide-by-slide walkthrough of the built-in Welcome deck, with screenshots.</p></a>
+  <a class="learn-card" href="/manual/building-demos-with-llms.html"><h3>Demos with LLMs &rarr;</h3><p>Produce the interactive pieces that make a talk show-and-tell.</p></a>
+  <a class="learn-card" href="/manual/"><h3>Full manual &rarr;</h3><p>Every element and feature: text, math &amp; fonts, notebooks, videos, watched assets.</p></a>
+</div>`;
+writeFileSync(resolve(LEARN, 'index.html'), page({ title: 'Learning Eigendeck', bodyHtml: learnBody, activeOut: '', sidebar: false }));
+
+console.log(`Built ${TOC.flatMap((s) => s.pages).length} manual pages + /learning into website/`);

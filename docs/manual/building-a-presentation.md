@@ -14,6 +14,45 @@ behind the curtain** → **sign off**.
 
 ---
 
+## The editor at a glance
+
+![The Eigendeck editor — toolbar, canvas, and the Element inspector](images/welcome/editor-element-inspector.png)
+
+Four regions, every time:
+
+- **Slide sidebar (left)** — every slide as a thumbnail; drag to reorder,
+  right-click for Duplicate / Build Slide / Delete.
+- **Insert toolbar (top)** — one button per element type (Title, Body, Text,
+  Note, Footnote, Arrow, Cover, Image, Hype, Demo, Notebook, Video). The same
+  items live in the **Insert** menu.
+- **Canvas (center)** — the 1920×1080 slide. Drag elements freely; the selected
+  one shows a handle box (and small **S / A / L** badges if it's synced, animated,
+  or linked across slides).
+- **Inspector (right)** — three tabs: **Deck** (presentation-wide settings —
+  default fonts, theme, text sizes, math macros), **Slide** (this slide's theme
+  and fonts), and **Element** (the selected element's properties). It's open by
+  default; toggle it with **View → Toggle Inspector**.
+
+### Colouring text — and the math comes along
+
+The screenshot above has the body element selected, so the inspector shows the
+**Element** tab. The **Text Color** control sets the colour of the whole
+element — and because inline math renders in the current text colour, *the
+equations recolour with it*. That's how the red `Φ` and the blue "graph" on this
+slide are done:
+
+- **A whole element** — pick a swatch (or a custom colour) under **Text Color**.
+- **Just a phrase (and its math)** — select the run while editing and use the
+  format toolbar's colour; MathJax inside that run picks up the colour too. The
+  **Clear inline** button removes those per-run colours and returns the element
+  to one uniform colour.
+
+The same panel carries **Background** (a panel behind the text), **Effect**
+(shadow / glow for legibility over busy slides), vertical alignment, rotation,
+and **Position & Size**.
+
+---
+
 ## 1. Title and the "show / tell" opening (slides 1–3)
 
 ![Slide 1 — Welcome to Eigendeck](images/welcome/slide-00.png)
@@ -86,10 +125,13 @@ Concrete, and Shantell Sans — each with its own theme:
 ![Slide 14 — the same slide, four fonts](images/welcome/slide-13.png)
 
 To make these, build the slide once, then **duplicate** it and change the
-**Body font** and **theme** in the Slide inspector. Because each font ships with a
-*matching* MathJax math font, the equations re-render to belong with the text —
-the math on the Shantell slide looks hand-drawn too. The Shantell slide adds an
-**annotation** giving the author's honest take on it. See
+**Theme** and **Body font** in the **Slide** inspector tab:
+
+![The Slide inspector — theme and per-slide fonts](images/welcome/editor-slide-inspector.png)
+
+Each font ships with a *matching* MathJax math font, so the equations re-render to
+belong with the text — the math on the Shantell slide looks hand-drawn too. The
+Shantell slide adds an **annotation** giving the author's honest take on it. See
 [styles and fonts](styles-and-fonts.md).
 
 ## 5. Behind the curtain (slides 19–20)

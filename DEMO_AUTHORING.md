@@ -213,6 +213,40 @@ deck automatically — the most important one is **don't paint a background**.
    }
    ```
 
+### Size text relative to the deck — never hardcode px
+
+A demo renders in the slide's coordinate space, where body text is
+`--eigendeck-base-size` (commonly 28–40px), not the 14–16px that looks right in a
+browser tab or the editor's zoomed canvas. Hardcoded px font sizes therefore come
+out tiny next to the slide's own text. **Rule: set the demo root's `font-size` to
+the deck base size and express everything else in `em`.**
+
+```css
+.mydemo-root {
+  font-size: var(--eigendeck-base-size, 20px);   /* 1em == deck body text */
+  font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif;
+  color: var(--eigendeck-fg, #222);
+}
+.mydemo-title { font-size: 1.1em; }
+.mydemo-value { font-size: 3em; }      /* a "hero" number */
+.mydemo-cap   { font-size: 0.85em; }   /* footnote */
+```
+
+- Body-sized UI text is `1em` and matches the slide automatically — and it tracks
+  **live** when the deck theme or base size changes (the demo isn't reloaded).
+- For SVG `<text>`, the same idea: use `em` in CSS (it inherits the element font),
+  or read the base size in JS for attribute-based sizing:
+  ```js
+  const base = parseFloat(getComputedStyle(document.documentElement)
+                 .getPropertyValue('--eigendeck-base-size')) || 20;
+  label.setAttribute('font-size', 0.9 * base);
+  ```
+- SVG geometry (stroke widths, marker radii, gridlines) is already in slide units,
+  so it stays consistent across screens — it's only eyeballed px **font** sizes
+  that drift.
+- **Preview at real slide scale** (presenter view or an HTML export), not the
+  editor's zoomed canvas, which makes undersized text look acceptable.
+
 ### When you DO need theme colors
 
 The resolved theme is also injected as CSS custom properties — use them when a

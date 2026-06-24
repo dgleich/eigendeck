@@ -30,6 +30,10 @@ once.
 
 There is **no slide-level text size override**. This is intentional.
 
+The size applies to the **whole element** — you can't mix font sizes *within* a
+single text element. That, too, is intentional: it keeps the text inside an
+element harmonious. Need two sizes? Use two elements (a Title and a Body, say).
+
 ## Why this design
 
 A presentation reads as one document, not a sequence of independent

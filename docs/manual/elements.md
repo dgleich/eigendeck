@@ -23,6 +23,13 @@ and per-element colour, background panel, alignment, opacity, rotation, and
 shadow/glow effects. The sizes come from one deck-wide [type scale](text-sizes.md);
 fonts and math are covered in [styles and fonts](styles-and-fonts.md).
 
+> **One size per text element.** You can't mix font sizes *within* a single text
+> element — the size is a property of the whole element (set by its preset, or
+> overridden in the inspector). This is deliberate: it keeps the text inside an
+> element visually harmonious. When you want a different size, use a separate
+> element with the appropriate preset (e.g. a Title above a Body, a Footnote
+> below). See [text sizes](text-sizes.md).
+
 ### Annotation elements
 
 The **Note** preset doubles as the annotation: smaller, italic, accent-coloured
