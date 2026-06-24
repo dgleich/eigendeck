@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bouncing balls</title>
+<!--
+  Showcase decoration — a whimsical little physics playground. Colorful balls
+  fall under gravity, bounce off the walls and each other (elastic circle
+  collisions) with a bit of squash-and-stretch on impact. CLICK to drop a new
+  ball; DRAG to fling one. Title-LESS, theme-aware, transparent over the slide;
+  ball colors track the deck accent + a cheerful palette.
+-->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; }
+  body { overflow: hidden; position: relative; background: transparent;
+    font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif; }
+  #bb { width: 100%; height: 100%; display: block; cursor: pointer; }
+  .bb-hint { position: absolute; left: 50%; bottom: 0.6em; transform: translateX(-50%);
+    font-size: calc(0.62 * var(--eigendeck-base-size, 22px)); color: var(--eigendeck-muted, #aaa);
+    pointer-events: none; user-select: none; transition: opacity 0.5s; }
+  .bb-hint.gone { opacity: 0; }
+</style>
+</head>
+<body>
+  <canvas id="bb"></canvas>
+  <div class="bb-hint" id="bb-hint">click to drop a ball · drag to fling</div>
+<script>
+(function () {
+  'use strict';
+  function tv(n, fb) { try { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb; } catch (e) { return fb; } }
+  var cv = document.getElementById('bb'), ctx = cv.getContext('2d'), hint = document.getElementById('bb-hint');
+  var W = 0, H = 0, dpr = 1;
+  function resize() { var r = cv.getBoundingClientRect(); dpr = window.devicePixelRatio || 1; W = Math.max(1, Math.round(r.width * dpr)); H = Math.max(1, Math.round(r.height * dpr)); cv.width = W; cv.height = H; }
+
+  var PALETTE = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
+  function accentColor() { return tv('--eigendeck-accent', '#2563eb'); }
+  var GRAV, REST = 0.82, FRICT = 0.999, MAXB = 14;
+  var balls = [];
+  function unit() { return Math.max(W, H); }            // scale physics to canvas size
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+
+  function addBall(x, y, vx, vy, rad, col) {
+    if (balls.length >= MAXB) balls.shift();
+    var r = rad || rnd(0.035, 0.07) * Math.min(W, H);
+    balls.push({ x: x, y: y, vx: vx || 0, vy: vy || 0, r: r, m: r * r,
+      col: col || (Math.random() < 0.45 ? accentColor() : PALETTE[(Math.random() * PALETTE.length) | 0]),
+      sx: 1, sy: 1 });                                   // squash scale
+  }
+  function seed() {
+    balls = [];
+    var n = 6;
+    for (var i = 0; i < n; i++) addBall(rnd(0.15, 0.85) * W, rnd(0.1, 0.4) * H, rnd(-0.06, 0.06) * unit(), rnd(-0.02, 0.04) * unit());
+  }
+
+  function step(dt) {
+    GRAV = 1.4 * unit();                                 // px/s^2, scales with canvas
+    for (var i = 0; i < balls.length; i++) {
+      var b = balls[i];
+      if (b.held) continue;
+      b.vy += GRAV * dt; b.vx *= FRICT; b.vy *= FRICT;
+      b.x += b.vx * dt; b.y += b.vy * dt;
+      // walls (with squash on the axis of impact)
+      if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx) * REST; squash(b, 'x', b.vx); }
+      else if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * REST; squash(b, 'x', b.vx); }
+      if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy) * REST; squash(b, 'y', b.vy); }
+      else if (b.y + b.r > H) {
+        b.y = H - b.r; b.vy = -Math.abs(b.vy) * REST; b.vx *= 0.985; squash(b, 'y', b.vy);
+        // tiny anti-death kick so the slide keeps gently alive
+        if (Math.abs(b.vy) < 0.04 * unit()) b.vy -= rnd(0.03, 0.10) * unit();
+      }
+      // ease squash back to round
+      b.sx += (1 - b.sx) * Math.min(1, dt * 9); b.sy += (1 - b.sy) * Math.min(1, dt * 9);
+    }
+    // ball-ball elastic collisions
+    for (var a = 0; a < balls.length; a++) for (var c = a + 1; c < balls.length; c++) {
+      var p = balls[a], q = balls[c], dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy), min = p.r + q.r;
+      if (d > 0 && d < min) {
+        var nx = dx / d, ny = dy / d, overlap = (min - d);
+        var tot = p.m + q.m;
+        if (!p.held) { p.x -= nx * overlap * (q.m / tot); p.y -= ny * overlap * (q.m / tot); }
+        if (!q.held) { q.x += nx * overlap * (p.m / tot); q.y += ny * overlap * (p.m / tot); }
+        var rvx = q.vx - p.vx, rvy = q.vy - p.vy, vn = rvx * nx + rvy * ny;
+        if (vn < 0) {
+          var imp = -(1 + REST) * vn / tot;
+          if (!p.held) { p.vx -= imp * q.m * nx; p.vy -= imp * q.m * ny; }
+          if (!q.held) { q.vx += imp * p.m * nx; q.vy += imp * p.m * ny; }
+          squash(p, 'x', vn); squash(q, 'x', vn);
+        }
+      }
+    }
+  }
+  function squash(b, axis, v) {
+    var s = Math.min(0.34, Math.abs(v) / unit() * 1.6);
+    if (axis === 'x') { b.sx = 1 - s; b.sy = 1 + s; } else { b.sy = 1 - s; b.sx = 1 + s; }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    var ringBg = tv('--eigendeck-bg', '#fff');
+    for (var i = 0; i < balls.length; i++) {
+      var b = balls[i];
+      ctx.save(); ctx.translate(b.x, b.y); ctx.scale(b.sx, b.sy);
+      var g = ctx.createRadialGradient(-b.r * 0.3, -b.r * 0.35, b.r * 0.1, 0, 0, b.r);
+      g.addColorStop(0, lighten(b.col, 0.5)); g.addColorStop(1, b.col);
+      ctx.beginPath(); ctx.arc(0, 0, b.r, 0, 6.283); ctx.fillStyle = g; ctx.fill();
+      ctx.lineWidth = Math.max(1, b.r * 0.06); ctx.strokeStyle = ringBg; ctx.globalAlpha = 0.5; ctx.stroke();
+      ctx.restore();
+    }
+  }
+  function lighten(hex, t) { var c = parseHex(hex); return 'rgb(' + Math.round(c[0] + (255 - c[0]) * t) + ',' + Math.round(c[1] + (255 - c[1]) * t) + ',' + Math.round(c[2] + (255 - c[2]) * t) + ')'; }
+  function parseHex(h) { h = (h || '').trim(); if (h[0] !== '#') return [37, 99, 235]; if (h.length === 4) h = '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3]; var n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+
+  var last = 0;
+  function frame(t) { var dt = last ? Math.min(0.033, (t - last) / 1000) : 0.016; last = t; step(dt); draw(); requestAnimationFrame(frame); }
+
+  // interaction: click to drop; drag to fling an existing ball
+  var drag = null, lastPt = null, lastT = 0;
+  function pt(e) { var r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr]; }
+  function hitBall(x, y) { for (var i = balls.length - 1; i >= 0; i--) { var b = balls[i]; if (Math.hypot(b.x - x, b.y - y) < b.r) return b; } return null; }
+  cv.addEventListener('pointerdown', function (e) {
+    var p = pt(e), b = hitBall(p[0], p[1]);
+    hint.classList.add('gone'); cv.setPointerCapture(e.pointerId);
+    if (b) { drag = b; b.held = true; b.vx = b.vy = 0; lastPt = p; lastT = e.timeStamp; }
+    else { addBall(p[0], p[1], rnd(-0.04, 0.04) * unit(), 0); }
+  });
+  cv.addEventListener('pointermove', function (e) {
+    if (!drag) return; var p = pt(e); drag.x = p[0]; drag.y = p[1];
+    var d = Math.max(1, e.timeStamp - lastT); drag.vx = (p[0] - lastPt[0]) / d * 1000; drag.vy = (p[1] - lastPt[1]) / d * 1000;
+    lastPt = p; lastT = e.timeStamp;
+  });
+  function release() { if (drag) { drag.held = false; drag = null; } }
+  cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', release);
+  window.addEventListener('resize', function () { var ow = W, oh = H; resize(); if (ow && balls.length) { var sx = W / ow, sy = H / oh; balls.forEach(function (b) { b.x *= sx; b.y *= sy; }); } });
+
+  function start() { resize(); seed(); requestAnimationFrame(frame); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+</body>
+</html>
