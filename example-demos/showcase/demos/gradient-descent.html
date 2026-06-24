@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gradient descent</title>
+<!--
+  Showcase demo — gradient descent on a non-convex loss surface. Title-LESS by
+  design: just the visualization (put the title/caption on the slide, or in the
+  website carousel frame). Theme-aware (var(--eigendeck-*) with fallbacks),
+  responsive, interaction-first — nothing auto-loops.
+
+  Interaction: CLICK anywhere to drop a ball; it follows the gradient downhill,
+  tracing its path to a local minimum. Drag the speed slider to change the step
+  size. Different starting points fall into different basins.
+-->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden; position: relative;
+    background: var(--eigendeck-bg, #ffffff);
+    color: var(--eigendeck-fg, #222222);
+    font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif;
+    font-size: var(--eigendeck-base-size, 22px);
+    cursor: crosshair;
+  }
+  #gd { width: 100%; height: 100%; display: block; }
+  .gd-hint {
+    position: absolute; left: 50%; top: 8%; transform: translateX(-50%);
+    font-size: 0.7em; color: var(--eigendeck-muted, #888);
+    background: color-mix(in srgb, var(--eigendeck-bg, #fff) 70%, transparent);
+    padding: 0.2em 0.7em; border-radius: 1em; pointer-events: none;
+    transition: opacity 0.4s; user-select: none;
+  }
+  .gd-hint.gone { opacity: 0; }
+  .gd-ctrl {
+    position: absolute; right: 1.1em; bottom: 1em; display: flex; align-items: center; gap: 0.5em;
+    font-size: 0.66em; color: var(--eigendeck-muted, #888); user-select: none;
+  }
+  .gd-ctrl input[type=range] {
+    width: 7em; accent-color: var(--eigendeck-accent, #2563eb);
+    background: color-mix(in srgb, var(--eigendeck-fg, #333) 20%, transparent);
+    border-radius: 4px; height: 0.35em;
+  }
+</style>
+</head>
+<body>
+  <canvas id="gd"></canvas>
+  <div class="gd-hint" id="gd-hint">click to drop a ball</div>
+  <div class="gd-ctrl"><span>step</span><input id="gd-lr" type="range" min="2" max="30" value="12"></div>
+<script>
+(function () {
+  'use strict';
+  function tv(n, fb) { try { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb; } catch (e) { return fb; } }
+  function hexToRgb(h) { var n = parseInt(h.replace('#', ''), 16); return h.length >= 7 ? [(n >> 16) & 255, (n >> 8) & 255, n & 255] : [37, 99, 235]; }
+
+  var cv = document.getElementById('gd'), ctx = cv.getContext('2d');
+  var hint = document.getElementById('gd-hint'), lrEl = document.getElementById('gd-lr');
+  // Domain x,y in [-3,3]. A handful of Gaussian wells → non-convex surface.
+  var wells = [
+    { x: -1.4, y: -0.6, a: 1.0, s: 0.8 },
+    { x: 1.3, y: 0.9, a: 1.25, s: 0.9 },
+    { x: 0.2, y: -1.4, a: 0.8, s: 0.6 },
+    { x: -0.9, y: 1.4, a: 0.7, s: 0.7 }
+  ];
+  function loss(x, y) { // lower = deeper well; add a gentle bowl so edges climb
+    var v = 0.08 * (x * x + y * y);
+    for (var i = 0; i < wells.length; i++) { var w = wells[i], dx = x - w.x, dy = y - w.y; v -= w.a * Math.exp(-(dx * dx + dy * dy) / (2 * w.s * w.s)); }
+    return v;
+  }
+  function grad(x, y) {
+    var gx = 0.16 * x, gy = 0.16 * y;
+    for (var i = 0; i < wells.length; i++) { var w = wells[i], dx = x - w.x, dy = y - w.y, e = w.a * Math.exp(-(dx * dx + dy * dy) / (2 * w.s * w.s)) / (w.s * w.s); gx += e * dx; gy += e * dy; }
+    return [gx, gy];
+  }
+
+  var W = 0, H = 0, dpr = 1;
+  function toScreen(x, y) { return [(x + 3) / 6 * W, (y + 3) / 6 * H]; }
+  function toWorld(px, py) { return [px / W * 6 - 3, py / H * 6 - 3]; }
+
+  // Precompute loss range for the color ramp.
+  var lmin = 1e9, lmax = -1e9;
+  for (var gx = -3; gx <= 3; gx += 0.1) for (var gy = -3; gy <= 3; gy += 0.1) { var l = loss(gx, gy); if (l < lmin) lmin = l; if (l > lmax) lmax = l; }
+
+  var balls = [];   // {path:[[x,y]...], done:bool}
+
+  function resize() {
+    var r = cv.getBoundingClientRect(); dpr = window.devicePixelRatio || 1;
+    W = Math.max(1, Math.round(r.width * dpr)); H = Math.max(1, Math.round(r.height * dpr));
+    cv.width = W; cv.height = H;
+  }
+
+  function drawSurface() {
+    var acc = hexToRgb(tv('--eigendeck-accent', '#2563eb'));
+    // Heatmap: deeper loss → more accent alpha (transparent over any slide bg).
+    var cols = 90, rows = Math.max(20, Math.round(90 * H / W));
+    var cw = W / cols, ch = H / rows;
+    for (var i = 0; i < cols; i++) for (var j = 0; j < rows; j++) {
+      var wpt = toWorld((i + 0.5) * cw, (j + 0.5) * ch);
+      var l = loss(wpt[0], wpt[1]);
+      var depth = (lmax - l) / (lmax - lmin);     // 1 at minima, 0 at peaks
+      var band = Math.pow(depth, 1.6);
+      // quantize a touch for a contour feel
+      band = Math.round(band * 7) / 7;
+      ctx.fillStyle = 'rgba(' + acc[0] + ',' + acc[1] + ',' + acc[2] + ',' + (band * 0.6).toFixed(3) + ')';
+      ctx.fillRect(i * cw, j * ch, cw + 1, ch + 1);
+    }
+    // mark the wells
+    for (var k = 0; k < wells.length; k++) {
+      var s = toScreen(wells[k].x, wells[k].y);
+      ctx.strokeStyle = 'rgba(' + acc[0] + ',' + acc[1] + ',' + acc[2] + ',0.9)'; ctx.lineWidth = 1.5 * dpr;
+      ctx.beginPath(); ctx.arc(s[0], s[1], 4 * dpr, 0, 6.283); ctx.stroke();
+    }
+  }
+
+  function draw() {
+    var fg = tv('--eigendeck-fg', '#222');
+    ctx.clearRect(0, 0, W, H);
+    drawSurface();
+    for (var b = 0; b < balls.length; b++) {
+      var p = balls[b].path;
+      ctx.strokeStyle = fg; ctx.globalAlpha = 0.5; ctx.lineWidth = 2 * dpr;
+      ctx.beginPath();
+      for (var i = 0; i < p.length; i++) { var s = toScreen(p[i][0], p[i][1]); i === 0 ? ctx.moveTo(s[0], s[1]) : ctx.lineTo(s[0], s[1]); }
+      ctx.stroke(); ctx.globalAlpha = 1;
+      var last = toScreen(p[p.length - 1][0], p[p.length - 1][1]);
+      ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(last[0], last[1], 5 * dpr, 0, 6.283); ctx.fill();
+    }
+  }
+
+  function step() {
+    var lr = parseInt(lrEl.value, 10) / 1000;
+    var moved = false;
+    for (var b = 0; b < balls.length; b++) {
+      var bb = balls[b]; if (bb.done) continue;
+      var p = bb.path[bb.path.length - 1], g = grad(p[0], p[1]);
+      var nx = p[0] - lr * g[0] * 14, ny = p[1] - lr * g[1] * 14;
+      nx = Math.max(-3, Math.min(3, nx)); ny = Math.max(-3, Math.min(3, ny));
+      if (Math.hypot(nx - p[0], ny - p[1]) < 0.002) { bb.done = true; }
+      else { bb.path.push([nx, ny]); moved = true; }
+    }
+    draw();
+    if (moved) requestAnimationFrame(step);
+  }
+
+  function drop(px, py) {
+    var w = toWorld(px * dpr, py * dpr);
+    balls.push({ path: [[w[0], w[1]]], done: false });
+    if (balls.length > 6) balls.shift();
+    hint.classList.add('gone');
+    requestAnimationFrame(step);
+  }
+
+  cv.addEventListener('click', function (e) { var r = cv.getBoundingClientRect(); drop(e.clientX - r.left, e.clientY - r.top); });
+  window.addEventListener('resize', function () { resize(); draw(); });
+
+  // The deck theme can change LIVE (Eigendeck updates the injected CSS vars without
+  // reloading the demo). Since we only redraw on interaction, poll the theme vars
+  // and repaint when they change so colors track dark/light. Cheap + bounded.
+  var lastTheme = '';
+  setInterval(function () {
+    var sig = tv('--eigendeck-fg', '') + '|' + tv('--eigendeck-accent', '') + '|' + tv('--eigendeck-bg', '');
+    if (sig !== lastTheme) { lastTheme = sig; draw(); }
+  }, 400);
+
+  function start() {
+    resize(); draw();
+    // seed one descent so it isn't blank, from a non-obvious corner.
+    setTimeout(function () { balls.push({ path: [[2.3, -2.2]], done: false }); requestAnimationFrame(step); }, 400);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+</body>
+</html>
