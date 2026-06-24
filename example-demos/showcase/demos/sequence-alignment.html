@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sequence alignment</title>
+<!--
+  Showcase demo — global sequence alignment (Needleman–Wunsch). Title-LESS,
+  theme-aware, interaction-first. The DP scoring grid is drawn with the optimal
+  traceback path highlighted; the resulting alignment is shown below. DRAG the
+  gap-penalty slider and the path + alignment re-solve live; "new sequences"
+  reshuffles. Transparent over the slide; colors track the deck theme.
+-->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden;
+    background: var(--eigendeck-bg, #ffffff);
+    color: var(--eigendeck-fg, #222222);
+    font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif;
+    font-size: var(--eigendeck-base-size, 22px);
+    display: flex; flex-direction: column; padding: 1em 1.3em;
+  }
+  .sa-grid { flex: 1; min-height: 0; position: relative; }
+  .sa-grid canvas { width: 100%; height: 100%; display: block; }
+  .sa-bottom { flex: 0 0 auto; display: flex; align-items: flex-end; gap: 1.4em; margin-top: 0.6em; }
+  .sa-align { font-family: var(--eigendeck-mono, ui-monospace, monospace); font-size: 1.15em; line-height: 1.45; white-space: pre; letter-spacing: 0.12em; }
+  .sa-align .m { color: var(--eigendeck-accent, #2563eb); font-weight: 700; }
+  .sa-align .x { color: var(--eigendeck-fg, #222); }
+  .sa-align .g { color: var(--eigendeck-muted, #aaa); }
+  .sa-align .bar { color: var(--eigendeck-muted, #aaa); }
+  .sa-ctrl { margin-left: auto; display: flex; flex-direction: column; gap: 0.4em; font-size: 0.66em; color: var(--eigendeck-muted, #888); }
+  .sa-row { display: flex; align-items: center; gap: 0.5em; }
+  .sa-ctrl input[type=range] { width: 8em; accent-color: var(--eigendeck-accent, #2563eb);
+    background: color-mix(in srgb, var(--eigendeck-fg, #333) 20%, transparent); border-radius: 4px; height: 0.35em; }
+  .sa-btn { font-family: inherit; font-size: 1em; cursor: pointer; align-self: flex-start;
+    border: 1px solid color-mix(in srgb, var(--eigendeck-fg,#333) 30%, transparent);
+    background: transparent; color: var(--eigendeck-fg, #222); border-radius: 5px; padding: 0.2em 0.7em; }
+  .sa-score { color: var(--eigendeck-accent, #2563eb); font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="sa-grid"><canvas id="sa"></canvas></div>
+  <div class="sa-bottom">
+    <div class="sa-align" id="sa-align"></div>
+    <div class="sa-ctrl">
+      <div class="sa-row"><span>gap</span><input id="sa-gap" type="range" min="1" max="6" value="2"><span id="sa-gapv">&minus;2</span></div>
+      <div class="sa-row">score <span class="sa-score" id="sa-sc">0</span></div>
+      <button class="sa-btn" id="sa-new">new sequences</button>
+    </div>
+  </div>
+<script>
+(function () {
+  'use strict';
+  function tv(n, fb) { try { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb; } catch (e) { return fb; } }
+  function hexToRgb(h) { var n = parseInt(h.replace('#', ''), 16); return h.length >= 7 ? [(n >> 16) & 255, (n >> 8) & 255, n & 255] : [37, 99, 235]; }
+  var cv = document.getElementById('sa'), ctx = cv.getContext('2d');
+  var gapEl = document.getElementById('sa-gap'), gapV = document.getElementById('sa-gapv'),
+      alignEl = document.getElementById('sa-align'), scEl = document.getElementById('sa-sc'), newBtn = document.getElementById('sa-new');
+  var MATCH = 2, MISMATCH = -1, BASES = 'ACGT';
+  var seqA = 'GCATTGCA', seqB = 'GATTACCA';   // along top (cols) / left (rows)
+  var W = 0, H = 0, dpr = 1, sol = null;
+
+  function rnd(len) { var s = ''; for (var i = 0; i < len; i++) s += BASES[(Math.random() * 4) | 0]; return s; }
+
+  function solve(gap) {
+    var n = seqA.length, m = seqB.length;
+    var S = []; for (var i = 0; i <= m; i++) { S.push(new Float64Array(n + 1)); }
+    for (var j = 0; j <= n; j++) S[0][j] = j * gap;
+    for (var i2 = 0; i2 <= m; i2++) S[i2][0] = i2 * gap;
+    for (var i3 = 1; i3 <= m; i3++) for (var j3 = 1; j3 <= n; j3++) {
+      var sc = seqB[i3 - 1] === seqA[j3 - 1] ? MATCH : MISMATCH;
+      S[i3][j3] = Math.max(S[i3 - 1][j3 - 1] + sc, S[i3 - 1][j3] + gap, S[i3][j3 - 1] + gap);
+    }
+    // traceback
+    var ai = '', bi = '', mark = '', path = [], i4 = m, j4 = n;
+    path.push([i4, j4]);
+    while (i4 > 0 || j4 > 0) {
+      var cur = S[i4][j4];
+      if (i4 > 0 && j4 > 0 && cur === S[i4 - 1][j4 - 1] + (seqB[i4 - 1] === seqA[j4 - 1] ? MATCH : MISMATCH)) {
+        ai = seqA[j4 - 1] + ai; bi = seqB[i4 - 1] + bi; mark = (seqA[j4 - 1] === seqB[i4 - 1] ? '|' : ' ') + mark; i4--; j4--;
+      } else if (i4 > 0 && cur === S[i4 - 1][j4] + gap) { ai = '-' + ai; bi = seqB[i4 - 1] + bi; mark = ' ' + mark; i4--; }
+      else { ai = seqA[j4 - 1] + ai; bi = '-' + bi; mark = ' ' + mark; j4--; }
+      path.push([i4, j4]);
+    }
+    var mn = Infinity, mx = -Infinity;
+    for (var a = 0; a <= m; a++) for (var b = 0; b <= n; b++) { if (S[a][b] < mn) mn = S[a][b]; if (S[a][b] > mx) mx = S[a][b]; }
+    return { S: S, n: n, m: m, ai: ai, bi: bi, mark: mark, path: path, score: S[m][n], mn: mn, mx: mx };
+  }
+
+  function resize() { var r = cv.getBoundingClientRect(); dpr = window.devicePixelRatio || 1; W = Math.max(1, Math.round(r.width * dpr)); H = Math.max(1, Math.round(r.height * dpr)); cv.width = W; cv.height = H; }
+
+  function draw() {
+    var fg = tv('--eigendeck-fg', '#222'), acc = tv('--eigendeck-accent', '#2563eb'), rgb = hexToRgb(acc);
+    ctx.clearRect(0, 0, W, H);
+    var n = sol.n, m = sol.m;
+    var pad = Math.min(W, H) * 0.10;                       // room for axis letters
+    var gw = (W - pad) / (n + 1), gh = (H - pad) / (m + 1);
+    var cell = Math.min(gw, gh);
+    var ox = pad, oy = pad;
+    var inPath = {}; sol.path.forEach(function (p) { inPath[p[0] + ',' + p[1]] = 1; });
+    // heatmap cells
+    for (var i = 0; i <= m; i++) for (var j = 0; j <= n; j++) {
+      var t = (sol.S[i][j] - sol.mn) / Math.max(1, (sol.mx - sol.mn));
+      ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (0.08 + 0.5 * t).toFixed(3) + ')';
+      ctx.fillRect(ox + j * cell, oy + i * cell, cell - 1, cell - 1);
+    }
+    // traceback path
+    ctx.strokeStyle = acc; ctx.lineWidth = Math.max(2, cell * 0.12); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.beginPath();
+    sol.path.forEach(function (p, k) { var x = ox + (p[1] + 0.5) * cell, y = oy + (p[0] + 0.5) * cell; k === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
+    ctx.stroke();
+    sol.path.forEach(function (p) { ctx.beginPath(); ctx.arc(ox + (p[1] + 0.5) * cell, oy + (p[0] + 0.5) * cell, cell * 0.13, 0, 6.283); ctx.fillStyle = acc; ctx.fill(); });
+    // sequence letters (A across top, B down left)
+    ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    var fs = Math.max(9, cell * 0.46); ctx.font = '700 ' + fs + 'px ' + tv('--eigendeck-font', 'PT Sans') + ', sans-serif';
+    for (var c = 0; c < n; c++) ctx.fillText(seqA[c], ox + (c + 1.5) * cell, oy - pad * 0.42);
+    for (var rr = 0; rr < m; rr++) ctx.fillText(seqB[rr], ox - pad * 0.42, oy + (rr + 1.5) * cell);
+  }
+
+  function renderAlign() {
+    var html = '';
+    function row(s) { var o = ''; for (var k = 0; k < s.length; k++) { var ch = s[k]; o += ch === '-' ? '<span class="g">-</span>' : '<span class="x">' + ch + '</span>'; } return o; }
+    // top seq with matches accented
+    var top = '', mid = '', bot = '';
+    for (var k = 0; k < sol.ai.length; k++) {
+      var a = sol.ai[k], b = sol.bi[k], match = sol.mark[k] === '|';
+      top += a === '-' ? '<span class="g">-</span>' : '<span class="' + (match ? 'm' : 'x') + '">' + a + '</span>';
+      mid += '<span class="bar">' + (match ? '|' : ' ') + '</span>';
+      bot += b === '-' ? '<span class="g">-</span>' : '<span class="' + (match ? 'm' : 'x') + '">' + b + '</span>';
+    }
+    alignEl.innerHTML = top + '\n' + mid + '\n' + bot;
+  }
+
+  function run() {
+    var gap = -parseInt(gapEl.value, 10);
+    gapV.innerHTML = '&minus;' + Math.abs(gap);
+    sol = solve(gap);
+    scEl.textContent = sol.score;
+    draw(); renderAlign();
+  }
+
+  gapEl.addEventListener('input', run);
+  newBtn.addEventListener('click', function () { var L = 7 + ((Math.random() * 3) | 0); seqA = rnd(L); seqB = rnd(L); run(); });
+  window.addEventListener('resize', function () { resize(); if (sol) draw(); });
+
+  var lastTheme = '';
+  setInterval(function () { var sig = tv('--eigendeck-fg', '') + '|' + tv('--eigendeck-bg', '') + '|' + tv('--eigendeck-accent', ''); if (sig !== lastTheme) { lastTheme = sig; if (sol) { draw(); renderAlign(); } } }, 400);
+
+  function start() { resize(); run(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+</body>
+</html>
