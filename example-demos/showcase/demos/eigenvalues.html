@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Eigenvalue Decomposition</title>
+<!--
+  Showcase demo — Eigenvalue decomposition. A real Eigendeck demo: theme-aware
+  (var(--eigendeck-*) with light fallbacks), responsive (fills its element / the
+  iframe), and self-contained. Drop it on a slide (Insert → Demo); it also runs
+  standalone (open the file) as the website-carousel illustration.
+
+  Interaction: drag the slider to morph the unit circle / grid under A; the
+  eigenvectors (red, blue) stretch but never rotate — every other vector does both.
+-->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden;
+    /* In Eigendeck, --eigendeck-bg matches the slide; standalone falls back to white. */
+    background: var(--eigendeck-bg, #ffffff);
+    color: var(--eigendeck-fg, #222222);
+    font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif;
+    font-size: var(--eigendeck-base-size, 22px);   /* 1em == deck body text */
+    display: flex; flex-direction: column;
+    padding: 1em 1.3em;
+  }
+  .ev-head { font-size: 1.4em; font-weight: 700; color: var(--eigendeck-heading, var(--eigendeck-fg, #222)); }
+  .ev-sub { font-size: 0.8em; font-style: italic; color: var(--eigendeck-muted, #888); margin-bottom: 0.5em; }
+  .ev-body { flex: 1; display: flex; gap: 1.1em; min-height: 0; }
+  .ev-plot { flex: 1; position: relative; min-width: 0; }
+  .ev-plot canvas { width: 100%; height: 100%; display: block; }
+  .ev-side { width: 12em; flex: 0 0 auto; font-size: 0.72em; line-height: 1.7; }
+  .ev-mat { font-family: var(--eigendeck-mono, ui-monospace, monospace); font-size: 1em; margin-bottom: 0.6em; white-space: pre; }
+  .ev-row { display: flex; align-items: center; gap: 0.5em; }
+  .ev-dot { width: 0.7em; height: 0.7em; border-radius: 50%; flex: 0 0 auto; }
+  .ev-note { color: var(--eigendeck-muted, #888); margin-top: 0.5em; }
+  .ev-ctrl { margin-top: 0.7em; display: flex; align-items: center; gap: 0.6em; }
+  .ev-ctrl input[type=range] {
+    flex: 1; accent-color: var(--eigendeck-accent, #2563eb);
+    background: color-mix(in srgb, var(--eigendeck-fg, #333) 20%, transparent);
+    border-radius: 4px; height: 0.4em;
+  }
+  .ev-t { font-weight: 700; color: var(--eigendeck-accent, #2563eb); width: 2.6em; text-align: right; }
+  .ev-play { font-size: 0.72em; cursor: pointer; border: 1px solid color-mix(in srgb, var(--eigendeck-fg,#333) 30%, transparent);
+    background: transparent; color: var(--eigendeck-fg, #222); border-radius: 5px; padding: 0.15em 0.6em; font-family: inherit; }
+</style>
+</head>
+<body>
+  <div class="ev-head">Eigenvalue Decomposition</div>
+  <div class="ev-sub">The plane under a linear map A — eigenvectors stretch, never rotate</div>
+  <div class="ev-body">
+    <div class="ev-plot"><canvas id="ev-cv"></canvas></div>
+    <div class="ev-side">
+      <div class="ev-mat">A = [ 2  1 ]
+    [ 1  3 ]</div>
+      <div class="ev-row"><span class="ev-dot" style="background:#dc2626"></span> λ₁ ≈ 3.618</div>
+      <div class="ev-row"><span class="ev-dot" style="background:#2563eb"></span> λ₂ ≈ 1.382</div>
+      <div class="ev-note">Drag <em>t</em>: morph identity → A. The red &amp; blue
+        directions only scale; all others rotate too.</div>
+      <div class="ev-ctrl">
+        <span>t</span>
+        <input id="ev-t" type="range" min="0" max="100" value="0">
+        <span class="ev-t" id="ev-tv">0.00</span>
+      </div>
+      <button class="ev-play" id="ev-play">⏸ pause</button>
+    </div>
+  </div>
+<script>
+(function () {
+  'use strict';
+  function themeVar(name, fb) {
+    try { return (getComputedStyle(document.documentElement).getPropertyValue(name).trim()) || fb; }
+    catch (e) { return fb; }
+  }
+  var cv = document.getElementById('ev-cv'), ctx = cv.getContext('2d');
+  var tEl = document.getElementById('ev-t'), tv = document.getElementById('ev-tv'), play = document.getElementById('ev-play');
+  var A = [[2, 1], [1, 3]];
+  var sqrt5 = Math.sqrt(5);
+  var v1 = [1, (5 + sqrt5) / 2 - 2], v2 = [1, (5 - sqrt5) / 2 - 2];
+  var n1 = Math.hypot(v1[0], v1[1]), n2 = Math.hypot(v2[0], v2[1]);
+  var ev1 = [v1[0] / n1, v1[1] / n1], ev2 = [v2[0] / n2, v2[1] / n2];
+  var t = 0, dir = 1, running = true, dragging = false;
+
+  function mix(x, y, t) {
+    var ax = A[0][0] * x + A[0][1] * y, ay = A[1][0] * x + A[1][1] * y;
+    return [(1 - t) * x + t * ax, (1 - t) * y + t * ay];
+  }
+
+  function resize() {
+    var r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    cv.width = Math.max(1, r.width * dpr); cv.height = Math.max(1, r.height * dpr);
+  }
+
+  function draw() {
+    var fg = themeVar('--eigendeck-fg', '#222'), W = cv.width, H = cv.height;
+    var dpr = window.devicePixelRatio || 1;
+    var S = Math.min(W, H) / 11;          // scale: world units → device px
+    var CX = W / 2, CY = H / 2;
+    function sx(x) { return CX + x * S; } function sy(y) { return CY - y * S; }
+    ctx.clearRect(0, 0, W, H);
+
+    // grid (transformed) — faint, theme-fg-tinted
+    ctx.lineWidth = 1 * dpr;
+    ctx.strokeStyle = 'color-mix' in window ? fg : fg;
+    ctx.globalAlpha = 0.12;
+    for (var i = -6; i <= 6; i++) {
+      ctx.beginPath();
+      for (var k = -6; k <= 6; k++) { var p = mix(i, k, t); var X = sx(p[0]), Y = sy(p[1]); k === -6 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y); }
+      ctx.stroke();
+      ctx.beginPath();
+      for (var k2 = -6; k2 <= 6; k2++) { var q = mix(k2, i, t); var X2 = sx(q[0]), Y2 = sy(q[1]); k2 === -6 ? ctx.moveTo(X2, Y2) : ctx.lineTo(X2, Y2); }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // unit circle → ellipse under the current map
+    ctx.strokeStyle = fg; ctx.globalAlpha = 0.55; ctx.lineWidth = 2 * dpr;
+    ctx.beginPath();
+    for (var a = 0; a <= 360; a += 4) {
+      var rad = a * Math.PI / 180, p2 = mix(Math.cos(rad), Math.sin(rad), t);
+      var X3 = sx(p2[0]), Y3 = sy(p2[1]); a === 0 ? ctx.moveTo(X3, Y3) : ctx.lineTo(X3, Y3);
+    }
+    ctx.closePath(); ctx.stroke(); ctx.globalAlpha = 1;
+
+    // eigenvectors (scale only)
+    arrow(ev1, '#dc2626'); arrow(ev2, '#2563eb');
+    // a generic vector that rotates+scales, for contrast
+    arrow([Math.cos(0.9), Math.sin(0.9)], fg, 0.5);
+
+    function arrow(v, col, alpha) {
+      var p = mix(v[0], v[1], t), X = sx(p[0]), Y = sy(p[1]);
+      ctx.globalAlpha = alpha || 1; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 3 * dpr;
+      ctx.beginPath(); ctx.moveTo(CX, CY); ctx.lineTo(X, Y); ctx.stroke();
+      var ang = Math.atan2(Y - CY, X - CX), hl = 9 * dpr;
+      ctx.beginPath(); ctx.moveTo(X, Y);
+      ctx.lineTo(X - hl * Math.cos(ang - 0.4), Y - hl * Math.sin(ang - 0.4));
+      ctx.lineTo(X - hl * Math.cos(ang + 0.4), Y - hl * Math.sin(ang + 0.4));
+      ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+    }
+  }
+
+  function setT(nt) { t = Math.max(0, Math.min(1, nt)); tEl.value = Math.round(t * 100); tv.textContent = t.toFixed(2); draw(); }
+  function frame() {
+    if (running && !dragging) { t += dir * 0.006; if (t >= 1) { t = 1; dir = -1; } if (t <= 0) { t = 0; dir = 1; } setT(t); }
+    requestAnimationFrame(frame);
+  }
+  tEl.addEventListener('input', function () { dragging = true; running = false; play.textContent = '▶ play'; setT(tEl.value / 100); });
+  tEl.addEventListener('change', function () { dragging = false; });
+  play.addEventListener('click', function () { running = !running; play.textContent = running ? '⏸ pause' : '▶ play'; });
+  window.addEventListener('resize', function () { resize(); draw(); });
+
+  function start() { resize(); setT(0); requestAnimationFrame(frame); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+</body>
+</html>
