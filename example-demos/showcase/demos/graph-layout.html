@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Graph layout</title>
+<!--
+  Showcase demo — force-directed graph drawing. Title-LESS, theme-aware, and
+  interaction-first: DRAG any node and the whole layout re-settles around it
+  (a Fruchterman–Reingold force simulation). The graph has three loosely-knit
+  communities, so the layout reveals its structure as it relaxes. Transparent
+  over the slide; colors track the deck theme.
+-->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden; position: relative;
+    background: var(--eigendeck-bg, #ffffff);
+    color: var(--eigendeck-fg, #222222);
+    font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif;
+    font-size: var(--eigendeck-base-size, 22px);
+  }
+  #gl { width: 100%; height: 100%; display: block; cursor: grab; }
+  #gl.grabbing { cursor: grabbing; }
+  .gl-hint {
+    position: absolute; left: 50%; top: 7%; transform: translateX(-50%);
+    font-size: 0.7em; color: var(--eigendeck-muted, #888);
+    background: color-mix(in srgb, var(--eigendeck-bg, #fff) 70%, transparent);
+    padding: 0.2em 0.7em; border-radius: 1em; pointer-events: none;
+    transition: opacity 0.4s; user-select: none;
+  }
+  .gl-hint.gone { opacity: 0; }
+</style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div class="gl-hint" id="gl-hint">drag a node</div>
+<script>
+(function () {
+  'use strict';
+  function tv(n, fb) { try { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb; } catch (e) { return fb; } }
+  var cv = document.getElementById('gl'), ctx = cv.getContext('2d'), hint = document.getElementById('gl-hint');
+
+  // Three communities; dense within, sparse across → visible structure.
+  var COMM = [10, 9, 9], COMM_COL = ['accent', '#f97316', '#10b981'];
+  var nodes = [], edges = [], comm = [];
+  (function build() {
+    var id = 0;
+    for (var c = 0; c < COMM.length; c++) for (var k = 0; k < COMM[c]; k++) { comm[id] = c; nodes.push({ x: 0, y: 0, vx: 0, vy: 0, fixed: false }); id++; }
+    var n = nodes.length;
+    function add(a, b) { if (a !== b && !edges.some(function (e) { return (e.a === a && e.b === b) || (e.a === b && e.b === a); })) edges.push({ a: a, b: b }); }
+    // intra-community: connect each to ~2 neighbors in its community
+    var base = 0;
+    for (var c2 = 0; c2 < COMM.length; c2++) {
+      for (var i = 0; i < COMM[c2]; i++) { var u = base + i; add(u, base + (i + 1) % COMM[c2]); add(u, base + (i + 2) % COMM[c2]); }
+      base += COMM[c2];
+    }
+    // a few cross-community bridges
+    add(2, 12); add(7, 20); add(15, 25); add(4, 23);
+  })();
+
+  var W = 0, H = 0, dpr = 1, S = 1, temp = 1, K = 1, running = true, drag = null, settled = false;
+
+  function resize() {
+    var r = cv.getBoundingClientRect(); dpr = window.devicePixelRatio || 1;
+    var nW = Math.max(1, Math.round(r.width * dpr)), nH = Math.max(1, Math.round(r.height * dpr));
+    if (W && nW) { var sx = nW / W, sy = nH / H; nodes.forEach(function (p) { p.x *= sx; p.y *= sy; }); }
+    W = nW; H = nH; S = Math.min(W, H);
+    K = 0.62 * Math.sqrt((W * H) / nodes.length);  // ideal edge length
+  }
+
+  function seed() {
+    var cx = W / 2, cy = H / 2, R = S * 0.32;
+    nodes.forEach(function (p, i) {
+      var a = (i / nodes.length) * Math.PI * 2 + comm[i];
+      p.x = cx + Math.cos(a) * R * (0.5 + 0.5 * ((i * 13) % 7) / 7);
+      p.y = cy + Math.sin(a) * R * (0.5 + 0.5 * ((i * 7) % 5) / 5);
+    });
+    temp = S * 0.12;
+  }
+
+  function stepFR() {
+    var n = nodes.length, dispx = new Float64Array(n), dispy = new Float64Array(n);
+    // repulsion (all pairs)
+    for (var i = 0; i < n; i++) for (var j = i + 1; j < n; j++) {
+      var dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y, d = Math.hypot(dx, dy) || 0.01;
+      var f = (K * K) / d, ux = dx / d, uy = dy / d;
+      dispx[i] += ux * f; dispy[i] += uy * f; dispx[j] -= ux * f; dispy[j] -= uy * f;
+    }
+    // attraction (edges)
+    for (var e = 0; e < edges.length; e++) {
+      var a = edges[e].a, b = edges[e].b, dx2 = nodes[a].x - nodes[b].x, dy2 = nodes[a].y - nodes[b].y, d2 = Math.hypot(dx2, dy2) || 0.01;
+      var fa = (d2 * d2) / K, ux2 = dx2 / d2, uy2 = dy2 / d2;
+      dispx[a] -= ux2 * fa; dispy[a] -= uy2 * fa; dispx[b] += ux2 * fa; dispy[b] += uy2 * fa;
+    }
+    var cx = W / 2, cy = H / 2;
+    for (var p = 0; p < n; p++) {
+      var nd = nodes[p];
+      if (nd.fixed) continue;
+      // mild centering
+      dispx[p] += (cx - nd.x) * 0.012; dispy[p] += (cy - nd.y) * 0.012;
+      var dl = Math.hypot(dispx[p], dispy[p]) || 0.01, lim = Math.min(dl, temp);
+      nd.x += dispx[p] / dl * lim; nd.y += dispy[p] / dl * lim;
+      nd.x = Math.max(S * 0.04, Math.min(W - S * 0.04, nd.x));
+      nd.y = Math.max(S * 0.04, Math.min(H - S * 0.04, nd.y));
+    }
+    temp = Math.max(S * 0.002, temp * 0.985);
+  }
+
+  function draw() {
+    var fg = tv('--eigendeck-fg', '#222'), bg = tv('--eigendeck-bg', '#fff'), acc = tv('--eigendeck-accent', '#2563eb');
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = fg; ctx.globalAlpha = 0.22; ctx.lineWidth = 1.4 * dpr;
+    for (var e = 0; e < edges.length; e++) { var A = nodes[edges[e].a], B = nodes[edges[e].b]; ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    var rad = Math.max(4, S * 0.013);
+    for (var i = 0; i < nodes.length; i++) {
+      var col = COMM_COL[comm[i]] === 'accent' ? acc : COMM_COL[comm[i]];
+      ctx.beginPath(); ctx.arc(nodes[i].x, nodes[i].y, rad, 0, 6.283);
+      ctx.fillStyle = col; ctx.fill();
+      ctx.lineWidth = 1.5 * dpr; ctx.strokeStyle = bg; ctx.stroke();
+    }
+  }
+
+  function frame() {
+    if (running) {
+      if (!settled || drag != null) stepFR();
+      draw();
+      if (temp <= S * 0.0025 && drag == null) { settled = true; running = false; }
+    }
+    if (running) requestAnimationFrame(frame);
+  }
+  function kick() { settled = false; if (!running) { running = true; requestAnimationFrame(frame); } }
+
+  function nodeAt(px, py) {
+    var rad = Math.max(4, S * 0.013) * 1.6;
+    for (var i = nodes.length - 1; i >= 0; i--) if (Math.hypot(nodes[i].x - px, nodes[i].y - py) < rad) return i;
+    return -1;
+  }
+  function evtPos(e) { var r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr]; }
+
+  cv.addEventListener('pointerdown', function (e) {
+    var p = evtPos(e), i = nodeAt(p[0], p[1]); if (i < 0) return;
+    drag = i; nodes[i].fixed = true; nodes[i].x = p[0]; nodes[i].y = p[1];
+    cv.classList.add('grabbing'); cv.setPointerCapture(e.pointerId);
+    hint.classList.add('gone'); temp = S * 0.06; kick();
+  });
+  cv.addEventListener('pointermove', function (e) {
+    if (drag == null) { cv.style.cursor = nodeAt.apply(null, evtPos(e)) >= 0 ? 'grab' : 'grab'; return; }
+    var p = evtPos(e); nodes[drag].x = p[0]; nodes[drag].y = p[1]; temp = Math.max(temp, S * 0.04); kick();
+  });
+  function release(e) { if (drag != null) { nodes[drag].fixed = false; drag = null; cv.classList.remove('grabbing'); temp = S * 0.03; kick(); } }
+  cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', release);
+  window.addEventListener('resize', function () { resize(); draw(); });
+
+  // Repaint on a live deck-theme change (we stop animating once settled).
+  var lastTheme = '';
+  setInterval(function () {
+    var sig = tv('--eigendeck-fg', '') + '|' + tv('--eigendeck-bg', '') + '|' + tv('--eigendeck-accent', '');
+    if (sig !== lastTheme) { lastTheme = sig; draw(); }
+  }, 400);
+
+  function start() { resize(); seed(); requestAnimationFrame(frame); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+</body>
+</html>
