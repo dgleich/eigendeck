@@ -38,19 +38,13 @@ isn't settled yet.
 
 In the meantime, **the best way to customize Eigendeck today is to maintain your
 own fork.** Rather than trying to merge a pull request for every individual
-tweak — which would pull the core in too many directions at once — we'd like to
-keep a **list of community forks** here so people can find one that matches how
-they work and contribute to it directly. This also helps us see which
-customizations are popular enough to pull back into core.
+tweak — which would pull the core in too many directions at once — we keep a
+**list of community forks** in **[FORKS.md](FORKS.md)** so people can find one
+that matches how they work and contribute to it directly. This also helps us see
+which customizations are popular enough to pull back into core.
 
-If you maintain a fork, open a PR adding it to the list below (name, link, and a
-one-line description of what it changes):
-
-<!-- forks:start -->
-_No community forks listed yet — add yours!_
-<!-- forks:end -->
-
-If you have ideas about which parts of Eigendeck should become first-class
+If you maintain a fork, add it to [FORKS.md](FORKS.md) via a pull request. And if
+you have ideas about which parts of Eigendeck should become first-class
 customization points, open an issue describing your presentation workflow and
 what gets in your way — that's exactly the input we need to prioritize.
 
