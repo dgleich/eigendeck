@@ -36,10 +36,12 @@ node build-showcase.mjs                              # -> showcase.json
 rm -f showcase.eigendeck*
 "$CLI" showcase.eigendeck import json showcase.json
 
-# 3. export the website HTML via the eigendeck-e2e rig (read-only open)
-#    (see ../../  e2e rig: tauri-driver + WebKitWebDriver + xvfb + http.server on :1420)
+# 3. export the website HTML via the eigendeck-e2e rig (read-only open).
+#    The rig (tauri-driver + WebKitWebDriver + xvfb + http.server :1420) lives at
+#    ../../e2e/run-probe.sh and needs the debug app built with the seam:
+#       VITE_EIGENDECK_SEAM=1 npm run build && (cd ../../src-tauri && cargo build)
 PROBE=$PWD/export-showcase.mjs E2E_DECK=$PWD/showcase.eigendeck \
-  OUT=$PWD/showcase.html SHOTS=0,1 bash /path/to/run-probe.sh
+  OUT=$PWD/showcase.html SHOTS=0,1 bash ../../e2e/run-probe.sh
 
 # 4. deploy to the website repo
 cp showcase.eigendeck showcase.html /path/to/eigendeck-web/
@@ -54,7 +56,7 @@ HTML export can't render math). To change one, edit the `TITLE` / `DEMO` arrays 
 `harvest-equations.mjs`, then:
 
 ```bash
-PROBE=$PWD/harvest-equations.mjs E2E_DECK=<scratch.eigendeck> bash /path/to/run-probe.sh
+PROBE=$PWD/harvest-equations.mjs E2E_DECK=<scratch.eigendeck> bash ../../e2e/run-probe.sh
 ```
 
 This rewrites `title-equations.json` + `demo-equations.json`; then re-run the Build steps.
