@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The wave equation</title>
+<!--
+  Showcase demo — the 1-D wave equation on a string. Title-LESS, theme-aware,
+  interaction-first: CLICK (or drag) anywhere to pluck the string; the
+  displacement splits into two travelling pulses that reflect off the fixed ends
+  (finite-difference solution of u_tt = c^2 u_xx, lightly damped). Transparent
+  over the slide; the curve tracks the deck theme.
+-->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden; position: relative;
+    background: var(--eigendeck-bg, #ffffff);
+    color: var(--eigendeck-fg, #222222);
+    font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif;
+    font-size: var(--eigendeck-base-size, 22px);
+  }
+  #wv { width: 100%; height: 100%; display: block; cursor: crosshair; }
+  .wv-hint {
+    position: absolute; left: 50%; top: 8%; transform: translateX(-50%);
+    font-size: 0.7em; color: var(--eigendeck-muted, #888);
+    background: color-mix(in srgb, var(--eigendeck-bg, #fff) 70%, transparent);
+    padding: 0.2em 0.7em; border-radius: 1em; pointer-events: none;
+    transition: opacity 0.4s; user-select: none;
+  }
+  .wv-hint.gone { opacity: 0; }
+</style>
+</head>
+<body>
+  <canvas id="wv"></canvas>
+  <div class="wv-hint" id="wv-hint">click or drag to pluck the string</div>
+<script>
+(function () {
+  'use strict';
+  function tv(n, fb) { try { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb; } catch (e) { return fb; } }
+  function hexToRgb(h) { var n = parseInt(h.replace('#', ''), 16); return h.length >= 7 ? [(n >> 16) & 255, (n >> 8) & 255, n & 255] : [37, 99, 235]; }
+  var cv = document.getElementById('wv'), ctx = cv.getContext('2d'), hint = document.getElementById('wv-hint');
+
+  var N = 240;                 // string samples
+  var u = new Float64Array(N), uPrev = new Float64Array(N), uNext = new Float64Array(N);
+  var C2 = 0.25, DAMP = 0.0009;   // Courant^2 (stable, <1) + light velocity damping
+  var W = 0, H = 0, dpr = 1, drag = false;
+
+  function resize() { var r = cv.getBoundingClientRect(); dpr = window.devicePixelRatio || 1; W = Math.max(1, Math.round(r.width * dpr)); H = Math.max(1, Math.round(r.height * dpr)); cv.width = W; cv.height = H; }
+
+  function step() {
+    for (var i = 1; i < N - 1; i++) {
+      var lap = u[i - 1] - 2 * u[i] + u[i + 1];
+      var v = u[i] - uPrev[i];                 // velocity
+      uNext[i] = u[i] + v + C2 * lap - DAMP * v;
+    }
+    uNext[0] = 0; uNext[N - 1] = 0;            // fixed ends
+    var t = uPrev; uPrev = u; u = uNext; uNext = t;
+  }
+
+  function energy() { var e = 0; for (var i = 1; i < N - 1; i++) { var v = u[i] - uPrev[i]; e += v * v + 0.25 * (u[i + 1] - u[i]) * (u[i + 1] - u[i]); } return e; }
+
+  function draw() {
+    var fg = tv('--eigendeck-fg', '#222'), acc = tv('--eigendeck-accent', '#2563eb'), rgb = hexToRgb(acc);
+    var midY = H / 2, amp = H * 0.32;
+    ctx.clearRect(0, 0, W, H);
+    // baseline
+    ctx.strokeStyle = fg; ctx.globalAlpha = 0.15; ctx.lineWidth = 1 * dpr;
+    ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(W, midY); ctx.stroke(); ctx.globalAlpha = 1;
+    // soft fill under the curve
+    var grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0.18)');
+    grad.addColorStop(1, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0)');
+    ctx.beginPath(); ctx.moveTo(0, midY);
+    for (var i = 0; i < N; i++) ctx.lineTo(i / (N - 1) * W, midY - u[i] * amp);
+    ctx.lineTo(W, midY); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+    // the string
+    ctx.strokeStyle = acc; ctx.lineWidth = 2.6 * dpr; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (var j = 0; j < N; j++) { var x = j / (N - 1) * W, y = midY - u[j] * amp; j === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+    ctx.stroke();
+  }
+
+  function pluck(px, sign) {
+    var c = Math.round(px / W * (N - 1)), wdt = 10, A = 0.55 * (sign || 1);
+    for (var i = Math.max(1, c - wdt * 3); i < Math.min(N - 1, c + wdt * 3); i++) {
+      var g = A * Math.exp(-((i - c) * (i - c)) / (2 * wdt * wdt));
+      u[i] += g; uPrev[i] += g;                // equal → zero initial velocity → splits into two pulses
+    }
+    hint.classList.add('gone');
+  }
+  function evtX(e) { var r = cv.getBoundingClientRect(); return (e.clientX - r.left) * dpr; }
+
+  cv.addEventListener('pointerdown', function (e) { drag = true; cv.setPointerCapture(e.pointerId); pluck(evtX(e), -1); });
+  cv.addEventListener('pointermove', function (e) { if (drag) pluck(evtX(e), -0.25); });
+  cv.addEventListener('pointerup', function () { drag = false; });
+  cv.addEventListener('pointercancel', function () { drag = false; });
+  window.addEventListener('resize', function () { resize(); draw(); });
+
+  // Repaint on a live theme change (the loop keeps running, so colors update too).
+  function frame() { step(); draw(); requestAnimationFrame(frame); }
+
+  function start() {
+    resize();
+    // a gentle initial pluck so it isn't a flat line
+    pluck(W * 0.32, 0.7); hint.classList.remove('gone');
+    requestAnimationFrame(frame);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+</body>
+</html>
