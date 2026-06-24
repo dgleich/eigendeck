@@ -84,6 +84,17 @@ $CLI /tmp/target.eigendeck export json --with-assets | python3 -c "import sys,js
 (Live render of the result is checked by `e2e/demo-theme-deck-verify.mjs`.)
 
 ## Gotchas
+- **This is THE way to build/persist a deck programmatically — do NOT script the GUI/e2e seam
+  instead.** Driving the editor headlessly (`store.addElement(...)` over WebDriver, then
+  `__eigendeck.save()`) silently persists almost nothing: `save()`→`flushToSqlite` only replays
+  store-subscription deltas, which don't reliably capture bulk programmatic adds. Assets persist
+  (direct `invoke`) but elements don't → the deck opens **blank** (assets embedded, slides empty).
+  `import json` writes slides+elements+assets directly in one shot. (See the `eigendeck-e2e` skill.)
+- **Start from an EMPTY/known deck, not a content-laden template.** `import json` replaces structure
+  but its fresh-DB clean-slate is what gives a junk-free file; building on top of e.g.
+  `examples/intro-slide.eigendeck` (which carries its own slides + stray demo assets + history)
+  leaves that cruft behind. Verify after: `info` + `list slides`, and for a clean download,
+  `compact`.
 - **`import json` replaces, not merges.** To add to an existing deck, `export json --with-assets`,
   edit, re-`import`. Or use `add`/`edit element` verbs for in-place tweaks.
 - **`--with-assets` is required** to carry demo/image bytes; plain `export json` omits the

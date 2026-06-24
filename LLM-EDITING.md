@@ -449,4 +449,31 @@ Every `id` must be unique. Use UUID v4 format:
 6. **Reorder elements** (z-order) by rearranging within `elements` array
 7. **Keep the config** section unchanged unless specifically asked to modify it
 8. **Use presets** — don't override fontSize/color unless the user asks for it
-9. **Test by opening** the file in Eigendeck after editing
+9. **Test by RE-OPENING** the file in Eigendeck (or a fresh CLI / e2e session)
+   after editing — not by trusting a live editor view. The in-memory editor can
+   look correct while nothing was written to disk.
+
+## Pitfalls (learned the hard way)
+
+- **Build/repair decks with `eigendeck-cli import json`, not by scripting the
+  running editor.** Driving the app headlessly (`store.addElement(...)` then
+  `save()`) does NOT reliably persist — the editor's flush only writes changes
+  its store-subscription tracked, so programmatic bulk adds get silently dropped
+  and the saved deck opens **blank** (assets present, slides empty). `import
+  json` builds the deck deterministically in one shot.
+- **Verify, don't assume.** After building, inspect the saved file:
+  `eigendeck-cli <deck> info` / `list slides`, or python/sqlite3
+  `select type,count(*) from elements where valid_to is null group by type`.
+  "Looks right in the editor" ≠ "written to the file."
+- **Demo/image bytes must travel in the JSON** as an `assets[]` array
+  (`{assetId, data:<base64>, mime, path}`); elements reference them by `assetId`.
+  Plain `export json` omits assets — use `--with-assets`, or an imported deck has
+  dangling references and demos render blank.
+- **Math in a TEXT element renders in the app but NOT in the headless HTML
+  export** (the export's MathJax path falls back to raw `$...$`). If an equation
+  must appear in an exported deck/site, embed it as a pre-rendered **SVG image**
+  element instead of `$...$` text.
+- **`.eigendeck` is SQLite with a WAL.** Copy the file only after the app closes
+  (or `compact` first); copying without the `-wal`/`-shm` sidecars loses
+  uncommitted changes. Start from an empty deck, not a content-laden template,
+  so old slides / assets / history don't ride along.

@@ -116,13 +116,47 @@ fails if `E2E_ABSENT` appears.
    (`run.sh` uses `command -v tauri-driver || ~/.cargo/bin/tauri-driver`).
 5. **Headless WebKit env**: set `WEBKIT_DISABLE_COMPOSITING_MODE=1`,
    `WEBKIT_DISABLE_DMABUF_RENDERER=1`, `LIBGL_ALWAYS_SOFTWARE=1` (run.sh does).
+6. **The seam does NOT author+save decks — it persists almost nothing** (this
+   cost a full session; the deck shipped to users opened BLANK). Building a deck
+   by driving the store — `store.getState().addElement(...)` over WebDriver then
+   `window.__eigendeck.save()` — does not work: `save()`→`flushToSqlite` only
+   replays **deltas tracked by a store-subscription diff** in `presentation.ts`
+   (`addedElements`/`addedSlides`/…), and bulk programmatic adds aren't reliably
+   tracked, so the flush writes ZERO elements. Assets still persist (they go
+   straight through `invoke('db_store_asset')`), so the tell-tale signature is
+   **"assets embedded but slides blank."** The deck keeps whatever elements it
+   had on disk (e.g. the template you copied from). **Build decks with the
+   `eigendeck-cli` skill's `import json`** (fresh in-memory DB, atomic write, no
+   flush). Use the seam to DRIVE + ASSERT, and to EXPORT read-only
+   (`exportHtml()`) — never to author and `save()`.
+7. **Verify persistence in the SAVED FILE, not the live session.** Same-session
+   DOM / screenshots read the in-memory store, which is correct even when the
+   file is empty — so a screenshot "looks right" while the saved deck is blank.
+   Reopen in a fresh session, or inspect the DB:
+   `select type,count(*) from elements where valid_to is null group by type`
+   (and check `slide_elements` / `asset_id` resolve). A correctly-built deck
+   reopens fine; "blank on reopen" means it was never written, not a timing race.
+8. **`exportHtml()` can't render MathJax headlessly.** In-app *display* renders
+   math, but the export's `renderMathPerBundle` (iframe pool) silently
+   `.catch`-falls back to raw `$...$`. For math that must appear in an exported
+   deck, pre-render it: add a math text element, wait, scrape
+   `document.querySelector('[data-c]').closest('svg').outerHTML` (NOT
+   `mjx-container` — the wrapper is stripped), and embed it as an SVG image /
+   inline SVG (it uses `fill="currentColor"` + `ex` units).
+9. **`pkill -f "tauri-driver"` (or `…WebKitWebDriver` / `…http.server 1420`)
+   self-kills your shell** — `-f` matches your own command line, which contains
+   the pattern string → SIGKILL (rc 137, no output). `run.sh` anchors the
+   pattern (`-f "^<bin>"`); ad-hoc commands should use `pkill -x <comm>` and
+   `fuser -k 1420/tcp` instead.
 
 ## 5. Writing a new e2e for a feature
 
-- **Fixture:** craft the deck via `eigendeck-cli ... import json <file>`.
-  The presentation JSON can embed `assets[]` (base64) — see
-  `db_export_json_with_assets` and `e2e/fixtures/make_overlay_deck.py` (it
-  builds notebook + overlay assets, incl. owner_element_id sidecars).
+- **Fixture:** craft the deck via `eigendeck-cli ... import json <file>` —
+  NOT by scripting the editor through the seam (see gotcha 6: seam `save()`
+  won't persist programmatic adds). The presentation JSON can embed `assets[]`
+  (base64) — see `db_export_json_with_assets` and
+  `e2e/fixtures/make_overlay_deck.py` (it builds notebook + overlay assets,
+  incl. owner_element_id sidecars).
 - **Drive the UI** via WebDriver `execute/sync` (POST
   `/session/{id}/execute/sync`, body `{script, args:[]}`):
   - click: `document.querySelector("[title='Duplicate']").click()`
