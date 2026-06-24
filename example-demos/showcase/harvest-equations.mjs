@@ -36,6 +36,7 @@ const DEMO = [
   { file: 'gradient-descent.html', tex: 'x_{k+1} = x_k - \\alpha\\,\\nabla f(x_k)' },
   { file: 'graph-layout.html', tex: 'f_{\\mathrm{attr}}=\\frac{d^2}{k},\\quad f_{\\mathrm{rep}}=\\frac{k^2}{d}' },
   { file: 'wave-equation.html', tex: '\\frac{\\partial^2 u}{\\partial t^2}=c^2\\,\\frac{\\partial^2 u}{\\partial x^2}' },
+  { file: 'fourier.html', tex: 'X_k=\\sum_{n=0}^{N-1} x_n\\,e^{-2\\pi i kn/N}' },
   { file: 'sequence-alignment.html', tex: 'F_{i,j}=\\max\\{\\,F_{i-1,j-1}+s,\\ F_{i-1,j}-g,\\ F_{i,j-1}-g\\,\\}' },
   { file: 'molecule-viewer.html', tex: 'V(r)=4\\varepsilon\\left[\\left(\\tfrac{\\sigma}{r}\\right)^{12}-\\left(\\tfrac{\\sigma}{r}\\right)^{6}\\right]' },
   { file: 'neural-network.html', tex: '\\mathbf{y}=\\mathcal{F}(\\mathbf{x})+\\mathbf{x}' },

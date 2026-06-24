@@ -24,6 +24,7 @@ const DEMOS = [
   { file: 'gradient-descent.html',  title: 'Gradient descent',           cap: 'Click anywhere to drop a ball — it follows the gradient into a basin on a non-convex surface.' },
   { file: 'graph-layout.html',      title: 'Graph layout',               cap: 'Drag any node — the force-directed layout re-settles and reveals three communities.' },
   { file: 'wave-equation.html',     title: 'The wave equation',          cap: 'Click or drag to pluck the string — the pulse splits into two waves and reflects off the ends.' },
+  { file: 'fourier.html',           title: 'Fourier & the FFT',          cap: 'A signal and its frequency spectrum. Drag "keep" to rebuild it from only its largest Fourier coefficients — or draw your own. Real FFT, live.' },
   { file: 'sequence-alignment.html',title: 'Sequence alignment',         cap: 'Needleman–Wunsch global alignment. Drag the gap penalty to re-solve; the traceback path and alignment update live.' },
   { file: 'molecule-viewer.html',   title: 'Molecule viewer',            cap: 'A 3-D ball-and-stick model — drag to rotate, or step through molecules. Exact molecular geometry.' },
   { file: 'neural-network.html',    title: 'Neural network',             cap: 'A small ResNet classifying MNIST — draw a digit and watch it flow through the layers. Real trained weights, live inference.' },

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fourier / FFT</title>
+<!--
+  Showcase demo — the FFT, both ways. TOP: a signal in the time domain. BOTTOM:
+  its frequency spectrum (real FFT magnitude). Drag the "keep" slider to rebuild
+  the signal from only its K largest-magnitude frequencies (inverse FFT) — the
+  reconstruction (accent) is drawn over the original (faint), with the kept bins
+  lit up in the spectrum. Pick a preset, or DRAW your own signal on the top panel.
+  Title-LESS, theme-aware, interaction-first; transparent over the slide.
+
+  Same "keep K" story as the tiled-SVD slide, in 1-D Fourier: a handful of
+  coefficients capture most of a signal (and dropping the rest denoises it).
+-->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    overflow: hidden;
+    background: var(--eigendeck-bg, #ffffff);
+    color: var(--eigendeck-fg, #222222);
+    font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif;
+    font-size: var(--eigendeck-base-size, 22px);
+    display: flex; flex-direction: column; padding: 0.8em 1.3em;
+  }
+  .fr-panel { flex: 1; min-height: 0; position: relative; }
+  .fr-panel.time { flex: 1.15; }
+  .fr-panel canvas { width: 100%; height: 100%; display: block; }
+  .fr-panel.time canvas { cursor: crosshair; }
+  .fr-lab { position: absolute; left: 0; top: 0.1em; font-size: 0.6em; color: var(--eigendeck-muted, #999); pointer-events: none; user-select: none; }
+  .fr-ctrl { flex: 0 0 auto; display: flex; align-items: center; gap: 1.4em; margin-top: 0.5em; flex-wrap: wrap; }
+  .fr-row { display: flex; align-items: center; gap: 0.55em; font-size: 0.62em; color: var(--eigendeck-muted, #888); }
+  .fr-row input[type=range] { width: 11em; accent-color: var(--eigendeck-accent, #2563eb);
+    background: color-mix(in srgb, var(--eigendeck-fg, #333) 20%, transparent); border-radius: 4px; height: 0.35em; }
+  .fr-keep { font-weight: 700; color: var(--eigendeck-fg, #222); font-variant-numeric: tabular-nums; }
+  .fr-err { color: var(--eigendeck-accent, #2563eb); font-weight: 700; }
+  .fr-seg { display: inline-flex; border: 1px solid color-mix(in srgb, var(--eigendeck-fg, #333) 26%, transparent); border-radius: 6px; overflow: hidden; }
+  .fr-seg button { font-family: inherit; font-size: 1em; cursor: pointer; border: 0; background: transparent; color: var(--eigendeck-fg, #222); padding: 0.25em 0.7em; }
+  .fr-seg button.on { background: var(--eigendeck-accent, #2563eb); color: #fff; }
+</style>
+</head>
+<body>
+  <div class="fr-panel time"><canvas id="cv-time"></canvas><div class="fr-lab">signal · time</div></div>
+  <div class="fr-panel"><canvas id="cv-freq"></canvas><div class="fr-lab">spectrum · frequency (FFT magnitude)</div></div>
+  <div class="fr-ctrl">
+    <div class="fr-row"><span>keep</span><input id="fr-keep" type="range" min="1" max="48" value="6">
+      <span class="fr-keep" id="fr-keepv">6</span><span>of 128 freqs · <span class="fr-err" id="fr-err">0%</span> error</span></div>
+    <div class="fr-row"><span>signal</span>
+      <span class="fr-seg" id="fr-sig">
+        <button data-s="square" class="on">Square</button><button data-s="chirp">Chirp</button><button data-s="tones">Two tones</button><button data-s="noisy">Noisy</button>
+      </span>
+    </div>
+  </div>
+<script>
+(function () {
+  'use strict';
+  function tv(n, fb) { try { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb; } catch (e) { return fb; } }
+  function hexToRgb(h) { h = (h || '').trim(); if (h[0] !== '#') return [37, 99, 235]; if (h.length === 4) h = '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3]; var n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+
+  // ---- radix-2 iterative FFT (in place) ----
+  function fft(re, im) {
+    var n = re.length, i, j, k, len, t;
+    for (i = 1, j = 0; i < n; i++) { var bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit;
+      if (i < j) { t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+    for (len = 2; len <= n; len <<= 1) { var ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+      for (i = 0; i < n; i += len) { var cwr = 1, cwi = 0;
+        for (k = 0; k < len / 2; k++) { var ur = re[i + k], ui = im[i + k],
+          vr = re[i + k + len / 2] * cwr - im[i + k + len / 2] * cwi, vi = re[i + k + len / 2] * cwi + im[i + k + len / 2] * cwr;
+          re[i + k] = ur + vr; im[i + k] = ui + vi; re[i + k + len / 2] = ur - vr; im[i + k + len / 2] = ui - vi;
+          var nt = cwr * wr - cwi * wi; cwi = cwr * wi + cwi * wr; cwr = nt; } } }
+  }
+  function ifft(re, im) { var n = re.length, i; for (i = 0; i < n; i++) im[i] = -im[i]; fft(re, im); for (i = 0; i < n; i++) { re[i] /= n; im[i] = -im[i] / n; } }
+
+  var N = 256, HALF = N / 2;
+  var sig = new Float64Array(N), R = new Float64Array(N), I = new Float64Array(N);
+  var recon = new Float64Array(N), mags = new Float64Array(HALF + 1), keptSet = new Uint8Array(HALF + 1);
+  var maxMag = 1, relErr = 0;
+
+  function setSignal(kind) {
+    for (var i = 0; i < N; i++) {
+      var x = i / N, v = 0;
+      if (kind === 'square') v = ((i % N) < HALF) ? 0.8 : -0.8;
+      else if (kind === 'chirp') v = 0.8 * Math.sin(2 * Math.PI * (3 + 22 * x) * x);
+      else if (kind === 'tones') v = 0.5 * Math.sin(2 * Math.PI * 5 * x) + 0.35 * Math.sin(2 * Math.PI * 17 * x);
+      else if (kind === 'noisy') v = 0.6 * Math.sin(2 * Math.PI * 7 * x) + 0.45 * (Math.sin(i * 12.9898) * 43758.5453 % 1 - 0.5) * 2 * 0.5;
+      sig[i] = v;
+    }
+    analyze();
+  }
+  function analyze() {
+    for (var i = 0; i < N; i++) { R[i] = sig[i]; I[i] = 0; }
+    fft(R, I);
+    maxMag = 1e-9;
+    for (var k = 0; k <= HALF; k++) { mags[k] = Math.hypot(R[k], I[k]); if (mags[k] > maxMag) maxMag = mags[k]; }
+    reconstruct();
+  }
+  function reconstruct() {
+    var K = Math.min(parseInt(keepEl.value, 10), HALF);
+    // top-K bins (0..HALF) by magnitude
+    var order = []; for (var k = 0; k <= HALF; k++) order.push(k);
+    order.sort(function (a, b) { return mags[b] - mags[a]; });
+    keptSet.fill(0); for (var c = 0; c < K; c++) keptSet[order[c]] = 1;
+    var r = new Float64Array(N), im = new Float64Array(N);
+    for (k = 0; k <= HALF; k++) if (keptSet[k]) { r[k] = R[k]; im[k] = I[k]; if (k > 0 && k < HALF) { r[N - k] = R[k]; im[N - k] = -I[k]; } }
+    ifft(r, im);
+    var e = 0, d = 0;
+    for (var i = 0; i < N; i++) { recon[i] = r[i]; e += (r[i] - sig[i]) * (r[i] - sig[i]); d += sig[i] * sig[i]; }
+    relErr = d > 1e-9 ? Math.sqrt(e / d) : 0;
+    keepV.textContent = K; errEl.textContent = (relErr * 100).toFixed(0) + '%';
+    draw();
+  }
+
+  var cT = document.getElementById('cv-time'), xT = cT.getContext('2d');
+  var cF = document.getElementById('cv-freq'), xF = cF.getContext('2d');
+  var keepEl = document.getElementById('fr-keep'), keepV = document.getElementById('fr-keepv'), errEl = document.getElementById('fr-err');
+  var dpr = 1;
+  function size(c) { var r = c.getBoundingClientRect(); dpr = window.devicePixelRatio || 1; var w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr)); if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } return [w, h]; }
+
+  function draw() {
+    var fg = tv('--eigendeck-fg', '#222'), acc = tv('--eigendeck-accent', '#2563eb'), mut = tv('--eigendeck-muted', '#aaa'), rgb = hexToRgb(acc);
+    // time panel: original (faint) + reconstruction (accent)
+    var d = size(cT), W = d[0], H = d[1], mid = H / 2, amp = H * 0.42;
+    xT.clearRect(0, 0, W, H);
+    xT.strokeStyle = fg; xT.globalAlpha = 0.12; xT.lineWidth = dpr; xT.beginPath(); xT.moveTo(0, mid); xT.lineTo(W, mid); xT.stroke(); xT.globalAlpha = 1;
+    xT.strokeStyle = mut; xT.globalAlpha = 0.55; xT.lineWidth = 1.5 * dpr; xT.beginPath();
+    for (var i = 0; i < N; i++) { var x = i / (N - 1) * W, y = mid - sig[i] * amp; i ? xT.lineTo(x, y) : xT.moveTo(x, y); } xT.stroke(); xT.globalAlpha = 1;
+    xT.strokeStyle = acc; xT.lineWidth = 2.6 * dpr; xT.lineJoin = 'round'; xT.beginPath();
+    for (i = 0; i < N; i++) { x = i / (N - 1) * W, y = mid - recon[i] * amp; i ? xT.lineTo(x, y) : xT.moveTo(x, y); } xT.stroke();
+    // freq panel: magnitude bars, kept = accent, dropped = muted
+    d = size(cF); W = d[0]; H = d[1]; xF.clearRect(0, 0, W, H);
+    var base = H * 0.96, bw = W / (HALF + 1);
+    for (var k = 0; k <= HALF; k++) {
+      var hgt = (mags[k] / maxMag) * (H * 0.9), bx = k * bw;
+      if (keptSet[k]) { xF.fillStyle = acc; xF.globalAlpha = 1; }
+      else { xF.fillStyle = mut; xF.globalAlpha = 0.4; }
+      xF.fillRect(bx, base - hgt, Math.max(1, bw - dpr), hgt);
+    }
+    xF.globalAlpha = 1;
+  }
+
+  // draw-your-own signal on the time panel
+  var drawing = false, lastI = -1;
+  function paint(e) {
+    var r = cT.getBoundingClientRect(), W = r.width, H = r.height;
+    var i = Math.max(0, Math.min(N - 1, Math.round((e.clientX - r.left) / W * (N - 1))));
+    var v = Math.max(-1, Math.min(1, -((e.clientY - r.top) - H / 2) / (H * 0.42)));   // matches draw's amp = H*0.42
+    if (lastI < 0) lastI = i;
+    var a = Math.min(lastI, i), b = Math.max(lastI, i);
+    for (var j = a; j <= b; j++) sig[j] = v;
+    lastI = i; analyze();
+  }
+  cT.addEventListener('pointerdown', function (e) { drawing = true; lastI = -1; cT.setPointerCapture(e.pointerId); paint(e); });
+  cT.addEventListener('pointermove', function (e) { if (drawing) paint(e); });
+  function end() { drawing = false; lastI = -1; }
+  cT.addEventListener('pointerup', end); cT.addEventListener('pointercancel', end);
+
+  keepEl.addEventListener('input', reconstruct);
+  document.getElementById('fr-sig').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    Array.from(this.children).forEach(function (x) { x.classList.toggle('on', x === b); });
+    setSignal(b.dataset.s);
+  });
+  window.addEventListener('resize', draw);
+  var lastTheme = '';
+  setInterval(function () { var s = tv('--eigendeck-fg', '') + '|' + tv('--eigendeck-accent', '') + '|' + tv('--eigendeck-muted', ''); if (s !== lastTheme) { lastTheme = s; draw(); } }, 500);
+
+  function start() { setSignal('square'); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+</body>
+</html>
