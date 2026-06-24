@@ -33,17 +33,33 @@ Four regions, every time:
   and fonts), and **Element** (the selected element's properties). It's open by
   default; toggle it with **View → Toggle Inspector**.
 
+### Editing text — the floating format panel
+
+**Double-click** a text element to edit it. A small **format panel** floats just
+above it for as long as you're editing:
+
+![The floating text-format panel above a text element being edited](images/welcome/editor-text-format.png)
+
+Left to right: **B** bold, *I* italic, **S** strikethrough, **A** text color (with
+a custom-palette dropdown), **AA** inline size, **List**, the alignment buttons,
+and a line-height toggle. These act on the **selected run** — so they're for
+*inline* formatting within an element, distinct from the element-wide controls in
+the Inspector on the right.
+
+> Remember [one size per element](elements.md): there's no per-run *font* size —
+> the **AA** affects inline emphasis, not the element's type-scale size.
+
 ### Coloring text — and the math comes along
 
 Inline math renders in the *current text color*, so coloring text colors its math
-too. The red `Φ` and the blue "graph" / "directed adjacency matrix" on this slide
-were done with **inline spans**: while editing the element, select the run
-(including any `$…$`) and pick a color from the **text-editor format toolbar** —
-the MathJax in that run picks up the color. **Clear inline** (in the Element
+too. The red `Φ` and the blue "graph" / "directed adjacency matrix" on the math
+slide were done with **inline spans**: while editing, select the run (including
+any `$…$`) and pick a color from the **A** button on that floating panel — the
+MathJax in that run picks up the color. **Clear inline** (in the Element
 inspector) strips those per-run colors again.
 
 To recolor the **whole element** uniformly instead, use the **Text Color** control
-in the Element inspector (shown above). The same panel carries **Background** (a
+in the Element inspector (shown earlier). That panel also carries **Background** (a
 panel behind the text), **Effect** (shadow / glow for legibility over busy
 slides), vertical alignment, rotation, and **Position & Size**.
 
@@ -94,6 +110,18 @@ sees the point made, *then* the demonstration.
 This is the heart of the deck — three interactive demos, each made in an LLM
 session and dropped onto a slide. See **[Building demos with LLMs](building-demos-with-llms.md)**
 for exactly how these are produced.
+
+When you add a demo (Insert → Demo), Eigendeck scans its HTML for the `piece`
+names it defines and offers each as a separate, positionable element. With a demo
+piece selected, the **Element** inspector shows which piece it is and an **Add
+Piece** list of the demo's other pieces you can drop onto the slide:
+
+![A demo piece selected — the Element inspector shows the piece and Add Piece](images/welcome/editor-demo-piece.png)
+
+That's how this slide carries the `probability` heatmap and the `controls` slider
+from one HTML file as two independently-placed elements. The source file is also
+**watched** — edit it (or have an LLM revise it) and the slide updates; see
+[watched assets](assets.md).
 
 ![Slide 9 — Harper's electron simulation with a slider](images/welcome/slide-08.png)
 
