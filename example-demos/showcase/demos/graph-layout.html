@@ -65,7 +65,7 @@
     var r = cv.getBoundingClientRect(); dpr = window.devicePixelRatio || 1;
     var nW = Math.max(1, Math.round(r.width * dpr)), nH = Math.max(1, Math.round(r.height * dpr));
     if (W && nW) { var sx = nW / W, sy = nH / H; nodes.forEach(function (p) { p.x *= sx; p.y *= sy; }); }
-    W = nW; H = nH; S = Math.min(W, H);
+    W = nW; H = nH; cv.width = W; cv.height = H; S = Math.min(W, H);
     K = 0.62 * Math.sqrt((W * H) / nodes.length);  // ideal edge length
   }
 
