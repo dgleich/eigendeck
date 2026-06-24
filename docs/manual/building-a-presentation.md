@@ -33,23 +33,19 @@ Four regions, every time:
   and fonts), and **Element** (the selected element's properties). It's open by
   default; toggle it with **View → Toggle Inspector**.
 
-### Colouring text — and the math comes along
+### Coloring text — and the math comes along
 
-The screenshot above has the body element selected, so the inspector shows the
-**Element** tab. The **Text Color** control sets the colour of the whole
-element — and because inline math renders in the current text colour, *the
-equations recolour with it*. That's how the red `Φ` and the blue "graph" on this
-slide are done:
+Inline math renders in the *current text color*, so coloring text colors its math
+too. The red `Φ` and the blue "graph" / "directed adjacency matrix" on this slide
+were done with **inline spans**: while editing the element, select the run
+(including any `$…$`) and pick a color from the **text-editor format toolbar** —
+the MathJax in that run picks up the color. **Clear inline** (in the Element
+inspector) strips those per-run colors again.
 
-- **A whole element** — pick a swatch (or a custom colour) under **Text Color**.
-- **Just a phrase (and its math)** — select the run while editing and use the
-  format toolbar's colour; MathJax inside that run picks up the colour too. The
-  **Clear inline** button removes those per-run colours and returns the element
-  to one uniform colour.
-
-The same panel carries **Background** (a panel behind the text), **Effect**
-(shadow / glow for legibility over busy slides), vertical alignment, rotation,
-and **Position & Size**.
+To recolor the **whole element** uniformly instead, use the **Text Color** control
+in the Element inspector (shown above). The same panel carries **Background** (a
+panel behind the text), **Effect** (shadow / glow for legibility over busy
+slides), vertical alignment, rotation, and **Position & Size**.
 
 ---
 
@@ -83,9 +79,9 @@ and that computers can do more. Two techniques carry them:
   slide as a **Build Slide** (Slide menu, or right-click in the sidebar) and add
   the next piece; in presentation they advance as one numbered step.
 - **Cover rectangles as reveal masks.** A **Cover** element is a rectangle that
-  defaults to the slide background colour, so it's invisible — drop it over text
+  defaults to the slide background color, so it's invisible — drop it over text
   you want to reveal later, then remove it on the next build slide. (You can also
-  tint a cover any colour from the inspector.)
+  tint a cover any color from the inspector.)
 
 ![Slide 6 — history + a live demo revealed](images/welcome/slide-06.png)
 
@@ -107,7 +103,7 @@ positioned independently and communicate over `BroadcastChannel`. The slide adds
 a **Text Box** with the governing equation `$$\frac{dx}{dt} = -i\mL x$$`, an
 **annotation** ("Move the slider…"), and an **arrow** pointing at the control.
 Note the slide's **theme is black** — set per-slide in the Slide inspector — and
-the demo's controls automatically adopt readable colours via the injected theme
+the demo's controls automatically adopt readable colors via the injected theme
 variables.
 
 **Slide 10 — caffeine / adenosine.** A molecule `viewer` piece plus a `panel`.

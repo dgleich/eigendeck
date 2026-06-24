@@ -34,7 +34,7 @@ properties → math preamble) — e.g. `\mA` for a bold **A**, `\vp` for a vecto
 
 ## Themes
 
-A **theme** sets the slide's background and the default text/accent colours.
+A **theme** sets the slide's background and the default text/accent colors.
 Built-in themes: **white**, **light**, **dark**, **black**. Set the deck default
 in Presentation properties, override per slide in the Slide inspector. Demos and
 covers pick up the resolved theme automatically.
@@ -43,7 +43,7 @@ covers pick up the resolved theme automatically.
 
 Per-element styling lives in the inspector when a text element is selected:
 
-- **Text colour** and **background colour** (a panel behind the text), each with
+- **Text color** and **background color** (a panel behind the text), each with
   a palette + custom picker.
 - **Vertical alignment**, **opacity**, **rotation**.
 - **Text effects** — shadow / glow — for legibility over busy backgrounds.
