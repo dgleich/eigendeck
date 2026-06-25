@@ -11,16 +11,23 @@ on the editor's incremental save/flush.
 
 ## Sources (committed)
 
-- `demos/*.html` — every interactive demo (self-contained, theme-aware, transparent)
-  - `title-decor.html` — title-slide decoration: equation backdrop (top) +
-    bouncing-ball physics (bottom). Contains an `__EQLAYER__` slot filled at build time.
+- `demos/*.html` — every interactive demo (theme-aware, transparent; self-contained
+  except where a slot is injected at build time, noted below)
+  - `title-decor.html` — title-slide decoration: now just the bouncing-ball physics
+    (the equation backdrop moved onto the slide as rotated, soft-coloured TEXT
+    elements — see `TITLE_EQ` in build-showcase.mjs). Its `__EQLAYER__` slot is
+    injected empty.
+  - `graph-layout.html` — uses **d3-force**; its `/* __D3FORCE__ */` slot is filled
+    at build time from `vendor/d3-force.min.js` (so opened raw it degrades to blank).
+- `vendor/d3-force.min.js` — 17 KB d3-dispatch+timer+quadtree+force bundle, injected
+  into graph-layout at build time.
 - `demo-equations.json` — per-demo equation. The `tex` field is what's used now:
   each demo slide gets a **text element** with that `$LaTeX$` (editable in the app;
   MathJax renders it in-app and in the export). The `svg`/`aspect` fields are legacy
   (we used to embed the equation as an SVG image) and are no longer read by the build.
-- `title-equations.json` — the six title-slide backdrop equations (harvested SVG,
-  `currentColor` kept) + their scatter layout. These ARE still inlined as SVG, into
-  the `title-decor` demo's `__EQLAYER__` slot (faint wallpaper behind the wordmark).
+- `title-equations.json` — **legacy** (the title backdrop is now rotated TEXT
+  elements defined inline as `TITLE_EQ` in build-showcase.mjs); kept only as the
+  scatter-layout reference. No longer read by the build.
 - `build-showcase.mjs` — assembles `showcase.json` (slides + elements + base64 assets).
 - `export-showcase.mjs` — rig probe: open the built deck read-only, write `showcase.html`.
 - `harvest-equations.mjs` — rig probe: regenerate the two `*-equations.json` (only
@@ -159,7 +166,7 @@ What each demo computes, how you interact, and the slide-matched UI bit worth no
 | --- | --- | --- |
 | `drum-eigenmodes` | FD Dirichlet Laplacian; lowest modes by inverse iteration + CG + deflation (modes stay unit-norm — a display scale is separate, else deflation breaks); 3-D height-field render | paint the domain · mode **thumbnail strip**, `solving…` overlay, `λ` readout |
 | `gradient-descent` | ball rolls down a non-convex surface following −∇f | click to drop · the subtle **`step` slider** (learning rate) |
-| `graph-layout` | Fruchterman–Reingold force layout; 3 communities | drag a node · stops animating when settled (theme-watcher repaints) |
+| `graph-layout` | **d3-force** layout (charge + links + centering + collision); 3 communities | drag a node · d3's damped solver (smooth); theme-watcher repaints when settled |
 | `wave-equation` | 1-D wave by finite differences, fixed ends, light damping | click/drag to pluck |
 | `fourier` | radix-2 FFT; keep top-K coefficients → inverse FFT | **`keep` slider** + signal **segmented presets** + draw-your-own; time/freq panels |
 | `finite-element` | cross-braced triangulated mass-spring sheet (un-braced = floppy mechanism); clamped left, gravity | drag a node · `reset` · elements shaded by **strain (diverging field)** |
@@ -168,7 +175,7 @@ What each demo computes, how you interact, and the slide-matched UI bit worth no
 | `molecule-viewer` | depth-sorted 3-D ball-and-stick; computed geometry incl. a C₆₀ buckyball (truncated-icosahedron vertices, bonds by nearest-neighbour distance) | **clickable molecule list** · drag to rotate, auto-spin |
 | `neural-network` | real ~10k-param ResNet, live JS inference on MNIST | draw a digit · `example`/`clear` · activation-flow viz with a skip-arc + softmax bars |
 | `tiled-svd` | Jacobi SVD of the image vs its matrix-of-tiles, at equal storage | **`storage` slider** + tile/image segmented presets (Gleich, arXiv:2402.18427) |
-| `title-decor` | title-slide decoration | faint equation backdrop (inlined SVG) + bouncing-ball physics (gravity, elastic collisions, squash) |
+| `title-decor` | title-slide decoration | bouncing-ball physics (gravity, elastic collisions, squash). The equation backdrop is now rotated, soft-coloured **TEXT** elements on the slide (`TITLE_EQ` in build-showcase.mjs) — colours echo the balls |
 
 ## Why CLI import, not the GUI seam
 

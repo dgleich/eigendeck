@@ -44,33 +44,49 @@ function addAsset(key, path, mime, bytes) {
   assets.push({ assetId: id, path, mime, size: bytes.length, data: b64(bytes) });
   return id;
 }
-// demo HTMLs
-for (const d of DEMOS) addAsset(d.file, `demos/${d.file}`, 'text/html', readFileSync(join(DEMODIR, d.file)));
-// title decoration: inject the famous-equation backdrop (harvested MathJax SVG)
-// into the template's __EQLAYER__ slot, so it renders with no MathJax at runtime.
-const titleEq = JSON.parse(readFileSync(join(HERE, 'title-equations.json'), 'utf8'));
-const eqLayer = titleEq.map((e) =>
-  `<span class="eq" style="left:${e.left}%;top:${e.top}%;font-size:${e.fontvw}vw;transform:rotate(${e.rot}deg)">${e.svg}</span>`
-).join('');
-const titleDecor = readFileSync(join(DEMODIR, 'title-decor.html'), 'utf8').replace('__EQLAYER__', eqLayer);
-if (titleDecor.includes('__EQLAYER__')) throw new Error('title-decor.html: __EQLAYER__ slot not found');
+// demo HTMLs (graph-layout gets the d3-force bundle injected into its slot)
+const d3force = readFileSync(join(HERE, 'vendor', 'd3-force.min.js'), 'utf8');
+for (const d of DEMOS) {
+  let html = readFileSync(join(DEMODIR, d.file), 'utf8');
+  if (d.file === 'graph-layout.html') {
+    html = html.replace('/* __D3FORCE__ */', () => d3force);   // function replacer → no $-escaping surprises
+    if (html.includes('/* __D3FORCE__ */')) throw new Error('graph-layout.html: __D3FORCE__ slot not found');
+  }
+  addAsset(d.file, `demos/${d.file}`, 'text/html', Buffer.from(html, 'utf8'));
+}
+// title decoration is now just the bouncing-ball physics — the equation backdrop
+// moved onto the slide itself as editable, rotated, softly-coloured TEXT elements.
+const titleDecor = readFileSync(join(DEMODIR, 'title-decor.html'), 'utf8').replace('__EQLAYER__', '');
 addAsset('title-decor.html', 'demos/title-decor.html', 'text/html', Buffer.from(titleDecor, 'utf8'));
-// (per-slide equations are TEXT elements with LaTeX — see below — so they're
-//  editable in the app and still render in the export. No SVG assets needed.)
+addAsset('logo', 'images/eigendeck-logo.svg', 'image/svg+xml', readFileSync(join(HERE, '..', '..', 'logo-icon-macos.svg')));
+// (per-slide equations are TEXT elements with LaTeX too — see below.)
 
 // ---- slides ----------------------------------------------------------------
 const ctr = (html) => `<div style="text-align:center">${html}</div>`;
 const slides = [];
 
-// slide 0 — title: decoration (equations backdrop + bouncing balls) + wordmark
-slides.push({
-  id: 's0', notes: 'Title slide.',
-  elements: [
-    { id: 's0-decor', type: 'demo', assetId: assetId['title-decor.html'], position: { x: 0, y: 0, width: 1920, height: 1080 } },
-    { id: 's0-title', type: 'text', preset: 'title', html: ctr('Eigendeck'), position: { x: 60, y: 440, width: 1800, height: 170 } },
-    { id: 's0-sub',   type: 'text', preset: 'body',  html: ctr('Interactive show-and-tell presentations — real demos, live on the slide.'), position: { x: 60, y: 598, width: 1800, height: 70 } },
-  ],
-});
+// slide 0 — title: bouncing-ball demo + logo + wordmark, with famous equations
+// strewn around as rotated, softly-bright TEXT elements (LaTeX you can click into;
+// colours echo the balls). Equations hug the edges, leaving the centre column clear.
+const TITLE_EQ = [
+  { tex: 'A = U\\Sigma V^{\\top}',                               x: 70,   y: 110, w: 600, rot: -8,  size: 60, color: '#3dc5b6' },
+  { tex: 'E = mc^2',                                            x: 1440, y: 92,  w: 430, rot: 7,   size: 66, color: '#f47a6a' },
+  { tex: 'F = ma',                                              x: 210,  y: 252, w: 320, rot: -12, size: 60, color: '#a98bf0' },
+  { tex: 'a^2 + b^2 = c^2',                                     x: 1360, y: 280, w: 500, rot: 9,   size: 54, color: '#ef86bf' },
+  { tex: '\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx=\\sqrt{\\pi}', x: 36,  y: 398, w: 640, rot: 6,   size: 48, color: '#5b9bf0' },
+  { tex: 'e^{i\\pi}+1=0',                                       x: 1380, y: 470, w: 480, rot: -6,  size: 58, color: '#f0b24a' },
+];
+const titleEls = [
+  { id: 's0-decor', type: 'demo', assetId: assetId['title-decor.html'], position: { x: 0, y: 0, width: 1920, height: 1080 } },
+];
+TITLE_EQ.forEach((e, i) => titleEls.push({
+  id: `s0-eq${i}`, type: 'text', preset: 'textbox', color: e.color, fontSize: e.size, rotation: e.rot,
+  html: ctr('$' + e.tex + '$'), position: { x: e.x, y: e.y, width: e.w, height: Math.round(e.size * 2.4) },
+}));
+titleEls.push({ id: 's0-logo', type: 'image', assetId: assetId['logo'], kind: 'svg', position: { x: 835, y: 48, width: 250, height: 250 } });
+titleEls.push({ id: 's0-title', type: 'text', preset: 'title', html: ctr('Eigendeck'), position: { x: 60, y: 340, width: 1800, height: 145 } });
+titleEls.push({ id: 's0-sub', type: 'text', preset: 'body', html: ctr('LaTeX math &amp; interactive technical elements') + ctr('… click through to see the other slides …'), position: { x: 64, y: 496, width: 1792, height: 150 } });
+slides.push({ id: 's0', notes: 'Title slide.', elements: titleEls });
 
 // slides 1..N — title, equation (centered), demo, caption
 DEMOS.forEach((d, k) => {
