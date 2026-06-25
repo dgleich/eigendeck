@@ -25,8 +25,10 @@ const DEMOS = [
   { file: 'graph-layout.html',      title: 'Graph layout',               cap: 'Drag any node — the force-directed layout re-settles and reveals three communities.' },
   { file: 'wave-equation.html',     title: 'The wave equation',          cap: 'Click or drag to pluck the string — the pulse splits into two waves and reflects off the ends.' },
   { file: 'fourier.html',           title: 'Fourier & the FFT',          cap: 'A signal and its frequency spectrum. Drag "keep" to rebuild it from only its largest Fourier coefficients — or draw your own. Real FFT, live.' },
+  { file: 'finite-element.html',    title: 'Finite elements',            cap: 'A triangulated sheet clamped at the left, sagging under gravity. Elements shaded by strain — tension above, compression below. Drag any node.' },
   { file: 'sequence-alignment.html',title: 'Sequence alignment',         cap: 'Needleman–Wunsch global alignment. Drag the gap penalty to re-solve; the traceback path and alignment update live.' },
-  { file: 'molecule-viewer.html',   title: 'Molecule viewer',            cap: 'A 3-D ball-and-stick model — drag to rotate, or step through molecules. Exact molecular geometry.' },
+  { file: 'protein-folding.html',   title: 'Protein folding',            cap: 'Hydrophobic collapse (the HP model). Residues fold so the hydrophobic ones (warm) bury into a core. Drag to tug; "new sequence" refolds.' },
+  { file: 'molecule-viewer.html',   title: 'Molecule viewer',            cap: 'Pick a molecule from the list and drag to rotate the 3-D ball-and-stick model — from water up to a C₆₀ buckyball. Computed geometry.' },
   { file: 'neural-network.html',    title: 'Neural network',             cap: 'A small ResNet classifying MNIST — draw a digit and watch it flow through the layers. Real trained weights, live inference.' },
   { file: 'tiled-svd.html',         title: 'Low-rank image compression', cap: 'Plain SVD vs the SVD of a matrix of tiles, at equal storage. Drag the budget — the tiled reorganization wins. (Gleich, arXiv:2402.18427.)' },
 ];

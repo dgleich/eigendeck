@@ -23,9 +23,10 @@
     font-size: var(--eigendeck-base-size, 22px);
   }
   #nn { width: 100%; height: 100%; display: block; }
-  .nn-ctrl { position: absolute; left: 1.1em; bottom: 0.9em; display: flex; gap: 0.5em; font-size: 0.66em; }
-  .nn-btn { font-family: inherit; cursor: pointer; border: 1px solid color-mix(in srgb, var(--eigendeck-fg,#333) 30%, transparent);
-    background: transparent; color: var(--eigendeck-fg, #222); border-radius: 5px; padding: 0.25em 0.8em; }
+  .nn-ctrl { position: absolute; left: 1.1em; bottom: 0.9em; display: flex; gap: 0.7em; font-size: 1em; }
+  .nn-btn { font-family: inherit; font-size: 1em; cursor: pointer; border: 1px solid color-mix(in srgb, var(--eigendeck-fg,#333) 32%, transparent);
+    background: color-mix(in srgb, var(--eigendeck-fg,#333) 5%, transparent); color: var(--eigendeck-fg, #222); border-radius: 7px; padding: 0.45em 1.2em; }
+  .nn-btn:hover { background: color-mix(in srgb, var(--eigendeck-accent,#2563eb) 16%, transparent); }
   .nn-hint { position: absolute; left: 1.1em; top: 0.8em; font-size: 0.66em; color: var(--eigendeck-muted, #888); pointer-events: none; user-select: none; transition: opacity 0.4s; }
   .nn-hint.gone { opacity: 0; }
 </style>

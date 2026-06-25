@@ -57,11 +57,22 @@
   var cv = document.getElementById('sa'), ctx = cv.getContext('2d');
   var gapEl = document.getElementById('sa-gap'), gapV = document.getElementById('sa-gapv'),
       alignEl = document.getElementById('sa-align'), scEl = document.getElementById('sa-sc'), newBtn = document.getElementById('sa-new');
-  var MATCH = 2, MISMATCH = -1, BASES = 'ACGT';
-  var seqA = 'GCATTGCA', seqB = 'GATTACCA';   // along top (cols) / left (rows)
+  var MATCH = 2, MISMATCH = -1, BASES = 'ACGT', BACK = 'GATTACA';   // the backbone ;)
+  // Two mutated copies of a GATTACA×3 backbone — the repeat shows up as parallel
+  // diagonal bands in the score matrix, and the alignment is a clean run of
+  // matches broken by the odd indel/substitution.
+  var seqA = 'GATTACAGATTACAGATTACA', seqB = 'GATTACAGATACAGATTACA';   // along top (cols) / left (rows)
   var W = 0, H = 0, dpr = 1, sol = null;
 
-  function rnd(len) { var s = ''; for (var i = 0; i < len; i++) s += BASES[(Math.random() * 4) | 0]; return s; }
+  // Independently mutate a GATTACA×R backbone: a couple of point substitutions
+  // plus an occasional indel — always thematic, always an interesting alignment.
+  function mutate(s) {
+    var a = s.split(''), subs = 1 + ((Math.random() * 2) | 0), i, p;
+    for (i = 0; i < subs; i++) { p = (Math.random() * a.length) | 0; a[p] = BASES[(Math.random() * 4) | 0]; }
+    if (Math.random() < 0.75) { var q = (Math.random() * a.length) | 0; if (Math.random() < 0.5) a.splice(q, 1); else a.splice(q, 0, BASES[(Math.random() * 4) | 0]); }
+    return a.join('');
+  }
+  function freshSeqs() { var R = 2 + ((Math.random() * 2) | 0), back = '', i; for (i = 0; i < R; i++) back += BACK; seqA = mutate(back); seqB = mutate(back); }
 
   function solve(gap) {
     var n = seqA.length, m = seqB.length;
@@ -97,7 +108,8 @@
     var pad = Math.min(W, H) * 0.10;                       // room for axis letters
     var gw = (W - pad) / (n + 1), gh = (H - pad) / (m + 1);
     var cell = Math.min(gw, gh);
-    var ox = pad, oy = pad;
+    // center the (square-celled) grid in the canvas so it doesn't hug the left
+    var ox = Math.max(pad, (W - (n + 1) * cell) / 2), oy = Math.max(pad, (H - (m + 1) * cell) / 2);
     var inPath = {}; sol.path.forEach(function (p) { inPath[p[0] + ',' + p[1]] = 1; });
     // heatmap cells
     for (var i = 0; i <= m; i++) for (var j = 0; j <= n; j++) {
@@ -141,7 +153,7 @@
   }
 
   gapEl.addEventListener('input', run);
-  newBtn.addEventListener('click', function () { var L = 7 + ((Math.random() * 3) | 0); seqA = rnd(L); seqB = rnd(L); run(); });
+  newBtn.addEventListener('click', function () { freshSeqs(); run(); });
   window.addEventListener('resize', function () { resize(); if (sol) draw(); });
 
   var lastTheme = '';

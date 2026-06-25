@@ -4,126 +4,170 @@
 <meta charset="utf-8">
 <title>Molecule viewer</title>
 <!--
-  Showcase demo — a 3-D ball-and-stick molecule viewer. Title-LESS, theme-aware,
-  interaction-first: DRAG to rotate; it auto-spins gently when idle. "next" cycles
-  through molecules with exact, computable geometry (methane, ammonia, water,
-  ethane, benzene). Depth-sorted spheres + bonds; CPK-ish atom colors with a
-  theme-colored outline so they read on any slide. Transparent over the slide.
+  Showcase demo — a 3-D ball-and-stick molecule viewer with a clickable list.
+  LEFT: pick a molecule. RIGHT: DRAG to rotate (it auto-spins gently when idle).
+  Geometry is computed/known: water, ammonia, methane, CO2, ethane, benzene,
+  cyclohexane (chair), naphthalene, and a full C60 buckminsterfullerene (the 60
+  vertices of a truncated icosahedron, bonds by nearest-neighbour distance).
+  Depth-sorted spheres + bonds; CPK-ish atom colours outlined in the deck bg so
+  they read on any slide. Title-LESS, theme-aware, transparent over the slide.
 -->
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; }
-  body {
-    overflow: hidden; position: relative;
-    background: var(--eigendeck-bg, #ffffff);
-    color: var(--eigendeck-fg, #222222);
-    font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif;
-    font-size: var(--eigendeck-base-size, 22px);
-  }
+  body { overflow: hidden; background: var(--eigendeck-bg, #ffffff); color: var(--eigendeck-fg, #222222);
+    font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif; font-size: var(--eigendeck-base-size, 22px);
+    display: flex; }
+  .mv-list { flex: 0 0 auto; width: 26%; max-width: 19em; min-width: 9em; overflow-y: auto; padding: 0.4em 0.3em; }
+  .mv-item { display: flex; align-items: baseline; gap: 0.5em; padding: 0.42em 0.7em; border-radius: 7px; cursor: pointer;
+    color: var(--eigendeck-fg, #222); user-select: none; }
+  .mv-item:hover { background: color-mix(in srgb, var(--eigendeck-fg, #333) 8%, transparent); }
+  .mv-item.on { background: var(--eigendeck-accent, #2563eb); color: #fff; }
+  .mv-item .nm { font-size: 0.8em; font-weight: 600; }
+  .mv-item .fm { font-size: 0.62em; opacity: 0.7; margin-left: auto; white-space: nowrap; }
+  .mv-stage { flex: 1; min-width: 0; position: relative; }
   #mv { width: 100%; height: 100%; display: block; cursor: grab; }
   #mv.grab { cursor: grabbing; }
-  .mv-name { position: absolute; left: 1.1em; top: 0.8em; font-size: 1em; font-weight: 700;
-    color: var(--eigendeck-heading, var(--eigendeck-fg, #222)); pointer-events: none; user-select: none; }
-  .mv-formula { font-size: 0.7em; font-weight: 400; color: var(--eigendeck-muted, #888); margin-left: 0.4em; }
-  .mv-next { position: absolute; right: 1.1em; bottom: 1em; font-family: inherit; font-size: 0.68em; cursor: pointer;
-    border: 1px solid color-mix(in srgb, var(--eigendeck-fg,#333) 30%, transparent);
-    background: transparent; color: var(--eigendeck-fg, #222); border-radius: 5px; padding: 0.25em 0.8em; }
-  .mv-hint { position: absolute; left: 50%; bottom: 1em; transform: translateX(-50%);
-    font-size: 0.66em; color: var(--eigendeck-muted, #888); pointer-events: none; transition: opacity 0.4s; user-select: none; }
+  .mv-hint { position: absolute; left: 50%; bottom: 0.8em; transform: translateX(-50%); font-size: 0.62em;
+    color: var(--eigendeck-muted, #888); pointer-events: none; transition: opacity 0.4s; user-select: none; }
   .mv-hint.gone { opacity: 0; }
 </style>
 </head>
 <body>
-  <canvas id="mv"></canvas>
-  <div class="mv-name" id="mv-name"></div>
-  <div class="mv-hint" id="mv-hint">drag to rotate</div>
-  <button class="mv-next" id="mv-next">next molecule &rarr;</button>
+  <ul class="mv-list" id="mv-list"></ul>
+  <div class="mv-stage">
+    <canvas id="mv"></canvas>
+    <div class="mv-hint" id="mv-hint">drag to rotate</div>
+  </div>
 <script>
 (function () {
   'use strict';
   function tv(n, fb) { try { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb; } catch (e) { return fb; } }
   var cv = document.getElementById('mv'), ctx = cv.getContext('2d');
-  var nameEl = document.getElementById('mv-name'), hint = document.getElementById('mv-hint'), nextBtn = document.getElementById('mv-next');
+  var listEl = document.getElementById('mv-list'), hint = document.getElementById('mv-hint');
 
-  // CPK-ish colors; outline is theme-fg so atoms read on light AND dark.
+  // CPK-ish colours; outline is theme-bg so atoms read on light AND dark.
   var EL = { H: { c: '#d8d8d8', r: 0.34 }, C: { c: '#8a8f98', r: 0.62 }, N: { c: '#3b6fe0', r: 0.58 }, O: { c: '#e0483b', r: 0.56 } };
 
-  // Build molecules from exact geometry.
+  function dist(a, b) { return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]); }
+
+  // ---- molecules (exact / computable geometry) ----
   function tetra() { return [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]]; }
   function methane() { var a = [{ e: 'C', p: [0, 0, 0] }]; tetra().forEach(function (d) { var L = Math.hypot(d[0], d[1], d[2]); a.push({ e: 'H', p: [d[0] / L * 1.09, d[1] / L * 1.09, d[2] / L * 1.09] }); }); return { name: 'Methane', formula: 'CH₄', atoms: a, bonds: [[0, 1], [0, 2], [0, 3], [0, 4]] }; }
   function water() { var ang = 104.5 * Math.PI / 180, b = 0.96; return { name: 'Water', formula: 'H₂O', atoms: [{ e: 'O', p: [0, 0, 0] }, { e: 'H', p: [b * Math.sin(ang / 2), b * Math.cos(ang / 2), 0] }, { e: 'H', p: [-b * Math.sin(ang / 2), b * Math.cos(ang / 2), 0] }], bonds: [[0, 1], [0, 2]] }; }
-  function ammonia() { var a = [{ e: 'N', p: [0, 0.3, 0] }], R = 0.94, th = 1.911; for (var k = 0; k < 3; k++) { var ph = k * 2 * Math.PI / 3; a.push({ e: 'H', p: [R * Math.sin(th) * Math.cos(ph), 0.3 - R * Math.cos(th), R * Math.sin(th) * Math.sin(ph)] }); } return { name: 'Ammonia', formula: 'NH₃', atoms: a, bonds: [[0, 1], [0, 2], [0, 3]] }; }
+  function ammonia() { var a = [{ e: 'N', p: [0, 0.3, 0] }], R = 0.94, th = 1.911, k; for (k = 0; k < 3; k++) { var ph = k * 2 * Math.PI / 3; a.push({ e: 'H', p: [R * Math.sin(th) * Math.cos(ph), 0.3 - R * Math.cos(th), R * Math.sin(th) * Math.sin(ph)] }); } return { name: 'Ammonia', formula: 'NH₃', atoms: a, bonds: [[0, 1], [0, 2], [0, 3]] }; }
+  function co2() { return { name: 'Carbon dioxide', formula: 'CO₂', atoms: [{ e: 'C', p: [0, 0, 0] }, { e: 'O', p: [1.16, 0, 0] }, { e: 'O', p: [-1.16, 0, 0] }], bonds: [[0, 1], [0, 2]] }; }
   function ethane() {
-    var a = [{ e: 'C', p: [0, 0, 0.77] }, { e: 'C', p: [0, 0, -0.77] }], bonds = [[0, 1]];
-    for (var s = 0; s < 2; s++) { var zc = s ? -0.77 : 0.77, sgn = s ? -1 : 1, off = s ? Math.PI / 3 : 0;
-      for (var k = 0; k < 3; k++) { var ph = off + k * 2 * Math.PI / 3, rr = 1.03; a.push({ e: 'H', p: [rr * Math.sin(1.91) * Math.cos(ph), rr * Math.sin(1.91) * Math.sin(ph), zc + sgn * rr * Math.cos(1.23)] }); bonds.push([s, a.length - 1]); } }
+    var a = [{ e: 'C', p: [0, 0, 0.77] }, { e: 'C', p: [0, 0, -0.77] }], bonds = [[0, 1]], s, k;
+    for (s = 0; s < 2; s++) { var zc = s ? -0.77 : 0.77, sgn = s ? -1 : 1, off = s ? Math.PI / 3 : 0;
+      for (k = 0; k < 3; k++) { var ph = off + k * 2 * Math.PI / 3, rr = 1.03; a.push({ e: 'H', p: [rr * Math.sin(1.91) * Math.cos(ph), rr * Math.sin(1.91) * Math.sin(ph), zc + sgn * rr * Math.cos(1.23)] }); bonds.push([s, a.length - 1]); } }
     return { name: 'Ethane', formula: 'C₂H₆', atoms: a, bonds: bonds };
   }
   function benzene() {
-    var a = [], bonds = [], rC = 1.39, rH = 2.46;
-    for (var k = 0; k < 6; k++) { var th = k * Math.PI / 3; a.push({ e: 'C', p: [rC * Math.cos(th), rC * Math.sin(th), 0] }); }
-    for (var k2 = 0; k2 < 6; k2++) { var th2 = k2 * Math.PI / 3; a.push({ e: 'H', p: [rH * Math.cos(th2), rH * Math.sin(th2), 0] }); bonds.push([k2, 6 + k2]); }
-    for (var k3 = 0; k3 < 6; k3++) bonds.push([k3, (k3 + 1) % 6]);
+    var a = [], bonds = [], rC = 1.39, rH = 2.46, k;
+    for (k = 0; k < 6; k++) { var th = k * Math.PI / 3; a.push({ e: 'C', p: [rC * Math.cos(th), rC * Math.sin(th), 0] }); }
+    for (k = 0; k < 6; k++) { var t2 = k * Math.PI / 3; a.push({ e: 'H', p: [rH * Math.cos(t2), rH * Math.sin(t2), 0] }); bonds.push([k, 6 + k]); }
+    for (k = 0; k < 6; k++) bonds.push([k, (k + 1) % 6]);
     return { name: 'Benzene', formula: 'C₆H₆', atoms: a, bonds: bonds };
   }
-  var MOLS = [methane(), ammonia(), water(), ethane(), benzene()], mi = 1, mol = MOLS[mi];
+  function cyclohexane() {
+    var a = [], bonds = [], R = 1.46, dz = 0.25, i;
+    for (i = 0; i < 6; i++) { var th = i * Math.PI / 3; a.push({ e: 'C', p: [R * Math.cos(th), R * Math.sin(th), (i % 2 ? dz : -dz)] }); }
+    for (i = 0; i < 6; i++) bonds.push([i, (i + 1) % 6]);
+    for (i = 0; i < 6; i++) {
+      var th2 = i * Math.PI / 3, s = (i % 2 ? 1 : -1), cx = R * Math.cos(th2), cy = R * Math.sin(th2), cz = (i % 2 ? dz : -dz), ci = a.length;
+      a.push({ e: 'H', p: [cx, cy, cz + s * 1.0] }); bonds.push([i, ci]);                                  // axial
+      a.push({ e: 'H', p: [cx + Math.cos(th2) * 0.9, cy + Math.sin(th2) * 0.9, cz - s * 0.35] }); bonds.push([i, ci + 1]); // equatorial
+    }
+    return { name: 'Cyclohexane', formula: 'C₆H₁₂', atoms: a, bonds: bonds };
+  }
+  function naphthalene() {
+    var rC = 1.4, w = rC * Math.sqrt(3) / 2, a = [], idx = {}, bonds = [], rings = [], c, i;
+    function add(x, y) { var k = x.toFixed(2) + ',' + y.toFixed(2); if (k in idx) return idx[k]; idx[k] = a.length; a.push({ e: 'C', p: [x, y, 0] }); return idx[k]; }
+    [-w, w].forEach(function (cx) { var ring = []; for (i = 0; i < 6; i++) { var th = (30 + i * 60) * Math.PI / 180; ring.push(add(cx + rC * Math.cos(th), rC * Math.sin(th))); } rings.push(ring); });
+    function hasBond(u, v) { return bonds.some(function (b) { return (b[0] === u && b[1] === v) || (b[0] === v && b[1] === u); }); }
+    rings.forEach(function (ring) { for (i = 0; i < 6; i++) { var u = ring[i], v = ring[(i + 1) % 6]; if (!hasBond(u, v)) bonds.push([u, v]); } });
+    var nC = a.length, deg = new Array(nC).fill(0); bonds.forEach(function (b) { deg[b[0]]++; deg[b[1]]++; });
+    for (i = 0; i < nC; i++) if (deg[i] === 2) { var p = a[i].p, L = Math.hypot(p[0], p[1]) || 1; a.push({ e: 'H', p: [p[0] + p[0] / L, p[1] + p[1] / L, 0] }); bonds.push([i, a.length - 1]); }
+    return { name: 'Naphthalene', formula: 'C₁₀H₈', atoms: a, bonds: bonds };
+  }
+  function buckyball() {
+    var phi = (1 + Math.sqrt(5)) / 2, base = [[0, 1, 3 * phi], [1, 2 + phi, 2 * phi], [phi, 2, 2 * phi + 1]];
+    var verts = [], seen = {};
+    function addv(x, y, z) { var k = x.toFixed(3) + ',' + y.toFixed(3) + ',' + z.toFixed(3); if (k in seen) return; seen[k] = 1; verts.push([x, y, z]); }
+    base.forEach(function (t) {
+      [[t[0], t[1], t[2]], [t[1], t[2], t[0]], [t[2], t[0], t[1]]].forEach(function (p) {       // even (cyclic) perms
+        for (var sx = -1; sx <= 1; sx += 2) for (var sy = -1; sy <= 1; sy += 2) for (var sz = -1; sz <= 1; sz += 2) addv(p[0] * sx, p[1] * sy, p[2] * sz);
+      });
+    });
+    var atoms = verts.map(function (v) { return { e: 'C', p: v }; }), n = atoms.length, i, j, mind = 1e9;
+    for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) { var d = dist(atoms[i].p, atoms[j].p); if (d < mind) mind = d; }
+    var bonds = [];
+    for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) if (dist(atoms[i].p, atoms[j].p) < mind * 1.08) bonds.push([i, j]);
+    return { name: 'Buckminsterfullerene', formula: 'C₆₀', atoms: atoms, bonds: bonds };
+  }
+
+  var MOLS = [water(), ammonia(), methane(), co2(), ethane(), benzene(), cyclohexane(), naphthalene(), buckyball()];
+  var mi = MOLS.length - 1, mol = MOLS[mi];                 // default: the buckyball
 
   var W = 0, H = 0, dpr = 1, ax = -0.5, ay = 0.6, drag = null, autoSpin = true;
-
   function resize() { var r = cv.getBoundingClientRect(); dpr = window.devicePixelRatio || 1; W = Math.max(1, Math.round(r.width * dpr)); H = Math.max(1, Math.round(r.height * dpr)); cv.width = W; cv.height = H; }
 
   function project() {
     var cx = Math.cos(ax), sx = Math.sin(ax), cy = Math.cos(ay), sy = Math.sin(ay);
-    var pts = mol.atoms.map(function (a) {
+    return mol.atoms.map(function (a) {
       var x = a.p[0], y = a.p[1], z = a.p[2];
-      // rotate Y then X
       var x1 = x * cy + z * sy, z1 = -x * sy + z * cy;
       var y2 = y * cx - z1 * sx, z2 = y * sx + z1 * cx;
       return { x: x1, y: y2, z: z2, e: a.e };
     });
-    return pts;
   }
-
   function draw() {
     var fg = tv('--eigendeck-fg', '#222'), bg = tv('--eigendeck-bg', '#fff');
     ctx.clearRect(0, 0, W, H);
-    var pts = project();
-    // fit to canvas
-    var R = 0; pts.forEach(function (p) { R = Math.max(R, Math.hypot(p.x, p.y)); });
-    R += 0.7; var scale = Math.min(W, H) * 0.42 / R, ox = W / 2, oy = H / 2;
+    var pts = project(), R = 0; pts.forEach(function (p) { R = Math.max(R, Math.hypot(p.x, p.y)); });
+    R += 0.7; var scale = Math.min(W, H) * 0.44 / R, ox = W / 2, oy = H / 2;
     function sx(x) { return ox + x * scale; } function sy(y) { return oy - y * scale; }
-    // bonds (depth via midpoint z) + atoms together, painter-sorted
+    var atomScale = mol.atoms.length > 30 ? 0.5 : 0.62;     // shrink spheres for big molecules
     var items = [];
     mol.bonds.forEach(function (b) { var A = pts[b[0]], B = pts[b[1]]; items.push({ z: (A.z + B.z) / 2, kind: 'bond', A: A, B: B }); });
-    pts.forEach(function (p, i) { items.push({ z: p.z, kind: 'atom', p: p, e: p.e }); });
+    pts.forEach(function (p) { items.push({ z: p.z, kind: 'atom', p: p, e: p.e }); });
     items.sort(function (a, b) { return a.z - b.z; });
     items.forEach(function (it) {
       if (it.kind === 'bond') {
-        ctx.strokeStyle = fg; ctx.globalAlpha = 0.55; ctx.lineWidth = Math.max(2, scale * 0.12); ctx.lineCap = 'round';
+        ctx.strokeStyle = fg; ctx.globalAlpha = 0.5; ctx.lineWidth = Math.max(1.5, scale * 0.1); ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(sx(it.A.x), sy(it.A.y)); ctx.lineTo(sx(it.B.x), sy(it.B.y)); ctx.stroke(); ctx.globalAlpha = 1;
       } else {
-        var el = EL[it.e] || EL.C, x = sx(it.p.x), y = sy(it.p.y), rad = el.r * scale * 0.62;
+        var el = EL[it.e] || EL.C, x = sx(it.p.x), y = sy(it.p.y), rad = el.r * scale * atomScale;
         var g = ctx.createRadialGradient(x - rad * 0.35, y - rad * 0.35, rad * 0.1, x, y, rad);
         g.addColorStop(0, lighten(el.c, 0.45)); g.addColorStop(1, el.c);
         ctx.beginPath(); ctx.arc(x, y, rad, 0, 6.283); ctx.fillStyle = g; ctx.fill();
-        ctx.lineWidth = Math.max(1, scale * 0.03); ctx.strokeStyle = fg; ctx.globalAlpha = 0.35; ctx.stroke(); ctx.globalAlpha = 1;
+        ctx.lineWidth = Math.max(1, scale * 0.03); ctx.strokeStyle = bg; ctx.globalAlpha = 0.5; ctx.stroke(); ctx.globalAlpha = 1;
       }
     });
   }
   function lighten(hex, t) { var n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; return 'rgb(' + Math.round(r + (255 - r) * t) + ',' + Math.round(g + (255 - g) * t) + ',' + Math.round(b + (255 - b) * t) + ')'; }
 
-  function setMol(m) { mol = m; nameEl.innerHTML = m.name + '<span class="mv-formula">' + m.formula + '</span>'; }
+  function buildList() {
+    listEl.innerHTML = '';
+    MOLS.forEach(function (m, i) {
+      var li = document.createElement('li'); li.className = 'mv-item' + (i === mi ? ' on' : ''); li.dataset.i = i;
+      li.innerHTML = '<span class="nm">' + m.name + '</span><span class="fm">' + m.formula + '</span>';
+      listEl.appendChild(li);
+    });
+  }
+  function selectMol(i) { mi = i; mol = MOLS[i]; ay = 0.6; ax = -0.5; autoSpin = true;
+    Array.prototype.forEach.call(listEl.children, function (li, k) { li.classList.toggle('on', k === i); }); }
+  listEl.addEventListener('click', function (e) { var li = e.target.closest('.mv-item'); if (li) selectMol(+li.dataset.i); });
 
-  function frame() { if (autoSpin && drag == null) { ay += 0.006; } draw(); requestAnimationFrame(frame); }
-
+  function frame() { if (autoSpin && drag == null) ay += 0.006; draw(); requestAnimationFrame(frame); }
   cv.addEventListener('pointerdown', function (e) { drag = { x: e.clientX, y: e.clientY }; autoSpin = false; cv.classList.add('grab'); cv.setPointerCapture(e.pointerId); hint.classList.add('gone'); });
   cv.addEventListener('pointermove', function (e) { if (!drag) return; ay += (e.clientX - drag.x) * 0.01; ax += (e.clientY - drag.y) * 0.01; ax = Math.max(-1.5, Math.min(1.5, ax)); drag.x = e.clientX; drag.y = e.clientY; });
   function up() { if (drag) { drag = null; cv.classList.remove('grab'); setTimeout(function () { autoSpin = true; }, 1400); } }
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-  nextBtn.addEventListener('click', function () { mi = (mi + 1) % MOLS.length; setMol(MOLS[mi]); });
   window.addEventListener('resize', function () { resize(); draw(); });
 
-  function start() { resize(); setMol(mol); requestAnimationFrame(frame); }
+  function start() { resize(); buildList(); requestAnimationFrame(frame); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 </script>

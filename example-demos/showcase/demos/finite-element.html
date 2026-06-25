@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Finite elements</title>
+<!--
+  Showcase demo — a finite-element mesh under load. A rectangular sheet is
+  triangulated into elements (each quad → two triangles); the left edge is
+  clamped, gravity pulls the rest down, so it sags like a cantilever. Each
+  element is shaded by its strain (stress) — warm = stretched, cool = compressed
+  — concentrated at the clamped root, just like the real bending solution. DRAG
+  any node to deform the mesh; "reset" restores it. Title-LESS, theme-aware,
+  transparent over the slide.
+-->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; }
+  body { overflow: hidden; position: relative; background: var(--eigendeck-bg, #ffffff); color: var(--eigendeck-fg, #222222);
+    font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif; font-size: var(--eigendeck-base-size, 22px); }
+  #fe { width: 100%; height: 100%; display: block; cursor: grab; }
+  #fe.grab { cursor: grabbing; }
+  .fe-ui { position: absolute; left: 1.1em; bottom: 0.9em; display: flex; align-items: center; gap: 1.1em; font-size: 0.62em; color: var(--eigendeck-muted, #888); }
+  .fe-btn { font-family: inherit; font-size: 1em; cursor: pointer; border: 1px solid color-mix(in srgb, var(--eigendeck-fg,#333) 32%, transparent);
+    background: color-mix(in srgb, var(--eigendeck-fg,#333) 5%, transparent); color: var(--eigendeck-fg, #222); border-radius: 7px; padding: 0.4em 1em; }
+  .fe-btn:hover { background: color-mix(in srgb, var(--eigendeck-accent,#2563eb) 16%, transparent); }
+  .fe-hint { position: absolute; right: 1.2em; bottom: 1em; font-size: 0.62em; color: var(--eigendeck-muted, #888); pointer-events: none; transition: opacity 0.4s; }
+  .fe-hint.gone { opacity: 0; }
+</style>
+</head>
+<body>
+  <canvas id="fe"></canvas>
+  <div class="fe-ui"><button class="fe-btn" id="fe-reset">reset</button><span>clamped left edge · gravity load</span></div>
+  <div class="fe-hint" id="fe-hint">drag a node to deform</div>
+<script>
+(function () {
+  'use strict';
+  function tv(n, fb) { try { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb; } catch (e) { return fb; } }
+  var cv = document.getElementById('fe'), ctx = cv.getContext('2d'), hint = document.getElementById('fe-hint');
+  var COLS = 15, ROWS = 6;
+  var W = 0, H = 0, dpr = 1, nodes = [], springs = [], tris = [], drag = null;
+
+  function id(i, j) { return j * COLS + i; }
+  function build() {
+    var r = cv.getBoundingClientRect(); dpr = window.devicePixelRatio || 1; W = Math.max(1, Math.round(r.width * dpr)); H = Math.max(1, Math.round(r.height * dpr));
+    cv.width = W; cv.height = H;
+    var marginX = W * 0.08, marginY = H * 0.20, gw = (W - 2 * marginX), gh = (H - 2 * marginY);
+    var dx = gw / (COLS - 1), dy = gh / (ROWS - 1);
+    nodes = [];
+    for (var j = 0; j < ROWS; j++) for (var i = 0; i < COLS; i++) {
+      var x = marginX + i * dx, y = marginY + j * dy;
+      nodes.push({ x: x, y: y, rx: x, ry: y, vx: 0, vy: 0, pin: i === 0 });
+    }
+    // unique springs (H, V, diagonal per cell) + triangles
+    var seen = {}; springs = []; tris = [];
+    function spring(a, b) { var k = a < b ? a + '-' + b : b + '-' + a; if (seen[k]) return; seen[k] = 1; springs.push({ a: a, b: b, rest: Math.hypot(nodes[a].x - nodes[b].x, nodes[a].y - nodes[b].y) }); }
+    for (j = 0; j < ROWS; j++) for (i = 0; i < COLS; i++) {
+      if (i < COLS - 1) spring(id(i, j), id(i + 1, j));
+      if (j < ROWS - 1) spring(id(i, j), id(i, j + 1));
+      if (i < COLS - 1 && j < ROWS - 1) {
+        spring(id(i, j), id(i + 1, j + 1));                    // diagonal
+        tris.push([id(i, j), id(i + 1, j), id(i + 1, j + 1)]);
+        tris.push([id(i, j), id(i + 1, j + 1), id(i, j + 1)]);
+      }
+    }
+  }
+  function reset() { for (var i = 0; i < nodes.length; i++) { nodes[i].x = nodes[i].rx; nodes[i].y = nodes[i].ry; nodes[i].vx = nodes[i].vy = 0; } }
+
+  function step() {
+    var grav = 0.06 * (H / 1000) * 6, K = 0.45, i, s;
+    var fx = new Float64Array(nodes.length), fy = new Float64Array(nodes.length);
+    for (s = 0; s < springs.length; s++) {
+      var sp = springs[s], A = nodes[sp.a], B = nodes[sp.b];
+      var dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 0.01, f = (d - sp.rest) * K, ux = dx / d, uy = dy / d;
+      fx[sp.a] += ux * f; fy[sp.a] += uy * f; fx[sp.b] -= ux * f; fy[sp.b] -= uy * f;
+    }
+    for (i = 0; i < nodes.length; i++) {
+      if (nodes[i].pin || drag === i) { nodes[i].vx = nodes[i].vy = 0; continue; }
+      fy[i] += grav;
+      nodes[i].vx = (nodes[i].vx + fx[i]) * 0.9; nodes[i].vy = (nodes[i].vy + fy[i]) * 0.9;
+      nodes[i].x += nodes[i].vx; nodes[i].y += nodes[i].vy;
+    }
+  }
+
+  function strainOf(tri) {
+    var s = 0, e = [[tri[0], tri[1]], [tri[1], tri[2]], [tri[2], tri[0]]];
+    for (var k = 0; k < 3; k++) {
+      var a = nodes[e[k][0]], b = nodes[e[k][1]], cur = Math.hypot(a.x - b.x, a.y - b.y), rest = Math.hypot(a.rx - b.rx, a.ry - b.ry);
+      s += (cur - rest) / rest;
+    }
+    return s / 3;
+  }
+  function draw() {
+    var fg = tv('--eigendeck-fg', '#222'), acc = tv('--eigendeck-accent', '#2563eb');
+    ctx.clearRect(0, 0, W, H);
+    // elements shaded by strain (warm = stretched, cool = compressed)
+    for (var t = 0; t < tris.length; t++) {
+      var tr = tris[t], st = strainOf(tr), a = nodes[tr[0]], b = nodes[tr[1]], c = nodes[tr[2]];
+      var mag = Math.min(0.6, Math.abs(st) * 6);
+      ctx.fillStyle = st >= 0 ? 'rgba(224,72,59,' + mag.toFixed(3) + ')' : 'rgba(59,130,246,' + mag.toFixed(3) + ')';
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.closePath(); ctx.fill();
+    }
+    // mesh edges
+    ctx.strokeStyle = fg; ctx.globalAlpha = 0.28; ctx.lineWidth = 1.2 * dpr;
+    for (var s = 0; s < springs.length; s++) { var sp = springs[s]; ctx.beginPath(); ctx.moveTo(nodes[sp.a].x, nodes[sp.a].y); ctx.lineTo(nodes[sp.b].x, nodes[sp.b].y); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    // nodes (pinned = accent squares)
+    for (var i = 0; i < nodes.length; i++) {
+      var nd = nodes[i];
+      if (nd.pin) { ctx.fillStyle = acc; var r = 4 * dpr; ctx.fillRect(nd.x - r, nd.y - r, 2 * r, 2 * r); }
+      else { ctx.beginPath(); ctx.arc(nd.x, nd.y, 3 * dpr, 0, 6.283); ctx.fillStyle = fg; ctx.globalAlpha = 0.55; ctx.fill(); ctx.globalAlpha = 1; }
+    }
+  }
+  function frame() { step(); draw(); requestAnimationFrame(frame); }
+
+  function pos(e) { var r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr]; }
+  function nearest(x, y) { var best = -1, bd = 28 * dpr; for (var i = 0; i < nodes.length; i++) { var d = Math.hypot(nodes[i].x - x, nodes[i].y - y); if (d < bd && !nodes[i].pin) { bd = d; best = i; } } return best; }
+  cv.addEventListener('pointerdown', function (e) { var p = pos(e), i = nearest(p[0], p[1]); if (i < 0) return; drag = i; cv.classList.add('grab'); cv.setPointerCapture(e.pointerId); hint.classList.add('gone'); });
+  cv.addEventListener('pointermove', function (e) { if (drag == null) return; var p = pos(e); nodes[drag].x = p[0]; nodes[drag].y = p[1]; nodes[drag].vx = nodes[drag].vy = 0; });
+  function up() { drag = null; cv.classList.remove('grab'); }
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  document.getElementById('fe-reset').addEventListener('click', reset);
+  window.addEventListener('resize', build);
+
+  function start() { build(); requestAnimationFrame(frame); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+</body>
+</html>
