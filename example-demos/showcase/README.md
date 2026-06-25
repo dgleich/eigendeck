@@ -166,7 +166,7 @@ What each demo computes, how you interact, and the slide-matched UI bit worth no
 | --- | --- | --- |
 | `drum-eigenmodes` | FD Dirichlet Laplacian; lowest modes by inverse iteration + CG + deflation (modes stay unit-norm — a display scale is separate, else deflation breaks); 3-D height-field render | paint the domain · mode **thumbnail strip**, `solving…` overlay, `λ` readout |
 | `gradient-descent` | ball rolls down a non-convex surface following −∇f | click to drop · the subtle **`step` slider** (learning rate) |
-| `graph-layout` | **d3-force** layout (charge + links + centering + collision); 3 communities | drag a node · d3's damped solver (smooth); theme-watcher repaints when settled |
+| `graph-layout` | **d3-force** layout of the real **Fauci email network** (Benson, Veldt & Gleich, ICWSM 2022; 32 nodes); coloured by a spectral/Fiedler **min-cut** bisection (comms vs scientists, 3 cut edges); node size = degree, edge width = volume | drag a node · **labels hidden, shown on hover** (the karate-club move). Embedded data + baked community; d3 injected at build |
 | `wave-equation` | 1-D wave by finite differences, fixed ends, light damping | click/drag to pluck |
 | `fourier` | radix-2 FFT; keep top-K coefficients → inverse FFT | **`keep` slider** + signal **segmented presets** + draw-your-own; time/freq panels |
 | `finite-element` | cross-braced triangulated mass-spring sheet (un-braced = floppy mechanism); clamped left, gravity | drag a node · `reset` · elements shaded by **strain (diverging field)** |

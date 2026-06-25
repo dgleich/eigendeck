@@ -4,15 +4,17 @@
 <meta charset="utf-8">
 <title>Graph layout</title>
 <!--
-  Showcase demo — force-directed graph drawing with d3-force. DRAG any node and
-  the whole layout re-settles around it (charge + links + centering + collision,
-  d3's well-damped solver — far smoother than the hand-rolled version). The graph
-  has three loosely-knit communities, so the layout reveals its structure as it
-  relaxes. Title-LESS, theme-aware, transparent over the slide.
+  Showcase demo — force-directed layout (d3-force) of a REAL network: the Fauci
+  email reply-to graph (Benson, Veldt & Gleich, ICWSM 2022 / arXiv:2108.01239;
+  data: github.com/nveldt/fauci-email). 32 people, edges = who replied to whom.
+  Nodes are
+  coloured by a spectral (Fiedler) bisection — the min-cut-like 2-way split, à la
+  Zachary's karate club: it separates the comms/press cluster from the scientists
+  with just 3 cut edges. Node size = degree, edge width = volume. Labels are HIDDEN
+  — HOVER a node to see who it is. DRAG to re-settle the layout. Theme-aware.
 
-  Self-contained AFTER the build: `__D3FORCE__` (a 17 KB d3-dispatch+timer+
-  quadtree+force bundle from vendor/) is injected by build-showcase.mjs. Opened
-  raw it degrades to blank (the guard below) — like title-decor, it's assembled.
+  Self-contained AFTER the build: the `__D3FORCE__` slot is filled from
+  vendor/d3-force.min.js by build-showcase.mjs.
 -->
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -22,7 +24,7 @@
     font-size: var(--eigendeck-base-size, 22px); }
   #gl { width: 100%; height: 100%; display: block; cursor: grab; }
   #gl.grabbing { cursor: grabbing; }
-  .gl-hint { position: absolute; left: 50%; top: 7%; transform: translateX(-50%); font-size: 0.7em;
+  .gl-hint { position: absolute; left: 50%; top: 6%; transform: translateX(-50%); font-size: 0.66em;
     color: var(--eigendeck-muted, #888); background: color-mix(in srgb, var(--eigendeck-bg, #fff) 70%, transparent);
     padding: 0.2em 0.7em; border-radius: 1em; pointer-events: none; transition: opacity 0.4s; user-select: none; }
   .gl-hint.gone { opacity: 0; }
@@ -30,66 +32,79 @@
 </head>
 <body>
   <canvas id="gl"></canvas>
-  <div class="gl-hint" id="gl-hint">drag a node</div>
+  <div class="gl-hint" id="gl-hint">hover a node for the name · drag to re-settle</div>
 <script>/* __D3FORCE__ */</script>
 <script>
+var GRAPH = {"nodes":[{"id":0,"name":"Patricia Conrad","org":"HHS","c":1,"d":15},{"id":1,"name":"Lawrence Tabak","org":"HHS","c":0,"d":3},{"id":2,"name":"Jennifer Routh","org":"HHS","c":1,"d":5},{"id":3,"name":"Greg Folkers","org":"HHS","c":1,"d":3},{"id":4,"name":"Christie Johnson","org":"Other","c":1,"d":2},{"id":5,"name":"David Awwad","org":"HHS","c":1,"d":3},{"id":6,"name":"John Mascola","org":"HHS","c":0,"d":3},{"id":7,"name":"Courtney Billet","org":"HHS","c":1,"d":11},{"id":8,"name":"Cliff Lane","org":"HHS","c":1,"d":3},{"id":9,"name":"Larry Corey","org":"Other","c":0,"d":2},{"id":10,"name":"Francis Collins","org":"HHS","c":0,"d":14},{"id":11,"name":"Kara Harris","org":"HHS","c":1,"d":1},{"id":12,"name":"Robert Kadlec","org":"EOP","c":0,"d":6},{"id":13,"name":"Paul Stoffels","org":"Other","c":0,"d":2},{"id":14,"name":"Patrick Brennan","org":"EOP","c":1,"d":4},{"id":15,"name":"Shannah Goldner","org":"Other","c":1,"d":2},{"id":16,"name":"Mike Figliola","org":"Other","c":1,"d":2},{"id":17,"name":"Lesley Cahill Roy","org":"Other","c":1,"d":2},{"id":18,"name":"Mikael Dolsten","org":"Other","c":0,"d":3},{"id":19,"name":"Morten Sogaard","org":"Other","c":0,"d":3},{"id":20,"name":"Robert Eisinger","org":"HHS","c":0,"d":2},{"id":21,"name":"Dani Bolognesi","org":"Other","c":0,"d":1},{"id":22,"name":"Richard Hatchett","org":"Other","c":0,"d":3},{"id":23,"name":"Neil Shapiro","org":"HHS","c":0,"d":3},{"id":24,"name":"Devin O'Malley","org":"Other","c":1,"d":2},{"id":25,"name":"Carter Mecher","org":"Other","c":0,"d":7},{"id":26,"name":"Eva K Lee","org":"Other","c":0,"d":4},{"id":27,"name":"Tracey Mcnamara","org":"Other","c":0,"d":4},{"id":28,"name":"Duane Caneva","org":"Other","c":0,"d":5},{"id":29,"name":"Latika Chugh","org":"Other","c":1,"d":3},{"id":30,"name":"Kate Galatas","org":"FDA","c":1,"d":1},{"id":31,"name":"Ruth Katz","org":"Other","c":1,"d":2}],"links":[{"source":0,"target":2,"w":2},{"source":0,"target":4,"w":2},{"source":0,"target":7,"w":1},{"source":0,"target":11,"w":3},{"source":0,"target":15,"w":14},{"source":0,"target":16,"w":5},{"source":0,"target":29,"w":1},{"source":0,"target":31,"w":3},{"source":1,"target":12,"w":1},{"source":2,"target":24,"w":2},{"source":3,"target":0,"w":2},{"source":3,"target":7,"w":1},{"source":4,"target":0,"w":2},{"source":5,"target":0,"w":1},{"source":5,"target":29,"w":2},{"source":6,"target":10,"w":1},{"source":6,"target":12,"w":1},{"source":7,"target":0,"w":1},{"source":7,"target":2,"w":2},{"source":7,"target":3,"w":1},{"source":7,"target":8,"w":1},{"source":7,"target":10,"w":1},{"source":7,"target":14,"w":3},{"source":7,"target":17,"w":2},{"source":8,"target":7,"w":1},{"source":8,"target":12,"w":1},{"source":10,"target":1,"w":1},{"source":10,"target":6,"w":1},{"source":10,"target":9,"w":1},{"source":10,"target":12,"w":3},{"source":10,"target":13,"w":1},{"source":10,"target":18,"w":1},{"source":10,"target":23,"w":4},{"source":12,"target":10,"w":1},{"source":12,"target":25,"w":1},{"source":13,"target":10,"w":2},{"source":14,"target":2,"w":2},{"source":14,"target":10,"w":1},{"source":15,"target":0,"w":13},{"source":16,"target":0,"w":4},{"source":17,"target":7,"w":1},{"source":18,"target":19,"w":2},{"source":19,"target":10,"w":1},{"source":19,"target":18,"w":1},{"source":20,"target":9,"w":3},{"source":20,"target":21,"w":5},{"source":22,"target":25,"w":1},{"source":22,"target":26,"w":1},{"source":23,"target":1,"w":1},{"source":23,"target":10,"w":4},{"source":24,"target":2,"w":1},{"source":25,"target":22,"w":2},{"source":25,"target":27,"w":1},{"source":25,"target":28,"w":2},{"source":26,"target":25,"w":2},{"source":27,"target":26,"w":1},{"source":27,"target":28,"w":1},{"source":28,"target":25,"w":1},{"source":28,"target":26,"w":1},{"source":28,"target":27,"w":1},{"source":29,"target":5,"w":3},{"source":30,"target":14,"w":2},{"source":31,"target":0,"w":2}]};
 (function () {
   'use strict';
-  if (typeof d3 === 'undefined' || !d3.forceSimulation) return;   // raw-open guard (d3 injected at build)
+  if (typeof d3 === 'undefined' || !d3.forceSimulation) return;     // raw-open guard (d3 injected at build)
   function tv(n, fb) { try { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb; } catch (e) { return fb; } }
   var cv = document.getElementById('gl'), ctx = cv.getContext('2d'), hint = document.getElementById('gl-hint');
+  var nodes = GRAPH.nodes, links = GRAPH.links;
+  var maxd = 1, maxw = 1; nodes.forEach(function (n) { if (n.d > maxd) maxd = n.d; }); links.forEach(function (l) { if (l.w > maxw) maxw = l.w; });
 
-  // three communities; dense within, sparse across → visible structure
-  var COMM = [10, 9, 9], COMM_COL = ['accent', '#f59e0b', '#10b981'];
-  var nodes = [], links = [], comm = [];
-  (function build() {
-    var id = 0, c, k, base = 0;
-    for (c = 0; c < COMM.length; c++) for (k = 0; k < COMM[c]; k++) { comm[id] = c; nodes.push({ id: id }); id++; }
-    function add(a, b) { if (a !== b && !links.some(function (e) { return (e.s === a && e.t === b) || (e.s === b && e.t === a); })) links.push({ s: a, t: b, source: a, target: b }); }
-    for (c = 0; c < COMM.length; c++) { for (k = 0; k < COMM[c]; k++) { var u = base + k; add(u, base + (k + 1) % COMM[c]); add(u, base + (k + 2) % COMM[c]); } base += COMM[c]; }
-    add(2, 12); add(7, 20); add(15, 25); add(4, 23);   // cross-community bridges
-  })();
-
-  var W = 0, H = 0, dpr = 1, S = 1, sim = null, drag = null;
+  var W = 0, H = 0, dpr = 1, S = 1, sim = null, drag = null, hover = null;
   function resize() {
     var r = cv.getBoundingClientRect(); dpr = window.devicePixelRatio || 1;
     W = Math.max(1, Math.round(r.width * dpr)); H = Math.max(1, Math.round(r.height * dpr)); cv.width = W; cv.height = H; S = Math.min(W, H);
-    if (sim) { sim.force('center', d3.forceCenter(W / 2, H / 2)); sim.force('link').distance(S * 0.1); sim.force('charge').strength(-S * 0.55); sim.alpha(0.4).restart(); }
+    if (sim) { sim.force('center', d3.forceCenter(W / 2, H / 2)); sim.force('link').distance(S * 0.11); sim.force('charge').strength(-S * 0.5); sim.alpha(0.5).restart(); }
   }
-  function nodeR() { return Math.max(4, S * 0.014); }
+  function rOf(n) { return S * (0.012 + 0.018 * Math.sqrt(n.d / maxd)); }   // node radius by degree
+  function commColor(n, acc) { return n.c ? acc : '#e8833a'; }              // Fiedler bisection: 2 factions
 
   function draw() {
     var fg = tv('--eigendeck-fg', '#222'), bg = tv('--eigendeck-bg', '#fff'), acc = tv('--eigendeck-accent', '#2563eb');
     ctx.clearRect(0, 0, W, H);
-    ctx.strokeStyle = fg; ctx.globalAlpha = 0.22; ctx.lineWidth = 1.4 * dpr;
-    for (var e = 0; e < links.length; e++) { var L = links[e]; ctx.beginPath(); ctx.moveTo(L.source.x, L.source.y); ctx.lineTo(L.target.x, L.target.y); ctx.stroke(); }
+    // edges (width by volume; incident-to-hover edges emphasised)
+    for (var e = 0; e < links.length; e++) {
+      var L = links[e], inc = hover && (L.source === hover || L.target === hover);
+      ctx.strokeStyle = fg; ctx.globalAlpha = inc ? 0.5 : 0.2; ctx.lineWidth = (0.6 + 1.0 * (L.w / maxw)) * (inc ? 2 : 1) * dpr;
+      ctx.beginPath(); ctx.moveTo(L.source.x, L.source.y); ctx.lineTo(L.target.x, L.target.y); ctx.stroke();
+    }
     ctx.globalAlpha = 1;
-    var rad = nodeR();
+    // nodes
     for (var i = 0; i < nodes.length; i++) {
-      ctx.beginPath(); ctx.arc(nodes[i].x, nodes[i].y, rad, 0, 6.283);
-      ctx.fillStyle = COMM_COL[comm[i]] === 'accent' ? acc : COMM_COL[comm[i]]; ctx.fill();
-      ctx.lineWidth = 1.6 * dpr; ctx.strokeStyle = bg; ctx.stroke();
+      var n = nodes[i], rad = rOf(n) * (n === hover ? 1.25 : 1);
+      ctx.beginPath(); ctx.arc(n.x, n.y, rad, 0, 6.283); ctx.fillStyle = commColor(n, acc); ctx.fill();
+      ctx.lineWidth = (n === hover ? 3 : 1.6) * dpr; ctx.strokeStyle = n === hover ? fg : bg; ctx.stroke();
+    }
+    // hover label (the only labels shown)
+    if (hover) {
+      var name = hover.name, fs = Math.max(12, S * 0.019), font = tv('--eigendeck-font', 'PT Sans');
+      ctx.font = '600 ' + fs + 'px ' + font + ', sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      var tw = ctx.measureText(name).width, pad = fs * 0.55, bw = tw + 2 * pad, bh = fs * 1.6;
+      var bx = hover.x - bw / 2, by = hover.y - rOf(hover) - bh - fs * 0.4;
+      roundRect(bx, by, bw, bh, bh / 2); ctx.fillStyle = bg; ctx.globalAlpha = 0.95; ctx.fill();
+      ctx.lineWidth = dpr; ctx.strokeStyle = fg; ctx.globalAlpha = 0.25; ctx.stroke(); ctx.globalAlpha = 1;
+      ctx.fillStyle = fg; ctx.fillText(name, hover.x, by + bh / 2);
     }
   }
+  function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 
   sim = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(function (d) { return d.id; }).distance(80).strength(0.18))
-    .force('charge', d3.forceManyBody().strength(-200))
+    .force('link', d3.forceLink(links).id(function (d) { return d.id; }).distance(70).strength(function (l) { return 0.06 + 0.04 * l.w; }))
+    .force('charge', d3.forceManyBody().strength(-220))
     .force('center', d3.forceCenter(0, 0))
-    .force('collide', d3.forceCollide().radius(function () { return nodeR() * 1.5; }))
+    .force('collide', d3.forceCollide().radius(function (n) { return rOf(n) * 1.4 + 2; }))
     .velocityDecay(0.45)
     .on('tick', draw);
 
-  function evtNode(e) { var r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * dpr, y = (e.clientY - r.top) * dpr, rad = nodeR() * 1.8;
-    for (var i = nodes.length - 1; i >= 0; i--) if (Math.hypot(nodes[i].x - x, nodes[i].y - y) < rad) return [nodes[i], x, y]; return null; }
-  cv.addEventListener('pointerdown', function (e) { var n = evtNode(e); if (!n) return; drag = n[0]; drag.fx = n[1]; drag.fy = n[2];
+  function at(e) { var r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * dpr, y = (e.clientY - r.top) * dpr;
+    for (var i = nodes.length - 1; i >= 0; i--) if (Math.hypot(nodes[i].x - x, nodes[i].y - y) < rOf(nodes[i]) * 1.8) return [nodes[i], x, y]; return null; }
+  cv.addEventListener('pointerdown', function (e) { var n = at(e); if (!n) return; drag = n[0]; drag.fx = n[1]; drag.fy = n[2];
     sim.alphaTarget(0.3).restart(); cv.classList.add('grabbing'); cv.setPointerCapture(e.pointerId); hint.classList.add('gone'); });
-  cv.addEventListener('pointermove', function (e) { if (!drag) return; var r = cv.getBoundingClientRect(); drag.fx = (e.clientX - r.left) * dpr; drag.fy = (e.clientY - r.top) * dpr; });
+  cv.addEventListener('pointermove', function (e) {
+    var r = cv.getBoundingClientRect();
+    if (drag) { drag.fx = (e.clientX - r.left) * dpr; drag.fy = (e.clientY - r.top) * dpr; return; }
+    var n = at(e), nh = n ? n[0] : null; cv.style.cursor = nh ? 'pointer' : 'grab';
+    if (nh !== hover) { hover = nh; hint.classList.add('gone'); draw(); }     // repaint (sim may be idle)
+  });
   function release() { if (!drag) return; drag.fx = null; drag.fy = null; drag = null; sim.alphaTarget(0); cv.classList.remove('grabbing'); }
   cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', release);
+  cv.addEventListener('pointerleave', function () { if (hover) { hover = null; draw(); } });
   window.addEventListener('resize', function () { resize(); draw(); });
 
-  // repaint on a live theme change (the sim stops ticking once settled)
   var lastTheme = '';
   setInterval(function () { var sig = tv('--eigendeck-fg', '') + '|' + tv('--eigendeck-bg', '') + '|' + tv('--eigendeck-accent', ''); if (sig !== lastTheme) { lastTheme = sig; draw(); } }, 400);
 
