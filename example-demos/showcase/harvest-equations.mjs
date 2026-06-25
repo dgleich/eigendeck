@@ -38,6 +38,7 @@ const DEMO = [
   { file: 'graph-layout.html', tex: 'L = D - A' },
   { file: 'wave-equation.html', tex: '\\frac{\\partial^2 u}{\\partial t^2}=c^2\\,\\frac{\\partial^2 u}{\\partial x^2}' },
   { file: 'fourier.html', tex: 'X_k=\\sum_{n=0}^{N-1} x_n\\,e^{-2\\pi i kn/N}' },
+  { file: 'polynomial-interpolation.html', tex: 'f(x)=\\frac{1}{1+25x^2}' },
   { file: 'finite-element.html', tex: 'K\\mathbf{u}=\\mathbf{f}' },
   { file: 'protein-folding.html', tex: 'p(\\text{fold}) \\propto e^{-E/k_{B}T}' },
   { file: 'sequence-alignment.html', tex: 'F_{i,j}=\\max\\{\\,F_{i-1,j-1}+s,\\ F_{i-1,j}-g,\\ F_{i,j-1}-g\\,\\}' },
