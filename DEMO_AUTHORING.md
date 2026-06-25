@@ -18,7 +18,8 @@ A demo is a single HTML file that serves three roles based on URL hash:
 #role=controller  → Hidden iframe, runs logic/simulation, broadcasts state
 #piece=graph      → Visible iframe, renders the "graph" piece
 #piece=stats      → Visible iframe, renders the "stats" piece
-(no hash)         → Standalone mode, works in a browser directly
+(no hash)         → Standalone dev preview — open the .html directly while developing
+                    (you render it; see "Standalone / dev preview" below)
 ```
 
 All communication between controller and viewports uses `BroadcastChannel`.
@@ -162,10 +163,16 @@ body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
   }
 
   // ============================================
-  // 5. Standalone fallback (no hash)
-  // ============================================
+  // 5. Standalone fallback (no hash) — see "Standalone / dev preview" below.
+  //    Eigendeck never loads this path; it's purely so you can open the .html
+  //    DIRECTLY in a browser while developing. Make it actually run the demo
+  //    (drive the main piece from the controller logic in-process), not a dead
+  //    "open in Eigendeck" message — otherwise the file looks blank/broken when
+  //    you double-click it, which is confusing while iterating.
   document.addEventListener('DOMContentLoaded', () => {
-    document.body.innerHTML = '<p style="padding:20px">Open in Eigendeck for full demo.</p>';
+    // dev preview: reuse the same sim + render you wrote above, no BroadcastChannel
+    const state = generateState();          // the controller's generator
+    renderFromState(state);                 // the main piece's renderer
   });
 })();
 </script>
@@ -173,6 +180,26 @@ body { font-family: 'PT Sans', system-ui, sans-serif; overflow: hidden; }
 <body></body>
 </html>
 ```
+
+### Standalone / dev preview (the no-hash branch)
+
+A demo-piece file runs **four** ways: `#role=controller`, `#piece=<name>` (one per
+piece), and **no hash at all**. Eigendeck only ever loads the first three — it always
+appends a hash. The no-hash branch exists **for you**: so you can double-click the
+`.html` (or `open` it) and see the demo while developing, without the Eigendeck
+harness, a dev server, or BroadcastChannel.
+
+- **Make it real.** Have the no-hash branch actually render the demo — call the same
+  generator + renderer your controller/piece use, wired together in-process (skip
+  BroadcastChannel; just call the functions). That's your fast iterate-in-a-browser
+  loop. A placeholder like `"Open in Eigendeck"` defeats the purpose.
+- **It's a convenience, not a requirement.** Omitting the branch does NOT break the
+  demo inside Eigendeck (it loads the hashed pieces) — it just means the bare file
+  renders **blank** when opened directly. So if a teammate says "your demo shows
+  nothing when I open it," that's the missing no-hash branch, not an Eigendeck bug.
+- **Factor for reuse.** Keep the simulation (`generateState`) and each piece's
+  `renderFromState` as named functions at the top of the IIFE so all four branches
+  (controller, pieces, standalone) can share them instead of duplicating logic.
 
 ## How Eigendeck Loads Demos
 
