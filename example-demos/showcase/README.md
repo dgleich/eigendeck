@@ -14,10 +14,13 @@ on the editor's incremental save/flush.
 - `demos/*.html` — every interactive demo (self-contained, theme-aware, transparent)
   - `title-decor.html` — title-slide decoration: equation backdrop (top) +
     bouncing-ball physics (bottom). Contains an `__EQLAYER__` slot filled at build time.
-- `demo-equations.json` — per-demo equation, as harvested MathJax **SVG** (recolored
-  dark) + aspect ratio. One entry per demo file.
-- `title-equations.json` — the six title-slide backdrop equations (SVG, currentColor
-  kept) + their scatter layout.
+- `demo-equations.json` — per-demo equation. The `tex` field is what's used now:
+  each demo slide gets a **text element** with that `$LaTeX$` (editable in the app;
+  MathJax renders it in-app and in the export). The `svg`/`aspect` fields are legacy
+  (we used to embed the equation as an SVG image) and are no longer read by the build.
+- `title-equations.json` — the six title-slide backdrop equations (harvested SVG,
+  `currentColor` kept) + their scatter layout. These ARE still inlined as SVG, into
+  the `title-decor` demo's `__EQLAYER__` slot (faint wallpaper behind the wordmark).
 - `build-showcase.mjs` — assembles `showcase.json` (slides + elements + base64 assets).
 - `export-showcase.mjs` — rig probe: open the built deck read-only, write `showcase.html`.
 - `harvest-equations.mjs` — rig probe: regenerate the two `*-equations.json` (only
@@ -62,6 +65,110 @@ PROBE=$PWD/harvest-equations.mjs E2E_DECK=<scratch.eigendeck> bash ../../e2e/run
 ```
 
 This rewrites `title-equations.json` + `demo-equations.json`; then re-run the Build steps.
+
+## Authoring a demo (conventions)
+
+Every demo here is a **single self-contained `.html`** — no build step, no external
+deps, no message protocol (unlike the controller/viewport "demo pieces" in
+`../../DEMO_AUTHORING.md`). It must read on *any* slide and feel native to the deck.
+The shared skeleton:
+
+```html
+<style>
+  html, body { width:100%; height:100%; margin:0; }
+  body {
+    overflow:hidden; background:transparent;            /* the SLIDE shows through */
+    color: var(--eigendeck-fg, #222);
+    font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif;
+    font-size: var(--eigendeck-base-size, 22px);        /* size everything in em off this */
+  }
+</style>
+<canvas id="x"></canvas>
+<script>(function(){ 'use strict';
+  // read a theme var with a fallback (NEVER hardcode a color)
+  function tv(n, fb){ try { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb; } catch(e){ return fb; } }
+  var cv = document.getElementById('x'), ctx = cv.getContext('2d'), W,H,dpr=1;
+  function resize(){ var r=cv.getBoundingClientRect(); dpr=devicePixelRatio||1;
+    W=Math.round(r.width*dpr); H=Math.round(r.height*dpr); cv.width=W; cv.height=H; }  // crisp on retina
+  // ...sim + draw(), reading tv('--eigendeck-accent') etc. each frame...
+  // demos that STOP animating must still repaint on a live theme change:
+  var last=''; setInterval(function(){ var s=tv('--eigendeck-fg','')+tv('--eigendeck-accent',''); if(s!==last){last=s; draw();} }, 400);
+  addEventListener('resize', function(){ resize(); draw(); });
+})();</script>
+```
+
+**Theme palette** (always via `tv()` with a fallback — this is what makes a demo
+"match the slide"): `--eigendeck-bg`, `--eigendeck-fg`, `--eigendeck-heading`,
+`--eigendeck-accent`, `--eigendeck-muted`, `--eigendeck-font`, `--eigendeck-mono`,
+`--eigendeck-base-size`. Color roles we use consistently:
+
+- **accent** — the one primary/interactive color: the active line/curve, selected
+  control, highlighted value, kept-vs-dropped.
+- **muted** — secondary: axis labels, hints, captions, dropped/inactive items.
+- **fg** — structure: axes, mesh edges, outlines (low alpha).
+- **bg** — outline *around* filled blobs (atoms, balls, residues) so they read on
+  light AND dark slides.
+- **diverging field** — for signed scalar fields (FEM strain, membrane height) use
+  warm `rgba(224,72,59,a)` for + and cool `rgba(59,130,246,a)` for −, with
+  `a ∝ |value|` so zero is transparent (the slide shows through = automatic theme fit).
+
+See `../../DEMO_AUTHORING.md` for the deeper rules these build on: **controls/labels
+must survive a DARK slide** and **size text relative to the deck, never hardcoded px**.
+
+### The slide-matched control kit
+
+Controls are HTML overlaid on the canvas, styled to feel like part of the deck (not
+browser-default widgets). Each demo namespaces its classes with a 2-letter prefix
+(`sa-` sequence-alignment, `fr-` fourier, `ts-` tiled-svd, `mv-` molecule, …). The
+recurring pieces — copy these:
+
+- **Labelled slider** (the SGD `step`, fourier `keep`, tiled-svd `storage`,
+  alignment `gap`): a muted label + native range + an accent tabular-nums value.
+  ```css
+  input[type=range]{ accent-color: var(--eigendeck-accent,#2563eb);
+    background: color-mix(in srgb, var(--eigendeck-fg,#333) 20%, transparent);
+    border-radius:4px; height:.35em; }
+  .val{ color: var(--eigendeck-accent,#2563eb); font-weight:700; font-variant-numeric:tabular-nums; }
+  ```
+- **Segmented buttons** (fourier signal, tiled-svd tile, drum shape, molecule list):
+  rounded group, accent fill for the selected one.
+  ```css
+  .seg{ display:inline-flex; border:1px solid color-mix(in srgb,var(--eigendeck-fg,#333) 26%,transparent); border-radius:6px; overflow:hidden; }
+  .seg button{ border:0; background:transparent; color:var(--eigendeck-fg,#222); font:inherit; cursor:pointer; padding:.3em .7em; }
+  .seg button.on{ background:var(--eigendeck-accent,#2563eb); color:#fff; }
+  ```
+- **Plain button** (`example`/`clear`, `reset`, `new sequence`): faint fg-tint fill,
+  accent-tint hover, `border-radius:6-7px`, `padding:.3-.4em .85-1.2em`. Keep it
+  ~0.78–1em of the base size — readable from the back of a room, not huge.
+- **Clickable list** (molecule viewer): rows with hover bg + accent fill when
+  selected — the "pick from a list on the left" pattern.
+- **Thumbnail strip** (drum mode picker): a row of tiny `<canvas>` previews, each
+  rendering one option; accent border on the selected.
+- **Fading hint** (`drag to rotate`, `click to drop a ball`): muted text,
+  `transition:opacity .4s`, add a `.gone{opacity:0}` class on first interaction.
+- **"Solving…" overlay** (drum): a translucent full-cover div shown while a one-off
+  compute runs; kick the compute in `setTimeout(fn, 30)` so the overlay paints first
+  (JS is single-threaded — and Tauri blocks blob Web Workers, so no worker).
+- **Readout** (`mode 3 · λ = 0.08`, `H–H contacts 95`): muted label, accent value.
+
+## Demo catalog
+
+What each demo computes, how you interact, and the slide-matched UI bit worth noting.
+
+| Demo | Technique | Interaction · notable UI |
+| --- | --- | --- |
+| `drum-eigenmodes` | FD Dirichlet Laplacian; lowest modes by inverse iteration + CG + deflation (modes stay unit-norm — a display scale is separate, else deflation breaks); 3-D height-field render | paint the domain · mode **thumbnail strip**, `solving…` overlay, `λ` readout |
+| `gradient-descent` | ball rolls down a non-convex surface following −∇f | click to drop · the subtle **`step` slider** (learning rate) |
+| `graph-layout` | Fruchterman–Reingold force layout; 3 communities | drag a node · stops animating when settled (theme-watcher repaints) |
+| `wave-equation` | 1-D wave by finite differences, fixed ends, light damping | click/drag to pluck |
+| `fourier` | radix-2 FFT; keep top-K coefficients → inverse FFT | **`keep` slider** + signal **segmented presets** + draw-your-own; time/freq panels |
+| `finite-element` | cross-braced triangulated mass-spring sheet (un-braced = floppy mechanism); clamped left, gravity | drag a node · `reset` · elements shaded by **strain (diverging field)** |
+| `sequence-alignment` | Needleman–Wunsch DP + traceback; DP grid heatmap | **`gap` slider**, `new sequences` · alignment rows use **fixed-width cells** so letters line up with the `|` bars regardless of font |
+| `protein-folding` | off-lattice HP model; hydrophobic attraction + excluded volume + backbone springs; **simulated annealing to T=0 so it settles** | drag a residue · `new sequence` · H/P legend, contact readout |
+| `molecule-viewer` | depth-sorted 3-D ball-and-stick; computed geometry incl. a C₆₀ buckyball (truncated-icosahedron vertices, bonds by nearest-neighbour distance) | **clickable molecule list** · drag to rotate, auto-spin |
+| `neural-network` | real ~10k-param ResNet, live JS inference on MNIST | draw a digit · `example`/`clear` · activation-flow viz with a skip-arc + softmax bars |
+| `tiled-svd` | Jacobi SVD of the image vs its matrix-of-tiles, at equal storage | **`storage` slider** + tile/image segmented presets (Gleich, arXiv:2402.18427) |
+| `title-decor` | title-slide decoration | faint equation backdrop (inlined SVG) + bouncing-ball physics (gravity, elastic collisions, squash) |
 
 ## Why CLI import, not the GUI seam
 

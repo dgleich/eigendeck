@@ -2,6 +2,14 @@
 
 This guide explains how to create interactive demos that integrate as positionable pieces in Eigendeck presentations.
 
+> **Two flavors of demo.** This guide covers **multi-piece demos** — a controller
+> + viewport iframes wired over `BroadcastChannel`. The other flavor is a
+> **single self-contained `.html`** (one canvas, no message protocol) — the kind
+> in `example-demos/showcase/`. Both share the theme/sizing/dark-slide rules
+> below. For the self-contained recipe — the shared skeleton, the slide-matched
+> control kit (sliders/segmented buttons/lists/thumbnail strips), and a catalog of
+> ~12 worked examples — see **`example-demos/showcase/README.md`**.
+
 ## Architecture
 
 A demo is a single HTML file that serves three roles based on URL hash:
