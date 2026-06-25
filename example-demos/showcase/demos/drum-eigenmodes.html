@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Drum eigenmodes</title>
+<!--
+  Showcase demo — "can you hear the shape of a drum?" PAINT a membrane on the
+  left grid; we build the 5-point Dirichlet Laplacian on it and solve the
+  eigenproblem −Δu = λu for the lowest modes (inverse iteration + conjugate
+  gradient + deflation, all in JS). Pick a mode from the strip: the LEFT shows
+  its nodal pattern (Chladni lines), the RIGHT shows the eigenvector as a 3-D
+  surface oscillating at frequency √λ. The eigenvectors of the Laplacian made
+  visible — the continuous cousin of the graph Laplacian. Title-less, theme-aware.
+-->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; }
+  body { overflow: hidden; background: var(--eigendeck-bg, #ffffff); color: var(--eigendeck-fg, #222222);
+    font-family: var(--eigendeck-font, 'PT Sans'), system-ui, sans-serif; font-size: var(--eigendeck-base-size, 22px);
+    display: flex; flex-direction: column; padding: 0.7em 1.1em; }
+  .dr-row { flex: 1; min-height: 0; display: flex; gap: 1.2em; }
+  .dr-pane { position: relative; min-width: 0; }
+  .dr-left { flex: 0 0 34%; }
+  .dr-right { flex: 1; }
+  .dr-pane canvas { width: 100%; height: 100%; display: block; }
+  #cv-top { cursor: crosshair; }
+  .dr-lab { position: absolute; left: 0; top: 0; font-size: 0.58em; color: var(--eigendeck-muted, #999); pointer-events: none; user-select: none; }
+  .dr-solving { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 0.7em;
+    color: var(--eigendeck-muted, #888); background: color-mix(in srgb, var(--eigendeck-bg,#fff) 55%, transparent); }
+  .dr-solving.on { display: flex; }
+  .dr-ctrl { flex: 0 0 auto; display: flex; align-items: center; gap: 1em; margin-top: 0.55em; flex-wrap: wrap; }
+  .dr-seg { display: inline-flex; border: 1px solid color-mix(in srgb, var(--eigendeck-fg,#333) 26%, transparent); border-radius: 6px; overflow: hidden; }
+  .dr-seg button { font-family: inherit; font-size: 0.62em; cursor: pointer; border: 0; background: transparent; color: var(--eigendeck-fg, #222); padding: 0.3em 0.7em; }
+  .dr-seg button.on { background: var(--eigendeck-accent, #2563eb); color: #fff; }
+  .dr-modes { display: flex; gap: 0.4em; align-items: center; }
+  .dr-mode { width: 2.1em; height: 2.1em; border-radius: 6px; cursor: pointer; padding: 0; border: 1.5px solid transparent; background: transparent; }
+  .dr-mode.on { border-color: var(--eigendeck-accent, #2563eb); }
+  .dr-mode canvas { width: 100%; height: 100%; display: block; border-radius: 4px; }
+  .dr-info { font-size: 0.6em; color: var(--eigendeck-muted, #888); margin-left: auto; }
+  .dr-info b { color: var(--eigendeck-accent, #2563eb); font-variant-numeric: tabular-nums; }
+  .dr-hint { font-size: 0.58em; color: var(--eigendeck-muted, #aaa); }
+</style>
+</head>
+<body>
+  <div class="dr-row">
+    <div class="dr-pane dr-left">
+      <canvas id="cv-top"></canvas>
+      <div class="dr-lab">shape · nodal lines &nbsp;<span class="dr-hint">(paint to edit)</span></div>
+      <div class="dr-solving" id="dr-solving">solving −Δu = λu …</div>
+    </div>
+    <div class="dr-pane dr-right">
+      <canvas id="cv-3d"></canvas>
+      <div class="dr-lab">eigenmode · vibrating</div>
+    </div>
+  </div>
+  <div class="dr-ctrl">
+    <span class="dr-seg" id="dr-preset">
+      <button data-s="circle" class="on">Circle</button><button data-s="square">Square</button><button data-s="L">L-shape</button><button data-s="star">Star</button><button data-s="clear">Clear</button>
+    </span>
+    <span class="dr-modes" id="dr-modes"></span>
+    <span class="dr-info">mode <b id="dr-mk">1</b> · λ = <b id="dr-lam">—</b></span>
+  </div>
+<script>
+(function () {
+  'use strict';
+  function tv(n, fb) { try { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb; } catch (e) { return fb; } }
+  var NG = 32, K = 9;                          // grid resolution, # modes
+  var mask = new Uint8Array(NG * NG), idx = new Int32Array(NG * NG), cells = [], nC = 0;
+  var modes = [], lam = [], disp = [], sel = 2, t = 0;   // modes stay UNIT-NORM (deflation needs it); disp[k] scales for display
+
+  // ---------- linear algebra: −Δ (Dirichlet) eigenpairs ----------
+  function buildIndex() { idx.fill(-1); cells = []; for (var j = 0; j < NG; j++) for (var i = 0; i < NG; i++) if (mask[j * NG + i]) { idx[j * NG + i] = cells.length; cells.push([i, j]); } nC = cells.length; }
+  function applyL(u, out) {
+    for (var k = 0; k < nC; k++) { var i = cells[k][0], j = cells[k][1], s = 4 * u[k], m;
+      if (i > 0 && (m = idx[j * NG + i - 1]) >= 0) s -= u[m];
+      if (i < NG - 1 && (m = idx[j * NG + i + 1]) >= 0) s -= u[m];
+      if (j > 0 && (m = idx[(j - 1) * NG + i]) >= 0) s -= u[m];
+      if (j < NG - 1 && (m = idx[(j + 1) * NG + i]) >= 0) s -= u[m];
+      out[k] = s; }
+  }
+  function dot(a, b) { var s = 0; for (var i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
+  function cg(b, tol, maxit) {
+    var n = b.length, x = new Float64Array(n), r = Float64Array.from(b), p = Float64Array.from(b), Ap = new Float64Array(n), rs = dot(r, r), bn = Math.max(1e-30, dot(b, b)), i, it;
+    for (it = 0; it < maxit; it++) { if (rs / bn < tol * tol) break;
+      applyL(p, Ap); var a = rs / Math.max(1e-30, dot(p, Ap));
+      for (i = 0; i < n; i++) { x[i] += a * p[i]; r[i] -= a * Ap[i]; }
+      var rs2 = dot(r, r), beta = rs2 / Math.max(1e-30, rs); for (i = 0; i < n; i++) p[i] = r[i] + beta * p[i]; rs = rs2; }
+    return x;
+  }
+  function orth(v, basis) { for (var b = 0; b < basis.length; b++) { var d = dot(v, basis[b]); for (var i = 0; i < v.length; i++) v[i] -= d * basis[b][i]; } }
+  function nrm(v) { var s = Math.sqrt(dot(v, v)) || 1; for (var i = 0; i < v.length; i++) v[i] /= s; }
+  function solveModes() {
+    buildIndex(); modes = []; lam = []; disp = []; if (nC < 8) return;
+    var seed = 2246, rnd = function () { seed = (1103515245 * seed + 12345) & 0x7fffffff; return seed / 0x7fffffff - 0.5; };
+    for (var k = 0; k < Math.min(K, nC - 1); k++) {
+      var x = new Float64Array(nC); for (var i = 0; i < nC; i++) x[i] = rnd(); orth(x, modes); nrm(x);
+      var prev = 0;
+      for (var it = 0; it < 50; it++) { orth(x, modes); var y = cg(x, 1e-6, 300); orth(y, modes); nrm(y);
+        var Ly = new Float64Array(nC); applyL(y, Ly); var rq = dot(y, Ly); x = y; if (Math.abs(rq - prev) < 1e-6 * Math.max(1, Math.abs(rq))) { prev = rq; break; } prev = rq; }
+      var Lx = new Float64Array(nC); applyL(x, Lx); var l = dot(x, Lx) / dot(x, x);
+      // keep x UNIT-NORM in the basis (deflation depends on it); record a display
+      // scale so the rendered mode peaks at ±1 with a consistent sign.
+      var mx = 0, peak = 0; for (i = 0; i < nC; i++) if (Math.abs(x[i]) > mx) { mx = Math.abs(x[i]); peak = x[i]; }
+      modes.push(x); lam.push(l); disp.push((peak < 0 ? -1 : 1) / (mx || 1));
+    }
+  }
+
+  // ---------- shapes ----------
+  function setPreset(s) {
+    mask.fill(0); var c = (NG - 1) / 2, i, j;
+    for (j = 0; j < NG; j++) for (i = 0; i < NG; i++) {
+      var x = i - c, y = j - c, on = false;
+      if (s === 'circle') on = Math.hypot(x, y) < NG * 0.42;
+      else if (s === 'square') on = Math.abs(x) < NG * 0.36 && Math.abs(y) < NG * 0.36;
+      else if (s === 'L') on = (Math.abs(x) < NG * 0.36 && Math.abs(y) < NG * 0.36) && !(x > 0 && y > 0);
+      else if (s === 'star') { var a = Math.atan2(y, x), r = Math.hypot(x, y), rr = NG * (0.27 + 0.16 * Math.cos(5 * a)); on = r < rr; }
+      if (on) mask[j * NG + i] = 1;
+    }
+  }
+
+  // ---------- rendering ----------
+  var cvTop = document.getElementById('cv-top'), xTop = cvTop.getContext('2d');
+  var cv3d = document.getElementById('cv-3d'), x3 = cv3d.getContext('2d');
+  var dpr = 1;
+  function size(c) { var r = c.getBoundingClientRect(); dpr = window.devicePixelRatio || 1; var w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr)); if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } return [w, h]; }
+  function val(k, i, j) { var m = idx[j * NG + i]; return (m >= 0 && modes[k]) ? modes[k][m] * disp[k] : 0; }
+  function colorFor(h, alphaMul) { var a = Math.min(0.92, Math.abs(h) * (alphaMul || 1)); return h >= 0 ? 'rgba(224,102,74,' + a.toFixed(3) + ')' : 'rgba(59,130,246,' + a.toFixed(3) + ')'; }
+
+  function drawTop() {
+    var d = size(cvTop), W = d[0], H = d[1]; xTop.clearRect(0, 0, W, H);
+    var s = Math.min(W, H) / NG, ox = (W - s * NG) / 2, oy = (H - s * NG) / 2, i, j;
+    var fg = tv('--eigendeck-fg', '#222'), acc = tv('--eigendeck-accent', '#2563eb');
+    // domain + mode heatmap
+    for (j = 0; j < NG; j++) for (i = 0; i < NG; i++) if (mask[j * NG + i]) {
+      if (modes.length) { xTop.fillStyle = colorFor(val(sel, i, j), 1.0); xTop.fillRect(ox + i * s, oy + j * s, s + 0.5, s + 0.5); }
+      else { xTop.fillStyle = 'rgba(' + hexRgb(acc) + ',0.18)'; xTop.fillRect(ox + i * s, oy + j * s, s + 0.5, s + 0.5); }
+    }
+    // domain outline
+    xTop.strokeStyle = fg; xTop.globalAlpha = 0.25; xTop.lineWidth = dpr;
+    for (j = 0; j < NG; j++) for (i = 0; i < NG; i++) if (mask[j * NG + i]) {
+      if (!mask[j * NG + i - 1] || i === 0) { xTop.beginPath(); xTop.moveTo(ox + i * s, oy + j * s); xTop.lineTo(ox + i * s, oy + (j + 1) * s); xTop.stroke(); }
+      if (i === NG - 1 || !mask[j * NG + i + 1]) { xTop.beginPath(); xTop.moveTo(ox + (i + 1) * s, oy + j * s); xTop.lineTo(ox + (i + 1) * s, oy + (j + 1) * s); xTop.stroke(); }
+      if (j === 0 || !mask[(j - 1) * NG + i]) { xTop.beginPath(); xTop.moveTo(ox + i * s, oy + j * s); xTop.lineTo(ox + (i + 1) * s, oy + j * s); xTop.stroke(); }
+      if (j === NG - 1 || !mask[(j + 1) * NG + i]) { xTop.beginPath(); xTop.moveTo(ox + i * s, oy + (j + 1) * s); xTop.lineTo(ox + (i + 1) * s, oy + (j + 1) * s); xTop.stroke(); }
+    }
+    xTop.globalAlpha = 1;
+  }
+  function hexRgb(h) { h = (h || '').trim(); if (h[0] !== '#') return '37,99,235'; if (h.length === 4) h = '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3]; var n = parseInt(h.slice(1), 16); return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255); }
+
+  function draw3d() {
+    var d = size(cv3d), W = d[0], H = d[1]; x3.clearRect(0, 0, W, H);
+    if (!modes.length) return;
+    var fg = tv('--eigendeck-fg', '#222');
+    var phase = Math.cos(t * Math.sqrt(lam[sel] / Math.max(1e-6, lam[0])) * 0.9);
+    var c = (NG - 1) / 2, sxx = Math.min(W, H) * 0.62 / NG, syy = sxx * 0.5, sh = Math.min(W, H) * 0.30, cx = W / 2, cy = H * 0.52;
+    function proj(i, j, h) { var x = i - c, y = j - c; return [cx + (x - y) * sxx, cy + (x + y) * syy - h * sh]; }
+    var quads = [];
+    for (var j = 0; j < NG - 1; j++) for (var i = 0; i < NG - 1; i++) {
+      if (!(mask[j * NG + i] || mask[j * NG + i + 1] || mask[(j + 1) * NG + i] || mask[(j + 1) * NG + i + 1])) continue;
+      var h00 = val(sel, i, j) * phase, h10 = val(sel, i + 1, j) * phase, h01 = val(sel, i, j + 1) * phase, h11 = val(sel, i + 1, j + 1) * phase;
+      quads.push({ depth: i + j, h: (h00 + h10 + h01 + h11) / 4, p: [proj(i, j, h00), proj(i + 1, j, h10), proj(i + 1, j + 1, h11), proj(i, j + 1, h01)] });
+    }
+    quads.sort(function (a, b) { return a.depth - b.depth; });
+    for (var q = 0; q < quads.length; q++) { var Q = quads[q], p = Q.p;
+      x3.beginPath(); x3.moveTo(p[0][0], p[0][1]); x3.lineTo(p[1][0], p[1][1]); x3.lineTo(p[2][0], p[2][1]); x3.lineTo(p[3][0], p[3][1]); x3.closePath();
+      x3.fillStyle = colorFor(Q.h, 1.5); x3.fill();
+      x3.strokeStyle = fg; x3.globalAlpha = 0.13; x3.lineWidth = dpr; x3.stroke(); x3.globalAlpha = 1;
+    }
+  }
+
+  // ---------- mode strip thumbnails ----------
+  var modesEl = document.getElementById('dr-modes');
+  function buildStrip() {
+    modesEl.innerHTML = '';
+    for (var k = 0; k < modes.length; k++) (function (k) {
+      var b = document.createElement('button'); b.className = 'dr-mode' + (k === sel ? ' on' : ''); b.dataset.k = k;
+      var cc = document.createElement('canvas'); cc.width = 44; cc.height = 44; b.appendChild(cc); modesEl.appendChild(b);
+      var g = cc.getContext('2d'), s = 44 / NG, i, j;
+      for (j = 0; j < NG; j++) for (i = 0; i < NG; i++) if (mask[j * NG + i]) { g.fillStyle = colorFor(val(k, i, j), 1.0); g.fillRect(i * s, j * s, s + 0.5, s + 0.5); }
+    })(k);
+  }
+  modesEl.addEventListener('click', function (e) { var b = e.target.closest('.dr-mode'); if (!b) return; sel = +b.dataset.k; updateSel(); });
+  function updateSel() {
+    Array.prototype.forEach.call(modesEl.children, function (b, k) { b.classList.toggle('on', k === sel); });
+    document.getElementById('dr-mk').textContent = sel + 1;
+    document.getElementById('dr-lam').textContent = lam[sel] ? lam[sel].toFixed(2) : '—';
+    drawTop();
+  }
+
+  var solvingEl = document.getElementById('dr-solving');
+  function resolve() {
+    solvingEl.classList.add('on');
+    setTimeout(function () {
+      solveModes(); sel = Math.min(sel, Math.max(0, modes.length - 1)); buildStrip(); updateSel(); solvingEl.classList.remove('on');
+    }, 30);
+  }
+
+  // ---------- painting ----------
+  var painting = 0;
+  function paintAt(e, add) {
+    var r = cvTop.getBoundingClientRect(), W = r.width, H = r.height, s = Math.min(W, H) / NG, ox = (W - s * NG) / 2, oy = (H - s * NG) / 2;
+    var i = Math.floor((e.clientX - r.left - ox) / s), j = Math.floor((e.clientY - r.top - oy) / s);
+    var changed = false;
+    for (var dj = -1; dj <= 1; dj++) for (var di = -1; di <= 1; di++) { var a = i + di, b = j + dj; if (a >= 1 && a < NG - 1 && b >= 1 && b < NG - 1) { if (mask[b * NG + a] !== add) { mask[b * NG + a] = add; changed = true; } } }
+    return changed;
+  }
+  cvTop.addEventListener('pointerdown', function (e) { painting = e.shiftKey ? 0 : 1; cvTop.setPointerCapture(e.pointerId); paintAt(e, painting); drawTop(); });
+  cvTop.addEventListener('pointermove', function (e) { if (painting === null) return; if (e.buttons) { if (paintAt(e, painting)) drawTop(); } });
+  cvTop.addEventListener('pointerup', function () { painting = null; resolve(); });
+
+  document.getElementById('dr-preset').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    Array.prototype.forEach.call(this.children, function (x) { x.classList.toggle('on', x === b); });
+    if (b.dataset.s === 'clear') { mask.fill(0); modes = []; lam = []; buildStrip(); drawTop(); draw3d(); return; }
+    setPreset(b.dataset.s); resolve();
+  });
+  window.addEventListener('resize', function () { drawTop(); draw3d(); });
+
+  function frame() { t += 0.06; draw3d(); requestAnimationFrame(frame); }
+  function start() { setPreset('circle'); resolve(); requestAnimationFrame(frame); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+</body>
+</html>
