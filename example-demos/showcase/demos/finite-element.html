@@ -57,7 +57,8 @@
       if (i < COLS - 1) spring(id(i, j), id(i + 1, j));
       if (j < ROWS - 1) spring(id(i, j), id(i, j + 1));
       if (i < COLS - 1 && j < ROWS - 1) {
-        spring(id(i, j), id(i + 1, j + 1));                    // diagonal
+        spring(id(i, j), id(i + 1, j + 1));                    // both diagonals: cross-brace so the
+        spring(id(i + 1, j), id(i, j + 1));                    // quad mesh is rigid, not a floppy mechanism
         tris.push([id(i, j), id(i + 1, j), id(i + 1, j + 1)]);
         tris.push([id(i, j), id(i + 1, j + 1), id(i, j + 1)]);
       }
@@ -66,7 +67,7 @@
   function reset() { for (var i = 0; i < nodes.length; i++) { nodes[i].x = nodes[i].rx; nodes[i].y = nodes[i].ry; nodes[i].vx = nodes[i].vy = 0; } }
 
   function step() {
-    var grav = 0.06 * (H / 1000) * 6, K = 0.45, i, s;
+    var grav = 0.025 * (H / 1000) * 6, K = 0.5, i, s;
     var fx = new Float64Array(nodes.length), fy = new Float64Array(nodes.length);
     for (s = 0; s < springs.length; s++) {
       var sp = springs[s], A = nodes[sp.a], B = nodes[sp.b];
@@ -110,7 +111,7 @@
       else { ctx.beginPath(); ctx.arc(nd.x, nd.y, 3 * dpr, 0, 6.283); ctx.fillStyle = fg; ctx.globalAlpha = 0.55; ctx.fill(); ctx.globalAlpha = 1; }
     }
   }
-  function frame() { step(); draw(); requestAnimationFrame(frame); }
+  function frame() { step(); step(); step(); draw(); requestAnimationFrame(frame); }   // substeps → stiffer, faster to equilibrium
 
   function pos(e) { var r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr]; }
   function nearest(x, y) { var best = -1, bd = 28 * dpr; for (var i = 0; i < nodes.length; i++) { var d = Math.hypot(nodes[i].x - x, nodes[i].y - y); if (d < bd && !nodes[i].pin) { bd = d; best = i; } } return best; }

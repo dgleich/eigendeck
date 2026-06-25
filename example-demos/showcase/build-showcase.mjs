@@ -21,7 +21,7 @@ const b64 = (buf) => Buffer.from(buf).toString('base64');
 
 // ---- demo slides (order = slide order) -------------------------------------
 const DEMOS = [
-  { file: 'drum-eigenmodes.html',   title: 'Eigenmodes of a drum',       cap: 'Paint a membrane; we solve −Δu = λu on it. Pick a mode: its nodal lines (left) and the vibrating eigenvector (right). Eigenvectors of the Laplacian, made visible.' },
+  { file: 'drum-eigenmodes.html',   title: 'Eigenmodes of a membrane',   cap: 'Paint a membrane; we solve −Δu = λu on it. Pick a mode: its nodal lines (left) and the vibrating eigenvector (right). Eigenvectors of the Laplacian, made visible.' },
   { file: 'gradient-descent.html',  title: 'Gradient descent',           cap: 'Click anywhere to drop a ball — it follows the gradient into a basin on a non-convex surface.' },
   { file: 'graph-layout.html',      title: 'Graph layout',               cap: 'Drag any node — the force-directed layout re-settles and reveals three communities.' },
   { file: 'wave-equation.html',     title: 'The wave equation',          cap: 'Click or drag to pluck the string — the pulse splits into two waves and reflects off the ends.' },
@@ -55,11 +55,8 @@ const eqLayer = titleEq.map((e) =>
 const titleDecor = readFileSync(join(DEMODIR, 'title-decor.html'), 'utf8').replace('__EQLAYER__', eqLayer);
 if (titleDecor.includes('__EQLAYER__')) throw new Error('title-decor.html: __EQLAYER__ slot not found');
 addAsset('title-decor.html', 'demos/title-decor.html', 'text/html', Buffer.from(titleDecor, 'utf8'));
-// per-demo equation SVGs
-for (const d of DEMOS) {
-  const eq = EQ[d.file];
-  if (eq) addAsset('eq-' + d.file, `eq/${d.file.replace('.html', '')}.svg`, 'image/svg+xml', Buffer.from(eq.svg, 'utf8'));
-}
+// (per-slide equations are TEXT elements with LaTeX — see below — so they're
+//  editable in the app and still render in the export. No SVG assets needed.)
 
 // ---- slides ----------------------------------------------------------------
 const ctr = (html) => `<div style="text-align:center">${html}</div>`;
@@ -82,8 +79,9 @@ DEMOS.forEach((d, k) => {
     { id: `s${k + 1}-title`, type: 'text', preset: 'title', html: d.title, position: { x: 60, y: 54, width: 1800, height: 96 } },
   ];
   if (eq) {
-    const H = 62, W = Math.min(1500, Math.round(H * eq.aspect)), X = Math.round((1920 - W) / 2);
-    els.push({ id: `s${k + 1}-eq`, type: 'image', assetId: assetId['eq-' + d.file], kind: 'svg', position: { x: X, y: 158, width: W, height: H } });
+    // editable LaTeX text element (click in the app to see/edit the source);
+    // MathJax renders it both in the app and in the export.
+    els.push({ id: `s${k + 1}-eq`, type: 'text', preset: 'body', fontSize: 48, color: '#1f2933', html: ctr('$' + eq.tex + '$'), position: { x: 60, y: 150, width: 1800, height: 92 } });
   }
   els.push({ id: `s${k + 1}-demo`, type: 'demo', assetId: assetId[d.file], position: { x: 60, y: 240, width: 1800, height: 728 } });
   els.push({ id: `s${k + 1}-cap`, type: 'text', preset: 'footnote', html: d.cap, position: { x: 60, y: 984, width: 1800, height: 40 } });
@@ -93,7 +91,7 @@ DEMOS.forEach((d, k) => {
 const deck = {
   title: 'Eigendeck — Showcase',
   theme: 'white',
-  config: { width: 1920, height: 1080, author: 'David F. Gleich', venue: 'SIAM Annual Meeting 2026', showSlideNumber: true },
+  config: { width: 1920, height: 1080, author: 'David F. Gleich', venue: 'Eigendeck Showcase', showSlideNumber: true },
   slides,
   assets,
 };

@@ -151,7 +151,7 @@
     var d = size(cv3d), W = d[0], H = d[1]; x3.clearRect(0, 0, W, H);
     if (!modes.length) return;
     var fg = tv('--eigendeck-fg', '#222');
-    var phase = Math.cos(t * Math.sqrt(lam[sel] / Math.max(1e-6, lam[0])) * 0.9);
+    var phase = Math.cos(t * Math.sqrt(lam[sel] / Math.max(1e-6, lam[0])) * 0.55);
     var c = (NG - 1) / 2, sxx = Math.min(W, H) * 0.62 / NG, syy = sxx * 0.5, sh = Math.min(W, H) * 0.30, cx = W / 2, cy = H * 0.52;
     function proj(i, j, h) { var x = i - c, y = j - c; return [cx + (x - y) * sxx, cy + (x + y) * syy - h * sh]; }
     var quads = [];
@@ -216,7 +216,7 @@
   });
   window.addEventListener('resize', function () { drawTop(); draw3d(); });
 
-  function frame() { t += 0.06; draw3d(); requestAnimationFrame(frame); }
+  function frame() { t += 0.022; draw3d(); requestAnimationFrame(frame); }
   function start() { setPreset('circle'); resolve(); requestAnimationFrame(frame); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

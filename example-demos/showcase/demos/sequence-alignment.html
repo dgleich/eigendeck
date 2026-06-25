@@ -24,7 +24,11 @@
   .sa-grid { flex: 1; min-height: 0; position: relative; }
   .sa-grid canvas { width: 100%; height: 100%; display: block; }
   .sa-bottom { flex: 0 0 auto; display: flex; align-items: flex-end; gap: 1.4em; margin-top: 0.6em; }
-  .sa-align { font-family: var(--eigendeck-mono, ui-monospace, monospace); font-size: 1.15em; line-height: 1.45; white-space: pre; letter-spacing: 0.12em; }
+  /* fixed-width cells per character → columns line up regardless of the font
+     (don't trust the export to have a real monospace; bold no longer shifts cols) */
+  .sa-align { font-family: var(--eigendeck-mono, ui-monospace, monospace); font-size: 1.15em; line-height: 1.4; }
+  .sa-align .ar { display: block; white-space: nowrap; }
+  .sa-align .ch { display: inline-block; width: 1.05em; text-align: center; }
   .sa-align .m { color: var(--eigendeck-accent, #2563eb); font-weight: 700; }
   .sa-align .x { color: var(--eigendeck-fg, #222); }
   .sa-align .g { color: var(--eigendeck-muted, #aaa); }
@@ -61,7 +65,7 @@
   // Two mutated copies of a GATTACA×3 backbone — the repeat shows up as parallel
   // diagonal bands in the score matrix, and the alignment is a clean run of
   // matches broken by the odd indel/substitution.
-  var seqA = 'GATTACAGATTACAGATTACA', seqB = 'GATTACAGATACAGATTACA';   // along top (cols) / left (rows)
+  var seqA = 'GATTACAGATTACA', seqB = 'GATCACAGATACA';   // GATTACA×2 vs a copy w/ one substitution + one deletion → a match run, a mismatch, and a gap
   var W = 0, H = 0, dpr = 1, sol = null;
 
   // Independently mutate a GATTACA×R backbone: a couple of point substitutions
@@ -131,17 +135,17 @@
   }
 
   function renderAlign() {
-    var html = '';
-    function row(s) { var o = ''; for (var k = 0; k < s.length; k++) { var ch = s[k]; o += ch === '-' ? '<span class="g">-</span>' : '<span class="x">' + ch + '</span>'; } return o; }
-    // top seq with matches accented
+    // each character in its own fixed-width .ch cell → top/mid/bottom columns
+    // always line up (no reliance on a monospace font being present in the export)
+    function cell(ch, cls) { return '<span class="ch ' + cls + '">' + (ch === ' ' ? '&nbsp;' : ch) + '</span>'; }
     var top = '', mid = '', bot = '';
     for (var k = 0; k < sol.ai.length; k++) {
       var a = sol.ai[k], b = sol.bi[k], match = sol.mark[k] === '|';
-      top += a === '-' ? '<span class="g">-</span>' : '<span class="' + (match ? 'm' : 'x') + '">' + a + '</span>';
-      mid += '<span class="bar">' + (match ? '|' : ' ') + '</span>';
-      bot += b === '-' ? '<span class="g">-</span>' : '<span class="' + (match ? 'm' : 'x') + '">' + b + '</span>';
+      top += cell(a, a === '-' ? 'g' : (match ? 'm' : 'x'));
+      mid += cell(match ? '|' : ' ', 'bar');
+      bot += cell(b, b === '-' ? 'g' : (match ? 'm' : 'x'));
     }
-    alignEl.innerHTML = top + '\n' + mid + '\n' + bot;
+    alignEl.innerHTML = '<span class="ar">' + top + '</span><span class="ar">' + mid + '</span><span class="ar">' + bot + '</span>';
   }
 
   function run() {

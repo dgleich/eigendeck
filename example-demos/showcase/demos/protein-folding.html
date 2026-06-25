@@ -69,7 +69,7 @@
       // excluded volume (all non-bonded pairs)
       if (d < excl) { var f = (excl - d) * 2.5; fx[i] -= ux * f; fy[i] -= uy * f; fx[j] += ux * f; fy[j] += uy * f; }
       // hydrophobic attraction (H–H within cutoff)
-      else if (seqH[i] && seqH[j] && d < rc) { var fa = 0.06 * L; fx[i] += ux * fa; fy[i] += uy * fa; fx[j] -= ux * fa; fy[j] -= uy * fa; }
+      else if (seqH[i] && seqH[j] && d < rc) { var fa = 0.11 * L; fx[i] += ux * fa; fy[i] += uy * fa; fx[j] -= ux * fa; fy[j] -= uy * fa; }
     }
     // backbone springs (stiff) keep adjacent residues at L
     for (i = 0; i < n - 1; i++) {
@@ -79,14 +79,14 @@
     var cx = W / 2, cy = H / 2;
     for (i = 0; i < n; i++) {
       if (drag === i) continue;
-      fx[i] += (cx - res[i].x) * 0.0016; fy[i] += (cy - res[i].y) * 0.0016;   // gentle centering
-      fx[i] += (Math.random() - 0.5) * temp * L * 0.5; fy[i] += (Math.random() - 0.5) * temp * L * 0.5; // thermal
-      res[i].vx = (res[i].vx + fx[i]) * 0.82; res[i].vy = (res[i].vy + fy[i]) * 0.82;
+      fx[i] += (cx - res[i].x) * 0.0012; fy[i] += (cy - res[i].y) * 0.0012;   // gentle centering
+      if (temp > 0) { fx[i] += (Math.random() - 0.5) * temp * L * 0.5; fy[i] += (Math.random() - 0.5) * temp * L * 0.5; } // thermal (anneals to 0)
+      res[i].vx = (res[i].vx + fx[i]) * 0.8; res[i].vy = (res[i].vy + fy[i]) * 0.8;
       var lim = L * 0.6, sp = Math.hypot(res[i].vx, res[i].vy); if (sp > lim) { res[i].vx *= lim / sp; res[i].vy *= lim / sp; }
       res[i].x += res[i].vx; res[i].y += res[i].vy;
       res[i].x = Math.max(L, Math.min(W - L, res[i].x)); res[i].y = Math.max(L, Math.min(H - L, res[i].y));
     }
-    temp = Math.max(0.02, temp * 0.992);
+    temp = temp > 0.004 ? temp * 0.99 : 0;     // anneal fully to 0 so it SETTLES into a folded minimum
   }
 
   function contacts() { var n = res.length, c = 0, rc = 2.7 * L, i, j; for (i = 0; i < n; i++) for (j = i + 2; j < n; j++) if (seqH[i] && seqH[j] && Math.hypot(res[j].x - res[i].x, res[j].y - res[i].y) < rc) c++; return c; }
