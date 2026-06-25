@@ -431,6 +431,42 @@ Use `linkId` to animate pieces between slides. Use `syncId` to keep pieces in sy
 - Controls viewport: step forward/backward buttons
 - Code viewport: highlight current line
 
+### Side-by-side comparison demos (design notes — FFT, Chebyshev)
+
+The `fourier` (FFT keep-K) and `polynomial-interpolation` (Chebyshev vs uniform,
+Runge) showcase demos share a UI recipe that reads really well on a slide. Reuse it
+whenever the *point* is "method A vs method B" or "input vs reconstruction":
+
+- **Two panels, ONE control.** Put the two regimes side by side (uniform | Chebyshev
+  nodes; time | frequency) and drive *both* from a single slider. The lesson is the
+  contrast, so make the contrast a single gesture — drag once, both panels respond.
+- **The labelled slider is the verb.** muted label + native range (`accent-color`) +
+  an accent **tabular-nums** value (`degree 12`, `keep 6`). Nothing else competes for
+  "what do I touch." (Same slider used for tiled-SVD's `storage`, alignment's `gap`.)
+- **Reference faint, result bold.** Draw ground truth (the true function / original
+  signal) in `--eigendeck-muted` at low alpha; draw the computed result (interpolant /
+  reconstruction) in `--eigendeck-accent`, thicker. The eye reads "result vs truth"
+  with no legend.
+- **Per-panel readout with SEMANTIC color.** Each panel shows its own metric
+  (`max error`, `% error`, `rank · numbers`) and **colors the value by quality** —
+  `--eigendeck-accent` when good, a warm red (`#e0483b`) when it's blown up. The
+  Chebyshev panel stays blue while the uniform panel turns red: the verdict is in the
+  color, not in prose. Always `tabular-nums` so it doesn't jitter while dragging.
+- **Clip to the plot frame; fix a shared y-range.** Render inside a clipped rect with
+  the SAME y-range on both panels (fair comparison). When a curve diverges it shoots
+  off the frame edge — dramatic — instead of auto-rescaling and visually flattening
+  the well-behaved panel. (Runge: uniform rockets off-frame; Chebyshev sits still.)
+- **Show the CAUSE, not just the effect.** Chebyshev: draw node ticks on the axis so
+  the end-clustering that explains the convergence is visible. FFT: the spectrum bars
+  (kept = accent, dropped = faded) show *which* coefficients survived. Surface the
+  structural reason on the same slide as the outcome.
+- **Segmented presets to swap the scenario** without leaving the comparison (signal
+  type; function = Runge / steep / |x|). Selected = accent fill (see the control kit
+  in `example-demos/showcase/README.md`).
+- **Static but live.** No animation loop — recompute on input, plus a ~400–500 ms
+  theme-watcher `setInterval` that repaints if `--eigendeck-fg/-accent` changed. Cheap,
+  crisp, and survives a live theme switch.
+
 ## Debugging
 
 - Open WebKit devtools (Cmd+Option+I) to see iframe console output
