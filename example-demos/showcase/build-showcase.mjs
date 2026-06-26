@@ -105,9 +105,14 @@ DEMOS.forEach((d, k) => {
   slides.push({ id: `s${k + 1}`, notes: '', elements: els });
 });
 
-// gallery of text-heavy "gorgeous slide" examples (no demos) — each in a
-// different font + theme, to show the deck isn't only for interactive demos.
-for (const ts of buildTextSlides()) slides.push(ts);
+// text-heavy "gorgeous slide" examples (no demos) — each in a different font +
+// theme, to show the deck isn't only for interactive demos. The Hamming quote
+// opens the deck (slide 3, right after the title + first demo); the rest form a
+// gallery at the end.
+const textSlides = buildTextSlides();
+const opener = textSlides.find((s) => s.id === 'tx-quote');
+slides.splice(2, 0, opener);                               // -> slide 3
+for (const ts of textSlides.filter((s) => s.id !== 'tx-quote')) slides.push(ts);
 
 const deck = {
   title: 'Eigendeck — Showcase',

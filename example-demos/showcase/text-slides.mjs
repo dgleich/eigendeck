@@ -115,14 +115,13 @@ function slideMasterTheorem() {
 function slideQuote() {
   return {
     id: 'tx-quote', theme: 'white', titleFont: 'shantell', bodyFont: 'shantell',
-    notes: 'Typography flex — Shantell Sans (incl. its hand-drawn math) on a custom soft-rose background.',
+    notes: 'Typography flex / opener — Shantell Sans on a custom soft-rose background.',
     elements: [
       // full-bleed soft-rose background (a text element used purely as a colour panel)
       el({ id: 'q-bg', x: 0, y: 0, w: 1920, h: 1080, backgroundColor: '#fbeef2', html: '' }),
-      el({ id: 'q-eyebrow', x: 150, y: 222, w: 1620, h: 50, fontSize: 28, color: '#b8556b', html: ctr(eyebrow('Computer Science · on the point of it all')) }),
-      el({ id: 'q-quote', preset: 'title', x: 180, y: 312, w: 1560, h: 380, fontSize: 104, color: '#7a3b4e', html: ctr('&ldquo;The purpose of computing is insight, not numbers.&rdquo;') }),
-      el({ id: 'q-attr', x: 150, y: 720, w: 1620, h: 80, fontSize: 46, color: '#a86077', html: ctr('&mdash; Richard W. Hamming') }),
-      el({ id: 'q-math', x: 150, y: 830, w: 1620, h: 130, fontSize: 62, color: '#cf9bad', html: ctr(R`$e^{i\pi}+1=0$`) }),
+      el({ id: 'q-eyebrow', x: 150, y: 322, w: 1620, h: 50, fontSize: 28, color: '#b8556b', html: ctr(eyebrow('Computer Science · on the point of it all')) }),
+      el({ id: 'q-quote', preset: 'title', x: 180, y: 412, w: 1560, h: 380, fontSize: 108, color: '#7a3b4e', html: ctr('&ldquo;The purpose of computing is insight, not numbers.&rdquo;') }),
+      el({ id: 'q-attr', x: 150, y: 802, w: 1620, h: 80, fontSize: 46, color: '#a86077', html: ctr('&mdash; Richard W. Hamming') }),
     ],
   };
 }
