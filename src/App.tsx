@@ -1463,7 +1463,9 @@ function App() {
   // No project open → welcome screen (issue #66). Editing only begins once a
   // deck is anchored on disk, so file-watching / linked assets work from the
   // start. Launching with a file arg sets projectPath before this renders.
-  if (!projectPath) return (<><ToastHost /><WelcomeWindow /></>);
+  // App-level Settings (⌘,) must work here too — the modal is mounted in this
+  // branch as well, else File → Settings flips state with nothing to render (#100).
+  if (!projectPath) return (<><ToastHost /><WelcomeWindow /><SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} /></>);
 
   const store = usePresentationStore.getState();
 
