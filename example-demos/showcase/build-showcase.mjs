@@ -106,18 +106,19 @@ DEMOS.forEach((d, k) => {
 });
 
 // text-heavy "gorgeous slide" examples (no demos) — each in a different font +
-// theme, to show the deck isn't only for interactive demos. The Hamming quote
-// opens the deck (slide 3, right after the title + first demo); the rest form a
-// gallery at the end.
+// theme, to show the deck isn't only for interactive demos. Cauchy–Schwarz opens
+// the deck (slide 3, right after the title + first demo); the rest (incl. the
+// Hamming quote) form a gallery at the end.
 const textSlides = buildTextSlides();
-const opener = textSlides.find((s) => s.id === 'tx-quote');
+const OPENER = 'tx-cauchy';
+const opener = textSlides.find((s) => s.id === OPENER);
 slides.splice(2, 0, opener);                               // -> slide 3
-for (const ts of textSlides.filter((s) => s.id !== 'tx-quote')) slides.push(ts);
+for (const ts of textSlides.filter((s) => s.id !== OPENER)) slides.push(ts);
 
 const deck = {
   title: 'Eigendeck — Showcase',
   theme: 'white',
-  config: { width: 1920, height: 1080, author: 'David F. Gleich', venue: 'Eigendeck Showcase', showSlideNumber: true },
+  config: { width: 1920, height: 1080, author: 'David F. Gleich', venue: 'Eigendeck Showcase', showSlideNumber: true, defaultMonoFont: 'source-code' },
   slides,
   assets,
 };

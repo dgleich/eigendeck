@@ -115,7 +115,7 @@ $$${result}$$`;
     ];
   };
   return {
-    id: 'tx-master', theme: 'white', titleFont: 'source-sans', bodyFont: 'source-sans', hypeFont: 'source-code',
+    id: 'tx-master', theme: 'white', titleFont: 'source-sans', bodyFont: 'source-sans',
     notes: 'Three-case theorem layout — Source Sans 3 prose, Source Code Pro code chip. Cards = rounded-fill panels + text boxes (native borderRadius, no strokes/bars).',
     elements: [
       el({ id: 'mt-eyebrow', x: 152, y: 86, w: 1620, h: 46, fontSize: 26, color: '#2563eb', html: eyebrow('Computer Science · Analysis of Algorithms') }),
@@ -125,8 +125,9 @@ $$${result}$$`;
       ...caseCard('c1', 150, '1 · Leaves dominate', R`If $f(n)=O\!\left(n^{c-\epsilon}\right)$,`, R`T(n)=\Theta\!\left(n^{c}\right)`),
       ...caseCard('c2', 700, '2 · Balanced', R`If $f(n)=\Theta\!\left(n^{c}\right)$,`, R`T(n)=\Theta\!\left(n^{c}\log n\right)`),
       ...caseCard('c3', 1250, '3 · Root dominates', R`If $f(n)=\Omega\!\left(n^{c+\epsilon}\right)$ &amp; $a\,f(n/b)\le\kappa f(n)$,`, R`T(n)=\Theta\!\left(f(n)\right)`),
-      // code chip = a single text box with its own dark rounded fill (mono font)
-      el({ id: 'mt-code', preset: 'hype', x: 560, y: 892, w: 800, h: 84, fontSize: 34, color: '#7ee2b8', backgroundColor: '#0f172a', borderRadius: 12, verticalAlign: 'middle', html: ctr('merge sort:&nbsp; T(n) = 2&middot;T(n/2) + &Theta;(n) &nbsp;&rArr;&nbsp; &Theta;(n log n)') }),
+      // code chip = a single text box with its own dark rounded fill; the code is
+      // a <code> run (toolbar </> button), rendered in the deck mono font.
+      el({ id: 'mt-code', x: 560, y: 892, w: 800, h: 84, fontSize: 34, color: '#7ee2b8', backgroundColor: '#0f172a', borderRadius: 12, verticalAlign: 'middle', html: ctr('<code>merge sort:&nbsp; T(n) = 2&middot;T(n/2) + &Theta;(n) &nbsp;&rArr;&nbsp; &Theta;(n log n)</code>') }),
     ],
   };
 }
