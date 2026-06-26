@@ -538,19 +538,23 @@ export function PropertiesPanel() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: 12, color: '#374151' }}>Padding</span>
-                        <label style={{ fontSize: 11, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <input type="checkbox" checked={padLinked} onChange={(e) => setPadLinked(e.target.checked)} /> link
-                        </label>
+                        <button className="prop-zbtn"
+                          style={{ fontSize: 11, width: 'auto', padding: '3px 10px',
+                            background: padLinked ? '#3b82f6' : undefined, color: padLinked ? '#fff' : undefined }}
+                          title="Link: edit all four sides together"
+                          onClick={() => setPadLinked(!padLinked)}>
+                          Link
+                        </button>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
-                        {(['top', 'right', 'bottom', 'left'] as const).map((side) => {
+                        {([['top', 'Top'], ['right', 'Right'], ['bottom', 'Bottom'], ['left', 'Left']] as const).map(([side, lbl]) => {
                           const pb = textPresetBoxCss((selectedEl as any).preset || 'body');
                           const def = side === 'top' || side === 'bottom' ? pb.padY : pb.padX;
                           const cur = (selectedEl as any).padding as { top: number; right: number; bottom: number; left: number } | undefined;
                           const val = cur ? cur[side] : def;
                           return (
-                            <label key={side} style={{ fontSize: 10, color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: 2, textTransform: 'uppercase' }}>
-                              {side[0]}
+                            <label key={side} style={{ fontSize: 10, color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              {lbl}
                               <input className="prop-num" type="number" min={0} max={400} value={val}
                                 onChange={(e) => {
                                   const v = Math.max(0, parseInt(e.target.value, 10) || 0);
