@@ -189,8 +189,8 @@ small gallery of **text-heavy "gorgeous slide"** examples (from `buildTextSlides
 | --- | --- | --- | --- |
 | `tx-eckart` | Eckart–Young–Mirsky theorem (ties to the SVD demos) | `libertinus` (serif) | `light` (cream) |
 | `tx-maxwell` | Maxwell's equations, 2×2 grid | `concrete-euler` (CM Concrete) | `dark` |
-| `tx-master` | Master Theorem, 3-case layout + mono code line | `source-sans` + `source-code` (`hypeFont`) | `white` |
-| `tx-quote` | Hamming quote + hand-drawn `$e^{i\pi}+1=0$` | `shantell` (handwritten) | custom soft-rose full-bleed panel |
+| `tx-master` | Master Theorem, 3-case layout + mono code chip | `source-sans` + `source-code` (`hypeFont`) | `white` |
+| `tx-quote` | Hamming quote (opens the deck, slide 3) | `shantell` (handwritten) | custom soft-rose full-bleed panel |
 | `tx-cauchy` | Cauchy–Schwarz statement + one-line proof | `lm-sans` (CM Sans) | `black` |
 
 Conventions worth copying:
@@ -201,8 +201,9 @@ Conventions worth copying:
   font. Inline `$…$` must stay on **one line** (the renderer rejects a newline
   inside inline math); display `$$…$$` may span lines.
 - **Math colour follows the text element's `color`** (MathJax SVG uses
-  `currentColor`), so a card is one colour for prose + math; colour the eyebrow /
-  labels with `<span style="color:…">`.
+  `currentColor`), so a text box is one colour for prose + math; colour an inline
+  label with `<span style="color:…">` (a label kept at the **same font size** —
+  just accent colour + caps + letter-spacing — needs no separate box).
 - **Fonts are per-slide**, set via `theme` + `bodyFont`/`titleFont`/`hypeFont`.
   These round-trip through `import json` (`build_slide_config_json`) and the
   exporter embeds whatever font ids the slides use (`collectUsedFontIds`) + the
@@ -210,9 +211,13 @@ Conventions worth copying:
   math, use a font that is a `FONT_PACKAGE` (e.g. `source-code`), not a
   `MONO_FONT_PACKAGE` (no math pack); the Master slide puts it on `hypeFont` and a
   `hype`-preset element.
-- **"Cards"** (the tinted theorem boxes) are styled `<div>`s *inside* a `body`
-  text element (background, `border-left` accent, radius, padding, shadow) — the
-  element box is left transparent and sized generously; the card sizes to content.
+- **"Cards" are native, not CSS chrome.** A card = an empty **rounded-fill panel**
+  (a `text` element with `backgroundColor` + `borderRadius` [+ `boxShadow`], no
+  text) with separate text boxes layered on top, inset for padding and
+  `verticalAlign:"middle"` for balance. **No strokes / accent bars** — fills read
+  by contrast alone. Every piece is reproducible from the inspector, and headings
+  stay one font size (see the label note above). The `tiled`-style code chip is the
+  one exception: a single text box with its *own* dark rounded fill (text on fill).
 - **Custom slide background**: the quote slide stays on the `white` theme but lays
   a full-bleed `text` element (`backgroundColor`, empty html) behind the content —
   a quick way to a bespoke colour without a new theme.

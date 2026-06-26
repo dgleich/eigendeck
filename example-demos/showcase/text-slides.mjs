@@ -31,6 +31,14 @@ function el({ id, preset = 'body', x, y, w, h, ...rest }) {
 }
 const eyebrow = (txt) =>
   `<span style="letter-spacing:0.22em;text-transform:uppercase;font-weight:700;font-size:0.92em">${txt}</span>`;
+// caps/letter-spaced accent label kept at the SAME font size as its body (native
+// text formatting: colour + caps + tracking, no size change).
+const label = (txt) =>
+  `<span style="text-transform:uppercase;letter-spacing:0.1em;font-weight:700">${txt}</span>`;
+// an empty rounded-fill text box used purely as a card background; layer text
+// boxes on top. backgroundColor + borderRadius are both native element fields.
+const panel = (id, x, y, w, h, bg, { shadow = false, radius = 18 } = {}) =>
+  el({ id, x, y, w, h, backgroundColor: bg, borderRadius: radius, boxShadow: shadow || undefined, html: '' });
 
 // ===========================================================================
 // 1 — Eckart–Young (Libertinus Serif · cream paper)
@@ -64,21 +72,23 @@ $$\lVert A-A_k\rVert_2=\sigma_{k+1},\qquad \lVert A-A_k\rVert_F=\Bigl(\sum_{i>k}
 // 2 — Maxwell's equations (Computer Modern Concrete · dark)
 // ===========================================================================
 function slideMaxwell() {
-  const cell = (name, tex) => R`<div style="background:rgba(255,255,255,0.045);border:1px solid rgba(96,165,250,0.30);border-radius:16px;padding:18px 24px;height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center">
-  <div style="color:#7cb0ff;font-size:0.52em;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:2px;text-align:center">${name}</div>
-  $$${tex}$$
-</div>`;
-  const C = (id, x, y, html) => el({ id, x, y, w: 780, h: 286, fontSize: 40, color: '#eaf0ff', html });
+  // Each cell = a rounded-fill panel + a small caps name box + the equation box
+  // (name and equation are separate boxes → each one font size; no strokes).
+  const cell = (key, cx, cy, name, tex) => [
+    panel(`mx-${key}-bg`, cx, cy, 780, 286, 'rgba(255,255,255,0.06)', { radius: 20 }),
+    el({ id: `mx-${key}-name`, x: cx, y: cy + 28, w: 780, h: 40, fontSize: 24, color: '#7cb0ff', html: ctr(`<span style="text-transform:uppercase;letter-spacing:0.12em;font-weight:600">${name}</span>`) }),
+    el({ id: `mx-${key}-eq`, x: cx, y: cy + 76, w: 780, h: 186, fontSize: 48, color: '#eaf0ff', verticalAlign: 'middle', html: R`$$${tex}$$` }),
+  ];
   return {
     id: 'tx-maxwell', theme: 'dark', titleFont: 'concrete-euler', bodyFont: 'concrete-euler',
-    notes: "Four-up equation grid — Computer Modern Concrete on a dark theme.",
+    notes: "Four-up equation grid — Computer Modern Concrete on a dark theme. Each cell = rounded-fill panel + name box + equation box (native borderRadius, no strokes).",
     elements: [
       el({ id: 'mx-eyebrow', x: 152, y: 86, w: 1620, h: 46, fontSize: 26, color: '#60a5fa', html: eyebrow('Physics · Classical Electromagnetism') }),
       el({ id: 'mx-title', preset: 'title', x: 150, y: 116, w: 1620, h: 120, html: "Maxwell's equations" }),
-      C('mx-gauss', 150, 300, cell("Gauss's law", R`\nabla\!\cdot\mathbf{E}=\dfrac{\rho}{\varepsilon_0}`)),
-      C('mx-nomono', 990, 300, cell('No magnetic monopoles', R`\nabla\!\cdot\mathbf{B}=0`)),
-      C('mx-faraday', 150, 606, cell('Faraday — induction', R`\nabla\times\mathbf{E}=-\dfrac{\partial\mathbf{B}}{\partial t}`)),
-      C('mx-ampere', 990, 606, cell('Ampère–Maxwell', R`\nabla\times\mathbf{B}=\mu_0\mathbf{J}+\mu_0\varepsilon_0\dfrac{\partial\mathbf{E}}{\partial t}`)),
+      ...cell('gauss', 150, 300, "Gauss's law", R`\nabla\!\cdot\mathbf{E}=\dfrac{\rho}{\varepsilon_0}`),
+      ...cell('nomono', 990, 300, 'No magnetic monopoles', R`\nabla\!\cdot\mathbf{B}=0`),
+      ...cell('faraday', 150, 606, 'Faraday — induction', R`\nabla\times\mathbf{E}=-\dfrac{\partial\mathbf{B}}{\partial t}`),
+      ...cell('ampere', 990, 606, 'Ampère–Maxwell', R`\nabla\times\mathbf{B}=\mu_0\mathbf{J}+\mu_0\varepsilon_0\dfrac{\partial\mathbf{E}}{\partial t}`),
       el({ id: 'mx-foot', x: 150, y: 922, w: 1620, h: 96, fontSize: 30, color: '#c7d4ee', html: ctr(R`In vacuum the fields obey $\partial_t^2\mathbf{E}=c^2\nabla^2\mathbf{E}$ — a wave at speed $c=1/\sqrt{\mu_0\varepsilon_0}$. Light <em>is</em> electromagnetism.`) }),
     ],
   };
@@ -88,28 +98,32 @@ function slideMaxwell() {
 // 3 — The Master Theorem (Source Sans 3 prose + Source Code Pro mono · white)
 // ===========================================================================
 function slideMasterTheorem() {
-  const intro = R`<div style="background:#eef3fb;border-radius:12px;padding:24px 40px;box-shadow:0 6px 24px rgba(20,40,80,0.08)">
-  <div style="margin-bottom:2px">For a divide-and-conquer recurrence with $a\ge 1$ subproblems of size $n/b$ (here $b>1$), set $c=\log_b a$ and compare $f(n)$ with $n^{c}$:</div>
-  $$T(n)=a\,T\!\left(\frac{n}{b}\right)+f(n)$$
-</div>`;
-  const caseCard = (label, cond, result) => R`<div style="background:#fff;border:1px solid #d6e0f0;border-top:6px solid #2563eb;border-radius:12px;padding:20px 24px;height:100%;box-sizing:border-box;box-shadow:0 6px 20px rgba(20,40,80,0.06)">
-  <div style="color:#2563eb;font-weight:700;margin-bottom:10px;font-size:0.78em;letter-spacing:0.03em">${label}</div>
-  <div style="margin-bottom:6px">${cond}</div>
-  $$${result}$$
-</div>`;
-  const CC = (id, x, html) => el({ id, x, y: 548, w: 520, h: 296, fontSize: 30, color: '#1f2933', html });
-  const codeBox = R`<div style="display:inline-block;background:#0f172a;color:#7ee2b8;font-family:inherit;padding:14px 28px;border-radius:10px;font-size:0.82em">merge sort:&nbsp; T(n) = 2&middot;T(n/2) + &Theta;(n) &nbsp;&rArr;&nbsp; &Theta;(n log n)</div>`;
+  const intro = R`<div style="margin-bottom:2px">For a divide-and-conquer recurrence with $a\ge 1$ subproblems of size $n/b$ (here $b>1$), set $c=\log_b a$ and compare $f(n)$ with $n^{c}$:</div>
+$$T(n)=a\,T\!\left(\frac{n}{b}\right)+f(n)$$`;
+  // each case = a rounded-fill panel + one text box (label inline at body size,
+  // accent + caps; condition + result all one font size). No top accent bar.
+  const caseCard = (key, cx, lbl, cond, result) => {
+    const html = R`<div style="color:#2563eb;margin-bottom:12px">${label(lbl)}</div>
+<div style="margin-bottom:6px">${cond}</div>
+$$${result}$$`;
+    return [
+      panel(`mt-${key}-bg`, cx, 540, 520, 300, '#eef3fb', { shadow: true, radius: 16 }),
+      el({ id: `mt-${key}`, x: cx + 32, y: 562, w: 456, h: 256, fontSize: 30, color: '#1f2933', html }),
+    ];
+  };
   return {
     id: 'tx-master', theme: 'white', titleFont: 'source-sans', bodyFont: 'source-sans', hypeFont: 'source-code',
-    notes: 'Three-case theorem layout — Source Sans 3 prose, Source Code Pro for the code line.',
+    notes: 'Three-case theorem layout — Source Sans 3 prose, Source Code Pro code chip. Cards = rounded-fill panels + text boxes (native borderRadius, no strokes/bars).',
     elements: [
       el({ id: 'mt-eyebrow', x: 152, y: 86, w: 1620, h: 46, fontSize: 26, color: '#2563eb', html: eyebrow('Computer Science · Analysis of Algorithms') }),
       el({ id: 'mt-title', preset: 'title', x: 150, y: 116, w: 1620, h: 120, html: 'The Master Theorem' }),
-      el({ id: 'mt-intro', x: 150, y: 300, w: 1620, h: 210, fontSize: 34, color: '#1f2933', html: intro }),
-      CC('mt-c1', 150, caseCard('1 · Leaves dominate', R`If $f(n)=O\!\left(n^{c-\epsilon}\right)$,`, R`T(n)=\Theta\!\left(n^{c}\right)`)),
-      CC('mt-c2', 700, caseCard('2 · Balanced', R`If $f(n)=\Theta\!\left(n^{c}\right)$,`, R`T(n)=\Theta\!\left(n^{c}\log n\right)`)),
-      CC('mt-c3', 1250, caseCard('3 · Root dominates', R`If $f(n)=\Omega\!\left(n^{c+\epsilon}\right)$ &amp; $a\,f(n/b)\le\kappa f(n)$,`, R`T(n)=\Theta\!\left(f(n)\right)`)),
-      el({ id: 'mt-code', preset: 'hype', x: 150, y: 902, w: 1620, h: 80, fontSize: 36, color: '#0f172a', html: ctr(codeBox) }),
+      panel('mt-intro-bg', 150, 300, 1620, 200, '#eef3fb', { shadow: true, radius: 16 }),
+      el({ id: 'mt-intro', x: 190, y: 318, w: 1540, h: 164, fontSize: 34, color: '#1f2933', verticalAlign: 'middle', html: intro }),
+      ...caseCard('c1', 150, '1 · Leaves dominate', R`If $f(n)=O\!\left(n^{c-\epsilon}\right)$,`, R`T(n)=\Theta\!\left(n^{c}\right)`),
+      ...caseCard('c2', 700, '2 · Balanced', R`If $f(n)=\Theta\!\left(n^{c}\right)$,`, R`T(n)=\Theta\!\left(n^{c}\log n\right)`),
+      ...caseCard('c3', 1250, '3 · Root dominates', R`If $f(n)=\Omega\!\left(n^{c+\epsilon}\right)$ &amp; $a\,f(n/b)\le\kappa f(n)$,`, R`T(n)=\Theta\!\left(f(n)\right)`),
+      // code chip = a single text box with its own dark rounded fill (mono font)
+      el({ id: 'mt-code', preset: 'hype', x: 560, y: 892, w: 800, h: 84, fontSize: 34, color: '#7ee2b8', backgroundColor: '#0f172a', borderRadius: 12, verticalAlign: 'middle', html: ctr('merge sort:&nbsp; T(n) = 2&middot;T(n/2) + &Theta;(n) &nbsp;&rArr;&nbsp; &Theta;(n log n)') }),
     ],
   };
 }
@@ -135,20 +149,21 @@ function slideQuote() {
 // 5 — Cauchy–Schwarz (Computer Modern Sans · black)
 // ===========================================================================
 function slideCauchySchwarz() {
-  const proof = R`<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(147,197,253,0.30);border-radius:16px;padding:26px 44px">
-  <div style="color:#93c5fd;font-weight:700;margin-bottom:8px;font-size:0.82em;letter-spacing:0.04em">Proof</div>
-  <div style="margin-bottom:4px">For every real $t$, expand the non-negative quantity $\lVert x-t\,y\rVert^{2}=\lVert x\rVert^{2}-2t\,\langle x,y\rangle+t^{2}\lVert y\rVert^{2}\ge 0$. A quadratic in $t$ that is never negative has discriminant $\le 0$:</div>
-  $$\langle x,y\rangle^{2}\le\lVert x\rVert^{2}\,\lVert y\rVert^{2}.$$
-  <div style="text-align:right;font-size:0.9em">&#9632;</div>
-</div>`;
+  // proof = rounded-fill panel + one text box ("Proof" label inline at body size,
+  // accent + caps; prose + display math + ∎ all one font size). No stroke.
+  const proof = R`<div style="color:#93c5fd;margin-bottom:8px">${label('Proof')}</div>
+<div style="margin-bottom:4px">For every real $t$, expand the non-negative quantity $\lVert x-t\,y\rVert^{2}=\lVert x\rVert^{2}-2t\,\langle x,y\rangle+t^{2}\lVert y\rVert^{2}\ge 0$. A quadratic in $t$ that is never negative has discriminant $\le 0$:</div>
+$$\langle x,y\rangle^{2}\le\lVert x\rVert^{2}\,\lVert y\rVert^{2}.$$
+<div style="text-align:right">&#9632;</div>`;
   return {
     id: 'tx-cauchy', theme: 'black', titleFont: 'lm-sans', bodyFont: 'lm-sans',
-    notes: 'Statement + one-line proof — Computer Modern Sans on a black theme.',
+    notes: 'Statement + one-line proof — Computer Modern Sans on a black theme. Proof box = rounded-fill panel + text box (native borderRadius, no strokes).',
     elements: [
       el({ id: 'cs-eyebrow', x: 152, y: 86, w: 1620, h: 46, fontSize: 26, color: '#93c5fd', html: eyebrow('Mathematics · Inequalities') }),
       el({ id: 'cs-title', preset: 'title', x: 150, y: 116, w: 1620, h: 120, html: 'Cauchy–Schwarz' }),
       el({ id: 'cs-eq', x: 150, y: 326, w: 1620, h: 200, fontSize: 80, color: '#ffffff', html: R`$$\bigl|\langle x,\,y\rangle\bigr|\;\le\;\lVert x\rVert\,\lVert y\rVert$$` }),
-      el({ id: 'cs-proof', x: 360, y: 580, w: 1200, h: 300, fontSize: 32, color: '#d7def0', html: proof }),
+      panel('cs-proof-bg', 360, 580, 1200, 296, 'rgba(255,255,255,0.05)', { radius: 18 }),
+      el({ id: 'cs-proof', x: 404, y: 604, w: 1112, h: 248, fontSize: 32, color: '#d7def0', verticalAlign: 'middle', html: proof }),
       el({ id: 'cs-foot', x: 152, y: 916, w: 1620, h: 60, fontSize: 26, color: '#9ca3af', html: ctr(R`Equality holds exactly when $x$ and $y$ are linearly dependent.`) }),
     ],
   };
