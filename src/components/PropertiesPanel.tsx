@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
-import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, parsePalette, type NamedSize } from '../types/presentation';
+import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, parsePalette, textPresetBoxCss, type NamedSize } from '../types/presentation';
 import { BUILT_IN_THEMES } from '../lib/themes';
 import { extractDemoPieceNames } from '../lib/demoPieces';
 import { FONT_PACKAGES } from '../lib/fonts';
@@ -59,6 +59,8 @@ export function PropertiesPanel() {
     updateSlide, updateElement, updateConfig, moveElementZ, deleteElements,
     freeElement, unlinkElement,
   } = usePresentationStore();
+
+  const [padLinked, setPadLinked] = useState(true);
 
   const slide = presentation.slides[currentSlideIndex];
   if (!slide) return null;
@@ -533,6 +535,34 @@ export function PropertiesPanel() {
                         </div>
                       </div>
                     )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 12, color: '#374151' }}>Padding</span>
+                        <label style={{ fontSize: 11, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <input type="checkbox" checked={padLinked} onChange={(e) => setPadLinked(e.target.checked)} /> link
+                        </label>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+                        {(['top', 'right', 'bottom', 'left'] as const).map((side) => {
+                          const pb = textPresetBoxCss((selectedEl as any).preset || 'body');
+                          const def = side === 'top' || side === 'bottom' ? pb.padY : pb.padX;
+                          const cur = (selectedEl as any).padding as { top: number; right: number; bottom: number; left: number } | undefined;
+                          const val = cur ? cur[side] : def;
+                          return (
+                            <label key={side} style={{ fontSize: 10, color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: 2, textTransform: 'uppercase' }}>
+                              {side[0]}
+                              <input className="prop-num" type="number" min={0} max={400} value={val}
+                                onChange={(e) => {
+                                  const v = Math.max(0, parseInt(e.target.value, 10) || 0);
+                                  const base = cur ?? { top: pb.padY, right: pb.padX, bottom: pb.padY, left: pb.padX };
+                                  const next = padLinked ? { top: v, right: v, bottom: v, left: v } : { ...base, [side]: v };
+                                  updateElement(selectedEl.id, { padding: next } as any);
+                                }} />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 </PropSection>
                 <PropSection label="Effect">

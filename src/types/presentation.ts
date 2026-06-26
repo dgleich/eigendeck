@@ -128,6 +128,20 @@ export function textPresetBoxCss(preset: TextPreset): { lineHeight: number; padY
   return { lineHeight: 1.3, padY: 8, padX: 12 };
 }
 
+/** Effective inner padding for a text element as a CSS shorthand ("8px 12px" or
+ *  per-side "10px 24px 10px 24px"). Honors the element's `padding` override, else
+ *  the preset default. Shared by editor / present / export so they stay
+ *  WYSIWYG-identical. */
+export function textPaddingCss(
+  el: { padding?: { top: number; right: number; bottom: number; left: number } },
+  preset: TextPreset,
+): string {
+  const p = el.padding;
+  if (p) return `${p.top}px ${p.right}px ${p.bottom}px ${p.left}px`;
+  const box = textPresetBoxCss(preset);
+  return `${box.padY}px ${box.padX}px`;
+}
+
 /** Resolve the effective px size for a text preset, honoring the
  *  deck's textSizes override. Use this instead of
  *  TEXT_PRESET_STYLES[preset].fontSize anywhere a config is in scope. */
@@ -212,6 +226,11 @@ export interface TextElement extends BaseElement {
    *  image element's borderRadius so both round consistently across render
    *  paths (editor, present/presenter, export). */
   borderRadius?: number;
+  /** Per-side inner padding (px, slide coords) overriding the preset's default
+   *  (8/12, or 0 for footnote). Pairs with backgroundColor + borderRadius to give
+   *  a tinted rounded card breathing room. The inspector edits all four with an
+   *  optional "link" toggle. Unset = preset default. */
+  padding?: { top: number; right: number; bottom: number; left: number };
   /** Rotation in degrees (clockwise) for the whole text box — the background
    *  panel tilts with the text (e.g. an angled sticky-note Hype callout, #8).
    *  Unset/0 = upright. */

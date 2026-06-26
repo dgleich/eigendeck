@@ -281,6 +281,27 @@ describe('buildExportHtml', () => {
     expect(restored.slides[0].elements[0].borderRadius).toBe(16);
     expect(restored.slides[0].elements[0].backgroundColor).toBe('#eef3fb');
   });
+
+  it('round-trips a text element with per-side padding', async () => {
+    const p = makePresentation({
+      slides: [{
+        id: 's1', layout: 'default', notes: '',
+        elements: [{
+          id: 'e1', type: 'text', preset: 'body', html: 'card',
+          padding: { top: 24, right: 40, bottom: 24, left: 40 },
+          position: { x: 100, y: 100, width: 400, height: 200 },
+        }],
+      }],
+    });
+    const html = await buildExportHtml({
+      presentation: p, readFile: async () => new Uint8Array([0]), readTextFile: async () => '',
+      renderMath: null, applyMathPreamble: null,
+    });
+    expect(html).toContain('padding:24px 40px 24px 40px');
+    const match = html.match(/<!-- eigendeck-source: (.+?) -->/);
+    const restored = JSON.parse(decodeURIComponent(escape(atob(match[1]))));
+    expect(restored.slides[0].elements[0].padding).toEqual({ top: 24, right: 40, bottom: 24, left: 40 });
+  });
 });
 
 describe('htmlEscapeForSrcdoc', () => {

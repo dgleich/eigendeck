@@ -14,7 +14,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { TextElement, Slide, PresentationConfig } from '../types/presentation';
-import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss, textPresetBoxCss } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import {
@@ -107,7 +107,7 @@ export function buildTextElementSvgMarkup(
       `<title>${escText(alt)}</title>` +
       `<foreignObject x="0" y="0" width="${w}" height="${h}" overflow="hidden">` +
         `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(ctx.valign)};overflow:hidden;box-sizing:border-box;">` +
-          `<div style="width:100%;font-family:${ctx.fontFamily};font-size:${ctx.fontSize}px;font-weight:${ctx.fontWeight};font-style:${ctx.fontStyle};color:${ctx.color};line-height:${box.lineHeight};padding:${box.padY}px ${box.padX}px;${textShadow ? `text-shadow:${textShadow};` : ''}">` +
+          `<div style="width:100%;font-family:${ctx.fontFamily};font-size:${ctx.fontSize}px;font-weight:${ctx.fontWeight};font-style:${ctx.fontStyle};color:${ctx.color};line-height:${box.lineHeight};padding:${textPaddingCss(element, element.preset)};${textShadow ? `text-shadow:${textShadow};` : ''}">` +
             (renderedHtml || '') +
           `</div>` +
         `</div>` +

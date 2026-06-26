@@ -15,7 +15,7 @@ import { useImageSrc } from '../lib/imageSrc';
 import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 
-import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss, textPresetBoxCss } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
 import { buildTextElementSvgMarkup } from './TextElementSvg';
 import { TextFormatToolbar } from './TextFormatToolbar';
@@ -568,7 +568,7 @@ function TextContent({
     width: '100%',
     fontFamily, fontSize, fontWeight, fontStyle, color,
     lineHeight: boxCss.lineHeight,
-    padding: `${boxCss.padY}px ${boxCss.padX}px`,
+    padding: textPaddingCss(element, element.preset),
     outline: 'none',
     overflow: 'hidden',
     textShadow: textShadowCss(element, color),

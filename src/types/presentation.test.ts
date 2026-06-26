@@ -241,6 +241,22 @@ describe('textShadowCss / textBoxShadowCss (independent text vs box shadow)', ()
   });
 });
 
+describe('textPaddingCss (per-side padding override)', () => {
+  it('falls back to the preset default when unset', async () => {
+    const { textPaddingCss } = await import('./presentation');
+    expect(textPaddingCss({}, 'body')).toBe('8px 12px');
+    expect(textPaddingCss({}, 'footnote')).toBe('0px 0px');
+  });
+  it('emits a per-side shorthand when padding is set', async () => {
+    const { textPaddingCss } = await import('./presentation');
+    expect(textPaddingCss({ padding: { top: 24, right: 40, bottom: 24, left: 40 } }, 'body'))
+      .toBe('24px 40px 24px 40px');
+    // override beats the preset, even footnote
+    expect(textPaddingCss({ padding: { top: 10, right: 10, bottom: 10, left: 10 } }, 'footnote'))
+      .toBe('10px 10px 10px 10px');
+  });
+});
+
 describe('default insert positions snap to the 30px grid (the default spacing)', () => {
   it('every text preset default is grid-aligned (x/y/width/height % 30 === 0)', async () => {
     const { createTextElement } = await import('./presentation');

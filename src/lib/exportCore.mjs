@@ -83,6 +83,13 @@ function textBoxShadowCss(el) {
   return el && el.boxShadow && el.backgroundColor ? '0 4px 14px rgba(0,0,0,0.28)' : '';
 }
 
+// Per-side inner padding shorthand, honoring el.padding (else the legacy 8/12).
+// Mirrors textPaddingCss() in types/presentation.ts.
+function textPaddingCss(el) {
+  const p = el && el.padding;
+  return p ? `${p.top}px ${p.right}px ${p.bottom}px ${p.left}px` : '8px 12px';
+}
+
 /**
  * HTML-escape a string for use in a srcdoc attribute.
  */
@@ -382,7 +389,7 @@ export async function buildExportHtml(opts) {
           const radLegacy = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
           inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}${shLegacy ? `box-shadow:${shLegacy};` : ''}${radLegacy}${rotLegacy}">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${textHtml}</div>` +
+            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:${textPaddingCss(el)};${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${textHtml}</div>` +
             `</div></div>`;
           break;
         }
