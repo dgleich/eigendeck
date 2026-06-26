@@ -16,7 +16,7 @@ import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 
 import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss } from '../types/presentation';
-import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
+import { fontForPreset, fontFamilyForPreset, resolveMonoFontPackage } from '../lib/fonts';
 import { buildTextElementSvgMarkup } from './TextElementSvg';
 import { TextFormatToolbar } from './TextFormatToolbar';
 import { getDisplayMathHeight } from '../lib/mathjax';
@@ -714,6 +714,7 @@ function TextContent({
   if (!editing) {
     const svgMarkup = buildTextElementSvgMarkup(element, renderedHtml, {
       fontFamily, fontSize, fontWeight, fontStyle, color, valign,
+      mono: resolveMonoFontPackage(presentation.config.defaultMonoFont).family,
     });
     return (
       <div

@@ -1,4 +1,14 @@
 import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
+import { resolveMonoFontPackage } from './fontRegistry.mjs';
+
+// Give <code> runs the deck's mono family (mirrors applyCodeFont in TextElementSvg).
+function applyCodeFont(html, mono) {
+  if (!mono || !html) return html || '';
+  return html.replace(/<code\b([^>]*)>/gi, (_m, attrs) =>
+    /\bstyle\s*=/.test(attrs)
+      ? `<code${attrs.replace(/style\s*=\s*"([^"]*)"/i, (_s, c) => `style="${c};font-family:${mono}"`)}>`
+      : `<code${attrs} style="font-family:${mono}">`);
+}
 
 /**
  * Shared HTML export logic.
@@ -389,7 +399,7 @@ export async function buildExportHtml(opts) {
           const radLegacy = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
           inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}${shLegacy ? `box-shadow:${shLegacy};` : ''}${radLegacy}${rotLegacy}">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:${textPaddingCss(el)};${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${textHtml}</div>` +
+            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:${textPaddingCss(el)};${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${applyCodeFont(textHtml, resolveMonoFontPackage((presentation.config || {}).defaultMonoFont).family)}</div>` +
             `</div></div>`;
           break;
         }

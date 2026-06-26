@@ -123,6 +123,25 @@ export function TextFormatToolbar(_props: Props) {
           try { range.surroundContents(span); } catch { span.appendChild(range.extractContents()); range.insertNode(span); }
         }
       }} title="Uppercase + letter spacing">AA</button>
+
+      <button onClick={() => {
+        restoreSelection();
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+        // Toggle OFF if the selection sits inside an existing <code> run.
+        let node: Node | null = sel.anchorNode;
+        while (node && node.nodeType !== Node.ELEMENT_NODE) node = node.parentNode;
+        const codeEl = (node as HTMLElement | null)?.closest?.('code');
+        if (codeEl) {
+          const parent = codeEl.parentNode!;
+          while (codeEl.firstChild) parent.insertBefore(codeEl.firstChild, codeEl);
+          parent.removeChild(codeEl);
+          return;
+        }
+        const range = sel.getRangeAt(0);
+        const code = document.createElement('code');
+        try { range.surroundContents(code); } catch { code.appendChild(range.extractContents()); range.insertNode(code); }
+      }} title="Monospace / code"><span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>&lt;/&gt;</span></button>
       <span className="tf-divider" />
 
       <button onClick={() => {

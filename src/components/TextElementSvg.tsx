@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react';
 import type { TextElement, Slide, PresentationConfig } from '../types/presentation';
 import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
-import { fontForPreset, fontFamilyForPreset } from '../lib/fonts';
+import { fontForPreset, fontFamilyForPreset, resolveMonoFontPackage } from '../lib/fonts';
 import {
   renderMathInHtml as renderMathInIframe,
   renderMathInHtmlSync,
@@ -81,10 +81,21 @@ function escText(s: string): string {
  * readers pick up either; sighted users don't see them as tooltips because
  * we use aria-label instead of relying on title-as-tooltip behavior.
  */
+/** Give every <code> run the deck's monospace family. <code> has a UA
+ *  font-family:monospace that would otherwise override the inherited deck font,
+ *  so we set it explicitly. Handles code with or without an existing style. */
+export function applyCodeFont(html: string, mono: string | undefined): string {
+  if (!mono || !html) return html || '';
+  return html.replace(/<code\b([^>]*)>/gi, (_m, attrs) =>
+    /\bstyle\s*=/.test(attrs)
+      ? `<code${attrs.replace(/style\s*=\s*"([^"]*)"/i, (_s: string, c: string) => `style="${c};font-family:${mono}"`)}>`
+      : `<code${attrs} style="font-family:${mono}">`);
+}
+
 export function buildTextElementSvgMarkup(
   element: TextElement,
   renderedHtml: string,
-  ctx: { fontFamily: string; fontSize: number; fontWeight: string; fontStyle: string; color: string; valign?: string },
+  ctx: { fontFamily: string; fontSize: number; fontWeight: string; fontStyle: string; color: string; valign?: string; mono?: string },
 ): string {
   const textShadow = textShadowCss(element, ctx.color);
   const box = textPresetBoxCss(element.preset);
@@ -108,7 +119,7 @@ export function buildTextElementSvgMarkup(
       `<foreignObject x="0" y="0" width="${w}" height="${h}" overflow="hidden">` +
         `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(ctx.valign)};overflow:hidden;box-sizing:border-box;">` +
           `<div style="width:100%;font-family:${ctx.fontFamily};font-size:${ctx.fontSize}px;font-weight:${ctx.fontWeight};font-style:${ctx.fontStyle};color:${ctx.color};line-height:${box.lineHeight};padding:${textPaddingCss(element, element.preset)};${textShadow ? `text-shadow:${textShadow};` : ''}">` +
-            (renderedHtml || '') +
+            applyCodeFont(renderedHtml || '', ctx.mono) +
           `</div>` +
         `</div>` +
       `</foreignObject>` +
@@ -173,6 +184,7 @@ export function TextElementSvg({
 
   const svgMarkup = buildTextElementSvgMarkup(element, renderedHtml, {
     fontFamily, fontSize, fontWeight, fontStyle, color, valign,
+    mono: resolveMonoFontPackage(presentationConfig.defaultMonoFont).family,
   });
 
   return (

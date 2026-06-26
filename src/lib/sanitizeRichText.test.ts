@@ -29,6 +29,7 @@ describe('sanitizeRichText — toolbar allowlist', () => {
     expect(sanitizeRichText('<ul><li>one</li><li>two</li></ul>')).toBe('<ul><li>one</li><li>two</li></ul>');
     expect(sanitizeRichText('<div style="text-align: center">c</div>')).toBe('<div style="text-align: center">c</div>');
     expect(sanitizeRichText('<font color="#ff0000">r</font>')).toBe('<font color="#ff0000">r</font>');
+    expect(sanitizeRichText('run <code>T(n)=2T(n/2)</code> here')).toBe('run <code>T(n)=2T(n/2)</code> here');
   });
 
   it('drops styles the toolbar cannot make (font-size, background, margin, padding)', () => {

@@ -6,7 +6,23 @@
 // for italic/integral glyph ink, #61 — that lives in mathjaxRenderer.ts, not
 // here, so this builder must never emit overflow:visible).
 import { describe, it, expect } from 'vitest';
-import { buildTextElementSvgMarkup } from './TextElementSvg';
+import { buildTextElementSvgMarkup, applyCodeFont } from './TextElementSvg';
+
+describe('applyCodeFont — gives <code> the deck mono family', () => {
+  const MONO = "'Source Code Pro', monospace";
+  it('adds font-family to a bare <code>', () => {
+    expect(applyCodeFont('a <code>x=1</code> b', MONO))
+      .toBe(`a <code style="font-family:${MONO}">x=1</code> b`);
+  });
+  it('appends to an existing style without clobbering it', () => {
+    expect(applyCodeFont('<code style="color: red">x</code>', MONO))
+      .toBe(`<code style="color: red;font-family:${MONO}">x</code>`);
+  });
+  it('is a no-op without a mono family or html', () => {
+    expect(applyCodeFont('<code>x</code>', undefined)).toBe('<code>x</code>');
+    expect(applyCodeFont('', MONO)).toBe('');
+  });
+});
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const el: any = {

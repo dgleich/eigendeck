@@ -59,21 +59,22 @@ export const FONT_PACKAGE_MAP: Record<string, FontPackage>;
 export const DEFAULT_FONT_ID: string;
 
 export function resolveFontPackage(id: string | undefined): FontPackage;
+export function resolveAnyFontPackage(id: string | undefined): FontPackage | MonoFontPackage;
 export function fontForPreset(
   preset: string,
   slide: { titleFont?: string; bodyFont?: string; hypeFont?: string } | null | undefined,
   presentationDefaults: { defaultTitleFont?: string; defaultBodyFont?: string; defaultHypeFont?: string } | null | undefined
 ): FontPackage;
 export function fontFamilyForPreset(pkg: FontPackage, preset: string): string;
-export function bareFamilyName(pkg: FontPackage): string;
-export function bareNarrowFamilyName(pkg: FontPackage): string | null;
+export function bareFamilyName(pkg: FontPackage | MonoFontPackage): string;
+export function bareNarrowFamilyName(pkg: FontPackage | MonoFontPackage): string | null;
 export function fontFaceCSSForPackage(pkg: FontPackage): string;
 export function allFontFacesCSS(): string;
 export function collectUsedFontIds(presentation: {
-  config?: { defaultTitleFont?: string; defaultBodyFont?: string; defaultHypeFont?: string };
+  config?: { defaultTitleFont?: string; defaultBodyFont?: string; defaultHypeFont?: string; defaultMonoFont?: string };
   slides?: Array<{ titleFont?: string; bodyFont?: string; hypeFont?: string }>;
 }): string[];
-export function fontFilesForPackage(pkg: FontPackage): Array<{
+export function fontFilesForPackage(pkg: FontPackage | MonoFontPackage): Array<{
   filename: string;
   cssAttrs: { weight: string; style: string; isNarrow?: boolean };
 }>;

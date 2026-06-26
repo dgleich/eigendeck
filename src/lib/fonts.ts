@@ -8,7 +8,7 @@
 export type { FontRole, FontFiles, FontPackage, MonoFontPackage } from './fontRegistry.mjs';
 
 import {
-  resolveFontPackage,
+  resolveAnyFontPackage,
   collectUsedFontIds,
   fontFilesForPackage,
   bareFamilyName,
@@ -24,6 +24,7 @@ export {
   DEFAULT_FONT_ID,
   resolveFontPackage,
   resolveMonoFontPackage,
+  resolveAnyFontPackage,
   fontForPreset,
   fontFamilyForPreset,
   fontFaceCSSForPackage,
@@ -48,7 +49,7 @@ export async function buildEmbeddedFontFacesCSS(presentation: {
   const usedFontIds = collectUsedFontIds(presentation);
   const lines: string[] = [];
   for (const id of usedFontIds) {
-    const pkg = resolveFontPackage(id);
+    const pkg = resolveAnyFontPackage(id);
     const family = bareFamilyName(pkg);
     const narrowFamily = bareNarrowFamilyName(pkg);
     for (const { filename, cssAttrs } of fontFilesForPackage(pkg)) {

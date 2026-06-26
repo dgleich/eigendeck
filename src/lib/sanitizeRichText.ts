@@ -18,7 +18,7 @@
 // Truly arbitrary HTML/JS belongs in the (separate) sandboxed HTML widget.
 
 const ALLOWED_TAGS = new Set([
-  'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'span', 'div', 'p', 'br', 'ul', 'ol', 'li', 'font',
+  'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'span', 'div', 'p', 'br', 'ul', 'ol', 'li', 'font', 'code',
 ]);
 
 // Tags whose ENTIRE subtree is dropped (never just unwrapped) — scripts, embeds,

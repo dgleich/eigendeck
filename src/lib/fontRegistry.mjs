@@ -291,6 +291,12 @@ export function resolveFontPackage(id) {
   return FONT_PACKAGE_MAP[DEFAULT_FONT_ID];
 }
 
+/** Resolve an id that may be EITHER a main text font or a mono-only font (for
+ *  embedding code fonts), falling back to the default text font. */
+export function resolveAnyFontPackage(id) {
+  return FONT_PACKAGE_MAP[id] || MONO_FONT_PACKAGE_MAP[id] || FONT_PACKAGE_MAP[DEFAULT_FONT_ID];
+}
+
 /**
  * Resolve which font package applies to a given preset on a slide.
  * Priority: slide override > presentation default > 'ptsans'.
@@ -403,12 +409,14 @@ export function collectUsedFontIds(presentation) {
   if (cfg.defaultTitleFont) ids.add(cfg.defaultTitleFont);
   if (cfg.defaultBodyFont) ids.add(cfg.defaultBodyFont);
   if (cfg.defaultHypeFont) ids.add(cfg.defaultHypeFont);
+  if (cfg.defaultMonoFont) ids.add(cfg.defaultMonoFont);   // <code> runs / notebooks
   for (const s of presentation.slides || []) {
     if (s.titleFont) ids.add(s.titleFont);
     if (s.bodyFont) ids.add(s.bodyFont);
     if (s.hypeFont) ids.add(s.hypeFont);
   }
-  return [...ids].filter((id) => FONT_PACKAGE_MAP[id]);
+  // keep ids that resolve in EITHER the main or the mono registry
+  return [...ids].filter((id) => FONT_PACKAGE_MAP[id] || MONO_FONT_PACKAGE_MAP[id]);
 }
 
 /**

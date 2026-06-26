@@ -13,7 +13,7 @@ import { usePresentationStore, openSqliteProject, flushToSqlite, createSeededPre
 import { buildExportHtml } from '../lib/exportCore.mjs';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import {
-  fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS,
+  fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS, resolveMonoFontPackage,
 } from '../lib/fonts';
 import {
   renderMathInHtml as renderMathPerBundle,
@@ -315,6 +315,7 @@ export function makeTextElementRenderer(presentation: Presentation) {
       fontStyle: presetStyle.fontStyle,
       color,
       valign,
+      mono: resolveMonoFontPackage(presentation.config.defaultMonoFont).family,
     });
   };
 }
