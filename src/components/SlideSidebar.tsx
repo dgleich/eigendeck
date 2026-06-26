@@ -88,6 +88,13 @@ export function SlideSidebar() {
             onClick={(e) => { if (dragging === null) { selectSlide(index); e.currentTarget.focus(); } }}
             onKeyDown={(e) => {
               if ((e.key === 'Delete' || e.key === 'Backspace')) {
+                // A thumbnail keeps DOM focus after you click an element on the
+                // canvas, so this handler would otherwise delete the SLIDE when an
+                // element is selected. Only delete the slide when a slide is
+                // actually the selection; otherwise let it bubble to the global
+                // handler, which deletes the selected element(s). (#: backspace bug)
+                const sel = usePresentationStore.getState().selectedObject;
+                if (sel && sel.type !== 'slide') return;
                 e.preventDefault(); e.stopPropagation();
                 if (presentation.slides.length > 1) deleteSlide(index);
               }
