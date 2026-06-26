@@ -27,9 +27,8 @@ const DEMOS = [
   { file: 'wave-equation.html',     title: 'The wave equation',          cap: 'Click or drag to pluck the string — the pulse splits into two waves and reflects off the ends.' },
   { file: 'fourier.html',           title: 'Fourier & the FFT',          cap: 'A signal and its frequency spectrum. Drag "keep" to rebuild it from only its largest Fourier coefficients — or draw your own. Real FFT, live.' },
   { file: 'polynomial-interpolation.html', title: 'Polynomial interpolation', cap: 'The Runge phenomenon: interpolating through uniform nodes blows up near the ends as the degree grows, while Chebyshev nodes (clustered at the ends) converge. Drag the degree.' },
-  { file: 'finite-element.html',    title: 'Finite elements',            cap: 'A triangulated sheet clamped at the left, sagging under gravity. Elements shaded by strain — tension above, compression below. Drag any node.' },
-  { file: 'sequence-alignment.html',title: 'Sequence alignment',         cap: 'Needleman–Wunsch global alignment. Drag the gap penalty to re-solve; the traceback path and alignment update live.' },
-  { file: 'protein-folding.html',   title: 'Protein folding',            cap: 'Hydrophobic collapse (the HP model). Residues fold so the hydrophobic ones (warm) bury into a core. Drag to tug; "new sequence" refolds.' },
+  // NOTE: finite-element, sequence-alignment, protein-folding are intentionally
+  // NOT in the deck for now (not up to snuff) — files kept in demos/ for later.
   { file: 'molecule-viewer.html',   title: 'Molecule viewer',            cap: 'Pick a molecule from the list and drag to rotate the 3-D ball-and-stick model — from water up to a C₆₀ buckyball. Computed geometry.' },
   { file: 'neural-network.html',    title: 'Neural network',             cap: 'A small ResNet classifying MNIST — draw a digit and watch it flow through the layers. Real trained weights, live inference.' },
   { file: 'tiled-svd.html',         title: 'Low-rank image compression', cap: 'Plain SVD vs the SVD of a matrix of tiles, at equal storage. Drag the budget — the tiled reorganization wins. (Gleich, arXiv:2402.18427.)' },

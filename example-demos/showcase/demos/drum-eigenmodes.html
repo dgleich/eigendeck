@@ -55,7 +55,7 @@
   </div>
   <div class="dr-ctrl">
     <span class="dr-seg" id="dr-preset">
-      <button data-s="circle" class="on">Circle</button><button data-s="square">Square</button><button data-s="L">L-shape</button><button data-s="star">Star</button><button data-s="clear">Clear</button>
+      <button data-s="lambda" class="on">&#955;_</button><button data-s="circle">Circle</button><button data-s="square">Square</button><button data-s="L">L-shape</button><button data-s="star">Star</button><button data-s="clear">Clear</button>
     </span>
     <span class="dr-modes" id="dr-modes"></span>
     <span class="dr-info">mode <b id="dr-mk">1</b> · λ = <b id="dr-lam">—</b></span>
@@ -107,7 +107,9 @@
 
   // ---------- shapes ----------
   function setPreset(s) {
-    mask.fill(0); var c = (NG - 1) / 2, i, j;
+    mask.fill(0);
+    if (s === 'lambda') { setLambdaUnderscore(); return; }      // the Eigendeck logo as two holes
+    var c = (NG - 1) / 2, i, j;
     for (j = 0; j < NG; j++) for (i = 0; i < NG; i++) {
       var x = i - c, y = j - c, on = false;
       if (s === 'circle') on = Math.hypot(x, y) < NG * 0.42;
@@ -115,6 +117,22 @@
       else if (s === 'L') on = (Math.abs(x) < NG * 0.36 && Math.abs(y) < NG * 0.36) && !(x > 0 && y > 0);
       else if (s === 'star') { var a = Math.atan2(y, x), r = Math.hypot(x, y), rr = NG * (0.27 + 0.16 * Math.cos(5 * a)); on = r < rr; }
       if (on) mask[j * NG + i] = 1;
+    }
+  }
+  // The Eigendeck logo "λ_" as the NEGATIVE space: a rectangular membrane with the
+  // glyphs carved out → a connected domain with two interior holes (λ, then _).
+  function setLambdaUnderscore() {
+    var off = document.createElement('canvas'); off.width = NG; off.height = NG;
+    var g = off.getContext('2d');
+    g.clearRect(0, 0, NG, NG);
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '700 ' + Math.round(NG * 0.58) + 'px ui-monospace, "DejaVu Sans Mono", monospace';
+    g.fillText('λ_', NG / 2, NG * 0.45);                    // λ then _ (prompt motif)
+    var px = g.getImageData(0, 0, NG, NG).data;
+    for (var j = 0; j < NG; j++) for (var i = 0; i < NG; i++) {
+      var inRect = i >= 2 && i <= NG - 3 && j >= 3 && j <= NG - 4;   // membrane body (border keeps holes interior)
+      var glyph = px[(j * NG + i) * 4 + 3] > 70;                     // glyph alpha → hole
+      if (inRect && !glyph) mask[j * NG + i] = 1;
     }
   }
 
@@ -217,7 +235,7 @@
   window.addEventListener('resize', function () { drawTop(); draw3d(); });
 
   function frame() { t += 0.022; draw3d(); requestAnimationFrame(frame); }
-  function start() { setPreset('circle'); resolve(); requestAnimationFrame(frame); }
+  function start() { setPreset('lambda'); resolve(); requestAnimationFrame(frame); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 </script>

@@ -35,9 +35,12 @@
     border: 1px solid color-mix(in srgb, var(--eigendeck-fg, #333) 28%, transparent);
     overflow: hidden; background: color-mix(in srgb, var(--eigendeck-fg, #333) 6%, transparent); }
   .ts-frame canvas { width: 100%; height: 100%; display: block; image-rendering: auto; }
-  .ts-cap { text-align: center; line-height: 1.25; }
+  /* FIXED caption height + non-wrapping lines → all three frames stay the SAME
+     size, and the Original frame never resizes (so it doesn't re-upscale and look
+     like it "degrades") as the stat text changes with the storage slider. */
+  .ts-cap { flex: 0 0 auto; height: 2.9em; text-align: center; line-height: 1.25; overflow: hidden; }
   .ts-cap .ts-name { font-size: 0.74em; font-weight: 700; color: var(--eigendeck-heading, var(--eigendeck-fg, #222)); }
-  .ts-cap .ts-stat { font-size: 0.6em; color: var(--eigendeck-muted, #888); }
+  .ts-cap .ts-stat { font-size: 0.6em; white-space: nowrap; color: var(--eigendeck-muted, #888); }
   .ts-cap .ts-err { font-weight: 700; }
   .ts-cap.win .ts-err { color: var(--eigendeck-accent, #2563eb); }
   .ts-arrow { align-self: center; font-size: 1.2em; color: var(--eigendeck-muted, #aaa); padding: 0 0.1em; }
