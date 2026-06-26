@@ -14,6 +14,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { buildTextSlides } from './text-slides.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEMODIR = join(HERE, 'demos');
@@ -103,6 +104,10 @@ DEMOS.forEach((d, k) => {
   els.push({ id: `s${k + 1}-cap`, type: 'text', preset: 'footnote', html: d.cap, position: { x: 60, y: 984, width: 1800, height: 40 } });
   slides.push({ id: `s${k + 1}`, notes: '', elements: els });
 });
+
+// gallery of text-heavy "gorgeous slide" examples (no demos) — each in a
+// different font + theme, to show the deck isn't only for interactive demos.
+for (const ts of buildTextSlides()) slides.push(ts);
 
 const deck = {
   title: 'Eigendeck — Showcase',

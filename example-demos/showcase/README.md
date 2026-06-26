@@ -178,6 +178,52 @@ What each demo computes, how you interact, and the slide-matched UI bit worth no
 | `tiled-svd` | Jacobi SVD of the image vs its matrix-of-tiles, at equal storage | **`storage` slider** + tile/image segmented presets (Gleich, arXiv:2402.18427) |
 | `title-decor` | title-slide decoration | bouncing-ball physics (gravity, elastic collisions, squash). The equation backdrop is now rotated, soft-coloured **TEXT** elements on the slide (`TITLE_EQ` in build-showcase.mjs) — colours echo the balls |
 
+## Text-slide gallery (`text-slides.mjs`)
+
+The deck isn't only demos. After the demo slides, `build-showcase.mjs` appends a
+small gallery of **text-heavy "gorgeous slide"** examples (from `buildTextSlides()`)
+— typeset mathematics with no interactive element, each deliberately in a
+**different font family + theme** so the deck shows the editor's range:
+
+| Slide | Topic | Font (`bodyFont`/`titleFont`) | Theme |
+| --- | --- | --- | --- |
+| `tx-eckart` | Eckart–Young–Mirsky theorem (ties to the SVD demos) | `libertinus` (serif) | `light` (cream) |
+| `tx-maxwell` | Maxwell's equations, 2×2 grid | `concrete-euler` (CM Concrete) | `dark` |
+| `tx-master` | Master Theorem, 3-case layout + mono code line | `source-sans` + `source-code` (`hypeFont`) | `white` |
+| `tx-quote` | Hamming quote + hand-drawn `$e^{i\pi}+1=0$` | `shantell` (handwritten) | custom soft-rose full-bleed panel |
+| `tx-cauchy` | Cauchy–Schwarz statement + one-line proof | `lm-sans` (CM Sans) | `black` |
+
+Conventions worth copying:
+
+- **Every equation is a real LaTeX TEXT element** (`$…$` inline, `$$…$$` display),
+  not an image — click into it in the app to edit. MathJax renders it in-app **and**
+  in the headless export, picking the math-font pack that matches the slide's body
+  font. Inline `$…$` must stay on **one line** (the renderer rejects a newline
+  inside inline math); display `$$…$$` may span lines.
+- **Math colour follows the text element's `color`** (MathJax SVG uses
+  `currentColor`), so a card is one colour for prose + math; colour the eyebrow /
+  labels with `<span style="color:…">`.
+- **Fonts are per-slide**, set via `theme` + `bodyFont`/`titleFont`/`hypeFont`.
+  These round-trip through `import json` (`build_slide_config_json`) and the
+  exporter embeds whatever font ids the slides use (`collectUsedFontIds`) + the
+  matching `-nosre` math bundle. To get a **monospace** code line *with* working
+  math, use a font that is a `FONT_PACKAGE` (e.g. `source-code`), not a
+  `MONO_FONT_PACKAGE` (no math pack); the Master slide puts it on `hypeFont` and a
+  `hype`-preset element.
+- **"Cards"** (the tinted theorem boxes) are styled `<div>`s *inside* a `body`
+  text element (background, `border-left` accent, radius, padding, shadow) — the
+  element box is left transparent and sized generously; the card sizes to content.
+- **Custom slide background**: the quote slide stays on the `white` theme but lays
+  a full-bleed `text` element (`backgroundColor`, empty html) behind the content —
+  a quick way to a bespoke colour without a new theme.
+- Use `String.raw` for the LaTeX strings (single backslashes: `\sigma`, not
+  `\\sigma`).
+
+LaTeX kept to the standard packages (no `amssymb`-only symbols — the proof ∎ is the
+Unicode `&#9632;`, not `\square`). Verify with the rig: render the slides with
+`SHOTS=10,11,12,13,14` and grep the export for `MathJax: ` (should be **0** error
+boxes) and the six `@font-face` families above.
+
 ## Why CLI import, not the GUI seam
 
 Driving the editor head-lessly (`store.addElement(...)` via WebDriver) only
