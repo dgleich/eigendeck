@@ -355,7 +355,8 @@ export async function buildExportHtml(opts) {
             const bg = textBgCss(el);
             const sh = textBoxShadowCss(el);
             const rot = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
-            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;${bg ? `background:${bg};` : ''}${sh ? `box-shadow:${sh};` : ''}${rot}">` +
+            const rad = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
+            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;${bg ? `background:${bg};` : ''}${sh ? `box-shadow:${sh};` : ''}${rad}${rot}">` +
               svgMarkup + `</div>`;
             break;
           }
@@ -378,7 +379,8 @@ export async function buildExportHtml(opts) {
           const fxLegacy = textShadowCss(el, el.color || ps.color);
           const shLegacy = textBoxShadowCss(el);
           const rotLegacy = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
-          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}${shLegacy ? `box-shadow:${shLegacy};` : ''}${rotLegacy}">` +
+          const radLegacy = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
+          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}${shLegacy ? `box-shadow:${shLegacy};` : ''}${radLegacy}${rotLegacy}">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
             `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:8px 12px;${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${textHtml}</div>` +
             `</div></div>`;

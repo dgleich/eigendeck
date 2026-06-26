@@ -152,6 +152,7 @@ Defaults sit on the **30px** alignment grid with a 60px (2-cell) outer margin.
 - `backgroundOpacity`: number 0–1 (default 1) — opacity applied to `backgroundColor` (combined into rgba at render, so the text itself isn't faded).
 - `textEffect`: `"shadow"` | `"glow"` — decoration on the **text**. `"shadow"` = soft `text-shadow`; `"glow"` = high-contrast halo (white or black, auto-chosen opposite the text color's luminance). Absent = none.
 - `boxShadow`: boolean — a drop shadow on the **box** (the background panel), like a card/sticky-note. Independent of `textEffect`; only has effect when `backgroundColor` is set (the inspector only offers it then). Absent/false = none.
+- `borderRadius`: number (px, slide coords) — rounds the corners of the **background panel**, so a tinted fill reads as a rounded card. Only meaningful when `backgroundColor` is set (the inspector only offers it then). Absent/0 = square. Mirrors the image element's `borderRadius`; applied across editor/present/export. **Card pattern**: an empty rounded-fill text box (`backgroundColor` + `borderRadius`, no text) makes a panel you can layer separate heading/body/equation text boxes on top of — keeps one font-size per element while still getting a "card".
 - `rotation`: number (degrees, clockwise) — tilts the WHOLE text box, background panel included (angled sticky-note callout). Absent/0 = upright. Hype elements default to `-4`. Applied as a `rotate()` transform across editor/present/export.
 
 **HTML content**: The `html` field supports basic HTML:

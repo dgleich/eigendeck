@@ -516,6 +516,21 @@ export function PropertiesPanel() {
                             onChange={(e) => updateElement(selectedEl.id, { boxShadow: e.target.checked || undefined } as any)} />
                           Box shadow
                         </label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 12, color: '#374151' }}>Rounded</span>
+                          <input type="range" min={0} max={80} step={1} value={selectedEl.borderRadius ?? 0}
+                            onPointerDown={pauseUndo} onPointerUp={resumeUndo}
+                            onChange={(e) => updateElement(selectedEl.id, { borderRadius: parseInt(e.target.value, 10) || undefined } as any)}
+                            style={{ flex: 1, minWidth: 0, accentColor: '#2563eb' }} />
+                          <input className="prop-num" type="number" min={0} max={200} step={1}
+                            style={{ width: 32 }}
+                            value={selectedEl.borderRadius ?? 0}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10);
+                              updateElement(selectedEl.id, { borderRadius: Number.isFinite(v) && v > 0 ? v : undefined } as any);
+                            }} />
+                          <span style={{ fontSize: 11, color: '#9ca3af' }}>px</span>
+                        </div>
                       </div>
                     )}
                   </div>

@@ -253,6 +253,34 @@ describe('buildExportHtml', () => {
     expect(restored.slides[0].elements[0].opacity).toBe(0.8);
     expect(restored.slides[0].elements[0].rotation).toBe(15);
   });
+
+  it('round-trips a text element with a rounded background panel', async () => {
+    const p = makePresentation({
+      slides: [{
+        id: 's1', layout: 'default', notes: '',
+        elements: [{
+          id: 'e1', type: 'text', preset: 'body', html: 'card',
+          backgroundColor: '#eef3fb', borderRadius: 16,
+          position: { x: 100, y: 100, width: 400, height: 200 },
+        }],
+      }],
+    });
+
+    const html = await buildExportHtml({
+      presentation: p,
+      readFile: async () => new Uint8Array([0]),
+      readTextFile: async () => '',
+      renderMath: null,
+      applyMathPreamble: null,
+    });
+
+    expect(html).toContain('border-radius:16px');
+
+    const match = html.match(/<!-- eigendeck-source: (.+?) -->/);
+    const restored = JSON.parse(decodeURIComponent(escape(atob(match[1]))));
+    expect(restored.slides[0].elements[0].borderRadius).toBe(16);
+    expect(restored.slides[0].elements[0].backgroundColor).toBe('#eef3fb');
+  });
 });
 
 describe('htmlEscapeForSrcdoc', () => {

@@ -183,6 +183,7 @@ export function TextElementSvg({
         width: element.position.width, height: element.position.height,
         backgroundColor: textBackgroundCss(element),
         boxShadow: textBoxShadowCss(element),
+        ...(element.borderRadius ? { borderRadius: element.borderRadius } : {}),
         ...(element.rotation ? { transform: `rotate(${element.rotation}deg)` } : {}),
         ...(zIndex !== undefined ? { zIndex } : {}),
         ...styleOverride,

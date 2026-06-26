@@ -206,6 +206,12 @@ export interface TextElement extends BaseElement {
    *  textEffect. Only meaningful when backgroundColor is set; the inspector only
    *  offers it then. Unset = no box shadow. */
   boxShadow?: boolean;
+  /** Corner radius (px, slide coords) of the background panel — lets a tinted
+   *  fill read as a rounded card. Only meaningful when backgroundColor is set;
+   *  the inspector only offers it then. Unset/0 = square corners. Mirrors the
+   *  image element's borderRadius so both round consistently across render
+   *  paths (editor, present/presenter, export). */
+  borderRadius?: number;
   /** Rotation in degrees (clockwise) for the whole text box — the background
    *  panel tilts with the text (e.g. an angled sticky-note Hype callout, #8).
    *  Unset/0 = upright. */

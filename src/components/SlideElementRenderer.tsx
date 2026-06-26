@@ -78,7 +78,7 @@ export function SlideElementRenderer({
           position={element.position} zIndex={zIndex} scale={scale}
           className={`el-text el-preset-${element.preset}`}
           isSelected={isSelected}
-          boxStyle={{ backgroundColor: textBackgroundCss(element), boxShadow: textBoxShadowCss(element) }}
+          boxStyle={{ backgroundColor: textBackgroundCss(element), boxShadow: textBoxShadowCss(element), borderRadius: element.borderRadius || undefined }}
           rotation={element.rotation}
           linkId={element.linkId} syncId={element.syncId}
           _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
