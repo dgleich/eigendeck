@@ -1306,6 +1306,19 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
       console.warn('Notebook token migration failed (non-fatal):', e);
     }
 
+    // Reduce every text element's html to the toolbar allowlist — strips unsafe
+    // markup (handlers / js: URLs / scripts) and any styling the editor can't
+    // author, so opening a JSON-authored, pasted, or shared deck is both safe
+    // and consistent with what the UI can edit. Mutates in place; idempotent.
+    try {
+      const { sanitizePresentationHtml } = await import('../lib/sanitizeRichText');
+      if (sanitizePresentationHtml(presentation)) {
+        olog('sanitized text-element html to the toolbar allowlist on load');
+      }
+    } catch (e) {
+      console.warn('Rich-text sanitization failed (non-fatal):', e);
+    }
+
     t = performance.now();
     const store = usePresentationStore.getState();
     store.setPresentation(presentation);

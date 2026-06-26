@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { getPreference } from '../lib/preferences';
 import { snapToGrid, resizeEdgeToGrid } from '../lib/grid';
+import { sanitizeRichText } from '../lib/sanitizeRichText';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useDemoThemeInjection, demoVarsCssForSlide } from '../lib/demoThemeInject';
 import { capturePreview } from '../lib/previewCache';
@@ -683,7 +684,9 @@ function TextContent({
           span.replaceWith(div);
         }
       }
-      const html = sanitizer.innerHTML;
+      // Reduce to the toolbar allowlist (strips anything unsafe or un-authorable)
+      // so what we persist always matches what the editor can produce.
+      const html = sanitizeRichText(sanitizer.innerHTML);
       onCommit(html);
     }
     setEditing(false);
@@ -770,7 +773,9 @@ function TextContent({
           e.preventDefault();
           const html = cb.getData('text/html');
           if (html && hasEigendeckMarker(html)) {
-            document.execCommand('insertHTML', false, stripEigendeckMarker(html));
+            // Even our own marked HTML is run through the allowlist — a crafted
+            // deck could forge the marker, and it keeps paste consistent with edit.
+            document.execCommand('insertHTML', false, sanitizeRichText(stripEigendeckMarker(html)));
           } else {
             const text = cb.getData('text/plain');
             if (text) document.execCommand('insertText', false, text);
