@@ -171,6 +171,7 @@ Defaults sit on the **30px** alignment grid with a 60px (2-cell) outer margin.
 - `"html": "$$\\sum_{i=1}^n x_i^2$$"`
 - Math is rendered as SVG using MathJax with a custom PT Sans math font
 - Escape backslashes in JSON: `\\lambda` not `\lambda`
+- **Escape `<` and `>` inside math** — write `\\lt` / `\\gt` (or `&lt;` / `&gt;`), never a raw `<`. The `html` field is parsed as HTML by the sanitizer, so a raw `<` in `$k<r$` is read as a tag start and the expression is mangled. (The in-app editor escapes `<`→`&lt;` automatically; only hand-written JSON hits this.)
 - Custom commands from `config.mathPreamble` are available
 
 ### Image Element
