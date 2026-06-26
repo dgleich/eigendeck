@@ -36,20 +36,25 @@ const eyebrow = (txt) =>
 // 1 — Eckart–Young (Libertinus Serif · cream paper)
 // ===========================================================================
 function slideEckartYoung() {
-  const card = R`<div style="background:#efe7d6;border-left:10px solid #b07a2a;border-radius:12px;padding:30px 46px;box-shadow:0 8px 30px rgba(60,40,10,0.10)">
-  <div style="font-weight:700;color:#a25e12;margin-bottom:12px;font-size:0.92em;letter-spacing:0.02em">Theorem · Eckart–Young–Mirsky</div>
-  <div style="margin:6px 0">Let $A\in\mathbb{R}^{m\times n}$ have the singular value decomposition $A=U\Sigma V^{\top}$ with $\sigma_1\ge\sigma_2\ge\cdots\ge\sigma_r>0$. For every $k<r$, the truncated SVD</div>
-  $$A_k=\sum_{i=1}^{k}\sigma_i\,u_i v_i^{\top}$$
-  <div style="margin:6px 0">is the closest rank-$k$ matrix to $A$ in every unitarily invariant norm, and the error is set exactly by the discarded singular values:</div>
-  $$\lVert A-A_k\rVert_2=\sigma_{k+1},\qquad \lVert A-A_k\rVert_F=\Bigl(\sum_{i>k}\sigma_i^{2}\Bigr)^{1/2}.$$
-</div>`;
+  // The card is built natively: an empty rounded-fill PANEL element + one text
+  // box layered on top (inset for breathing room). No stroke, no accent bar. The
+  // "Theorem ·…" label stays the SAME font size as the body — just accent colour
+  // + caps + letter-spacing (all native text-toolbar formatting), so the whole
+  // box is one font size.
+  const card = R`<div style="color:#a25e12;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;margin-bottom:18px">Theorem &middot; Eckart–Young–Mirsky</div>
+<div style="margin:6px 0">Let $A\in\mathbb{R}^{m\times n}$ have the singular value decomposition $A=U\Sigma V^{\top}$ with $\sigma_1\ge\sigma_2\ge\cdots\ge\sigma_r>0$. For every $k<r$, the truncated SVD</div>
+$$A_k=\sum_{i=1}^{k}\sigma_i\,u_i v_i^{\top}$$
+<div style="margin:6px 0">is the closest rank-$k$ matrix to $A$ in every unitarily invariant norm, and the error is set exactly by the discarded singular values:</div>
+$$\lVert A-A_k\rVert_2=\sigma_{k+1},\qquad \lVert A-A_k\rVert_F=\Bigl(\sum_{i>k}\sigma_i^{2}\Bigr)^{1/2}.$$`;
   return {
     id: 'tx-eckart', theme: 'light', titleFont: 'libertinus', bodyFont: 'libertinus',
-    notes: 'Typeset theorem (no demo) — Libertinus Serif on a cream "paper" theme.',
+    notes: 'Typeset theorem (no demo) — Libertinus Serif on a cream "paper" theme. Card = rounded-fill panel + a text box on top (native borderRadius, no strokes).',
     elements: [
       el({ id: 'eckart-eyebrow', x: 152, y: 86, w: 1620, h: 46, fontSize: 26, color: '#1e5c99', html: eyebrow('Mathematics · Numerical Linear Algebra') }),
       el({ id: 'eckart-title', preset: 'title', x: 150, y: 116, w: 1620, h: 120, html: 'The best low-rank approximation' }),
-      el({ id: 'eckart-card', x: 150, y: 296, w: 1620, h: 600, fontSize: 34, color: '#2c2418', html: card }),
+      // rounded-fill panel (empty text box used as a colour card) + inset text box
+      el({ id: 'eckart-panel', x: 150, y: 296, w: 1620, h: 540, backgroundColor: '#efe7d6', borderRadius: 18, boxShadow: true, html: '' }),
+      el({ id: 'eckart-card', x: 196, y: 320, w: 1528, h: 492, fontSize: 34, color: '#2c2418', verticalAlign: 'middle', html: card }),
       el({ id: 'eckart-foot', x: 152, y: 936, w: 1620, h: 72, fontSize: 26, color: '#8c7e6a', html: R`Exactly why the low-rank image demo compresses so well — and why reorganizing the image into a matrix of tiles lowers $\sigma_{k+1}$ at equal storage (Gleich, 2024).` }),
     ],
   };
