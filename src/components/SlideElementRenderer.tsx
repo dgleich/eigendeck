@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { getPreference } from '../lib/preferences';
-import { snapToGrid } from '../lib/grid';
+import { snapToGrid, resizeEdgeToGrid } from '../lib/grid';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useDemoThemeInjection, demoVarsCssForSlide } from '../lib/demoThemeInject';
 import { capturePreview } from '../lib/previewCache';
@@ -965,12 +965,16 @@ export function DraggableBox({
       blocker.style.cssText = 'position:fixed;inset:0;z-index:99999;cursor:nwse-resize;';
       document.body.appendChild(blocker);
       const handleMove = (me: PointerEvent) => {
-        const rawW = Math.round(resizeStart.current.w + (me.clientX - resizeStart.current.x) / scale);
-        const rawH = Math.round(resizeStart.current.h + (me.clientY - resizeStart.current.y) / scale);
+        const rawW = resizeStart.current.w + (me.clientX - resizeStart.current.x) / scale;
+        const rawH = resizeStart.current.h + (me.clientY - resizeStart.current.y) / scale;
+        // #97: snap the moving EDGE (right/bottom) to the grid, not the size, so
+        // the far edge lands on a gridline even when the origin is off-grid.
+        const snapOn = !me.metaKey && usePresentationStore.getState().snapToGrid;
+        const spacing = snapOn ? getPreference('gridSpacing') : 0;
         onPositionChange({
           ...pos,
-          width: Math.max(50, snapCoord(rawW, me.metaKey)),
-          height: Math.max(30, snapCoord(rawH, me.metaKey)),
+          width: resizeEdgeToGrid(pos.x, rawW, spacing, 50),
+          height: resizeEdgeToGrid(pos.y, rawH, spacing, 30),
         });
       };
       const handleUp = () => {

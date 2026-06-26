@@ -16,6 +16,30 @@ export function snapToGrid(value: number, spacing: number): number {
   return Math.round(value / spacing) * spacing;
 }
 
+/**
+ * New size for a bottom-right (SE) resize that snaps the moving EDGE to the grid
+ * rather than the size itself (#97).
+ *
+ * Snapping width/height directly leaves the far edge off-grid whenever the
+ * element's `origin` (x or y) isn't grid-aligned — e.g. origin 130, width
+ * snapped to 200 → right edge 330, not on a 30px grid. Instead we snap the edge
+ * (`origin + rawSize`) and derive the size back from the fixed origin, so the
+ * edge lands on a gridline and only the size absorbs the origin's offset.
+ *
+ * `spacing < 2` (or non-finite) means "no grid" — pass 0 when snap is off or
+ * bypassed and the raw size is returned (clamped/rounded). Result is clamped to
+ * `minSize` and rounded to whole px.
+ */
+export function resizeEdgeToGrid(
+  origin: number,
+  rawSize: number,
+  spacing: number,
+  minSize: number,
+): number {
+  const edge = snapToGrid(origin + rawSize, spacing);
+  return Math.max(minSize, Math.round(edge - origin));
+}
+
 // Grid overlay marker color (light slate) — every tier (dots, thin/thick "+"
 // crosses, the dead-center "+") uses this SAME light grey; they're told apart by
 // shape and stroke weight, never by colour, so the grid stays unobtrusive.

@@ -1,7 +1,29 @@
 import { describe, it, expect } from 'vitest';
-import { snapToGrid, gridOverlaySvg } from './grid';
+import { snapToGrid, resizeEdgeToGrid, gridOverlaySvg } from './grid';
 
 const W = 1920, H = 1080;
+
+describe('resizeEdgeToGrid (#97)', () => {
+  it('snaps the far EDGE to the grid, not the size, for an off-grid origin', () => {
+    // origin 130 (off-grid), drag to raw width 190 → right edge 320 → snaps to
+    // 330 on a 30px grid → width 200 (so 130 + 200 = 330 lands on a gridline).
+    expect(resizeEdgeToGrid(130, 190, 30, 50)).toBe(200);
+    expect(130 + resizeEdgeToGrid(130, 190, 30, 50)).toBe(330); // edge on grid
+  });
+
+  it('keeps a grid-aligned origin producing a grid-aligned size', () => {
+    expect(resizeEdgeToGrid(150, 190, 30, 50)).toBe(180); // 150+190=340 → edge 330 → width 180
+  });
+
+  it('treats spacing < 2 as no-snap (just rounds + clamps)', () => {
+    expect(resizeEdgeToGrid(130, 190.4, 0, 50)).toBe(190);
+    expect(resizeEdgeToGrid(130, 5, 0, 50)).toBe(50);     // clamped to min
+  });
+
+  it('clamps to minSize even when the snapped edge would be smaller', () => {
+    expect(resizeEdgeToGrid(130, 10, 30, 50)).toBe(50);
+  });
+});
 
 describe('snapToGrid', () => {
   it('rounds to the nearest multiple of the spacing', () => {
