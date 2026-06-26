@@ -30,7 +30,10 @@ function el({ id, preset = 'body', x, y, w, h, ...rest }) {
   return { id, type: 'text', preset, position: { x, y, width: w, height: h }, ...rest };
 }
 const eyebrow = (txt) =>
-  `<span style="letter-spacing:0.22em;text-transform:uppercase;font-weight:700;font-size:0.92em">${txt}</span>`;
+  `<span style="letter-spacing:0.22em;text-transform:uppercase;font-weight:700">${txt}</span>`;
+// a blank line — toolbar-authorable spacing (Enter on an empty line). Used in
+// place of CSS margins, which the rich-text sanitizer strips.
+const GAP = '<div><br></div>';
 // caps/letter-spaced accent label kept at the SAME font size as its body (native
 // text formatting: colour + caps + tracking, no size change).
 const label = (txt) =>
@@ -49,11 +52,11 @@ function slideEckartYoung() {
   // "Theorem ·…" label stays the SAME font size as the body — just accent colour
   // + caps + letter-spacing (all native text-toolbar formatting), so the whole
   // box is one font size.
-  const card = R`<div style="color:#a25e12;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;margin-bottom:18px">Theorem &middot; Eckart–Young–Mirsky</div>
-<div style="margin:6px 0">Let $A\in\mathbb{R}^{m\times n}$ have the singular value decomposition $A=U\Sigma V^{\top}$ with $\sigma_1\ge\sigma_2\ge\cdots\ge\sigma_r>0$. For every $k<r$, the truncated SVD</div>
+  const card = R`<div style="color:#a25e12;font-weight:700;text-transform:uppercase;letter-spacing:0.14em">Theorem &middot; Eckart–Young–Mirsky</div>${GAP}
+<div>Let $A\in\mathbb{R}^{m\times n}$ have the singular value decomposition $A=U\Sigma V^{\top}$ with $\sigma_1\ge\sigma_2\ge\cdots\ge\sigma_r\gt 0$. For every $k\lt r$, the truncated SVD</div>
 $$A_k=\sum_{i=1}^{k}\sigma_i\,u_i v_i^{\top}$$
-<div style="margin:6px 0">is the closest rank-$k$ matrix to $A$ in every unitarily invariant norm, and the error is set exactly by the discarded singular values:</div>
-$$\lVert A-A_k\rVert_2=\sigma_{k+1},\qquad \lVert A-A_k\rVert_F=\Bigl(\sum_{i>k}\sigma_i^{2}\Bigr)^{1/2}.$$`;
+<div>is the closest rank-$k$ matrix to $A$ in every unitarily invariant norm, and the error is set exactly by the discarded singular values:</div>
+$$\lVert A-A_k\rVert_2=\sigma_{k+1},\qquad \lVert A-A_k\rVert_F=\Bigl(\sum_{i\gt k}\sigma_i^{2}\Bigr)^{1/2}.$$`;
   return {
     id: 'tx-eckart', theme: 'light', titleFont: 'libertinus', bodyFont: 'libertinus',
     notes: 'Typeset theorem (no demo) — Libertinus Serif on a cream "paper" theme. Card = rounded-fill panel + a text box on top (native borderRadius, no strokes).',
@@ -98,13 +101,13 @@ function slideMaxwell() {
 // 3 — The Master Theorem (Source Sans 3 prose + Source Code Pro mono · white)
 // ===========================================================================
 function slideMasterTheorem() {
-  const intro = R`<div style="margin-bottom:2px">For a divide-and-conquer recurrence with $a\ge 1$ subproblems of size $n/b$ (here $b>1$), set $c=\log_b a$ and compare $f(n)$ with $n^{c}$:</div>
+  const intro = R`<div>For a divide-and-conquer recurrence with $a\ge 1$ subproblems of size $n/b$ (here $b\gt 1$), set $c=\log_b a$ and compare $f(n)$ with $n^{c}$:</div>
 $$T(n)=a\,T\!\left(\frac{n}{b}\right)+f(n)$$`;
   // each case = a rounded-fill panel + one text box (label inline at body size,
   // accent + caps; condition + result all one font size). No top accent bar.
   const caseCard = (key, cx, lbl, cond, result) => {
-    const html = R`<div style="color:#2563eb;margin-bottom:12px">${label(lbl)}</div>
-<div style="margin-bottom:6px">${cond}</div>
+    const html = R`<div style="color:#2563eb">${label(lbl)}</div>${GAP}
+<div>${cond}</div>
 $$${result}$$`;
     return [
       panel(`mt-${key}-bg`, cx, 540, 520, 300, '#eef3fb', { shadow: true, radius: 16 }),
@@ -151,8 +154,8 @@ function slideQuote() {
 function slideCauchySchwarz() {
   // proof = rounded-fill panel + one text box ("Proof" label inline at body size,
   // accent + caps; prose + display math + ∎ all one font size). No stroke.
-  const proof = R`<div style="color:#93c5fd;margin-bottom:8px">${label('Proof')}</div>
-<div style="margin-bottom:4px">For every real $t$, expand the non-negative quantity $\lVert x-t\,y\rVert^{2}=\lVert x\rVert^{2}-2t\,\langle x,y\rangle+t^{2}\lVert y\rVert^{2}\ge 0$. A quadratic in $t$ that is never negative has discriminant $\le 0$:</div>
+  const proof = R`<div style="color:#93c5fd">${label('Proof')}</div>${GAP}
+<div>For every real $t$, expand the non-negative quantity $\lVert x-t\,y\rVert^{2}=\lVert x\rVert^{2}-2t\,\langle x,y\rangle+t^{2}\lVert y\rVert^{2}\ge 0$. A quadratic in $t$ that is never negative has discriminant $\le 0$:</div>
 $$\langle x,y\rangle^{2}\le\lVert x\rVert^{2}\,\lVert y\rVert^{2}.$$
 <div style="text-align:right">&#9632;</div>`;
   return {
@@ -162,8 +165,8 @@ $$\langle x,y\rangle^{2}\le\lVert x\rVert^{2}\,\lVert y\rVert^{2}.$$
       el({ id: 'cs-eyebrow', x: 152, y: 86, w: 1620, h: 46, fontSize: 26, color: '#93c5fd', html: eyebrow('Mathematics · Inequalities') }),
       el({ id: 'cs-title', preset: 'title', x: 150, y: 116, w: 1620, h: 120, html: 'Cauchy–Schwarz' }),
       el({ id: 'cs-eq', x: 150, y: 326, w: 1620, h: 200, fontSize: 80, color: '#ffffff', html: R`$$\bigl|\langle x,\,y\rangle\bigr|\;\le\;\lVert x\rVert\,\lVert y\rVert$$` }),
-      panel('cs-proof-bg', 360, 580, 1200, 296, 'rgba(255,255,255,0.05)', { radius: 18 }),
-      el({ id: 'cs-proof', x: 404, y: 604, w: 1112, h: 248, fontSize: 32, color: '#d7def0', verticalAlign: 'middle', html: proof }),
+      panel('cs-proof-bg', 360, 566, 1200, 340, 'rgba(255,255,255,0.05)', { radius: 18 }),
+      el({ id: 'cs-proof', x: 404, y: 590, w: 1112, h: 292, fontSize: 32, color: '#d7def0', verticalAlign: 'middle', html: proof }),
       el({ id: 'cs-foot', x: 152, y: 916, w: 1620, h: 60, fontSize: 26, color: '#9ca3af', html: ctr(R`Equality holds exactly when $x$ and $y$ are linearly dependent.`) }),
     ],
   };
