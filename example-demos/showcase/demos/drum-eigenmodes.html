@@ -39,6 +39,14 @@
   .dr-info { font-size: 0.6em; color: var(--eigendeck-muted, #888); margin-left: auto; }
   .dr-info b { color: var(--eigendeck-accent, #2563eb); font-variant-numeric: tabular-nums; }
   .dr-hint { font-size: 0.58em; color: var(--eigendeck-muted, #aaa); }
+  /* hero mode (title slide): a BIG mode palette at the left + the vibrating membrane
+     at the right + presets centered. No nodal-lines pane, no text/labels. */
+  body.hero { padding: 0.5em 1.1em; }
+  body.hero .dr-lab, body.hero .dr-info, body.hero .dr-hint { display: none; }
+  body.hero .dr-left { flex: 0 0 30%; }
+  body.hero .dr-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7em; align-content: center; justify-items: stretch; width: 100%; height: 100%; }
+  body.hero .dr-mode { width: 100%; height: auto; aspect-ratio: 1; }
+  body.hero .dr-ctrl { justify-content: center; margin-top: 0.35em; }
 </style>
 </head>
 <body>
@@ -235,7 +243,15 @@
   window.addEventListener('resize', function () { drawTop(); draw3d(); });
 
   function frame() { t += 0.022; draw3d(); requestAnimationFrame(frame); }
-  function start() { setPreset('lambda'); resolve(); requestAnimationFrame(frame); }
+  var HERO = false; /* __HERO__ */
+  function start() {
+    if (HERO) {   // title-slide variant: big mode palette (left) + membrane (right), no nodal-lines pane / text
+      document.body.classList.add('hero');
+      var left = document.querySelector('.dr-left');
+      if (left) { left.innerHTML = ''; left.appendChild(modesEl); }   // palette replaces the nodal-lines pane
+    }
+    setPreset('lambda'); resolve(); requestAnimationFrame(frame);
+  }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 </script>

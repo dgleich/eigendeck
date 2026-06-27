@@ -59,8 +59,13 @@ for (const d of DEMOS) {
 // moved onto the slide itself as editable, rotated, softly-coloured TEXT elements.
 const titleDecor = readFileSync(join(DEMODIR, 'title-decor.html'), 'utf8').replace('__EQLAYER__', '');
 addAsset('title-decor.html', 'demos/title-decor.html', 'text/html', Buffer.from(titleDecor, 'utf8'));
-// (the OPENING title slide's hero is the INTERACTIVE membrane demo — the same
-// drum-eigenmodes asset added in the DEMOS loop above. No decor variant.)
+// OPENING title hero: the membrane demo in HERO layout — a big mode palette at the
+// left + the vibrating membrane at the right + presets (still interactive), with
+// the nodal-lines pane and all text/labels removed. HERO flag injected here.
+let eigenHero = readFileSync(join(DEMODIR, 'drum-eigenmodes.html'), 'utf8');
+if (!eigenHero.includes('/* __HERO__ */')) throw new Error('drum-eigenmodes.html: __HERO__ slot not found');
+eigenHero = eigenHero.replace('/* __HERO__ */', 'HERO = true;');
+addAsset('eigenmodes-hero', 'demos/eigenmodes-hero.html', 'text/html', Buffer.from(eigenHero, 'utf8'));
 addAsset('logo', 'images/eigendeck-logo.svg', 'image/svg+xml', readFileSync(join(HERE, '..', '..', 'logo-icon-macos.svg')));
 // (per-slide equations are TEXT elements with LaTeX too — see below.)
 
@@ -79,7 +84,7 @@ const TITLE_EQ = [
   // Laplacian eigen-equation (the membrane hero) + a Navier–Stokes / Cauchy-momentum
   // equation, flanking the demo at the lower corners (see showcase-intro mockup).
   { tex: '-\\Delta u = \\lambda u',                             x: 40,   y: 690, w: 420, rot: -7, size: 54, color: '#2faa6b' },
-  { tex: '\\frac{d\\mathbf{u}}{dt}=\\frac{1}{\\rho}\\,\\nabla\\!\\cdot\\boldsymbol{\\sigma}+\\mathbf{a}', x: 1300, y: 700, w: 580, rot: 8, size: 50, color: '#e0574a' },
+  { tex: '\\frac{d\\mathbf{u}}{dt}=\\frac{1}{\\rho}\\,\\nabla\\!\\cdot\\boldsymbol{\\sigma}+\\mathbf{a}', x: 1300, y: 700, w: 580, rot: 8, size: 50, color: '#2a9db5' },
 ];
 
 // Title slide: a full-bleed hero demo (heroKey) + logo + wordmark + rotated
@@ -128,7 +133,7 @@ buildTextSlides().forEach((s) => { tx[s.id] = s; });
 
 // Explicit deck order (per the requested arrangement).
 const slides = [
-  titleSlide('s0', 'drum-eigenmodes.html', ctr('LaTeX math &amp; interactive technical elements') + ctr('… click through to see the other slides …')),
+  titleSlide('s0', 'eigenmodes-hero', ctr('LaTeX math &amp; interactive technical elements') + ctr('… click through to see the other slides …')),
   demoByFile['drum-eigenmodes.html'],
   tx['tx-cauchy'],
   demoByFile['gradient-descent.html'],
