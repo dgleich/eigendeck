@@ -66,7 +66,6 @@ $$\lVert A-A_k\rVert_2=\sigma_{k+1},\qquad \lVert A-A_k\rVert_F=\Bigl(\sum_{i\gt
       // rounded-fill panel (empty text box used as a colour card) + inset text box
       el({ id: 'eckart-panel', x: 150, y: 296, w: 1620, h: 540, backgroundColor: '#efe7d6', borderRadius: 18, boxShadow: true, html: '' }),
       el({ id: 'eckart-card', x: 196, y: 320, w: 1528, h: 492, fontSize: 34, color: '#2c2418', verticalAlign: 'middle', html: card }),
-      el({ id: 'eckart-foot', x: 152, y: 936, w: 1620, h: 72, fontSize: 26, color: '#8c7e6a', html: R`Exactly why the low-rank image demo compresses so well — and why reorganizing the image into a matrix of tiles lowers $\sigma_{k+1}$ at equal storage (Gleich, 2024).` }),
     ],
   };
 }
@@ -142,7 +141,6 @@ function slideQuote() {
     elements: [
       // full-bleed soft-rose background (a text element used purely as a colour panel)
       el({ id: 'q-bg', x: 0, y: 0, w: 1920, h: 1080, backgroundColor: '#fbeef2', html: '' }),
-      el({ id: 'q-eyebrow', x: 150, y: 322, w: 1620, h: 50, fontSize: 28, color: '#b8556b', html: ctr(eyebrow('Computer Science · on the point of it all')) }),
       el({ id: 'q-quote', preset: 'title', x: 180, y: 412, w: 1560, h: 380, fontSize: 108, color: '#7a3b4e', html: ctr('&ldquo;The purpose of computing is insight, not numbers.&rdquo;') }),
       el({ id: 'q-attr', x: 150, y: 802, w: 1620, h: 80, fontSize: 46, color: '#a86077', html: ctr('&mdash; Richard W. Hamming') }),
     ],
