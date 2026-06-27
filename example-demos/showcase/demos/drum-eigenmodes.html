@@ -39,6 +39,10 @@
   .dr-info { font-size: 0.6em; color: var(--eigendeck-muted, #888); margin-left: auto; }
   .dr-info b { color: var(--eigendeck-accent, #2563eb); font-variant-numeric: tabular-nums; }
   .dr-hint { font-size: 0.58em; color: var(--eigendeck-muted, #aaa); }
+  /* decor mode (title hero): just the vibrating membrane, full-bleed, no controls */
+  body.decor { padding: 0; }
+  body.decor .dr-left, body.decor .dr-ctrl, body.decor .dr-lab { display: none; }
+  body.decor .dr-row { gap: 0; }
 </style>
 </head>
 <body>
@@ -235,7 +239,8 @@
   window.addEventListener('resize', function () { drawTop(); draw3d(); });
 
   function frame() { t += 0.022; draw3d(); requestAnimationFrame(frame); }
-  function start() { setPreset('lambda'); resolve(); requestAnimationFrame(frame); }
+  var DECOR = false; /* __DECOR__ */
+  function start() { if (DECOR) document.body.classList.add('decor'); setPreset('lambda'); resolve(); requestAnimationFrame(frame); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 </script>

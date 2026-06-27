@@ -28,11 +28,17 @@
     color: var(--eigendeck-muted, #888); background: color-mix(in srgb, var(--eigendeck-bg, #fff) 70%, transparent);
     padding: 0.2em 0.7em; border-radius: 1em; pointer-events: none; transition: opacity 0.4s; user-select: none; }
   .gl-hint.gone { opacity: 0; }
+  .gl-info { position: absolute; left: 50%; bottom: 5%; transform: translateX(-50%); font-size: 0.7em;
+    color: var(--eigendeck-fg, #222); background: color-mix(in srgb, var(--eigendeck-bg, #fff) 78%, transparent);
+    padding: 0.25em 0.9em; border-radius: 1em; pointer-events: none; user-select: none; opacity: 0; transition: opacity 0.3s; white-space: nowrap; }
+  .gl-info.on { opacity: 1; }
+  .gl-info b { color: var(--eigendeck-accent, #2563eb); font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
   <canvas id="gl"></canvas>
-  <div class="gl-hint" id="gl-hint">hover a node for the name · drag to re-settle</div>
+  <div class="gl-hint" id="gl-hint">click two people → all shortest reply-paths · hover for a name · drag to re-settle</div>
+  <div class="gl-info" id="gl-info"></div>
 <script>/* __D3FORCE__ */</script>
 <script>
 var GRAPH = {"nodes":[{"id":0,"name":"Patricia Conrad","org":"HHS","c":1,"d":15},{"id":1,"name":"Lawrence Tabak","org":"HHS","c":0,"d":3},{"id":2,"name":"Jennifer Routh","org":"HHS","c":1,"d":5},{"id":3,"name":"Greg Folkers","org":"HHS","c":1,"d":3},{"id":4,"name":"Christie Johnson","org":"Other","c":1,"d":2},{"id":5,"name":"David Awwad","org":"HHS","c":1,"d":3},{"id":6,"name":"John Mascola","org":"HHS","c":0,"d":3},{"id":7,"name":"Courtney Billet","org":"HHS","c":1,"d":11},{"id":8,"name":"Cliff Lane","org":"HHS","c":1,"d":3},{"id":9,"name":"Larry Corey","org":"Other","c":0,"d":2},{"id":10,"name":"Francis Collins","org":"HHS","c":0,"d":14},{"id":11,"name":"Kara Harris","org":"HHS","c":1,"d":1},{"id":12,"name":"Robert Kadlec","org":"EOP","c":0,"d":6},{"id":13,"name":"Paul Stoffels","org":"Other","c":0,"d":2},{"id":14,"name":"Patrick Brennan","org":"EOP","c":1,"d":4},{"id":15,"name":"Shannah Goldner","org":"Other","c":1,"d":2},{"id":16,"name":"Mike Figliola","org":"Other","c":1,"d":2},{"id":17,"name":"Lesley Cahill Roy","org":"Other","c":1,"d":2},{"id":18,"name":"Mikael Dolsten","org":"Other","c":0,"d":3},{"id":19,"name":"Morten Sogaard","org":"Other","c":0,"d":3},{"id":20,"name":"Robert Eisinger","org":"HHS","c":0,"d":2},{"id":21,"name":"Dani Bolognesi","org":"Other","c":0,"d":1},{"id":22,"name":"Richard Hatchett","org":"Other","c":0,"d":3},{"id":23,"name":"Neil Shapiro","org":"HHS","c":0,"d":3},{"id":24,"name":"Devin O'Malley","org":"Other","c":1,"d":2},{"id":25,"name":"Carter Mecher","org":"Other","c":0,"d":7},{"id":26,"name":"Eva K Lee","org":"Other","c":0,"d":4},{"id":27,"name":"Tracey Mcnamara","org":"Other","c":0,"d":4},{"id":28,"name":"Duane Caneva","org":"Other","c":0,"d":5},{"id":29,"name":"Latika Chugh","org":"Other","c":1,"d":3},{"id":30,"name":"Kate Galatas","org":"FDA","c":1,"d":1},{"id":31,"name":"Ruth Katz","org":"Other","c":1,"d":2}],"links":[{"source":0,"target":2,"w":2},{"source":0,"target":4,"w":2},{"source":0,"target":7,"w":1},{"source":0,"target":11,"w":3},{"source":0,"target":15,"w":14},{"source":0,"target":16,"w":5},{"source":0,"target":29,"w":1},{"source":0,"target":31,"w":3},{"source":1,"target":12,"w":1},{"source":2,"target":24,"w":2},{"source":3,"target":0,"w":2},{"source":3,"target":7,"w":1},{"source":4,"target":0,"w":2},{"source":5,"target":0,"w":1},{"source":5,"target":29,"w":2},{"source":6,"target":10,"w":1},{"source":6,"target":12,"w":1},{"source":7,"target":0,"w":1},{"source":7,"target":2,"w":2},{"source":7,"target":3,"w":1},{"source":7,"target":8,"w":1},{"source":7,"target":10,"w":1},{"source":7,"target":14,"w":3},{"source":7,"target":17,"w":2},{"source":8,"target":7,"w":1},{"source":8,"target":12,"w":1},{"source":10,"target":1,"w":1},{"source":10,"target":6,"w":1},{"source":10,"target":9,"w":1},{"source":10,"target":12,"w":3},{"source":10,"target":13,"w":1},{"source":10,"target":18,"w":1},{"source":10,"target":23,"w":4},{"source":12,"target":10,"w":1},{"source":12,"target":25,"w":1},{"source":13,"target":10,"w":2},{"source":14,"target":2,"w":2},{"source":14,"target":10,"w":1},{"source":15,"target":0,"w":13},{"source":16,"target":0,"w":4},{"source":17,"target":7,"w":1},{"source":18,"target":19,"w":2},{"source":19,"target":10,"w":1},{"source":19,"target":18,"w":1},{"source":20,"target":9,"w":3},{"source":20,"target":21,"w":5},{"source":22,"target":25,"w":1},{"source":22,"target":26,"w":1},{"source":23,"target":1,"w":1},{"source":23,"target":10,"w":4},{"source":24,"target":2,"w":1},{"source":25,"target":22,"w":2},{"source":25,"target":27,"w":1},{"source":25,"target":28,"w":2},{"source":26,"target":25,"w":2},{"source":27,"target":26,"w":1},{"source":27,"target":28,"w":1},{"source":28,"target":25,"w":1},{"source":28,"target":26,"w":1},{"source":28,"target":27,"w":1},{"source":29,"target":5,"w":3},{"source":30,"target":14,"w":2},{"source":31,"target":0,"w":2}]};
@@ -40,9 +46,47 @@ var GRAPH = {"nodes":[{"id":0,"name":"Patricia Conrad","org":"HHS","c":1,"d":15}
   'use strict';
   if (typeof d3 === 'undefined' || !d3.forceSimulation) return;     // raw-open guard (d3 injected at build)
   function tv(n, fb) { try { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb; } catch (e) { return fb; } }
-  var cv = document.getElementById('gl'), ctx = cv.getContext('2d'), hint = document.getElementById('gl-hint');
-  var nodes = GRAPH.nodes, links = GRAPH.links;
+  var cv = document.getElementById('gl'), ctx = cv.getContext('2d'),
+      hint = document.getElementById('gl-hint'), info = document.getElementById('gl-info');
+  var nodes = GRAPH.nodes, links = GRAPH.links, N = nodes.length;
   var maxd = 1, maxw = 1; nodes.forEach(function (n) { if (n.d > maxd) maxd = n.d; }); links.forEach(function (l) { if (l.w > maxw) maxw = l.w; });
+
+  // ---- all-shortest-paths between two selected vertices --------------------
+  var sid = function (x) { return (typeof x === 'object') ? x.id : x; };          // link end → id (ids == 0..N-1)
+  var adj = []; for (var ai = 0; ai < N; ai++) adj.push([]);
+  // undirected + deduped (reciprocal reply edges collapse to one) so shortest-path counts are clean
+  links.forEach(function (l) { var a = sid(l.source), b = sid(l.target);
+    if (adj[a].indexOf(b) < 0) adj[a].push(b); if (adj[b].indexOf(a) < 0) adj[b].push(a); });
+  function ekey(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
+  function bfs(srcId) {                                                            // dist + #shortest-paths from src
+    var dist = new Array(N).fill(Infinity), cnt = new Array(N).fill(0); dist[srcId] = 0; cnt[srcId] = 1;
+    var q = [srcId];
+    for (var h = 0; h < q.length; h++) { var u = q[h], nb = adj[u];
+      for (var j = 0; j < nb.length; j++) { var v = nb[j];
+        if (dist[v] === Infinity) { dist[v] = dist[u] + 1; cnt[v] = cnt[u]; q.push(v); }
+        else if (dist[v] === dist[u] + 1) { cnt[v] += cnt[u]; } } }
+    return { dist: dist, cnt: cnt };
+  }
+  var selA = null, selB = null, pathNodes = null, pathEdges = null, nPaths = 0, pathLen = 0;
+  function clearSel() { selA = selB = null; pathNodes = pathEdges = null; info.classList.remove('on'); }
+  function computePaths() {
+    var A = bfs(selA.id), B = bfs(selB.id), D = A.dist[selB.id];
+    pathNodes = new Set(); pathEdges = new Set(); pathLen = D; nPaths = isFinite(D) ? A.cnt[selB.id] : 0;
+    if (isFinite(D)) {
+      for (var v = 0; v < N; v++) if (A.dist[v] + B.dist[v] === D) pathNodes.add(v);
+      links.forEach(function (l) { var a = sid(l.source), b = sid(l.target);
+        if (A.dist[a] + 1 + B.dist[b] === D || A.dist[b] + 1 + B.dist[a] === D) pathEdges.add(ekey(a, b)); });
+    }
+    if (!isFinite(D)) info.innerHTML = '<b>' + selA.name + '</b> and <b>' + selB.name + '</b> are not connected';
+    else info.innerHTML = '<b>' + nPaths + '</b> shortest path' + (nPaths === 1 ? '' : 's') + ' · length <b>' + pathLen + '</b> &nbsp;·&nbsp; ' + selA.name + ' ↔ ' + selB.name;
+    info.classList.add('on');
+  }
+  function pick(node) {                                                            // 1st click = A, 2nd = B, 3rd = new A
+    if (!selA || selB) { clearSel(); selA = node; }
+    else if (node === selA) { clearSel(); }
+    else { selB = node; computePaths(); }
+    draw();
+  }
 
   var W = 0, H = 0, dpr = 1, S = 1, sim = null, drag = null, hover = null;
   function resize() {
@@ -55,20 +99,28 @@ var GRAPH = {"nodes":[{"id":0,"name":"Patricia Conrad","org":"HHS","c":1,"d":15}
 
   function draw() {
     var fg = tv('--eigendeck-fg', '#222'), bg = tv('--eigendeck-bg', '#fff'), acc = tv('--eigendeck-accent', '#2563eb');
+    var sel = !!selA;                                  // a selection is in progress/complete → dim the rest
     ctx.clearRect(0, 0, W, H);
-    // edges (width by volume; incident-to-hover edges emphasised)
+    // edges (width by volume; shortest-path edges highlighted; off-path dimmed when selecting)
     for (var e = 0; e < links.length; e++) {
-      var L = links[e], inc = hover && (L.source === hover || L.target === hover);
-      ctx.strokeStyle = fg; ctx.globalAlpha = inc ? 0.5 : 0.2; ctx.lineWidth = (0.6 + 1.0 * (L.w / maxw)) * (inc ? 2 : 1) * dpr;
+      var L = links[e], onPath = pathEdges && pathEdges.has(ekey(sid(L.source), sid(L.target)));
+      var inc = hover && (L.source === hover || L.target === hover);
+      if (onPath) { ctx.strokeStyle = acc; ctx.globalAlpha = 0.95; ctx.lineWidth = (1.6 + 1.4 * (L.w / maxw)) * 2 * dpr; }
+      else { ctx.strokeStyle = fg; ctx.globalAlpha = sel ? 0.06 : (inc ? 0.5 : 0.2); ctx.lineWidth = (0.6 + 1.0 * (L.w / maxw)) * (inc ? 2 : 1) * dpr; }
       ctx.beginPath(); ctx.moveTo(L.source.x, L.source.y); ctx.lineTo(L.target.x, L.target.y); ctx.stroke();
     }
     ctx.globalAlpha = 1;
     // nodes
     for (var i = 0; i < nodes.length; i++) {
-      var n = nodes[i], rad = rOf(n) * (n === hover ? 1.25 : 1);
+      var n = nodes[i], endpt = (n === selA || n === selB), onP = pathNodes && pathNodes.has(n.id);
+      var dim = sel && !endpt && !onP;
+      var rad = rOf(n) * ((n === hover || endpt) ? 1.25 : 1);
+      ctx.globalAlpha = dim ? 0.25 : 1;
       ctx.beginPath(); ctx.arc(n.x, n.y, rad, 0, 6.283); ctx.fillStyle = commColor(n, acc); ctx.fill();
-      ctx.lineWidth = (n === hover ? 3 : 1.6) * dpr; ctx.strokeStyle = n === hover ? fg : bg; ctx.stroke();
+      ctx.lineWidth = (endpt ? 4 : n === hover ? 3 : 1.6) * dpr; ctx.strokeStyle = endpt ? acc : (n === hover ? fg : bg); ctx.stroke();
+      if (endpt) { ctx.globalAlpha = 1; ctx.lineWidth = 2 * dpr; ctx.strokeStyle = acc; ctx.beginPath(); ctx.arc(n.x, n.y, rad + 5 * dpr, 0, 6.283); ctx.stroke(); }
     }
+    ctx.globalAlpha = 1;
     // hover label (the only labels shown)
     if (hover) {
       var name = hover.name, fs = Math.max(12, S * 0.019), font = tv('--eigendeck-font', 'PT Sans');
@@ -92,15 +144,27 @@ var GRAPH = {"nodes":[{"id":0,"name":"Patricia Conrad","org":"HHS","c":1,"d":15}
 
   function at(e) { var r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * dpr, y = (e.clientY - r.top) * dpr;
     for (var i = nodes.length - 1; i >= 0; i--) if (Math.hypot(nodes[i].x - x, nodes[i].y - y) < rOf(nodes[i]) * 1.8) return [nodes[i], x, y]; return null; }
-  cv.addEventListener('pointerdown', function (e) { var n = at(e); if (!n) return; drag = n[0]; drag.fx = n[1]; drag.fy = n[2];
-    sim.alphaTarget(0.3).restart(); cv.classList.add('grabbing'); cv.setPointerCapture(e.pointerId); hint.classList.add('gone'); });
+  var downNode = null, downX = 0, downY = 0, moved = false;
+  cv.addEventListener('pointerdown', function (e) {
+    var n = at(e); hint.classList.add('gone'); downX = e.clientX; downY = e.clientY; moved = false;
+    if (!n) { downNode = null; return; }
+    downNode = n[0]; drag = n[0]; drag.fx = n[1]; drag.fy = n[2];
+    sim.alphaTarget(0.3).restart(); cv.classList.add('grabbing'); cv.setPointerCapture(e.pointerId);
+  });
   cv.addEventListener('pointermove', function (e) {
     var r = cv.getBoundingClientRect();
-    if (drag) { drag.fx = (e.clientX - r.left) * dpr; drag.fy = (e.clientY - r.top) * dpr; return; }
+    if (drag) {
+      if (!moved && Math.hypot(e.clientX - downX, e.clientY - downY) > 4) moved = true;   // beyond threshold → a drag
+      drag.fx = (e.clientX - r.left) * dpr; drag.fy = (e.clientY - r.top) * dpr; return;
+    }
     var n = at(e), nh = n ? n[0] : null; cv.style.cursor = nh ? 'pointer' : 'grab';
-    if (nh !== hover) { hover = nh; hint.classList.add('gone'); draw(); }     // repaint (sim may be idle)
+    if (nh !== hover) { hover = nh; draw(); }     // repaint (sim may be idle)
   });
-  function release() { if (!drag) return; drag.fx = null; drag.fy = null; drag = null; sim.alphaTarget(0); cv.classList.remove('grabbing'); }
+  function release() {
+    if (drag) { drag.fx = null; drag.fy = null; drag = null; sim.alphaTarget(0); cv.classList.remove('grabbing'); }
+    if (downNode && !moved) pick(downNode);       // a click (not a drag) → select endpoints for shortest paths
+    downNode = null;
+  }
   cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', release);
   cv.addEventListener('pointerleave', function () { if (hover) { hover = null; draw(); } });
   window.addEventListener('resize', function () { resize(); draw(); });
