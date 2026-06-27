@@ -59,12 +59,8 @@ for (const d of DEMOS) {
 // moved onto the slide itself as editable, rotated, softly-coloured TEXT elements.
 const titleDecor = readFileSync(join(DEMODIR, 'title-decor.html'), 'utf8').replace('__EQLAYER__', '');
 addAsset('title-decor.html', 'demos/title-decor.html', 'text/html', Buffer.from(titleDecor, 'utf8'));
-// hero for the OPENING title slide: the membrane-eigenmodes demo in "decor" mode
-// (full-bleed vibrating λ_ membrane, no controls). DECOR flag injected here.
-let eigenDecor = readFileSync(join(DEMODIR, 'drum-eigenmodes.html'), 'utf8');
-if (!eigenDecor.includes('/* __DECOR__ */')) throw new Error('drum-eigenmodes.html: __DECOR__ slot not found');
-eigenDecor = eigenDecor.replace('/* __DECOR__ */', 'DECOR = true;');
-addAsset('eigenmodes-decor', 'demos/eigenmodes-decor.html', 'text/html', Buffer.from(eigenDecor, 'utf8'));
+// (the OPENING title slide's hero is the INTERACTIVE membrane demo — the same
+// drum-eigenmodes asset added in the DEMOS loop above. No decor variant.)
 addAsset('logo', 'images/eigendeck-logo.svg', 'image/svg+xml', readFileSync(join(HERE, '..', '..', 'logo-icon-macos.svg')));
 // (per-slide equations are TEXT elements with LaTeX too — see below.)
 
@@ -80,6 +76,10 @@ const TITLE_EQ = [
   { tex: 'a^2 + b^2 = c^2',                                     x: 1360, y: 280, w: 500, rot: 9,   size: 54, color: '#ef86bf' },
   { tex: '\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx=\\sqrt{\\pi}', x: 36,  y: 398, w: 640, rot: 6,   size: 48, color: '#5b9bf0' },
   { tex: 'e^{i\\pi}+1=0',                                       x: 1380, y: 470, w: 480, rot: -6,  size: 58, color: '#f0b24a' },
+  // Laplacian eigen-equation (the membrane hero) + a Navier–Stokes / Cauchy-momentum
+  // equation, flanking the demo at the lower corners (see showcase-intro mockup).
+  { tex: '-\\Delta u = \\lambda u',                             x: 40,   y: 690, w: 420, rot: -7, size: 54, color: '#2faa6b' },
+  { tex: '\\frac{d\\mathbf{u}}{dt}=\\frac{1}{\\rho}\\,\\nabla\\!\\cdot\\boldsymbol{\\sigma}+\\mathbf{a}', x: 1300, y: 700, w: 580, rot: 8, size: 50, color: '#e0574a' },
 ];
 
 // Title slide: a full-bleed hero demo (heroKey) + logo + wordmark + rotated
@@ -128,7 +128,7 @@ buildTextSlides().forEach((s) => { tx[s.id] = s; });
 
 // Explicit deck order (per the requested arrangement).
 const slides = [
-  titleSlide('s0', 'eigenmodes-decor', ctr('LaTeX math &amp; interactive technical elements') + ctr('… a tour that opens on eigenvectors made visible …')),
+  titleSlide('s0', 'drum-eigenmodes.html', ctr('LaTeX math &amp; interactive technical elements') + ctr('… click through to see the other slides …')),
   demoByFile['drum-eigenmodes.html'],
   tx['tx-cauchy'],
   demoByFile['gradient-descent.html'],
