@@ -42,6 +42,27 @@ describe('arrowGeometry (#98)', () => {
     expect(near(g.line.y2, baseMidY, 1e-9)).toBe(true);
   });
 
+  it("short arrow: 'both' insets clamp so the line never reverses", () => {
+    // len 5 < combined inset (~34.6). Without the clamp x1→17.3, x2→-12.3 —
+    // the stroke would run backwards and be longer than the arrow itself.
+    const g = arrowGeometry(0, 0, 5, 0, 20, 'both');
+    // Endpoints meet at the midpoint (per-head inset clamped to len/2 = 2.5),
+    // so the line direction matches the arrow direction (x1 ≤ x2), never flips.
+    expect(g.line.x1).toBeLessThanOrEqual(g.line.x2 + 1e-9);
+    expect(near(g.line.x1, 2.5)).toBe(true);
+    expect(near(g.line.x2, 2.5)).toBe(true);
+    // Heads still drawn at the true endpoints, full size.
+    expect(g.triangles[0][0]).toEqual([5, 0]);
+    expect(g.triangles[1][0]).toEqual([0, 0]);
+  });
+
+  it("short arrow: single 'end' head inset clamps to the line length", () => {
+    const g = arrowGeometry(0, 0, 5, 0, 20);   // 'end', len 5 < inset ~17.3
+    expect(g.line.x1).toBe(0);                  // start untouched
+    expect(near(g.line.x2, 0)).toBe(true);      // end pulled in at most to the start, not past
+    expect(g.line.x2).toBeGreaterThanOrEqual(0);
+  });
+
   it('triPoints + arrowBBox', () => {
     expect(triPoints([[1, 2], [3, 4]])).toBe('1,2 3,4');
     const bb = arrowBBox(0, 0, 100, 0, 20, 'both', 5);

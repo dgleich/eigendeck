@@ -11,9 +11,18 @@ export function arrowGeometry(x1, y1, x2, y2, headSize, heads) {
   const ha = ARROW_HA;
   const ang = Math.atan2(y2 - y1, x2 - x1);
   const ux = Math.cos(ang), uy = Math.sin(ang);
-  const inset = headSize * Math.cos(ha);                 // tip → base-centre distance along the line
   const atEnd = heads !== 'start' && heads !== 'none';   // default/'end'/'both'
   const atStart = heads === 'start' || heads === 'both';
+  // tip → base-centre distance along the line. For an arrow shorter than the
+  // combined insets, pulling both endpoints in would make them cross past each
+  // other (the stroke drawn backwards, longer than the arrow). Clamp so the
+  // per-head insets never sum past the line length — worst case the endpoints
+  // meet (zero-length line, heads just touching), never reverse.
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  const nHeads = (atStart ? 1 : 0) + (atEnd ? 1 : 0);
+  const inset = nHeads > 0
+    ? Math.min(headSize * Math.cos(ha), len / nHeads)
+    : headSize * Math.cos(ha);
   const tri = (tx, ty, a) => [
     [tx, ty],
     [tx - headSize * Math.cos(a - ha), ty - headSize * Math.sin(a - ha)],
