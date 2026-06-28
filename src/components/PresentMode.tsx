@@ -51,6 +51,7 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
   const [zoom, setZoom] = useState(1);
   const [focus, setFocus] = useState({ x: 0.5, y: 0.5 });
   const toggleZoom = useCallback(() => setZoom((z) => (z > 1 ? 1 : ZOOM_LEVEL)), []);
+  const zoomOut = useCallback(() => setZoom(1), []);
   const shownIndexRef = useRef(currentIndex);
 
   const totalSlides = presentation.slides.length;
@@ -186,6 +187,7 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
         className="present-viewport"
         ref={viewportRef}
         style={zoom > 1 ? { overflow: 'hidden', cursor: 'zoom-out' } : undefined}
+        onClick={zoom > 1 ? () => zoomOut() : undefined}
         onMouseMove={zoom > 1 ? (e) => {
           // Map the cursor into the WRAPPER's centered layout box (not the raw
           // viewport) so the focal point is letterbox-correct — transform-origin %
