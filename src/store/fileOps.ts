@@ -23,20 +23,11 @@ import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { buildTextElementSvgMarkup } from '../components/TextElementSvg';
 import { demoVarsCssForSlide } from '../lib/demoThemeInject';
 import { previewKey, loadPreviewDataUrl } from '../lib/previewCache';
+import { pngBytesToDataUrl } from '../lib/assetCachePreview.mjs';
 import { ASSET_TIER } from '../lib/assetCache';
 import { renderAsset } from '../lib/assetRenderer';
 import type { TextElement, Slide, SlideElement, NotebookElement } from '../types/presentation';
 import { renderNotebookElementHtml } from '../lib/notebookExport';
-
-/** PNG bytes → base64 data: URL (for inlining a rasterized preview in the
- *  exported HTML, where a blob: URL wouldn't survive in the written file). */
-function pngBytesToDataUrl(bytes: Uint8Array): string {
-  let binary = '';
-  for (let k = 0; k < bytes.length; k += 8192) {
-    binary += String.fromCharCode(...bytes.slice(k, k + 8192));
-  }
-  return `data:image/png;base64,${btoa(binary)}`;
-}
 
 /**
  * Resolve an element's preview PNG to a base64 data: URL for export, mirroring

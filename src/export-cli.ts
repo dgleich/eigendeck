@@ -16,6 +16,7 @@ import { buildExportHtml } from './lib/exportCore.mjs';
 import { renderMathInHtml, applyMathPreamble } from './lib/mathjax';
 import { fontForPreset, fontFamilyForPreset } from './lib/fonts';
 import { mathCacheKey } from './lib/mathjaxRenderer';
+import { pngBytesToDataUrl, previewLookupKey, pickLargestVariant, type CacheVariant } from './lib/assetCachePreview.mjs';
 
 interface CachedMathRow {
   key: string; tex: string; bundle: string; display: boolean; preamble: string;
@@ -31,27 +32,22 @@ interface CachedMathRow {
  * render for the element's (source_id, variant) and return a data: URL. Returns
  * null on a miss → exportCore falls back to the placeholder, same as before.
  */
-interface CacheVariant { variant: string; width: number; height: number; }
+// Signature matches the exportCore contract `(element, slide)`; `slide` is
+// unused here (the cache key is element-only) but accepted for honesty.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getElementPreview(el: any): Promise<string | null> {
+async function getElementPreview(el: any, _slide?: any): Promise<string | null> {
   try {
-    let sourceId: string, variant: string;
-    if (el.type === 'image' && el.kind === 'pdf') { sourceId = el.assetId; variant = el.snapshotVariant ?? '_'; }
-    else if (el.type === 'notebook' || el.type === 'video') { sourceId = el.syncId ?? el.id; variant = 'preview'; }
-    else return null;
-    const variants = await invoke<CacheVariant[]>('db_list_asset_cache_variants', { sourceId });
-    const matches = (variants || []).filter((v) => v.variant === variant);
-    if (!matches.length) return null;
-    matches.sort((a, b) => b.width * b.height - a.width * a.height);   // largest cached render
-    const best = matches[0];
+    const key = previewLookupKey(el);
+    if (!key) return null;
+    const variants = await invoke<CacheVariant[]>('db_list_asset_cache_variants', { sourceId: key.sourceId });
+    const best = pickLargestVariant(variants, key.variant);
+    if (!best) return null;
     const buf = await invoke<ArrayBuffer>('db_get_asset_cache_bytes', {
-      sourceId, variant, width: best.width, height: best.height,
+      sourceId: key.sourceId, variant: key.variant, width: best.width, height: best.height,
     });
     const bytes = new Uint8Array(buf);
     if (!bytes.length) return null;
-    let binary = '';
-    for (let k = 0; k < bytes.length; k += 8192) binary += String.fromCharCode(...bytes.slice(k, k + 8192));
-    return `data:image/png;base64,${btoa(binary)}`;
+    return pngBytesToDataUrl(bytes);
   } catch (e) {
     console.warn('getElementPreview (cli) failed:', e);
     return null;
