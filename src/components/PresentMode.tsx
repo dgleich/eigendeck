@@ -187,9 +187,15 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
         ref={viewportRef}
         style={zoom > 1 ? { overflow: 'hidden', cursor: 'zoom-out' } : undefined}
         onMouseMove={zoom > 1 ? (e) => {
-          // mouse position (normalized) becomes the zoom focal point → pan
+          // Map the cursor into the WRAPPER's centered layout box (not the raw
+          // viewport) so the focal point is letterbox-correct — transform-origin %
+          // is relative to the wrapper, and the viewport flex-centers it, so a
+          // window whose aspect ≠ the slide's has bars we must subtract. (#29)
           const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-          setFocus({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+          const ww = slideW * scale, wh = slideH * scale;
+          const ox = (r.width - ww) / 2, oy = (r.height - wh) / 2;   // letterbox offset
+          const clamp = (v: number) => Math.max(0, Math.min(1, v));
+          setFocus({ x: clamp((e.clientX - r.left - ox) / ww), y: clamp((e.clientY - r.top - oy) / wh) });
         } : undefined}
       >
         <div
