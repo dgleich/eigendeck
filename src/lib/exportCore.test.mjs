@@ -302,6 +302,27 @@ describe('buildExportHtml', () => {
     const restored = JSON.parse(decodeURIComponent(escape(atob(match[1]))));
     expect(restored.slides[0].elements[0].padding).toEqual({ top: 24, right: 40, bottom: 24, left: 40 });
   });
+
+  it('round-trips a double-headed, semi-transparent arrow (#98)', async () => {
+    const p = makePresentation({
+      slides: [{
+        id: 's1', layout: 'default', notes: '',
+        elements: [{ id: 'a1', type: 'arrow', x1: 0, y1: 0, x2: 100, y2: 0, color: '#2563eb', strokeWidth: 8, headSize: 20, heads: 'both', opacity: 0.5 }],
+      }],
+    });
+    const html = await buildExportHtml({
+      presentation: p, readFile: async () => new Uint8Array([0]), readTextFile: async () => '',
+      renderMath: null, applyMathPreamble: null,
+    });
+    expect(html).toContain('<g opacity="0.5">');
+    expect((html.match(/<polygon /g) || []).length).toBeGreaterThanOrEqual(2);   // both heads
+    // line is pulled back from the tip (no poke-through): x2 < 100
+    const m = html.match(/<line x1="([\d.]+)"[^>]*x2="([\d.]+)"/);
+    expect(parseFloat(m[2])).toBeLessThan(100);
+    const src = JSON.parse(decodeURIComponent(escape(atob(html.match(/<!-- eigendeck-source: (.+?) -->/)[1]))));
+    expect(src.slides[0].elements[0].heads).toBe('both');
+    expect(src.slides[0].elements[0].opacity).toBe(0.5);
+  });
 });
 
 describe('htmlEscapeForSrcdoc', () => {

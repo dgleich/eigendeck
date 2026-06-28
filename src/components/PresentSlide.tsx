@@ -15,6 +15,7 @@ import type { Presentation, Slide, SlideElement, TextElement } from '../types/pr
 import { TextElementSvg } from './TextElementSvg';
 import { NotebookContent } from './notebook/NotebookContent';
 import { useDemoThemeInjection } from '../lib/demoThemeInject';
+import { arrowGeometry, triPoints } from '../lib/arrowGeometry.mjs';
 
 export interface PresentCtx {
   slide: Slide;
@@ -58,12 +59,13 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
       );
     case 'arrow': {
       const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;
-      const angle = Math.atan2(y2 - y1, x2 - x1);
-      const ha = Math.PI / 6;
+      const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);
       return (
         <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex, ...style }}>
-          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={strokeWidth} />
-          <polygon points={`${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}`} fill={color} />
+          <g opacity={el.opacity ?? 1}>
+            <line x1={geo.line.x1} y1={geo.line.y1} x2={geo.line.x2} y2={geo.line.y2} stroke={color} strokeWidth={strokeWidth} />
+            {geo.triangles.map((t, i) => <polygon key={i} points={triPoints(t)} fill={color} />)}
+          </g>
         </svg>
       );
     }

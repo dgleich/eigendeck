@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { getPreference } from '../lib/preferences';
 import { snapToGrid, resizeEdgeToGrid } from '../lib/grid';
+import { arrowGeometry, arrowBBox } from '../lib/arrowGeometry.mjs';
 import { sanitizeRichText } from '../lib/sanitizeRichText';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useDemoThemeInjection, demoVarsCssForSlide } from '../lib/demoThemeInject';
@@ -1215,17 +1216,9 @@ function ArrowRenderer({
     [x1, y1, x2, y2, scale, onUpdate, onSelect]
   );
 
-  const angle = Math.atan2(y2 - y1, x2 - x1);
-  const ha = Math.PI / 6;
-  const hx1 = x2 - headSize * Math.cos(angle - ha);
-  const hy1 = y2 - headSize * Math.sin(angle - ha);
-  const hx2 = x2 - headSize * Math.cos(angle + ha);
-  const hy2 = y2 - headSize * Math.sin(angle + ha);
-  const pad = 30;
-  const minX = Math.min(x1, x2, hx1, hx2) - pad;
-  const minY = Math.min(y1, y2, hy1, hy2) - pad;
-  const maxX = Math.max(x1, x2, hx1, hx2) + pad;
-  const maxY = Math.max(y1, y2, hy1, hy2) + pad;
+  const geo = arrowGeometry(x1, y1, x2, y2, headSize, a.heads);   // inset line + head triangle(s)
+  const bb = arrowBBox(x1, y1, x2, y2, headSize, a.heads, 30);
+  const { minX, minY, maxX, maxY } = bb;
 
   return (
     <div className={`slide-element el-arrow ${isSelected ? 'is-selected' : ''}`}
@@ -1257,10 +1250,13 @@ function ArrowRenderer({
       <svg width={maxX - minX} height={maxY - minY} style={{ overflow: 'visible' }}>
         <line x1={x1 - minX} y1={y1 - minY} x2={x2 - minX} y2={y2 - minY}
           stroke="transparent" strokeWidth={24} style={{ pointerEvents: 'stroke', cursor: 'move' }} onPointerDown={handleBody} />
-        <line x1={x1 - minX} y1={y1 - minY} x2={x2 - minX} y2={y2 - minY}
-          stroke={color} strokeWidth={strokeWidth} style={{ pointerEvents: 'none' }} />
-        <polygon points={`${x2 - minX},${y2 - minY} ${hx1 - minX},${hy1 - minY} ${hx2 - minX},${hy2 - minY}`}
-          fill={color} style={{ pointerEvents: 'none' }} />
+        <g opacity={a.opacity ?? 1} style={{ pointerEvents: 'none' }}>
+          <line x1={geo.line.x1 - minX} y1={geo.line.y1 - minY} x2={geo.line.x2 - minX} y2={geo.line.y2 - minY}
+            stroke={color} strokeWidth={strokeWidth} />
+          {geo.triangles.map((t, i) => (
+            <polygon key={i} points={t.map((p) => `${p[0] - minX},${p[1] - minY}`).join(' ')} fill={color} />
+          ))}
+        </g>
         <circle cx={x1 - minX} cy={y1 - minY} r={8} fill="#fff" stroke={color} strokeWidth={2}
           className="arrow-handle" style={{ pointerEvents: 'all', cursor: 'crosshair' }}
           onPointerDown={(e) => handleEndpoint(e, 'start')} />
