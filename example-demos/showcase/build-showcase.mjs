@@ -83,15 +83,15 @@ const TITLE_EQ = [
   { tex: 'e^{i\\pi}+1=0',                                       x: 1380, y: 470, w: 480, rot: -6,  size: 58, color: '#f0b24a' },
   // Laplacian eigen-equation (the membrane hero) + a Navier–Stokes / Cauchy-momentum
   // equation, flanking the demo at the lower corners (see showcase-intro mockup).
-  { tex: '-\\Delta u = \\lambda u',                             x: 40,   y: 690, w: 420, rot: -7, size: 54, color: '#2faa6b' },
-  { tex: '\\frac{d\\mathbf{u}}{dt}=\\frac{1}{\\rho}\\,\\nabla\\!\\cdot\\boldsymbol{\\sigma}+\\mathbf{a}', x: 1300, y: 700, w: 580, rot: 8, size: 50, color: '#2a9db5' },
+  { tex: '-\\Delta u = \\lambda u',                             x: 20,   y: 770, w: 420, rot: -7, size: 50, color: '#2faa6b' },
+  { tex: '\\frac{d\\mathbf{u}}{dt}=\\frac{1}{\\rho}\\,\\nabla\\!\\cdot\\boldsymbol{\\sigma}+\\mathbf{a}', x: 1470, y: 780, w: 440, rot: 8, size: 42, color: '#2a9db5' },
 ];
 
-// Title slide: a full-bleed hero demo (heroKey) + logo + wordmark + rotated
-// equations + subtitle. The deck OPENS serious (eigenmodes hero) and CLOSES
-// whimsical (bouncing-balls hero).
-function titleSlide(pfx, heroKey, subHtml) {
-  const els = [{ id: `${pfx}-decor`, type: 'demo', assetId: assetId[heroKey], position: { x: 0, y: 0, width: 1920, height: 1080 } }];
+// Title slide: a hero demo (heroKey, position = heroPos or full-bleed) + logo +
+// wordmark + rotated equations + subtitle. The deck OPENS serious (eigenmodes
+// hero, confined to the lower third) and CLOSES whimsical (full-bleed balls).
+function titleSlide(pfx, heroKey, subHtml, heroPos) {
+  const els = [{ id: `${pfx}-decor`, type: 'demo', assetId: assetId[heroKey], position: heroPos || { x: 0, y: 0, width: 1920, height: 1080 } }];
   TITLE_EQ.forEach((e, i) => els.push({
     id: `${pfx}-eq${i}`, type: 'text', preset: 'textbox', color: e.color, fontSize: e.size, rotation: e.rot,
     html: ctr('$' + e.tex + '$'), position: { x: e.x, y: e.y, width: e.w, height: Math.round(e.size * 2.4) },
@@ -133,7 +133,7 @@ buildTextSlides().forEach((s) => { tx[s.id] = s; });
 
 // Explicit deck order (per the requested arrangement).
 const slides = [
-  titleSlide('s0', 'eigenmodes-hero', ctr('LaTeX math &amp; interactive technical elements') + ctr('… click through to see the other slides …')),
+  titleSlide('s0', 'eigenmodes-hero', ctr('LaTeX math &amp; interactive technical elements') + ctr('… click through to see the other slides …'), { x: 460, y: 700, width: 1000, height: 380 }),
   demoByFile['drum-eigenmodes.html'],
   tx['tx-cauchy'],
   demoByFile['gradient-descent.html'],
