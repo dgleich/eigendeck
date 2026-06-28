@@ -16,10 +16,42 @@ import { buildExportHtml } from './lib/exportCore.mjs';
 import { renderMathInHtml, applyMathPreamble } from './lib/mathjax';
 import { fontForPreset, fontFamilyForPreset } from './lib/fonts';
 import { mathCacheKey } from './lib/mathjaxRenderer';
+import { pngBytesToDataUrl, previewLookupKey, pickLargestVariant, type CacheVariant } from './lib/assetCachePreview.mjs';
 
 interface CachedMathRow {
   key: string; tex: string; bundle: string; display: boolean; preamble: string;
   svg: string; width: string | null; height: string | null; valign: string | null;
+}
+
+/**
+ * #85 — notebook / video / PDF-image elements can't be rendered headlessly, so
+ * the static export embeds their cached preview PNG (asset_cache). The app export
+ * passes this callback (fileOps.getElementPreviewDataUrl); the CLI used to omit
+ * it, so those elements showed "NB"/"PDF" placeholders. Read-only cache lookup
+ * (a deck opened in the editor has previews cached): pick the LARGEST cached
+ * render for the element's (source_id, variant) and return a data: URL. Returns
+ * null on a miss → exportCore falls back to the placeholder, same as before.
+ */
+// Signature matches the exportCore contract `(element, slide)`; `slide` is
+// unused here (the cache key is element-only) but accepted for honesty.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getElementPreview(el: any, _slide?: any): Promise<string | null> {
+  try {
+    const key = previewLookupKey(el);
+    if (!key) return null;
+    const variants = await invoke<CacheVariant[]>('db_list_asset_cache_variants', { sourceId: key.sourceId });
+    const best = pickLargestVariant(variants, key.variant);
+    if (!best) return null;
+    const buf = await invoke<ArrayBuffer>('db_get_asset_cache_bytes', {
+      sourceId: key.sourceId, variant: key.variant, width: best.width, height: best.height,
+    });
+    const bytes = new Uint8Array(buf);
+    if (!bytes.length) return null;
+    return pngBytesToDataUrl(bytes);
+  } catch (e) {
+    console.warn('getElementPreview (cli) failed:', e);
+    return null;
+  }
 }
 
 /**
@@ -127,6 +159,7 @@ async function main() {
       },
       renderMath: cachingRender,
       applyMathPreamble: applyMathPreamble,
+      getElementPreview,   // #85: embed cached notebook/video/PDF previews (not placeholders)
       // Per-preset bundle resolver — same chain as the editor.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       resolveMathBundle: (preset: string, slide: any) => {
