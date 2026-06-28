@@ -88,6 +88,19 @@ if (
     // Cached element preview as a data URL (#86) — lets E2E verify a demo's
     // preview is RE-captured after a theme switch (the bytes must change).
     previewDataUrl: (key: string) => loadPreviewDataUrl(key),
+    // In-page rasterization of any element → PNG data URL (modern-screenshot).
+    // WebKitWebDriver's /screenshot command HANGS while present mode is mounted
+    // (its full-screen compositing trips WebKitGTK's snapshot — full-page AND
+    // element screenshots both stall), yet the webview itself rasterizes fine
+    // (canvas/SVG work). This lets E2E capture present mode (and anything else)
+    // headlessly without the WebDriver snapshot. (#29 verification path)
+    captureElement: async (selector: string): Promise<string | null> => {
+      const node = document.querySelector(selector) as HTMLElement | null;
+      if (!node) return null;
+      const r = node.getBoundingClientRect();
+      const { domToDataUrl } = await import('modern-screenshot');
+      return domToDataUrl(node, { width: Math.round(r.width), height: Math.round(r.height), scale: 1 });
+    },
     // Undo-gesture transaction helpers (#55) — lets E2E exercise the real
     // pause/resume the canvas drag + inspector sliders use.
     pauseUndo, resumeUndo,
