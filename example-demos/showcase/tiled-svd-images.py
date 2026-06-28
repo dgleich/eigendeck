@@ -14,17 +14,21 @@ Then paste the printed JSON into tiled-svd.html in place of __IMAGES__.
 import base64, json
 import numpy as np
 from skimage import data, transform
-from PIL import Image  # noqa: F401  (kept for parity with the build)
+from skimage.util import img_as_float, img_as_ubyte
 
 SRC = [("camera", data.camera, "Cameraman"),
        ("text",   data.text,   "Text"),
        ("moon",   data.moon,   "Moon")]
+SIZE = 384   # larger than 128 so low-rank compression artifacts are actually visible
 out = {}
 for name, fn, label in SRC:
-    im = np.asarray(fn(), dtype=float)
+    # img_as_float normalizes uint8 [0,255] → [0,1] regardless of skimage version
+    # (newer transform.resize preserves the input range, so the old "*255" turned
+    # a [0,255] image all-white). img_as_ubyte then maps [0,1] back to [0,255].
+    im = img_as_float(fn())
     h, w = im.shape[:2]; s = min(h, w)
     im = im[(h - s) // 2:(h - s) // 2 + s, (w - s) // 2:(w - s) // 2 + s]
-    g = (transform.resize(im, (128, 128), anti_aliasing=True) * 255).clip(0, 255).astype(np.uint8)
-    out[name] = {"w": 128, "h": 128, "label": label,
+    g = img_as_ubyte(transform.resize(im, (SIZE, SIZE), anti_aliasing=True).clip(0, 1))
+    out[name] = {"w": SIZE, "h": SIZE, "label": label,
                  "data": base64.b64encode(g.tobytes()).decode()}
 print(json.dumps(out))

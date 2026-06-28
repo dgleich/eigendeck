@@ -122,7 +122,9 @@ function demoSlide(d) {
     // no-equation slides reclaim the freed strip — the demo starts higher + taller
     els.push({ id: `${key}-demo`, type: 'demo', assetId: assetId[d.file], position: { x: 60, y: eqTex ? 240 : 168, width: 1800, height: eqTex ? 728 : 800 } });
   }
-  els.push({ id: `${key}-cap`, type: 'text', preset: 'footnote', html: d.cap, position: { x: 60, y: 984, width: 1800, height: 40 } });
+  // footnote is bottom-aligned, so a taller box grows UPWARD — long captions
+  // (e.g. the graph slide) get 2–3 lines instead of being clipped, same baseline.
+  els.push({ id: `${key}-cap`, type: 'text', preset: 'footnote', html: d.cap, position: { x: 60, y: 940, width: 1800, height: 84 } });
   return { id: key, notes: '', elements: els };
 }
 
