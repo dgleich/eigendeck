@@ -44,6 +44,13 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
   const [prevIndex, setPrevIndex] = useState<number | null>(null);
   const [animating, setAnimating] = useState(false);
   const animTimerRef = useRef<number | null>(null);
+
+  // Zoom-into-slide (#29): scale the slide wrapper around a focal point; the
+  // mouse pans while zoomed. `focus` is normalized [0,1] over the viewport.
+  const ZOOM_LEVEL = 2.2;
+  const [zoom, setZoom] = useState(1);
+  const [focus, setFocus] = useState({ x: 0.5, y: 0.5 });
+  const toggleZoom = useCallback(() => setZoom((z) => (z > 1 ? 1 : ZOOM_LEVEL)), []);
   const shownIndexRef = useRef(currentIndex);
 
   const totalSlides = presentation.slides.length;
@@ -113,8 +120,14 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape: exit present (main) or close the projector window (controlled).
-      if (e.key === 'Escape') { if (onExit) onExit(); else setPresenting(false); return; }
+      // Escape: zoom out first if zoomed in (#29); else exit present / close the
+      // projector window. Functional update reads the live zoom without a dep.
+      if (e.key === 'Escape') {
+        let wasZoomed = false;
+        setZoom((z) => { wasZoomed = z > 1; return 1; });
+        if (wasZoomed) return;
+        if (onExit) onExit(); else setPresenting(false); return;
+      }
       // NOTE: controlled (projector) windows still navigate via the keyboard —
       // goTo() forwards the target to the speaker window when controlled.
       // When focus is in a text-entry context (a notebook code cell's
@@ -137,13 +150,14 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
           // Inline speaker panel only makes sense in the single-window present.
           if (!controlled) { e.preventDefault(); setShowSpeaker((prev) => !prev); }
           break;
+        case 'z': case 'Z': e.preventDefault(); toggleZoom(); break;   // #29: zoom into the slide
         case 'Home': e.preventDefault(); goTo(0); break;
         case 'End': e.preventDefault(); goTo(totalSlides - 1); break;
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goNext, goPrev, goTo, totalSlides, setPresenting, controlled, onExit]);
+  }, [goNext, goPrev, goTo, totalSlides, setPresenting, controlled, onExit, toggleZoom]);
 
   useEffect(() => {
     return () => {
@@ -168,8 +182,25 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
 
   return (
     <div className={`present-mode ${showSpeaker ? 'with-speaker' : ''}`}>
-      <div className="present-viewport" ref={viewportRef}>
-        <div className="present-slide-wrapper" style={{ width: slideW * scale, height: slideH * scale }}>
+      <div
+        className="present-viewport"
+        ref={viewportRef}
+        style={zoom > 1 ? { overflow: 'hidden', cursor: 'zoom-out' } : undefined}
+        onMouseMove={zoom > 1 ? (e) => {
+          // mouse position (normalized) becomes the zoom focal point → pan
+          const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          setFocus({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+        } : undefined}
+      >
+        <div
+          className="present-slide-wrapper"
+          style={{
+            width: slideW * scale, height: slideH * scale,
+            transform: zoom > 1 ? `scale(${zoom})` : undefined,
+            transformOrigin: `${focus.x * 100}% ${focus.y * 100}%`,
+            transition: 'transform 0.25s ease',
+          }}
+        >
           <div
             className="present-slide"
             style={{ width: slideW, height: slideH, transform: `scale(${scale})`, transformOrigin: 'top left',
@@ -275,6 +306,23 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
         </div>
       </div>
       {showSpeaker && <SpeakerPanel />}
+      {/* #29 — press to zoom into the slide; mouse pans while zoomed (also 'Z' / Esc) */}
+      <button
+        className="present-zoom-btn"
+        onClick={toggleZoom}
+        title={zoom > 1 ? 'Zoom out (Z / Esc)' : 'Zoom in (Z)'}
+        aria-label={zoom > 1 ? 'Zoom out' : 'Zoom in'}
+        style={{
+          position: 'absolute', right: 18, bottom: 18, zIndex: 2000,
+          width: 44, height: 44, borderRadius: '50%', display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+          border: '1px solid rgba(255,255,255,0.25)', background: 'rgba(0,0,0,0.45)',
+          color: '#fff', fontSize: 22, lineHeight: 1, cursor: 'pointer',
+          opacity: 0.55, transition: 'opacity 0.15s',
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.55'; }}
+      >{zoom > 1 ? '−' : '+'}</button>
     </div>
   );
 }
