@@ -45,13 +45,19 @@ function addAsset(key, path, mime, bytes) {
   assets.push({ assetId: id, path, mime, size: bytes.length, data: b64(bytes) });
   return id;
 }
-// demo HTMLs (graph-layout gets the d3-force bundle injected into its slot)
+// demo HTMLs get vendored libraries injected into their slots at build time:
+//   graph-layout → d3-force ;  tiled-svd → svd-js (Golub–Reinsch SVD).
 const d3force = readFileSync(join(HERE, 'vendor', 'd3-force.min.js'), 'utf8');
+const svdjs = readFileSync(join(HERE, 'vendor', 'svd-js.umd.js'), 'utf8');
 for (const d of DEMOS) {
   let html = readFileSync(join(DEMODIR, d.file), 'utf8');
   if (d.file === 'graph-layout.html') {
     html = html.replace('/* __D3FORCE__ */', () => d3force);   // function replacer → no $-escaping surprises
     if (html.includes('/* __D3FORCE__ */')) throw new Error('graph-layout.html: __D3FORCE__ slot not found');
+  }
+  if (d.file === 'tiled-svd.html') {
+    html = html.replace('/* __SVDJS__ */', () => svdjs);
+    if (html.includes('/* __SVDJS__ */')) throw new Error('tiled-svd.html: __SVDJS__ slot not found');
   }
   addAsset(d.file, `demos/${d.file}`, 'text/html', Buffer.from(html, 'utf8'));
 }
