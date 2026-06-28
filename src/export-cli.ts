@@ -23,6 +23,42 @@ interface CachedMathRow {
 }
 
 /**
+ * #85 — notebook / video / PDF-image elements can't be rendered headlessly, so
+ * the static export embeds their cached preview PNG (asset_cache). The app export
+ * passes this callback (fileOps.getElementPreviewDataUrl); the CLI used to omit
+ * it, so those elements showed "NB"/"PDF" placeholders. Read-only cache lookup
+ * (a deck opened in the editor has previews cached): pick the LARGEST cached
+ * render for the element's (source_id, variant) and return a data: URL. Returns
+ * null on a miss → exportCore falls back to the placeholder, same as before.
+ */
+interface CacheVariant { variant: string; width: number; height: number; }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getElementPreview(el: any): Promise<string | null> {
+  try {
+    let sourceId: string, variant: string;
+    if (el.type === 'image' && el.kind === 'pdf') { sourceId = el.assetId; variant = el.snapshotVariant ?? '_'; }
+    else if (el.type === 'notebook' || el.type === 'video') { sourceId = el.syncId ?? el.id; variant = 'preview'; }
+    else return null;
+    const variants = await invoke<CacheVariant[]>('db_list_asset_cache_variants', { sourceId });
+    const matches = (variants || []).filter((v) => v.variant === variant);
+    if (!matches.length) return null;
+    matches.sort((a, b) => b.width * b.height - a.width * a.height);   // largest cached render
+    const best = matches[0];
+    const buf = await invoke<ArrayBuffer>('db_get_asset_cache_bytes', {
+      sourceId, variant, width: best.width, height: best.height,
+    });
+    const bytes = new Uint8Array(buf);
+    if (!bytes.length) return null;
+    let binary = '';
+    for (let k = 0; k < bytes.length; k += 8192) binary += String.fromCharCode(...bytes.slice(k, k + 8192));
+    return `data:image/png;base64,${btoa(binary)}`;
+  } catch (e) {
+    console.warn('getElementPreview (cli) failed:', e);
+    return null;
+  }
+}
+
+/**
  * Build a renderMath function that consults the SQLite math_cache for each
  * expression. Falls back to the singleton renderer for cache misses.
  *
@@ -127,6 +163,7 @@ async function main() {
       },
       renderMath: cachingRender,
       applyMathPreamble: applyMathPreamble,
+      getElementPreview,   // #85: embed cached notebook/video/PDF previews (not placeholders)
       // Per-preset bundle resolver — same chain as the editor.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       resolveMathBundle: (preset: string, slide: any) => {
