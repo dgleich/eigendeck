@@ -440,7 +440,7 @@ function sniffRasterMime(bytes: Uint8Array): string | null {
  *
  * Catches both `href=` and the legacy `xlink:href=` forms.
  */
-export function findExternalImageRefs(bytes: Uint8Array): string[] {
+function findExternalImageRefs(bytes: Uint8Array): string[] {
   const head = new TextDecoder('utf-8', { fatal: false }).decode(
     bytes.subarray(0, Math.min(bytes.length, 16384)),
   );
@@ -697,7 +697,7 @@ function normalizeSvgForImg(bytes: Uint8Array): Uint8Array {
  * the Inkscape About splash (~400 KB) which legitimately benefits from
  * caching.
  */
-export const SVG_NATIVE_THRESHOLD_BYTES = 200_000;
+const SVG_NATIVE_THRESHOLD_BYTES = 200_000;
 
 /**
  * React hook: lazy cache-or-render an asset at the requested tier, returning

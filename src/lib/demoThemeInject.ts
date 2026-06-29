@@ -31,7 +31,7 @@ import { demoThemeVarsCss, injectDemoThemeIntoDoc } from './demoTheme.mjs';
 // (Export embeds data: URLs instead, via fileOps' fontFacesCss opt, because an
 // exported HTML file must be self-contained/offline.)
 let _urlFacesCache: string | null = null;
-export function demoFontFacesCss(): string {
+function demoFontFacesCss(): string {
   if (_urlFacesCache != null) return _urlFacesCache;
   const origin = (typeof location !== 'undefined' && location.origin) ? location.origin : '';
   // registry emits url('/fonts/...') — make it absolute so the blob iframe (whose
