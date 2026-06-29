@@ -1,5 +1,6 @@
 import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
+import { arrowGeometry, triPoints } from './arrowGeometry.mjs';
 
 // Give <code> runs the deck's mono family (mirrors applyCodeFont in TextElementSvg).
 function applyCodeFont(html, mono) {
@@ -526,12 +527,13 @@ export async function buildExportHtml(opts) {
           break;
         case 'arrow': {
           const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
-          const angle = Math.atan2(y2 - y1, x2 - x1);
-          const ha = Math.PI / 6;
+          const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);
+          const op = el.opacity != null && el.opacity < 1 ? ` opacity="${el.opacity}"` : '';
           inner += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">`;
-          inner += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${strokeWidth}"/>`;
-          inner += `<polygon points="${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}" fill="${color}"/>`;
-          inner += `</svg>`;
+          inner += `<g${op}>`;
+          inner += `<line x1="${geo.line.x1}" y1="${geo.line.y1}" x2="${geo.line.x2}" y2="${geo.line.y2}" stroke="${color}" stroke-width="${strokeWidth}"/>`;
+          for (const t of geo.triangles) inner += `<polygon points="${triPoints(t)}" fill="${color}"/>`;
+          inner += `</g></svg>`;
           break;
         }
       }

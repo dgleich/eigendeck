@@ -693,13 +693,46 @@ export function PropertiesPanel() {
                     ))}
                   </div>
                 </PropSection>
+                <PropSection label="Size">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {([['thin', 2, 10], ['normal', 4, 16], ['thick', 8, 26], ['super thick', 14, 40], ['really big', 22, 60]] as const).map(([lbl, sw, hs]) => {
+                      const active = (selectedEl.strokeWidth || 4) === sw && (selectedEl.headSize || 16) === hs;
+                      return (
+                        <button key={lbl} className="prop-zbtn"
+                          style={{ fontSize: 11, width: 'auto', padding: '3px 8px', background: active ? '#3b82f6' : undefined, color: active ? '#fff' : undefined }}
+                          onClick={() => updateElement(selectedEl.id, { strokeWidth: sw, headSize: hs } as any)}>{lbl}</button>
+                      );
+                    })}
+                  </div>
+                </PropSection>
+                <PropSection label="Heads">
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {([['end', 'End'], ['start', 'Start'], ['both', 'Both'], ['none', 'None']] as const).map(([val, lbl]) => {
+                      const active = (selectedEl.heads ?? 'end') === val;
+                      return (
+                        <button key={val} className="prop-zbtn"
+                          style={{ fontSize: 11, width: 'auto', padding: '3px 10px', background: active ? '#3b82f6' : undefined, color: active ? '#fff' : undefined }}
+                          onClick={() => updateElement(selectedEl.id, { heads: val } as any)}>{lbl}</button>
+                      );
+                    })}
+                  </div>
+                </PropSection>
                 <PropSection label="Width">
-                  <input className="prop-input-sm" type="number" value={selectedEl.strokeWidth || 4} min={1} max={20}
+                  <input className="prop-input-sm" type="number" value={selectedEl.strokeWidth || 4} min={1} max={40}
                     onChange={(e) => updateElement(selectedEl.id, { strokeWidth: parseInt(e.target.value) || 4 } as any)} />
                 </PropSection>
                 <PropSection label="Head Size">
-                  <input className="prop-input-sm" type="number" value={selectedEl.headSize || 16} min={4} max={40}
+                  <input className="prop-input-sm" type="number" value={selectedEl.headSize || 16} min={4} max={80}
                     onChange={(e) => updateElement(selectedEl.id, { headSize: parseInt(e.target.value) || 16 } as any)} />
+                </PropSection>
+                <PropSection label="Opacity">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input type="range" min={0} max={1} step={0.05} value={selectedEl.opacity ?? 1}
+                      onPointerDown={pauseUndo} onPointerUp={resumeUndo}
+                      onChange={(e) => updateElement(selectedEl.id, { opacity: parseFloat(e.target.value) } as any)}
+                      style={{ flex: 1, minWidth: 0, accentColor: '#2563eb' }} />
+                    <span style={{ fontSize: 11, color: '#999' }}>{Math.round((selectedEl.opacity ?? 1) * 100)}%</span>
+                  </label>
                 </PropSection>
               </>
             )}

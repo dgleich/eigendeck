@@ -10,6 +10,7 @@
 // separate: you can't run live demo iframes in a 50-slide sidebar.
 
 import { useLayoutEffect, useRef, useState } from 'react';
+import { arrowGeometry, triPoints } from '../lib/arrowGeometry.mjs';
 import { resolveTheme } from '../lib/themes';
 import { TextElementSvg } from './TextElementSvg';
 import { useRenderedAsset } from '../lib/assetRenderer';
@@ -92,10 +93,14 @@ function ThumbElement({ element: el, slide, presentation, imageTier }: {
     case 'image':
       return <ThumbImage element={el} imageTier={imageTier} />;
     case 'arrow': {
-      const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 3 } = el;
+      const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 3, headSize = 16 } = el;
+      const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);   // inset line + head triangle(s)
       return (
         <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
-          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={strokeWidth} />
+          <g opacity={el.opacity ?? 1}>
+            <line x1={geo.line.x1} y1={geo.line.y1} x2={geo.line.x2} y2={geo.line.y2} stroke={color} strokeWidth={strokeWidth} />
+            {geo.triangles.map((t, i) => <polygon key={i} points={triPoints(t)} fill={color} />)}
+          </g>
         </svg>
       );
     }

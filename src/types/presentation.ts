@@ -355,6 +355,10 @@ export interface ArrowElement extends BaseElement {
   color?: string;
   strokeWidth?: number;
   headSize?: number;
+  /** Which ends get an arrowhead. Default 'end'. (#98) */
+  heads?: 'end' | 'start' | 'both' | 'none';
+  /** Stroke/fill opacity, 0–1. Default 1. (#98) */
+  opacity?: number;
 }
 
 export interface DemoElement extends BaseElement {

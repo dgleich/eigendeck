@@ -228,12 +228,16 @@ A plain rectangle used to cover/hide other elements. Shows as a dashed outline i
   "position": { "x": 0, "y": 0, "width": 0, "height": 0 },
   "color": "#e53e3e",
   "strokeWidth": 4,
-  "headSize": 16
+  "headSize": 16,
+  "heads": "end",
+  "opacity": 1
 }
 ```
 
 Arrow coordinates (`x1,y1` to `x2,y2`) are in slide space (1920x1080).
 The `position` field is required but ignored for arrows (use x1/y1/x2/y2).
+- `heads`: `"end"` (default) | `"start"` | `"both"` | `"none"` — which ends get an arrowhead. The line is automatically pulled back to the head base so the stroke doesn't poke through the tip.
+- `opacity`: number 0–1 (default 1) — arrow stroke/fill opacity.
 
 ### Demo Element
 
