@@ -20,6 +20,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
 import { detachDelta, pasteElementDelta } from './lib/syncLink';
+import { offsetElement } from './lib/offsetElement';
 import { previewKey, loadPreviewDataUrl } from './lib/previewCache';
 import { registerNotebookLifecycle } from './components/notebook/notebookLifecycle';
 import { runCopyHook } from './lib/elementLifecycle';
@@ -1069,8 +1070,7 @@ function App() {
           const el = slide.elements.find((el) => el.id === sel.id);
           if (el) {
             const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), ...detachDelta() };
-            if (newEl.type === 'arrow') { newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40; }
-            else { newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 }; }
+            offsetElement(newEl, 40, 40);
             state.addElement(newEl);
             void runCopyHook(el, newEl);   // carry recording/state to the copy
             state.selectObject({ type: 'element', id: newEl.id });
@@ -1082,8 +1082,7 @@ function App() {
             const el = slide.elements.find((el) => el.id === id);
             if (el) {
               const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), ...detachDelta() };
-              if (newEl.type === 'arrow') { newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40; }
-              else { newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 }; }
+              offsetElement(newEl, 40, 40);
               state.addElement(newEl);
               void runCopyHook(el, newEl);   // carry recording/state to the copy
               newIds.push(newEl.id);
@@ -1183,10 +1182,7 @@ function App() {
           const { delta, link } = pasteElementDelta(el, sameSlide);
           const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), ...delta };
           // Offset only the same-slide independent copy so it doesn't stack.
-          if (sameSlide) {
-            if (newEl.type === 'arrow') { newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40; }
-            else { newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 }; }
-          }
+          if (sameSlide) offsetElement(newEl, 40, 40);
           state.addElement(newEl);
           newIds.push(newEl.id);
           // Carry type-specific state across (e.g. clone a notebook's
