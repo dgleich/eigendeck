@@ -17,6 +17,7 @@ import { NotebookContent } from './notebook/NotebookContent';
 import { useDemoThemeInjection } from '../lib/demoThemeInject';
 import { arrowGeometry } from '../lib/arrowGeometry.mjs';
 import { ArrowGlyph } from './ArrowGlyph';
+import { imageVisualStyle } from '../lib/imageVisualStyle';
 
 export interface PresentCtx {
   slide: Slide;
@@ -98,10 +99,7 @@ function PresentImage({ element: el, zIndex, style }: {
   return (
     <img src={src} alt="" style={{
       position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, objectFit: 'contain', zIndex,
-      ...(el.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
-      ...(el.borderRadius ? { borderRadius: el.borderRadius } : {}),
-      ...(el.opacity != null && el.opacity < 1 ? { opacity: el.opacity } : {}),
-      ...(el.rotation ? { transform: `rotate(${el.rotation}deg)` } : {}),
+      ...imageVisualStyle(el),
       ...style,
     }} />
   );

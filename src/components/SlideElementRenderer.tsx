@@ -6,6 +6,7 @@ import { getPreference } from '../lib/preferences';
 import { snapToGrid, resizeEdgeToGrid } from '../lib/grid';
 import { arrowGeometry, arrowBBox } from '../lib/arrowGeometry.mjs';
 import { ArrowGlyph } from './ArrowGlyph';
+import { imageVisualStyle } from '../lib/imageVisualStyle';
 import { sanitizeRichText } from '../lib/sanitizeRichText';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useDemoThemeInjection, demoVarsCssForSlide } from '../lib/demoThemeInject';
@@ -260,10 +261,7 @@ function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
         <img src={src} alt="" draggable={false}
           style={{
             width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none',
-            ...(element.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
-            ...(element.borderRadius ? { borderRadius: element.borderRadius } : {}),
-            ...(element.opacity != null && element.opacity < 1 ? { opacity: element.opacity } : {}),
-            ...(element.rotation ? { transform: `rotate(${element.rotation}deg)` } : {}),
+            ...imageVisualStyle(element),
           }} />
       ) : showPlaceholder ? (
         // Placeholder while the asset rasterizes. Matches the blue
