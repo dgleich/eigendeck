@@ -5,6 +5,7 @@ import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentati
 import { getPreference } from '../lib/preferences';
 import { snapToGrid, resizeEdgeToGrid } from '../lib/grid';
 import { arrowGeometry, arrowBBox } from '../lib/arrowGeometry.mjs';
+import { ArrowGlyph } from './ArrowGlyph';
 import { sanitizeRichText } from '../lib/sanitizeRichText';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useDemoThemeInjection, demoVarsCssForSlide } from '../lib/demoThemeInject';
@@ -1250,13 +1251,8 @@ function ArrowRenderer({
       <svg width={maxX - minX} height={maxY - minY} style={{ overflow: 'visible' }}>
         <line x1={x1 - minX} y1={y1 - minY} x2={x2 - minX} y2={y2 - minY}
           stroke="transparent" strokeWidth={24} style={{ pointerEvents: 'stroke', cursor: 'move' }} onPointerDown={handleBody} />
-        <g opacity={a.opacity ?? 1} style={{ pointerEvents: 'none' }}>
-          <line x1={geo.line.x1 - minX} y1={geo.line.y1 - minY} x2={geo.line.x2 - minX} y2={geo.line.y2 - minY}
-            stroke={color} strokeWidth={strokeWidth} />
-          {geo.triangles.map((t, i) => (
-            <polygon key={i} points={t.map((p) => `${p[0] - minX},${p[1] - minY}`).join(' ')} fill={color} />
-          ))}
-        </g>
+        <ArrowGlyph geo={geo} color={color} strokeWidth={strokeWidth} opacity={a.opacity}
+          dx={minX} dy={minY} gStyle={{ pointerEvents: 'none' }} />
         <circle cx={x1 - minX} cy={y1 - minY} r={8} fill="#fff" stroke={color} strokeWidth={2}
           className="arrow-handle" style={{ pointerEvents: 'all', cursor: 'crosshair' }}
           onPointerDown={(e) => handleEndpoint(e, 'start')} />
