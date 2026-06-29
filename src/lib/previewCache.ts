@@ -130,9 +130,6 @@ export async function capturePreview(
 const previewVersion = new Map<string, number>();
 const listeners = new Set<() => void>();
 
-export function previewVersionOf(key: string): number {
-  return previewVersion.get(key) ?? 0;
-}
 function bumpPreviewVersion(key: string): void {
   previewVersion.set(key, (previewVersion.get(key) ?? 0) + 1);
   for (const l of listeners) l();

@@ -93,10 +93,3 @@ export function dismissToast(id: string): void {
   if (t) { clearTimeout(t); timers.delete(id); }
   notify();
 }
-
-export function dismissAllToasts(): void {
-  toasts.splice(0);
-  for (const t of timers.values()) clearTimeout(t);
-  timers.clear();
-  notify();
-}
