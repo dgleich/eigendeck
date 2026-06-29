@@ -1905,6 +1905,26 @@ body.window-inactive .welcome-root {
   letter-spacing: 0.05em;
 }
 
+/* #29 — zoom the audience slide from the speaker view */
+.speaker-zoom-btn {
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 3px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ddd;
+  cursor: pointer;
+}
+.speaker-zoom-btn:hover { background: rgba(255, 255, 255, 0.14); }
+.speaker-zoom-btn[aria-pressed="true"] {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+.speaker-zoom-hint { color: #2563eb; text-transform: none; letter-spacing: 0; }
+
 .speaker-preview {
   background: #000;
   border-radius: 4px;
