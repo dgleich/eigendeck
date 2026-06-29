@@ -91,14 +91,3 @@ export function resolveNotebookKernel(
     server: findServerForKernel(kernelName, registry),
   };
 }
-
-/** Convenience export retained for tests / docs referencing the
- *  previous name. New code should call resolveNotebookKernel with a
- *  registry; this helper assumes an empty one (no server matches). */
-export function resolveKernelNameOnly(
-  element: NotebookElement,
-  config: PresentationConfig | undefined,
-  notebook: Notebook | null,
-): ResolvedKernel {
-  return resolveNotebookKernel(element, config, notebook, []);
-}

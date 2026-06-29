@@ -93,7 +93,6 @@ export function useAssetUrl(
 // Convenience aliases (demos use the same machinery, just with a hash
 // for piece routing).
 export const useDemoUrl = useAssetUrl;
-export const getDemoUrl = getAssetUrl;
 
 /** Invalidate a specific cached asset (e.g. after re-import). */
 export function invalidateAsset(assetId: string) {
@@ -113,3 +112,4 @@ export function clearAssetCache() {
   blobCache.clear();
   mimeCache.clear();
 }
+
