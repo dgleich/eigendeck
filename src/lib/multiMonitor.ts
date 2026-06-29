@@ -235,6 +235,20 @@ export async function navigatePresenter(index: number): Promise<void> {
   }
 }
 
+/**
+ * Tell the presenter (projector) window to zoom into the audience slide (#29).
+ * `zoom` is the scale (1 = no zoom); `fx`/`fy` are the normalized [0,1] focal
+ * point. Driven from the speaker view so the audience slide stays chrome-free.
+ */
+export async function zoomPresenter(zoom: number, fx: number, fy: number): Promise<void> {
+  if (!presenterWindow) return;
+  try {
+    await emitTo('presenter', 'presenter:zoom', { zoom, fx, fy });
+  } catch (e) {
+    console.error('Failed to zoom presenter:', e);
+  }
+}
+
 /** Does this monitor's (physical) bounds contain the given physical point? */
 function monitorContains(mon: Monitor, x: number, y: number): boolean {
   return x >= mon.position.x && x < mon.position.x + mon.size.width &&

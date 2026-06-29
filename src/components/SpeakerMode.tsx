@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { usePresentationStore } from '../store/presentation';
 import { getSlideNumber } from '../types/presentation';
-import { navigatePresenter, closePresenterWindow, swapPresenterDisplay } from '../lib/multiMonitor';
+import { navigatePresenter, closePresenterWindow, swapPresenterDisplay, zoomPresenter } from '../lib/multiMonitor';
 import { availableMonitors } from '@tauri-apps/api/window';
 import { SlideThumbnail } from './SlideThumbnail';
 import { ASSET_TIER } from '../lib/assetCache';
@@ -21,6 +21,11 @@ export function SpeakerMode() {
   );
   const [elapsed, setElapsed] = useState(0);
   const [timerRunning, setTimerRunning] = useState(true);
+  // #29 — zoom the AUDIENCE (projector) slide from here; the audience slide
+  // itself has no zoom chrome. Toggle = center zoom; then move over the Current
+  // Slide preview to pan the focal point.
+  const ZOOM = 2.2;
+  const [zoomed, setZoomed] = useState(false);
   // Swap Displays only makes sense with a real second monitor (the dual-screen
   // projector path), not the single-screen screen-share window.
   const [canSwap, setCanSwap] = useState(false);
@@ -45,12 +50,26 @@ export function SpeakerMode() {
   const goTo = useCallback((index: number) => {
     if (index < 0 || index >= totalSlides) return;
     setCurrentIndex(index);
+    setZoomed(false);               // a new slide starts un-zoomed (the projector resets too)
     navigatePresenter(index);
     usePresentationStore.getState().selectSlide(index);
   }, [totalSlides]);
 
   const goNext = useCallback(() => goTo(currentIndex + 1), [currentIndex, goTo]);
   const goPrev = useCallback(() => goTo(currentIndex - 1), [currentIndex, goTo]);
+
+  // Toggle audience zoom (center). Pan happens via the preview move handler.
+  const toggleZoom = useCallback(() => {
+    setZoomed((on) => { const next = !on; void zoomPresenter(next ? ZOOM : 1, 0.5, 0.5); return next; });
+  }, []);
+  // While zoomed, moving over the Current-Slide preview steers the projector's
+  // focal point (normalized [0,1] over the preview, which shows the whole slide).
+  const panFromPreview = useCallback((e: React.MouseEvent) => {
+    if (!zoomed) return;
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const clamp = (v: number) => Math.max(0, Math.min(1, v));
+    void zoomPresenter(ZOOM, clamp((e.clientX - r.left) / r.width), clamp((e.clientY - r.top) / r.height));
+  }, [zoomed]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -119,8 +138,14 @@ export function SpeakerMode() {
       <div className="speaker-body">
         {/* Current slide preview */}
         <div className="speaker-current">
-          <div className="speaker-preview-label">Current Slide</div>
-          <div className="speaker-preview">
+          <div className="speaker-preview-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Current Slide{zoomed && <span className="speaker-zoom-hint"> — move to pan the audience view</span>}</span>
+            <button className="speaker-zoom-btn" onClick={toggleZoom} aria-pressed={zoomed}
+              title="Zoom the audience slide (then move over this preview to pan)">
+              {zoomed ? 'Zoom out' : 'Zoom in'}
+            </button>
+          </div>
+          <div className="speaker-preview" style={zoomed ? { cursor: 'crosshair' } : undefined} onMouseMove={panFromPreview}>
             {slide && <SlideThumbnail presentation={presentation} slide={slide} imageTier={ASSET_TIER.full} />}
           </div>
           {/* Notes */}

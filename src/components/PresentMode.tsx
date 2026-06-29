@@ -8,6 +8,7 @@ import type { SlideElement } from '../types/presentation';
 // (src/presenter.tsx) via PresentSlide — one renderer, no drift.
 import { PresentElement, PresentControllerIframe, type PresentCtx } from './PresentSlide';
 import { planPresentTransition } from '../lib/presentTransition';
+import { listen } from '@tauri-apps/api/event';
 
 const TRANSITION_MS = 300;
 
@@ -172,6 +173,18 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
     };
   }, []);
 
+  // #29 — the projector (audience) window is zoom-driven by the speaker view:
+  // it stays chrome-free (no zoom button) and applies whatever the speaker emits
+  // via `zoomPresenter`. Only the projector window receives this (emitTo targets
+  // the 'presenter' label); the single-window present never sees it.
+  useEffect(() => {
+    const un = listen<{ zoom: number; fx: number; fy: number }>('presenter:zoom', (e) => {
+      setZoom(e.payload.zoom);
+      setFocus({ x: e.payload.fx, y: e.payload.fy });
+    });
+    return () => { un.then((fn) => fn()); };
+  }, []);
+
   const slide = presentation.slides[currentIndex];
   if (!slide) return null;
 
@@ -332,23 +345,9 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
         )}
       </div>
       {showSpeaker && <SpeakerPanel />}
-      {/* #29 — press to zoom into the slide; mouse pans while zoomed (also 'Z' / Esc) */}
-      <button
-        className="present-zoom-btn"
-        onClick={toggleZoom}
-        title={zoom > 1 ? 'Zoom out (Z / Esc)' : 'Zoom in (Z)'}
-        aria-label={zoom > 1 ? 'Zoom out' : 'Zoom in'}
-        style={{
-          position: 'absolute', right: 18, bottom: 18, zIndex: 2000,
-          width: 44, height: 44, borderRadius: '50%', display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
-          border: '1px solid rgba(255,255,255,0.25)', background: 'rgba(0,0,0,0.45)',
-          color: '#fff', fontSize: 22, lineHeight: 1, cursor: 'pointer',
-          opacity: 0.55, transition: 'opacity 0.15s',
-        }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.55'; }}
-      >{zoom > 1 ? '−' : '+'}</button>
+      {/* #29 — no on-slide zoom button: the audience slide stays chrome-free.
+          Zoom is driven by the speaker view (dual-monitor) via 'presenter:zoom',
+          or the 'z' key in single-window present. */}
     </div>
   );
 }
