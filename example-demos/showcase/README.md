@@ -54,7 +54,14 @@ E2E_APP=$PWD/../../src-tauri/target/debug/eigendeck \
 PROBE=$PWD/export-showcase.mjs E2E_DECK=$PWD/showcase.eigendeck \
   OUT=$PWD/showcase.html SHOTS=0,1 bash ../../e2e/run-probe.sh
 
-# 4. deploy to the website repo
+# 3b. subset the embedded fonts IN PLACE (the homepage iframes showcase.html;
+#     full font faces are ~94% of the export). Showcase-only post-process — the
+#     general app export keeps full fonts on purpose (an exported deck is
+#     editable). ~22.6MB -> ~4.6MB (~11.6MB -> ~2.1MB gzip). Only touches the
+#     .html; the downloadable .eigendeck keeps full fonts for editing.
+uv run --with fonttools python subset-fonts.py showcase.html showcase.html
+
+# 4. deploy to the website repo (the SUBSET .html + the full-font .eigendeck)
 cp showcase.eigendeck showcase.html /path/to/eigendeck-web/
 ```
 
