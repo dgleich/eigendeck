@@ -86,6 +86,12 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
     const prev = shownIndexRef.current;
     if (prev === currentIndex) return;
     shownIndexRef.current = currentIndex;
+    // #29: a new slide always starts un-zoomed and re-centered — a focal point
+    // from the previous slide is meaningless on the next, and in controlled
+    // (projector) mode each window owns its zoom, so leaving it set desyncs the
+    // projector from the speaker view.
+    setZoom(1);
+    setFocus({ x: 0.5, y: 0.5 });
     if (animTimerRef.current) clearTimeout(animTimerRef.current);
     setPrevIndex(prev);
     setAnimating(false);
@@ -186,19 +192,7 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
       <div
         className="present-viewport"
         ref={viewportRef}
-        style={zoom > 1 ? { overflow: 'hidden', cursor: 'zoom-out' } : undefined}
-        onClick={zoom > 1 ? () => zoomOut() : undefined}
-        onMouseMove={zoom > 1 ? (e) => {
-          // Map the cursor into the WRAPPER's centered layout box (not the raw
-          // viewport) so the focal point is letterbox-correct — transform-origin %
-          // is relative to the wrapper, and the viewport flex-centers it, so a
-          // window whose aspect ≠ the slide's has bars we must subtract. (#29)
-          const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-          const ww = slideW * scale, wh = slideH * scale;
-          const ox = (r.width - ww) / 2, oy = (r.height - wh) / 2;   // letterbox offset
-          const clamp = (v: number) => Math.max(0, Math.min(1, v));
-          setFocus({ x: clamp((e.clientX - r.left - ox) / ww), y: clamp((e.clientY - r.top - oy) / wh) });
-        } : undefined}
+        style={zoom > 1 ? { position: 'relative' } : undefined}
       >
         <div
           className="present-slide-wrapper"
@@ -312,6 +306,30 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
             </div>
           </div>
         </div>
+        {/* #29 — while zoomed, a transparent overlay above ALL slide content
+            (including demo/video/notebook iframes, whose events don't bubble to
+            the parent) drives pan + click-to-zoom-out. Without it, the cursor
+            and clicks die over an iframe and pan freezes on demo-heavy slides.
+            The tradeoff — you can't interact with a demo while zoomed — is
+            intended: zoom is an inspect gesture. */}
+        {zoom > 1 && (
+          <div
+            className="present-zoom-pan"
+            style={{ position: 'absolute', inset: 0, cursor: 'zoom-out', zIndex: 1500 }}
+            onClick={() => zoomOut()}
+            onMouseMove={(e) => {
+              // Map the cursor into the WRAPPER's centered layout box (not the raw
+              // viewport) so the focal point is letterbox-correct — transform-origin %
+              // is relative to the wrapper, and the viewport flex-centers it, so a
+              // window whose aspect ≠ the slide's has bars we must subtract. (#29)
+              const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              const ww = slideW * scale, wh = slideH * scale;
+              const ox = (r.width - ww) / 2, oy = (r.height - wh) / 2;   // letterbox offset
+              const clamp = (v: number) => Math.max(0, Math.min(1, v));
+              setFocus({ x: clamp((e.clientX - r.left - ox) / ww), y: clamp((e.clientY - r.top - oy) / wh) });
+            }}
+          />
+        )}
       </div>
       {showSpeaker && <SpeakerPanel />}
       {/* #29 — press to zoom into the slide; mouse pans while zoomed (also 'Z' / Esc) */}
