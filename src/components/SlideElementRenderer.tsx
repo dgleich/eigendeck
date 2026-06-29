@@ -7,6 +7,7 @@ import { snapToGrid, resizeEdgeToGrid } from '../lib/grid';
 import { arrowGeometry, arrowBBox } from '../lib/arrowGeometry.mjs';
 import { ArrowGlyph } from './ArrowGlyph';
 import { imageVisualStyle } from '../lib/imageVisualStyle';
+import { describeCover } from '../lib/elementDescriptor.mjs';
 import { sanitizeRichText } from '../lib/sanitizeRichText';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useDemoThemeInjection, demoVarsCssForSlide } from '../lib/demoThemeInject';
@@ -161,8 +162,10 @@ export function SlideElementRenderer({
             width: '100%', height: '100%',
             // Match the slide background (a cover is a reveal mask). The .el-cover
             // CSS draws a dashed outline so it stays visible/selectable in the
-            // editor even when the fill matches the background.
-            background: element.color || slideBackground || '#ffffff',
+            // editor even when the fill matches the background. The editor
+            // specializes the WRAPPER (DraggableBox); the fill value comes from
+            // the shared cover descriptor.
+            background: describeCover(element, slideBackground || '#ffffff').background,
             pointerEvents: 'none',
           }} />
         </DraggableBox>

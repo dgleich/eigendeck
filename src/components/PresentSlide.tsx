@@ -18,6 +18,8 @@ import { useDemoThemeInjection } from '../lib/demoThemeInject';
 import { arrowGeometry } from '../lib/arrowGeometry.mjs';
 import { ArrowGlyph } from './ArrowGlyph';
 import { imageVisualStyle } from '../lib/imageVisualStyle';
+import { CoverView } from './ElementView';
+import { describeCover } from '../lib/elementDescriptor.mjs';
 
 export interface PresentCtx {
   slide: Slide;
@@ -49,16 +51,11 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
           <NotebookContent element={el} interactive={true} mode="present" />
         </div>
       );
-    case 'cover':
-      return (
-        <div style={{
-          position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-          // Default a cover to the slide's background so it hides content
-          // seamlessly (a cover is a reveal mask). Explicit color still wins.
-          background: el.color || resolveTheme(ctx.presentationTheme, ctx.slide.theme).background,
-          zIndex, ...style,
-        }} />
-      );
+    case 'cover': {
+      // Reveal mask filled with the slide background (explicit color wins).
+      const d = describeCover(el, resolveTheme(ctx.presentationTheme, ctx.slide.theme).background);
+      return <CoverView box={d.box} background={d.background} extraStyle={{ zIndex, ...style }} />;
+    }
     case 'arrow': {
       const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;
       const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);

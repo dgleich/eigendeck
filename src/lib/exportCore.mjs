@@ -3,6 +3,7 @@ import { resolveMonoFontPackage } from './fontRegistry.mjs';
 import { arrowGeometry, arrowSvgInner } from './arrowGeometry.mjs';
 import { detectVideoProvider } from './videoEmbedParse.mjs';
 import { THEME_BACKGROUNDS } from './themeBackgrounds.mjs';
+import { describeCover } from './elementDescriptor.mjs';
 
 // Give <code> runs the deck's mono family (mirrors applyCodeFont in TextElementSvg).
 function applyCodeFont(html, mono) {
@@ -506,9 +507,11 @@ export async function buildExportHtml(opts) {
           }
           break;
         }
-        case 'cover':
-          inner += `<div style="${absBox(p)};background:${el.color || themeBackground(presentation, slide)};"></div>`;
+        case 'cover': {
+          const d = describeCover(el, themeBackground(presentation, slide));
+          inner += `<div style="${absBox(d.box)};background:${d.background};"></div>`;
           break;
+        }
         case 'arrow': {
           const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
           const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);

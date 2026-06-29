@@ -12,6 +12,8 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { arrowGeometry } from '../lib/arrowGeometry.mjs';
 import { ArrowGlyph } from './ArrowGlyph';
+import { CoverView } from './ElementView';
+import { describeCover } from '../lib/elementDescriptor.mjs';
 import { resolveTheme } from '../lib/themes';
 import { TextElementSvg } from './TextElementSvg';
 import { useRenderedAsset } from '../lib/assetRenderer';
@@ -84,7 +86,6 @@ export function SlideThumbnail({ presentation, slide, width, imageTier = ASSET_T
 function ThumbElement({ element: el, slide, presentation, imageTier }: {
   element: SlideElement; slide: Slide; presentation: Presentation; imageTier: number;
 }) {
-  const p = el.position;
   switch (el.type) {
     case 'text':
       return (
@@ -110,12 +111,12 @@ function ThumbElement({ element: el, slide, presentation, imageTier }: {
       return <ThumbNotebook element={el} />;
     case 'video':
       return <ThumbVideo element={el} />;
-    case 'cover':
+    case 'cover': {
       // Match the slide background (it's a reveal mask) — no border, so the
       // static render matches the live slide / speaker view. Explicit color wins.
-      return (
-        <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: el.color || resolveTheme(presentation.theme, slide.theme).background }} />
-      );
+      const d = describeCover(el, resolveTheme(presentation.theme, slide.theme).background);
+      return <CoverView box={d.box} background={d.background} />;
+    }
     default:
       return null;
   }
