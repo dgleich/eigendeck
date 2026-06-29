@@ -182,10 +182,15 @@
   }
 
   // ---- drawing ----
-  var off = document.createElement('canvas'); off.width = N; off.height = N;
-  var offCtx = off.getContext('2d'), offImg = offCtx.createImageData(N, N);
+  // Each paint uses its OWN offscreen canvas. A single shared offscreen is a
+  // WebKit hazard: WKWebView defers drawImage rasterization, so by the time the
+  // copy actually happens the shared buffer already holds the NEXT pane's
+  // pixels — painting orig→plain→tiled then shows each pane the next one's image
+  // (orig shows plain, plain & tiled both show tiled). A fresh, never-mutated
+  // offscreen per call makes the deferred draw read the correct content.
   function paint(canvas, data) {
-    var d = offImg.data;
+    var off = document.createElement('canvas'); off.width = N; off.height = N;
+    var offCtx = off.getContext('2d'), offImg = offCtx.createImageData(N, N), d = offImg.data;
     for (var i = 0; i < N * N; i++) { var v = Math.max(0, Math.min(255, Math.round(data[i] * 255))); d[i * 4] = v; d[i * 4 + 1] = v; d[i * 4 + 2] = v; d[i * 4 + 3] = 255; }
     offCtx.putImageData(offImg, 0, 0);
     var ctx = canvas.getContext('2d'), dpr = window.devicePixelRatio || 1, r = canvas.getBoundingClientRect();
