@@ -11,6 +11,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import type { SlideElement } from '../types/presentation';
+import { bytesToBase64 } from './base64';
 
 /** The cache key for an element's preview: its sync identity. */
 export function previewKey(el: Pick<SlideElement, 'id' | 'syncId'>): string {
@@ -177,11 +178,7 @@ export async function loadPreviewDataUrl(key: string): Promise<string | null> {
     });
     const bytes = new Uint8Array(buf);
     if (bytes.length === 0) return null;
-    let binary = '';
-    for (let k = 0; k < bytes.length; k += 8192) {
-      binary += String.fromCharCode(...bytes.slice(k, k + 8192));
-    }
-    return `data:image/png;base64,${btoa(binary)}`;
+    return `data:image/png;base64,${bytesToBase64(bytes)}`;
   } catch (e) {
     console.warn('loadPreviewDataUrl failed:', e);
     return null;

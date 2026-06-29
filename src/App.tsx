@@ -49,6 +49,7 @@ import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
 import { arrowGeometry, triPoints } from './lib/arrowGeometry.mjs';
+import { bytesToBase64 } from './lib/base64';
 import { extractDemoPieceNames } from './lib/demoPieces';
 import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement, textElementClipboardHtml } from './lib/elementClipboard';
 import { TEXT_PRESET_STYLES, effectiveFontSize, textShadowCss } from './types/presentation';
@@ -264,9 +265,7 @@ async function printToPdf() {
               });
               const cbytes = new Uint8Array(buf);
               if (cbytes.length) {
-                let cbin = '';
-                for (let k = 0; k < cbytes.length; k += 8192) cbin += String.fromCharCode(...cbytes.slice(k, k + 8192));
-                imageCache.set(el.assetId, `data:image/png;base64,${btoa(cbin)}`);
+                imageCache.set(el.assetId, `data:image/png;base64,${bytesToBase64(cbytes)}`);
               }
               continue;
             }
@@ -278,11 +277,7 @@ async function printToPdf() {
             const ext = (meta?.path ?? '').split('.').pop()?.toLowerCase() || 'png';
             const mime = meta?.mime_type
               ?? (ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`);
-            let binary = '';
-            for (let k = 0; k < bytes.length; k += 8192) {
-              binary += String.fromCharCode(...bytes.slice(k, k + 8192));
-            }
-            imageCache.set(el.assetId, `data:${mime};base64,${btoa(binary)}`);
+            imageCache.set(el.assetId, `data:${mime};base64,${bytesToBase64(bytes)}`);
           } catch { /* skip */ }
         }
       }
