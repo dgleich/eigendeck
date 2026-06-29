@@ -38,6 +38,9 @@ function themeBackground(presentation, slide) {
   return THEME_BACKGROUNDS[name] || THEME_BACKGROUNDS.white;
 }
 
+/** Absolute-position CSS fragment shared by every exported element's wrapper. */
+const absBox = (p) => `position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px`;
+
 const TEXT_PRESET_STYLES = {
   title:      { fontSize: 72, fontFamily: "'PT Sans', sans-serif", fontWeight: '700', fontStyle: 'normal', color: '#222' },
   body:       { fontSize: 48, fontFamily: "'PT Sans', sans-serif", fontWeight: 'normal', fontStyle: 'normal', color: '#222' },
@@ -355,7 +358,7 @@ export async function buildExportHtml(opts) {
             const sh = textBoxShadowCss(el);
             const rot = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
             const rad = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
-            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;${bg ? `background:${bg};` : ''}${sh ? `box-shadow:${sh};` : ''}${rad}${rot}">` +
+            inner += `<div style="${absBox(p)};${bg ? `background:${bg};` : ''}${sh ? `box-shadow:${sh};` : ''}${rad}${rot}">` +
               svgMarkup + `</div>`;
             break;
           }
@@ -379,7 +382,7 @@ export async function buildExportHtml(opts) {
           const shLegacy = textBoxShadowCss(el);
           const rotLegacy = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
           const radLegacy = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
-          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}${shLegacy ? `box-shadow:${shLegacy};` : ''}${radLegacy}${rotLegacy}">` +
+          inner += `<div style="${absBox(p)};overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}${shLegacy ? `box-shadow:${shLegacy};` : ''}${radLegacy}${rotLegacy}">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
             `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:${textPaddingCss(el)};${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${applyCodeFont(textHtml, resolveMonoFontPackage((presentation.config || {}).defaultMonoFont).family)}</div>` +
             `</div></div>`;
@@ -395,7 +398,7 @@ export async function buildExportHtml(opts) {
           if (el.kind === 'pdf') {
             imgSrc = getElementPreview ? await getElementPreview(el, slide) : null;
             if (!imgSrc) {
-              inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#aaa;font-size:24px;font-family:sans-serif;border:1px solid #ddd;">PDF</div>`;
+              inner += `<div style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#aaa;font-size:24px;font-family:sans-serif;border:1px solid #ddd;">PDF</div>`;
               break;
             }
           } else {
@@ -403,7 +406,7 @@ export async function buildExportHtml(opts) {
             if (!imgSrc) {
               // Unresolved/missing asset — emit a visible placeholder instead of
               // a broken <img src="null"> (or crashing the whole export).
-              inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#aaa;font-size:24px;font-family:sans-serif;border:1px solid #ddd;">image</div>`;
+              inner += `<div style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#aaa;font-size:24px;font-family:sans-serif;border:1px solid #ddd;">image</div>`;
               break;
             }
           }
@@ -426,7 +429,7 @@ export async function buildExportHtml(opts) {
             // tiny per-slide theme vars are spliced in.
             demoHtml = injectDemoThemeIntoHtml(demoHtml, '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
             const escaped = htmlEscapeForSrcdoc(demoHtml);
-            inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
+            inner += `<iframe srcdoc="${escaped}" style="${absBox(p)};border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
           } catch (e) { console.error('Demo export failed:', e); }
           break;
         case 'demo-piece':
@@ -438,7 +441,7 @@ export async function buildExportHtml(opts) {
             // Fonts injected at runtime from the parent (see font-share script).
             pieceHtml = injectDemoThemeIntoHtml(pieceHtml, '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
             const escaped = htmlEscapeForSrcdoc(pieceHtml);
-            inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
+            inner += `<iframe srcdoc="${escaped}" style="${absBox(p)};border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
           } catch (e) { console.error('Demo piece export failed:', e); }
           break;
         case 'notebook': {
@@ -456,18 +459,18 @@ export async function buildExportHtml(opts) {
             catch (e) { console.error('Notebook export render failed:', e); }
           }
           if (nbHtml) {
-            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">${nbHtml}</div>`;
+            inner += `<div style="${absBox(p)};overflow:hidden;">${nbHtml}</div>`;
             break;
           }
           // Static snapshot: the proactively-cached preview PNG (the same
           // bytes SlideThumbnail shows).
           const previewSrc = getElementPreview ? await getElementPreview(el, slide) : null;
           if (previewSrc) {
-            inner += `<img src="${previewSrc}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;" />`;
+            inner += `<img src="${previewSrc}" style="${absBox(p)};object-fit:contain;" />`;
           } else {
             // No cached preview (deck never opened / exported cold). Emit a
             // visible placeholder so the element isn't silently dropped.
-            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#eef7ee;color:#86c986;font-size:64px;font-family:sans-serif;">NB</div>`;
+            inner += `<div style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#eef7ee;color:#86c986;font-size:64px;font-family:sans-serif;">NB</div>`;
           }
           break;
         }
@@ -477,9 +480,9 @@ export async function buildExportHtml(opts) {
             // the video is playable in the exported HTML.
             const embedSrc = videoEmbedUrl(el);
             if (embedSrc) {
-              inner += `<iframe src="${embedSrc}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+              inner += `<iframe src="${embedSrc}" style="${absBox(p)};border:none;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
             } else {
-              inner += `<a href="${el.url}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;text-decoration:none;">&#9654; Video</a>`;
+              inner += `<a href="${el.url}" style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;text-decoration:none;">&#9654; Video</a>`;
             }
           } else if (el.kind === 'file' && el.src) {
             // Local file: inline the asset as a playable <video>.
@@ -490,21 +493,21 @@ export async function buildExportHtml(opts) {
               if (el.loop) attrs.push('loop');
               if (el.autoplay) attrs.push('autoplay');
               if (el.muted || el.autoplay) attrs.push('muted');
-              inner += `<video src="${videoSrc}" ${attrs.join(' ')} style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;background:#000;"></video>`;
+              inner += `<video src="${videoSrc}" ${attrs.join(' ')} style="${absBox(p)};object-fit:contain;background:#000;"></video>`;
             } catch (e) { console.error('Video export failed:', e); }
           } else {
             // Unknown/poster-only: try a cached preview, else a placeholder.
             const previewSrc = getElementPreview ? await getElementPreview(el, slide) : null;
             if (previewSrc) {
-              inner += `<img src="${previewSrc}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;background:#000;" />`;
+              inner += `<img src="${previewSrc}" style="${absBox(p)};object-fit:contain;background:#000;" />`;
             } else {
-              inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;">&#9654; Video</div>`;
+              inner += `<div style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;">&#9654; Video</div>`;
             }
           }
           break;
         }
         case 'cover':
-          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:${el.color || themeBackground(presentation, slide)};"></div>`;
+          inner += `<div style="${absBox(p)};background:${el.color || themeBackground(presentation, slide)};"></div>`;
           break;
         case 'arrow': {
           const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
