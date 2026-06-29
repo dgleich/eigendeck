@@ -20,7 +20,6 @@ import {
   pngBytesToBlobUrl,
   ASSET_TIER,
   type AssetKind,
-  type AssetCacheEntry,
 } from './assetCache';
 import { showToast, dismissToast } from './toasts';
 import { bytesToBase64 } from './base64';
@@ -430,14 +429,6 @@ function sniffRasterMime(bytes: Uint8Array): string | null {
   if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return 'image/gif';
   if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46) return 'image/webp';
   return null;
-}
-
-/**
- * Re-export cached PNG bytes as a blob URL for callers that already
- * have an AssetCacheEntry in hand.
- */
-export function entryToBlobUrl(entry: AssetCacheEntry): string {
-  return pngBytesToBlobUrl(entry.png);
 }
 
 /**
