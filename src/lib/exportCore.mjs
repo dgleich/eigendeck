@@ -2,6 +2,7 @@ import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
 import { arrowGeometry, triPoints } from './arrowGeometry.mjs';
 import { detectVideoProvider } from './videoEmbedParse.mjs';
+import { THEME_BACKGROUNDS } from './themeBackgrounds.mjs';
 
 // Give <code> runs the deck's mono family (mirrors applyCodeFont in TextElementSvg).
 function applyCodeFont(html, mono) {
@@ -30,12 +31,6 @@ function applyCodeFont(html, mono) {
 // Built-in theme backgrounds. Self-contained mirror of BUILT_IN_THEMES in
 // src/lib/themes.ts (this .mjs is shared with the offline export tool and can't
 // import the TS module). Keep in sync with that file's `colors.background`.
-const THEME_BACKGROUNDS = {
-  white: '#ffffff',
-  light: '#f5f0e8',
-  dark: '#1a1a2e',
-  black: '#000000',
-};
 
 /** Resolve the effective slide background colour from the slide/deck theme. */
 function themeBackground(presentation, slide) {

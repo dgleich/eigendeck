@@ -5,6 +5,8 @@
  * LLMs: this file is the single source of truth for theme colors.
  */
 
+import { THEME_BACKGROUNDS } from './themeBackgrounds.mjs';
+
 export interface ThemeColors {
   background: string;  // slide background
   text: string;        // body/textbox default text
@@ -17,7 +19,7 @@ export const BUILT_IN_THEMES: Record<string, { label: string; colors: ThemeColor
   white: {
     label: 'White',
     colors: {
-      background: '#ffffff',
+      background: THEME_BACKGROUNDS.white,
       text: '#222222',
       heading: '#222222',
       accent: '#2563eb',
@@ -27,7 +29,7 @@ export const BUILT_IN_THEMES: Record<string, { label: string; colors: ThemeColor
   light: {
     label: 'Light',
     colors: {
-      background: '#f5f0e8',
+      background: THEME_BACKGROUNDS.light,
       text: '#2c2418',
       heading: '#2c2418',
       accent: '#1e5c99',
@@ -37,7 +39,7 @@ export const BUILT_IN_THEMES: Record<string, { label: string; colors: ThemeColor
   dark: {
     label: 'Dark',
     colors: {
-      background: '#1a1a2e',
+      background: THEME_BACKGROUNDS.dark,
       text: '#e8e8e8',
       heading: '#f0f0f0',
       accent: '#60a5fa',
@@ -47,7 +49,7 @@ export const BUILT_IN_THEMES: Record<string, { label: string; colors: ThemeColor
   black: {
     label: 'Black',
     colors: {
-      background: '#000000',
+      background: THEME_BACKGROUNDS.black,
       text: '#ffffff',
       heading: '#ffffff',
       accent: '#93c5fd',
