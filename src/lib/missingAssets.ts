@@ -91,10 +91,3 @@ export function useAssetMissing(assetId: string): boolean {
     () => missing.has(assetId),
   );
 }
-
-export function useMissingCount(): number {
-  return useSyncExternalStore(
-    (cb) => subscribeMissing(() => cb()),
-    () => missing.size,
-  );
-}
