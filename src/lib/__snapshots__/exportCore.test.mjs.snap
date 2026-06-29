@@ -1,0 +1,198 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`[simplify-guard] exportCore full-output snapshot (all element types) > matches the committed snapshot 1`] = `
+"<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Types</title>
+<!-- Deck fonts embedded ONCE here. Demos (same-origin srcdoc iframes) get them
+     injected at runtime from this block (see the font-share script below) rather
+     than each baking the full base64 set into its srcdoc — that duplicated the
+     fonts per iframe and ballooned the export ~20x. -->
+<style id="eigendeck-fonts"></style>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Sans+Narrow:wght@400;700&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; overflow: hidden; font-family: 'PT Sans', sans-serif; }
+#viewport { width: 100vw; height: 100vh; position: relative; }
+.slide {
+  width: 1920px; height: 1080px; position: absolute;
+  top: 50%; left: 50%; transform-origin: center center; display: none; overflow: hidden;
+}
+.slide.active { display: block; }
+ul, ol { padding-left: 0; margin: 0; list-style-type: none; }
+ul li::before { content: '- '; }
+ol { counter-reset: ol-counter; }
+ol li::before { counter-increment: ol-counter; content: counter(ol-counter) '. '; }
+li { margin-bottom: 0.15em; list-style-position: inside; }
+.slide-footer {
+  position: absolute; bottom: 20px; right: 40px;
+  display: flex; align-items: baseline; gap: 16px;
+  font-family: 'PT Sans', sans-serif; color: #999; font-size: 18px;
+}
+.slide-footer-number { font-size: 24px; }
+/* Navigation bar */
+#nav-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  padding: 8px 20px; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+  font-family: 'PT Sans', sans-serif; font-size: 14px; color: #ccc;
+  opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  -webkit-backdrop-filter: blur(8px);
+}
+#nav-bar.visible { opacity: 1; pointer-events: auto; }
+#nav-bar button {
+  background: none; border: 1px solid rgba(255,255,255,0.2); color: #ccc;
+  border-radius: 4px; padding: 4px 12px; font-size: 14px; cursor: pointer;
+  font-family: inherit; min-width: 36px;
+}
+#nav-bar button:hover { background: rgba(255,255,255,0.1); color: #fff; }
+#nav-bar button:disabled { opacity: 0.3; cursor: default; }
+#nav-bar .nav-pos { min-width: 60px; text-align: center; }
+#nav-bar input[type=range] { width: 120px; accent-color: #888; }
+@media (max-width: 768px) {
+  #nav-bar { padding: 12px 16px; font-size: 16px; }
+  #nav-bar button { padding: 8px 16px; font-size: 16px; min-width: 44px; }
+}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div class="slide" data-index="0" style="background:#ffffff;"><div style="position:absolute;left:60px;top:40px;width:1800px;height:120px;overflow:hidden;"><div style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:flex-end;"><div style="font-family:PT Sans;font-weight:700;font-style:normal;font-size:72px;color:#222;line-height:1.3;padding:8px 12px;">Title</div></div></div><div style="position:absolute;left:60px;top:180px;width:900px;height:200px;overflow:hidden;background:rgba(238, 243, 251, 0.8);box-shadow:0 4px 14px rgba(0,0,0,0.28);"><div style="width:100%;height:100%;"><div style="font-family:PT Sans;font-weight:normal;font-style:normal;font-size:48px;color:#222;line-height:1.3;padding:10px 12px 10px 12px;text-shadow:0 2px 4px rgba(0,0,0,0.45);">Body <b>b</b></div></div></div><div style="position:absolute;left:60px;top:980px;width:1800px;height:60px;overflow:hidden;"><div style="width:100%;height:100%;display:flex;flex-direction:column;justify-content:flex-end;"><div style="font-family:PT Sans;font-weight:normal;font-style:normal;font-size:24px;color:#888;line-height:1.3;padding:8px 12px;">Foot</div></div></div><img src="data:image/png;base64,iVBORw0KGgo=" style="position:absolute;left:1000px;top:180px;width:400px;height:300px;object-fit:contain;border-radius:12px;opacity:0.9;transform:rotate(5deg);" /><svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;"><g><line x1="100" y1="600" x2="486.2505944184429" y2="648.2813243023054" stroke="#e53e3e" stroke-width="4"/><polygon points="500,650 485.25831654172924,656.2195473160147 487.24287229515653,640.343101288596" fill="#e53e3e"/></g></svg><div style="position:absolute;left:1400px;top:600px;width:300px;height:200px;background:#222;"></div><img src="data:image/png;base64,UFJFVklFVw==" style="position:absolute;left:60px;top:400px;width:640px;height:360px;object-fit:contain;background:#000;" /><iframe srcdoc="&lt;html&gt;&lt;body&gt;demo-fixed&lt;/body&gt;&lt;/html&gt;" style="position:absolute;left:800px;top:600px;width:400px;height:300px;border:none;" sandbox="allow-scripts allow-same-origin"></iframe><div class="slide-footer"><span class="slide-footer-meta">A · V</span><span class="slide-footer-number">1</span></div></div>
+</div>
+<!-- eigendeck-source: eyJ0aXRsZSI6IkFsbCBUeXBlcyIsInRoZW1lIjoid2hpdGUiLCJjb25maWciOnsid2lkdGgiOjE5MjAsImhlaWdodCI6MTA4MCwiYXV0aG9yIjoiQSIsInZlbnVlIjoiViIsInRyYW5zaXRpb24iOiJzbGlkZSIsImJhY2tncm91bmRUcmFuc2l0aW9uIjoiZmFkZSJ9LCJzbGlkZXMiOlt7ImlkIjoiczEiLCJsYXlvdXQiOiJkZWZhdWx0Iiwibm90ZXMiOiJuIiwiZWxlbWVudHMiOlt7ImlkIjoidC10aXRsZSIsInR5cGUiOiJ0ZXh0IiwicHJlc2V0IjoidGl0bGUiLCJodG1sIjoiVGl0bGUiLCJwb3NpdGlvbiI6eyJ4Ijo2MCwieSI6NDAsIndpZHRoIjoxODAwLCJoZWlnaHQiOjEyMH19LHsiaWQiOiJ0LWJvZHkiLCJ0eXBlIjoidGV4dCIsInByZXNldCI6ImJvZHkiLCJodG1sIjoiQm9keSA8Yj5iPC9iPiIsImJhY2tncm91bmRDb2xvciI6IiNlZWYzZmIiLCJiYWNrZ3JvdW5kT3BhY2l0eSI6MC44LCJwYWRkaW5nIjp7InRvcCI6MTAsInJpZ2h0IjoxMiwiYm90dG9tIjoxMCwibGVmdCI6MTJ9LCJ0ZXh0RWZmZWN0Ijoic2hhZG93IiwiYm94U2hhZG93Ijp0cnVlLCJwb3NpdGlvbiI6eyJ4Ijo2MCwieSI6MTgwLCJ3aWR0aCI6OTAwLCJoZWlnaHQiOjIwMH19LHsiaWQiOiJ0LWZvb3QiLCJ0eXBlIjoidGV4dCIsInByZXNldCI6ImZvb3Rub3RlIiwiaHRtbCI6IkZvb3QiLCJwb3NpdGlvbiI6eyJ4Ijo2MCwieSI6OTgwLCJ3aWR0aCI6MTgwMCwiaGVpZ2h0Ijo2MH19LHsiaWQiOiJpbWciLCJ0eXBlIjoiaW1hZ2UiLCJzcmMiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ289IiwiYm9yZGVyUmFkaXVzIjoxMiwib3BhY2l0eSI6MC45LCJyb3RhdGlvbiI6NSwicG9zaXRpb24iOnsieCI6MTAwMCwieSI6MTgwLCJ3aWR0aCI6NDAwLCJoZWlnaHQiOjMwMH19LHsiaWQiOiJhcnIiLCJ0eXBlIjoiYXJyb3ciLCJ4MSI6MTAwLCJ5MSI6NjAwLCJ4MiI6NTAwLCJ5MiI6NjUwLCJjb2xvciI6IiNlNTNlM2UiLCJzdHJva2VXaWR0aCI6NCwiaGVhZFNpemUiOjE2LCJoZWFkcyI6ImVuZCIsInBvc2l0aW9uIjp7IngiOjAsInkiOjAsIndpZHRoIjowLCJoZWlnaHQiOjB9fSx7ImlkIjoiY292IiwidHlwZSI6ImNvdmVyIiwiY29sb3IiOiIjMjIyIiwicG9zaXRpb24iOnsieCI6MTQwMCwieSI6NjAwLCJ3aWR0aCI6MzAwLCJoZWlnaHQiOjIwMH19LHsiaWQiOiJ2aWQiLCJ0eXBlIjoidmlkZW8iLCJraW5kIjoiZW1iZWQiLCJzcmMiOiJodHRwczovL3d3dy55b3V0dWJlLmNvbS93YXRjaD92PWFiYzEyMyIsInBvc2l0aW9uIjp7IngiOjYwLCJ5Ijo0MDAsIndpZHRoIjo2NDAsImhlaWdodCI6MzYwfX0seyJpZCI6ImRlbW8iLCJ0eXBlIjoiZGVtbyIsImRlbW9TcmMiOiJkZW1vcy94Lmh0bWwiLCJwb3NpdGlvbiI6eyJ4Ijo4MDAsInkiOjYwMCwid2lkdGgiOjQwMCwiaGVpZ2h0IjozMDB9fV19XX0= -->
+<div id="nav-bar">
+  <button id="nb-prev">&lsaquo;</button>
+  <span class="nav-pos"><span id="nb-cur">1</span> / <span id="nb-total"></span></span>
+  <button id="nb-next">&rsaquo;</button>
+</div>
+<script>
+// Font share: the deck fonts live ONCE in the parent's #eigendeck-fonts block.
+// Demo iframes are same-origin srcdoc docs, so inject that block into each at
+// runtime instead of baking the (large, base64) font set into every srcdoc —
+// keeps the exported file ~1x the font size instead of ~Nx (one per iframe).
+(function() {
+  var el = document.getElementById('eigendeck-fonts');
+  var FONT_CSS = el ? el.textContent : '';
+  if (!FONT_CSS) return;
+  function inject(ifr) {
+    try {
+      var d = ifr.contentDocument;
+      if (!d || !d.head || d.getElementById('eigendeck-fonts')) return;
+      var s = d.createElement('style');
+      s.id = 'eigendeck-fonts';
+      s.textContent = FONT_CSS;
+      d.head.appendChild(s);
+    } catch (ex) {}
+  }
+  var ifrs = document.querySelectorAll('iframe');
+  for (var i = 0; i < ifrs.length; i++) {
+    inject(ifrs[i]);  // already loaded?
+    ifrs[i].addEventListener('load', (function(f) { return function() { inject(f); }; })(ifrs[i]));
+  }
+})();
+
+// BroadcastChannel relay for demo-piece iframes
+window.addEventListener('message', function(e) {
+  if (!e.data || !e.data.__bc) return;
+  var allIframes = document.querySelectorAll('iframe');
+  for (var i = 0; i < allIframes.length; i++) {
+    if (allIframes[i].contentWindow !== e.source) {
+      try { allIframes[i].contentWindow.postMessage(e.data, '*'); } catch(ex) {}
+    }
+  }
+});
+
+const slides = document.querySelectorAll('.slide');
+let current = 0;
+const W = 1920, H = 1080;
+const nb = document.getElementById('nav-bar');
+const nbCur = document.getElementById('nb-cur');
+const nbPrev = document.getElementById('nb-prev');
+const nbNext = document.getElementById('nb-next');
+document.getElementById('nb-total').textContent = slides.length;
+
+function show(i) {
+  i = Math.max(0, Math.min(i, slides.length - 1));
+  slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
+  resize();
+  current = i;
+  nbCur.textContent = i + 1;
+  nbPrev.disabled = i === 0;
+  nbNext.disabled = i === slides.length - 1;
+  // Re-request state for demo iframes (retry as they may still be loading)
+  function requestState(slide, attempt) {
+    var iframes = slide.querySelectorAll('iframe');
+    for (var j = 0; j < iframes.length; j++) {
+      try { iframes[j].contentWindow.postMessage({ type: 'request-state' }, '*'); } catch(ex) {}
+    }
+    if (attempt < 3) setTimeout(function() { requestState(slide, attempt + 1); }, 500);
+  }
+  setTimeout(function() { requestState(slides[i], 0); }, 200);
+}
+function resize() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const scale = Math.min(vw / W, vh / H);
+  slides.forEach(function(s) {
+    s.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
+  });
+}
+function next() { if (current < slides.length - 1) show(current + 1); }
+function prev() { if (current > 0) show(current - 1); }
+
+// Nav bar buttons
+nbPrev.onclick = prev;
+nbNext.onclick = next;
+
+// Keyboard
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'PageDown') {
+    e.preventDefault(); next();
+  }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+    e.preventDefault(); prev();
+  }
+  if (e.key === 'Home') { e.preventDefault(); show(0); }
+  if (e.key === 'End') { e.preventDefault(); show(slides.length - 1); }
+});
+
+// Show nav bar on mouse move / touch, auto-hide after 3s
+var hideTimer = null;
+function showNav() {
+  nb.classList.add('visible');
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(function() { nb.classList.remove('visible'); }, 3000);
+}
+document.addEventListener('mousemove', showNav);
+document.addEventListener('touchstart', showNav, { passive: true });
+
+// Touch: swipe left/right to navigate
+var touchStartX = 0, touchStartY = 0;
+document.addEventListener('touchstart', function(e) {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+document.addEventListener('touchend', function(e) {
+  // Don't swipe-navigate if the touch started inside an iframe area
+  var startEl = document.elementFromPoint(touchStartX, touchStartY);
+  if (startEl && (startEl.tagName === 'IFRAME' || startEl.closest('iframe'))) return;
+  var dx = e.changedTouches[0].clientX - touchStartX;
+  var dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 2) {
+    if (dx < 0) next(); else prev();
+  }
+});
+
+// No click-to-navigate — it interferes with interactive demos.
+// Use swipe on mobile, keyboard/nav bar on desktop.
+
+show(0);
+window.addEventListener('resize', resize);
+// Show nav briefly on load
+setTimeout(function() { showNav(); }, 500);
+</script>
+</body>
+</html>"
+`;
