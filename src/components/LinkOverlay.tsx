@@ -4,6 +4,7 @@ import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
 import type { SlideElement } from '../types/presentation';
 import { ElementPreviewImg } from './ElementPreviewImg';
 import { VideoThumb } from './VideoThumb';
+import { arrowGeometry, triPoints } from '../lib/arrowGeometry.mjs';
 
 const SLIDE_W = 1920;
 const SLIDE_H = 1080;
@@ -216,23 +217,27 @@ function LinkableElement({ element: el, isLinked, linkable = true, onClick }: {
       );
     case 'arrow': {
       const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;
-      const angle = Math.atan2(y2 - y1, x2 - x1);
-      const ha = Math.PI / 6;
       // Use bounding box for click target
       const pad = 30;
       const bx = Math.min(x1, x2) - pad;
       const by = Math.min(y1, y2) - pad;
       const bw = Math.abs(x2 - x1) + pad * 2;
       const bh = Math.abs(y2 - y1) + pad * 2;
+      const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);   // inset line + head triangle(s)
       return (
         <div style={{ position: 'absolute', left: bx, top: by, width: bw, height: bh, cursor: 'pointer', zIndex: 10 }}
           onClick={onClick} className="link-overlay-element">
           <svg width={bw} height={bh} style={{ overflow: 'visible' }}>
+            {/* fat transparent hit target spans the full (un-inset) line */}
             <line x1={x1 - bx} y1={y1 - by} x2={x2 - bx} y2={y2 - by}
               stroke="transparent" strokeWidth={24} style={{ pointerEvents: 'stroke' }} />
-            <line x1={x1 - bx} y1={y1 - by} x2={x2 - bx} y2={y2 - by}
-              stroke={color} strokeWidth={strokeWidth} />
-            <polygon points={`${x2 - bx},${y2 - by} ${x2 - bx - headSize * Math.cos(angle - ha)},${y2 - by - headSize * Math.sin(angle - ha)} ${x2 - bx - headSize * Math.cos(angle + ha)},${y2 - by - headSize * Math.sin(angle + ha)}`} fill={color} />
+            <g opacity={el.opacity ?? 1}>
+              <line x1={geo.line.x1 - bx} y1={geo.line.y1 - by} x2={geo.line.x2 - bx} y2={geo.line.y2 - by}
+                stroke={color} strokeWidth={strokeWidth} />
+              {geo.triangles.map((t, i) => (
+                <polygon key={i} points={triPoints(t.map((p) => [p[0] - bx, p[1] - by]))} fill={color} />
+              ))}
+            </g>
           </svg>
           {isLinked && <div style={{ position: 'absolute', inset: 0, border: '4px solid #16a34a', borderRadius: 4 }} />}
         </div>

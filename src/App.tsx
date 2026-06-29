@@ -48,6 +48,7 @@ import { BusyOverlay } from './components/BusyOverlay';
 import './App.css';
 import { resolveTheme, themeColorForPreset } from './lib/themes';
 import { markAsEigendeck } from './lib/clipboard';
+import { arrowGeometry, triPoints } from './lib/arrowGeometry.mjs';
 import { extractDemoPieceNames } from './lib/demoPieces';
 import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement, textElementClipboardHtml } from './lib/elementClipboard';
 import { TEXT_PRESET_STYLES, effectiveFontSize, textShadowCss } from './types/presentation';
@@ -350,13 +351,15 @@ async function printToPdf() {
           }
         } else if (el.type === 'arrow') {
           const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
-          const angle = Math.atan2(y2 - y1, x2 - x1);
-          const ha = Math.PI / 6;
+          const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);   // inset line + head triangle(s)
+          const heads = geo.triangles.map((t) => `<polygon points="${triPoints(t)}" fill="${color}"/>`).join('');
+          const op = el.opacity != null && el.opacity < 1 ? ` opacity="${el.opacity}"` : '';
           // SVG uses viewBox in original coordinates, scaled by the container
           inner += `<svg viewBox="0 0 ${W} ${H}" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;">` +
-            `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${strokeWidth}"/>` +
-            `<polygon points="${x2},${y2} ${x2 - headSize * Math.cos(angle - ha)},${y2 - headSize * Math.sin(angle - ha)} ${x2 - headSize * Math.cos(angle + ha)},${y2 - headSize * Math.sin(angle + ha)}" fill="${color}"/>` +
-            `</svg>`;
+            `<g${op}>` +
+            `<line x1="${geo.line.x1}" y1="${geo.line.y1}" x2="${geo.line.x2}" y2="${geo.line.y2}" stroke="${color}" stroke-width="${strokeWidth}"/>` +
+            heads +
+            `</g></svg>`;
         } else if (el.type === 'cover') {
           inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};background:${el.color || theme.background};"></div>`;
         } else if (isLiveElement(el.type)) {
