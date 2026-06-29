@@ -118,7 +118,7 @@ export function htmlEscapeForSrcdoc(s) {
  * shared with the offline export tool and can't import the TS module). Keep in
  * sync with that file. Returns null when the URL isn't a recognized provider.
  */
-export function videoEmbedUrl(el) {
+function videoEmbedUrl(el) {
   if (!el || !el.url) return null;
   let u;
   try { u = new URL(String(el.url).trim()); } catch { return null; }

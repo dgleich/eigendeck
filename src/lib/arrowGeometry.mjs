@@ -5,7 +5,7 @@
 //   • the head triangle(s).
 // `heads`: 'end' (default) | 'start' | 'both' | 'none'.
 
-export const ARROW_HA = Math.PI / 6;   // head half-angle (30°)
+const ARROW_HA = Math.PI / 6;   // head half-angle (30°)
 
 export function arrowGeometry(x1, y1, x2, y2, headSize, heads) {
   const ha = ARROW_HA;

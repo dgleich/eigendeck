@@ -1,4 +1,3 @@
-export const ARROW_HA: number;
 
 export type ArrowHeads = 'end' | 'start' | 'both' | 'none';
 
