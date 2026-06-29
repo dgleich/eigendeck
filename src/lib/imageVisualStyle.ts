@@ -1,19 +1,22 @@
 import type { CSSProperties } from 'react';
+import { imageVisuals } from './elementDescriptor.mjs';
 
 /**
  * The optional visual styles an image element carries — drop shadow, border
- * radius, opacity, rotation. Shared by the editor and present render paths,
- * which built this identical conditional-spread block. Returns only the props
- * that apply (so spreading it is a no-op when none are set), to be merged after
- * the path's base layout style.
+ * radius, opacity, rotation — as a React style object. The predicates + magic
+ * values live once in `imageVisuals` (the descriptor, shared with the HTML
+ * export); this is the React-form adapter. Returns only the props that apply (so
+ * spreading it is a no-op when none are set), to be merged after the path's base
+ * layout style.
  */
 export function imageVisualStyle(
   el: { shadow?: boolean; borderRadius?: number; opacity?: number; rotation?: number },
 ): CSSProperties {
+  const v = imageVisuals(el);
   return {
-    ...(el.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
-    ...(el.borderRadius ? { borderRadius: el.borderRadius } : {}),
-    ...(el.opacity != null && el.opacity < 1 ? { opacity: el.opacity } : {}),
-    ...(el.rotation ? { transform: `rotate(${el.rotation}deg)` } : {}),
+    ...(v.shadow ? { filter: v.shadow } : {}),
+    ...(v.borderRadius ? { borderRadius: v.borderRadius } : {}),
+    ...(v.opacity != null ? { opacity: v.opacity } : {}),
+    ...(v.transform ? { transform: v.transform } : {}),
   };
 }

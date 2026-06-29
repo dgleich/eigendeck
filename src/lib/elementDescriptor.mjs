@@ -14,9 +14,26 @@
 // background is passed IN, because each target obtains it differently (editor:
 // a prop; others: resolveTheme()/themeBackground()).
 //
-// Migration: types are moved onto this path incrementally; cover is first.
+// Migration: types are moved onto this path incrementally (cover, then image).
 
 /** cover — a reveal mask filled with the slide background; an explicit color wins. */
 export function describeCover(el, resolvedSlideBg) {
   return { kind: 'cover', box: el.position, background: el.color || resolvedSlideBg };
+}
+
+/**
+ * image visual styles — the optional shadow / corner-radius / opacity / rotation
+ * an image carries. The single source of the four predicates + the magic shadow
+ * string; each target maps the present values into its own form (a React style
+ * object via imageVisualStyle, or CSS-string fragments in the HTML export).
+ * Absent props are `undefined` so adapters skip them. `borderRadius` stays a raw
+ * px number; `transform` is the ready-to-use CSS `rotate(...)` value.
+ */
+export function imageVisuals(el) {
+  return {
+    shadow: el.shadow ? 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' : undefined,
+    borderRadius: el.borderRadius || undefined,
+    opacity: (el.opacity != null && el.opacity < 1) ? el.opacity : undefined,
+    transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+  };
 }

@@ -3,7 +3,7 @@ import { resolveMonoFontPackage } from './fontRegistry.mjs';
 import { arrowGeometry, arrowSvgInner } from './arrowGeometry.mjs';
 import { detectVideoProvider } from './videoEmbedParse.mjs';
 import { THEME_BACKGROUNDS } from './themeBackgrounds.mjs';
-import { describeCover } from './elementDescriptor.mjs';
+import { describeCover, imageVisuals } from './elementDescriptor.mjs';
 
 // Give <code> runs the deck's mono family (mirrors applyCodeFont in TextElementSvg).
 function applyCodeFont(html, mono) {
@@ -415,10 +415,11 @@ export async function buildExportHtml(opts) {
             `position:absolute`, `left:${p.x}px`, `top:${p.y}px`,
             `width:${p.width}px`, `height:${p.height}px`, `object-fit:contain`,
           ];
-          if (el.shadow) imgStyles.push(`filter:drop-shadow(4px 8px 16px rgba(0,0,0,0.3))`);
-          if (el.borderRadius) imgStyles.push(`border-radius:${el.borderRadius}px`);
-          if (el.opacity != null && el.opacity < 1) imgStyles.push(`opacity:${el.opacity}`);
-          if (el.rotation) imgStyles.push(`transform:rotate(${el.rotation}deg)`);
+          const iv = imageVisuals(el);
+          if (iv.shadow) imgStyles.push(`filter:${iv.shadow}`);
+          if (iv.borderRadius) imgStyles.push(`border-radius:${iv.borderRadius}px`);
+          if (iv.opacity != null) imgStyles.push(`opacity:${iv.opacity}`);
+          if (iv.transform) imgStyles.push(`transform:${iv.transform}`);
           inner += `<img src="${imgSrc}" style="${imgStyles.join(';')};" />`;
           break;
         }
