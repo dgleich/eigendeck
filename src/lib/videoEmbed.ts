@@ -4,37 +4,11 @@
 
 export type VideoProvider = 'youtube' | 'vimeo' | 'peertube';
 
-export interface ParsedEmbed {
-  provider: VideoProvider;
-  id: string;        // video id / short-uuid
-  origin?: string;   // PeerTube instance origin (also the embed base)
-}
-
-/** Detect a supported provider from a pasted URL; null if unrecognized. */
-export function detectVideoProvider(raw: string): ParsedEmbed | null {
-  let u: URL;
-  try { u = new URL(raw.trim()); } catch { return null; }
-  const host = u.hostname.replace(/^www\./, '');
-
-  if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
-    const v = u.searchParams.get('v');
-    if (v) return { provider: 'youtube', id: v };
-    const m = u.pathname.match(/^\/(?:embed|shorts|live)\/([\w-]+)/);
-    if (m) return { provider: 'youtube', id: m[1] };
-  }
-  if (host === 'youtu.be') {
-    const id = u.pathname.slice(1).split('/')[0];
-    if (id) return { provider: 'youtube', id };
-  }
-  if (host === 'vimeo.com' || host === 'player.vimeo.com') {
-    const m = u.pathname.match(/(\d+)/);
-    if (m) return { provider: 'vimeo', id: m[1] };
-  }
-  // PeerTube (federated): /w/<id>, /videos/watch/<uuid>, /videos/embed/<uuid>.
-  const pt = u.pathname.match(/\/(?:w|videos\/(?:watch|embed))\/([\w-]+)/);
-  if (pt) return { provider: 'peertube', id: pt[1], origin: u.origin };
-  return null;
-}
+// URL parsing is shared with the static export (exportCore.mjs) via a .mjs so
+// there's a single copy; re-exported here so existing importers are unaffected.
+export type { ParsedEmbed } from './videoEmbedParse.mjs';
+import { detectVideoProvider } from './videoEmbedParse.mjs';
+export { detectVideoProvider };
 
 type EmbedOpts = {
   provider?: string; url?: string;

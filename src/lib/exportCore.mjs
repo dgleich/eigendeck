@@ -1,6 +1,7 @@
 import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
 import { arrowGeometry, triPoints } from './arrowGeometry.mjs';
+import { detectVideoProvider } from './videoEmbedParse.mjs';
 
 // Give <code> runs the deck's mono family (mirrors applyCodeFont in TextElementSvg).
 function applyCodeFont(html, mono) {
@@ -119,24 +120,9 @@ export function htmlEscapeForSrcdoc(s) {
  * sync with that file. Returns null when the URL isn't a recognized provider.
  */
 function videoEmbedUrl(el) {
-  if (!el || !el.url) return null;
-  let u;
-  try { u = new URL(String(el.url).trim()); } catch { return null; }
-  const host = u.hostname.replace(/^www\./, '');
-  let provider = null, id = null, origin = null;
-  if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
-    const v = u.searchParams.get('v');
-    if (v) { provider = 'youtube'; id = v; }
-    else { const m = u.pathname.match(/^\/(?:embed|shorts|live)\/([\w-]+)/); if (m) { provider = 'youtube'; id = m[1]; } }
-  } else if (host === 'youtu.be') {
-    const i = u.pathname.slice(1).split('/')[0]; if (i) { provider = 'youtube'; id = i; }
-  } else if (host === 'vimeo.com' || host === 'player.vimeo.com') {
-    const m = u.pathname.match(/(\d+)/); if (m) { provider = 'vimeo'; id = m[1]; }
-  } else {
-    const pt = u.pathname.match(/\/(?:w|videos\/(?:watch|embed))\/([\w-]+)/);
-    if (pt) { provider = 'peertube'; id = pt[1]; origin = u.origin; }
-  }
-  if (!provider || !id) return null;
+  const parsed = detectVideoProvider(el && el.url);
+  if (!parsed) return null;
+  const { provider, id, origin } = parsed;
 
   const p = new URLSearchParams();
   const showControls = !!el.controls || !el.autoplay;
@@ -158,7 +144,7 @@ function videoEmbedUrl(el) {
     return `https://player.vimeo.com/video/${id}?${p.toString()}`;
   }
   // PeerTube
-  const base = origin || u.origin;
+  const base = origin;
   if (!base) return null;
   if (el.autoplay) p.set('autoplay', '1');
   if (el.muted) p.set('muted', '1');
