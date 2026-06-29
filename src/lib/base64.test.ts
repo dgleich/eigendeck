@@ -24,4 +24,15 @@ describe('[simplify-guard] bytesToBase64', () => {
     expect(dec.charCodeAt(8192)).toBe(8192 % 256);
     expect(dec.charCodeAt(n - 1)).toBe((n - 1) % 256);
   });
+
+  // @simplify-guard — assetRenderer.ts had a `subarray`-based copy; this proves
+  // the shared `slice`-based helper produces byte-identical output, so routing
+  // that caller through it is safe.
+  it('matches the old subarray-based variant across the chunk boundary', () => {
+    const n = 17000, b = new Uint8Array(n);
+    for (let i = 0; i < n; i++) b[i] = (i * 37 + 11) % 256;
+    let ref = '';
+    for (let i = 0; i < b.length; i += 8192) ref += String.fromCharCode(...b.subarray(i, i + 8192));
+    expect(bytesToBase64(b)).toBe(btoa(ref));
+  });
 });

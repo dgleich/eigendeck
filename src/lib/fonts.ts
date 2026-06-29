@@ -15,6 +15,7 @@ import {
   bareNarrowFamilyName,
   allFontFacesCSS,
 } from './fontRegistry.mjs';
+import { bytesToBase64 } from './base64';
 
 export {
   FONT_PACKAGES,
@@ -58,14 +59,10 @@ export async function buildEmbeddedFontFacesCSS(presentation: {
         const resp = await fetch(url);
         if (!resp.ok) continue;
         const buf = new Uint8Array(await resp.arrayBuffer());
-        let binary = '';
-        for (let i = 0; i < buf.length; i += 8192) {
-          binary += String.fromCharCode(...buf.slice(i, i + 8192));
-        }
         const ext = filename.split('.').pop() || 'ttf';
         const mime = ext === 'otf' ? 'font/otf' : 'font/ttf';
         const fmt = ext === 'otf' ? "format('opentype')" : "format('truetype')";
-        const dataUrl = `data:${mime};base64,${btoa(binary)}`;
+        const dataUrl = `data:${mime};base64,${bytesToBase64(buf)}`;
         const fontFamily = cssAttrs.isNarrow && narrowFamily ? narrowFamily : family;
         lines.push(
           `@font-face { font-family: '${fontFamily}'; src: url('${dataUrl}') ${fmt}; ` +

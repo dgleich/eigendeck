@@ -23,6 +23,7 @@ import {
   type AssetCacheEntry,
 } from './assetCache';
 import { showToast, dismissToast } from './toasts';
+import { bytesToBase64 } from './base64';
 
 /**
  * Show a "still rendering…" toast if a single asset render hasn't
@@ -493,14 +494,6 @@ function mimeFromExt(href: string): string {
     : ext === 'webp' ? 'image/webp'
     : ext === 'svg' ? 'image/svg+xml'
     : 'application/octet-stream';
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let s = '';
-  for (let i = 0; i < bytes.length; i += 8192) {
-    s += String.fromCharCode(...bytes.subarray(i, i + 8192));
-  }
-  return btoa(s);
 }
 
 /**
