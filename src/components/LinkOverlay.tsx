@@ -5,6 +5,7 @@ import type { SlideElement } from '../types/presentation';
 import { ElementPreviewImg } from './ElementPreviewImg';
 import { VideoThumb } from './VideoThumb';
 import { arrowGeometry, triPoints } from '../lib/arrowGeometry.mjs';
+import { describeCover } from '../lib/elementDescriptor.mjs';
 
 const SLIDE_W = 1920;
 const SLIDE_H = 1080;
@@ -212,7 +213,7 @@ function LinkableElement({ element: el, isLinked, linkable = true, onClick }: {
       );
     case 'cover':
       return (
-        <div style={{ ...wrapStyle, background: el.color || '#fff', border: isLinked ? '4px solid #16a34a' : '4px solid #ddd' }}
+        <div style={{ ...wrapStyle, background: describeCover(el, '#fff').background, border: isLinked ? '4px solid #16a34a' : '4px solid #ddd' }}
           onClick={onClick} className="link-overlay-element" />
       );
     case 'arrow': {

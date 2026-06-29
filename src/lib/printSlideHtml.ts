@@ -13,6 +13,7 @@
 // can't drift silently before this target is unified onto the descriptor path.
 
 import { resolveTheme, themeColorForPreset } from './themes';
+import { describeCover } from './elementDescriptor.mjs';
 import { markAsEigendeck } from './clipboard';
 import { arrowGeometry, arrowSvgInner } from './arrowGeometry.mjs';
 import { TEXT_PRESET_STYLES, effectiveFontSize, textShadowCss } from '../types/presentation';
@@ -75,7 +76,7 @@ export function buildPrintSlideHtml(
       // SVG uses viewBox in original coordinates, scaled by the container
       inner += `<svg viewBox="0 0 ${W} ${H}" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;">${arrowSvgInner(geo, color, strokeWidth, el.opacity)}</svg>`;
     } else if (el.type === 'cover') {
-      inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};background:${el.color || theme.background};"></div>`;
+      inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};background:${describeCover(el, theme.background).background};"></div>`;
     } else if (isLiveElement(el.type)) {
       // P0-2: notebook joins demo/demo-piece/video as a baked screenshot.
       const screenshot = demoScreenshots.get(`${slide.id}:${el.id}`);
