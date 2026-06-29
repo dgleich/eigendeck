@@ -45,6 +45,17 @@ export function triPoints(t) {
   return t.map((p) => p[0] + ',' + p[1]).join(' ');
 }
 
+/** SVG-STRING inner `<g>` for an arrow — the inset line + head polygon(s) wrapped
+ *  in `<g [opacity]>`. Shared by the HTML/string render targets (exportCore HTML
+ *  export + App.tsx print-to-PDF), which built this identically. The caller
+ *  supplies its own `<svg>` wrapper. */
+export function arrowSvgInner(geo, color, strokeWidth, opacity) {
+  const op = opacity != null && opacity < 1 ? ` opacity="${opacity}"` : '';
+  const line = `<line x1="${geo.line.x1}" y1="${geo.line.y1}" x2="${geo.line.x2}" y2="${geo.line.y2}" stroke="${color}" stroke-width="${strokeWidth}"/>`;
+  const heads = geo.triangles.map((t) => `<polygon points="${triPoints(t)}" fill="${color}"/>`).join('');
+  return `<g${op}>${line}${heads}</g>`;
+}
+
 /** Bounding box over endpoints + head corners (editor hit-area), padded. */
 export function arrowBBox(x1, y1, x2, y2, headSize, heads, pad) {
   const g = arrowGeometry(x1, y1, x2, y2, headSize, heads);

@@ -10,6 +10,11 @@ export function arrowGeometry(
 
 export function triPoints(t: number[][]): string;
 
+export function arrowSvgInner(
+  geo: { line: { x1: number; y1: number; x2: number; y2: number }; triangles: number[][][] },
+  color: string, strokeWidth: number, opacity?: number,
+): string;
+
 export function arrowBBox(
   x1: number, y1: number, x2: number, y2: number,
   headSize: number, heads?: ArrowHeads, pad?: number,

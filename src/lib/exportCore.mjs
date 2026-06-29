@@ -1,6 +1,6 @@
 import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
-import { arrowGeometry, triPoints } from './arrowGeometry.mjs';
+import { arrowGeometry, arrowSvgInner } from './arrowGeometry.mjs';
 import { detectVideoProvider } from './videoEmbedParse.mjs';
 import { THEME_BACKGROUNDS } from './themeBackgrounds.mjs';
 
@@ -512,12 +512,7 @@ export async function buildExportHtml(opts) {
         case 'arrow': {
           const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
           const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);
-          const op = el.opacity != null && el.opacity < 1 ? ` opacity="${el.opacity}"` : '';
-          inner += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">`;
-          inner += `<g${op}>`;
-          inner += `<line x1="${geo.line.x1}" y1="${geo.line.y1}" x2="${geo.line.x2}" y2="${geo.line.y2}" stroke="${color}" stroke-width="${strokeWidth}"/>`;
-          for (const t of geo.triangles) inner += `<polygon points="${triPoints(t)}" fill="${color}"/>`;
-          inner += `</g></svg>`;
+          inner += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">${arrowSvgInner(geo, color, strokeWidth, el.opacity)}</svg>`;
           break;
         }
       }
