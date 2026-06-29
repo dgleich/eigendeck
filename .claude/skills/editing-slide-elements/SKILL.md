@@ -1,6 +1,6 @@
 ---
 name: editing-slide-elements
-description: This skill should be used when adding a new slide element type (text/image/arrow/demo/demo-piece/notebook/video/cover) OR adding/changing a property on an existing type (e.g. arrow `heads`/`opacity`, image `borderRadius`). Eigendeck has SEVEN independent render/output paths plus data, store, inspector, and doc concerns — a change applied to only the editor will silently render wrong (or vanish) in present mode, HTML export, PDF/print, thumbnails, or the link overlay. This is the checklist of everything to update and how to verify WYSIWYG across all paths.
+description: This skill should be used when adding a new slide element type (text/image/arrow/demo/demo-piece/notebook/video/cover) OR adding/changing a property on an existing type (e.g. arrow `heads`/`opacity`, image `borderRadius`). Eigendeck has SEVEN independent render/output paths plus data, store, inspector, and doc concerns — a change applied to only the editor will silently render wrong (or vanish) in present mode, HTML export (app GUI AND headless CLI — wired separately), PDF/print, thumbnails, or the link overlay. This is the checklist of everything to update and how to verify WYSIWYG across all paths.
 version: 0.1.0
 ---
 
@@ -37,7 +37,7 @@ if you check every path.
 | 1 | **Editor canvas** (interactive) | `SlideElementRenderer.tsx` → `SlideElementRenderer()` | own `switch` |
 | 2 | **Present / projector** (live + 2nd monitor) | `PresentSlide.tsx` → `PresentElement()` | own `switch` |
 | 3 | **Present-mode wrapper** (transitions/animation) | `PresentMode.tsx` (`AnimatedArrow`, `getElementBounds`) | wraps #2; special-cases `arrow` |
-| 4 | **Standalone HTML export** | `exportCore.mjs` → `buildExportHtml()` | own `switch` |
+| 4 | **Standalone HTML export** (app GUI + CLI + debug — 3 callers) | `exportCore.mjs` → `buildExportHtml()` | own `switch` |
 | 5 | **PDF / "Export for Print"** | `App.tsx` → `printToPdf()` (`px2in`/`px2pt` loop) | own `if/else` |
 | 6 | **Link overlay** (pick a link target) | `LinkOverlay.tsx` → `LinkableElement()` | own `switch` |
 | 7 | **Thumbnail / static snapshot** | `SlideThumbnail.tsx` → `ThumbElement()` | own `switch` |
@@ -79,6 +79,36 @@ here too, or HTML export diverges from the editor. It also reads media by **path
 (`el.src`, `el.demoSrc`), which `fileOps` hydrates from `assetId` — not by
 `assetId` directly.
 
+### HTML export (path #4) has THREE callers — keep their wiring in sync
+
+`buildExportHtml()` is the shared *renderer*, but it's driven by an **options
+bag** (`renderMath`, `renderTextElement`, `renderNotebookElement`,
+`getElementPreview`, `resolveFont`, `resolveMathBundle`, asset readers). Three
+callers wire that bag **differently**:
+
+| Caller | File | Context | Notable wiring |
+|--------|------|---------|----------------|
+| **App / GUI export** | `store/fileOps.ts` `buildPresentationExportHtml` | Full app, live webview | iframe-pool math (`makeTextElementRenderer`), `getElementPreviewDataUrl`, full-fidelity `renderNotebookElement` (`notebookExport`) |
+| **CLI / headless export** | `export-cli.ts` `main()` | Hidden Tauri webview, no editor | cache-only math (`makeCachingRenderMath` → `math_cache` + singleton fallback), cache-only `getElementPreview`, `resolveMathBundle`/`resolveFont`; **does NOT wire `renderNotebookElement`** |
+| **Debug batch** | `debug/batchExportHtml.ts` | Dev automation | minimal |
+
+**This is the #85 bug class:** a capability you add to `exportCore` (a new option
+the renderer consumes) must be wired in **fileOps AND export-cli** (and decide
+about batch). #85 was exactly the CLI omitting the `getElementPreview` callback
+that `fileOps` already passed, so PDF/notebook/video elements exported as
+placeholders from the CLI only. When you change the exportCore options contract,
+**grep every `buildExportHtml(` caller** and update each.
+
+**CLI headless constraints** (why the wiring differs — don't "fix" by copying the
+app wiring): the CLI has no iframe pool and no live asset pipeline, so it can't
+render math or rasterize PDFs on demand. It relies on what the editor already
+cached: math from the `math_cache` table (else a singleton-font fallback), and
+preview PNGs from `asset_cache`. A deck never opened in the editor exports with
+font-only math and placeholder previews. Notebooks in CLI export fall back to the
+cached preview PNG (no `renderNotebookElement`), unlike the app's full srcdoc
+iframe. The `eigendeck-cli` skill covers seeding the cache (open in editor first)
+and the import/export round-trip; **use it to test CLI export**.
+
 ## Checklist: adding a NEW element type
 
 Create a TodoWrite item per applicable line.
@@ -89,6 +119,9 @@ Create a TodoWrite item per applicable line.
    sites).
 2. **All 7 render switches** — add a `case`/branch to #1–#7 (skip #3 unless it
    animates). A missing case renders nothing or hits `default: return null`.
+   The exportCore switch (#4) serves all THREE export callers; if the type
+   needs caller-specific wiring (a preview PNG, a special renderer), wire it in
+   **both `fileOps.ts` and `export-cli.ts`** (see "THREE callers" above).
 3. **Insert UX** — `App.tsx` `runInsert` switch (the canonical "Add element"
    dispatch) + toolbar entry; `SlideEditor.tsx` add-element context menu;
    ensure selection/marquee works.
@@ -129,6 +162,9 @@ Create a TodoWrite item per applicable line.
    - Text inner-rendering changes go in `TextElementSvg.tsx`.
    - #5 print / #6 overlay / #7 thumbnail commonly lag — fix or consciously skip,
      don't forget.
+   - If the property needs a new exportCore **option** (a callback/resolver,
+     not just an `el` field the switch already reads), wire it in **both
+     `fileOps.ts` and `export-cli.ts`** — the #85 bug class.
 3. **Inspector** — `PropertiesPanel.tsx`: add a control in the matching
    `selectedEl.type ===` block.
 4. **Sanitizer** — `sanitizeRichText.ts`: ONLY if it's an authorable inline
@@ -165,5 +201,10 @@ copy carries everything except `detachedFields`.
   export** + **PDF/print** output. Eyeball the new type/property in each of the 7
   paths you intended it to appear in. A green editor is NOT proof the export is
   green.
+- **CLI export specifically** — the app export and CLI export wire `buildExportHtml`
+  differently, so test BOTH. Use the **eigendeck-cli** skill to export a deck
+  headlessly and check the new type/property survived (seed the cache by opening
+  the deck in the editor first; CLI math/previews come from cache). A green app
+  export is NOT proof the CLI export is green — that was the #85 bug.
 - If you fixed/skipped a straggler path (#5/#6/#7), say so explicitly in the
   commit/PR — silent omission reads as "done everywhere."
