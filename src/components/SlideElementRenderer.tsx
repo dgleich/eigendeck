@@ -119,7 +119,7 @@ export function SlideElementRenderer({
 
     case 'demo-piece':
       return (
-        <DemoPieceBox
+        <DemoBox
           element={element} zIndex={zIndex} scale={scale}
           projectPath={projectPath} isSelected={isSelected}
           onSelect={onSelect} onDelete={onDelete}
@@ -305,15 +305,17 @@ function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
 }
 
 // ============================================
-// Demo element with overlay for dragging
+// Demo / demo-piece element — same interactive iframe box; a demo-piece just
+// adds the `piece=` viewport hash (and a piece-specific class/title/fallback).
 // ============================================
 function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpdate }: {
-  element: Extract<SlideElement, { type: 'demo' }>;
+  element: Extract<SlideElement, { type: 'demo' | 'demo-piece' }>;
   zIndex: number; scale: number; projectPath?: string | null;
   isSelected: boolean;
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
+  const piece = element.type === 'demo-piece' ? element.piece : undefined;
   const [interacting, setInteracting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   // Reload the iframe when this demo's asset changes (the inspector's "Reload
@@ -326,7 +328,7 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
     window.addEventListener('eigendeck:asset-changed', onChanged as EventListener);
     return () => window.removeEventListener('eigendeck:asset-changed', onChanged as EventListener);
   }, [element.assetId]);
-  const src = useDemoUrl(element.assetId);
+  const src = useDemoUrl(element.assetId, piece ? `piece=${piece}` : undefined);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   // Inject the deck's fonts + theme vars (#86) into the demo's contentDocument.
   const demoConfig = usePresentationStore((s) => s.presentation.config);
@@ -353,82 +355,16 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
     <DraggableBox
       elementId={element.id}
       position={element.position} zIndex={zIndex} scale={scale}
-      className="el-demo" isSelected={isSelected}
+      className={piece ? 'el-demo el-demo-piece' : 'el-demo'} isSelected={isSelected}
       linkId={element.linkId} syncId={element.syncId}
       _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
       onSelect={onSelect} onDelete={onDelete}
       onPositionChange={(pos) => onUpdate({ position: pos } as any)}
     >
       {src ? (
-        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox={DEMO_SANDBOX} title="demo"
+        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox={DEMO_SANDBOX} title={piece ? `demo-piece: ${piece}` : 'demo'}
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
-      ) : <div style={{ padding: 20, color: '#999' }}>Demo</div>}
-      {!interacting && (
-        <div className="demo-overlay"
-          onDoubleClick={(e) => { e.stopPropagation(); setInteracting(true); }}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'grab', zIndex: 1 }} />
-      )}
-      {interacting && (
-        // Reload moved to the inspector's Asset section ("Reload from disk now").
-        <InteractLockBar scale={scale} onLock={() => setInteracting(false)} />
-      )}
-    </DraggableBox>
-  );
-}
-
-// ============================================
-// Demo-piece element — viewport iframe with piece hash
-// ============================================
-function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpdate }: {
-  element: Extract<SlideElement, { type: 'demo-piece' }>;
-  zIndex: number; scale: number; projectPath?: string | null;
-  isSelected: boolean;
-  onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
-  onUpdate: (changes: Partial<SlideElement>) => void;
-}) {
-  const [interacting, setInteracting] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
-  // Reload the iframe when this demo's asset changes (the inspector's "Reload
-  // from disk now" / file-watch fires eigendeck:asset-changed). Replaces the
-  // old in-overlay Refresh button.
-  useEffect(() => {
-    const onChanged = (e: Event) => {
-      if ((e as CustomEvent).detail?.assetId === element.assetId) setReloadKey((k) => k + 1);
-    };
-    window.addEventListener('eigendeck:asset-changed', onChanged as EventListener);
-    return () => window.removeEventListener('eigendeck:asset-changed', onChanged as EventListener);
-  }, [element.assetId]);
-  const src = useDemoUrl(element.assetId, `piece=${element.piece}`);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  // Inject the deck's fonts + theme vars (#86) into the demo's contentDocument.
-  const demoConfig = usePresentationStore((s) => s.presentation.config);
-  const demoTheme = usePresentationStore((s) => s.presentation.theme);
-  const demoSlide = usePresentationStore((s) => s.presentation.slides[s.currentSlideIndex]);
-  useDemoThemeInjection(iframeRef, demoConfig, demoTheme, demoSlide, reloadKey);
-  // Cache a preview of the rendered demo-piece (see DemoBox). Theme is salted in
-  // so a theme/font switch busts the stale preview (#86). One 'preview' per key.
-  const themeSalt = demoSlide ? demoVarsCssForSlide(demoConfig, demoTheme, demoSlide) : '';
-  const demoBg = resolveTheme(demoTheme, demoSlide?.theme).background; // bake slide bg into the (transparent) preview
-  useEffect(() => {
-    if (!src) return;
-    const t = setTimeout(() => { void capturePreview(element, 'iframe', themeSalt, demoBg); }, 900);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId, themeSalt, demoBg]);
-  return (
-    <DraggableBox
-      elementId={element.id}
-      position={element.position} zIndex={zIndex} scale={scale}
-      className="el-demo el-demo-piece" isSelected={isSelected}
-      linkId={element.linkId} syncId={element.syncId}
-      _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
-      onSelect={onSelect} onDelete={onDelete}
-      onPositionChange={(pos) => onUpdate({ position: pos } as any)}
-    >
-      {src ? (
-        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox={DEMO_SANDBOX} title={`demo-piece: ${element.piece}`}
-          style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
-      ) : <div style={{ padding: 20, color: '#999' }}>Demo piece: #{element.piece}</div>}
+      ) : <div style={{ padding: 20, color: '#999' }}>{piece ? `Demo piece: #${piece}` : 'Demo'}</div>}
       {!interacting && (
         <div className="demo-overlay"
           onDoubleClick={(e) => { e.stopPropagation(); setInteracting(true); }}
