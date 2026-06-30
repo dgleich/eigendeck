@@ -13,6 +13,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { ArrowGlyph } from './ArrowGlyph';
 import { CoverView } from './ElementView';
 import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
+import { ELEMENT_PLACEHOLDERS as PH } from '../lib/elementPlaceholders.mjs';
 import { resolveTheme } from '../lib/themes';
 import { TextElementSvg } from './TextElementSvg';
 import { useRenderedAsset } from '../lib/assetRenderer';
@@ -143,7 +144,7 @@ function ThumbDemo({ element }: { element: Extract<SlideElement, { type: 'demo' 
   return (
     <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden', background: '#fff' }}>
       <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#60a5fa', background: '#e8f4f8', border: '1px dashed #93c5fd' }}>DEMO</div>
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: PH.demo.color, background: PH.demo.bg, border: `1px dashed ${PH.demo.borderColor}` }}>{PH.demo.label}</div>
       } />
     </div>
   );
@@ -155,7 +156,7 @@ function ThumbDemoPiece({ element }: { element: Extract<SlideElement, { type: 'd
   return (
     <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden', background: '#fff' }}>
       <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#7c3aed', background: '#f0e8f8', border: '1px dashed #a78bfa' }}>{element.piece}</div>
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: PH['demo-piece'].color, background: PH['demo-piece'].bg, border: `1px dashed ${PH['demo-piece'].borderColor}` }}>{element.piece}</div>
       } />
     </div>
   );
@@ -178,7 +179,7 @@ function ThumbNotebook({ element }: { element: Extract<SlideElement, { type: 'no
   return (
     <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden', background: '#fff' }}>
       <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: '#86c986', background: '#eef7ee' }}>NB</div>
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: PH.notebook.color, background: PH.notebook.bg }}>{PH.notebook.label}</div>
       } />
     </div>
   );

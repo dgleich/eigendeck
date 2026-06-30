@@ -6,6 +6,7 @@ import { ElementPreviewImg } from './ElementPreviewImg';
 import { VideoThumb } from './VideoThumb';
 import { triPoints } from '../lib/arrowGeometry.mjs';
 import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
+import { ELEMENT_PLACEHOLDERS as PH } from '../lib/elementPlaceholders.mjs';
 
 const SLIDE_W = 1920;
 const SLIDE_H = 1080;
@@ -180,9 +181,9 @@ function LinkableElement({ element: el, isLinked, linkable = true, onClick }: {
       );
     case 'demo':
       return (
-        <div style={{ ...wrapStyle, background: '#e8f4f8', border: isLinked ? '4px solid #16a34a' : '4px dashed #93c5fd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: '#60a5fa' }}
+        <div style={{ ...wrapStyle, background: PH.demo.bg, border: isLinked ? '4px solid #16a34a' : `4px dashed ${PH.demo.borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: PH.demo.color }}
           onClick={onClick} className="link-overlay-element">
-          DEMO
+          {PH.demo.label}
         </div>
       );
     case 'video':
@@ -194,19 +195,19 @@ function LinkableElement({ element: el, isLinked, linkable = true, onClick }: {
       );
     case 'notebook':
       return (
-        <div style={{ ...wrapStyle, background: '#eef7ee', border: isLinked ? '4px solid #16a34a' : '4px dashed #86c986', overflow: 'hidden' }}
+        <div style={{ ...wrapStyle, background: PH.notebook.bg, border: isLinked ? '4px solid #16a34a' : `4px dashed ${PH.notebook.borderColor}`, overflow: 'hidden' }}
           onClick={onClick} className="link-overlay-element">
           <ElementPreviewImg
             cacheKey={el.syncId ?? el.id}
             fallback={
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: '#3f9142' }}>NB</div>
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: PH.notebook.color }}>{PH.notebook.label}</div>
             }
           />
         </div>
       );
     case 'demo-piece':
       return (
-        <div style={{ ...wrapStyle, background: '#f0e8f8', border: isLinked ? '4px solid #16a34a' : '4px dashed #a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#7c3aed' }}
+        <div style={{ ...wrapStyle, background: PH['demo-piece'].bg, border: isLinked ? '4px solid #16a34a' : `4px dashed ${PH['demo-piece'].borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: PH['demo-piece'].color }}
           onClick={onClick} className="link-overlay-element">
           {el.piece}
         </div>

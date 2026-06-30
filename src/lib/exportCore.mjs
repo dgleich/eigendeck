@@ -2,6 +2,7 @@ import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
 import { coverHtml, arrowSvgHtml, imageHtml } from './elementHtml.mjs';
 import { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
+import { ELEMENT_PLACEHOLDERS as PH } from './elementPlaceholders.mjs';
 // Re-exported so existing importers (incl. exportCore.test.mjs) are unaffected.
 export { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
 import { buildEmbedSrc } from './videoEmbedParse.mjs';
@@ -349,7 +350,7 @@ export async function buildExportHtml(opts) {
           } else {
             // No cached preview (deck never opened / exported cold). Emit a
             // visible placeholder so the element isn't silently dropped.
-            inner += `<div style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#eef7ee;color:#86c986;font-size:64px;font-family:sans-serif;">NB</div>`;
+            inner += `<div style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:${PH.notebook.bg};color:${PH.notebook.color};font-size:64px;font-family:sans-serif;">${PH.notebook.label}</div>`;
           }
           break;
         }
