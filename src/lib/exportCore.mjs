@@ -4,6 +4,7 @@ import { arrowSvgInner } from './arrowGeometry.mjs';
 import { detectVideoProvider } from './videoEmbedParse.mjs';
 import { THEME_BACKGROUNDS } from './themeBackgrounds.mjs';
 import { themeColorsByName, themeColorForPreset } from './themeColors.mjs';
+import { effectiveFontSize } from './textSizes.mjs';
 import { describeCover, imageVisuals, describeArrow } from './elementDescriptor.mjs';
 
 // Give <code> runs the deck's mono family (mirrors applyCodeFont in TextElementSvg).
@@ -391,7 +392,7 @@ export async function buildExportHtml(opts) {
           const radLegacy = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
           inner += `<div style="${absBox(p)};overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}${shLegacy ? `box-shadow:${shLegacy};` : ''}${radLegacy}${rotLegacy}">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${legacyColor};line-height:1.3;padding:${textPaddingCss(el)};${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${applyCodeFont(textHtml, resolveMonoFontPackage((presentation.config || {}).defaultMonoFont).family)}</div>` +
+            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${effectiveFontSize(el, presentation.config)}px;color:${legacyColor};line-height:1.3;padding:${textPaddingCss(el)};${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${applyCodeFont(textHtml, resolveMonoFontPackage((presentation.config || {}).defaultMonoFont).family)}</div>` +
             `</div></div>`;
           break;
         }

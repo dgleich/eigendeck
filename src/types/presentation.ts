@@ -1,3 +1,14 @@
+// The text type-scale (named sizes + the effective-size cascade) lives in the
+// framework-free lib/textSizes.mjs so it is shared with the headless CLI export
+// (exportCore.mjs) across the .mjs/.ts boundary. Re-exported here so the rest of
+// the app keeps importing it from the data model unchanged.
+import {
+  DEFAULT_TEXT_SIZES, resolveNamedSize, effectiveTextPresetSize, effectiveFontSize,
+} from '../lib/textSizes.mjs';
+import type { NamedSize } from '../lib/textSizes.mjs';
+export type { NamedSize };
+export { DEFAULT_TEXT_SIZES, resolveNamedSize, effectiveTextPresetSize, effectiveFontSize };
+
 export interface ElementPosition {
   x: number;
   y: number;
@@ -11,38 +22,6 @@ export interface ElementPosition {
 // ============================================
 
 export type TextPreset = 'title' | 'body' | 'textbox' | 'annotation' | 'footnote' | 'hype';
-
-/**
- * Named sizes in the deck's type scale. Five buckets covering every
- * size the existing TextPresets need. Other element types
- * (notebooks, future code blocks, etc.) pick from this same vocabulary
- * so the deck has ONE type scale, not parallel ones per element type.
- *
- * UX restriction: 'title' is reserved for title text elements.
- * Inspector pickers for non-title elements (notebooks, etc.) hide
- * it from the chooser — they can still use the numeric override
- * field if they want title-sized text for some reason.
- */
-export type NamedSize = 'footnote' | 'note' | 'body' | 'title' | 'hype';
-
-/** Built-in defaults for the type scale. Match the historical
- *  TextPreset.fontSize values so existing decks render identically
- *  when `PresentationConfig.textSizes` is absent. */
-export const DEFAULT_TEXT_SIZES: Record<NamedSize, number> = {
-  footnote: 24,
-  note:     32,
-  body:     48,
-  title:    72,
-  hype:     96,
-};
-
-/** Resolve a named size against the deck override + defaults. */
-export function resolveNamedSize(
-  name: NamedSize,
-  config?: { textSizes?: Partial<Record<NamedSize, number>> } | null,
-): number {
-  return config?.textSizes?.[name] ?? DEFAULT_TEXT_SIZES[name];
-}
 
 export const TEXT_PRESET_STYLES: Record<TextPreset, {
   label: string;
@@ -142,38 +121,8 @@ export function textPaddingCss(
   return `${box.padY}px ${box.padX}px`;
 }
 
-/** Resolve the effective px size for a text preset, honoring the
- *  deck's textSizes override. Use this instead of
- *  TEXT_PRESET_STYLES[preset].fontSize anywhere a config is in scope. */
-export function effectiveTextPresetSize(
-  preset: TextPreset,
-  config?: { textSizes?: Partial<Record<NamedSize, number>> } | null,
-): number {
-  return resolveNamedSize(TEXT_PRESET_STYLES[preset].sizeName, config);
-}
-
-/** Single resolver for "what px size should this element render at?"
- *  Works for any element that has the standard fontSize / fontSizeName
- *  pair (currently TextElement and NotebookElement; future code-block
- *  element will plug in here too).
- *
- *  Cascade (default-setting flavor, per DESIGN_DECISIONS.md):
- *    1. element.fontSize (explicit numeric override) — wins
- *    2. element.fontSizeName via deck's textSizes
- *    3. for text elements: the preset's default size
- *       for notebooks: 'note' (32 px default)
- */
-export function effectiveFontSize(
-  element:
-    | { type: 'text'; preset: TextPreset; fontSize?: number; fontSizeName?: NamedSize }
-    | { type: 'notebook'; fontSize?: number; fontSizeName?: NamedSize },
-  config?: { textSizes?: Partial<Record<NamedSize, number>> } | null,
-): number {
-  if (element.fontSize != null) return element.fontSize;
-  if (element.fontSizeName) return resolveNamedSize(element.fontSizeName, config);
-  if (element.type === 'text') return effectiveTextPresetSize(element.preset, config);
-  return resolveNamedSize('note', config);
-}
+// effectiveTextPresetSize + effectiveFontSize are defined in lib/textSizes.mjs
+// (shared with the CLI export) and re-exported at the top of this file.
 
 // ============================================
 // Unified element types
