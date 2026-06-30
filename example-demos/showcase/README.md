@@ -12,15 +12,22 @@ on the editor's incremental save/flush.
 ## Sources (committed)
 
 - `demos/*.html` — every interactive demo (theme-aware, transparent; self-contained
-  except where a slot is injected at build time, noted below)
+  and reproducibly addable to any deck), EXCEPT the two build-only templates below.
   - `title-decor.html` — title-slide decoration: now just the bouncing-ball physics
     (the equation backdrop moved onto the slide as rotated, soft-coloured TEXT
     elements — see `TITLE_EQ` in build-showcase.mjs). Its `__EQLAYER__` slot is
     injected empty.
-  - `graph-layout.html` — uses **d3-force**; its `/* __D3FORCE__ */` slot is filled
-    at build time from `vendor/d3-force.min.js` (so opened raw it degrades to blank).
+- `demos/*.html.tmpl` — build-ONLY demo templates that depend on a vendored library
+  injected at build time, so they are NOT self-contained and must NOT be dragged
+  into a deck (raw, the library is missing → the demo silently renders nothing).
+  The `.html.tmpl` extension is deliberate: it keeps them out of the app's `.html`
+  demo-add path. `build-showcase.mjs` reads the `.tmpl`, inlines the lib, and embeds
+  the result under the `.html` name (see `TEMPLATE_SRC`).
+  - `graph-layout.html.tmpl` — uses **d3-force** via its `/* __D3FORCE__ */` slot.
+  - `tiled-svd.html.tmpl` — uses **svd-js** via its `/* __SVDJS__ */` slot.
 - `vendor/d3-force.min.js` — 17 KB d3-dispatch+timer+quadtree+force bundle, injected
-  into graph-layout at build time.
+  into graph-layout at build time. `vendor/svd-js.umd.js` — Golub–Reinsch SVD,
+  injected into tiled-svd.
 - `demo-equations.json` — per-demo equation. The `tex` field is what's used now:
   each demo slide gets a **text element** with that `$LaTeX$` (editable in the app;
   MathJax renders it in-app and in the export). The `svg`/`aspect` fields are legacy

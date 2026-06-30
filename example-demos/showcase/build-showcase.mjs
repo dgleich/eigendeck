@@ -45,12 +45,18 @@ function addAsset(key, path, mime, bytes) {
   assets.push({ assetId: id, path, mime, size: bytes.length, data: b64(bytes) });
   return id;
 }
-// demo HTMLs get vendored libraries injected into their slots at build time:
+// graph-layout & tiled-svd are NOT self-contained: each carries a vendored-lib
+// placeholder and lives on disk as *.html.tmpl (a non-.html extension) so it
+// can't be dragged into a deck as a finished demo — added raw, the library is
+// missing and the demo silently renders nothing (the raw-open guard returns).
+// The showcase build is the ONLY supported way to realize them: read the .tmpl,
+// inline the vendored lib, embed under the .html name.
 //   graph-layout → d3-force ;  tiled-svd → svd-js (Golub–Reinsch SVD).
+const TEMPLATE_SRC = { 'graph-layout.html': 'graph-layout.html.tmpl', 'tiled-svd.html': 'tiled-svd.html.tmpl' };
 const d3force = readFileSync(join(HERE, 'vendor', 'd3-force.min.js'), 'utf8');
 const svdjs = readFileSync(join(HERE, 'vendor', 'svd-js.umd.js'), 'utf8');
 for (const d of DEMOS) {
-  let html = readFileSync(join(DEMODIR, d.file), 'utf8');
+  let html = readFileSync(join(DEMODIR, TEMPLATE_SRC[d.file] || d.file), 'utf8');
   if (d.file === 'graph-layout.html') {
     html = html.replace('/* __D3FORCE__ */', () => d3force);   // function replacer → no $-escaping surprises
     if (html.includes('/* __D3FORCE__ */')) throw new Error('graph-layout.html: __D3FORCE__ slot not found');
