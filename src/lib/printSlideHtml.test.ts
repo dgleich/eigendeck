@@ -14,6 +14,9 @@ function fixture(): { slide: Slide; presentation: Presentation } {
     elements: [
       { id: 't1', type: 'text', preset: 'title', html: 'Title <b>x</b>', position: { x: 60, y: 40, width: 800, height: 120 } },
       { id: 't2', type: 'text', preset: 'body', html: 'Body', verticalAlign: 'middle', position: { x: 60, y: 200, width: 800, height: 200 } },
+      // styled text box — exercises background / box-shadow / border-radius +
+      // custom padding in the print path (previously dropped).
+      { id: 't3', type: 'text', preset: 'body', html: 'Styled', backgroundColor: '#eef3fb', backgroundOpacity: 0.8, boxShadow: true, borderRadius: 16, padding: { top: 10, right: 24, bottom: 10, left: 24 }, position: { x: 900, y: 200, width: 400, height: 200 } },
       { id: 'i1', type: 'image', assetId: 'A', shadow: true, borderRadius: 12, opacity: 0.5, rotation: 5, position: { x: 60, y: 420, width: 300, height: 200 } },
       { id: 'a1', type: 'arrow', x1: 100, y1: 500, x2: 400, y2: 520, headSize: 16, heads: 'end', position: { x: 0, y: 0, width: 0, height: 0 } },
       { id: 'c1', type: 'cover', color: '#222', position: { x: 1200, y: 500, width: 300, height: 200 } },
