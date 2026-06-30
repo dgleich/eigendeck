@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { usePreference } from '../lib/preferences';
 import { extractDemoPieceNames } from '../lib/demoPieces';
@@ -36,25 +36,42 @@ export function SlideEditor() {
   const [scale, setScale] = useState(1);
   const [marquee, setMarquee] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
 
+  // Fit the 1920×1080 canvas into the container. The canvas uses transform:
+  // scale(), which does NOT change its layout box, so nothing about the layout
+  // self-corrects the scale — it's whatever this last computed. Guard ≤0
+  // measurements (a not-yet-laid-out container gives (0-padding)/W < 0 → a
+  // broken/tiny scale).
+  const fitScale = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const w = el.clientWidth, h = el.clientHeight;
+    if (w <= 0 || h <= 0) return;
+    const padding = 32;
+    const next = Math.min((w - padding) / SLIDE_WIDTH, (h - padding) / SLIDE_HEIGHT, 1);
+    if (next > 0) setScale(next);
+  }, []);
+
+  // Live re-fit on container resize (window/panel changes).
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        // Ignore 0-size measurements — the container can be measured before
-        // layout settles (e.g. the welcome→editor transition), and
-        // (0 - padding)/SLIDE_WIDTH is NEGATIVE → a broken/tiny scale the
-        // observer never recomputes for the next deck (#103 "tiny slides").
-        if (width <= 0 || height <= 0) continue;
-        const padding = 32;
-        const next = Math.min((width - padding) / SLIDE_WIDTH, (height - padding) / SLIDE_HEIGHT, 1);
-        if (next > 0) setScale(next);
-      }
-    });
+    const observer = new ResizeObserver(() => fitScale());
     observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+  }, [fitScale]);
+
+  // Re-fit whenever a deck opens. The observer ONLY fires on container SIZE
+  // changes, and SlideEditor persists across deck opens (no remount), so the
+  // scale captured at the first welcome→editor mount would otherwise stick for
+  // EVERY deck this session — wrong in whichever direction that first
+  // measurement was off (#103: "tiny slides", and its "zoomed-in" twin). Re-fit
+  // now AND after layout settles (scrollbars/panels) so each opened deck gets a
+  // correct fit regardless of prior (e.g. blank-open) state.
+  useLayoutEffect(() => {
+    fitScale();
+    const raf = requestAnimationFrame(fitScale);
+    return () => cancelAnimationFrame(raf);
+  }, [projectPath, fitScale]);
 
   // Cmd+V image paste
   useEffect(() => {
