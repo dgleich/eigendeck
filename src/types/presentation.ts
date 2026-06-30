@@ -10,6 +10,8 @@ export type { NamedSize };
 export { DEFAULT_TEXT_SIZES, resolveNamedSize, effectiveTextPresetSize, effectiveFontSize };
 // Text inner-box layout (line-height + padding), shared with the static exports.
 export { textPresetBoxCss, textPaddingCss } from '../lib/textBox.mjs';
+// Text visual-style helpers (fill / effect / box-shadow), shared with the exports.
+export { textBackgroundCss, textEffectCss, textShadowCss, textBoxShadowCss } from '../lib/textStyle.mjs';
 
 export interface ElementPosition {
   x: number;
@@ -167,56 +169,9 @@ export interface TextElement extends BaseElement {
   rotation?: number;
 }
 
-/** Effective CSS background for a text element (colour + opacity → rgba), or
- *  undefined when no background is set. Shared by every render path (editor,
- *  present/presenter, export) so they stay consistent. */
-export function textBackgroundCss(el: { backgroundColor?: string; backgroundOpacity?: number }): string | undefined {
-  if (!el.backgroundColor) return undefined;
-  const a = el.backgroundOpacity ?? 1;
-  if (a >= 1) return el.backgroundColor;
-  const hex = el.backgroundColor.replace('#', '');
-  if (/^[0-9a-fA-F]{6}$/.test(hex)) {
-    const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${a})`;
-  }
-  return el.backgroundColor; // non-hex colour: opacity not applied
-}
-
-/** Pick a halo color (white or black) that contrasts with `color`, for the
- *  glow effect. Non-hex / unparseable colors default to a white halo. */
-function haloFor(color: string): string {
-  const hex = (color || '').replace('#', '');
-  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return '#ffffff';
-  const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
-  // Rec. 601 luma; dark text → light halo, light text → dark halo.
-  const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-  return luma < 140 ? '#ffffff' : '#000000';
-}
-
-/** CSS `text-shadow` value for a text element's effect (#73), or undefined for
- *  none. `color` is the resolved text color (drives the glow halo). Shared by
- *  every render path so editor / present / export stay identical. */
-export function textEffectCss(effect: 'shadow' | 'glow' | undefined, color: string): string | undefined {
-  if (effect === 'shadow') return '0 2px 4px rgba(0,0,0,0.45)';
-  if (effect === 'glow') {
-    const h = haloFor(color);
-    return `0 0 3px ${h}, 0 0 6px ${h}, 0 0 10px ${h}`;
-  }
-  return undefined;
-}
-
-/** Shadow/glow to apply to the TEXT itself (the `textEffect` Effect control).
- *  Independent of the box shadow. */
-export function textShadowCss(el: { textEffect?: 'shadow' | 'glow' }, color: string): string | undefined {
-  return textEffectCss(el.textEffect, color);
-}
-
-/** CSS `box-shadow` for a text element's BOX: a drop shadow on the background
- *  panel (the explicit `boxShadow` toggle). Only when a background is set —
- *  there's no panel to shadow otherwise. */
-export function textBoxShadowCss(el: { boxShadow?: boolean; backgroundColor?: string }): string | undefined {
-  return el.boxShadow && el.backgroundColor ? '0 4px 14px rgba(0,0,0,0.28)' : undefined;
-}
+// textBackgroundCss / textEffectCss / textShadowCss / textBoxShadowCss (the text
+// visual-style helpers) live in lib/textStyle.mjs so they're shared with the
+// static HTML exports across the .mjs/.ts boundary; re-exported at the top.
 
 /**
  * Parse a pasted color palette (#2) into a normalized list of #rrggbb hex

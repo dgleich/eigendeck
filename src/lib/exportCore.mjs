@@ -6,6 +6,7 @@ import { THEME_BACKGROUNDS } from './themeBackgrounds.mjs';
 import { themeColorsByName, themeColorForPreset } from './themeColors.mjs';
 import { effectiveFontSize } from './textSizes.mjs';
 import { textPresetBoxCss, textPaddingCss } from './textBox.mjs';
+import { textBackgroundCss, textShadowCss, textBoxShadowCss } from './textStyle.mjs';
 import { describeCover, imageVisuals, describeArrow } from './elementDescriptor.mjs';
 
 // Give <code> runs the deck's mono family (mirrors applyCodeFont in TextElementSvg).
@@ -52,50 +53,6 @@ const TEXT_PRESET_STYLES = {
   annotation: { fontSize: 32, fontFamily: "'PT Sans', sans-serif", fontWeight: 'normal', fontStyle: 'italic', color: '#2563eb' },
   footnote:   { fontSize: 24, fontFamily: "'PT Sans Narrow', sans-serif", fontWeight: 'normal', fontStyle: 'normal', color: '#888' },
 };
-
-// Effective text-element background (colour + opacity → rgba), or '' when none.
-// Kept self-contained so the CLI exporter can use it without the TS module.
-// Mirrors textBackgroundCss() in types/presentation.ts.
-function textBgCss(el) {
-  if (!el || !el.backgroundColor) return '';
-  const a = el.backgroundOpacity == null ? 1 : el.backgroundOpacity;
-  if (a >= 1) return el.backgroundColor;
-  const hex = el.backgroundColor.replace('#', '');
-  if (/^[0-9a-fA-F]{6}$/.test(hex)) {
-    const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${a})`;
-  }
-  return el.backgroundColor;
-}
-
-// Text legibility effect (#73): drop shadow or high-contrast glow. Self-
-// contained mirror of textEffectCss() in types/presentation.ts (this .mjs is
-// shared with the offline export tool and can't import the TS module).
-function textEffectCss(el, color) {
-  const fx = el && el.textEffect;
-  if (fx === 'shadow') return '0 2px 4px rgba(0,0,0,0.45)';
-  if (fx === 'glow') {
-    const hex = (color || '').replace('#', '');
-    let halo = '#ffffff';
-    if (/^[0-9a-fA-F]{6}$/.test(hex)) {
-      const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
-      halo = (0.299 * r + 0.587 * g + 0.114 * b) < 140 ? '#ffffff' : '#000000';
-    }
-    return `0 0 3px ${halo}, 0 0 6px ${halo}, 0 0 10px ${halo}`;
-  }
-  return '';
-}
-
-// Text-shadow for the TEXT (the Effect control). Mirrors textShadowCss().
-function textShadowCss(el, color) {
-  return textEffectCss(el, color);
-}
-
-// Box-shadow for the text BOX panel (the explicit boxShadow toggle + a
-// background). Mirrors textBoxShadowCss().
-function textBoxShadowCss(el) {
-  return el && el.boxShadow && el.backgroundColor ? '0 4px 14px rgba(0,0,0,0.28)' : '';
-}
 
 /**
  * HTML-escape a string for use in a srcdoc attribute.
@@ -351,7 +308,7 @@ export async function buildExportHtml(opts) {
           // We just wrap it in a positioned div.
           if (renderTextElement) {
             const svgMarkup = await renderTextElement(el, slide);
-            const bg = textBgCss(el);
+            const bg = textBackgroundCss(el);
             const sh = textBoxShadowCss(el);
             const rot = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
             const rad = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
@@ -379,7 +336,7 @@ export async function buildExportHtml(opts) {
                              valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
           const resolvedFont = resolveFont ? resolveFont(el.preset, slide) : ps.fontFamily;
           const fontFamily = el.fontFamily || resolvedFont;
-          const bgLegacy = textBgCss(el);
+          const bgLegacy = textBackgroundCss(el);
           const fxLegacy = textShadowCss(el, legacyColor);
           const shLegacy = textBoxShadowCss(el);
           const rotLegacy = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
