@@ -45,10 +45,27 @@ describe('[simplify-guard] buildPrintSlideHtml render snapshot', () => {
       elements: [{ id: 'm1', type: 'text', preset: 'body', html: 'x = $\\alpha$', position: { x: 0, y: 0, width: 100, height: 50 } }],
     } as unknown as Slide;
     const presentation = { title: 'T', theme: 'white', config: { width: 1920, height: 1080 }, slides: [slide] } as unknown as Presentation;
-    // The caller (printToPdf) pre-renders math to inline SVG and passes it in.
-    const textHtmlById = new Map([['m1', 'x = <svg data-math="alpha"></svg>']]);
-    const out = buildPrintSlideHtml(slide, presentation, new Map(), new Map(), textHtmlById);
+    // The caller (printToPdf) pre-renders math to inline SVG and passes it in,
+    // keyed by `${slide.id}:${el.id}`.
+    const mathHtmlByKey = new Map([['s1:m1', 'x = <svg data-math="alpha"></svg>']]);
+    const out = buildPrintSlideHtml(slide, presentation, new Map(), new Map(), mathHtmlByKey);
     expect(out).toContain('<svg data-math="alpha"></svg>'); // rendered math, not raw $\alpha$
     expect(out).not.toContain('$\\alpha$');
+  });
+
+  it('keys math by slide+element so one shared element renders per-slide fonts (regression)', () => {
+    // The SAME element id appears on two slides with different fonts (the
+    // font-showcase pattern). Keying by el.id alone collided → both slides got
+    // one font's math. Composite key must keep them distinct.
+    const el = { id: 'shared', type: 'text', preset: 'body', html: '$\\alpha$', position: { x: 0, y: 0, width: 100, height: 50 } };
+    const sA = { id: 'sA', layout: 'default', notes: '', elements: [el] } as unknown as Slide;
+    const sB = { id: 'sB', layout: 'default', notes: '', elements: [el] } as unknown as Slide;
+    const presentation = { title: 'T', theme: 'white', config: { width: 1920, height: 1080 }, slides: [sA, sB] } as unknown as Presentation;
+    const mathHtmlByKey = new Map([
+      ['sA:shared', '<svg data-font="ptsans"></svg>'],
+      ['sB:shared', '<svg data-font="libertinus"></svg>'],
+    ]);
+    expect(buildPrintSlideHtml(sA, presentation, new Map(), new Map(), mathHtmlByKey)).toContain('data-font="ptsans"');
+    expect(buildPrintSlideHtml(sB, presentation, new Map(), new Map(), mathHtmlByKey)).toContain('data-font="libertinus"');
   });
 });

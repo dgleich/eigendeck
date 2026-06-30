@@ -322,14 +322,17 @@ async function printToPdf() {
     // Pre-render math per text element. The print path builds plain HTML (not the
     // live SVG render), so $…$ has to be composited to inline SVG up front — the
     // same thing the GUI export's makeTextElementRenderer does via the iframe pool.
-    const textHtmlById = new Map<string, string>();
+    // Keyed by `${slide.id}:${el.id}` (NOT el.id) because one element can appear
+    // on multiple slides (a linked/shared element) with a DIFFERENT font per slide
+    // — keying by el.id alone collides and every slide gets the last render.
+    const mathHtmlByKey = new Map<string, string>();
     for (const slide of presentation.slides) {
       for (const el of slide.elements) {
         if (el.type === 'text' && el.html && containsMath(el.html)) {
           const bundleId = fontForPreset(el.preset, slide, presentation.config).id;
           const rendered = await renderMathInHtml(el.html, bundleId, presentation.config.mathPreamble || '')
             .catch(() => el.html as string);
-          textHtmlById.set(el.id, rendered);
+          mathHtmlByKey.set(`${slide.id}:${el.id}`, rendered);
         }
       }
     }
@@ -337,7 +340,7 @@ async function printToPdf() {
     // Build print HTML: per-slide element rendering (all positions in inches)
     // lives in buildPrintSlideHtml — a pure, snapshot-gated seam (render-path #6).
     const slideHtmls = presentation.slides.map((slide) =>
-      buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots, textHtmlById));
+      buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots, mathHtmlByKey));
 
     // Embed @font-face data URLs for fonts used by this presentation.
     const fontFacesCss = await buildEmbeddedFontFacesCSS(presentation);

@@ -34,16 +34,18 @@ const isLiveElement = (t: string) =>
  * One slide as a print `<div class="slide">…</div>`, all positions in inches.
  * @param imageCache       assetId → data-URL for raster/pdf images
  * @param demoScreenshots  `${slide.id}:${el.id}` → data-URL for baked live elements
- * @param textHtmlById     element id → math-rendered text HTML (inline SVG). The
- *   caller pre-renders math (async, via the iframe pool) since this builder is
- *   pure/sync; falls back to el.html for elements with no math.
+ * @param mathHtmlByKey    `${slide.id}:${el.id}` → math-rendered text HTML (inline
+ *   SVG). The caller pre-renders math (async, via the iframe pool) since this
+ *   builder is pure/sync. Keyed by slide+element (not just element id) because one
+ *   element can appear on several slides with a different font each; falls back to
+ *   el.html for elements with no math.
  */
 export function buildPrintSlideHtml(
   slide: Slide,
   presentation: Presentation,
   imageCache: Map<string, string>,
   demoScreenshots: Map<string, string>,
-  textHtmlById?: Map<string, string>,
+  mathHtmlByKey?: Map<string, string>,
 ): string {
   const theme = resolveTheme(presentation.theme, slide.theme);
   let inner = '';
@@ -57,7 +59,7 @@ export function buildPrintSlideHtml(
         color: el.color || themeColorForPreset(theme, el.preset),
         fontFamily: el.fontFamily || presetFontFamily,
         fontSize: effectiveFontSize(el, presentation.config),
-        content: markAsEigendeck(textHtmlById?.get(el.id) ?? el.html ?? ''),
+        content: markAsEigendeck(mathHtmlByKey?.get(`${slide.id}:${el.id}`) ?? el.html ?? ''),
         len: px2in,
         fsize: px2pt,
       });
