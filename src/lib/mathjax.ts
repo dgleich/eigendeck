@@ -15,6 +15,7 @@
  */
 
 import { resolveFontPackage } from './fonts';
+import { texFromHtml } from './mathjaxRenderer';
 
 let activeBundleId: string | null = null;
 let mathjaxPromise: Promise<any> | null = null;
@@ -155,11 +156,6 @@ export async function applyMathPreamble(preamble: string, bundleId?: string): Pr
   }
 }
 
-// Unescape HTML entities in tex strings extracted from innerHTML
-function unescapeHtml(s: string): string {
-  return s.replace(/&nbsp;/g, ' ').replace(/ /g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-}
-
 export async function renderMathInHtml(html: string, bundleId?: string): Promise<string> {
   if (!containsMath(html)) return html;
 
@@ -182,7 +178,7 @@ export async function renderMathInHtml(html: string, bundleId?: string): Promise
     if (html[i] === '$' && html[i + 1] === '$') {
       const end = html.indexOf('$$', i + 2);
       if (end !== -1) {
-        const tex = unescapeHtml(html.slice(i + 2, end));
+        const tex = texFromHtml(html.slice(i + 2, end));
         try {
           MJ.texReset();
           const container = await Promise.race([
@@ -219,7 +215,7 @@ export async function renderMathInHtml(html: string, bundleId?: string): Promise
     if (html[i] === '$') {
       const end = html.indexOf('$', i + 1);
       if (end !== -1 && !html.slice(i + 1, end).includes('\n')) {
-        const tex = unescapeHtml(html.slice(i + 1, end));
+        const tex = texFromHtml(html.slice(i + 1, end));
         try {
           MJ.texReset();
           const container = await Promise.race([

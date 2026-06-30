@@ -290,6 +290,35 @@ export function containsMath(text: string): boolean {
 }
 
 /**
+ * Turn the raw HTML slice between `$…$` delimiters into clean LaTeX.
+ *
+ * Math is authored as plain text inside the element's HTML, but two things
+ * pollute that slice:
+ *   1. Formatting the surrounding text — e.g. applying a colour across part of
+ *      an equation — makes contentEditable wrap a sub-range in `<font>`/`<span
+ *      style="color:…">`, and those tags can land INSIDE the `$…$`. So
+ *      `$x^2$` coloured mid-expression becomes `$x<font color="#dc2626">^2</font>$`,
+ *      and the naive slice hands MathJax `x<font …>^2</font>` → render failure.
+ *   2. Literal `<`, `>`, `&` (valid LaTeX: relations, matrix/align `&`) are
+ *      stored HTML-escaped (`&lt;`, `&amp;`), which MathJax can't parse either.
+ *
+ * Stripping tags first, THEN decoding entities (with `&amp;` last so
+ * `&amp;lt;` decodes to `&lt;`, not `<`) yields the LaTeX the author typed.
+ * Pure tex (`\lambda_1`, `\sum_{i=1}^n`) passes through unchanged.
+ */
+export function texFromHtml(raw: string): string {
+  return raw
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/ /g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
+/**
  * Contain a math expression that FAILED to render. We splice the raw source
  * back so the author can see what broke — but clipped to the element's width on
  * a single line (with an ellipsis) and flagged red, so a failure can NEVER spill
@@ -331,7 +360,7 @@ export async function renderMathInHtml(html: string, bundleId: string, preamble?
     if (html[i] === '$' && html[i + 1] === '$') {
       const end = html.indexOf('$$', i + 2);
       if (end !== -1) {
-        const tex = html.slice(i + 2, end);
+        const tex = texFromHtml(html.slice(i + 2, end));
         try {
           // Pass `preamble` so the cache is keyed by the SAME preamble the read
           // path (renderMathInHtmlSync / warm-from-SQLite) uses. Without it the
@@ -352,7 +381,7 @@ export async function renderMathInHtml(html: string, bundleId: string, preamble?
     if (html[i] === '$') {
       const end = html.indexOf('$', i + 1);
       if (end !== -1 && !html.slice(i + 1, end).includes('\n')) {
-        const tex = html.slice(i + 1, end);
+        const tex = texFromHtml(html.slice(i + 1, end));
         try {
           const r = await renderMath(tex, bundleId, false, preamble);
           // Match the inline-math styling from the existing renderer
@@ -407,7 +436,7 @@ export function renderMathInHtmlSync(html: string, bundleId: string, preamble?: 
     if (html[i] === '$' && html[i + 1] === '$') {
       const end = html.indexOf('$$', i + 2);
       if (end !== -1) {
-        const tex = html.slice(i + 2, end);
+        const tex = texFromHtml(html.slice(i + 2, end));
         const hit = pool.cache.get(mathCacheKey(tex, bundleId, true, eff));
         parts.push(hit ? `<div style="text-align:center;">${hit.svg}</div>` : `$$${tex}$$`);
         i = end + 2; continue;
@@ -416,7 +445,7 @@ export function renderMathInHtmlSync(html: string, bundleId: string, preamble?: 
     if (html[i] === '$') {
       const end = html.indexOf('$', i + 1);
       if (end !== -1 && !html.slice(i + 1, end).includes('\n')) {
-        const tex = html.slice(i + 1, end);
+        const tex = texFromHtml(html.slice(i + 1, end));
         const hit = pool.cache.get(mathCacheKey(tex, bundleId, false, eff));
         if (hit) {
           const valign = hit.valign || '-0.025ex';
