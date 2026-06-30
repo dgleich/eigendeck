@@ -103,11 +103,9 @@ function ThumbElement({ element: el, slide, presentation, imageTier }: {
       );
     }
     case 'demo':
-      return <ThumbDemo element={el} />;
     case 'demo-piece':
-      return <ThumbDemoPiece element={el} />;
     case 'notebook':
-      return <ThumbNotebook element={el} />;
+      return <ThumbPreview element={el} />;
     case 'video':
       return <ThumbVideo element={el} />;
     case 'cover': {
@@ -138,25 +136,21 @@ function ThumbImage({ element, imageTier }: { element: Extract<SlideElement, { t
   );
 }
 
-function ThumbDemo({ element }: { element: Extract<SlideElement, { type: 'demo' }> }) {
+// demo / demo-piece / notebook all render as a cached-preview image with a
+// typed placeholder fallback in an identical positioned box. The placeholder
+// identity comes from ELEMENT_PLACEHOLDERS; notebook fills big with no border,
+// demo/demo-piece are smaller dashed boxes; demo-piece shows the piece name.
+function ThumbPreview({ element }: { element: Extract<SlideElement, { type: 'demo' | 'demo-piece' | 'notebook' }> }) {
   const p = element.position;
   useAssetFileWatcher(element.assetId, element.id);
+  const spec = PH[element.type];
+  const isNb = element.type === 'notebook';
+  const fontSize = isNb ? 64 : element.type === 'demo' ? 20 : 16;
+  const label = element.type === 'demo-piece' ? element.piece : spec.label;
   return (
     <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden', background: '#fff' }}>
       <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: PH.demo.color, background: PH.demo.bg, border: `1px dashed ${PH.demo.borderColor}` }}>{PH.demo.label}</div>
-      } />
-    </div>
-  );
-}
-
-function ThumbDemoPiece({ element }: { element: Extract<SlideElement, { type: 'demo-piece' }> }) {
-  const p = element.position;
-  useAssetFileWatcher(element.assetId, element.id);
-  return (
-    <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden', background: '#fff' }}>
-      <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: PH['demo-piece'].color, background: PH['demo-piece'].bg, border: `1px dashed ${PH['demo-piece'].borderColor}` }}>{element.piece}</div>
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize, color: spec.color, background: spec.bg, ...(isNb ? {} : { border: `1px dashed ${spec.borderColor}` }) }}>{label}</div>
       } />
     </div>
   );
@@ -169,18 +163,6 @@ function ThumbVideo({ element }: { element: Extract<SlideElement, { type: 'video
   return (
     <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden', background: '#000' }}>
       <VideoThumb element={element} />
-    </div>
-  );
-}
-
-function ThumbNotebook({ element }: { element: Extract<SlideElement, { type: 'notebook' }> }) {
-  const p = element.position;
-  useAssetFileWatcher(element.assetId, element.id);
-  return (
-    <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden', background: '#fff' }}>
-      <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: PH.notebook.color, background: PH.notebook.bg }}>{PH.notebook.label}</div>
-      } />
     </div>
   );
 }
