@@ -88,8 +88,8 @@ export function buildPrintSlideHtml(
   // Slide footer (author · venue + slide number), mirroring the HTML export.
   const meta = [presentation.config?.author, presentation.config?.venue].filter(Boolean).join(' · ');
   if (meta || slideNumber != null) {
-    inner += `<div style="position:absolute;bottom:${px2in(20)};right:${px2in(40)};display:flex;align-items:baseline;gap:${px2in(16)};font-family:'PT Sans',sans-serif;color:#888;font-size:${px2pt(18)};">` +
-      `<span>${meta}</span><span style="font-size:${px2pt(24)};">${slideNumber ?? ''}</span></div>`;
+    inner += `<div class="slide-footer" style="position:absolute;bottom:${px2in(20)};right:${px2in(40)};display:flex;align-items:baseline;gap:${px2in(16)};font-family:'PT Sans',sans-serif;color:#888;font-size:${px2pt(18)};">` +
+      `<span class="slide-footer-meta">${meta}</span><span class="slide-footer-number" style="font-size:${px2pt(24)};">${slideNumber ?? ''}</span></div>`;
   }
   return `<div class="slide" style="background:${theme.background};">${inner}</div>`;
 }

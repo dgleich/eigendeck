@@ -68,4 +68,21 @@ describe('[simplify-guard] buildPrintSlideHtml render snapshot', () => {
     expect(buildPrintSlideHtml(sA, presentation, new Map(), new Map(), mathHtmlByKey)).toContain('data-font="ptsans"');
     expect(buildPrintSlideHtml(sB, presentation, new Map(), new Map(), mathHtmlByKey)).toContain('data-font="libertinus"');
   });
+
+  // The slide footer (author·venue + number) must STAY IN the print export and
+  // stay consistent with the HTML export — printed decks were missing it entirely.
+  it('emits the slide footer (author·venue + number) when given a slide number', () => {
+    const slide = { id: 's1', layout: 'default', notes: '', elements: [] } as unknown as Slide;
+    const presentation = { title: 'T', theme: 'white', config: { width: 1920, height: 1080, author: 'A. Gleich', venue: 'POPL' }, slides: [slide] } as unknown as Presentation;
+    const out = buildPrintSlideHtml(slide, presentation, new Map(), new Map(), undefined, 7);
+    expect(out).toContain('A. Gleich · POPL'); // meta (author · venue)
+    expect(out).toMatch(/>7<\/span>/);          // slide number
+  });
+
+  it('omits the footer when there is no meta and no number', () => {
+    const slide = { id: 's1', layout: 'default', notes: '', elements: [] } as unknown as Slide;
+    const presentation = { title: 'T', theme: 'white', config: { width: 1920, height: 1080 }, slides: [slide] } as unknown as Presentation;
+    expect(buildPrintSlideHtml(slide, presentation, new Map(), new Map())).not.toContain('slide-footer-meta');
+    // (no author/venue, no number → nothing to show)
+  });
 });
