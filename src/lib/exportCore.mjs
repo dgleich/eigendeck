@@ -2,22 +2,12 @@ import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
 import { arrowSvgInner } from './arrowGeometry.mjs';
 import { buildEmbedSrc } from './videoEmbedParse.mjs';
-import { THEME_BACKGROUNDS } from './themeBackgrounds.mjs';
 import { themeColorsByName, themeColorForPreset } from './themeColors.mjs';
 import { effectiveFontSize } from './textSizes.mjs';
 import { textPresetBoxCss, textPaddingCss } from './textBox.mjs';
-import { textBackgroundCss, textShadowCss, textBoxShadowCss } from './textStyle.mjs';
+import { textBackgroundCss, textShadowCss, textBoxShadowCss, applyCodeFont } from './textStyle.mjs';
 import { TEXT_PRESET_STYLES } from './textPresets.mjs';
 import { describeCover, imageVisuals, describeArrow } from './elementDescriptor.mjs';
-
-// Give <code> runs the deck's mono family (mirrors applyCodeFont in TextElementSvg).
-function applyCodeFont(html, mono) {
-  if (!mono || !html) return html || '';
-  return html.replace(/<code\b([^>]*)>/gi, (_m, attrs) =>
-    /\bstyle\s*=/.test(attrs)
-      ? `<code${attrs.replace(/style\s*=\s*"([^"]*)"/i, (_s, c) => `style="${c};font-family:${mono}"`)}>`
-      : `<code${attrs} style="font-family:${mono}">`);
-}
 
 /**
  * Shared HTML export logic.
@@ -34,14 +24,10 @@ function applyCodeFont(html, mono) {
  * @property {((preamble: string) => Promise<void>) | null} applyMathPreamble - Optional: register math macros
  */
 
-// Built-in theme backgrounds. Self-contained mirror of BUILT_IN_THEMES in
-// src/lib/themes.ts (this .mjs is shared with the offline export tool and can't
-// import the TS module). Keep in sync with that file's `colors.background`.
-
-/** Resolve the effective slide background colour from the slide/deck theme. */
+/** Resolve the effective slide background colour from the slide/deck theme
+ *  (shared resolver — slide theme wins over deck, falls back to white). */
 function themeBackground(presentation, slide) {
-  const name = (slide && slide.theme) || (presentation && presentation.theme) || 'white';
-  return THEME_BACKGROUNDS[name] || THEME_BACKGROUNDS.white;
+  return themeColorsByName(presentation && presentation.theme, slide && slide.theme).background;
 }
 
 /** Absolute-position CSS fragment shared by every exported element's wrapper. */

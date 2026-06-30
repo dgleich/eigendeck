@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import type { TextElement, Slide, PresentationConfig } from '../types/presentation';
 import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
+import { applyCodeFont } from '../lib/textStyle.mjs';
 import { fontForPreset, fontFamilyForPreset, resolveMonoFontPackage } from '../lib/fonts';
 import {
   renderMathInHtml as renderMathInIframe,
@@ -81,16 +82,8 @@ function escText(s: string): string {
  * readers pick up either; sighted users don't see them as tooltips because
  * we use aria-label instead of relying on title-as-tooltip behavior.
  */
-/** Give every <code> run the deck's monospace family. <code> has a UA
- *  font-family:monospace that would otherwise override the inherited deck font,
- *  so we set it explicitly. Handles code with or without an existing style. */
-export function applyCodeFont(html: string, mono: string | undefined): string {
-  if (!mono || !html) return html || '';
-  return html.replace(/<code\b([^>]*)>/gi, (_m, attrs) =>
-    /\bstyle\s*=/.test(attrs)
-      ? `<code${attrs.replace(/style\s*=\s*"([^"]*)"/i, (_s: string, c: string) => `style="${c};font-family:${mono}"`)}>`
-      : `<code${attrs} style="font-family:${mono}">`);
-}
+// applyCodeFont (mono family for <code> runs) lives in lib/textStyle.mjs, shared
+// with the HTML export; imported above.
 
 export function buildTextElementSvgMarkup(
   element: TextElement,

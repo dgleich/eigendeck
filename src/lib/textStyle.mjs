@@ -45,3 +45,14 @@ export function textShadowCss(el, color) {
 export function textBoxShadowCss(el) {
   return el && el.boxShadow && el.backgroundColor ? '0 4px 14px rgba(0,0,0,0.28)' : undefined;
 }
+
+/** Give `<code>` runs the deck's mono family by splicing font-family into each
+ *  code tag's style. No-op when `mono` is empty. Shared by the live render
+ *  (TextElementSvg) and the HTML export (exportCore). */
+export function applyCodeFont(html, mono) {
+  if (!mono || !html) return html || '';
+  return html.replace(/<code\b([^>]*)>/gi, (_m, attrs) =>
+    /\bstyle\s*=/.test(attrs)
+      ? `<code${attrs.replace(/style\s*=\s*"([^"]*)"/i, (_s, c) => `style="${c};font-family:${mono}"`)}>`
+      : `<code${attrs} style="font-family:${mono}">`);
+}
