@@ -4,10 +4,10 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { getPreference } from '../lib/preferences';
 import { snapToGrid, resizeEdgeToGrid } from '../lib/grid';
-import { arrowGeometry, arrowBBox } from '../lib/arrowGeometry.mjs';
+import { arrowBBox } from '../lib/arrowGeometry.mjs';
 import { ArrowGlyph } from './ArrowGlyph';
 import { imageVisualStyle } from '../lib/imageVisualStyle';
-import { describeCover } from '../lib/elementDescriptor.mjs';
+import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
 import { sanitizeRichText } from '../lib/sanitizeRichText';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useDemoThemeInjection, demoVarsCssForSlide } from '../lib/demoThemeInject';
@@ -1155,7 +1155,8 @@ function ArrowRenderer({
   onUpdate: (changes: Partial<SlideElement>) => void;
   onDelete: () => void; onSelect: (e?: { shiftKey: boolean }) => void;
 }) {
-  const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = a;
+  const { x1, y1, x2, y2 } = a;
+  const { color, strokeWidth, headSize, geo } = describeArrow(a);
   const dragStart = useRef({ mx: 0, my: 0, ox1: 0, oy1: 0, ox2: 0, oy2: 0 });
 
   // Snap point to nearest 15° angle relative to an anchor
@@ -1218,8 +1219,7 @@ function ArrowRenderer({
     [x1, y1, x2, y2, scale, onUpdate, onSelect]
   );
 
-  const geo = arrowGeometry(x1, y1, x2, y2, headSize, a.heads);   // inset line + head triangle(s)
-  const bb = arrowBBox(x1, y1, x2, y2, headSize, a.heads, 30);
+  const bb = arrowBBox(x1, y1, x2, y2, headSize, a.heads, 30);   // headSize/geo from describeArrow above
   const { minX, minY, maxX, maxY } = bb;
 
   return (

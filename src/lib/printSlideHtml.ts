@@ -13,9 +13,9 @@
 // can't drift silently before this target is unified onto the descriptor path.
 
 import { resolveTheme, themeColorForPreset } from './themes';
-import { describeCover } from './elementDescriptor.mjs';
+import { describeCover, describeArrow } from './elementDescriptor.mjs';
 import { markAsEigendeck } from './clipboard';
-import { arrowGeometry, arrowSvgInner } from './arrowGeometry.mjs';
+import { arrowSvgInner } from './arrowGeometry.mjs';
 import { TEXT_PRESET_STYLES, effectiveFontSize, textShadowCss } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset } from './fontRegistry.mjs';
 import type { Presentation, Slide } from '../types/presentation';
@@ -71,10 +71,9 @@ export function buildPrintSlideHtml(
         inner += `<img src="${src}" style="${styles.join(';')};" />`;
       }
     } else if (el.type === 'arrow') {
-      const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
-      const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);   // inset line + head triangle(s)
+      const a = describeArrow(el);
       // SVG uses viewBox in original coordinates, scaled by the container
-      inner += `<svg viewBox="0 0 ${W} ${H}" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;">${arrowSvgInner(geo, color, strokeWidth, el.opacity)}</svg>`;
+      inner += `<svg viewBox="0 0 ${W} ${H}" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;">${arrowSvgInner(a.geo, a.color, a.strokeWidth, a.opacity)}</svg>`;
     } else if (el.type === 'cover') {
       inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};background:${describeCover(el, theme.background).background};"></div>`;
     } else if (isLiveElement(el.type)) {

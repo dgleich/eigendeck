@@ -21,3 +21,22 @@ export interface ImageVisuals {
 export function imageVisuals(
   el: { shadow?: boolean; borderRadius?: number; opacity?: number; rotation?: number },
 ): ImageVisuals;
+
+export interface ArrowDescriptor {
+  kind: 'arrow';
+  x1: number; y1: number; x2: number; y2: number;
+  color: string;
+  strokeWidth: number;
+  headSize: number;
+  heads?: 'start' | 'end' | 'both' | 'none';
+  opacity?: number;
+  geo: ReturnType<typeof import('./arrowGeometry.mjs').arrowGeometry>;
+}
+
+export function describeArrow(
+  el: {
+    x1: number; y1: number; x2: number; y2: number;
+    color?: string; strokeWidth?: number; headSize?: number;
+    heads?: 'start' | 'end' | 'both' | 'none'; opacity?: number;
+  },
+): ArrowDescriptor;

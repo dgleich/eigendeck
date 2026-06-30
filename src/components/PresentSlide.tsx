@@ -15,11 +15,10 @@ import type { Presentation, Slide, SlideElement, TextElement } from '../types/pr
 import { TextElementSvg } from './TextElementSvg';
 import { NotebookContent } from './notebook/NotebookContent';
 import { useDemoThemeInjection } from '../lib/demoThemeInject';
-import { arrowGeometry } from '../lib/arrowGeometry.mjs';
 import { ArrowGlyph } from './ArrowGlyph';
 import { imageVisualStyle } from '../lib/imageVisualStyle';
 import { CoverView } from './ElementView';
-import { describeCover } from '../lib/elementDescriptor.mjs';
+import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
 
 export interface PresentCtx {
   slide: Slide;
@@ -57,11 +56,10 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
       return <CoverView box={d.box} background={d.background} extraStyle={{ zIndex, ...style }} />;
     }
     case 'arrow': {
-      const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;
-      const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);
+      const a = describeArrow(el);
       return (
         <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex, ...style }}>
-          <ArrowGlyph geo={geo} color={color} strokeWidth={strokeWidth} opacity={el.opacity} />
+          <ArrowGlyph geo={a.geo} color={a.color} strokeWidth={a.strokeWidth} opacity={a.opacity} />
         </svg>
       );
     }

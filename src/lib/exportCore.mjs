@@ -1,9 +1,9 @@
 import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
-import { arrowGeometry, arrowSvgInner } from './arrowGeometry.mjs';
+import { arrowSvgInner } from './arrowGeometry.mjs';
 import { detectVideoProvider } from './videoEmbedParse.mjs';
 import { THEME_BACKGROUNDS } from './themeBackgrounds.mjs';
-import { describeCover, imageVisuals } from './elementDescriptor.mjs';
+import { describeCover, imageVisuals, describeArrow } from './elementDescriptor.mjs';
 
 // Give <code> runs the deck's mono family (mirrors applyCodeFont in TextElementSvg).
 function applyCodeFont(html, mono) {
@@ -514,9 +514,8 @@ export async function buildExportHtml(opts) {
           break;
         }
         case 'arrow': {
-          const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
-          const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);
-          inner += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">${arrowSvgInner(geo, color, strokeWidth, el.opacity)}</svg>`;
+          const a = describeArrow(el);
+          inner += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">${arrowSvgInner(a.geo, a.color, a.strokeWidth, a.opacity)}</svg>`;
           break;
         }
       }
