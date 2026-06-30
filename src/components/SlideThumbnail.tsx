@@ -147,8 +147,11 @@ function ThumbPreview({ element }: { element: Extract<SlideElement, { type: 'dem
   const isNb = element.type === 'notebook';
   const fontSize = isNb ? 64 : element.type === 'demo' ? 20 : 16;
   const label = element.type === 'demo-piece' ? element.piece : spec.label;
+  // Demos capture TRANSPARENT now (#111): keep the wrapper transparent so the
+  // slide background (from the thumb-render div) and any elements beneath the demo
+  // show through, matching the live slide. (Notebooks keep their white card.)
   return (
-    <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden', background: '#fff' }}>
+    <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden', background: isNb ? '#fff' : 'transparent' }}>
       <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize, color: spec.color, background: spec.bg, ...(isNb ? {} : { border: `1px dashed ${spec.borderColor}` }) }}>{label}</div>
       } />

@@ -330,15 +330,18 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
   // the iframe <head>, so it isn't in the captured <body> HTML; pass it as the
   // cache salt so a theme switch busts the preview (#86). (No phase awareness yet.)
   const themeSalt = demoSlide ? demoVarsCssForSlide(demoConfig, demoTheme, demoSlide) : '';
-  // A demo iframe is transparent; bake the slide's background into the preview
-  // PNG so the thumbnail matches the slide instead of reading as the app's grey.
-  const demoBg = resolveTheme(demoTheme, demoSlide?.theme).background;
+  // Capture the preview TRANSPARENT (no baked backdrop). A demo iframe is
+  // transparent so the slide — and any elements beneath the demo — must show
+  // through in the static renders too; the render context supplies the slide
+  // background behind the preview (see SlideThumbnail / the export slide bg).
+  // Baking the bg here made the preview opaque and covered overlapping lower
+  // elements (#111).
   useEffect(() => {
     if (!src) return;
-    const t = setTimeout(() => { void capturePreview(element, 'iframe', themeSalt, demoBg); }, 900);
+    const t = setTimeout(() => { void capturePreview(element, 'iframe', themeSalt); }, 900);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId, themeSalt, demoBg]);
+  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId, themeSalt]);
   return (
     <DraggableBox
       element={element} zIndex={zIndex} scale={scale}
