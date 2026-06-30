@@ -3,6 +3,7 @@ import { resolveMonoFontPackage } from './fontRegistry.mjs';
 import { arrowSvgInner } from './arrowGeometry.mjs';
 import { detectVideoProvider } from './videoEmbedParse.mjs';
 import { THEME_BACKGROUNDS } from './themeBackgrounds.mjs';
+import { themeColorsByName, themeColorForPreset } from './themeColors.mjs';
 import { describeCover, imageVisuals, describeArrow } from './elementDescriptor.mjs';
 
 // Give <code> runs the deck's mono family (mirrors applyCodeFont in TextElementSvg).
@@ -367,6 +368,11 @@ export async function buildExportHtml(opts) {
           // exporter (export-cli.ts) which doesn't have access to React/
           // browser context and has to live with body-font math.
           const ps = TEXT_PRESET_STYLES[el.preset] || TEXT_PRESET_STYLES.body;
+          // #104: resolve the THEME foreground per preset (not the hard-coded
+          // preset color), so default-color text is visible on dark/black themes —
+          // matching the editor and the app/GUI export. Explicit el.color wins.
+          const legacyColor = el.color
+            || themeColorForPreset(themeColorsByName(presentation.theme, slide && slide.theme), el.preset);
           let textHtml = el.html || '';
           if (renderMath && /\$[^$]+\$|\$\$[\s\S]+?\$\$/.test(textHtml)) {
             const bundleId = resolveMathBundle ? resolveMathBundle(el.preset, slide) : undefined;
@@ -379,13 +385,13 @@ export async function buildExportHtml(opts) {
           const resolvedFont = resolveFont ? resolveFont(el.preset, slide) : ps.fontFamily;
           const fontFamily = el.fontFamily || resolvedFont;
           const bgLegacy = textBgCss(el);
-          const fxLegacy = textShadowCss(el, el.color || ps.color);
+          const fxLegacy = textShadowCss(el, legacyColor);
           const shLegacy = textBoxShadowCss(el);
           const rotLegacy = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
           const radLegacy = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
           inner += `<div style="${absBox(p)};overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}${shLegacy ? `box-shadow:${shLegacy};` : ''}${radLegacy}${rotLegacy}">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:${textPaddingCss(el)};${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${applyCodeFont(textHtml, resolveMonoFontPackage((presentation.config || {}).defaultMonoFont).family)}</div>` +
+            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${legacyColor};line-height:1.3;padding:${textPaddingCss(el)};${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${applyCodeFont(textHtml, resolveMonoFontPackage((presentation.config || {}).defaultMonoFont).family)}</div>` +
             `</div></div>`;
           break;
         }
