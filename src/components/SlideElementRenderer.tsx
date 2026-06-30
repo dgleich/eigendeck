@@ -13,7 +13,7 @@ import { useDemoUrl } from '../lib/demoAssets';
 import { useDemoThemeInjection, demoVarsCssForSlide } from '../lib/demoThemeInject';
 import { capturePreview } from '../lib/previewCache';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
-import { buildEmbedSrc } from '../lib/videoEmbed';
+import { buildEmbedSrc, DEMO_SANDBOX, VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
 import { NotebookBox } from './NotebookBox';
 import { useImageSrc } from '../lib/imageSrc';
 import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
@@ -360,7 +360,7 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
       onPositionChange={(pos) => onUpdate({ position: pos } as any)}
     >
       {src ? (
-        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox="allow-scripts allow-same-origin" title="demo"
+        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox={DEMO_SANDBOX} title="demo"
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
       ) : <div style={{ padding: 20, color: '#999' }}>Demo</div>}
       {!interacting && (
@@ -426,7 +426,7 @@ function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, 
       onPositionChange={(pos) => onUpdate({ position: pos } as any)}
     >
       {src ? (
-        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox="allow-scripts allow-same-origin" title={`demo-piece: ${element.piece}`}
+        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox={DEMO_SANDBOX} title={`demo-piece: ${element.piece}`}
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
       ) : <div style={{ padding: 20, color: '#999' }}>Demo piece: #{element.piece}</div>}
       {!interacting && (
@@ -481,7 +481,7 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
     >
       {element.kind === 'embed' ? (
         embedSrc
-          ? <iframe key={embedSrc} ref={embedRef} src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+          ? <iframe key={embedSrc} ref={embedRef} src={embedSrc} title="video" allow={VIDEO_EMBED_ALLOW}
               style={{ width: '100%', height: '100%', border: 'none', background: '#000',
                 pointerEvents: interacting ? 'auto' : 'none' }} />
           : <div style={{ padding: 20, color: '#999' }}>Unrecognized video URL</div>

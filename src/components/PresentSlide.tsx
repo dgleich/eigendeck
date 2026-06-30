@@ -10,7 +10,7 @@ import { resolveTheme } from '../lib/themes';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useImageSrc } from '../lib/imageSrc';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
-import { buildEmbedSrc } from '../lib/videoEmbed';
+import { buildEmbedSrc, DEMO_SANDBOX, VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
 import type { Presentation, Slide, SlideElement, TextElement } from '../types/presentation';
 import { TextElementSvg } from './TextElementSvg';
 import { NotebookContent } from './notebook/NotebookContent';
@@ -117,7 +117,7 @@ function PresentVideo({ element: el, zIndex, style }: {
   };
   if (el.kind === 'embed') {
     if (!embedSrc) return null;
-    return <iframe key={embedSrc} ref={embedRef} src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" style={{ ...box, border: 'none' }} />;
+    return <iframe key={embedSrc} ref={embedRef} src={embedSrc} title="video" allow={VIDEO_EMBED_ALLOW} style={{ ...box, border: 'none' }} />;
   }
   if (!src) return null;
   return (
@@ -143,7 +143,7 @@ function PresentDemoIframe({ assetId, hash, title, pos, zIndex, style, ctx }: {
   useDemoThemeInjection(iframeRef, ctx?.presentationConfig as any, ctx?.presentationTheme || 'white', ctx?.slide, src);
   if (!src) return null;
   return (
-    <iframe ref={iframeRef} src={src} sandbox="allow-scripts allow-same-origin" title={title || 'demo'} style={{
+    <iframe ref={iframeRef} src={src} sandbox={DEMO_SANDBOX} title={title || 'demo'} style={{
       position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, border: 'none', zIndex, ...style,
     }} />
   );
@@ -156,7 +156,7 @@ export function PresentControllerIframe({ assetId }: { assetId: string }) {
   const src = useDemoUrl(assetId, 'role=controller');
   if (!src) return null;
   return (
-    <iframe src={src} sandbox="allow-scripts allow-same-origin" title={`controller: ${assetId.slice(0, 8)}`}
+    <iframe src={src} sandbox={DEMO_SANDBOX} title={`controller: ${assetId.slice(0, 8)}`}
       style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }} />
   );
 }

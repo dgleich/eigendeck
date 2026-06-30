@@ -10,7 +10,7 @@ export type VideoProvider = 'youtube' | 'vimeo' | 'peertube';
 // defaults on → enablejsapi/api for postMessage speed control); the static export
 // passes { jsApi: false } (no JS to drive it).
 export type { ParsedEmbed } from './videoEmbedParse.mjs';
-export { detectVideoProvider, buildEmbedSrc } from './videoEmbedParse.mjs';
+export { detectVideoProvider, buildEmbedSrc, DEMO_SANDBOX, VIDEO_EMBED_ALLOW } from './videoEmbedParse.mjs';
 import { detectVideoProvider } from './videoEmbedParse.mjs';
 
 /** Best-effort playback-speed control for an embed, via each provider's

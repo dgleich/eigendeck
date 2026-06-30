@@ -4,6 +4,15 @@
 // builders' one intentional difference — the live embeds add enablejsapi/api for
 // postMessage playback control, the static export omits them (no JS) — is now a
 // `jsApi` flag, not a forked function.
+/** sandbox flags for demo / demo-piece iframes — run the demo's own scripts,
+ *  same-origin for its asset URLs. Shared by the editor, present, and export
+ *  iframes so the security posture is defined once. */
+export const DEMO_SANDBOX = 'allow-scripts allow-same-origin';
+
+/** `allow` permissions for embedded-video iframes in the LIVE app (editor +
+ *  present). (The static HTML export uses the older allowfullscreen attribute.) */
+export const VIDEO_EMBED_ALLOW = 'autoplay; fullscreen; picture-in-picture; encrypted-media';
+
 export function detectVideoProvider(raw) {
   let u;
   try { u = new URL(String(raw).trim()); } catch { return null; }

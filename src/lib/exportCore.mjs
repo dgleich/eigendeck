@@ -5,7 +5,7 @@ import { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
 import { ELEMENT_PLACEHOLDERS as PH } from './elementPlaceholders.mjs';
 // Re-exported so existing importers (incl. exportCore.test.mjs) are unaffected.
 export { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
-import { buildEmbedSrc } from './videoEmbedParse.mjs';
+import { buildEmbedSrc, DEMO_SANDBOX } from './videoEmbedParse.mjs';
 import { themeColorsByName, themeColorForPreset } from './themeColors.mjs';
 import { effectiveFontSize } from './textSizes.mjs';
 import { textBackgroundCss, textBoxShadowCss, applyCodeFont } from './textStyle.mjs';
@@ -309,7 +309,7 @@ export async function buildExportHtml(opts) {
             // tiny per-slide theme vars are spliced in.
             demoHtml = injectDemoThemeIntoHtml(demoHtml, '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
             const escaped = htmlEscapeForSrcdoc(demoHtml);
-            inner += `<iframe srcdoc="${escaped}" style="${absBox(p)};border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
+            inner += `<iframe srcdoc="${escaped}" style="${absBox(p)};border:none;" sandbox="${DEMO_SANDBOX}"></iframe>`;
           } catch (e) { console.error('Demo export failed:', e); }
           break;
         case 'demo-piece':
@@ -321,7 +321,7 @@ export async function buildExportHtml(opts) {
             // Fonts injected at runtime from the parent (see font-share script).
             pieceHtml = injectDemoThemeIntoHtml(pieceHtml, '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
             const escaped = htmlEscapeForSrcdoc(pieceHtml);
-            inner += `<iframe srcdoc="${escaped}" style="${absBox(p)};border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
+            inner += `<iframe srcdoc="${escaped}" style="${absBox(p)};border:none;" sandbox="${DEMO_SANDBOX}"></iframe>`;
           } catch (e) { console.error('Demo piece export failed:', e); }
           break;
         case 'notebook': {
@@ -402,7 +402,7 @@ export async function buildExportHtml(opts) {
         const channelKey = `slide${i}-${demoSrc.replace(/[^a-z0-9]/gi, '')}`;
         const ctrlHtml = injectDemoBootstrap(demoHtml, '#role=controller', channelKey);
         const escaped = htmlEscapeForSrcdoc(ctrlHtml);
-        inner += `<iframe srcdoc="${escaped}" style="position:absolute;width:1px;height:1px;border:none;opacity:0;pointer-events:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
+        inner += `<iframe srcdoc="${escaped}" style="position:absolute;width:1px;height:1px;border:none;opacity:0;pointer-events:none;" sandbox="${DEMO_SANDBOX}"></iframe>`;
       } catch (e) { console.error('Controller iframe failed:', e); }
     }
 
