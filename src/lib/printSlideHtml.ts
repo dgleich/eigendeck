@@ -16,7 +16,7 @@ import { resolveTheme, themeColorForPreset } from './themes';
 import { describeCover, describeArrow } from './elementDescriptor.mjs';
 import { markAsEigendeck } from './clipboard';
 import { arrowSvgInner } from './arrowGeometry.mjs';
-import { TEXT_PRESET_STYLES, effectiveFontSize, textShadowCss } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textShadowCss, textPresetBoxCss } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset } from './fontRegistry.mjs';
 import type { Presentation, Slide } from '../types/presentation';
 
@@ -55,9 +55,15 @@ export function buildPrintSlideHtml(
       const presetFontFamily = fontFamilyForPreset(fontForPreset(el.preset, slide, presentation.config), el.preset);
       const _fx2 = textShadowCss(el, color);
       const _rot2 = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
+      // line-height + padding from the shared preset-box layout (footnote tight;
+      // per-element padding override honored), converted px → inches.
+      const box = textPresetBoxCss(el.preset);
+      const pad = el.padding
+        ? `${px2in(el.padding.top)} ${px2in(el.padding.right)} ${px2in(el.padding.bottom)} ${px2in(el.padding.left)}`
+        : `${px2in(box.padY)} ${px2in(box.padX)}`;
       inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};overflow:hidden;${_rot2}">` +
         `<div style="width:100%;height:100%;${valignStyle}">` +
-        `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:1.3;padding:${px2in(8)} ${px2in(12)};${_fx2 ? `text-shadow:${_fx2};` : ''}">${markAsEigendeck(el.html || '')}</div>` +
+        `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:${box.lineHeight};padding:${pad};${_fx2 ? `text-shadow:${_fx2};` : ''}">${markAsEigendeck(el.html || '')}</div>` +
         `</div></div>`;
     } else if (el.type === 'image') {
       const src = imageCache.get(el.assetId);

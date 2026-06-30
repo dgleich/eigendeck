@@ -8,6 +8,8 @@ import {
 import type { NamedSize } from '../lib/textSizes.mjs';
 export type { NamedSize };
 export { DEFAULT_TEXT_SIZES, resolveNamedSize, effectiveTextPresetSize, effectiveFontSize };
+// Text inner-box layout (line-height + padding), shared with the static exports.
+export { textPresetBoxCss, textPaddingCss } from '../lib/textBox.mjs';
 
 export interface ElementPosition {
   x: number;
@@ -96,30 +98,9 @@ export const TEXT_PRESET_STYLES: Record<TextPreset, {
   },
 };
 
-/** Inner-box layout (line spacing + padding, in px) for a text preset's
- *  rendered HTML. Footnote renders TIGHT — no padding, single line-height — so a
- *  one-line 24px footnote fills its slim box flush on the grid; every other
- *  preset keeps the comfortable 1.3 line-height + 8/12px padding. Used by BOTH
- *  the live editor (SlideElementRenderer) and the SVG/export path
- *  (TextElementSvg) so they stay WYSIWYG-identical. */
-export function textPresetBoxCss(preset: TextPreset): { lineHeight: number; padY: number; padX: number } {
-  if (preset === 'footnote') return { lineHeight: 1, padY: 0, padX: 0 };
-  return { lineHeight: 1.3, padY: 8, padX: 12 };
-}
-
-/** Effective inner padding for a text element as a CSS shorthand ("8px 12px" or
- *  per-side "10px 24px 10px 24px"). Honors the element's `padding` override, else
- *  the preset default. Shared by editor / present / export so they stay
- *  WYSIWYG-identical. */
-export function textPaddingCss(
-  el: { padding?: { top: number; right: number; bottom: number; left: number } },
-  preset: TextPreset,
-): string {
-  const p = el.padding;
-  if (p) return `${p.top}px ${p.right}px ${p.bottom}px ${p.left}px`;
-  const box = textPresetBoxCss(preset);
-  return `${box.padY}px ${box.padX}px`;
-}
+// textPresetBoxCss + textPaddingCss (the text inner-box layout) live in
+// lib/textBox.mjs so they are shared with the static HTML exports across the
+// .mjs/.ts boundary, and are re-exported at the top of this file.
 
 // effectiveTextPresetSize + effectiveFontSize are defined in lib/textSizes.mjs
 // (shared with the CLI export) and re-exported at the top of this file.

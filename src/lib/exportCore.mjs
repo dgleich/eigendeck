@@ -5,6 +5,7 @@ import { detectVideoProvider } from './videoEmbedParse.mjs';
 import { THEME_BACKGROUNDS } from './themeBackgrounds.mjs';
 import { themeColorsByName, themeColorForPreset } from './themeColors.mjs';
 import { effectiveFontSize } from './textSizes.mjs';
+import { textPresetBoxCss, textPaddingCss } from './textBox.mjs';
 import { describeCover, imageVisuals, describeArrow } from './elementDescriptor.mjs';
 
 // Give <code> runs the deck's mono family (mirrors applyCodeFont in TextElementSvg).
@@ -94,13 +95,6 @@ function textShadowCss(el, color) {
 // background). Mirrors textBoxShadowCss().
 function textBoxShadowCss(el) {
   return el && el.boxShadow && el.backgroundColor ? '0 4px 14px rgba(0,0,0,0.28)' : '';
-}
-
-// Per-side inner padding shorthand, honoring el.padding (else the legacy 8/12).
-// Mirrors textPaddingCss() in types/presentation.ts.
-function textPaddingCss(el) {
-  const p = el && el.padding;
-  return p ? `${p.top}px ${p.right}px ${p.bottom}px ${p.left}px` : '8px 12px';
 }
 
 /**
@@ -392,7 +386,7 @@ export async function buildExportHtml(opts) {
           const radLegacy = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
           inner += `<div style="${absBox(p)};overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}${shLegacy ? `box-shadow:${shLegacy};` : ''}${radLegacy}${rotLegacy}">` +
             `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${effectiveFontSize(el, presentation.config)}px;color:${legacyColor};line-height:1.3;padding:${textPaddingCss(el)};${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${applyCodeFont(textHtml, resolveMonoFontPackage((presentation.config || {}).defaultMonoFont).family)}</div>` +
+            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${effectiveFontSize(el, presentation.config)}px;color:${legacyColor};line-height:${textPresetBoxCss(el.preset).lineHeight};padding:${textPaddingCss(el, el.preset)};${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${applyCodeFont(textHtml, resolveMonoFontPackage((presentation.config || {}).defaultMonoFont).family)}</div>` +
             `</div></div>`;
           break;
         }
