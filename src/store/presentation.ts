@@ -1291,6 +1291,14 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
 
     t = performance.now();
     const presentation: Presentation = JSON.parse(json);
+    // A valid deck always has ≥1 slide (deleteSlide refuses to remove the last
+    // one). A 0-slide deck is an empty/corrupt file; opening it would blank the
+    // editor into a black, slide-less void (#103). Reject it BEFORE committing to
+    // the store so the current document is left intact and the opener surfaces
+    // the error (rethrown below).
+    if (!Array.isArray(presentation.slides) || presentation.slides.length === 0) {
+      throw new Error('This presentation has no slides — the file is empty or corrupt.');
+    }
     olog(`JSON.parse: ${(performance.now() - t).toFixed(0)}ms → ${presentation.slides.length} slides, ${presentation.slides.reduce((n, s) => n + s.elements.length, 0)} elements`);
 
     // Migrate legacy notebook tokens / baseUrls into the per-machine
