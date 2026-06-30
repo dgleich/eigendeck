@@ -10,12 +10,15 @@ import { resolveTheme } from '../lib/themes';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useImageSrc } from '../lib/imageSrc';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
-import { buildEmbedSrc } from '../lib/videoEmbed';
+import { buildEmbedSrc, DEMO_SANDBOX, VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
 import type { Presentation, Slide, SlideElement, TextElement } from '../types/presentation';
 import { TextElementSvg } from './TextElementSvg';
 import { NotebookContent } from './notebook/NotebookContent';
 import { useDemoThemeInjection } from '../lib/demoThemeInject';
-import { arrowGeometry, triPoints } from '../lib/arrowGeometry.mjs';
+import { ArrowGlyph } from './ArrowGlyph';
+import { imageVisualStyle } from '../lib/imageVisualStyle';
+import { CoverView } from './ElementView';
+import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
 
 export interface PresentCtx {
   slide: Slide;
@@ -47,25 +50,16 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
           <NotebookContent element={el} interactive={true} mode="present" />
         </div>
       );
-    case 'cover':
-      return (
-        <div style={{
-          position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-          // Default a cover to the slide's background so it hides content
-          // seamlessly (a cover is a reveal mask). Explicit color still wins.
-          background: el.color || resolveTheme(ctx.presentationTheme, ctx.slide.theme).background,
-          zIndex, ...style,
-        }} />
-      );
+    case 'cover': {
+      // Reveal mask filled with the slide background (explicit color wins).
+      const d = describeCover(el, resolveTheme(ctx.presentationTheme, ctx.slide.theme).background);
+      return <CoverView box={d.box} background={d.background} extraStyle={{ zIndex, ...style }} />;
+    }
     case 'arrow': {
-      const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;
-      const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);
+      const a = describeArrow(el);
       return (
         <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex, ...style }}>
-          <g opacity={el.opacity ?? 1}>
-            <line x1={geo.line.x1} y1={geo.line.y1} x2={geo.line.x2} y2={geo.line.y2} stroke={color} strokeWidth={strokeWidth} />
-            {geo.triangles.map((t, i) => <polygon key={i} points={triPoints(t)} fill={color} />)}
-          </g>
+          <ArrowGlyph geo={a.geo} color={a.color} strokeWidth={a.strokeWidth} opacity={a.opacity} />
         </svg>
       );
     }
@@ -100,10 +94,7 @@ function PresentImage({ element: el, zIndex, style }: {
   return (
     <img src={src} alt="" style={{
       position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, objectFit: 'contain', zIndex,
-      ...(el.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
-      ...(el.borderRadius ? { borderRadius: el.borderRadius } : {}),
-      ...(el.opacity != null && el.opacity < 1 ? { opacity: el.opacity } : {}),
-      ...(el.rotation ? { transform: `rotate(${el.rotation}deg)` } : {}),
+      ...imageVisualStyle(el),
       ...style,
     }} />
   );
@@ -126,7 +117,7 @@ function PresentVideo({ element: el, zIndex, style }: {
   };
   if (el.kind === 'embed') {
     if (!embedSrc) return null;
-    return <iframe key={embedSrc} ref={embedRef} src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" style={{ ...box, border: 'none' }} />;
+    return <iframe key={embedSrc} ref={embedRef} src={embedSrc} title="video" allow={VIDEO_EMBED_ALLOW} style={{ ...box, border: 'none' }} />;
   }
   if (!src) return null;
   return (
@@ -152,7 +143,7 @@ function PresentDemoIframe({ assetId, hash, title, pos, zIndex, style, ctx }: {
   useDemoThemeInjection(iframeRef, ctx?.presentationConfig as any, ctx?.presentationTheme || 'white', ctx?.slide, src);
   if (!src) return null;
   return (
-    <iframe ref={iframeRef} src={src} sandbox="allow-scripts allow-same-origin" title={title || 'demo'} style={{
+    <iframe ref={iframeRef} src={src} sandbox={DEMO_SANDBOX} title={title || 'demo'} style={{
       position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, border: 'none', zIndex, ...style,
     }} />
   );
@@ -165,7 +156,7 @@ export function PresentControllerIframe({ assetId }: { assetId: string }) {
   const src = useDemoUrl(assetId, 'role=controller');
   if (!src) return null;
   return (
-    <iframe src={src} sandbox="allow-scripts allow-same-origin" title={`controller: ${assetId.slice(0, 8)}`}
+    <iframe src={src} sandbox={DEMO_SANDBOX} title={`controller: ${assetId.slice(0, 8)}`}
       style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }} />
   );
 }

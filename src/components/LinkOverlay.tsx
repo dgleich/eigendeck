@@ -4,7 +4,9 @@ import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
 import type { SlideElement } from '../types/presentation';
 import { ElementPreviewImg } from './ElementPreviewImg';
 import { VideoThumb } from './VideoThumb';
-import { arrowGeometry, triPoints } from '../lib/arrowGeometry.mjs';
+import { triPoints } from '../lib/arrowGeometry.mjs';
+import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
+import { ELEMENT_PLACEHOLDERS as PH } from '../lib/elementPlaceholders.mjs';
 
 const SLIDE_W = 1920;
 const SLIDE_H = 1080;
@@ -179,9 +181,9 @@ function LinkableElement({ element: el, isLinked, linkable = true, onClick }: {
       );
     case 'demo':
       return (
-        <div style={{ ...wrapStyle, background: '#e8f4f8', border: isLinked ? '4px solid #16a34a' : '4px dashed #93c5fd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: '#60a5fa' }}
+        <div style={{ ...wrapStyle, background: PH.demo.bg, border: isLinked ? '4px solid #16a34a' : `4px dashed ${PH.demo.borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: PH.demo.color }}
           onClick={onClick} className="link-overlay-element">
-          DEMO
+          {PH.demo.label}
         </div>
       );
     case 'video':
@@ -193,37 +195,37 @@ function LinkableElement({ element: el, isLinked, linkable = true, onClick }: {
       );
     case 'notebook':
       return (
-        <div style={{ ...wrapStyle, background: '#eef7ee', border: isLinked ? '4px solid #16a34a' : '4px dashed #86c986', overflow: 'hidden' }}
+        <div style={{ ...wrapStyle, background: PH.notebook.bg, border: isLinked ? '4px solid #16a34a' : `4px dashed ${PH.notebook.borderColor}`, overflow: 'hidden' }}
           onClick={onClick} className="link-overlay-element">
           <ElementPreviewImg
             cacheKey={el.syncId ?? el.id}
             fallback={
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: '#3f9142' }}>NB</div>
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, color: PH.notebook.color }}>{PH.notebook.label}</div>
             }
           />
         </div>
       );
     case 'demo-piece':
       return (
-        <div style={{ ...wrapStyle, background: '#f0e8f8', border: isLinked ? '4px solid #16a34a' : '4px dashed #a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#7c3aed' }}
+        <div style={{ ...wrapStyle, background: PH['demo-piece'].bg, border: isLinked ? '4px solid #16a34a' : `4px dashed ${PH['demo-piece'].borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: PH['demo-piece'].color }}
           onClick={onClick} className="link-overlay-element">
           {el.piece}
         </div>
       );
     case 'cover':
       return (
-        <div style={{ ...wrapStyle, background: el.color || '#fff', border: isLinked ? '4px solid #16a34a' : '4px solid #ddd' }}
+        <div style={{ ...wrapStyle, background: describeCover(el, '#fff').background, border: isLinked ? '4px solid #16a34a' : '4px solid #ddd' }}
           onClick={onClick} className="link-overlay-element" />
       );
     case 'arrow': {
-      const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = el;
+      const a = describeArrow(el);
+      const { x1, y1, x2, y2, geo, color } = a;
       // Use bounding box for click target
       const pad = 30;
       const bx = Math.min(x1, x2) - pad;
       const by = Math.min(y1, y2) - pad;
       const bw = Math.abs(x2 - x1) + pad * 2;
       const bh = Math.abs(y2 - y1) + pad * 2;
-      const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);   // inset line + head triangle(s)
       return (
         <div style={{ position: 'absolute', left: bx, top: by, width: bw, height: bh, cursor: 'pointer', zIndex: 10 }}
           onClick={onClick} className="link-overlay-element">
@@ -231,9 +233,9 @@ function LinkableElement({ element: el, isLinked, linkable = true, onClick }: {
             {/* fat transparent hit target spans the full (un-inset) line */}
             <line x1={x1 - bx} y1={y1 - by} x2={x2 - bx} y2={y2 - by}
               stroke="transparent" strokeWidth={24} style={{ pointerEvents: 'stroke' }} />
-            <g opacity={el.opacity ?? 1}>
+            <g opacity={a.opacity ?? 1}>
               <line x1={geo.line.x1 - bx} y1={geo.line.y1 - by} x2={geo.line.x2 - bx} y2={geo.line.y2 - by}
-                stroke={color} strokeWidth={strokeWidth} />
+                stroke={color} strokeWidth={a.strokeWidth} />
               {geo.triangles.map((t, i) => (
                 <polygon key={i} points={triPoints(t.map((p) => [p[0] - bx, p[1] - by]))} fill={color} />
               ))}

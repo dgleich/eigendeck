@@ -1,3 +1,21 @@
+// The text type-scale (named sizes + the effective-size cascade) lives in the
+// framework-free lib/textSizes.mjs so it is shared with the headless CLI export
+// (exportCore.mjs) across the .mjs/.ts boundary. Re-exported here so the rest of
+// the app keeps importing it from the data model unchanged.
+import {
+  DEFAULT_TEXT_SIZES, resolveNamedSize, effectiveTextPresetSize, effectiveFontSize,
+} from '../lib/textSizes.mjs';
+import type { NamedSize } from '../lib/textSizes.mjs';
+export type { NamedSize };
+export { DEFAULT_TEXT_SIZES, resolveNamedSize, effectiveTextPresetSize, effectiveFontSize };
+// Text inner-box layout (line-height + padding), shared with the static exports.
+export { textPresetBoxCss, textPaddingCss } from '../lib/textBox.mjs';
+// Text visual-style helpers (fill / effect / box-shadow), shared with the exports.
+export { textBackgroundCss, textEffectCss, textShadowCss, textBoxShadowCss } from '../lib/textStyle.mjs';
+// Per-preset style table (label/size/font/weight/style/color), shared with the exports.
+export { TEXT_PRESET_STYLES } from '../lib/textPresets.mjs';
+export type { TextPresetStyle } from '../lib/textPresets.mjs';
+
 export interface ElementPosition {
   x: number;
   y: number;
@@ -12,168 +30,16 @@ export interface ElementPosition {
 
 export type TextPreset = 'title' | 'body' | 'textbox' | 'annotation' | 'footnote' | 'hype';
 
-/**
- * Named sizes in the deck's type scale. Five buckets covering every
- * size the existing TextPresets need. Other element types
- * (notebooks, future code blocks, etc.) pick from this same vocabulary
- * so the deck has ONE type scale, not parallel ones per element type.
- *
- * UX restriction: 'title' is reserved for title text elements.
- * Inspector pickers for non-title elements (notebooks, etc.) hide
- * it from the chooser — they can still use the numeric override
- * field if they want title-sized text for some reason.
- */
-export type NamedSize = 'footnote' | 'note' | 'body' | 'title' | 'hype';
+// TEXT_PRESET_STYLES (the per-preset style table) lives in lib/textPresets.mjs so
+// it is shared with the CLI export across the .mjs/.ts boundary; re-exported at
+// the top of this file.
 
-/** Built-in defaults for the type scale. Match the historical
- *  TextPreset.fontSize values so existing decks render identically
- *  when `PresentationConfig.textSizes` is absent. */
-export const DEFAULT_TEXT_SIZES: Record<NamedSize, number> = {
-  footnote: 24,
-  note:     32,
-  body:     48,
-  title:    72,
-  hype:     96,
-};
+// textPresetBoxCss + textPaddingCss (the text inner-box layout) live in
+// lib/textBox.mjs so they are shared with the static HTML exports across the
+// .mjs/.ts boundary, and are re-exported at the top of this file.
 
-/** Resolve a named size against the deck override + defaults. */
-export function resolveNamedSize(
-  name: NamedSize,
-  config?: { textSizes?: Partial<Record<NamedSize, number>> } | null,
-): number {
-  return config?.textSizes?.[name] ?? DEFAULT_TEXT_SIZES[name];
-}
-
-export const TEXT_PRESET_STYLES: Record<TextPreset, {
-  label: string;
-  /** Named size in the deck's type scale. The numeric size at render
-   *  time comes from `resolveNamedSize(sizeName, config)`. */
-  sizeName: NamedSize;
-  /** Fallback px size used by code that doesn't have a config in
-   *  scope (e.g. element factories at insertion time). Matches
-   *  DEFAULT_TEXT_SIZES[sizeName]. */
-  fontSize: number;
-  fontFamily: string;
-  fontWeight: string;
-  fontStyle: string;
-  color: string;
-}> = {
-  title: {
-    label: 'Title',
-    sizeName: 'title',
-    fontSize: DEFAULT_TEXT_SIZES.title,
-    fontFamily: "'PT Sans', sans-serif",
-    fontWeight: '700',
-    fontStyle: 'normal',
-    color: '#222',
-  },
-  body: {
-    label: 'Body',
-    sizeName: 'body',
-    fontSize: DEFAULT_TEXT_SIZES.body,
-    fontFamily: "'PT Sans', sans-serif",
-    fontWeight: 'normal',
-    fontStyle: 'normal',
-    color: '#222',
-  },
-  textbox: {
-    label: 'Text Box',
-    sizeName: 'body',
-    fontSize: DEFAULT_TEXT_SIZES.body,
-    fontFamily: "'PT Sans', sans-serif",
-    fontWeight: 'normal',
-    fontStyle: 'normal',
-    color: '#222',
-  },
-  annotation: {
-    label: 'Annotation',
-    sizeName: 'note',
-    fontSize: DEFAULT_TEXT_SIZES.note,
-    fontFamily: "'PT Sans', sans-serif",
-    fontWeight: 'normal',
-    fontStyle: 'italic',
-    color: '#2563eb',
-  },
-  footnote: {
-    label: 'Footnote',
-    sizeName: 'footnote',
-    fontSize: DEFAULT_TEXT_SIZES.footnote,
-    fontFamily: "'PT Sans Narrow', sans-serif",
-    fontWeight: 'normal',
-    fontStyle: 'normal',
-    color: '#888',
-  },
-  hype: {
-    // Sticky-note style: bright-yellow fill (set on creation), Shantell Sans
-    // (hand-drawn) by default, dark text, and a smaller size than the old
-    // splashy 96px hype.
-    label: 'Hype',
-    sizeName: 'body',
-    fontSize: DEFAULT_TEXT_SIZES.body,
-    fontFamily: "'Shantell Sans', sans-serif",
-    fontWeight: 'normal',
-    fontStyle: 'normal',
-    color: '#1a1a1a',
-  },
-};
-
-/** Inner-box layout (line spacing + padding, in px) for a text preset's
- *  rendered HTML. Footnote renders TIGHT — no padding, single line-height — so a
- *  one-line 24px footnote fills its slim box flush on the grid; every other
- *  preset keeps the comfortable 1.3 line-height + 8/12px padding. Used by BOTH
- *  the live editor (SlideElementRenderer) and the SVG/export path
- *  (TextElementSvg) so they stay WYSIWYG-identical. */
-export function textPresetBoxCss(preset: TextPreset): { lineHeight: number; padY: number; padX: number } {
-  if (preset === 'footnote') return { lineHeight: 1, padY: 0, padX: 0 };
-  return { lineHeight: 1.3, padY: 8, padX: 12 };
-}
-
-/** Effective inner padding for a text element as a CSS shorthand ("8px 12px" or
- *  per-side "10px 24px 10px 24px"). Honors the element's `padding` override, else
- *  the preset default. Shared by editor / present / export so they stay
- *  WYSIWYG-identical. */
-export function textPaddingCss(
-  el: { padding?: { top: number; right: number; bottom: number; left: number } },
-  preset: TextPreset,
-): string {
-  const p = el.padding;
-  if (p) return `${p.top}px ${p.right}px ${p.bottom}px ${p.left}px`;
-  const box = textPresetBoxCss(preset);
-  return `${box.padY}px ${box.padX}px`;
-}
-
-/** Resolve the effective px size for a text preset, honoring the
- *  deck's textSizes override. Use this instead of
- *  TEXT_PRESET_STYLES[preset].fontSize anywhere a config is in scope. */
-export function effectiveTextPresetSize(
-  preset: TextPreset,
-  config?: { textSizes?: Partial<Record<NamedSize, number>> } | null,
-): number {
-  return resolveNamedSize(TEXT_PRESET_STYLES[preset].sizeName, config);
-}
-
-/** Single resolver for "what px size should this element render at?"
- *  Works for any element that has the standard fontSize / fontSizeName
- *  pair (currently TextElement and NotebookElement; future code-block
- *  element will plug in here too).
- *
- *  Cascade (default-setting flavor, per DESIGN_DECISIONS.md):
- *    1. element.fontSize (explicit numeric override) — wins
- *    2. element.fontSizeName via deck's textSizes
- *    3. for text elements: the preset's default size
- *       for notebooks: 'note' (32 px default)
- */
-export function effectiveFontSize(
-  element:
-    | { type: 'text'; preset: TextPreset; fontSize?: number; fontSizeName?: NamedSize }
-    | { type: 'notebook'; fontSize?: number; fontSizeName?: NamedSize },
-  config?: { textSizes?: Partial<Record<NamedSize, number>> } | null,
-): number {
-  if (element.fontSize != null) return element.fontSize;
-  if (element.fontSizeName) return resolveNamedSize(element.fontSizeName, config);
-  if (element.type === 'text') return effectiveTextPresetSize(element.preset, config);
-  return resolveNamedSize('note', config);
-}
+// effectiveTextPresetSize + effectiveFontSize are defined in lib/textSizes.mjs
+// (shared with the CLI export) and re-exported at the top of this file.
 
 // ============================================
 // Unified element types
@@ -237,56 +103,9 @@ export interface TextElement extends BaseElement {
   rotation?: number;
 }
 
-/** Effective CSS background for a text element (colour + opacity → rgba), or
- *  undefined when no background is set. Shared by every render path (editor,
- *  present/presenter, export) so they stay consistent. */
-export function textBackgroundCss(el: { backgroundColor?: string; backgroundOpacity?: number }): string | undefined {
-  if (!el.backgroundColor) return undefined;
-  const a = el.backgroundOpacity ?? 1;
-  if (a >= 1) return el.backgroundColor;
-  const hex = el.backgroundColor.replace('#', '');
-  if (/^[0-9a-fA-F]{6}$/.test(hex)) {
-    const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${a})`;
-  }
-  return el.backgroundColor; // non-hex colour: opacity not applied
-}
-
-/** Pick a halo color (white or black) that contrasts with `color`, for the
- *  glow effect. Non-hex / unparseable colors default to a white halo. */
-function haloFor(color: string): string {
-  const hex = (color || '').replace('#', '');
-  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return '#ffffff';
-  const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
-  // Rec. 601 luma; dark text → light halo, light text → dark halo.
-  const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-  return luma < 140 ? '#ffffff' : '#000000';
-}
-
-/** CSS `text-shadow` value for a text element's effect (#73), or undefined for
- *  none. `color` is the resolved text color (drives the glow halo). Shared by
- *  every render path so editor / present / export stay identical. */
-export function textEffectCss(effect: 'shadow' | 'glow' | undefined, color: string): string | undefined {
-  if (effect === 'shadow') return '0 2px 4px rgba(0,0,0,0.45)';
-  if (effect === 'glow') {
-    const h = haloFor(color);
-    return `0 0 3px ${h}, 0 0 6px ${h}, 0 0 10px ${h}`;
-  }
-  return undefined;
-}
-
-/** Shadow/glow to apply to the TEXT itself (the `textEffect` Effect control).
- *  Independent of the box shadow. */
-export function textShadowCss(el: { textEffect?: 'shadow' | 'glow' }, color: string): string | undefined {
-  return textEffectCss(el.textEffect, color);
-}
-
-/** CSS `box-shadow` for a text element's BOX: a drop shadow on the background
- *  panel (the explicit `boxShadow` toggle). Only when a background is set —
- *  there's no panel to shadow otherwise. */
-export function textBoxShadowCss(el: { boxShadow?: boolean; backgroundColor?: string }): string | undefined {
-  return el.boxShadow && el.backgroundColor ? '0 4px 14px rgba(0,0,0,0.28)' : undefined;
-}
+// textBackgroundCss / textEffectCss / textShadowCss / textBoxShadowCss (the text
+// visual-style helpers) live in lib/textStyle.mjs so they're shared with the
+// static HTML exports across the .mjs/.ts boundary; re-exported at the top.
 
 /**
  * Parse a pasted color palette (#2) into a normalized list of #rrggbb hex

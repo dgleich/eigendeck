@@ -10,6 +10,7 @@ import { PresentElement, PresentControllerIframe, type PresentCtx } from './Pres
 import { planPresentTransition } from '../lib/presentTransition';
 import { arrowGeometry, triPoints } from '../lib/arrowGeometry.mjs';
 import { listen } from '@tauri-apps/api/event';
+import { clamp01 } from '../lib/clamp01';
 
 const TRANSITION_MS = 300;
 
@@ -339,8 +340,7 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
               const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
               const ww = slideW * scale, wh = slideH * scale;
               const ox = (r.width - ww) / 2, oy = (r.height - wh) / 2;   // letterbox offset
-              const clamp = (v: number) => Math.max(0, Math.min(1, v));
-              setFocus({ x: clamp((e.clientX - r.left - ox) / ww), y: clamp((e.clientY - r.top - oy) / wh) });
+              setFocus({ x: clamp01((e.clientX - r.left - ox) / ww), y: clamp01((e.clientY - r.top - oy) / wh) });
             }}
           />
         )}

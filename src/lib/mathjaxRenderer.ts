@@ -431,8 +431,3 @@ export function renderMathInHtmlSync(html: string, bundleId: string, preamble?: 
   }
   return parts.join('');
 }
-
-/** For debugging / dev: list which bundles have been loaded. */
-export function loadedBundles(): string[] {
-  return [...pools.keys()];
-}

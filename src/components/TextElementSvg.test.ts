@@ -6,7 +6,8 @@
 // for italic/integral glyph ink, #61 — that lives in mathjaxRenderer.ts, not
 // here, so this builder must never emit overflow:visible).
 import { describe, it, expect } from 'vitest';
-import { buildTextElementSvgMarkup, applyCodeFont } from './TextElementSvg';
+import { buildTextElementSvgMarkup } from './TextElementSvg';
+import { applyCodeFont } from '../lib/textStyle.mjs';
 
 describe('applyCodeFont — gives <code> the deck mono family', () => {
   const MONO = "'Source Code Pro', monospace";

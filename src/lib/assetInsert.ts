@@ -6,6 +6,7 @@
 // See docs/ASSETS.md → "Path collision dialog" for the full design.
 
 import { invoke } from '@tauri-apps/api/core';
+import { sha256Hex } from './hash';
 import { usePresentationStore } from '../store/presentation';
 import { invalidateRenderedAsset } from './assetRenderer';
 import { showCollisionDialog } from './collisionDialog';
@@ -312,14 +313,6 @@ export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<Sto
   maybeWarnUnsavedProject(args.externalPath);
 
   return { assetId: newAssetId, path: args.path, cancelled: false };
-}
-
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-  const digest = await crypto.subtle.digest('SHA-256', buf as ArrayBuffer);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
 }
 
 /** Thin wrapper for the old call-site: returns just the slide numbers

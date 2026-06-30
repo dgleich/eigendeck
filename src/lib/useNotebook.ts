@@ -30,7 +30,7 @@ async function loadNotebook(assetId: string): Promise<Notebook> {
   return p;
 }
 
-export function invalidateNotebook(assetId: string) {
+function invalidateNotebook(assetId: string) {
   cache.delete(assetId);
   inflight.delete(assetId);
 }

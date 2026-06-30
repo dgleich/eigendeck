@@ -10,6 +10,7 @@ import { listen } from '@tauri-apps/api/event';
 import { usePresentationStore } from '../store/presentation';
 import { getSlideNumber } from '../types/presentation';
 import { navigatePresenter, closePresenterWindow, swapPresenterDisplay, zoomPresenter } from '../lib/multiMonitor';
+import { clamp01 } from '../lib/clamp01';
 import { availableMonitors } from '@tauri-apps/api/window';
 import { SlideThumbnail } from './SlideThumbnail';
 import { ASSET_TIER } from '../lib/assetCache';
@@ -67,8 +68,7 @@ export function SpeakerMode() {
   const panFromPreview = useCallback((e: React.MouseEvent) => {
     if (!zoomed) return;
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const clamp = (v: number) => Math.max(0, Math.min(1, v));
-    void zoomPresenter(ZOOM, clamp((e.clientX - r.left) / r.width), clamp((e.clientY - r.top) / r.height));
+    void zoomPresenter(ZOOM, clamp01((e.clientX - r.left) / r.width), clamp01((e.clientY - r.top) / r.height));
   }, [zoomed]);
 
   // Keyboard navigation

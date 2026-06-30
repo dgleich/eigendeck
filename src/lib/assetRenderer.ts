@@ -20,9 +20,9 @@ import {
   pngBytesToBlobUrl,
   ASSET_TIER,
   type AssetKind,
-  type AssetCacheEntry,
 } from './assetCache';
 import { showToast, dismissToast } from './toasts';
+import { bytesToBase64 } from './base64';
 
 /**
  * Show a "still rendering…" toast if a single asset render hasn't
@@ -432,14 +432,6 @@ function sniffRasterMime(bytes: Uint8Array): string | null {
 }
 
 /**
- * Re-export cached PNG bytes as a blob URL for callers that already
- * have an AssetCacheEntry in hand.
- */
-export function entryToBlobUrl(entry: AssetCacheEntry): string {
-  return pngBytesToBlobUrl(entry.png);
-}
-
-/**
  * Scan an SVG for `<image>` references that point at external resources
  * (anything other than a `data:` URI). When the SVG is rendered as an
  * image, the browser's secure-static mode can't fetch external sub-
@@ -448,7 +440,7 @@ export function entryToBlobUrl(entry: AssetCacheEntry): string {
  *
  * Catches both `href=` and the legacy `xlink:href=` forms.
  */
-export function findExternalImageRefs(bytes: Uint8Array): string[] {
+function findExternalImageRefs(bytes: Uint8Array): string[] {
   const head = new TextDecoder('utf-8', { fatal: false }).decode(
     bytes.subarray(0, Math.min(bytes.length, 16384)),
   );
@@ -493,14 +485,6 @@ function mimeFromExt(href: string): string {
     : ext === 'webp' ? 'image/webp'
     : ext === 'svg' ? 'image/svg+xml'
     : 'application/octet-stream';
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let s = '';
-  for (let i = 0; i < bytes.length; i += 8192) {
-    s += String.fromCharCode(...bytes.subarray(i, i + 8192));
-  }
-  return btoa(s);
 }
 
 /**
@@ -713,7 +697,7 @@ function normalizeSvgForImg(bytes: Uint8Array): Uint8Array {
  * the Inkscape About splash (~400 KB) which legitimately benefits from
  * caching.
  */
-export const SVG_NATIVE_THRESHOLD_BYTES = 200_000;
+const SVG_NATIVE_THRESHOLD_BYTES = 200_000;
 
 /**
  * React hook: lazy cache-or-render an asset at the requested tier, returning

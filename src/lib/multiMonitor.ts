@@ -332,9 +332,3 @@ export async function closePresenterWindow(): Promise<void> {
   }
 }
 
-/**
- * Check if a presenter window is currently open.
- */
-export function isPresenterOpen(): boolean {
-  return presenterWindow !== null;
-}

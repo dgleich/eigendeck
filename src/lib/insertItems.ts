@@ -44,8 +44,3 @@ export const INSERT_ITEMS: InsertItem[] = [
 ];
 
 export const INSERT_GROUP_ORDER: InsertGroup[] = ['text', 'objects', 'embeds'];
-
-/** Look up an item by id (for labels / validation). */
-export function insertItemById(id: string): InsertItem | undefined {
-  return INSERT_ITEMS.find((it) => it.id === id);
-}

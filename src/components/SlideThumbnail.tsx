@@ -10,7 +10,10 @@
 // separate: you can't run live demo iframes in a 50-slide sidebar.
 
 import { useLayoutEffect, useRef, useState } from 'react';
-import { arrowGeometry, triPoints } from '../lib/arrowGeometry.mjs';
+import { ArrowGlyph } from './ArrowGlyph';
+import { CoverView } from './ElementView';
+import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
+import { ELEMENT_PLACEHOLDERS as PH } from '../lib/elementPlaceholders.mjs';
 import { resolveTheme } from '../lib/themes';
 import { TextElementSvg } from './TextElementSvg';
 import { useRenderedAsset } from '../lib/assetRenderer';
@@ -83,7 +86,6 @@ export function SlideThumbnail({ presentation, slide, width, imageTier = ASSET_T
 function ThumbElement({ element: el, slide, presentation, imageTier }: {
   element: SlideElement; slide: Slide; presentation: Presentation; imageTier: number;
 }) {
-  const p = el.position;
   switch (el.type) {
     case 'text':
       return (
@@ -93,31 +95,25 @@ function ThumbElement({ element: el, slide, presentation, imageTier }: {
     case 'image':
       return <ThumbImage element={el} imageTier={imageTier} />;
     case 'arrow': {
-      const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 3, headSize = 16 } = el;
-      const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);   // inset line + head triangle(s)
+      const a = describeArrow(el);
       return (
         <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
-          <g opacity={el.opacity ?? 1}>
-            <line x1={geo.line.x1} y1={geo.line.y1} x2={geo.line.x2} y2={geo.line.y2} stroke={color} strokeWidth={strokeWidth} />
-            {geo.triangles.map((t, i) => <polygon key={i} points={triPoints(t)} fill={color} />)}
-          </g>
+          <ArrowGlyph geo={a.geo} color={a.color} strokeWidth={a.strokeWidth} opacity={a.opacity} />
         </svg>
       );
     }
     case 'demo':
-      return <ThumbDemo element={el} />;
     case 'demo-piece':
-      return <ThumbDemoPiece element={el} />;
     case 'notebook':
-      return <ThumbNotebook element={el} />;
+      return <ThumbPreview element={el} />;
     case 'video':
       return <ThumbVideo element={el} />;
-    case 'cover':
+    case 'cover': {
       // Match the slide background (it's a reveal mask) — no border, so the
       // static render matches the live slide / speaker view. Explicit color wins.
-      return (
-        <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, background: el.color || resolveTheme(presentation.theme, slide.theme).background }} />
-      );
+      const d = describeCover(el, resolveTheme(presentation.theme, slide.theme).background);
+      return <CoverView box={d.box} background={d.background} />;
+    }
     default:
       return null;
   }
@@ -140,25 +136,24 @@ function ThumbImage({ element, imageTier }: { element: Extract<SlideElement, { t
   );
 }
 
-function ThumbDemo({ element }: { element: Extract<SlideElement, { type: 'demo' }> }) {
+// demo / demo-piece / notebook all render as a cached-preview image with a
+// typed placeholder fallback in an identical positioned box. The placeholder
+// identity comes from ELEMENT_PLACEHOLDERS; notebook fills big with no border,
+// demo/demo-piece are smaller dashed boxes; demo-piece shows the piece name.
+function ThumbPreview({ element }: { element: Extract<SlideElement, { type: 'demo' | 'demo-piece' | 'notebook' }> }) {
   const p = element.position;
   useAssetFileWatcher(element.assetId, element.id);
+  const spec = PH[element.type];
+  const isNb = element.type === 'notebook';
+  const fontSize = isNb ? 64 : element.type === 'demo' ? 20 : 16;
+  const label = element.type === 'demo-piece' ? element.piece : spec.label;
+  // Demos capture TRANSPARENT now (#111): keep the wrapper transparent so the
+  // slide background (from the thumb-render div) and any elements beneath the demo
+  // show through, matching the live slide. (Notebooks keep their white card.)
   return (
-    <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden', background: '#fff' }}>
+    <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden', background: isNb ? '#fff' : 'transparent' }}>
       <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#60a5fa', background: '#e8f4f8', border: '1px dashed #93c5fd' }}>DEMO</div>
-      } />
-    </div>
-  );
-}
-
-function ThumbDemoPiece({ element }: { element: Extract<SlideElement, { type: 'demo-piece' }> }) {
-  const p = element.position;
-  useAssetFileWatcher(element.assetId, element.id);
-  return (
-    <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden', background: '#fff' }}>
-      <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#7c3aed', background: '#f0e8f8', border: '1px dashed #a78bfa' }}>{element.piece}</div>
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize, color: spec.color, background: spec.bg, ...(isNb ? {} : { border: `1px dashed ${spec.borderColor}` }) }}>{label}</div>
       } />
     </div>
   );
@@ -171,18 +166,6 @@ function ThumbVideo({ element }: { element: Extract<SlideElement, { type: 'video
   return (
     <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden', background: '#000' }}>
       <VideoThumb element={element} />
-    </div>
-  );
-}
-
-function ThumbNotebook({ element }: { element: Extract<SlideElement, { type: 'notebook' }> }) {
-  const p = element.position;
-  useAssetFileWatcher(element.assetId, element.id);
-  return (
-    <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden', background: '#fff' }}>
-      <ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, color: '#86c986', background: '#eef7ee' }}>NB</div>
-      } />
     </div>
   );
 }

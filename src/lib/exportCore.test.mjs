@@ -435,3 +435,43 @@ describe('HTML well-formedness in export', () => {
     expect(opens).toBe(closes);
   });
 });
+
+// @simplify-guard — full-output snapshot over a fixture covering every element
+// type. Behavior-preservation net for refactoring/deduping the exportCore render
+// path (the biggest render target): the snapshot must stay byte-identical across
+// pure simplifications. Safe to prune once the unified renderer is trusted;
+// update intentionally only when output SHOULD change.
+describe('[simplify-guard] exportCore full-output snapshot (all element types)', () => {
+  function everyTypeDeck() {
+    return {
+      title: 'All Types', theme: 'white',
+      config: { width: 1920, height: 1080, author: 'A', venue: 'V', transition: 'slide', backgroundTransition: 'fade' },
+      slides: [{
+        id: 's1', layout: 'default', notes: 'n',
+        elements: [
+          { id: 't-title', type: 'text', preset: 'title', html: 'Title', position: { x: 60, y: 40, width: 1800, height: 120 } },
+          { id: 't-body', type: 'text', preset: 'body', html: 'Body <b>b</b>', backgroundColor: '#eef3fb', backgroundOpacity: 0.8, padding: { top: 10, right: 12, bottom: 10, left: 12 }, textEffect: 'shadow', boxShadow: true, position: { x: 60, y: 180, width: 900, height: 200 } },
+          { id: 't-foot', type: 'text', preset: 'footnote', html: 'Foot', position: { x: 60, y: 980, width: 1800, height: 60 } },
+          { id: 'img', type: 'image', src: 'data:image/png;base64,iVBORw0KGgo=', borderRadius: 12, opacity: 0.9, rotation: 5, position: { x: 1000, y: 180, width: 400, height: 300 } },
+          { id: 'arr', type: 'arrow', x1: 100, y1: 600, x2: 500, y2: 650, color: '#e53e3e', strokeWidth: 4, headSize: 16, heads: 'end', position: { x: 0, y: 0, width: 0, height: 0 } },
+          { id: 'cov', type: 'cover', color: '#222', position: { x: 1400, y: 600, width: 300, height: 200 } },
+          { id: 'vid', type: 'video', kind: 'embed', src: 'https://www.youtube.com/watch?v=abc123', position: { x: 60, y: 400, width: 640, height: 360 } },
+          { id: 'demo', type: 'demo', demoSrc: 'demos/x.html', position: { x: 800, y: 600, width: 400, height: 300 } },
+        ],
+      }],
+    };
+  }
+  it('matches the committed snapshot', async () => {
+    const html = await buildExportHtml({
+      presentation: everyTypeDeck(),
+      readFile: async () => new Uint8Array([1, 2, 3]),
+      readTextFile: async () => '<html><body>demo-fixed</body></html>',
+      renderMath: (h) => h,
+      applyMathPreamble: null,
+      getElementPreview: async () => 'data:image/png;base64,UFJFVklFVw==',
+      resolveFont: () => 'PT Sans',
+      resolveMathBundle: () => 'ptsans',
+    });
+    expect(html).toMatchSnapshot();
+  });
+});

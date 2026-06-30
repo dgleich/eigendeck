@@ -1,15 +1,16 @@
 import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
-import { arrowGeometry, triPoints } from './arrowGeometry.mjs';
-
-// Give <code> runs the deck's mono family (mirrors applyCodeFont in TextElementSvg).
-function applyCodeFont(html, mono) {
-  if (!mono || !html) return html || '';
-  return html.replace(/<code\b([^>]*)>/gi, (_m, attrs) =>
-    /\bstyle\s*=/.test(attrs)
-      ? `<code${attrs.replace(/style\s*=\s*"([^"]*)"/i, (_s, c) => `style="${c};font-family:${mono}"`)}>`
-      : `<code${attrs} style="font-family:${mono}">`);
-}
+import { coverHtml, arrowSvgHtml, imageHtml } from './elementHtml.mjs';
+import { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
+import { ELEMENT_PLACEHOLDERS as PH } from './elementPlaceholders.mjs';
+// Re-exported so existing importers (incl. exportCore.test.mjs) are unaffected.
+export { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
+import { buildEmbedSrc, DEMO_SANDBOX } from './videoEmbedParse.mjs';
+import { themeColorsByName, themeColorForPreset } from './themeColors.mjs';
+import { effectiveFontSize } from './textSizes.mjs';
+import { textBackgroundCss, textBoxShadowCss, applyCodeFont } from './textStyle.mjs';
+import { TEXT_PRESET_STYLES } from './textPresets.mjs';
+import { textElementHtml } from './textElementHtml.mjs';
 
 /**
  * Shared HTML export logic.
@@ -26,147 +27,25 @@ function applyCodeFont(html, mono) {
  * @property {((preamble: string) => Promise<void>) | null} applyMathPreamble - Optional: register math macros
  */
 
-// Built-in theme backgrounds. Self-contained mirror of BUILT_IN_THEMES in
-// src/lib/themes.ts (this .mjs is shared with the offline export tool and can't
-// import the TS module). Keep in sync with that file's `colors.background`.
-const THEME_BACKGROUNDS = {
-  white: '#ffffff',
-  light: '#f5f0e8',
-  dark: '#1a1a2e',
-  black: '#000000',
-};
-
-/** Resolve the effective slide background colour from the slide/deck theme. */
+/** Resolve the effective slide background colour from the slide/deck theme
+ *  (shared resolver — slide theme wins over deck, falls back to white). */
 function themeBackground(presentation, slide) {
-  const name = (slide && slide.theme) || (presentation && presentation.theme) || 'white';
-  return THEME_BACKGROUNDS[name] || THEME_BACKGROUNDS.white;
+  return themeColorsByName(presentation && presentation.theme, slide && slide.theme).background;
 }
 
-const TEXT_PRESET_STYLES = {
-  title:      { fontSize: 72, fontFamily: "'PT Sans', sans-serif", fontWeight: '700', fontStyle: 'normal', color: '#222' },
-  body:       { fontSize: 48, fontFamily: "'PT Sans', sans-serif", fontWeight: 'normal', fontStyle: 'normal', color: '#222' },
-  textbox:    { fontSize: 48, fontFamily: "'PT Sans', sans-serif", fontWeight: 'normal', fontStyle: 'normal', color: '#222' },
-  annotation: { fontSize: 32, fontFamily: "'PT Sans', sans-serif", fontWeight: 'normal', fontStyle: 'italic', color: '#2563eb' },
-  footnote:   { fontSize: 24, fontFamily: "'PT Sans Narrow', sans-serif", fontWeight: 'normal', fontStyle: 'normal', color: '#888' },
-};
+/** Absolute-position CSS fragment shared by every exported element's wrapper. */
+const absBox = (p) => `position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px`;
 
-// Effective text-element background (colour + opacity → rgba), or '' when none.
-// Kept self-contained so the CLI exporter can use it without the TS module.
-// Mirrors textBackgroundCss() in types/presentation.ts.
-function textBgCss(el) {
-  if (!el || !el.backgroundColor) return '';
-  const a = el.backgroundOpacity == null ? 1 : el.backgroundOpacity;
-  if (a >= 1) return el.backgroundColor;
-  const hex = el.backgroundColor.replace('#', '');
-  if (/^[0-9a-fA-F]{6}$/.test(hex)) {
-    const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${a})`;
-  }
-  return el.backgroundColor;
+/** A demo / demo-piece iframe: splice the slide's theme vars into the demo HTML,
+ *  escape it for srcdoc, and position it. (demo-piece passes html already run
+ *  through injectDemoBootstrap.) Shared by both branches so the srcdoc/sandbox
+ *  wiring lives in one place. */
+function demoIframeHtml(html, slide, p, demoThemeVarsCss) {
+  const themed = injectDemoThemeIntoHtml(html, '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
+  return `<iframe srcdoc="${htmlEscapeForSrcdoc(themed)}" style="${absBox(p)};border:none;" sandbox="${DEMO_SANDBOX}"></iframe>`;
 }
 
-// Text legibility effect (#73): drop shadow or high-contrast glow. Self-
-// contained mirror of textEffectCss() in types/presentation.ts (this .mjs is
-// shared with the offline export tool and can't import the TS module).
-function textEffectCss(el, color) {
-  const fx = el && el.textEffect;
-  if (fx === 'shadow') return '0 2px 4px rgba(0,0,0,0.45)';
-  if (fx === 'glow') {
-    const hex = (color || '').replace('#', '');
-    let halo = '#ffffff';
-    if (/^[0-9a-fA-F]{6}$/.test(hex)) {
-      const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
-      halo = (0.299 * r + 0.587 * g + 0.114 * b) < 140 ? '#ffffff' : '#000000';
-    }
-    return `0 0 3px ${halo}, 0 0 6px ${halo}, 0 0 10px ${halo}`;
-  }
-  return '';
-}
 
-// Text-shadow for the TEXT (the Effect control). Mirrors textShadowCss().
-function textShadowCss(el, color) {
-  return textEffectCss(el, color);
-}
-
-// Box-shadow for the text BOX panel (the explicit boxShadow toggle + a
-// background). Mirrors textBoxShadowCss().
-function textBoxShadowCss(el) {
-  return el && el.boxShadow && el.backgroundColor ? '0 4px 14px rgba(0,0,0,0.28)' : '';
-}
-
-// Per-side inner padding shorthand, honoring el.padding (else the legacy 8/12).
-// Mirrors textPaddingCss() in types/presentation.ts.
-function textPaddingCss(el) {
-  const p = el && el.padding;
-  return p ? `${p.top}px ${p.right}px ${p.bottom}px ${p.left}px` : '8px 12px';
-}
-
-/**
- * HTML-escape a string for use in a srcdoc attribute.
- */
-export function htmlEscapeForSrcdoc(s) {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-/**
- * Build the provider iframe `src` for an embed-kind video element. Self-
- * contained mirror of buildEmbedSrc() in src/lib/videoEmbed.ts (this .mjs is
- * shared with the offline export tool and can't import the TS module). Keep in
- * sync with that file. Returns null when the URL isn't a recognized provider.
- */
-export function videoEmbedUrl(el) {
-  if (!el || !el.url) return null;
-  let u;
-  try { u = new URL(String(el.url).trim()); } catch { return null; }
-  const host = u.hostname.replace(/^www\./, '');
-  let provider = null, id = null, origin = null;
-  if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
-    const v = u.searchParams.get('v');
-    if (v) { provider = 'youtube'; id = v; }
-    else { const m = u.pathname.match(/^\/(?:embed|shorts|live)\/([\w-]+)/); if (m) { provider = 'youtube'; id = m[1]; } }
-  } else if (host === 'youtu.be') {
-    const i = u.pathname.slice(1).split('/')[0]; if (i) { provider = 'youtube'; id = i; }
-  } else if (host === 'vimeo.com' || host === 'player.vimeo.com') {
-    const m = u.pathname.match(/(\d+)/); if (m) { provider = 'vimeo'; id = m[1]; }
-  } else {
-    const pt = u.pathname.match(/\/(?:w|videos\/(?:watch|embed))\/([\w-]+)/);
-    if (pt) { provider = 'peertube'; id = pt[1]; origin = u.origin; }
-  }
-  if (!provider || !id) return null;
-
-  const p = new URLSearchParams();
-  const showControls = !!el.controls || !el.autoplay;
-  if (provider === 'youtube') {
-    if (el.autoplay) p.set('autoplay', '1');
-    if (el.muted) p.set('mute', '1');
-    if (el.loop) { p.set('loop', '1'); p.set('playlist', id); }
-    p.set('controls', showControls ? '1' : '0');
-    if (el.captions) p.set('cc_load_policy', '1');
-    p.set('rel', '0');
-    return `https://www.youtube-nocookie.com/embed/${id}?${p.toString()}`;
-  }
-  if (provider === 'vimeo') {
-    if (el.autoplay) p.set('autoplay', '1');
-    if (el.muted) p.set('muted', '1');
-    if (el.loop) p.set('loop', '1');
-    if (!showControls) p.set('controls', '0');
-    if (el.captions) p.set('texttrack', 'en');
-    return `https://player.vimeo.com/video/${id}?${p.toString()}`;
-  }
-  // PeerTube
-  const base = origin || u.origin;
-  if (!base) return null;
-  if (el.autoplay) p.set('autoplay', '1');
-  if (el.muted) p.set('muted', '1');
-  if (el.loop) p.set('loop', '1');
-  if (!showControls) p.set('controls', '0');
-  if (el.captions) p.set('subtitle', 'en');
-  return `${base}/videos/embed/${id}?${p.toString()}`;
-}
 
 /**
  * Inject role/piece hash AND a unique channel key into a demo HTML.
@@ -370,11 +249,11 @@ export async function buildExportHtml(opts) {
           // We just wrap it in a positioned div.
           if (renderTextElement) {
             const svgMarkup = await renderTextElement(el, slide);
-            const bg = textBgCss(el);
+            const bg = textBackgroundCss(el);
             const sh = textBoxShadowCss(el);
             const rot = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
             const rad = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
-            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;${bg ? `background:${bg};` : ''}${sh ? `box-shadow:${sh};` : ''}${rad}${rot}">` +
+            inner += `<div style="${absBox(p)};${bg ? `background:${bg};` : ''}${sh ? `box-shadow:${sh};` : ''}${rad}${rot}">` +
               svgMarkup + `</div>`;
             break;
           }
@@ -382,26 +261,28 @@ export async function buildExportHtml(opts) {
           // exporter (export-cli.ts) which doesn't have access to React/
           // browser context and has to live with body-font math.
           const ps = TEXT_PRESET_STYLES[el.preset] || TEXT_PRESET_STYLES.body;
+          // #104: resolve the THEME foreground per preset (not the hard-coded
+          // preset color), so default-color text is visible on dark/black themes —
+          // matching the editor and the app/GUI export. Explicit el.color wins.
+          const legacyColor = el.color
+            || themeColorForPreset(themeColorsByName(presentation.theme, slide && slide.theme), el.preset);
           let textHtml = el.html || '';
           if (renderMath && /\$[^$]+\$|\$\$[\s\S]+?\$\$/.test(textHtml)) {
             const bundleId = resolveMathBundle ? resolveMathBundle(el.preset, slide) : undefined;
             try { textHtml = await renderMath(textHtml, bundleId); }
             catch (e) { console.warn('Math render failed:', e); }
           }
-          const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
-          const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
-                             valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
           const resolvedFont = resolveFont ? resolveFont(el.preset, slide) : ps.fontFamily;
-          const fontFamily = el.fontFamily || resolvedFont;
-          const bgLegacy = textBgCss(el);
-          const fxLegacy = textShadowCss(el, el.color || ps.color);
-          const shLegacy = textBoxShadowCss(el);
-          const rotLegacy = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
-          const radLegacy = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
-          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}${shLegacy ? `box-shadow:${shLegacy};` : ''}${radLegacy}${rotLegacy}">` +
-            `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${el.fontSize || ps.fontSize}px;color:${el.color || ps.color};line-height:1.3;padding:${textPaddingCss(el)};${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${applyCodeFont(textHtml, resolveMonoFontPackage((presentation.config || {}).defaultMonoFont).family)}</div>` +
-            `</div></div>`;
+          // Shared box/style assembly (units = px here; printSlideHtml passes
+          // inches/points). Math + code-font are this path's concern → content.
+          inner += textElementHtml(el, {
+            color: legacyColor,
+            fontFamily: el.fontFamily || resolvedFont,
+            fontSize: effectiveFontSize(el, presentation.config),
+            content: applyCodeFont(textHtml, resolveMonoFontPackage((presentation.config || {}).defaultMonoFont).family),
+            len: (n) => `${n}px`,
+            fsize: (n) => `${n}px`,
+          });
           break;
         }
         case 'image': {
@@ -414,7 +295,7 @@ export async function buildExportHtml(opts) {
           if (el.kind === 'pdf') {
             imgSrc = getElementPreview ? await getElementPreview(el, slide) : null;
             if (!imgSrc) {
-              inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#aaa;font-size:24px;font-family:sans-serif;border:1px solid #ddd;">PDF</div>`;
+              inner += `<div style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#aaa;font-size:24px;font-family:sans-serif;border:1px solid #ddd;">PDF</div>`;
               break;
             }
           } else {
@@ -422,42 +303,26 @@ export async function buildExportHtml(opts) {
             if (!imgSrc) {
               // Unresolved/missing asset — emit a visible placeholder instead of
               // a broken <img src="null"> (or crashing the whole export).
-              inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#aaa;font-size:24px;font-family:sans-serif;border:1px solid #ddd;">image</div>`;
+              inner += `<div style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#aaa;font-size:24px;font-family:sans-serif;border:1px solid #ddd;">image</div>`;
               break;
             }
           }
-          const imgStyles = [
-            `position:absolute`, `left:${p.x}px`, `top:${p.y}px`,
-            `width:${p.width}px`, `height:${p.height}px`, `object-fit:contain`,
-          ];
-          if (el.shadow) imgStyles.push(`filter:drop-shadow(4px 8px 16px rgba(0,0,0,0.3))`);
-          if (el.borderRadius) imgStyles.push(`border-radius:${el.borderRadius}px`);
-          if (el.opacity != null && el.opacity < 1) imgStyles.push(`opacity:${el.opacity}`);
-          if (el.rotation) imgStyles.push(`transform:rotate(${el.rotation}deg)`);
-          inner += `<img src="${imgSrc}" style="${imgStyles.join(';')};" />`;
+          inner += imageHtml(imgSrc, el, (n) => `${n}px`);
           break;
         }
         case 'demo':
+          // Fonts are NOT baked here — injected at runtime from the parent's
+          // single #eigendeck-fonts block (see the font-share script).
           try {
-            let demoHtml = await readTextFile(el.src);
-            // Fonts are NOT baked here — injected at runtime from the parent's
-            // single #eigendeck-fonts block (see the font-share script). Only the
-            // tiny per-slide theme vars are spliced in.
-            demoHtml = injectDemoThemeIntoHtml(demoHtml, '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
-            const escaped = htmlEscapeForSrcdoc(demoHtml);
-            inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
+            inner += demoIframeHtml(await readTextFile(el.src), slide, p, demoThemeVarsCss);
           } catch (e) { console.error('Demo export failed:', e); }
           break;
         case 'demo-piece':
           demoPieceSrcs.add(el.demoSrc);
           try {
-            const demoHtml = await readTextFile(el.demoSrc);
             const channelKey = `slide${i}-${el.demoSrc.replace(/[^a-z0-9]/gi, '')}`;
-            let pieceHtml = injectDemoBootstrap(demoHtml, `#piece=${el.piece}`, channelKey);
-            // Fonts injected at runtime from the parent (see font-share script).
-            pieceHtml = injectDemoThemeIntoHtml(pieceHtml, '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
-            const escaped = htmlEscapeForSrcdoc(pieceHtml);
-            inner += `<iframe srcdoc="${escaped}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
+            const pieceHtml = injectDemoBootstrap(await readTextFile(el.demoSrc), `#piece=${el.piece}`, channelKey);
+            inner += demoIframeHtml(pieceHtml, slide, p, demoThemeVarsCss);
           } catch (e) { console.error('Demo piece export failed:', e); }
           break;
         case 'notebook': {
@@ -475,18 +340,18 @@ export async function buildExportHtml(opts) {
             catch (e) { console.error('Notebook export render failed:', e); }
           }
           if (nbHtml) {
-            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;overflow:hidden;">${nbHtml}</div>`;
+            inner += `<div style="${absBox(p)};overflow:hidden;">${nbHtml}</div>`;
             break;
           }
           // Static snapshot: the proactively-cached preview PNG (the same
           // bytes SlideThumbnail shows).
           const previewSrc = getElementPreview ? await getElementPreview(el, slide) : null;
           if (previewSrc) {
-            inner += `<img src="${previewSrc}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;" />`;
+            inner += `<img src="${previewSrc}" style="${absBox(p)};object-fit:contain;" />`;
           } else {
             // No cached preview (deck never opened / exported cold). Emit a
             // visible placeholder so the element isn't silently dropped.
-            inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#eef7ee;color:#86c986;font-size:64px;font-family:sans-serif;">NB</div>`;
+            inner += `<div style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:${PH.notebook.bg};color:${PH.notebook.color};font-size:64px;font-family:sans-serif;">${PH.notebook.label}</div>`;
           }
           break;
         }
@@ -494,11 +359,11 @@ export async function buildExportHtml(opts) {
           if (el.kind === 'embed' && el.url) {
             // Hosted embed (YouTube/Vimeo/PeerTube): emit the provider iframe so
             // the video is playable in the exported HTML.
-            const embedSrc = videoEmbedUrl(el);
+            const embedSrc = buildEmbedSrc(el, { jsApi: false });
             if (embedSrc) {
-              inner += `<iframe src="${embedSrc}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;border:none;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+              inner += `<iframe src="${embedSrc}" style="${absBox(p)};border:none;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
             } else {
-              inner += `<a href="${el.url}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;text-decoration:none;">&#9654; Video</a>`;
+              inner += `<a href="${el.url}" style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;text-decoration:none;">&#9654; Video</a>`;
             }
           } else if (el.kind === 'file' && el.src) {
             // Local file: inline the asset as a playable <video>.
@@ -509,33 +374,25 @@ export async function buildExportHtml(opts) {
               if (el.loop) attrs.push('loop');
               if (el.autoplay) attrs.push('autoplay');
               if (el.muted || el.autoplay) attrs.push('muted');
-              inner += `<video src="${videoSrc}" ${attrs.join(' ')} style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;background:#000;"></video>`;
+              inner += `<video src="${videoSrc}" ${attrs.join(' ')} style="${absBox(p)};object-fit:contain;background:#000;"></video>`;
             } catch (e) { console.error('Video export failed:', e); }
           } else {
             // Unknown/poster-only: try a cached preview, else a placeholder.
             const previewSrc = getElementPreview ? await getElementPreview(el, slide) : null;
             if (previewSrc) {
-              inner += `<img src="${previewSrc}" style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;object-fit:contain;background:#000;" />`;
+              inner += `<img src="${previewSrc}" style="${absBox(p)};object-fit:contain;background:#000;" />`;
             } else {
-              inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;">&#9654; Video</div>`;
+              inner += `<div style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;">&#9654; Video</div>`;
             }
           }
           break;
         }
         case 'cover':
-          inner += `<div style="position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px;background:${el.color || themeBackground(presentation, slide)};"></div>`;
+          inner += coverHtml(el, themeBackground(presentation, slide), (n) => `${n}px`);
           break;
-        case 'arrow': {
-          const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
-          const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);
-          const op = el.opacity != null && el.opacity < 1 ? ` opacity="${el.opacity}"` : '';
-          inner += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">`;
-          inner += `<g${op}>`;
-          inner += `<line x1="${geo.line.x1}" y1="${geo.line.y1}" x2="${geo.line.x2}" y2="${geo.line.y2}" stroke="${color}" stroke-width="${strokeWidth}"/>`;
-          for (const t of geo.triangles) inner += `<polygon points="${triPoints(t)}" fill="${color}"/>`;
-          inner += `</g></svg>`;
+        case 'arrow':
+          inner += arrowSvgHtml(el);
           break;
-        }
       }
     }
 
@@ -546,7 +403,7 @@ export async function buildExportHtml(opts) {
         const channelKey = `slide${i}-${demoSrc.replace(/[^a-z0-9]/gi, '')}`;
         const ctrlHtml = injectDemoBootstrap(demoHtml, '#role=controller', channelKey);
         const escaped = htmlEscapeForSrcdoc(ctrlHtml);
-        inner += `<iframe srcdoc="${escaped}" style="position:absolute;width:1px;height:1px;border:none;opacity:0;pointer-events:none;" sandbox="allow-scripts allow-same-origin"></iframe>`;
+        inner += `<iframe srcdoc="${escaped}" style="position:absolute;width:1px;height:1px;border:none;opacity:0;pointer-events:none;" sandbox="${DEMO_SANDBOX}"></iframe>`;
       } catch (e) { console.error('Controller iframe failed:', e); }
     }
 

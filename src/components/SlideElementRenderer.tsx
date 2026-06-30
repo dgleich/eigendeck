@@ -4,13 +4,16 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { getPreference } from '../lib/preferences';
 import { snapToGrid, resizeEdgeToGrid } from '../lib/grid';
-import { arrowGeometry, arrowBBox } from '../lib/arrowGeometry.mjs';
+import { arrowBBox } from '../lib/arrowGeometry.mjs';
+import { ArrowGlyph } from './ArrowGlyph';
+import { imageVisualStyle } from '../lib/imageVisualStyle';
+import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
 import { sanitizeRichText } from '../lib/sanitizeRichText';
 import { useDemoUrl } from '../lib/demoAssets';
 import { useDemoThemeInjection, demoVarsCssForSlide } from '../lib/demoThemeInject';
 import { capturePreview } from '../lib/previewCache';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
-import { buildEmbedSrc } from '../lib/videoEmbed';
+import { buildEmbedSrc, DEMO_SANDBOX, VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
 import { NotebookBox } from './NotebookBox';
 import { useImageSrc } from '../lib/imageSrc';
 import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
@@ -76,22 +79,18 @@ export function SlideElementRenderer({
     case 'text':
       return (
         <DraggableBox
-          elementId={element.id}
-          position={element.position} zIndex={zIndex} scale={scale}
+          element={element} zIndex={zIndex} scale={scale}
           className={`el-text el-preset-${element.preset}`}
           isSelected={isSelected}
           boxStyle={{ backgroundColor: textBackgroundCss(element), boxShadow: textBoxShadowCss(element), borderRadius: element.borderRadius || undefined }}
           rotation={element.rotation}
-          linkId={element.linkId} syncId={element.syncId}
-          _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
           dataValign={element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined)}
           onEdit={() => {
             // Trigger edit mode on the TextContent inside this box
             const el = document.querySelector(`[data-element-id="${element.id}"]`);
             if (el) el.dispatchEvent(new CustomEvent('start-editing', { bubbles: false }));
           }}
-          onSelect={onSelect} onDelete={onDelete}
-          onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+          onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
         >
           <TextContent element={element} onCommit={(html) => onUpdate({ html } as any)} />
         </DraggableBox>
@@ -116,7 +115,7 @@ export function SlideElementRenderer({
 
     case 'demo-piece':
       return (
-        <DemoPieceBox
+        <DemoBox
           element={element} zIndex={zIndex} scale={scale}
           projectPath={projectPath} isSelected={isSelected}
           onSelect={onSelect} onDelete={onDelete}
@@ -147,20 +146,18 @@ export function SlideElementRenderer({
     case 'cover':
       return (
         <DraggableBox
-          elementId={element.id}
-          position={element.position} zIndex={zIndex} scale={scale}
+          element={element} zIndex={zIndex} scale={scale}
           className="el-cover" isSelected={isSelected}
-          linkId={element.linkId} syncId={element.syncId}
-          _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
-          onSelect={onSelect} onDelete={onDelete}
-          onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+          onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
         >
           <div style={{
             width: '100%', height: '100%',
             // Match the slide background (a cover is a reveal mask). The .el-cover
             // CSS draws a dashed outline so it stays visible/selectable in the
-            // editor even when the fill matches the background.
-            background: element.color || slideBackground || '#ffffff',
+            // editor even when the fill matches the background. The editor
+            // specializes the WRAPPER (DraggableBox); the fill value comes from
+            // the shared cover descriptor.
+            background: describeCover(element, slideBackground || '#ffffff').background,
             pointerEvents: 'none',
           }} />
         </DraggableBox>
@@ -247,22 +244,15 @@ function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
 
   return (
     <DraggableBox
-      elementId={element.id}
-      position={element.position} zIndex={zIndex} scale={scale}
+      element={element} zIndex={zIndex} scale={scale}
       className="el-image" isSelected={isSelected}
-      linkId={element.linkId} syncId={element.syncId}
-      _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
-      onSelect={onSelect} onDelete={onDelete}
-      onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+      onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
     >
       {src ? (
         <img src={src} alt="" draggable={false}
           style={{
             width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none',
-            ...(element.shadow ? { filter: 'drop-shadow(4px 8px 16px rgba(0,0,0,0.3))' } : {}),
-            ...(element.borderRadius ? { borderRadius: element.borderRadius } : {}),
-            ...(element.opacity != null && element.opacity < 1 ? { opacity: element.opacity } : {}),
-            ...(element.rotation ? { transform: `rotate(${element.rotation}deg)` } : {}),
+            ...imageVisualStyle(element),
           }} />
       ) : showPlaceholder ? (
         // Placeholder while the asset rasterizes. Matches the blue
@@ -303,15 +293,17 @@ function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
 }
 
 // ============================================
-// Demo element with overlay for dragging
+// Demo / demo-piece element — same interactive iframe box; a demo-piece just
+// adds the `piece=` viewport hash (and a piece-specific class/title/fallback).
 // ============================================
 function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpdate }: {
-  element: Extract<SlideElement, { type: 'demo' }>;
+  element: Extract<SlideElement, { type: 'demo' | 'demo-piece' }>;
   zIndex: number; scale: number; projectPath?: string | null;
   isSelected: boolean;
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
+  const piece = element.type === 'demo-piece' ? element.piece : undefined;
   const [interacting, setInteracting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   // Reload the iframe when this demo's asset changes (the inspector's "Reload
@@ -324,7 +316,7 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
     window.addEventListener('eigendeck:asset-changed', onChanged as EventListener);
     return () => window.removeEventListener('eigendeck:asset-changed', onChanged as EventListener);
   }, [element.assetId]);
-  const src = useDemoUrl(element.assetId);
+  const src = useDemoUrl(element.assetId, piece ? `piece=${piece}` : undefined);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   // Inject the deck's fonts + theme vars (#86) into the demo's contentDocument.
   const demoConfig = usePresentationStore((s) => s.presentation.config);
@@ -338,95 +330,28 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
   // the iframe <head>, so it isn't in the captured <body> HTML; pass it as the
   // cache salt so a theme switch busts the preview (#86). (No phase awareness yet.)
   const themeSalt = demoSlide ? demoVarsCssForSlide(demoConfig, demoTheme, demoSlide) : '';
-  // A demo iframe is transparent; bake the slide's background into the preview
-  // PNG so the thumbnail matches the slide instead of reading as the app's grey.
-  const demoBg = resolveTheme(demoTheme, demoSlide?.theme).background;
+  // Capture the preview TRANSPARENT (no baked backdrop). A demo iframe is
+  // transparent so the slide — and any elements beneath the demo — must show
+  // through in the static renders too; the render context supplies the slide
+  // background behind the preview (see SlideThumbnail / the export slide bg).
+  // Baking the bg here made the preview opaque and covered overlapping lower
+  // elements (#111).
   useEffect(() => {
     if (!src) return;
-    const t = setTimeout(() => { void capturePreview(element, 'iframe', themeSalt, demoBg); }, 900);
+    const t = setTimeout(() => { void capturePreview(element, 'iframe', themeSalt); }, 900);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId, themeSalt, demoBg]);
+  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId, themeSalt]);
   return (
     <DraggableBox
-      elementId={element.id}
-      position={element.position} zIndex={zIndex} scale={scale}
-      className="el-demo" isSelected={isSelected}
-      linkId={element.linkId} syncId={element.syncId}
-      _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
-      onSelect={onSelect} onDelete={onDelete}
-      onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+      element={element} zIndex={zIndex} scale={scale}
+      className={piece ? 'el-demo el-demo-piece' : 'el-demo'} isSelected={isSelected}
+      onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
     >
       {src ? (
-        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox="allow-scripts allow-same-origin" title="demo"
+        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox={DEMO_SANDBOX} title={piece ? `demo-piece: ${piece}` : 'demo'}
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
-      ) : <div style={{ padding: 20, color: '#999' }}>Demo</div>}
-      {!interacting && (
-        <div className="demo-overlay"
-          onDoubleClick={(e) => { e.stopPropagation(); setInteracting(true); }}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'grab', zIndex: 1 }} />
-      )}
-      {interacting && (
-        // Reload moved to the inspector's Asset section ("Reload from disk now").
-        <InteractLockBar scale={scale} onLock={() => setInteracting(false)} />
-      )}
-    </DraggableBox>
-  );
-}
-
-// ============================================
-// Demo-piece element — viewport iframe with piece hash
-// ============================================
-function DemoPieceBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpdate }: {
-  element: Extract<SlideElement, { type: 'demo-piece' }>;
-  zIndex: number; scale: number; projectPath?: string | null;
-  isSelected: boolean;
-  onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
-  onUpdate: (changes: Partial<SlideElement>) => void;
-}) {
-  const [interacting, setInteracting] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
-  // Reload the iframe when this demo's asset changes (the inspector's "Reload
-  // from disk now" / file-watch fires eigendeck:asset-changed). Replaces the
-  // old in-overlay Refresh button.
-  useEffect(() => {
-    const onChanged = (e: Event) => {
-      if ((e as CustomEvent).detail?.assetId === element.assetId) setReloadKey((k) => k + 1);
-    };
-    window.addEventListener('eigendeck:asset-changed', onChanged as EventListener);
-    return () => window.removeEventListener('eigendeck:asset-changed', onChanged as EventListener);
-  }, [element.assetId]);
-  const src = useDemoUrl(element.assetId, `piece=${element.piece}`);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  // Inject the deck's fonts + theme vars (#86) into the demo's contentDocument.
-  const demoConfig = usePresentationStore((s) => s.presentation.config);
-  const demoTheme = usePresentationStore((s) => s.presentation.theme);
-  const demoSlide = usePresentationStore((s) => s.presentation.slides[s.currentSlideIndex]);
-  useDemoThemeInjection(iframeRef, demoConfig, demoTheme, demoSlide, reloadKey);
-  // Cache a preview of the rendered demo-piece (see DemoBox). Theme is salted in
-  // so a theme/font switch busts the stale preview (#86). One 'preview' per key.
-  const themeSalt = demoSlide ? demoVarsCssForSlide(demoConfig, demoTheme, demoSlide) : '';
-  const demoBg = resolveTheme(demoTheme, demoSlide?.theme).background; // bake slide bg into the (transparent) preview
-  useEffect(() => {
-    if (!src) return;
-    const t = setTimeout(() => { void capturePreview(element, 'iframe', themeSalt, demoBg); }, 900);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId, themeSalt, demoBg]);
-  return (
-    <DraggableBox
-      elementId={element.id}
-      position={element.position} zIndex={zIndex} scale={scale}
-      className="el-demo el-demo-piece" isSelected={isSelected}
-      linkId={element.linkId} syncId={element.syncId}
-      _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
-      onSelect={onSelect} onDelete={onDelete}
-      onPositionChange={(pos) => onUpdate({ position: pos } as any)}
-    >
-      {src ? (
-        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox="allow-scripts allow-same-origin" title={`demo-piece: ${element.piece}`}
-          style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
-      ) : <div style={{ padding: 20, color: '#999' }}>Demo piece: #{element.piece}</div>}
+      ) : <div style={{ padding: 20, color: '#999' }}>{piece ? `Demo piece: #${piece}` : 'Demo'}</div>}
       {!interacting && (
         <div className="demo-overlay"
           onDoubleClick={(e) => { e.stopPropagation(); setInteracting(true); }}
@@ -469,17 +394,13 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
   const btn: React.CSSProperties = { padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' };
   return (
     <DraggableBox
-      elementId={element.id}
-      position={element.position} zIndex={zIndex} scale={scale}
+      element={element} zIndex={zIndex} scale={scale}
       className="el-video" isSelected={isSelected}
-      linkId={element.linkId} syncId={element.syncId}
-      _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
-      onSelect={onSelect} onDelete={onDelete}
-      onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+      onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
     >
       {element.kind === 'embed' ? (
         embedSrc
-          ? <iframe key={embedSrc} ref={embedRef} src={embedSrc} title="video" allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+          ? <iframe key={embedSrc} ref={embedRef} src={embedSrc} title="video" allow={VIDEO_EMBED_ALLOW}
               style={{ width: '100%', height: '100%', border: 'none', background: '#000',
                 pointerEvents: interacting ? 'auto' : 'none' }} />
           : <div style={{ padding: 20, color: '#999' }}>Unrecognized video URL</div>
@@ -851,22 +772,27 @@ function snapCoord(v: number, bypass: boolean): number {
 }
 
 export function DraggableBox({
-  elementId, position: pos, zIndex, scale, className, children, isSelected,
-  linkId, syncId, _linkId, _syncId, dataValign, onEdit, boxStyle, rotation,
-  onSelect, onDelete, onPositionChange,
+  element, zIndex, scale, className, children, isSelected,
+  dataValign, onEdit, boxStyle, rotation, onSelect, onDelete, onUpdate,
 }: {
-  elementId: string;
-  position: ElementPosition; zIndex: number; scale: number; className: string;
+  // The id / position / link & sync ids and the position-commit all derive from
+  // the element, so callers pass `element` + `onUpdate` instead of repeating the
+  // seven-prop block at every box.
+  element: { id: string; position: ElementPosition; linkId?: string; syncId?: string; _linkId?: string; _syncId?: string };
+  zIndex: number; scale: number; className: string;
   children: React.ReactNode; isSelected: boolean;
-  linkId?: string; syncId?: string; _linkId?: string; _syncId?: string;
   dataValign?: string;
   onEdit?: () => void;
   boxStyle?: React.CSSProperties;
   /** Rotation in degrees for the whole box (text/sticky-note tilt). */
   rotation?: number;
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
-  onPositionChange: (pos: ElementPosition) => void;
+  onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
+  const elementId = element.id;
+  const pos = element.position;
+  const { linkId, syncId, _linkId, _syncId } = element;
+  const onPositionChange = (p: ElementPosition) => onUpdate({ position: p } as Partial<SlideElement>);
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0 });
@@ -1153,7 +1079,8 @@ function ArrowRenderer({
   onUpdate: (changes: Partial<SlideElement>) => void;
   onDelete: () => void; onSelect: (e?: { shiftKey: boolean }) => void;
 }) {
-  const { x1, y1, x2, y2, color = '#e53e3e', strokeWidth = 4, headSize = 16 } = a;
+  const { x1, y1, x2, y2 } = a;
+  const { color, strokeWidth, headSize, geo } = describeArrow(a);
   const dragStart = useRef({ mx: 0, my: 0, ox1: 0, oy1: 0, ox2: 0, oy2: 0 });
 
   // Snap point to nearest 15° angle relative to an anchor
@@ -1216,8 +1143,7 @@ function ArrowRenderer({
     [x1, y1, x2, y2, scale, onUpdate, onSelect]
   );
 
-  const geo = arrowGeometry(x1, y1, x2, y2, headSize, a.heads);   // inset line + head triangle(s)
-  const bb = arrowBBox(x1, y1, x2, y2, headSize, a.heads, 30);
+  const bb = arrowBBox(x1, y1, x2, y2, headSize, a.heads, 30);   // headSize/geo from describeArrow above
   const { minX, minY, maxX, maxY } = bb;
 
   return (
@@ -1250,13 +1176,8 @@ function ArrowRenderer({
       <svg width={maxX - minX} height={maxY - minY} style={{ overflow: 'visible' }}>
         <line x1={x1 - minX} y1={y1 - minY} x2={x2 - minX} y2={y2 - minY}
           stroke="transparent" strokeWidth={24} style={{ pointerEvents: 'stroke', cursor: 'move' }} onPointerDown={handleBody} />
-        <g opacity={a.opacity ?? 1} style={{ pointerEvents: 'none' }}>
-          <line x1={geo.line.x1 - minX} y1={geo.line.y1 - minY} x2={geo.line.x2 - minX} y2={geo.line.y2 - minY}
-            stroke={color} strokeWidth={strokeWidth} />
-          {geo.triangles.map((t, i) => (
-            <polygon key={i} points={t.map((p) => `${p[0] - minX},${p[1] - minY}`).join(' ')} fill={color} />
-          ))}
-        </g>
+        <ArrowGlyph geo={geo} color={color} strokeWidth={strokeWidth} opacity={a.opacity}
+          dx={minX} dy={minY} gStyle={{ pointerEvents: 'none' }} />
         <circle cx={x1 - minX} cy={y1 - minY} r={8} fill="#fff" stroke={color} strokeWidth={2}
           className="arrow-handle" style={{ pointerEvents: 'all', cursor: 'crosshair' }}
           onPointerDown={(e) => handleEndpoint(e, 'start')} />

@@ -20,6 +20,8 @@ import { SettingsModal } from './components/SettingsModal';
 import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
 import { detachDelta, pasteElementDelta } from './lib/syncLink';
+import { offsetElement } from './lib/offsetElement';
+import { buildPrintSlideHtml } from './lib/printSlideHtml';
 import { previewKey, loadPreviewDataUrl } from './lib/previewCache';
 import { registerNotebookLifecycle } from './components/notebook/notebookLifecycle';
 import { runCopyHook } from './lib/elementLifecycle';
@@ -46,13 +48,11 @@ import { flushToSqlite, pauseUndo, resumeUndo, undoWithNav, redoWithNav } from '
 import { withBusy } from './store/busy';
 import { BusyOverlay } from './components/BusyOverlay';
 import './App.css';
-import { resolveTheme, themeColorForPreset } from './lib/themes';
-import { markAsEigendeck } from './lib/clipboard';
-import { arrowGeometry, triPoints } from './lib/arrowGeometry.mjs';
+import { bytesToBase64 } from './lib/base64';
 import { extractDemoPieceNames } from './lib/demoPieces';
 import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement, textElementClipboardHtml } from './lib/elementClipboard';
-import { TEXT_PRESET_STYLES, effectiveFontSize, textShadowCss } from './types/presentation';
-import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
+import { buildEmbeddedFontFacesCSS, fontForPreset } from './lib/fonts';
+import { renderMathInHtml, containsMath } from './lib/mathjaxRenderer';
 import { getMissingAssets } from './lib/missingAssets';
 
 // Wire built-in element types into the sync/link lifecycle registry once, at
@@ -195,7 +195,6 @@ async function exportPdfScreenshots() {
 async function printToPdf() {
   const state = usePresentationStore.getState();
   const { presentation } = state;
-  const W = 1920, H = 1080;
 
   const { save, message } = await import('@tauri-apps/plugin-dialog');
   const defaultName = `${presentation.title.replace(/[^a-zA-Z0-9]/g, '-') || 'Presentation'}-print.html`;
@@ -264,9 +263,7 @@ async function printToPdf() {
               });
               const cbytes = new Uint8Array(buf);
               if (cbytes.length) {
-                let cbin = '';
-                for (let k = 0; k < cbytes.length; k += 8192) cbin += String.fromCharCode(...cbytes.slice(k, k + 8192));
-                imageCache.set(el.assetId, `data:image/png;base64,${btoa(cbin)}`);
+                imageCache.set(el.assetId, `data:image/png;base64,${bytesToBase64(cbytes)}`);
               }
               continue;
             }
@@ -278,11 +275,7 @@ async function printToPdf() {
             const ext = (meta?.path ?? '').split('.').pop()?.toLowerCase() || 'png';
             const mime = meta?.mime_type
               ?? (ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`);
-            let binary = '';
-            for (let k = 0; k < bytes.length; k += 8192) {
-              binary += String.fromCharCode(...bytes.slice(k, k + 8192));
-            }
-            imageCache.set(el.assetId, `data:${mime};base64,${btoa(binary)}`);
+            imageCache.set(el.assetId, `data:${mime};base64,${bytesToBase64(bytes)}`);
           } catch { /* skip */ }
         }
       }
@@ -326,68 +319,28 @@ async function printToPdf() {
       usePresentationStore.getState().selectSlide(originalSlideIndex);
     }
 
-    // Build print HTML: all positions in inches (11in wide, 6.1875in tall for 16:9)
-    // Scale factor: 11in / 1920px for positions, same ratio for font sizes
-    const S = 11 / 1920; // inches per pixel
-    const px2in = (px: number) => (px * S).toFixed(4) + 'in';
-    const px2pt = (px: number) => (px * S * 72).toFixed(1) + 'pt'; // for font sizes
-
-    const slideHtmls = presentation.slides.map((slide) => {
-      const theme = resolveTheme(presentation.theme, slide.theme);
-      let inner = '';
+    // Pre-render math per text element. The print path builds plain HTML (not the
+    // live SVG render), so $…$ has to be composited to inline SVG up front — the
+    // same thing the GUI export's makeTextElementRenderer does via the iframe pool.
+    // Keyed by `${slide.id}:${el.id}` (NOT el.id) because one element can appear
+    // on multiple slides (a linked/shared element) with a DIFFERENT font per slide
+    // — keying by el.id alone collides and every slide gets the last render.
+    const mathHtmlByKey = new Map<string, string>();
+    for (const slide of presentation.slides) {
       for (const el of slide.elements) {
-        const p = el.position;
-        if (el.type === 'text') {
-          const ps = TEXT_PRESET_STYLES[el.preset] || TEXT_PRESET_STYLES.body;
-          const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
-          const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
-                             valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
-          const color = el.color || themeColorForPreset(theme, el.preset);
-          const fontSize = effectiveFontSize(el, presentation.config);
-          const presetFontFamily = fontFamilyForPreset(fontForPreset(el.preset, slide, presentation.config), el.preset);
-          const _fx2 = textShadowCss(el, color);
-          const _rot2 = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
-          inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};overflow:hidden;${_rot2}">` +
-            `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:1.3;padding:${px2in(8)} ${px2in(12)};${_fx2 ? `text-shadow:${_fx2};` : ''}">${markAsEigendeck(el.html || '')}</div>` +
-            `</div></div>`;
-        } else if (el.type === 'image') {
-          const src = imageCache.get(el.assetId);
-          if (src) {
-            const styles = [`position:absolute`, `left:${px2in(p.x)}`, `top:${px2in(p.y)}`, `width:${px2in(p.width)}`, `height:${px2in(p.height)}`, `object-fit:contain`];
-            if ((el as any).shadow) styles.push('filter:drop-shadow(2px 4px 8px rgba(0,0,0,0.3))');
-            if ((el as any).borderRadius) styles.push(`border-radius:${px2in((el as any).borderRadius)}`);
-            if ((el as any).opacity != null && (el as any).opacity < 1) styles.push(`opacity:${(el as any).opacity}`);
-            // P2-7: honor image rotation (was lost in the print path).
-            if ((el as any).rotation) styles.push(`transform:rotate(${(el as any).rotation}deg)`);
-            inner += `<img src="${src}" style="${styles.join(';')};" />`;
-          }
-        } else if (el.type === 'arrow') {
-          const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16 } = el;
-          const geo = arrowGeometry(x1, y1, x2, y2, headSize, el.heads);   // inset line + head triangle(s)
-          const heads = geo.triangles.map((t) => `<polygon points="${triPoints(t)}" fill="${color}"/>`).join('');
-          const op = el.opacity != null && el.opacity < 1 ? ` opacity="${el.opacity}"` : '';
-          // SVG uses viewBox in original coordinates, scaled by the container
-          inner += `<svg viewBox="0 0 ${W} ${H}" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;">` +
-            `<g${op}>` +
-            `<line x1="${geo.line.x1}" y1="${geo.line.y1}" x2="${geo.line.x2}" y2="${geo.line.y2}" stroke="${color}" stroke-width="${strokeWidth}"/>` +
-            heads +
-            `</g></svg>`;
-        } else if (el.type === 'cover') {
-          inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};background:${el.color || theme.background};"></div>`;
-        } else if (isLiveElement(el.type)) {
-          // P0-2: notebook joins demo/demo-piece/video as a baked screenshot.
-          const screenshot = demoScreenshots.get(`${slide.id}:${el.id}`);
-          if (screenshot) {
-            inner += `<img src="${screenshot}" style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};" />`;
-          } else {
-            const label = el.type === 'notebook' ? 'Notebook' : el.type === 'video' ? 'Video' : 'Interactive Demo';
-            inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};background:#f8f8f8;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#999;font-size:${px2pt(24)};font-family:system-ui;">${label}</div>`;
-          }
+        if (el.type === 'text' && el.html && containsMath(el.html)) {
+          const bundleId = fontForPreset(el.preset, slide, presentation.config).id;
+          const rendered = await renderMathInHtml(el.html, bundleId, presentation.config.mathPreamble || '')
+            .catch(() => el.html as string);
+          mathHtmlByKey.set(`${slide.id}:${el.id}`, rendered);
         }
       }
-      return `<div class="slide" style="background:${theme.background};">${inner}</div>`;
-    });
+    }
+
+    // Build print HTML: per-slide element rendering (all positions in inches)
+    // lives in buildPrintSlideHtml — a pure, snapshot-gated seam (render-path #6).
+    const slideHtmls = presentation.slides.map((slide, i) =>
+      buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots, mathHtmlByKey, i + 1));
 
     // Embed @font-face data URLs for fonts used by this presentation.
     const fontFacesCss = await buildEmbeddedFontFacesCSS(presentation);
@@ -1074,8 +1027,7 @@ function App() {
           const el = slide.elements.find((el) => el.id === sel.id);
           if (el) {
             const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), ...detachDelta() };
-            if (newEl.type === 'arrow') { newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40; }
-            else { newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 }; }
+            offsetElement(newEl, 40, 40);
             state.addElement(newEl);
             void runCopyHook(el, newEl);   // carry recording/state to the copy
             state.selectObject({ type: 'element', id: newEl.id });
@@ -1087,8 +1039,7 @@ function App() {
             const el = slide.elements.find((el) => el.id === id);
             if (el) {
               const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), ...detachDelta() };
-              if (newEl.type === 'arrow') { newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40; }
-              else { newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 }; }
+              offsetElement(newEl, 40, 40);
               state.addElement(newEl);
               void runCopyHook(el, newEl);   // carry recording/state to the copy
               newIds.push(newEl.id);
@@ -1188,10 +1139,7 @@ function App() {
           const { delta, link } = pasteElementDelta(el, sameSlide);
           const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), ...delta };
           // Offset only the same-slide independent copy so it doesn't stack.
-          if (sameSlide) {
-            if (newEl.type === 'arrow') { newEl.x1 += 40; newEl.y1 += 40; newEl.x2 += 40; newEl.y2 += 40; }
-            else { newEl.position = { ...newEl.position, x: newEl.position.x + 40, y: newEl.position.y + 40 }; }
-          }
+          if (sameSlide) offsetElement(newEl, 40, 40);
           state.addElement(newEl);
           newIds.push(newEl.id);
           // Carry type-specific state across (e.g. clone a notebook's
