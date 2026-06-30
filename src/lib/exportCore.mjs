@@ -7,6 +7,7 @@ import { themeColorsByName, themeColorForPreset } from './themeColors.mjs';
 import { effectiveFontSize } from './textSizes.mjs';
 import { textPresetBoxCss, textPaddingCss } from './textBox.mjs';
 import { textBackgroundCss, textShadowCss, textBoxShadowCss } from './textStyle.mjs';
+import { TEXT_PRESET_STYLES } from './textPresets.mjs';
 import { describeCover, imageVisuals, describeArrow } from './elementDescriptor.mjs';
 
 // Give <code> runs the deck's mono family (mirrors applyCodeFont in TextElementSvg).
@@ -45,14 +46,6 @@ function themeBackground(presentation, slide) {
 
 /** Absolute-position CSS fragment shared by every exported element's wrapper. */
 const absBox = (p) => `position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px`;
-
-const TEXT_PRESET_STYLES = {
-  title:      { fontSize: 72, fontFamily: "'PT Sans', sans-serif", fontWeight: '700', fontStyle: 'normal', color: '#222' },
-  body:       { fontSize: 48, fontFamily: "'PT Sans', sans-serif", fontWeight: 'normal', fontStyle: 'normal', color: '#222' },
-  textbox:    { fontSize: 48, fontFamily: "'PT Sans', sans-serif", fontWeight: 'normal', fontStyle: 'normal', color: '#222' },
-  annotation: { fontSize: 32, fontFamily: "'PT Sans', sans-serif", fontWeight: 'normal', fontStyle: 'italic', color: '#2563eb' },
-  footnote:   { fontSize: 24, fontFamily: "'PT Sans Narrow', sans-serif", fontWeight: 'normal', fontStyle: 'normal', color: '#888' },
-};
 
 /**
  * HTML-escape a string for use in a srcdoc attribute.

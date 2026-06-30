@@ -12,6 +12,9 @@ export { DEFAULT_TEXT_SIZES, resolveNamedSize, effectiveTextPresetSize, effectiv
 export { textPresetBoxCss, textPaddingCss } from '../lib/textBox.mjs';
 // Text visual-style helpers (fill / effect / box-shadow), shared with the exports.
 export { textBackgroundCss, textEffectCss, textShadowCss, textBoxShadowCss } from '../lib/textStyle.mjs';
+// Per-preset style table (label/size/font/weight/style/color), shared with the exports.
+export { TEXT_PRESET_STYLES } from '../lib/textPresets.mjs';
+export type { TextPresetStyle } from '../lib/textPresets.mjs';
 
 export interface ElementPosition {
   x: number;
@@ -27,78 +30,9 @@ export interface ElementPosition {
 
 export type TextPreset = 'title' | 'body' | 'textbox' | 'annotation' | 'footnote' | 'hype';
 
-export const TEXT_PRESET_STYLES: Record<TextPreset, {
-  label: string;
-  /** Named size in the deck's type scale. The numeric size at render
-   *  time comes from `resolveNamedSize(sizeName, config)`. */
-  sizeName: NamedSize;
-  /** Fallback px size used by code that doesn't have a config in
-   *  scope (e.g. element factories at insertion time). Matches
-   *  DEFAULT_TEXT_SIZES[sizeName]. */
-  fontSize: number;
-  fontFamily: string;
-  fontWeight: string;
-  fontStyle: string;
-  color: string;
-}> = {
-  title: {
-    label: 'Title',
-    sizeName: 'title',
-    fontSize: DEFAULT_TEXT_SIZES.title,
-    fontFamily: "'PT Sans', sans-serif",
-    fontWeight: '700',
-    fontStyle: 'normal',
-    color: '#222',
-  },
-  body: {
-    label: 'Body',
-    sizeName: 'body',
-    fontSize: DEFAULT_TEXT_SIZES.body,
-    fontFamily: "'PT Sans', sans-serif",
-    fontWeight: 'normal',
-    fontStyle: 'normal',
-    color: '#222',
-  },
-  textbox: {
-    label: 'Text Box',
-    sizeName: 'body',
-    fontSize: DEFAULT_TEXT_SIZES.body,
-    fontFamily: "'PT Sans', sans-serif",
-    fontWeight: 'normal',
-    fontStyle: 'normal',
-    color: '#222',
-  },
-  annotation: {
-    label: 'Annotation',
-    sizeName: 'note',
-    fontSize: DEFAULT_TEXT_SIZES.note,
-    fontFamily: "'PT Sans', sans-serif",
-    fontWeight: 'normal',
-    fontStyle: 'italic',
-    color: '#2563eb',
-  },
-  footnote: {
-    label: 'Footnote',
-    sizeName: 'footnote',
-    fontSize: DEFAULT_TEXT_SIZES.footnote,
-    fontFamily: "'PT Sans Narrow', sans-serif",
-    fontWeight: 'normal',
-    fontStyle: 'normal',
-    color: '#888',
-  },
-  hype: {
-    // Sticky-note style: bright-yellow fill (set on creation), Shantell Sans
-    // (hand-drawn) by default, dark text, and a smaller size than the old
-    // splashy 96px hype.
-    label: 'Hype',
-    sizeName: 'body',
-    fontSize: DEFAULT_TEXT_SIZES.body,
-    fontFamily: "'Shantell Sans', sans-serif",
-    fontWeight: 'normal',
-    fontStyle: 'normal',
-    color: '#1a1a1a',
-  },
-};
+// TEXT_PRESET_STYLES (the per-preset style table) lives in lib/textPresets.mjs so
+// it is shared with the CLI export across the .mjs/.ts boundary; re-exported at
+// the top of this file.
 
 // textPresetBoxCss + textPaddingCss (the text inner-box layout) live in
 // lib/textBox.mjs so they are shared with the static HTML exports across the
