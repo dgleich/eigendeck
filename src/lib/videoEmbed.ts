@@ -4,70 +4,14 @@
 
 export type VideoProvider = 'youtube' | 'vimeo' | 'peertube';
 
-// URL parsing is shared with the static export (exportCore.mjs) via a .mjs so
-// there's a single copy; re-exported here so existing importers are unaffected.
+// URL parsing AND the iframe-src builder are shared with the static export
+// (exportCore.mjs) via a .mjs so there's a single copy; re-exported here so
+// existing importers are unaffected. The live app calls buildEmbedSrc(el) (jsApi
+// defaults on → enablejsapi/api for postMessage speed control); the static export
+// passes { jsApi: false } (no JS to drive it).
 export type { ParsedEmbed } from './videoEmbedParse.mjs';
+export { detectVideoProvider, buildEmbedSrc } from './videoEmbedParse.mjs';
 import { detectVideoProvider } from './videoEmbedParse.mjs';
-export { detectVideoProvider };
-
-type EmbedOpts = {
-  provider?: string; url?: string;
-  loop?: boolean; autoplay?: boolean; muted?: boolean; controls?: boolean; captions?: boolean;
-};
-
-/** Build the iframe src for an embed, applying the element's options. Per
- *  provider + best-effort: loop/autoplay/muted/controls/captions are URL
- *  params; playback SPEED has no reliable URL param (needs each provider's JS
- *  API) so it's omitted here. Mute follows the `muted` option only — autoplay
- *  does NOT force mute, because the app's webview is configured to allow
- *  autoplay with sound (wry sets WebKitGTK AutoplayPolicy::Allow / macOS
- *  mediaTypesRequiringUserActionForPlayback=None), unlike a normal web page.
- *  (YouTube's own player may still mute autoplay; PeerTube/Vimeo honor sound.) */
-export function buildEmbedSrc(el: EmbedOpts): string | null {
-  if (!el.url) return null;
-  const parsed = detectVideoProvider(el.url);
-  if (!parsed) return null;
-  const { provider, id, origin } = parsed;
-  const p = new URLSearchParams();
-
-  // Hiding controls is only safe when autoplay starts the video for the user.
-  // With autoplay off, controls=0 leaves NO way to start playback — on
-  // PeerTube (video.js) it also hides the big play button and disables
-  // click-to-play, so a default embed (controls off + autoplay off) is dead.
-  // So: show controls unless autoplay is on. The "controls" toggle still hides
-  // chrome for the autoplay case; for the play-on-click case it's overridden
-  // to keep the embed usable.
-  const showControls = !!el.controls || !el.autoplay;
-
-  if (provider === 'youtube') {
-    if (el.autoplay) p.set('autoplay', '1');
-    if (el.muted) p.set('mute', '1');
-    if (el.loop) { p.set('loop', '1'); p.set('playlist', id); }  // single-video loop needs playlist=id
-    p.set('controls', showControls ? '1' : '0');
-    if (el.captions) p.set('cc_load_policy', '1');
-    p.set('enablejsapi', '1');  // enable postMessage control (setPlaybackRate)
-    p.set('rel', '0');
-    return `https://www.youtube-nocookie.com/embed/${id}?${p.toString()}`;
-  }
-  if (provider === 'vimeo') {
-    if (el.autoplay) p.set('autoplay', '1');
-    if (el.muted) p.set('muted', '1');
-    if (el.loop) p.set('loop', '1');
-    if (!showControls) p.set('controls', '0');
-    if (el.captions) p.set('texttrack', 'en');
-    return `https://player.vimeo.com/video/${id}?${p.toString()}`;
-  }
-  // PeerTube
-  const base = origin ?? (() => { try { return new URL(el.url!).origin; } catch { return ''; } })();
-  if (!base) return null;
-  if (el.autoplay) p.set('autoplay', '1');
-  if (el.muted) p.set('muted', '1');
-  if (el.loop) p.set('loop', '1');
-  if (!showControls) p.set('controls', '0');
-  if (el.captions) p.set('subtitle', 'en');
-  p.set('api', '1');  // enable the PeerTube PlayerAPI (postMessage setPlaybackRate)
-  return `${base}/videos/embed/${id}?${p.toString()}`;
-}
 
 /** Best-effort playback-speed control for an embed, via each provider's
  *  postMessage player API (YouTube IFrame API / Vimeo player.js / PeerTube

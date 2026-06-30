@@ -4,3 +4,9 @@ export interface ParsedEmbed {
   origin?: string;
 }
 export function detectVideoProvider(raw: string): ParsedEmbed | null;
+
+export interface EmbedOpts {
+  provider?: string; url?: string;
+  loop?: boolean; autoplay?: boolean; muted?: boolean; controls?: boolean; captions?: boolean;
+}
+export function buildEmbedSrc(el: EmbedOpts, opts?: { jsApi?: boolean }): string | null;

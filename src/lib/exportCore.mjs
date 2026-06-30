@@ -1,7 +1,7 @@
 import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
 import { arrowSvgInner } from './arrowGeometry.mjs';
-import { detectVideoProvider } from './videoEmbedParse.mjs';
+import { buildEmbedSrc } from './videoEmbedParse.mjs';
 import { THEME_BACKGROUNDS } from './themeBackgrounds.mjs';
 import { themeColorsByName, themeColorForPreset } from './themeColors.mjs';
 import { effectiveFontSize } from './textSizes.mjs';
@@ -58,46 +58,6 @@ export function htmlEscapeForSrcdoc(s) {
     .replace(/>/g, '&gt;');
 }
 
-/**
- * Build the provider iframe `src` for an embed-kind video element. Self-
- * contained mirror of buildEmbedSrc() in src/lib/videoEmbed.ts (this .mjs is
- * shared with the offline export tool and can't import the TS module). Keep in
- * sync with that file. Returns null when the URL isn't a recognized provider.
- */
-function videoEmbedUrl(el) {
-  const parsed = detectVideoProvider(el && el.url);
-  if (!parsed) return null;
-  const { provider, id, origin } = parsed;
-
-  const p = new URLSearchParams();
-  const showControls = !!el.controls || !el.autoplay;
-  if (provider === 'youtube') {
-    if (el.autoplay) p.set('autoplay', '1');
-    if (el.muted) p.set('mute', '1');
-    if (el.loop) { p.set('loop', '1'); p.set('playlist', id); }
-    p.set('controls', showControls ? '1' : '0');
-    if (el.captions) p.set('cc_load_policy', '1');
-    p.set('rel', '0');
-    return `https://www.youtube-nocookie.com/embed/${id}?${p.toString()}`;
-  }
-  if (provider === 'vimeo') {
-    if (el.autoplay) p.set('autoplay', '1');
-    if (el.muted) p.set('muted', '1');
-    if (el.loop) p.set('loop', '1');
-    if (!showControls) p.set('controls', '0');
-    if (el.captions) p.set('texttrack', 'en');
-    return `https://player.vimeo.com/video/${id}?${p.toString()}`;
-  }
-  // PeerTube
-  const base = origin;
-  if (!base) return null;
-  if (el.autoplay) p.set('autoplay', '1');
-  if (el.muted) p.set('muted', '1');
-  if (el.loop) p.set('loop', '1');
-  if (!showControls) p.set('controls', '0');
-  if (el.captions) p.set('subtitle', 'en');
-  return `${base}/videos/embed/${id}?${p.toString()}`;
-}
 
 /**
  * Inject role/piece hash AND a unique channel key into a demo HTML.
@@ -431,7 +391,7 @@ export async function buildExportHtml(opts) {
           if (el.kind === 'embed' && el.url) {
             // Hosted embed (YouTube/Vimeo/PeerTube): emit the provider iframe so
             // the video is playable in the exported HTML.
-            const embedSrc = videoEmbedUrl(el);
+            const embedSrc = buildEmbedSrc(el, { jsApi: false });
             if (embedSrc) {
               inner += `<iframe src="${embedSrc}" style="${absBox(p)};border:none;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
             } else {
