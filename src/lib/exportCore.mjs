@@ -1,12 +1,11 @@
 import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
-import { arrowSvgInner } from './arrowGeometry.mjs';
+import { coverHtml, arrowSvgHtml, imageHtml } from './elementHtml.mjs';
 import { buildEmbedSrc } from './videoEmbedParse.mjs';
 import { themeColorsByName, themeColorForPreset } from './themeColors.mjs';
 import { effectiveFontSize } from './textSizes.mjs';
 import { textBackgroundCss, textBoxShadowCss, applyCodeFont } from './textStyle.mjs';
 import { TEXT_PRESET_STYLES } from './textPresets.mjs';
-import { describeCover, imageVisuals, describeArrow } from './elementDescriptor.mjs';
 import { textElementHtml } from './textElementHtml.mjs';
 
 /**
@@ -305,16 +304,7 @@ export async function buildExportHtml(opts) {
               break;
             }
           }
-          const imgStyles = [
-            `position:absolute`, `left:${p.x}px`, `top:${p.y}px`,
-            `width:${p.width}px`, `height:${p.height}px`, `object-fit:contain`,
-          ];
-          const iv = imageVisuals(el);
-          if (iv.shadow) imgStyles.push(`filter:${iv.shadow}`);
-          if (iv.borderRadius) imgStyles.push(`border-radius:${iv.borderRadius}px`);
-          if (iv.opacity != null) imgStyles.push(`opacity:${iv.opacity}`);
-          if (iv.transform) imgStyles.push(`transform:${iv.transform}`);
-          inner += `<img src="${imgSrc}" style="${imgStyles.join(';')};" />`;
+          inner += imageHtml(imgSrc, el, (n) => `${n}px`);
           break;
         }
         case 'demo':
@@ -402,16 +392,12 @@ export async function buildExportHtml(opts) {
           }
           break;
         }
-        case 'cover': {
-          const d = describeCover(el, themeBackground(presentation, slide));
-          inner += `<div style="${absBox(d.box)};background:${d.background};"></div>`;
+        case 'cover':
+          inner += coverHtml(el, themeBackground(presentation, slide), (n) => `${n}px`);
           break;
-        }
-        case 'arrow': {
-          const a = describeArrow(el);
-          inner += `<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">${arrowSvgInner(a.geo, a.color, a.strokeWidth, a.opacity)}</svg>`;
+        case 'arrow':
+          inner += arrowSvgHtml(el);
           break;
-        }
       }
     }
 

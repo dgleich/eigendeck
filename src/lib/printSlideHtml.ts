@@ -13,10 +13,9 @@
 // can't drift silently before this target is unified onto the descriptor path.
 
 import { resolveTheme, themeColorForPreset } from './themes';
-import { describeCover, describeArrow } from './elementDescriptor.mjs';
+import { coverHtml, arrowSvgHtml, imageHtml } from './elementHtml.mjs';
 import { textElementHtml } from './textElementHtml.mjs';
 import { markAsEigendeck } from './clipboard';
-import { arrowSvgInner } from './arrowGeometry.mjs';
 import { effectiveFontSize } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset } from './fontRegistry.mjs';
 import type { Presentation, Slide } from '../types/presentation';
@@ -60,21 +59,14 @@ export function buildPrintSlideHtml(
       });
     } else if (el.type === 'image') {
       const src = imageCache.get(el.assetId);
-      if (src) {
-        const styles = [`position:absolute`, `left:${px2in(p.x)}`, `top:${px2in(p.y)}`, `width:${px2in(p.width)}`, `height:${px2in(p.height)}`, `object-fit:contain`];
-        if ((el as any).shadow) styles.push('filter:drop-shadow(2px 4px 8px rgba(0,0,0,0.3))');
-        if ((el as any).borderRadius) styles.push(`border-radius:${px2in((el as any).borderRadius)}`);
-        if ((el as any).opacity != null && (el as any).opacity < 1) styles.push(`opacity:${(el as any).opacity}`);
-        // P2-7: honor image rotation (was lost in the print path).
-        if ((el as any).rotation) styles.push(`transform:rotate(${(el as any).rotation}deg)`);
-        inner += `<img src="${src}" style="${styles.join(';')};" />`;
-      }
+      // Same shared visual styles as the HTML export (one drop-shadow + radius);
+      // only the box position is inch-scaled (px2in).
+      if (src) inner += imageHtml(src, el, px2in);
     } else if (el.type === 'arrow') {
-      const a = describeArrow(el);
-      // SVG uses viewBox in original coordinates, scaled by the container
-      inner += `<svg viewBox="0 0 ${W} ${H}" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;">${arrowSvgInner(a.geo, a.color, a.strokeWidth, a.opacity)}</svg>`;
+      // viewBox maps the px arrow coords into the inch-scaled container.
+      inner += arrowSvgHtml(el, { viewBox: `0 0 ${W} ${H}` });
     } else if (el.type === 'cover') {
-      inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};background:${describeCover(el, theme.background).background};"></div>`;
+      inner += coverHtml(el, theme.background, px2in);
     } else if (isLiveElement(el.type)) {
       // P0-2: notebook joins demo/demo-piece/video as a baked screenshot.
       const screenshot = demoScreenshots.get(`${slide.id}:${el.id}`);
