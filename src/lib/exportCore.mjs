@@ -36,6 +36,15 @@ function themeBackground(presentation, slide) {
 /** Absolute-position CSS fragment shared by every exported element's wrapper. */
 const absBox = (p) => `position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px`;
 
+/** A demo / demo-piece iframe: splice the slide's theme vars into the demo HTML,
+ *  escape it for srcdoc, and position it. (demo-piece passes html already run
+ *  through injectDemoBootstrap.) Shared by both branches so the srcdoc/sandbox
+ *  wiring lives in one place. */
+function demoIframeHtml(html, slide, p, demoThemeVarsCss) {
+  const themed = injectDemoThemeIntoHtml(html, '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
+  return `<iframe srcdoc="${htmlEscapeForSrcdoc(themed)}" style="${absBox(p)};border:none;" sandbox="${DEMO_SANDBOX}"></iframe>`;
+}
+
 
 
 /**
@@ -302,26 +311,18 @@ export async function buildExportHtml(opts) {
           break;
         }
         case 'demo':
+          // Fonts are NOT baked here — injected at runtime from the parent's
+          // single #eigendeck-fonts block (see the font-share script).
           try {
-            let demoHtml = await readTextFile(el.src);
-            // Fonts are NOT baked here — injected at runtime from the parent's
-            // single #eigendeck-fonts block (see the font-share script). Only the
-            // tiny per-slide theme vars are spliced in.
-            demoHtml = injectDemoThemeIntoHtml(demoHtml, '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
-            const escaped = htmlEscapeForSrcdoc(demoHtml);
-            inner += `<iframe srcdoc="${escaped}" style="${absBox(p)};border:none;" sandbox="${DEMO_SANDBOX}"></iframe>`;
+            inner += demoIframeHtml(await readTextFile(el.src), slide, p, demoThemeVarsCss);
           } catch (e) { console.error('Demo export failed:', e); }
           break;
         case 'demo-piece':
           demoPieceSrcs.add(el.demoSrc);
           try {
-            const demoHtml = await readTextFile(el.demoSrc);
             const channelKey = `slide${i}-${el.demoSrc.replace(/[^a-z0-9]/gi, '')}`;
-            let pieceHtml = injectDemoBootstrap(demoHtml, `#piece=${el.piece}`, channelKey);
-            // Fonts injected at runtime from the parent (see font-share script).
-            pieceHtml = injectDemoThemeIntoHtml(pieceHtml, '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
-            const escaped = htmlEscapeForSrcdoc(pieceHtml);
-            inner += `<iframe srcdoc="${escaped}" style="${absBox(p)};border:none;" sandbox="${DEMO_SANDBOX}"></iframe>`;
+            const pieceHtml = injectDemoBootstrap(await readTextFile(el.demoSrc), `#piece=${el.piece}`, channelKey);
+            inner += demoIframeHtml(pieceHtml, slide, p, demoThemeVarsCss);
           } catch (e) { console.error('Demo piece export failed:', e); }
           break;
         case 'notebook': {
