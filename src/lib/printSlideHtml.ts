@@ -14,9 +14,10 @@
 
 import { resolveTheme, themeColorForPreset } from './themes';
 import { describeCover, describeArrow } from './elementDescriptor.mjs';
+import { textElementHtml } from './textElementHtml.mjs';
 import { markAsEigendeck } from './clipboard';
 import { arrowSvgInner } from './arrowGeometry.mjs';
-import { TEXT_PRESET_STYLES, effectiveFontSize, textShadowCss, textPresetBoxCss, textBackgroundCss, textBoxShadowCss } from '../types/presentation';
+import { effectiveFontSize } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset } from './fontRegistry.mjs';
 import type { Presentation, Slide } from '../types/presentation';
 
@@ -46,31 +47,17 @@ export function buildPrintSlideHtml(
   for (const el of slide.elements) {
     const p = el.position;
     if (el.type === 'text') {
-      const ps = TEXT_PRESET_STYLES[el.preset] || TEXT_PRESET_STYLES.body;
-      const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
-      const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
-                         valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
-      const color = el.color || themeColorForPreset(theme, el.preset);
-      const fontSize = effectiveFontSize(el, presentation.config);
+      // Same shared box/style assembly as the HTML export — only the units differ
+      // (inches for lengths via px2in, points for font-size via px2pt).
       const presetFontFamily = fontFamilyForPreset(fontForPreset(el.preset, slide, presentation.config), el.preset);
-      const _fx2 = textShadowCss(el, color);
-      const _rot2 = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
-      // line-height + padding from the shared preset-box layout (footnote tight;
-      // per-element padding override honored), converted px → inches.
-      const box = textPresetBoxCss(el.preset);
-      const pad = el.padding
-        ? `${px2in(el.padding.top)} ${px2in(el.padding.right)} ${px2in(el.padding.bottom)} ${px2in(el.padding.left)}`
-        : `${px2in(box.padY)} ${px2in(box.padX)}`;
-      // Element fill / drop-shadow / rounded corners — previously dropped in the
-      // print path, so a styled text box lost them in PDF vs the editor. (radius
-      // px→inches like the image path; the shadow is a fixed soft preset.)
-      const bg = textBackgroundCss(el);
-      const sh = textBoxShadowCss(el);
-      const rad = el.borderRadius ? `border-radius:${px2in(el.borderRadius)};` : '';
-      inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};overflow:hidden;${bg ? `background:${bg};` : ''}${sh ? `box-shadow:${sh};` : ''}${rad}${_rot2}">` +
-        `<div style="width:100%;height:100%;${valignStyle}">` +
-        `<div style="font-family:${el.fontFamily || presetFontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${px2pt(fontSize)};color:${color};line-height:${box.lineHeight};padding:${pad};${_fx2 ? `text-shadow:${_fx2};` : ''}">${markAsEigendeck(el.html || '')}</div>` +
-        `</div></div>`;
+      inner += textElementHtml(el, {
+        color: el.color || themeColorForPreset(theme, el.preset),
+        fontFamily: el.fontFamily || presetFontFamily,
+        fontSize: effectiveFontSize(el, presentation.config),
+        content: markAsEigendeck(el.html || ''),
+        len: px2in,
+        fsize: px2pt,
+      });
     } else if (el.type === 'image') {
       const src = imageCache.get(el.assetId);
       if (src) {

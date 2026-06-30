@@ -4,10 +4,10 @@ import { arrowSvgInner } from './arrowGeometry.mjs';
 import { buildEmbedSrc } from './videoEmbedParse.mjs';
 import { themeColorsByName, themeColorForPreset } from './themeColors.mjs';
 import { effectiveFontSize } from './textSizes.mjs';
-import { textPresetBoxCss, textPaddingCss } from './textBox.mjs';
-import { textBackgroundCss, textShadowCss, textBoxShadowCss, applyCodeFont } from './textStyle.mjs';
+import { textBackgroundCss, textBoxShadowCss, applyCodeFont } from './textStyle.mjs';
 import { TEXT_PRESET_STYLES } from './textPresets.mjs';
 import { describeCover, imageVisuals, describeArrow } from './elementDescriptor.mjs';
+import { textElementHtml } from './textElementHtml.mjs';
 
 /**
  * Shared HTML export logic.
@@ -270,20 +270,17 @@ export async function buildExportHtml(opts) {
             try { textHtml = await renderMath(textHtml, bundleId); }
             catch (e) { console.warn('Math render failed:', e); }
           }
-          const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
-          const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
-                             valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
           const resolvedFont = resolveFont ? resolveFont(el.preset, slide) : ps.fontFamily;
-          const fontFamily = el.fontFamily || resolvedFont;
-          const bgLegacy = textBackgroundCss(el);
-          const fxLegacy = textShadowCss(el, legacyColor);
-          const shLegacy = textBoxShadowCss(el);
-          const rotLegacy = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
-          const radLegacy = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
-          inner += `<div style="${absBox(p)};overflow:hidden;${bgLegacy ? `background:${bgLegacy};` : ''}${shLegacy ? `box-shadow:${shLegacy};` : ''}${radLegacy}${rotLegacy}">` +
-            `<div style="width:100%;height:100%;${valignStyle}">` +
-            `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${effectiveFontSize(el, presentation.config)}px;color:${legacyColor};line-height:${textPresetBoxCss(el.preset).lineHeight};padding:${textPaddingCss(el, el.preset)};${fxLegacy ? `text-shadow:${fxLegacy};` : ''}">${applyCodeFont(textHtml, resolveMonoFontPackage((presentation.config || {}).defaultMonoFont).family)}</div>` +
-            `</div></div>`;
+          // Shared box/style assembly (units = px here; printSlideHtml passes
+          // inches/points). Math + code-font are this path's concern → content.
+          inner += textElementHtml(el, {
+            color: legacyColor,
+            fontFamily: el.fontFamily || resolvedFont,
+            fontSize: effectiveFontSize(el, presentation.config),
+            content: applyCodeFont(textHtml, resolveMonoFontPackage((presentation.config || {}).defaultMonoFont).family),
+            len: (n) => `${n}px`,
+            fsize: (n) => `${n}px`,
+          });
           break;
         }
         case 'image': {
