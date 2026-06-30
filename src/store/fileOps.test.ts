@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { open, save } from '@tauri-apps/plugin-dialog';
-import { openProject, saveProject, createProject } from './fileOps';
+import { open, save, message } from '@tauri-apps/plugin-dialog';
+import { exists } from '@tauri-apps/plugin-fs';
+import { openProject, saveProject, createProject, openRecentProject, getRecentProjects } from './fileOps';
 import { usePresentationStore } from './presentation';
 import { createDefaultPresentation } from '../types/presentation';
 
@@ -61,6 +62,22 @@ describe('file operations (SQLite only)', () => {
       await saveProject();
       // Sessions are file-anchored from the start now; Save never prompts.
       expect(mockSave).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('openRecentProject — missing file (#103)', () => {
+    it('prunes the dead entry, shows an error, and does NOT blank the document', async () => {
+      const DEAD = '/gone/deck.eigendeck';
+      localStorage.setItem('eigendeck-recent-projects',
+        JSON.stringify([{ path: DEAD, title: 'Gone', lastOpened: 'x' }]));
+      const before = usePresentationStore.getState().presentation;
+      vi.mocked(exists).mockResolvedValue(false);
+
+      await openRecentProject(DEAD);
+
+      expect(getRecentProjects().some((r) => r.path === DEAD)).toBe(false); // pruned
+      expect(vi.mocked(message)).toHaveBeenCalled();                        // error surfaced
+      expect(usePresentationStore.getState().presentation).toBe(before);    // doc untouched (not blanked)
     });
   });
 });

@@ -42,8 +42,14 @@ export function SlideEditor() {
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
+        // Ignore 0-size measurements — the container can be measured before
+        // layout settles (e.g. the welcome→editor transition), and
+        // (0 - padding)/SLIDE_WIDTH is NEGATIVE → a broken/tiny scale the
+        // observer never recomputes for the next deck (#103 "tiny slides").
+        if (width <= 0 || height <= 0) continue;
         const padding = 32;
-        setScale(Math.min((width - padding) / SLIDE_WIDTH, (height - padding) / SLIDE_HEIGHT, 1));
+        const next = Math.min((width - padding) / SLIDE_WIDTH, (height - padding) / SLIDE_HEIGHT, 1);
+        if (next > 0) setScale(next);
       }
     });
     observer.observe(container);

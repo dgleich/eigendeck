@@ -5,7 +5,7 @@
 //! Elements own their position. slide_elements is a junction table for sync.
 
 use once_cell::sync::Lazy;
-use rusqlite::{params, Connection, OptionalExtension, Result as SqlResult};
+use rusqlite::{params, Connection, OpenFlags, OptionalExtension, Result as SqlResult};
 use serde_json::Value;
 use std::sync::Mutex;
 
@@ -343,7 +343,14 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
 
 /// Open or create a .eigendeck SQLite database on disk
 pub fn open_db(path: &str) -> SqlResult<()> {
-    let conn = Connection::open(path)?;
+    // Open an EXISTING file only — never create. The normal flows always write
+    // the file first (createProject: db_save_to_file → open; openProject: a real
+    // file). Without omitting SQLITE_OPEN_CREATE, opening a missing Recent entry
+    // would silently CREATE an empty deck there and blank the editor (#103).
+    let flags = OpenFlags::SQLITE_OPEN_READ_WRITE
+        | OpenFlags::SQLITE_OPEN_URI
+        | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    let conn = Connection::open_with_flags(path, flags)?;
     create_schema(&conn)?;
     let mut db = DB.lock().unwrap();
     *db = Some(conn);

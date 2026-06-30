@@ -11,7 +11,7 @@ import { Presentation } from '../types/presentation';
 import { usePresentationStore, openSqliteProject, flushToSqlite, createSeededPresentation } from './presentation';
 // @ts-ignore — pure JS module shared with the CLI tool
 import { buildExportHtml } from '../lib/exportCore.mjs';
-import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
+import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs';
 import {
   fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS, resolveMonoFontPackage,
 } from '../lib/fonts';
@@ -114,6 +114,12 @@ function addRecentProject(path: string, title: string) {
   syncRecentMenu();
 }
 
+export function removeRecentProject(path: string): void {
+  const recents = getRecentProjects().filter((r) => r.path !== path);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(recents));
+  void syncRecentMenu();
+}
+
 export async function syncRecentMenu(): Promise<void> {
   try {
     const recents = getRecentProjects();
@@ -143,6 +149,17 @@ export async function openProject(): Promise<void> {
 }
 
 export async function openRecentProject(path: string): Promise<void> {
+  // A Recent entry can point at a file that was moved/deleted. Opening it anyway
+  // would CREATE an empty DB at that path (SQLite's open creates the file),
+  // silently blanking the editor (#103). Check first: on a miss, surface an
+  // error, prune the dead entry, and leave the current document untouched.
+  try {
+    if (!(await exists(path))) {
+      removeRecentProject(path);
+      await showError(`Can't open "${path.split('/').pop()}" — the file no longer exists. Removed it from Recent.`);
+      return;
+    }
+  } catch { /* exists() unavailable (non-Tauri) — fall through and let open report */ }
   try {
     await openSqliteProject(path);
     const store = usePresentationStore.getState();
