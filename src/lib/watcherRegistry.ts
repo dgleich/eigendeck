@@ -19,6 +19,7 @@
 //   - closeWatcherRegistry(projectId) on project switch or window close
 
 import { invoke } from '@tauri-apps/api/core';
+import { sha256Hex } from './hash';
 import { invalidateRenderedAsset } from './assetRenderer';
 import { effectiveAutoReload, getPreference } from './preferences';
 import { markAssetMissing, markAssetFound, isAssetMissing } from './missingAssets';
@@ -278,17 +279,6 @@ interface LinkedAssetRow {
   hash: string | null;  // SHA-256 hex of the asset bytes; used by scan
                         // to decide if a stored-mtime-vs-disk-mtime
                         // mismatch is a real byte change or just drift.
-}
-
-/** SHA-256 hex of a byte buffer. Local copy of the helper from
- *  assetInsert.ts — same shape (slice the buffer to dodge cross-realm
- *  ArrayBuffer issues in jsdom under tests). */
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-  const digest = await crypto.subtle.digest('SHA-256', buf as ArrayBuffer);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
 }
 
 /**

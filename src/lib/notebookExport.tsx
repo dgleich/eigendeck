@@ -12,6 +12,7 @@
 // sets and the notebook.css stylesheet inlined.
 
 import { renderToStaticMarkup } from 'react-dom/server';
+import { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
 // Vite inline import: the notebook stylesheet as a raw string, to embed
 // in the iframe srcdoc. (?inline yields the processed CSS as a string;
 // notebook.css has no url()/@import deps so this is the full sheet.)
@@ -35,15 +36,6 @@ function toUint8(b: ArrayBuffer | Uint8Array): Uint8Array {
   return b instanceof Uint8Array ? b : new Uint8Array(b);
 }
 
-/** Escape a string for safe inclusion in an HTML attribute value
- *  (the iframe srcdoc). Mirrors exportCore's htmlEscapeForSrcdoc. */
-function escapeSrcdoc(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
 
 /**
  * Build the inner HTML (a positioned <iframe>) for a notebook element in
@@ -160,7 +152,7 @@ export async function renderNotebookElementHtml(
     + `<div class="${frameClass}" style="${styleStr}">${body}</div>`
     + `</div></body></html>`;
 
-  return `<iframe srcdoc="${escapeSrcdoc(doc)}" sandbox="allow-same-origin" `
+  return `<iframe srcdoc="${htmlEscapeForSrcdoc(doc)}" sandbox="allow-same-origin" `
     + `style="border:none;width:100%;height:100%;"></iframe>`;
 }
 

@@ -1,6 +1,9 @@
 import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
 import { coverHtml, arrowSvgHtml, imageHtml } from './elementHtml.mjs';
+import { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
+// Re-exported so existing importers (incl. exportCore.test.mjs) are unaffected.
+export { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
 import { buildEmbedSrc } from './videoEmbedParse.mjs';
 import { themeColorsByName, themeColorForPreset } from './themeColors.mjs';
 import { effectiveFontSize } from './textSizes.mjs';
@@ -32,16 +35,6 @@ function themeBackground(presentation, slide) {
 /** Absolute-position CSS fragment shared by every exported element's wrapper. */
 const absBox = (p) => `position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px`;
 
-/**
- * HTML-escape a string for use in a srcdoc attribute.
- */
-export function htmlEscapeForSrcdoc(s) {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
 
 
 /**
