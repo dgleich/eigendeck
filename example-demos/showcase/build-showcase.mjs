@@ -96,7 +96,7 @@ const TITLE_EQ = [
 // Title slide: a hero demo (heroKey, position = heroPos or full-bleed) + logo +
 // wordmark + rotated equations + subtitle. The deck OPENS serious (eigenmodes
 // hero, confined to the lower third) and CLOSES whimsical (full-bleed balls).
-function titleSlide(pfx, heroKey, subHtml, heroPos) {
+function titleSlide(pfx, heroKey, subHtml, heroPos, subPos) {
   const els = [{ id: `${pfx}-decor`, type: 'demo', assetId: assetId[heroKey], position: heroPos || { x: 0, y: 0, width: 1920, height: 1080 } }];
   TITLE_EQ.forEach((e, i) => els.push({
     id: `${pfx}-eq${i}`, type: 'text', preset: 'textbox', color: e.color, fontSize: e.size, rotation: e.rot,
@@ -104,7 +104,7 @@ function titleSlide(pfx, heroKey, subHtml, heroPos) {
   }));
   els.push({ id: `${pfx}-logo`, type: 'image', assetId: assetId['logo'], kind: 'svg', position: { x: 835, y: 48, width: 250, height: 250 } });
   els.push({ id: `${pfx}-title`, type: 'text', preset: 'title', html: ctr('Eigendeck'), position: { x: 60, y: 340, width: 1800, height: 145 } });
-  els.push({ id: `${pfx}-sub`, type: 'text', preset: 'body', html: subHtml, position: { x: 64, y: 496, width: 1792, height: 150 } });
+  els.push({ id: `${pfx}-sub`, type: 'text', preset: 'body', html: subHtml, position: subPos || { x: 64, y: 496, width: 1792, height: 150 } });
   return { id: pfx, notes: 'Title slide.', elements: els };
 }
 
@@ -116,22 +116,50 @@ const GRAD_EQ =
   String.raw`$$\nabla f(\mathbf{x})=\beta\,\mathbf{x}+\sum_i \tfrac{a_i}{s_i^{2}}(\mathbf{x}-\mathbf{c}_i)\,e^{-\lVert\mathbf{x}-\mathbf{c}_i\rVert^{2}/2s_i^{2}}$$` +
   String.raw`$$x_{k+1}=x_k-\alpha\,\nabla f(x_k)$$`;
 
+// Per-slide styling (theme + fonts) so the deck shows off the font/theme range.
+// Equation + footnote colours derive from the theme (a hard-coded dark grey is
+// invisible on a dark slide). Fonts round-trip through `import json`.
+const STYLE = {
+  'drum-eigenmodes.html':          { theme: 'dark',  titleFont: 'lm-sans',         bodyFont: 'lm-sans' },          // Computer Modern Sans
+  'gradient-descent.html':         { theme: 'light', titleFont: 'source-code',     bodyFont: 'concrete-euler' },   // Source Code · Concrete
+  'tiled-svd.html':                { theme: 'dark' },
+  'graph-layout.html':             { titleFont: 'lato', bodyFont: 'shantell', centerTitle: true, footnoteSize: 30, footnoteH: 120 },
+  'polynomial-interpolation.html': { theme: 'light', titleFont: 'libertinus-sans', bodyFont: 'libertinus-sans' },
+  // a little extra variety on the rest, to show the range:
+  'wave-equation.html':            { theme: 'light', titleFont: 'libertinus',      bodyFont: 'libertinus' },
+  'fourier.html':                  { titleFont: 'source-sans', bodyFont: 'source-sans' },
+  'molecule-viewer.html':          { theme: 'dark',  titleFont: 'noto-sans',       bodyFont: 'noto-sans' },
+  'neural-network.html':           { theme: 'dark',  titleFont: 'source-sans',     bodyFont: 'source-sans' },
+};
+const DARK_THEME = new Set(['dark', 'black']);
+const eqColor = (theme) => (DARK_THEME.has(theme) ? '#e8e8e8' : '#1f2933');
+
 function demoSlide(d) {
   const key = d.file.replace(/\.html$/, '');
-  const els = [{ id: `${key}-title`, type: 'text', preset: 'title', html: d.title, position: { x: 60, y: 54, width: 1800, height: 96 } }];
+  const st = STYLE[d.file] || {};
+  const eqc = eqColor(st.theme);
+  const titleHtml = st.centerTitle ? ctr(d.title) : d.title;
+  const els = [{ id: `${key}-title`, type: 'text', preset: 'title', html: titleHtml, position: { x: 60, y: 54, width: 1800, height: 96 } }];
   if (d.file === 'gradient-descent.html') {
-    els.push({ id: `${key}-eq`, type: 'text', preset: 'body', fontSize: 30, color: '#1f2933', html: GRAD_EQ, position: { x: 60, y: 140, width: 1800, height: 184 } });
+    els.push({ id: `${key}-eq`, type: 'text', preset: 'body', fontSize: 30, color: eqc, html: GRAD_EQ, position: { x: 60, y: 140, width: 1800, height: 184 } });
     els.push({ id: `${key}-demo`, type: 'demo', assetId: assetId[d.file], position: { x: 60, y: 338, width: 1800, height: 630 } });
   } else {
     const eqTex = SKIP_EQ.has(d.file) ? null : (EQ[d.file] && EQ[d.file].tex);
-    if (eqTex) els.push({ id: `${key}-eq`, type: 'text', preset: 'body', fontSize: 48, color: '#1f2933', html: ctr('$' + eqTex + '$'), position: { x: 60, y: 150, width: 1800, height: 92 } });
+    if (eqTex) els.push({ id: `${key}-eq`, type: 'text', preset: 'body', fontSize: 48, color: eqc, html: ctr('$' + eqTex + '$'), position: { x: 60, y: 150, width: 1800, height: 92 } });
     // no-equation slides reclaim the freed strip — the demo starts higher + taller
     els.push({ id: `${key}-demo`, type: 'demo', assetId: assetId[d.file], position: { x: 60, y: eqTex ? 240 : 168, width: 1800, height: eqTex ? 728 : 800 } });
   }
   // footnote is bottom-aligned, so a taller box grows UPWARD — long captions
   // (e.g. the graph slide) get 2–3 lines instead of being clipped, same baseline.
-  els.push({ id: `${key}-cap`, type: 'text', preset: 'footnote', html: d.cap, position: { x: 60, y: 940, width: 1800, height: 84 } });
-  return { id: key, notes: '', elements: els };
+  const capH = st.footnoteH || 84;
+  const cap = { id: `${key}-cap`, type: 'text', preset: 'footnote', html: d.cap, position: { x: 60, y: 1024 - capH, width: 1800, height: capH } };
+  if (st.footnoteSize) cap.fontSize = st.footnoteSize;
+  els.push(cap);
+  const slide = { id: key, notes: '', elements: els };
+  if (st.theme) slide.theme = st.theme;
+  if (st.titleFont) slide.titleFont = st.titleFont;
+  if (st.bodyFont) slide.bodyFont = st.bodyFont;
+  return slide;
 }
 
 const demoByFile = {};
@@ -141,7 +169,7 @@ buildTextSlides().forEach((s) => { tx[s.id] = s; });
 
 // Explicit deck order (per the requested arrangement).
 const slides = [
-  titleSlide('s0', 'eigenmodes-hero', ctr('LaTeX math &amp; interactive technical elements') + ctr('… click through to see the other slides …'), { x: 460, y: 700, width: 1000, height: 380 }),
+  titleSlide('s0', 'eigenmodes-hero', ctr('LaTeX math &amp; interactive technical elements') + ctr('… click through to see the other slides …'), { x: 458, y: 626, width: 1000, height: 380 }),
   demoByFile['drum-eigenmodes.html'],
   tx['tx-cauchy'],
   demoByFile['gradient-descent.html'],
@@ -156,7 +184,7 @@ const slides = [
   demoByFile['molecule-viewer.html'],
   demoByFile['neural-network.html'],
   tx['tx-master'],
-  titleSlide('s-end', 'title-decor.html', ctr('Thanks for watching.') + ctr('eigendeck.dev')),  // whimsy (balls) to close
+  titleSlide('s-end', 'title-decor.html', ctr('We can&rsquo;t wait to see what you use this to do!') + ctr('eigendeck.dev')),  // whimsy (balls) to close
 ];
 
 const deck = {

@@ -53,7 +53,7 @@ function slideEckartYoung() {
   // + caps + letter-spacing (all native text-toolbar formatting), so the whole
   // box is one font size.
   const card = R`<div style="color:#a25e12;font-weight:700;text-transform:uppercase;letter-spacing:0.14em">Theorem &middot; Eckart–Young–Mirsky</div>${GAP}
-<div>Let $A\in\mathbb{R}^{m\times n}$ have the singular value decomposition $A=U\Sigma V^{\top}$ with $\sigma_1\ge\sigma_2\ge\cdots\ge\sigma_r\gt 0$. For every $k\lt r$, the truncated SVD</div>
+<div>Let $A\in\mathbb{R}^{m\times n}$ have the singular value decomposition $A=U\Sigma V^{\top}$ with $\sigma_1\ge\sigma_2\ge\cdots\ge\sigma_r\gt 0$. For every $k\lt r,$ the truncated SVD</div>
 $$A_k=\sum_{i=1}^{k}\sigma_i\,u_i v_i^{\top}$$
 <div>is the closest rank-$k$ matrix to $A$ in every unitarily invariant norm, and the error is set exactly by the discarded singular values:</div>
 $$\lVert A-A_k\rVert_2=\sigma_{k+1},\qquad \lVert A-A_k\rVert_F=\Bigl(\sum_{i\gt k}\sigma_i^{2}\Bigr)^{1/2}.$$`;
@@ -141,8 +141,8 @@ function slideQuote() {
     elements: [
       // full-bleed soft-rose background (a text element used purely as a colour panel)
       el({ id: 'q-bg', x: 0, y: 0, w: 1920, h: 1080, backgroundColor: '#fbeef2', html: '' }),
-      el({ id: 'q-quote', preset: 'title', x: 180, y: 412, w: 1560, h: 380, fontSize: 108, color: '#7a3b4e', html: ctr('&ldquo;The purpose of computing is insight, not numbers.&rdquo;') }),
-      el({ id: 'q-attr', x: 150, y: 802, w: 1620, h: 80, fontSize: 46, color: '#a86077', html: ctr('&mdash; Richard W. Hamming') }),
+      el({ id: 'q-quote', preset: 'title', x: 180, y: 300, w: 1560, h: 380, fontSize: 108, verticalAlign: 'middle', color: '#7a3b4e', html: ctr('&ldquo;The purpose of computing is insight, not numbers.&rdquo;') }),
+      el({ id: 'q-attr', x: 150, y: 712, w: 1620, h: 80, fontSize: 46, color: '#a86077', html: ctr('&mdash; Richard W. Hamming') }),
     ],
   };
 }
