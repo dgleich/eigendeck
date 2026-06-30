@@ -339,8 +339,8 @@ async function printToPdf() {
 
     // Build print HTML: per-slide element rendering (all positions in inches)
     // lives in buildPrintSlideHtml — a pure, snapshot-gated seam (render-path #6).
-    const slideHtmls = presentation.slides.map((slide) =>
-      buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots, mathHtmlByKey));
+    const slideHtmls = presentation.slides.map((slide, i) =>
+      buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots, mathHtmlByKey, i + 1));
 
     // Embed @font-face data URLs for fonts used by this presentation.
     const fontFacesCss = await buildEmbeddedFontFacesCSS(presentation);

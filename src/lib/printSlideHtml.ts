@@ -46,6 +46,7 @@ export function buildPrintSlideHtml(
   imageCache: Map<string, string>,
   demoScreenshots: Map<string, string>,
   mathHtmlByKey?: Map<string, string>,
+  slideNumber?: number,
 ): string {
   const theme = resolveTheme(presentation.theme, slide.theme);
   let inner = '';
@@ -83,6 +84,12 @@ export function buildPrintSlideHtml(
         inner += `<div style="position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};background:#f8f8f8;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#999;font-size:${px2pt(24)};font-family:system-ui;">${label}</div>`;
       }
     }
+  }
+  // Slide footer (author · venue + slide number), mirroring the HTML export.
+  const meta = [presentation.config?.author, presentation.config?.venue].filter(Boolean).join(' · ');
+  if (meta || slideNumber != null) {
+    inner += `<div style="position:absolute;bottom:${px2in(20)};right:${px2in(40)};display:flex;align-items:baseline;gap:${px2in(16)};font-family:'PT Sans',sans-serif;color:#888;font-size:${px2pt(18)};">` +
+      `<span>${meta}</span><span style="font-size:${px2pt(24)};">${slideNumber ?? ''}</span></div>`;
   }
   return `<div class="slide" style="background:${theme.background};">${inner}</div>`;
 }
