@@ -31,6 +31,11 @@ export function SlideEditor() {
   const [gridSpacing] = usePreference('gridSpacing');
 
   const slide = presentation.slides[currentSlideIndex];
+  // Whether the canvas (and its containerRef) actually renders — a 0-slide deck
+  // returns null below, so the container is absent. Effects that attach to the
+  // container must re-run when this flips (#103: an empty deck left the observer
+  // unattached, so the next deck rendered at the default scale = zoomed in).
+  const slidePresent = !!slide;
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -51,14 +56,16 @@ export function SlideEditor() {
     if (next > 0) setScale(next);
   }, []);
 
-  // Live re-fit on container resize (window/panel changes).
+  // Live re-fit on container resize (window/panel changes). Re-runs when
+  // slidePresent flips so the observer (re)attaches once the container actually
+  // mounts — otherwise opening a deck after a 0-slide deck leaves it unattached.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const observer = new ResizeObserver(() => fitScale());
     observer.observe(container);
     return () => observer.disconnect();
-  }, [fitScale]);
+  }, [fitScale, slidePresent]);
 
   // Re-fit whenever a deck opens. The observer ONLY fires on container SIZE
   // changes, and SlideEditor persists across deck opens (no remount), so the
@@ -71,7 +78,7 @@ export function SlideEditor() {
     fitScale();
     const raf = requestAnimationFrame(fitScale);
     return () => cancelAnimationFrame(raf);
-  }, [projectPath, fitScale]);
+  }, [projectPath, slidePresent, fitScale]);
 
   // Cmd+V image paste
   useEffect(() => {
