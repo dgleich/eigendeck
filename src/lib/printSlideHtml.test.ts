@@ -38,4 +38,17 @@ describe('[simplify-guard] buildPrintSlideHtml render snapshot', () => {
     const demoScreenshots = new Map([['s1:d1', 'data:image/png;base64,DEMO']]);
     expect(buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots)).toMatchSnapshot();
   });
+
+  it('uses pre-rendered math HTML for a text element when provided (#print-math)', () => {
+    const slide = {
+      id: 's1', layout: 'default', notes: '',
+      elements: [{ id: 'm1', type: 'text', preset: 'body', html: 'x = $\\alpha$', position: { x: 0, y: 0, width: 100, height: 50 } }],
+    } as unknown as Slide;
+    const presentation = { title: 'T', theme: 'white', config: { width: 1920, height: 1080 }, slides: [slide] } as unknown as Presentation;
+    // The caller (printToPdf) pre-renders math to inline SVG and passes it in.
+    const textHtmlById = new Map([['m1', 'x = <svg data-math="alpha"></svg>']]);
+    const out = buildPrintSlideHtml(slide, presentation, new Map(), new Map(), textHtmlById);
+    expect(out).toContain('<svg data-math="alpha"></svg>'); // rendered math, not raw $\alpha$
+    expect(out).not.toContain('$\\alpha$');
+  });
 });

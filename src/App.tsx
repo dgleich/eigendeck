@@ -51,7 +51,8 @@ import './App.css';
 import { bytesToBase64 } from './lib/base64';
 import { extractDemoPieceNames } from './lib/demoPieces';
 import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement, textElementClipboardHtml } from './lib/elementClipboard';
-import { buildEmbeddedFontFacesCSS } from './lib/fonts';
+import { buildEmbeddedFontFacesCSS, fontForPreset } from './lib/fonts';
+import { renderMathInHtml, containsMath } from './lib/mathjaxRenderer';
 import { getMissingAssets } from './lib/missingAssets';
 
 // Wire built-in element types into the sync/link lifecycle registry once, at
@@ -318,10 +319,25 @@ async function printToPdf() {
       usePresentationStore.getState().selectSlide(originalSlideIndex);
     }
 
+    // Pre-render math per text element. The print path builds plain HTML (not the
+    // live SVG render), so $…$ has to be composited to inline SVG up front — the
+    // same thing the GUI export's makeTextElementRenderer does via the iframe pool.
+    const textHtmlById = new Map<string, string>();
+    for (const slide of presentation.slides) {
+      for (const el of slide.elements) {
+        if (el.type === 'text' && el.html && containsMath(el.html)) {
+          const bundleId = fontForPreset(el.preset, slide, presentation.config).id;
+          const rendered = await renderMathInHtml(el.html, bundleId, presentation.config.mathPreamble || '')
+            .catch(() => el.html as string);
+          textHtmlById.set(el.id, rendered);
+        }
+      }
+    }
+
     // Build print HTML: per-slide element rendering (all positions in inches)
     // lives in buildPrintSlideHtml — a pure, snapshot-gated seam (render-path #6).
     const slideHtmls = presentation.slides.map((slide) =>
-      buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots));
+      buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots, textHtmlById));
 
     // Embed @font-face data URLs for fonts used by this presentation.
     const fontFacesCss = await buildEmbeddedFontFacesCSS(presentation);
