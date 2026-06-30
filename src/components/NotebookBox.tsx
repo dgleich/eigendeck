@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { DraggableBox, InteractLockBar } from './SlideElementRenderer';
 import { NotebookContent } from './notebook/NotebookContent';
 import {
-  ElementPosition, NotebookElement, SlideElement,
+  NotebookElement, SlideElement,
 } from '../types/presentation';
 
 export function NotebookBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpdate }: {
@@ -27,14 +27,9 @@ export function NotebookBox({ element, zIndex, scale, isSelected, onSelect, onDe
 
   return (
     <DraggableBox
-      elementId={element.id}
-      position={element.position} zIndex={zIndex} scale={scale}
+      element={element} zIndex={zIndex} scale={scale}
       className="el-notebook" isSelected={isSelected}
-      linkId={element.linkId} syncId={element.syncId}
-      _linkId={(element as { _linkId?: string })._linkId}
-      _syncId={(element as { _syncId?: string })._syncId}
-      onSelect={onSelect} onDelete={onDelete}
-      onPositionChange={(pos: ElementPosition) => onUpdate({ position: pos })}
+      onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
     >
       <NotebookContent element={element} interactive={interacting} />
       {!interacting && (

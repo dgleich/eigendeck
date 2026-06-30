@@ -79,22 +79,18 @@ export function SlideElementRenderer({
     case 'text':
       return (
         <DraggableBox
-          elementId={element.id}
-          position={element.position} zIndex={zIndex} scale={scale}
+          element={element} zIndex={zIndex} scale={scale}
           className={`el-text el-preset-${element.preset}`}
           isSelected={isSelected}
           boxStyle={{ backgroundColor: textBackgroundCss(element), boxShadow: textBoxShadowCss(element), borderRadius: element.borderRadius || undefined }}
           rotation={element.rotation}
-          linkId={element.linkId} syncId={element.syncId}
-          _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
           dataValign={element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined)}
           onEdit={() => {
             // Trigger edit mode on the TextContent inside this box
             const el = document.querySelector(`[data-element-id="${element.id}"]`);
             if (el) el.dispatchEvent(new CustomEvent('start-editing', { bubbles: false }));
           }}
-          onSelect={onSelect} onDelete={onDelete}
-          onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+          onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
         >
           <TextContent element={element} onCommit={(html) => onUpdate({ html } as any)} />
         </DraggableBox>
@@ -150,13 +146,9 @@ export function SlideElementRenderer({
     case 'cover':
       return (
         <DraggableBox
-          elementId={element.id}
-          position={element.position} zIndex={zIndex} scale={scale}
+          element={element} zIndex={zIndex} scale={scale}
           className="el-cover" isSelected={isSelected}
-          linkId={element.linkId} syncId={element.syncId}
-          _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
-          onSelect={onSelect} onDelete={onDelete}
-          onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+          onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
         >
           <div style={{
             width: '100%', height: '100%',
@@ -252,13 +244,9 @@ function ImageBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
 
   return (
     <DraggableBox
-      elementId={element.id}
-      position={element.position} zIndex={zIndex} scale={scale}
+      element={element} zIndex={zIndex} scale={scale}
       className="el-image" isSelected={isSelected}
-      linkId={element.linkId} syncId={element.syncId}
-      _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
-      onSelect={onSelect} onDelete={onDelete}
-      onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+      onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
     >
       {src ? (
         <img src={src} alt="" draggable={false}
@@ -353,13 +341,9 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
   }, [src, reloadKey, element.position.width, element.position.height, element.id, element.syncId, themeSalt, demoBg]);
   return (
     <DraggableBox
-      elementId={element.id}
-      position={element.position} zIndex={zIndex} scale={scale}
+      element={element} zIndex={zIndex} scale={scale}
       className={piece ? 'el-demo el-demo-piece' : 'el-demo'} isSelected={isSelected}
-      linkId={element.linkId} syncId={element.syncId}
-      _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
-      onSelect={onSelect} onDelete={onDelete}
-      onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+      onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
     >
       {src ? (
         <iframe key={reloadKey} ref={iframeRef} src={src} sandbox={DEMO_SANDBOX} title={piece ? `demo-piece: ${piece}` : 'demo'}
@@ -407,13 +391,9 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
   const btn: React.CSSProperties = { padding: '2px 8px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, background: 'rgba(255,255,255,0.9)', cursor: 'pointer' };
   return (
     <DraggableBox
-      elementId={element.id}
-      position={element.position} zIndex={zIndex} scale={scale}
+      element={element} zIndex={zIndex} scale={scale}
       className="el-video" isSelected={isSelected}
-      linkId={element.linkId} syncId={element.syncId}
-      _linkId={(element as any)._linkId} _syncId={(element as any)._syncId}
-      onSelect={onSelect} onDelete={onDelete}
-      onPositionChange={(pos) => onUpdate({ position: pos } as any)}
+      onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
     >
       {element.kind === 'embed' ? (
         embedSrc
@@ -789,22 +769,27 @@ function snapCoord(v: number, bypass: boolean): number {
 }
 
 export function DraggableBox({
-  elementId, position: pos, zIndex, scale, className, children, isSelected,
-  linkId, syncId, _linkId, _syncId, dataValign, onEdit, boxStyle, rotation,
-  onSelect, onDelete, onPositionChange,
+  element, zIndex, scale, className, children, isSelected,
+  dataValign, onEdit, boxStyle, rotation, onSelect, onDelete, onUpdate,
 }: {
-  elementId: string;
-  position: ElementPosition; zIndex: number; scale: number; className: string;
+  // The id / position / link & sync ids and the position-commit all derive from
+  // the element, so callers pass `element` + `onUpdate` instead of repeating the
+  // seven-prop block at every box.
+  element: { id: string; position: ElementPosition; linkId?: string; syncId?: string; _linkId?: string; _syncId?: string };
+  zIndex: number; scale: number; className: string;
   children: React.ReactNode; isSelected: boolean;
-  linkId?: string; syncId?: string; _linkId?: string; _syncId?: string;
   dataValign?: string;
   onEdit?: () => void;
   boxStyle?: React.CSSProperties;
   /** Rotation in degrees for the whole box (text/sticky-note tilt). */
   rotation?: number;
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
-  onPositionChange: (pos: ElementPosition) => void;
+  onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
+  const elementId = element.id;
+  const pos = element.position;
+  const { linkId, syncId, _linkId, _syncId } = element;
+  const onPositionChange = (p: ElementPosition) => onUpdate({ position: p } as Partial<SlideElement>);
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0 });
