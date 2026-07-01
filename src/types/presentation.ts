@@ -394,6 +394,12 @@ export interface PresentationConfig {
   // app-pref default" then "use the hardcoded fallback (external,
   // localhost:8888, python3)".
   notebookKernel?: NotebookKernel;
+  // Deck identity token for the asset-security trust ledger (docs/ASSETS-SECURITY.md).
+  // A random id stamped when the app CREATES a deck (File → New / scratch). Trust is
+  // keyed by this token in the app-side ledger; a received deck's token isn't in your
+  // ledger, so it opens untrusted. Lives here (in config) so it round-trips through
+  // the persisted config blob. Absent = a deck with no identity (never author-trusted).
+  deckToken?: string;
 }
 
 export interface Presentation {

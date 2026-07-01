@@ -126,6 +126,12 @@ function updateCurrentSlide(
  *  + JSON encoding as src/lib/preferences.ts uses. */
 export function createSeededPresentation(): Presentation {
   const pres = createDefaultPresentation();
+  // Stamp a deck-identity token: this deck is being CREATED locally (File → New /
+  // scratch / cold start), so it's eligible for author-trust. The trust ledger keys
+  // on this token; a received deck's token won't be in the local ledger. See
+  // docs/ASSETS-SECURITY.md. (Marking the deck trusted in the ledger happens at the
+  // create call site when global watching is on — this only mints the identity.)
+  pres.config.deckToken = crypto.randomUUID();
   try {
     const v = localStorage.getItem('eigendeck:pref:mathPreamble');
     if (v) {

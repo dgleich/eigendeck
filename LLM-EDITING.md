@@ -79,6 +79,7 @@ my-presentation/
 - `textSizes`: optional partial map overriding the deck's named type scale. Keys: `"footnote"` (default 24), `"note"` (32), `"body"` (48), `"title"` (72), `"hype"` (96). Values in slide-pixels. Absent keys fall back to the defaults. Used by every element that picks a size by name (notebook `fontSizeName`, and — as text presets are retrofitted — text element sizes).
 - `autoReloadAssets`: optional per-presentation override for the file-watching auto-reload behavior. `"on"` or `"off"` overrides the global preference; absent means follow the global. Per-asset overrides in `assets.auto_reload` still win.
 - `customPalette`: optional array of `#rrggbb` hex strings — a per-presentation color palette (e.g. brand colors) shown as an extra swatch row in the text-color toolbar. Edited in the Deck inspector ("Color Palette"). Purely an editing affordance; chosen colors are written inline into element HTML like any other text color.
+- `deckToken`: **app-managed — do NOT author or copy this.** A random deck-identity token the app stamps when it *creates* a deck (File → New / scratch); it keys the per-machine asset-security trust ledger (`docs/ASSETS-SECURITY.md`). Setting or copying it in JSON does not grant trust (trust lives in the app-side ledger, not the deck), and inventing one only muddies identity. Leave it absent; the app fills it in.
 
 ## Slide Structure
 
