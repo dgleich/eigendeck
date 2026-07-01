@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   extensionOf, assetKindForPath, isAllowedExtension,
   isEigendeckDemo, contentMatchesExtension, assetTypeGate, NOTEBOOK_MAX_BYTES,
+  ASSET_EXTENSIONS,
 } from './assetTypes.mjs';
 
 const bytes = (...a) => new Uint8Array(a);
@@ -156,4 +157,78 @@ describe('adversarial + regression cases', () => {
       expect(assetTypeGate(input, `f.${ext}`).ok).toBe(contentMatchesExtension(input, ext));
     }
   });
+});
+
+// ============================================================================
+// Exhaustive "fake asset" matrix. The security promise is: a file is accepted
+// ONLY when its BYTES match the type its EXTENSION claims. These loops cover the
+// full cross-product so a fake of any type — a secret misnamed .png, an mp4 blob
+// called .webm, raw HTML posing as a demo — is provably rejected, and every
+// genuine (bytes,ext) pairing is provably accepted. See docs/ASSETS-SECURITY.md.
+describe('fake-asset matrix — every content family × every allowed extension', () => {
+  // One canonical, minimal-but-VALID sample per format, with the extension(s) that
+  // format is legitimately valid for. Everything off the diagonal is a "fake".
+  const WEBP = bytes(0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50);
+  const WEBM = bytes(0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0);
+  const OGG  = bytes(0x4f, 0x67, 0x67, 0x53, 0, 0);
+  const MP4  = bytes(0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d);
+  const SVG  = '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
+  const VTT  = 'WEBVTT\n\n00:00.000 --> 00:01.000\nhi\n';
+  const SAMPLES = [
+    { name: 'png',       data: PNG,   valid: ['png'] },
+    { name: 'jpg',       data: JPG,   valid: ['jpg', 'jpeg'] },
+    { name: 'gif',       data: GIF,   valid: ['gif'] },
+    { name: 'webp',      data: WEBP,  valid: ['webp'] },
+    { name: 'pdf',       data: PDF,   valid: ['pdf'] },
+    { name: 'webm',      data: WEBM,  valid: ['webm'] },
+    { name: 'ogg',       data: OGG,   valid: ['ogg', 'ogv'] },   // OggS covers .ogg + .ogv
+    { name: 'mp4',       data: MP4,   valid: ['mp4', 'mov', 'm4v'] }, // ISO-BMFF ftyp
+    { name: 'svg',       data: SVG,   valid: ['svg'] },
+    { name: 'ipynb',     data: IPYNB, valid: ['ipynb'] },
+    { name: 'vtt',       data: VTT,   valid: ['vtt'] },
+    { name: 'demo-html', data: DEMO,  valid: ['html'] },
+  ];
+  const EXTS = Object.keys(ASSET_EXTENSIONS);
+
+  for (const s of SAMPLES) {
+    for (const ext of EXTS) {
+      const accept = s.valid.includes(ext);
+      it(`${s.name} bytes as .${ext} → ${accept ? 'accepted' : 'REJECTED (fake)'}`, () => {
+        expect(contentMatchesExtension(s.data, ext)).toBe(accept);
+        // the full gate (judged on the resolved path's extension) must agree
+        const g = assetTypeGate(s.data, `/deck/file.${ext}`);
+        expect(g.ok).toBe(accept);
+        if (accept) expect(g.kind).toBe(ASSET_EXTENSIONS[ext]);
+      });
+    }
+  }
+});
+
+describe('fake-asset matrix — garbage content is rejected for every allowed extension', () => {
+  const GARBAGE = [
+    ['plain text',      'this is definitely not a real asset'],
+    ['all zeros',       bytes(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)],
+    ['ssh private key', '-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXk=\n'],
+    ['empty',           bytes()],
+  ];
+  for (const ext of Object.keys(ASSET_EXTENSIONS)) {
+    for (const [label, g] of GARBAGE) {
+      it(`${label} misnamed .${ext} → rejected (content-mismatch)`, () => {
+        expect(contentMatchesExtension(g, ext)).toBe(false);
+        expect(assetTypeGate(g, `/deck/x.${ext}`).ok).toBe(false);
+      });
+    }
+  }
+});
+
+describe('fake-asset matrix — non-allowlisted extensions are refused whatever the bytes', () => {
+  // Even real PNG bytes can't sneak in under a disallowed extension — the extension
+  // gate fires first (bad-extension), before content is ever considered.
+  const BAD = ['exe', 'sh', 'txt', 'pem', 'key', 'env', 'js', 'css', 'zip', 'doc', ''];
+  for (const ext of BAD) {
+    it(`.${ext || '(no ext)'} → bad-extension even with genuine PNG bytes`, () => {
+      const path = ext ? `/deck/file.${ext}` : '/deck/file';
+      expect(assetTypeGate(PNG, path)).toMatchObject({ ok: false, reason: 'bad-extension' });
+    });
+  }
 });

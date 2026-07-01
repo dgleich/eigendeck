@@ -84,6 +84,10 @@ MANIFEST=(
   "asset-missing-probe.mjs|empty.eigendeck||$EMPTY"
   "asset-relocate-offset-probe.mjs|empty.eigendeck||$EMPTY"
   "off-missing.mjs|empty.eigendeck||$EMPTY"
+  # ── asset-security spec conformance (trusted/untrusted × approved × watched) ─
+  "asset-trust-states-probe.mjs|empty.eigendeck||$EMPTY"
+  "asset-open-untrusted-probe.mjs|empty.eigendeck||$EMPTY"
+  "asset-open-trusted-probe.mjs|empty.eigendeck||$EMPTY"
 
   # ── sync / link / promote round-trips (built fixture decks) ─────────────
   "roundtrip-probe.mjs|rt.eigendeck|E2E_MODE=linkpromote|python3 $EXFIX/make_roundtrip_decks.py ab \$DECKDIR/rt.json; import_json \$DECKDIR/rt.json"

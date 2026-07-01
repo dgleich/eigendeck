@@ -177,27 +177,37 @@ function maybeWarnUnsavedProject(externalPath: string | null): void {
 }
 
 /**
- * Auto-approve a just-added external asset for watching (asset-security): when the
- * user adds a linked file to a TRUSTED deck, approve its resolved path in the ledger
- * so it watches without a separate approval step (File→New links "just work"). Keyed
- * by the SAME resolved canonical the watch path computes. No-op for untrusted decks
- * (they must be trusted first) or non-linked assets. See docs/ASSETS-SECURITY.md.
+ * Approve an ABSOLUTE external path for watching on the current TRUSTED deck:
+ * resolve→realpath via the SAME gate the watcher uses, then record the canonical in
+ * the ledger. No-op for untrusted decks (must be trusted first) or unresolvable /
+ * wrong-type targets. This is the SINGLE approval code path shared by every user act
+ * that points at a specific file — add, relocate, and offset-relocate — so a picked
+ * file "just works" on a trusted deck without a separate approval step (a native
+ * file-pick is itself the consent). See docs/ASSETS-SECURITY.md.
  */
-async function autoApproveExternalPath(externalPath: string): Promise<void> {
+export async function approveExternalAbsPath(absPath: string): Promise<void> {
   try {
-    const store = usePresentationStore.getState();
-    const token = store.presentation.config.deckToken;
-    if (!token || !store.projectPath) return;
+    const token = usePresentationStore.getState().presentation.config.deckToken;
+    if (!token) return;
     const { isTrusted, approvePath } = await import('./trustStore');
     if (!(await isTrusted(token))) return;
-    const { resolvePosixPath, dirname } = await import('./watcherRegistry');
     const { resolveAndGate } = await import('./assetGate');
-    const abs = resolvePosixPath(dirname(store.projectPath), externalPath);
-    const gate = await resolveAndGate(abs);
+    const gate = await resolveAndGate(absPath);
     if (gate.ok && gate.canonicalPath) await approvePath(token, gate.canonicalPath);
   } catch (e) {
-    console.warn('[autoApproveExternalPath] failed (non-fatal):', e);
+    console.warn('[approveExternalAbsPath] failed (non-fatal):', e);
   }
+}
+
+/**
+ * Auto-approve a just-added linked asset. Resolves its (possibly relative)
+ * external_path against the project dir, then defers to approveExternalAbsPath.
+ */
+async function autoApproveExternalPath(externalPath: string): Promise<void> {
+  const store = usePresentationStore.getState();
+  if (!store.projectPath) return;
+  const { resolvePosixPath, dirname } = await import('./watcherRegistry');
+  await approveExternalAbsPath(resolvePosixPath(dirname(store.projectPath), externalPath));
 }
 
 export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<StoreResult> {

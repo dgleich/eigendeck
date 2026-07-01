@@ -43,6 +43,7 @@ import {
   importFromHtml,
   openRecentProject,
   syncRecentMenu,
+  trustCurrentDeck,
 } from './store/fileOps';
 import { flushToSqlite, pauseUndo, resumeUndo, undoWithNav, redoWithNav } from './store/presentation';
 import { withBusy } from './store/busy';
@@ -86,6 +87,36 @@ if (
     },
     // Missing-source registry (#74) — lets E2E assert detect/relocate.
     missingAssets: () => getMissingAssets(),
+    // Asset-security introspection (seam-only): report the current deck's trust state
+    // and, per linked asset, the resolve/approve/read-gate decision. Lets spec probes
+    // assert WHY a file is (not) watched, not just the resulting bytes.
+    trustReport: async () => {
+      const s = usePresentationStore.getState();
+      const token = s.presentation.config.deckToken;
+      const { isTrusted, isPathApproved } = await import('./lib/trustStore');
+      const { resolveAndGate } = await import('./lib/assetGate');
+      const { gatedExternalRead, resolvePosixPath, dirname } = await import('./lib/watcherRegistry');
+      const { invoke } = await import('@tauri-apps/api/core');
+      const linked = (await invoke('db_list_linked_assets').catch(() => [])) as Array<{ external_path: string }>;
+      const rows: unknown[] = [];
+      for (const a of linked) {
+        const abs = resolvePosixPath(dirname(s.projectPath || ''), a.external_path);
+        const gate = await resolveAndGate(abs);
+        rows.push({ ext: a.external_path, gateOk: gate.ok, reason: gate.reason, approved: (token && gate.canonicalPath) ? await isPathApproved(token, gate.canonicalPath) : false, read: (await gatedExternalRead(abs)).status });
+      }
+      return JSON.stringify({ token: token ?? null, trusted: token ? await isTrusted(token) : false, rows });
+    },
+    // Asset-security: the "Trust this deck" action (mints a token if legacy, trusts
+    // it, approves current linked paths, re-scans). Watch/scan probes call this to
+    // exercise live-file behavior on a CLI-built (untrusted) fixture — mirroring the
+    // real user flow (received decks are untrusted until trusted).
+    trustDeck: () => trustCurrentDeck(),
+    // Asset-security: revoke trust on the current deck (drops trust AND approvals) —
+    // lets spec probes assert a revoked deck reverts to snapshot-only (zero reads).
+    revokeDeck: async () => {
+      const t = usePresentationStore.getState().presentation.config.deckToken;
+      if (t) await import('./lib/trustStore').then((m) => m.revokeDeck(t));
+    },
     // Cached element preview as a data URL (#86) — lets E2E verify a demo's
     // preview is RE-captured after a theme switch (the bytes must change).
     previewDataUrl: (key: string) => loadPreviewDataUrl(key),

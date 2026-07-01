@@ -207,6 +207,29 @@ See `../.claude/notes/notebook-edge-cases-findings.md` for findings.
   currentTime back to the start, and ping-pong plays forward then reverse-seeks
   back down (rAF runs headlessly). Codec-dependent (uses the webm fixture).
 
+### Asset security (docs/ASSETS-SECURITY.md)
+
+The trust/approve gate: a linked file is read/watched only when the deck is trusted
+AND its path approved. Fixtures must use real-enough bytes (mp4 `ftyp`, leading
+`<svg>`, `WEBVTT`) or the content gate rejects them. Watch probes trust the (CLI-
+built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the real
+"Trust this deck" action.
+
+- **asset-trust-states-probe.mjs** — one deck through the whole matrix in one launch:
+  untrusted → trust → trusted-but-unapproved-new-path → approve → revoke. Asserts a
+  watched video's bytes follow disk exactly in the "watched" states and never in the
+  others (zero reads when untrusted/unapproved/revoked).
+- **asset-open-untrusted-probe.mjs** — opening an untrusted deck whose linked source
+  changed while closed does ZERO reads (snapshot stays).
+- **asset-open-trusted-probe.mjs** — opening a trusted deck reconciles the changed
+  source on open, and proves trust persists across the reopen (token in deck + ledger
+  in appData). Uses an svg image asset (headless WebKit hangs re-rendering a synthetic
+  mp4 during init — a container artifact).
+- **off-missing.mjs** — a missing source is flagged even when auto-reload is OFF, on a
+  trusted deck (#74 ungating).
+- The exhaustive content-gate matrix is a **unit** test: `src/lib/assetTypes.test.mjs`
+  (every content family × extension; garbage; non-allowlisted extensions).
+
 ### Demo theme inheritance (#86) + text clipping (#79)
 
 - **demo-theme-verify.mjs** — injects the deck's `@font-face` (shared URL) + theme

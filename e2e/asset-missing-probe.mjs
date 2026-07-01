@@ -23,6 +23,10 @@ async function open(){for(let i=0;i<12;i++){const j=await post('/session',{capab
 async function waitSeam(sid){for(let i=0;i<25;i++){await sleep(800);if(await exec(sid,"return !!(window.__eigendeck&&window.__eigendeck.store.getState().projectPath)"))return true;}return false;}
 async function quit(sid){await fetch(`${BASE}/session/${sid}`,{method:'DELETE'}).catch(()=>{});}
 const fail=(m)=>{console.error('AM_FAIL:',m);process.exit(1);};
+// Asset-security: a CLI-built fixture is untrusted, so the on-open scan performs
+// ZERO disk reads (no missing detection). Trust it — the real "Trust this deck"
+// action — so the scan runs and reconciles the linked source. Idempotent per session.
+const trust=(sid)=>execA(sid,"const d=arguments[arguments.length-1];window.__eigendeck.trustDeck().then(()=>d('ok')).catch(e=>d('ERR'+e));");
 // poll the seam's missing list for `id` to (dis)appear
 async function pollMissing(sid, wantPresent, id){
   for(let i=0;i<20;i++){
@@ -41,6 +45,7 @@ let sid = await open(); if(!sid || !await waitSeam(sid)) fail('S1 open');
 const stored = await execA(sid, `const d=arguments[arguments.length-1];const enc=new TextEncoder().encode(${JSON.stringify(SVG)});window.__TAURI_INTERNALS__.invoke('db_store_asset',{path:'img.svg',data:Array.from(enc),mimeType:'image/svg+xml',externalPath:'img.svg',externalMtime:null,assetId:'ia1'}).then(()=>d('ok')).catch(e=>d('ERR'+e));`);
 if (stored !== 'ok') fail('store asset: '+stored);
 await exec(sid, "window.__eigendeck.store.getState().addElement({id:'i1',type:'image',assetId:'ia1',position:{x:200,y:150,width:400,height:400}});");
+if (await trust(sid) !== 'ok') fail('S1 trust');   // trust + approve img.svg, persists the token
 const saved = await execA(sid, "const d=arguments[arguments.length-1];window.__eigendeck.save().then(()=>d('ok')).catch(e=>d('ERR'+e));");
 if (saved !== 'ok') fail('save: '+saved);
 await sleep(800);
@@ -50,6 +55,7 @@ console.log('  S1: asset stored + element added + saved');
 // ===== delete the source, reopen, expect missing =====
 unlinkSync(IMG);
 sid = await open(); if(!sid || !await waitSeam(sid)) fail('S2 open');
+await trust(sid);   // re-establish trust in this session; rescans (source now missing)
 const m1 = await pollMissing(sid, true, 'ia1');
 await quit(sid);
 if (!m1 || !m1.includes('ia1')) fail(`missing NOT detected on reopen (got ${JSON.stringify(m1)})`);
@@ -58,6 +64,7 @@ console.log('  S2: deleted source → detected missing on reopen ✓');
 // ===== re-create the source, reopen, expect cleared =====
 writeFileSync(IMG, SVG);
 sid = await open(); if(!sid || !await waitSeam(sid)) fail('S3 open');
+await trust(sid);   // re-approve the restored source + rescan → flag clears
 const m2 = await pollMissing(sid, false, 'ia1');
 await quit(sid);
 if (m2 === null) fail(`missing flag NOT cleared after source restored (still ${JSON.stringify(await exec(sid,"try{return JSON.stringify(window.__eigendeck.missingAssets());}catch(e){return '[]';}"))})`);

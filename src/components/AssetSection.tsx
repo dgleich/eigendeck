@@ -13,7 +13,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { HelpText } from './HelpText';
 import { invalidateRenderedAsset } from '../lib/assetRenderer';
-import { storeAssetRaw } from '../lib/assetInsert';
+import { storeAssetRaw, approveExternalAbsPath } from '../lib/assetInsert';
 import { dirname, resolvePosixPath, gatedExternalRead } from '../lib/watcherRegistry';
 import { showToast } from '../lib/toasts';
 import { effectiveAutoReload, usePreference } from '../lib/preferences';
@@ -196,6 +196,10 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
     if (!picked || typeof picked !== 'string') return;
     setReloading(true);
     try {
+      // A native file-pick IS consent: approve the picked path on a trusted deck so
+      // the gated read (and the watcher that follows) accepts it — same as add. No-op
+      // for an untrusted deck, so the gate below still refuses with "trust first".
+      await approveExternalAbsPath(picked);
       // Gated read of the user-picked file: untrusted deck → refuse (trust first);
       // a file whose real target isn't a watchable asset type → refuse.
       const read = await gatedExternalRead(picked);

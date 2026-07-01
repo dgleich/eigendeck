@@ -11,6 +11,9 @@ async function open(){for(let i=0;i<12;i++){const j=await post('/session',{capab
 async function waitSeam(sid){for(let i=0;i<25;i++){await sleep(800);if(await exec(sid,"return !!(window.__eigendeck&&window.__eigendeck.store.getState().projectPath)"))return true;}return false;}
 async function quit(sid){await fetch(`${BASE}/session/${sid}`,{method:'DELETE'}).catch(()=>{});}
 const fail=m=>{console.error('OFF_FAIL:',m);process.exit(1);};
+// Trust the (untrusted) CLI fixture so the on-open scan runs and can flag a missing
+// source even for an auto-reload-OFF asset (the #74 ungating this probe guards).
+const trust=sid=>execA(sid,"const d=arguments[arguments.length-1];window.__eigendeck.trustDeck().then(()=>d('ok')).catch(e=>d('ERR'+e));");
 const miss=sid=>exec(sid,"try{return JSON.stringify(window.__eigendeck.missingAssets().map(m=>m.assetId));}catch(e){return '[]';}");
 
 writeFileSync(IMG,'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>');
@@ -18,10 +21,12 @@ let sid=await open(); if(!sid||!await waitSeam(sid)) fail('S1 open');
 // store asset with auto_reload explicitly OFF
 await execA(sid,"const d=arguments[arguments.length-1];window.__TAURI_INTERNALS__.invoke('db_store_asset',{path:'pic.svg',data:[60,115,118,103,47,62],mimeType:'image/svg+xml',externalPath:'pic.svg',externalMtime:null,assetId:'pa1',autoReload:'off'}).then(()=>d('ok')).catch(e=>d('ERR'+e));");
 await exec(sid,"window.__eigendeck.store.getState().addElement({id:'i',type:'image',assetId:'pa1',position:{x:50,y:50,width:100,height:100}});");
+if(await trust(sid)!=='ok') fail('S1 trust');
 if(await execA(sid,"const d=arguments[arguments.length-1];window.__eigendeck.save().then(()=>d('ok')).catch(e=>d('ERR'+e));")!=='ok') fail('save');
 await sleep(800); await quit(sid);
 unlinkSync(IMG);
 sid=await open(); if(!sid||!await waitSeam(sid)) fail('S2 open');
+await trust(sid);   // re-establish trust in this session; rescans (source now missing)
 let found=false;
 for(let i=0;i<18;i++){ await sleep(600); if(JSON.parse(await miss(sid)).includes('pa1')){found=true;break;} }
 await quit(sid);

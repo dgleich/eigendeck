@@ -230,6 +230,14 @@ on, the "file changed on disk → reload" behavior is the *watcher's* design
 
 ### Transitions
 - **File → New** → Trusted (if global watching on); added links Approved.
+- **Add a linked asset to a trusted deck** (drag-drop / file picker) → its resolved
+  path is Approved. A native file-pick *is* the consent — the same act as trusting.
+- **Relocate a missing asset on a trusted deck** (picker: "point it here") → the
+  picked path is Approved (same consent as add). If the pick reveals a whole folder
+  moved, the offset-relocated **siblings within that moved tree inherit the consent**
+  and are Approved too — the user relocated their asset folder, not just one file.
+  (One approval code path — `approveExternalAbsPath` — serves add, relocate, and
+  offset-relocate, so the rule can't drift.)
 - **Save / Save-As of an untrusted deck** → stays Untrusted (no laundering).
 - **Open a received deck** → Untrusted (U).
 - **Open a trusted deck** (token in ledger, TTL not lapsed) → Trusted; TTL
@@ -269,7 +277,11 @@ without opening the deck-wide window.
 
 - **Human social engineering** (relocate picker: "point it here") — not eliminable;
   mitigated by picker friction + the asset-type allowlist (a non-asset target is
-  Forbidden and can't be watched even if selected).
+  Forbidden and can't be watched even if selected). Offset-relocate auto-approves
+  the moved siblings, which slightly widens this: pointing at one moved file can
+  approve others. Bounded — the siblings must already be *this deck's* linked-and-
+  missing assets, sit within the *exact* moved subtree, and each still pass realpath
+  + the allowlist; nothing outside the deck's existing references becomes readable.
 - **Screenshot oracle** — accepted overt-only: we own the UI (no hidden channel),
   it needs active SE + a visible send, and it isn't the white-text class. Uniform
   rendering of unresolved links keeps existence out of the rendered slide.
@@ -287,6 +299,28 @@ without opening the deck-wide window.
   access, at which point the attacker can read the file without a deck. The
   transmittable link threats are **symlinks and plain path strings**, handled by
   realpath + the allowlist.
+
+## Verification
+
+- **Content gate (unit, exhaustive):** `src/lib/assetTypes.test.mjs` runs the full
+  fake-asset matrix — every content family × every allowed extension (a fake of any
+  type is rejected, every genuine `(bytes,ext)` pairing accepted), garbage bytes
+  rejected under each extension, and non-allowlisted extensions refused whatever the
+  bytes (`bad-extension` fires before content).
+- **State machine (e2e, real app):** the `eigendeck-e2e` rig drives the built app:
+  - `asset-trust-states-probe` — one deck through untrusted → trust → trusted-but-
+    unapproved → approve → revoke, asserting a watched file's bytes follow disk
+    exactly in the "watched" states and never in the others.
+  - `asset-open-untrusted-probe` / `asset-open-trusted-probe` — opening a deck whose
+    linked source changed while closed: untrusted reads nothing (snapshot stays);
+    trusted reconciles on open (and trust persists across the reopen).
+  - `video-watch` / `video-captions-watch` / `asset-missing` / `asset-relocate-offset`
+    / `off-missing` — the watch/reload/missing/relocate flows, each on a trusted deck.
+  - Note: e2e watch fixtures must use real-enough bytes (mp4 `ftyp`, leading `<svg>`,
+    `WEBVTT`) or the content gate rejects them — the gate working as designed. Video
+    *on-open* reconcile is exercised with an image asset because this headless
+    container's WebKit has no media stack and hangs re-rendering a synthetic mp4
+    during init (a container artifact, not a reconcile bug).
 
 ## To decide later (wordsmithing / tuning)
 
