@@ -149,14 +149,8 @@ function prefixStringFull(input) {
   return new TextDecoder('utf-8').decode(u8);
 }
 
-/**
- * Do the bytes actually match the type its extension claims?
- * Interchange formats → native magic / structural parse.
- * Our own demo format (.html) → the eigendeck-demo marker (must be supported).
- * Unknown/disallowed extension → false.
- */
-export function contentMatchesExtension(input, ext) {
-  const e = String(ext).toLowerCase();
+/** Interchange (non-demo) content identity by native magic / structural parse. */
+function matchesInterchangeMagic(input, e) {
   switch (e) {
     case 'png': return startsWithBytes(input, MAGIC.png);
     case 'jpg': case 'jpeg': return startsWithBytes(input, MAGIC.jpg);
@@ -167,9 +161,35 @@ export function contentMatchesExtension(input, ext) {
     case 'mp4': case 'mov': return isMp4(input);
     case 'svg': return isSvg(input);
     case 'ipynb': return isNotebookJson(input);
-    case 'html': { const d = isEigendeckDemo(input); return d.ok && d.supported; }
     default: return false;
   }
+}
+
+/**
+ * Content-identity check → `{ ok, reason }`. THE single place the per-type content
+ * rules live: our demo `.html` via the eigendeck marker (with the distinct
+ * `unsupported-demo-version` reason), everything else via native magic. Both
+ * `contentMatchesExtension()` and `assetTypeGate()` route through this, so the
+ * rules can never diverge. `reason` is null on success, else `content-mismatch` |
+ * `unsupported-demo-version`.
+ */
+export function checkContent(input, ext) {
+  const e = String(ext).toLowerCase();
+  if (e === 'html') {
+    const d = isEigendeckDemo(input);
+    if (!d.ok) return { ok: false, reason: 'content-mismatch' };
+    if (!d.supported) return { ok: false, reason: 'unsupported-demo-version' };
+    return { ok: true, reason: null };
+  }
+  return matchesInterchangeMagic(input, e)
+    ? { ok: true, reason: null }
+    : { ok: false, reason: 'content-mismatch' };
+}
+
+/** Boolean form of {@link checkContent}: do the bytes match the type its
+ *  extension claims? (Interchange → native magic; demo `.html` → the marker.) */
+export function contentMatchesExtension(input, ext) {
+  return checkContent(input, ext).ok;
 }
 
 /**
@@ -188,17 +208,6 @@ export function assetTypeGate(input, resolvedRealPath) {
   const ext = extensionOf(resolvedRealPath);
   const kind = ASSET_EXTENSIONS[ext] ?? null;
   if (!kind) return { ok: false, kind: null, reason: 'bad-extension' };
-  if (ext === 'html') {
-    // Demos re-check inline (not via contentMatchesExtension) to surface the
-    // distinct 'unsupported-demo-version' reason; both paths delegate to the one
-    // isEigendeckDemo() sniff, so there is no second source of truth.
-    const d = isEigendeckDemo(input);
-    if (!d.ok) return { ok: false, kind, reason: 'content-mismatch' };
-    if (!d.supported) return { ok: false, kind, reason: 'unsupported-demo-version' };
-    return { ok: true, kind, reason: null };
-  }
-  if (!contentMatchesExtension(input, ext)) {
-    return { ok: false, kind, reason: 'content-mismatch' };
-  }
-  return { ok: true, kind, reason: null };
+  const c = checkContent(input, ext); // one code path; no per-site re-implementation
+  return { ok: c.ok, kind, reason: c.reason };
 }

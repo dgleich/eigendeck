@@ -134,4 +134,14 @@ describe('adversarial + regression cases', () => {
     const over = new Uint8Array(NOTEBOOK_MAX_BYTES + 1); // one byte past the cap
     expect(contentMatchesExtension(over, 'ipynb')).toBe(false);
   });
+
+  it('contentMatchesExtension and assetTypeGate never disagree (one code path)', () => {
+    const cases = [
+      [PNG, 'png'], ['text', 'png'], [DEMO, 'html'], [RAW_HTML, 'html'],
+      ['<!--eigendeck-demo-v99-->', 'html'], [IPYNB, 'ipynb'], ['x', 'svg'],
+    ];
+    for (const [input, ext] of cases) {
+      expect(assetTypeGate(input, `f.${ext}`).ok).toBe(contentMatchesExtension(input, ext));
+    }
+  });
 });
