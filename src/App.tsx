@@ -1223,6 +1223,27 @@ function App() {
     return () => { if (unlisten) unlisten(); };
   }, []);
 
+  // Asset-security: the Security window writes approvals to the shared ledger and
+  // emits `eigendeck:security-changed`. This window owns the watcher, so re-scan the
+  // deck's linked assets here — newly-approved paths now load + invalidate, so the
+  // canvas/sidebar refresh without needing a reopen. (docs/ASSETS-SECURITY.md)
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    (async () => {
+      try {
+        const { listen: tauriListen } = await import('@tauri-apps/api/event');
+        unlisten = await tauriListen('eigendeck:security-changed', async () => {
+          const store = usePresentationStore.getState();
+          if (!store.projectPath) return;
+          const { scanForChangedAssets, dirname } = await import('./lib/watcherRegistry');
+          const presOverride = store.presentation.config.autoReloadAssets ?? null;
+          await scanForChangedAssets(dirname(store.projectPath), presOverride).catch(() => {});
+        });
+      } catch { /* not in Tauri */ }
+    })();
+    return () => { if (unlisten) unlisten(); };
+  }, []);
+
   // Context menu: global event listener + suppress default
   useEffect(() => {
     const handler = (e: Event) => {

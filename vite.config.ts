@@ -20,6 +20,7 @@ export default defineConfig(async () => ({
       input: {
         main: resolve(__dirname, 'index.html'),
         presenter: resolve(__dirname, 'presenter.html'),
+        security: resolve(__dirname, 'security.html'),
         'export-cli': resolve(__dirname, 'export-cli.html'),
       },
     },

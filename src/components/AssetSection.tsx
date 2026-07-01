@@ -19,7 +19,7 @@ import { showToast } from '../lib/toasts';
 import { effectiveAutoReload, usePreference } from '../lib/preferences';
 import { computeAssetUsage } from '../lib/assetUsage';
 import { useAssetMissing, markAssetMissing, markAssetFound } from '../lib/missingAssets';
-import { SecurityPanel } from './SecurityPanel';
+import { openSecurityWindow } from '../lib/securityWindow';
 
 interface AssetMeta {
   asset_id: string;
@@ -113,7 +113,6 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
   // live-update. We surface this PASSIVELY here (the user is already inspecting the
   // asset) with a one-click Trust — never as an on-open nag. See docs/ASSETS-SECURITY.md.
   const [deckTrusted, setDeckTrusted] = useState<boolean | null>(null);
-  const [showSecurity, setShowSecurity] = useState(false);
   const refreshTrust = useCallback(async () => {
     const token = usePresentationStore.getState().presentation?.config?.deckToken;
     if (!token) { setDeckTrusted(false); return; }
@@ -437,19 +436,18 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
               style={{ padding: '3px 10px', fontSize: 11, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>
               Trust this deck
             </button>
-            <button onClick={() => setShowSecurity(true)} style={{ padding: '3px 10px', fontSize: 11, background: 'transparent', color: '#92400e', border: '1px solid #fde68a', borderRadius: 3, cursor: 'pointer' }}>
+            <button onClick={() => { void openSecurityWindow(); }} style={{ padding: '3px 10px', fontSize: 11, background: 'transparent', color: '#92400e', border: '1px solid #fde68a', borderRadius: 3, cursor: 'pointer' }}>
               Review linked files…
             </button>
           </div>
         </div>
       )}
       {meta.external_path && !(deckTrusted === false && globalAutoReload) && (
-        <button onClick={() => setShowSecurity(true)}
+        <button onClick={() => { void openSecurityWindow(); }}
           style={{ alignSelf: 'flex-start', fontSize: 11, background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: 0 }}>
           Review linked files…
         </button>
       )}
-      {showSecurity && <SecurityPanel onClose={() => { setShowSecurity(false); void refreshTrust(); }} />}
 
       {/* Missing-source alert (#74): the linked file is gone from disk. The
           last-loaded snapshot is still shown, so nothing is lost — but offer a

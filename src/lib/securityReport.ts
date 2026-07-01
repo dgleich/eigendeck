@@ -78,23 +78,45 @@ export async function buildDeckSecurityReport(): Promise<DeckSecurityReport> {
   return { deckHasToken: !!token, trusted, rows };
 }
 
-/** Approve one eligible path (by its resolved target). Trusts the deck first if
- *  needed (minting a token for a legacy deck). Returns the fresh report. */
-export async function approveOne(referencePath: string): Promise<DeckSecurityReport> {
+/** Ensure the current deck has a trusted identity, minting a token for a legacy
+ *  deck. Returns the token. LEDGER-ONLY (no scan) — the caller notifies the main
+ *  window, which owns the watcher, to re-scan. */
+async function ensureTrusted(): Promise<string> {
   const store = usePresentationStore.getState();
   let token = store.presentation.config.deckToken;
   if (!token) { token = crypto.randomUUID(); store.updateConfig({ deckToken: token }); }
+  const { createTrustedDeck, isTrusted: chk } = await import('./trustStore');
+  if (!(await chk(token))) await createTrustedDeck(token);
+  return token;
+}
+
+/** Approve one eligible path (by its resolved target). Trusts the deck first if
+ *  needed. LEDGER-ONLY. Returns the fresh report. */
+export async function approveOne(referencePath: string): Promise<DeckSecurityReport> {
+  const token = await ensureTrusted();
+  const store = usePresentationStore.getState();
   const projectDir = store.projectPath ? dirname(store.projectPath) : '';
-  const { createTrustedDeck, isTrusted: chkTrusted, approvePath } = await import('./trustStore');
-  if (!(await chkTrusted(token))) await createTrustedDeck(token);
   const gate = await resolveAndGate(resolvePosixPath(projectDir, referencePath));
   if (gate.ok && gate.canonicalPath) {
+    const { approvePath } = await import('./trustStore');
     await approvePath(token, gate.canonicalPath);
-    // Resume watching for the newly-approved path.
-    try {
-      const { scanForChangedAssets } = await import('./watcherRegistry');
-      await scanForChangedAssets(projectDir, store.presentation.config.autoReloadAssets ?? null);
-    } catch { /* non-fatal */ }
+  }
+  return buildDeckSecurityReport();
+}
+
+/** Trust the deck + approve ALL its current resolvable paths. LEDGER-ONLY.
+ *  Returns the fresh report. */
+export async function trustAllCurrent(): Promise<DeckSecurityReport> {
+  const token = await ensureTrusted();
+  const store = usePresentationStore.getState();
+  const projectDir = store.projectPath ? dirname(store.projectPath) : '';
+  const { approvePath } = await import('./trustStore');
+  let linked: LinkedRow[] = [];
+  try { linked = await invoke<LinkedRow[]>('db_list_linked_assets'); } catch { linked = []; }
+  for (const a of linked) {
+    if (!a.external_path) continue;
+    const gate = await resolveAndGate(resolvePosixPath(projectDir, a.external_path));
+    if (gate.ok && gate.canonicalPath) await approvePath(token, gate.canonicalPath);
   }
   return buildDeckSecurityReport();
 }
