@@ -1343,6 +1343,20 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
     // Reset prevPresentation so subscriber doesn't diff against old state
     prevPresentation = presentation;
 
+    // Asset-security: refresh this deck's trust TTL on open (docs/ASSETS-SECURITY.md).
+    // No-op for untrusted / received decks (open() only refreshes an effectively-
+    // trusted deck). Fire-and-forget — trust state isn't needed to render, and a
+    // ledger hiccup must not affect open latency or correctness.
+    const deckToken = presentation.config?.deckToken;
+    if (deckToken) {
+      void (async () => {
+        try {
+          const { touchOpen } = await import('../lib/trustStore');
+          await touchOpen(deckToken);
+        } catch (e) { console.warn('[openProject] trust touchOpen failed (non-fatal):', e); }
+      })();
+    }
+
     // Enable write-through for the new project
     sqliteDbPath = dbPath;
     olog(`load complete, kicking off async warmups`);

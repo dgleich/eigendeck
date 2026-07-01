@@ -9,6 +9,24 @@ import { save, message } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { Presentation } from '../types/presentation';
 import { usePresentationStore, openSqliteProject, flushToSqlite, createSeededPresentation } from './presentation';
+import { getPreference } from '../lib/preferences';
+
+/**
+ * File → New / scratch: mark a freshly-CREATED local deck trusted for asset
+ * watching — but only when global watching is on (off = PowerPoint model, so trust
+ * is moot). Trust attaches ONLY here, never on Save/Save-As of a received deck (see
+ * docs/ASSETS-SECURITY.md). Best-effort; never throws.
+ */
+async function markNewDeckTrusted(presentation: Presentation): Promise<void> {
+  const token = presentation.config.deckToken;
+  if (!token || !getPreference('autoReloadAssets')) return;
+  try {
+    const { createTrustedDeck } = await import('../lib/trustStore');
+    await createTrustedDeck(token);
+  } catch (e) {
+    console.warn('[create] markNewDeckTrusted failed (non-fatal):', e);
+  }
+}
 // @ts-ignore — pure JS module shared with the CLI tool
 import { buildExportHtml } from '../lib/exportCore.mjs';
 import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs';
@@ -196,6 +214,7 @@ export async function createProject(): Promise<void> {
     const store = usePresentationStore.getState();
     store.markClean();
     addRecentProject(selected as string, presentation.title);
+    await markNewDeckTrusted(presentation);
   } catch (e) {
     await showError(`Failed to create: ${e}`);
   }
@@ -231,6 +250,7 @@ export async function createScratchProject(): Promise<void> {
     await openSqliteProject(path);
     usePresentationStore.getState().markClean();
     addRecentProject(path, title);
+    await markNewDeckTrusted(presentation);
   } catch (e) {
     await showError(`Failed to create scratch deck: ${e}`);
   }
