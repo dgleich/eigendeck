@@ -70,7 +70,9 @@ describe('storeAssetWithCollisionCheck — invalidation gating', () => {
     // Compute the hash of the bytes we'll "re-add" so the mock returns
     // it consistently for both `meta.hash` (current) and the
     // single-version history (original).
-    const bytes = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    // Valid PNG magic — the add-gate now validates that bytes match the .png
+    // extension, so fixtures must be real (this test is about invalidation, not type).
+    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
     const hashBuf = await crypto.subtle.digest('SHA-256', bytes);
     const hash = Array.from(new Uint8Array(hashBuf))
       .map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -120,7 +122,7 @@ describe('storeAssetWithCollisionCheck — invalidation gating', () => {
     // file they originally added" scenario. db_store_asset writes
     // the original bytes back, and the cache MUST be invalidated
     // because the bytes did change (current → original).
-    const originalBytes = new Uint8Array([1, 2, 3, 4, 5]);
+    const originalBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 9, 8]); // valid PNG magic
     const originalHashBuf = await crypto.subtle.digest('SHA-256', originalBytes);
     const originalHash = Array.from(new Uint8Array(originalHashBuf))
       .map((b) => b.toString(16).padStart(2, '0')).join('');

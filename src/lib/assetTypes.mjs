@@ -15,9 +15,11 @@ export const ASSET_EXTENSIONS = Object.freeze({
   png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image',
   svg: 'image',
   pdf: 'pdf',
-  mp4: 'video', webm: 'video', mov: 'video',
+  // Video/media pickers accept these; all are watchable assets.
+  mp4: 'video', webm: 'video', mov: 'video', m4v: 'video', ogv: 'video', ogg: 'video',
   ipynb: 'notebook',
   html: 'demo',
+  vtt: 'captions',
 });
 
 /** Marker that identifies eigendeck's own demo format (see DEMO_AUTHORING.md). */
@@ -103,7 +105,8 @@ const MAGIC = {
   jpg: [0xff, 0xd8, 0xff],
   gif: [0x47, 0x49, 0x46, 0x38], // "GIF8"
   pdf: [0x25, 0x50, 0x44, 0x46, 0x2d], // "%PDF-"
-  webm: [0x1a, 0x45, 0xdf, 0xa3], // EBML
+  webm: [0x1a, 0x45, 0xdf, 0xa3], // EBML (matroska/webm)
+  ogg: [0x4f, 0x67, 0x67, 0x53], // "OggS" (ogg/ogv)
 };
 
 function isWebp(input) {
@@ -116,6 +119,11 @@ function isWebp(input) {
 function isMp4(input) {
   // ....ftyp at offset 4 (ISO base media / QuickTime)
   return startsWithBytes(input, [0x66, 0x74, 0x79, 0x70], 4); // "ftyp"
+}
+
+function isVtt(input) {
+  // WebVTT: the file must start with "WEBVTT" (after an optional BOM).
+  return /^WEBVTT/.test(prefixString(input, 16));
 }
 
 function isSvg(input) {
@@ -158,9 +166,11 @@ function matchesInterchangeMagic(input, e) {
     case 'webp': return isWebp(input);
     case 'pdf': return startsWithBytes(input, MAGIC.pdf);
     case 'webm': return startsWithBytes(input, MAGIC.webm);
-    case 'mp4': case 'mov': return isMp4(input);
+    case 'ogg': case 'ogv': return startsWithBytes(input, MAGIC.ogg);
+    case 'mp4': case 'mov': case 'm4v': return isMp4(input);
     case 'svg': return isSvg(input);
     case 'ipynb': return isNotebookJson(input);
+    case 'vtt': return isVtt(input);
     default: return false;
   }
 }

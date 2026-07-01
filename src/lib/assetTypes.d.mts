@@ -1,6 +1,6 @@
 // Type declarations for assetTypes.mjs (see the .mjs/.d.mts convention in src/lib).
 
-export type AssetKind = 'image' | 'pdf' | 'video' | 'notebook' | 'demo';
+export type AssetKind = 'image' | 'pdf' | 'video' | 'notebook' | 'demo' | 'captions';
 export type GateReason = 'bad-extension' | 'content-mismatch' | 'unsupported-demo-version';
 export type Bytes = Uint8Array | ArrayBuffer | string;
 

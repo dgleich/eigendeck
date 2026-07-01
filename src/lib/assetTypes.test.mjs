@@ -113,6 +113,18 @@ describe('adversarial + regression cases', () => {
     expect(contentMatchesExtension(MP4, 'mov')).toBe(true);
     expect(contentMatchesExtension(bytes(0x66, 0x74, 0x79, 0x70), 'mp4')).toBe(false); // ftyp at offset 0, not 4
   });
+  it('accepts the extra media/caption types the pickers allow', () => {
+    const OGG = bytes(0x4f, 0x67, 0x67, 0x53, 0, 0);
+    expect(contentMatchesExtension(OGG, 'ogg')).toBe(true);
+    expect(contentMatchesExtension(OGG, 'ogv')).toBe(true);
+    expect(contentMatchesExtension(MP4, 'm4v')).toBe(true);          // m4v is ISO-BMFF (ftyp)
+    expect(contentMatchesExtension('WEBVTT\n\n00:00.000 --> 00:01.000\nhi', 'vtt')).toBe(true);
+    expect(assetTypeGate('WEBVTT\n', '/deck/subs.vtt')).toMatchObject({ ok: true, kind: 'captions' });
+    // and they reject mismatched content
+    expect(contentMatchesExtension('not ogg', 'ogg')).toBe(false);
+    expect(contentMatchesExtension('not vtt', 'vtt')).toBe(false);
+  });
+
   it('empty / truncated input returns false, never throws', () => {
     expect(contentMatchesExtension(bytes(), 'png')).toBe(false);
     expect(contentMatchesExtension(bytes(0x89, 0x50, 0x4e), 'png')).toBe(false); // partial magic

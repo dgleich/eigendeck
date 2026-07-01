@@ -13,11 +13,24 @@ import { showCollisionDialog } from './collisionDialog';
 import { effectiveAutoReload, getPreference } from './preferences';
 import { showToast } from './toasts';
 import { computeAssetUsage } from './assetUsage';
-import { isEigendeckDemo, extensionOf } from './assetTypes.mjs';
+import { assetTypeGate, extensionOf } from './assetTypes.mjs';
+import type { GateReason } from './assetTypes.mjs';
 
-/** An asset being stored as HTML (a demo) — by mime or extension. */
-function isHtmlAsset(mimeType: string, path: string): boolean {
-  return mimeType === 'text/html' || extensionOf(path) === 'html';
+/** User-facing reason an add was refused by the asset-type gate. */
+function addRejectMessage(reason: GateReason | null, path: string): string {
+  const ext = extensionOf(path).toUpperCase() || 'this';
+  switch (reason) {
+    case 'bad-extension':
+      return `“${extensionOf(path) || path}” isn’t a supported asset type. Eigendeck supports images, PDFs, videos, notebooks, captions, and demos.`;
+    case 'unsupported-demo-version':
+      return 'This demo was built for a newer version of Eigendeck and can’t be added here.';
+    case 'content-mismatch':
+      return extensionOf(path) === 'html'
+        ? 'That .html isn’t an Eigendeck demo, so it can’t be added. Only demos authored for Eigendeck can be embedded (see DEMO_AUTHORING) — an arbitrary web page or HTML file can’t.'
+        : `That file isn’t a valid ${ext} (its contents don’t match its name), so it can’t be added.`;
+    default:
+      return 'That file couldn’t be added.';
+  }
 }
 
 // Verbose log of insertion + collision-check decisions. Visible in the
@@ -164,24 +177,19 @@ function maybeWarnUnsavedProject(externalPath: string | null): void {
 }
 
 export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<StoreResult> {
-  // Demo-ingestion invariant (docs/ASSETS-SECURITY.md): an .html asset may only be
-  // added if it is a MARKED eigendeck demo. You cannot turn an arbitrary web page
-  // into a demo — it must be authored for Eigendeck (DEMO_AUTHORING.md). This is the
-  // one false-positive-free content check at add time; interchange types (png/pdf/…)
-  // are the user's own chosen files and get their content check on the watch/read
-  // path. On refusal we surface a toast and report `cancelled` so callers skip
-  // adding the element (their existing cancel path), no throw needed.
-  if (isHtmlAsset(args.mimeType, args.path)) {
-    const d = isEigendeckDemo(args.data);
-    if (!(d.ok && d.supported)) {
-      showToast({
-        kind: 'error',
-        ttl: 9000,
-        message: d.ok
-          ? 'This demo was built for a newer version of Eigendeck and can’t be added here.'
-          : 'That .html isn’t an Eigendeck demo, so it can’t be added. Only demos authored for Eigendeck can be embedded (see DEMO_AUTHORING) — an arbitrary web page or HTML file can’t.',
-      });
-      ilog(`refused non-demo html at "${args.path}" (marker check failed)`);
+  // Validate EVERY add against the same asset-type gate the watcher uses
+  // (docs/ASSETS-SECURITY.md): the bytes must actually be the type the extension
+  // claims (native magic for interchange types; the eigendeck-demo marker for
+  // .html). This makes "what you can add" == "what the watcher will later accept",
+  // so a file can never be added-but-then-silently-rejected-on-reload. On refusal we
+  // surface a toast and report `cancelled` (callers' existing skip-add path), no
+  // throw. Runs on args.data (the bytes we hold) keyed by args.path's extension — no
+  // realpath needed here since we already have the user-chosen bytes.
+  {
+    const gate = assetTypeGate(args.data, args.path);
+    if (!gate.ok) {
+      showToast({ kind: 'error', ttl: 9000, message: addRejectMessage(gate.reason, args.path) });
+      ilog(`refused add "${args.path}" (${gate.reason})`);
       return { assetId: '', path: args.path, cancelled: true };
     }
   }
