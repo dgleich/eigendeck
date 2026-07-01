@@ -4,18 +4,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const { g } = vi.hoisted(() => ({ g: {
   token: undefined as string | undefined,
   trusted: false,
-  gate: { ok: false, kind: null as string | null, reason: 'unreadable' as string | null, bytes: null as Uint8Array | null },
+  approved: false,
+  gate: { ok: false, kind: null as string | null, reason: 'unreadable' as string | null, bytes: null as Uint8Array | null, canonicalPath: null as string | null },
 } }));
 vi.mock('../store/presentation', () => ({
   usePresentationStore: { getState: () => ({ presentation: { config: { deckToken: g.token } } }) },
 }));
-vi.mock('./trustStore', () => ({ isTrusted: async () => g.trusted }));
+vi.mock('./trustStore', () => ({ isTrusted: async () => g.trusted, isPathApproved: async () => g.approved }));
 vi.mock('./assetGate', () => ({ resolveAndGate: async () => g.gate }));
 
 import { deriveRelocateOffset, resolvePosixPath, dirname, gatedExternalRead } from './watcherRegistry';
 
 describe('gatedExternalRead (asset-security read gate)', () => {
-  beforeEach(() => { g.token = undefined; g.trusted = false; g.gate = { ok: false, kind: null, reason: 'unreadable', bytes: null }; });
+  beforeEach(() => { g.token = undefined; g.trusted = false; g.approved = false; g.gate = { ok: false, kind: null, reason: 'unreadable', bytes: null, canonicalPath: null }; });
 
   it('no deck token → gated (received deck never reads)', async () => {
     expect(await gatedExternalRead('/x.png')).toEqual({ status: 'gated' });
@@ -24,20 +25,25 @@ describe('gatedExternalRead (asset-security read gate)', () => {
     g.token = 'tok'; g.trusted = false;
     expect(await gatedExternalRead('/x.png')).toEqual({ status: 'gated' });
   });
-  it('trusted + gate ok → ok with bytes', async () => {
-    g.token = 'tok'; g.trusted = true;
+  it('trusted + gate ok + APPROVED → ok with bytes', async () => {
+    g.token = 'tok'; g.trusted = true; g.approved = true;
     const bytes = new Uint8Array([1, 2, 3]);
-    g.gate = { ok: true, kind: 'image', reason: null, bytes };
+    g.gate = { ok: true, kind: 'image', reason: null, bytes, canonicalPath: '/real/x.png' };
     expect(await gatedExternalRead('/x.png')).toEqual({ status: 'ok', bytes });
   });
+  it('trusted + gate ok but NOT approved → gated (per-path)', async () => {
+    g.token = 'tok'; g.trusted = true; g.approved = false;
+    g.gate = { ok: true, kind: 'image', reason: null, bytes: new Uint8Array([1]), canonicalPath: '/real/x.png' };
+    expect(await gatedExternalRead('/x.png')).toEqual({ status: 'gated' });
+  });
   it('trusted + unreadable → unreadable (preserves #74 missing flag upstream)', async () => {
-    g.token = 'tok'; g.trusted = true;
-    g.gate = { ok: false, kind: null, reason: 'unreadable', bytes: null };
+    g.token = 'tok'; g.trusted = true; g.approved = true;
+    g.gate = { ok: false, kind: null, reason: 'unreadable', bytes: null, canonicalPath: null };
     expect(await gatedExternalRead('/x.png')).toEqual({ status: 'unreadable' });
   });
   it('trusted + wrong-type (content-mismatch) → gated, not unreadable', async () => {
-    g.token = 'tok'; g.trusted = true;
-    g.gate = { ok: false, kind: 'image', reason: 'content-mismatch', bytes: null };
+    g.token = 'tok'; g.trusted = true; g.approved = true;
+    g.gate = { ok: false, kind: 'image', reason: 'content-mismatch', bytes: null, canonicalPath: null };
     expect(await gatedExternalRead('/x.png')).toEqual({ status: 'gated' });
   });
 });

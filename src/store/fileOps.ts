@@ -27,12 +27,23 @@ export async function trustCurrentDeck(): Promise<void> {
     store.updateConfig({ deckToken: token }); // persists via the write-through subscriber
   }
   try {
-    const { createTrustedDeck } = await import('../lib/trustStore');
+    const { createTrustedDeck, approvePath } = await import('../lib/trustStore');
     await createTrustedDeck(token);
     if (store.projectPath) {
-      const { scanForChangedAssets, dirname } = await import('../lib/watcherRegistry');
+      const { scanForChangedAssets, dirname, resolvePosixPath } = await import('../lib/watcherRegistry');
+      const { resolveAndGate } = await import('../lib/assetGate');
+      const projectDir = dirname(store.projectPath);
+      // "Trust this deck" = trust + approve its CURRENT linked paths (per-path gate).
+      // Forbidden/unreadable targets are skipped (never approved). New paths added
+      // later are approved on add; changed targets resurface as unapproved.
+      const linked = await invoke<Array<{ external_path: string }>>('db_list_linked_assets').catch(() => []);
+      for (const a of linked) {
+        if (!a.external_path) continue;
+        const gate = await resolveAndGate(resolvePosixPath(projectDir, a.external_path));
+        if (gate.ok && gate.canonicalPath) await approvePath(token, gate.canonicalPath);
+      }
       const presOverride = store.presentation.config.autoReloadAssets ?? null;
-      await scanForChangedAssets(dirname(store.projectPath), presOverride).catch(() => {});
+      await scanForChangedAssets(projectDir, presOverride).catch(() => {});
     }
     dismissToast('deck-untrusted-watch');
     showToast({ kind: 'success', ttl: 5000, message: 'Deck trusted — its linked files will now live-update.' });

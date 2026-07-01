@@ -176,7 +176,38 @@ function maybeWarnUnsavedProject(externalPath: string | null): void {
   });
 }
 
+/**
+ * Auto-approve a just-added external asset for watching (asset-security): when the
+ * user adds a linked file to a TRUSTED deck, approve its resolved path in the ledger
+ * so it watches without a separate approval step (File→New links "just work"). Keyed
+ * by the SAME resolved canonical the watch path computes. No-op for untrusted decks
+ * (they must be trusted first) or non-linked assets. See docs/ASSETS-SECURITY.md.
+ */
+async function autoApproveExternalPath(externalPath: string): Promise<void> {
+  try {
+    const store = usePresentationStore.getState();
+    const token = store.presentation.config.deckToken;
+    if (!token || !store.projectPath) return;
+    const { isTrusted, approvePath } = await import('./trustStore');
+    if (!(await isTrusted(token))) return;
+    const { resolvePosixPath, dirname } = await import('./watcherRegistry');
+    const { resolveAndGate } = await import('./assetGate');
+    const abs = resolvePosixPath(dirname(store.projectPath), externalPath);
+    const gate = await resolveAndGate(abs);
+    if (gate.ok && gate.canonicalPath) await approvePath(token, gate.canonicalPath);
+  } catch (e) {
+    console.warn('[autoApproveExternalPath] failed (non-fatal):', e);
+  }
+}
+
 export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<StoreResult> {
+  const result = await storeAssetWithCollisionCheckImpl(args);
+  // Added a linked asset to a trusted deck → approve its path so it watches.
+  if (!result.cancelled && args.externalPath) void autoApproveExternalPath(args.externalPath);
+  return result;
+}
+
+async function storeAssetWithCollisionCheckImpl(args: StoreArgs): Promise<StoreResult> {
   // Validate EVERY add against the same asset-type gate the watcher uses
   // (docs/ASSETS-SECURITY.md): the bytes must actually be the type the extension
   // claims (native magic for interchange types; the eigendeck-demo marker for

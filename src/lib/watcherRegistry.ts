@@ -57,12 +57,18 @@ export async function gatedExternalRead(absPath: string): Promise<GatedRead> {
     const { usePresentationStore } = await import('../store/presentation');
     const token = usePresentationStore.getState().presentation?.config?.deckToken;
     if (!token) return { status: 'gated' };
-    const { isTrusted } = await import('./trustStore');
+    const { isTrusted, isPathApproved } = await import('./trustStore');
     if (!(await isTrusted(token))) return { status: 'gated' };
     const { resolveAndGate } = await import('./assetGate');
     const gate = await resolveAndGate(absPath);
-    if (gate.ok && gate.bytes) return { status: 'ok', bytes: gate.bytes };
-    return { status: gate.reason === 'unreadable' ? 'unreadable' : 'gated' };
+    if (!(gate.ok && gate.bytes && gate.canonicalPath)) {
+      return { status: gate.reason === 'unreadable' ? 'unreadable' : 'gated' };
+    }
+    // Per-path approval: a trusted deck reads only paths approved in the ledger
+    // (keyed by the RESOLVED target). Unapproved → gated (snapshot stays) until the
+    // user approves it in the Security panel. See docs/ASSETS-SECURITY.md.
+    if (!(await isPathApproved(token, gate.canonicalPath))) return { status: 'gated' };
+    return { status: 'ok', bytes: gate.bytes };
   } catch {
     return { status: 'unreadable' };
   }
