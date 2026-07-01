@@ -10,6 +10,37 @@ import { invoke } from '@tauri-apps/api/core';
 import { Presentation } from '../types/presentation';
 import { usePresentationStore, openSqliteProject, flushToSqlite, createSeededPresentation } from './presentation';
 import { getPreference } from '../lib/preferences';
+import { showToast, dismissToast } from '../lib/toasts';
+
+/**
+ * Trust the currently-open deck for asset watching (invoked from the untrusted-deck
+ * prompt / a future Security surface). Mints a deck identity token if the deck
+ * predates the feature (persisted via updateConfig write-through), records trust in
+ * the ledger, and re-scans so live watching resumes immediately. See
+ * docs/ASSETS-SECURITY.md.
+ */
+export async function trustCurrentDeck(): Promise<void> {
+  const store = usePresentationStore.getState();
+  let token = store.presentation.config.deckToken;
+  if (!token) {
+    token = crypto.randomUUID();
+    store.updateConfig({ deckToken: token }); // persists via the write-through subscriber
+  }
+  try {
+    const { createTrustedDeck } = await import('../lib/trustStore');
+    await createTrustedDeck(token);
+    if (store.projectPath) {
+      const { scanForChangedAssets, dirname } = await import('../lib/watcherRegistry');
+      const presOverride = store.presentation.config.autoReloadAssets ?? null;
+      await scanForChangedAssets(dirname(store.projectPath), presOverride).catch(() => {});
+    }
+    dismissToast('deck-untrusted-watch');
+    showToast({ kind: 'success', ttl: 5000, message: 'Deck trusted — its linked files will now live-update.' });
+  } catch (e) {
+    console.warn('[trustCurrentDeck] failed:', e);
+    showToast({ kind: 'error', ttl: 6000, message: 'Couldn’t trust this deck.' });
+  }
+}
 
 /**
  * File → New / scratch: mark a freshly-CREATED local deck trusted for asset

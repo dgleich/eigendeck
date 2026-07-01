@@ -1357,6 +1357,32 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
       })();
     }
 
+    // Surface (non-blocking, dismissible) when this deck links external files but
+    // isn't trusted → those files won't live-update; offer one-click Trust. Silent
+    // when the deck has no external links or global watching is off, so
+    // fully-embedded (PowerPoint-style) decks never see it. (docs/ASSETS-SECURITY.md)
+    void (async () => {
+      try {
+        const { getPreference } = await import('../lib/preferences');
+        if (!getPreference('autoReloadAssets')) return;
+        if (deckToken) {
+          const { isTrusted } = await import('../lib/trustStore');
+          if (await isTrusted(deckToken)) return;
+        }
+        const linked = await invoke<unknown[]>('db_list_linked_assets').catch(() => []);
+        if (!Array.isArray(linked) || linked.length === 0) return;
+        const n = linked.length;
+        const { showToast } = await import('../lib/toasts');
+        showToast({
+          key: 'deck-untrusted-watch',
+          kind: 'warning',
+          ttl: 0, // sticky until dismissed or trusted
+          message: `${n} linked file${n === 1 ? '' : 's'} won't live-update — this deck isn't trusted.`,
+          action: { label: 'Trust this deck', onClick: () => { void import('./fileOps').then((m) => m.trustCurrentDeck()); } },
+        });
+      } catch { /* non-fatal */ }
+    })();
+
     // Enable write-through for the new project
     sqliteDbPath = dbPath;
     olog(`load complete, kicking off async warmups`);
