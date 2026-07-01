@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   extensionOf, assetKindForPath, isAllowedExtension,
-  isEigendeckDemo, contentMatchesExtension, assetTypeGate,
+  isEigendeckDemo, contentMatchesExtension, assetTypeGate, NOTEBOOK_MAX_BYTES,
 } from './assetTypes.mjs';
 
 const bytes = (...a) => new Uint8Array(a);
@@ -130,8 +130,8 @@ describe('adversarial + regression cases', () => {
     expect(contentMatchesExtension('<?xml version="1.0"?><svg></svg>', 'svg')).toBe(true);
     expect(contentMatchesExtension('a note mentioning <svg> in prose', 'svg')).toBe(false);
   });
-  it('oversized notebook input is rejected without parsing', () => {
-    const huge = '{'.repeat(33 * 1024 * 1024); // > NOTEBOOK_MAX_BYTES
-    expect(contentMatchesExtension(huge, 'ipynb')).toBe(false);
+  it('a notebook over NOTEBOOK_MAX_BYTES is rejected without parsing', () => {
+    const over = new Uint8Array(NOTEBOOK_MAX_BYTES + 1); // one byte past the cap
+    expect(contentMatchesExtension(over, 'ipynb')).toBe(false);
   });
 });

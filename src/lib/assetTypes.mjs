@@ -124,9 +124,10 @@ function isSvg(input) {
   return /^\s*(?:<\?xml[^>]*>\s*)?(?:<!--[\s\S]*?-->\s*)*<svg[\s>]/i.test(prefixString(input, 512));
 }
 
-/** Upper bound on a notebook we'll parse — a real presentation `.ipynb` is far
- *  smaller; this caps the one whole-file-parse path against a pathological input. */
-const NOTEBOOK_MAX_BYTES = 32 * 1024 * 1024;
+/** Upper bound on a notebook we'll parse. Notebooks with embedded plot/image
+ *  outputs get large, so this is generous; it only caps the one whole-file-parse
+ *  path against a pathological input. */
+export const NOTEBOOK_MAX_BYTES = 128 * 1024 * 1024;
 
 function byteLength(input) {
   if (typeof input === 'string') return input.length;
