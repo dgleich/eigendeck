@@ -505,7 +505,7 @@ export async function inlineSvgExternalRefsFromDisk(
   const text = new TextDecoder('utf-8', { fatal: false }).decode(svgBytes);
   const sourceDir = sourceSvgPath.substring(0, sourceSvgPath.lastIndexOf('/'));
 
-  const { readFile } = await import('@tauri-apps/plugin-fs');
+  const { resolveAndGate } = await import('./assetGate');
   const replacements: Array<[string, string]> = [];
   const failed: string[] = [];
   const httpUnsupported: string[] = [];
@@ -513,13 +513,17 @@ export async function inlineSvgExternalRefsFromDisk(
   for (const ref of refs) {
     if (/^https?:\/\//i.test(ref)) { httpUnsupported.push(ref); continue; }
     const absolute = resolvePosixPath(sourceDir, ref);
-    try {
-      const fileBytes = await readFile(absolute);
-      const dataUri = `data:${mimeFromExt(ref)};base64,${bytesToBase64(fileBytes)}`;
-      replacements.push([ref, dataUri]);
-    } catch (e) {
-      failed.push(`${ref} (${e instanceof Error ? e.message : String(e)})`);
+    // Gate each referenced file: resolve (realpath) + type-check, and only inline
+    // if it's a real IMAGE. Without this a crafted SVG could inline
+    // <image href="../../.ssh/id_rsa"> into the embedded snapshot (add-time exfil).
+    // See docs/ASSETS-SECURITY.md. Non-image / unreadable refs are skipped.
+    const gate = await resolveAndGate(absolute);
+    if (!gate.ok || gate.kind !== 'image' || !gate.bytes) {
+      failed.push(`${ref}${gate.reason ? ` (${gate.reason})` : ''}`);
+      continue;
     }
+    const dataUri = `data:${mimeFromExt(ref)};base64,${bytesToBase64(gate.bytes)}`;
+    replacements.push([ref, dataUri]);
   }
 
   if (replacements.length === 0) return null;
