@@ -179,6 +179,40 @@ fn cli_write_and_exit(path: String, content: String, error: Option<String>) -> R
     std::process::exit(0);
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ResolvedRead {
+    canonical_path: String,
+    bytes: Vec<u8>,
+}
+
+/// The single external-file read primitive for asset security (docs/ASSETS-SECURITY.md).
+/// Resolves `path` to its REAL on-disk target — following every symlink and
+/// normalizing `.`/`..` via `canonicalize` — then reads that resolved target and
+/// returns its canonical path alongside the bytes. Callers gate on the RESOLVED
+/// path + bytes (so a symlink `a.png -> ~/.ssh/id_rsa` is judged as `id_rsa`), and
+/// re-run the gate on every read. Rejects non-regular files (dirs, fifos, devices)
+/// and anything over a sane size cap. Errors (missing/too-big/not-a-file) are
+/// returned so the caller can treat them as "unreadable → not watchable".
+#[tauri::command]
+fn resolve_and_read(path: String) -> Result<ResolvedRead, String> {
+    const MAX_BYTES: u64 = 512 * 1024 * 1024;
+    let canonical = std::fs::canonicalize(&path)
+        .map_err(|e| format!("cannot resolve {}: {}", path, e))?;
+    let meta = std::fs::metadata(&canonical).map_err(|e| e.to_string())?;
+    if !meta.is_file() {
+        return Err(format!("not a regular file: {}", canonical.display()));
+    }
+    if meta.len() > MAX_BYTES {
+        return Err(format!("file too large ({} bytes): {}", meta.len(), canonical.display()));
+    }
+    let bytes = std::fs::read(&canonical).map_err(|e| e.to_string())?;
+    Ok(ResolvedRead {
+        canonical_path: canonical.to_string_lossy().to_string(),
+        bytes,
+    })
+}
+
 /// Set window level above the menu bar on macOS so it covers everything
 /// on the secondary monitor (including the menu bar strip).
 #[tauri::command]
@@ -755,6 +789,7 @@ pub fn run() {
             show_unsaved_dialog,
             cli_export_args,
             cli_write_and_exit,
+            resolve_and_read,
             llmtools::install_llm_tools,
         ])
         // MUST be the first plugin. A second launch (e.g. double-clicking
