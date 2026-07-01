@@ -41,6 +41,9 @@ A run-through of the building blocks:
 - **[Watched assets](assets.md)** — how files you add are embedded *and*
   live-watched, the Watch cascade (global → deck → per-asset), "editable = take
   control" for notebooks, and Reload-from-disk.
+- **[Security: your files stay yours](security.md)** — why decks you *receive* can
+  show everything but can't read live files off your disk until you trust them, the
+  Security Panel, and how the app respects your data and your time.
 - **[Sync and link](sync-and-link.md)** — the two ways to relate elements across
   slides (sync unifies, link animates), the duplicate→free→move animation
   workflow, the S/A badges, promoting a link to a sync, and what copy/paste does.

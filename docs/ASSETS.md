@@ -7,6 +7,12 @@ This is the single source of truth for the *why* behind the asset
 code; schema details that change frequently live in `LLM-EDITING.md`
 and the source.
 
+The **security** of asset reading/watching — when Eigendeck is allowed
+to read an external file off disk, and the deck-trust model that gates
+it — lives in its companion [`ASSETS-SECURITY.md`](ASSETS-SECURITY.md).
+This file owns *how* watching works; that one owns *whether* a path may
+be watched at all.
+
 ## The model in one paragraph
 
 **The asset table is the source of truth for the deck.** Every asset

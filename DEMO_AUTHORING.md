@@ -31,10 +31,50 @@ piece element for each unique name** (as long as the file also uses
 `BroadcastChannel`) — so you just write the branches and the pieces appear. See
 `DEMO_SPEC.md` for the data model.
 
+## Required: the eigendeck demo marker
+
+Every demo **must** begin with the marker `<!--eigendeck-demo-v1-->`, placed
+**immediately after the DOCTYPE**:
+
+```html
+<!DOCTYPE html>
+<!--eigendeck-demo-v1-->
+<html> …
+```
+
+This is not optional decoration — it is how Eigendeck knows a file is a demo it
+authored, and it is enforced at **every** point HTML enters the demo pipeline:
+
+- **Adding a demo** — Eigendeck refuses to add an `.html` file as a demo unless it
+  carries the marker. You cannot turn an arbitrary web page into a demo; it must be
+  built as an eigendeck demo (this guide).
+- **Mounting/rendering** — demo bytes are re-checked before they are mounted, so a
+  deck can never render non-demo HTML as a demo.
+- **Watching an external demo file** — the same check runs on the file on disk
+  (fully resolved), so a *watched* demo path that doesn't resolve to a real marked
+  demo is refused. This is what stops a shared deck from pointing a "demo" at one of
+  your private files.
+
+Rules for the marker:
+
+- **Exact bytes, ASCII, lowercase:** `<!--eigendeck-demo-v1-->`. It's an HTML
+  comment, so it never renders.
+- **Position:** first meaningful line after `<!DOCTYPE html>` (an optional UTF-8 BOM
+  and whitespace before the DOCTYPE are tolerated). Putting it after the DOCTYPE
+  keeps the document in standards mode in every load context.
+- **Versioned:** the `v1` lets the format evolve. Eigendeck accepts marker versions
+  it understands; a newer, unknown version is treated as "not a demo I can run"
+  rather than assumed safe.
+- **The build/injection pipeline preserves it:** vendored-library injection
+  (`/* __D3FORCE__ */` etc.) happens in the body, never the head, so it never
+  disturbs the marker. Tools that generate demos (`build-showcase.mjs`, any "new
+  demo" template) must emit it.
+
 ## Template
 
 ```html
 <!DOCTYPE html>
+<!--eigendeck-demo-v1-->
 <html>
 <head>
 <meta charset="utf-8">
