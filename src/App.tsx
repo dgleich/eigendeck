@@ -82,7 +82,7 @@ if (
     // without a native save dialog.
     exportHtml: () => {
       const s = usePresentationStore.getState();
-      return buildPresentationExportHtml(s.presentation, s.projectPath);
+      return buildPresentationExportHtml(s.presentation);
     },
     // Missing-source registry (#74) — lets E2E assert detect/relocate.
     missingAssets: () => getMissingAssets(),

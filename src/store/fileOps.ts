@@ -339,7 +339,6 @@ export function makeTextElementRenderer(presentation: Presentation) {
  */
 export async function buildPresentationExportHtml(
   presentation: Presentation,
-  projectPath: string | null,
 ): Promise<string> {
   // Embed @font-face data URLs for all fonts actually used.
   const fontFacesCss = await buildEmbeddedFontFacesCSS(presentation);
@@ -383,29 +382,20 @@ export async function buildPresentationExportHtml(
   // Read assets from SQLite for inlining
   return buildExportHtml({
     presentation: hydrated,
+    // Export reads ONLY embedded/cached bytes from SQLite — it NEVER touches disk.
+    // Assets are always embedded (ASSETS.md: the asset table is the source of
+    // truth), so there is no legitimate need for a disk read here; and resolving
+    // `${projectPath}/${path}` with the deck-controlled `path` would let a crafted
+    // deck exfiltrate arbitrary files into the exported artifact
+    // (docs/ASSETS-SECURITY.md — "export → cached-bytes-only"). Missing → throw,
+    // and exportCore emits a placeholder rather than crashing.
     readFile: async (path: string) => {
-      try {
-        const data = await invoke<number[]>('db_get_asset', { path });
-        return new Uint8Array(data);
-      } catch {
-        // Fallback: try reading from disk (for unpacked assets)
-        if (projectPath) {
-          const { readFile } = await import('@tauri-apps/plugin-fs');
-          return readFile(`${projectPath}/${path}`);
-        }
-        throw new Error(`Asset not found: ${path}`);
-      }
+      const data = await invoke<number[]>('db_get_asset', { path });
+      return new Uint8Array(data);
     },
     readTextFile: async (path: string) => {
-      try {
-        const data = await invoke<number[]>('db_get_asset', { path });
-        return new TextDecoder().decode(new Uint8Array(data));
-      } catch {
-        if (projectPath) {
-          return readTextFile(`${projectPath}/${path}`);
-        }
-        throw new Error(`Asset not found: ${path}`);
-      }
+      const data = await invoke<number[]>('db_get_asset', { path });
+      return new TextDecoder().decode(new Uint8Array(data));
     },
     // Pre-render each text element to its own self-contained SVG via the
     // iframe pool — see makeTextElementRenderer.
@@ -438,7 +428,7 @@ export async function buildPresentationExportHtml(
 
 export async function exportPresentation(): Promise<void> {
   const store = usePresentationStore.getState();
-  const { presentation, projectPath } = store;
+  const { presentation } = store;
 
   const selected = await save({
     title: 'Export Presentation',
@@ -448,7 +438,7 @@ export async function exportPresentation(): Promise<void> {
   if (!selected) return;
 
   try {
-    const html = await buildPresentationExportHtml(presentation, projectPath);
+    const html = await buildPresentationExportHtml(presentation);
     await writeTextFile(selected as string, html);
   } catch (e) {
     await showError(`Failed to export: ${e}`);
