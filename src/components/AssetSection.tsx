@@ -108,6 +108,20 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
   const [globalAutoReload] = usePreference('autoReloadAssets');
   const presOverride = usePresentationStore((s) => s.presentation?.config?.autoReloadAssets ?? null);
 
+  // Deck trust state (asset-security): a linked asset on an untrusted deck won't
+  // live-update. We surface this PASSIVELY here (the user is already inspecting the
+  // asset) with a one-click Trust — never as an on-open nag. See docs/ASSETS-SECURITY.md.
+  const [deckTrusted, setDeckTrusted] = useState<boolean | null>(null);
+  const refreshTrust = useCallback(async () => {
+    const token = usePresentationStore.getState().presentation?.config?.deckToken;
+    if (!token) { setDeckTrusted(false); return; }
+    try {
+      const { isTrusted } = await import('../lib/trustStore');
+      setDeckTrusted(await isTrusted(token));
+    } catch { setDeckTrusted(false); }
+  }, []);
+  useEffect(() => { void refreshTrust(); }, [refreshTrust, assetId]);
+
   const fetchMeta = useCallback(async () => {
     const m = await invoke<AssetMeta | null>('db_get_asset_meta_by_id', { assetId }).catch(() => null);
     setMeta(m);
@@ -397,6 +411,34 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
           <div style={{ color: '#999' }}>Embedded snapshot — no linked source file</div>
         )}
       </div>
+
+      {/* Passive trust affordance: a linked asset on an untrusted deck shows the
+          embedded snapshot and won't live-update. Offer a one-click Trust here,
+          in-context — NOT as an on-open prompt. */}
+      {meta.external_path && deckTrusted === false && globalAutoReload && (
+        <div style={{
+          fontSize: 11, padding: '6px 8px',
+          background: '#fffbeb', border: '1px solid #fde68a',
+          borderRadius: 3, color: '#92400e',
+          display: 'flex', flexDirection: 'column', gap: 6,
+        }}>
+          <span>This deck isn’t trusted, so its linked files don’t live-update — you’re seeing the embedded snapshot.</span>
+          <button
+            onClick={async () => {
+              const { trustCurrentDeck } = await import('../store/fileOps');
+              await trustCurrentDeck();
+              await refreshTrust();
+            }}
+            disabled={reloading}
+            style={{
+              alignSelf: 'flex-start', padding: '3px 10px', fontSize: 11,
+              background: '#2563eb', color: '#fff',
+              border: 'none', borderRadius: 3, cursor: 'pointer',
+            }}>
+            Trust this deck
+          </button>
+        </div>
+      )}
 
       {/* Missing-source alert (#74): the linked file is gone from disk. The
           last-loaded snapshot is still shown, so nothing is lost — but offer a
