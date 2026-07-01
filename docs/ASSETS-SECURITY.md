@@ -113,13 +113,13 @@ or approval, by an **asset-type allowlist** on the `realpath`-resolved target. A
 target passes only if **both** hold:
 
 1. **Allowed extension** — in the asset allowlist (images `png/jpg/gif/webp`,
-   `svg`, `pdf`, video `mp4/webm`, notebooks `ipynb`, demos `html`). The file dialog
+   `svg`, `pdf`, video `mp4/webm/mov`, notebooks `ipynb`, demos `html`). The file dialog
    already filters to these; the same list is enforced when approving a received
    deck's paths. Secrets (`id_rsa`, `.env`, `.aws/credentials`, `.netrc`, keychains,
    shell history) fail here by construction (default-deny).
 2. **Content must match the extension** — a `.png` that is really HTML or text is
    rejected. How "matches" is verified depends on who owns the format:
-   - **Interchange formats we don't own** (png/jpg/gif/webp, pdf, mp4/webm, svg,
+   - **Interchange formats we don't own** (png/jpg/gif/webp, pdf, mp4/webm/mov, svg,
      ipynb) → **native type identity**: magic bytes / structural parse (`<svg>`
      root; valid `nbformat` JSON). We can't require our own marker — these come from
      Illustrator, matplotlib, Jupyter, etc.

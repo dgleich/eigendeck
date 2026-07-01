@@ -94,3 +94,44 @@ describe('assetTypeGate (the 0th-order rule on a resolved target)', () => {
       .toMatchObject({ ok: false, reason: 'unsupported-demo-version' });
   });
 });
+
+describe('adversarial + regression cases', () => {
+  const WEBP = bytes(0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50);
+  const MP4 = bytes(0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d);
+
+  it('id_rsa.png double-extension with non-PNG bytes → content-mismatch (content is the sole barrier)', () => {
+    expect(assetTypeGate('-----BEGIN OPENSSH PRIVATE KEY-----', '/tmp/id_rsa.png'))
+      .toMatchObject({ ok: false, reason: 'content-mismatch' });
+  });
+  it('.jpeg content match works (mapped but previously untested)', () => {
+    expect(contentMatchesExtension(JPG, 'jpeg')).toBe(true);
+    expect(assetTypeGate(JPG, '/deck/photo.jpeg')).toMatchObject({ ok: true, kind: 'image' });
+  });
+  it('webp / mp4 / mov offset magic', () => {
+    expect(contentMatchesExtension(WEBP, 'webp')).toBe(true);
+    expect(contentMatchesExtension(MP4, 'mp4')).toBe(true);
+    expect(contentMatchesExtension(MP4, 'mov')).toBe(true);
+    expect(contentMatchesExtension(bytes(0x66, 0x74, 0x79, 0x70), 'mp4')).toBe(false); // ftyp at offset 0, not 4
+  });
+  it('empty / truncated input returns false, never throws', () => {
+    expect(contentMatchesExtension(bytes(), 'png')).toBe(false);
+    expect(contentMatchesExtension(bytes(0x89, 0x50, 0x4e), 'png')).toBe(false); // partial magic
+    expect(isEigendeckDemo(bytes()).ok).toBe(false);
+    expect(assetTypeGate(bytes(), '/deck/x.png')).toMatchObject({ ok: false });
+  });
+  it('marker tolerates whitespace before DOCTYPE and between DOCTYPE and marker', () => {
+    expect(isEigendeckDemo('  \n<!DOCTYPE html>\n\n  <!--eigendeck-demo-v1-->').ok).toBe(true);
+  });
+  it('marker is case-sensitive and rejects leading-zero versions ("exact bytes")', () => {
+    expect(isEigendeckDemo('<!--EIGENDECK-DEMO-V1-->').ok).toBe(false);
+    expect(isEigendeckDemo('<!--eigendeck-demo-v01-->').ok).toBe(false);
+  });
+  it('svg must be a LEADING <svg root, not just contain the string', () => {
+    expect(contentMatchesExtension('<?xml version="1.0"?><svg></svg>', 'svg')).toBe(true);
+    expect(contentMatchesExtension('a note mentioning <svg> in prose', 'svg')).toBe(false);
+  });
+  it('oversized notebook input is rejected without parsing', () => {
+    const huge = '{'.repeat(33 * 1024 * 1024); // > NOTEBOOK_MAX_BYTES
+    expect(contentMatchesExtension(huge, 'ipynb')).toBe(false);
+  });
+});

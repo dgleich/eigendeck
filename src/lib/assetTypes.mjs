@@ -88,7 +88,9 @@ export function isEigendeckDemo(input) {
   let s = prefixString(input, 512).replace(/^\s+/, '');
   const doctype = s.match(/^<!doctype\s+html\s*>/i);
   if (doctype) s = s.slice(doctype[0].length).replace(/^\s+/, '');
-  const m = s.match(/^<!--eigendeck-demo-v(\d+)-->/);
+  // Canonical version only — no leading zeros ("exact bytes" contract). v01 is not
+  // a valid marker, so it fails closed rather than aliasing to v1.
+  const m = s.match(/^<!--eigendeck-demo-v([1-9]\d*)-->/);
   if (!m) return { ok: false, version: null, supported: false };
   const version = Number(m[1]);
   return { ok: true, version, supported: SUPPORTED_DEMO_VERSIONS.has(version) };
@@ -117,11 +119,22 @@ function isMp4(input) {
 }
 
 function isSvg(input) {
-  // Text/XML: an <svg root somewhere near the top (after optional xml decl/comments).
-  return /<svg[\s>]/i.test(prefixString(input, 512));
+  // Text/XML: a *leading* <svg root — after only an optional BOM/xml-decl/comments,
+  // matching the spec's "<svg> root" (not merely an <svg somewhere in the file).
+  return /^\s*(?:<\?xml[^>]*>\s*)?(?:<!--[\s\S]*?-->\s*)*<svg[\s>]/i.test(prefixString(input, 512));
+}
+
+/** Upper bound on a notebook we'll parse — a real presentation `.ipynb` is far
+ *  smaller; this caps the one whole-file-parse path against a pathological input. */
+const NOTEBOOK_MAX_BYTES = 32 * 1024 * 1024;
+
+function byteLength(input) {
+  if (typeof input === 'string') return input.length;
+  return input instanceof Uint8Array ? input.length : input.byteLength;
 }
 
 function isNotebookJson(input) {
+  if (byteLength(input) > NOTEBOOK_MAX_BYTES) return false;
   try {
     const o = JSON.parse(prefixStringFull(input));
     return !!o && typeof o === 'object' && ('nbformat' in o || Array.isArray(o.cells));
@@ -159,15 +172,25 @@ export function contentMatchesExtension(input, ext) {
 }
 
 /**
- * The full 0th-order gate on a resolved target: allowed extension AND content that
- * matches it. Returns { ok, kind, reason }. `reason` is a short machine tag for the
- * UI ("bad-extension" | "content-mismatch" | "unsupported-demo-version").
+ * The full 0th-order gate: allowed extension AND content that matches it.
+ * Returns { ok, kind, reason }; `reason` is a short machine tag for the UI
+ * ("bad-extension" | "content-mismatch" | "unsupported-demo-version").
+ *
+ * SECURITY CONTRACT — `resolvedRealPath` MUST be the fully `realpath`-resolved
+ * target, never a deck-supplied reference name. The extension gate is judged on
+ * this path, so the entire symlink defense (`a.png → id_rsa` must be judged as
+ * `id_rsa`) depends on the caller resolving symlinks first. `input` must be the
+ * bytes actually read from that resolved target. Passing an unresolved reference
+ * is a security bug, not a convenience.
  */
-export function assetTypeGate(input, resolvedPath) {
-  const ext = extensionOf(resolvedPath);
+export function assetTypeGate(input, resolvedRealPath) {
+  const ext = extensionOf(resolvedRealPath);
   const kind = ASSET_EXTENSIONS[ext] ?? null;
   if (!kind) return { ok: false, kind: null, reason: 'bad-extension' };
   if (ext === 'html') {
+    // Demos re-check inline (not via contentMatchesExtension) to surface the
+    // distinct 'unsupported-demo-version' reason; both paths delegate to the one
+    // isEigendeckDemo() sniff, so there is no second source of truth.
     const d = isEigendeckDemo(input);
     if (!d.ok) return { ok: false, kind, reason: 'content-mismatch' };
     if (!d.supported) return { ok: false, kind, reason: 'unsupported-demo-version' };
