@@ -19,6 +19,7 @@ import { showToast } from '../lib/toasts';
 import { effectiveAutoReload, usePreference } from '../lib/preferences';
 import { computeAssetUsage } from '../lib/assetUsage';
 import { useAssetMissing, markAssetMissing, markAssetFound } from '../lib/missingAssets';
+import { SecurityPanel } from './SecurityPanel';
 
 interface AssetMeta {
   asset_id: string;
@@ -112,6 +113,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
   // live-update. We surface this PASSIVELY here (the user is already inspecting the
   // asset) with a one-click Trust — never as an on-open nag. See docs/ASSETS-SECURITY.md.
   const [deckTrusted, setDeckTrusted] = useState<boolean | null>(null);
+  const [showSecurity, setShowSecurity] = useState(false);
   const refreshTrust = useCallback(async () => {
     const token = usePresentationStore.getState().presentation?.config?.deckToken;
     if (!token) { setDeckTrusted(false); return; }
@@ -413,8 +415,9 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
       </div>
 
       {/* Passive trust affordance: a linked asset on an untrusted deck shows the
-          embedded snapshot and won't live-update. Offer a one-click Trust here,
-          in-context — NOT as an on-open prompt. */}
+          embedded snapshot and won't live-update. Offer trust + a review link here,
+          in-context — NOT as an on-open prompt. Any linked asset gets a quiet
+          "Review linked files…" that opens the deck-wide Security panel. */}
       {meta.external_path && deckTrusted === false && globalAutoReload && (
         <div style={{
           fontSize: 11, padding: '6px 8px',
@@ -423,22 +426,30 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
           display: 'flex', flexDirection: 'column', gap: 6,
         }}>
           <span>This deck isn’t trusted, so its linked files don’t live-update — you’re seeing the embedded snapshot.</span>
-          <button
-            onClick={async () => {
-              const { trustCurrentDeck } = await import('../store/fileOps');
-              await trustCurrentDeck();
-              await refreshTrust();
-            }}
-            disabled={reloading}
-            style={{
-              alignSelf: 'flex-start', padding: '3px 10px', fontSize: 11,
-              background: '#2563eb', color: '#fff',
-              border: 'none', borderRadius: 3, cursor: 'pointer',
-            }}>
-            Trust this deck
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={async () => {
+                const { trustCurrentDeck } = await import('../store/fileOps');
+                await trustCurrentDeck();
+                await refreshTrust();
+              }}
+              disabled={reloading}
+              style={{ padding: '3px 10px', fontSize: 11, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>
+              Trust this deck
+            </button>
+            <button onClick={() => setShowSecurity(true)} style={{ padding: '3px 10px', fontSize: 11, background: 'transparent', color: '#92400e', border: '1px solid #fde68a', borderRadius: 3, cursor: 'pointer' }}>
+              Review linked files…
+            </button>
+          </div>
         </div>
       )}
+      {meta.external_path && !(deckTrusted === false && globalAutoReload) && (
+        <button onClick={() => setShowSecurity(true)}
+          style={{ alignSelf: 'flex-start', fontSize: 11, background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: 0 }}>
+          Review linked files…
+        </button>
+      )}
+      {showSecurity && <SecurityPanel onClose={() => { setShowSecurity(false); void refreshTrust(); }} />}
 
       {/* Missing-source alert (#74): the linked file is gone from disk. The
           last-loaded snapshot is still shown, so nothing is lost — but offer a
