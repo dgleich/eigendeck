@@ -33,6 +33,41 @@ const wlog = (...a: unknown[]): void => {
   if (WATCHER_LOG) console.log(`[watcher ${new Date().toISOString().slice(11, 23)}]`, ...a);
 };
 
+/** Result of the asset-security read gate. `gated` = deliberately blocked (skip
+ *  silently, snapshot stays); `unreadable` = the file is gone/erred (caller may
+ *  flag the asset missing per #74); `ok` carries the safe resolved bytes. */
+export type GatedRead =
+  | { status: 'ok'; bytes: Uint8Array }
+  | { status: 'gated' }
+  | { status: 'unreadable' };
+
+/**
+ * The asset-security read gate for external files (docs/ASSETS-SECURITY.md).
+ * Every disk read of a watched/linked asset goes through this. It:
+ *  - reads the CURRENTLY-OPEN deck's token from the store; no token → 'gated';
+ *  - requires the deck to be TRUSTED (a received/untrusted deck performs ZERO disk
+ *    reads → 'gated', the embedded snapshot stays);
+ *  - resolves via resolveAndGate so realpath + the asset-type allowlist apply even
+ *    to trusted decks (a symlink to a non-asset / wrong-type file → 'gated'), and a
+ *    genuinely missing/erroring file → 'unreadable'.
+ * Never throws. Dynamic imports avoid a static cycle with the store.
+ */
+export async function gatedExternalRead(absPath: string): Promise<GatedRead> {
+  try {
+    const { usePresentationStore } = await import('../store/presentation');
+    const token = usePresentationStore.getState().presentation?.config?.deckToken;
+    if (!token) return { status: 'gated' };
+    const { isTrusted } = await import('./trustStore');
+    if (!(await isTrusted(token))) return { status: 'gated' };
+    const { resolveAndGate } = await import('./assetGate');
+    const gate = await resolveAndGate(absPath);
+    if (gate.ok && gate.bytes) return { status: 'ok', bytes: gate.bytes };
+    return { status: gate.reason === 'unreadable' ? 'unreadable' : 'gated' };
+  } catch {
+    return { status: 'unreadable' };
+  }
+}
+
 interface SubscribedAsset {
   /** Real stable asset_id from the assets table — what db_store_asset
    *  needs to version the right row (NOT a path-derived placeholder). */
@@ -167,9 +202,18 @@ class WatcherRegistry {
     const sinceLast = Date.now() - entry.lastHandledAt;
     if (sinceLast < COALESCE_MS) { wlog(`handleChange coalesced (${sinceLast}ms since last) for "${absPath}"`); return; }
     entry.lastHandledAt = Date.now();
+    // Asset-security gate: untrusted deck or a blocked target → skip silently
+    // (snapshot stays). Only a genuinely unreadable/missing source flags #74.
+    const read = await gatedExternalRead(absPath);
+    if (read.status === 'gated') { wlog(`handleChange gated (untrusted/blocked) for "${absPath}"`); return; }
+    if (read.status === 'unreadable') {
+      wlog(`handleChange unreadable "${absPath}" → mark ${entry.assets.size} missing (#74)`);
+      for (const { assetId, path } of entry.assets.values()) markAssetMissing(assetId, path);
+      return;
+    }
+    const bytes = read.bytes;
     try {
-      const { readFile, stat } = await import('@tauri-apps/plugin-fs');
-      const bytes = await readFile(absPath);
+      const { stat } = await import('@tauri-apps/plugin-fs');
       const st = await stat(absPath).catch(() => null);
       const mtime = st?.mtime ? st.mtime.toISOString() : null;
       wlog(`handleChange read ${bytes.length} bytes from "${absPath}" mtime=${mtime} → fanout to ${entry.assets.size} asset(s)`);
@@ -193,10 +237,7 @@ class WatcherRegistry {
         }
       }
     } catch (e) {
-      // Read failed — the source was deleted/renamed/made unreadable while we
-      // were watching it. Flag every asset on this path as missing (#74). The
-      // last-loaded snapshot stays in the DB, so the slide keeps rendering.
-      console.warn(`[watcher] readFile/stat "${absPath}" FAILED:`, e);
+      console.warn(`[watcher] store "${absPath}" FAILED:`, e);
       for (const { assetId, path } of entry.assets.values()) {
         markAssetMissing(assetId, path);
       }
@@ -296,7 +337,18 @@ export async function scanForChangedAssets(
   const globalDefault = getPreference('autoReloadAssets');
   wlog(`scanForChangedAssets: ${linked.length} linked asset(s), presOverride=${presOverride ?? 'default'}, globalAutoReload=${globalDefault}`);
   if (linked.length === 0) return { checked: 0, reloaded: 0 };
-  const { stat, readFile } = await import('@tauri-apps/plugin-fs');
+  // Asset-security: an untrusted / received deck performs ZERO disk access on open
+  // — not even the #74 existence stat. Skip the whole scan; the embedded snapshots
+  // render. (docs/ASSETS-SECURITY.md.) Trusted decks scan as before, with each
+  // byte-read routed through the gate for realpath + type safety.
+  {
+    const { usePresentationStore } = await import('../store/presentation');
+    const token = usePresentationStore.getState().presentation?.config?.deckToken;
+    if (!token) return { checked: 0, reloaded: 0 };
+    const { isTrusted } = await import('./trustStore');
+    if (!(await isTrusted(token))) { wlog('scanForChangedAssets skipped — deck untrusted'); return { checked: 0, reloaded: 0 }; }
+  }
+  const { stat } = await import('@tauri-apps/plugin-fs');
   for (const a of linked) {
     const absPath = resolvePosixPath(projectDir, a.external_path);
     // Existence check is UNGATED by the auto-reload toggle: a missing source
@@ -324,7 +376,13 @@ export async function scanForChangedAssets(
         // roundtrip: mtime drifted but bytes didn't change. db_store_
         // asset's short-circuit path updates the stored mtime even
         // when bytes match, so future scans won't loop.
-        const bytes = await readFile(absPath);
+        // Gated read (deck already established trusted above): resolveAndGate
+        // applies realpath + the asset-type check. A blocked target → skip; a
+        // vanished/erroring file → flag missing (#74).
+        const read = await gatedExternalRead(absPath);
+        if (read.status === 'gated') { wlog(`  gated ${a.asset_id.slice(0, 8)} path="${a.path}"`); continue; }
+        if (read.status === 'unreadable') { markAssetMissing(a.asset_id, a.path ?? a.external_path); continue; }
+        const bytes = read.bytes;
         const diskHash = await sha256Hex(bytes);
         await invoke('db_store_asset', {
           path: a.path ?? absPath.split('/').pop() ?? a.asset_id,
@@ -395,7 +453,7 @@ export async function relocateMissingByOffset(
   if (!offset) return { relocated: 0, checked: 0 };
   const { oldPrefix, newPrefix } = offset;
   const linked = await invoke<LinkedAssetRow[]>('db_list_linked_assets').catch(() => [] as LinkedAssetRow[]);
-  const { stat, readFile } = await import('@tauri-apps/plugin-fs');
+  const { stat } = await import('@tauri-apps/plugin-fs');
   let relocated = 0, checked = 0;
   for (const a of linked) {
     if (a.asset_id === skipAssetId || !isAssetMissing(a.asset_id)) continue;
@@ -404,7 +462,10 @@ export async function relocateMissingByOffset(
     const candidate = newPrefix + absOld.slice(oldPrefix.length);
     checked++;
     try {
-      const bytes = await readFile(candidate);
+      // Gated read: untrusted deck or a blocked/wrong-type relocation target → skip.
+      const read = await gatedExternalRead(candidate);
+      if (read.status !== 'ok') continue;
+      const bytes = read.bytes;
       const st = await stat(candidate).catch(() => null);
       await invoke('db_store_asset', {
         path: a.path ?? candidate.split('/').pop() ?? a.asset_id,

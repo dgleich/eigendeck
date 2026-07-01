@@ -14,7 +14,8 @@ import { usePresentationStore } from '../store/presentation';
 import { HelpText } from './HelpText';
 import { invalidateRenderedAsset } from '../lib/assetRenderer';
 import { storeAssetRaw } from '../lib/assetInsert';
-import { dirname, resolvePosixPath } from '../lib/watcherRegistry';
+import { dirname, resolvePosixPath, gatedExternalRead } from '../lib/watcherRegistry';
+import { showToast } from '../lib/toasts';
 import { effectiveAutoReload, usePreference } from '../lib/preferences';
 import { computeAssetUsage } from '../lib/assetUsage';
 import { useAssetMissing, markAssetMissing, markAssetFound } from '../lib/missingAssets';
@@ -135,9 +136,20 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
     if (!meta?.external_path || !projectPath) return;
     setReloading(true);
     try {
-      const { readFile, stat } = await import('@tauri-apps/plugin-fs');
       const absPath = resolvePosixPath(dirname(projectPath), meta.external_path);
-      const bytes = await readFile(absPath);
+      // Asset-security: reload-from-disk is deck-gated. Untrusted deck / blocked
+      // target → refuse with a hint (trust happens in the Security surface); a
+      // genuinely missing source → flag missing (#74).
+      const read = await gatedExternalRead(absPath);
+      if (read.status === 'gated') {
+        showToast({ kind: 'warning', ttl: 8000, message: 'This deck isn’t trusted, so reloading from disk is off. Trust the deck to enable live updates.' });
+        return;
+      }
+      if (read.status === 'unreadable') {
+        markAssetMissing(meta.asset_id, meta.path ?? meta.external_path);  // #74
+        return;
+      }
+      const { stat } = await import('@tauri-apps/plugin-fs');
       const st = await stat(absPath).catch(() => null);
       const mtime = st?.mtime ? st.mtime.toISOString() : null;
       await storeAssetRaw({
@@ -147,7 +159,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
         externalMtime: mtime,
         assetId: meta.asset_id,
         autoReload: null,
-      }, bytes);
+      }, read.bytes);
       await invalidateRenderedAsset(meta.asset_id);
       markAssetFound(meta.asset_id);  // read succeeded — source is back (#74)
     } catch (e) {
@@ -169,8 +181,18 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
     if (!picked || typeof picked !== 'string') return;
     setReloading(true);
     try {
-      const { readFile, stat } = await import('@tauri-apps/plugin-fs');
-      const bytes = await readFile(picked);
+      // Gated read of the user-picked file: untrusted deck → refuse (trust first);
+      // a file whose real target isn't a watchable asset type → refuse.
+      const read = await gatedExternalRead(picked);
+      if (read.status === 'gated') {
+        showToast({ kind: 'warning', ttl: 8000, message: 'Can’t link that file: either this deck isn’t trusted, or the file isn’t a supported asset type.' });
+        return;
+      }
+      if (read.status === 'unreadable') {
+        showToast({ kind: 'error', ttl: 8000, message: 'Couldn’t read that file.' });
+        return;
+      }
+      const { stat } = await import('@tauri-apps/plugin-fs');
       const st = await stat(picked).catch(() => null);
       const mtime = st?.mtime ? st.mtime.toISOString() : null;
       await storeAssetRaw({
@@ -180,7 +202,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
         externalMtime: mtime,
         assetId: meta.asset_id,
         autoReload: null,
-      }, bytes);
+      }, read.bytes);
       await invalidateRenderedAsset(meta.asset_id);
       markAssetFound(meta.asset_id);
       window.dispatchEvent(new CustomEvent('eigendeck:asset-changed', { detail: { assetId: meta.asset_id } }));
@@ -191,7 +213,6 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
       const { relocateMissingByOffset } = await import('../lib/watcherRegistry');
       const r = await relocateMissingByOffset(projectDir, meta.asset_id, oldAbs, picked);
       if (r.relocated > 0) {
-        const { showToast } = await import('../lib/toasts');
         showToast({
           message: `Relocated ${r.relocated} more file${r.relocated === 1 ? '' : 's'} in the same folder.`,
           kind: 'success',
