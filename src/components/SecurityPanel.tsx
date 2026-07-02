@@ -48,6 +48,25 @@ function fmtWhen(at: number | null): string {
   if (ms < 7 * day) { const d = Math.round(ms / day); return d <= 1 ? 'yesterday' : `${d} days ago`; }
   return new Date(at).toLocaleDateString();
 }
+// Plain, accurate copy for a blocked row, keyed by WHY the gate rejected it. Most
+// blocked files are benign (an older or hand-made file that isn't a recognized type),
+// so this describes rather than accuses.
+function blockedText(referencePath: string, reason: string | null): string {
+  const ext = (referencePath.split('.').pop() || '').toUpperCase();
+  const isHtml = ext === 'HTML';
+  switch (reason) {
+    case 'unsupported-demo-version':
+      return 'This demo was built with a newer Eigendeck. Update Eigendeck to run it.';
+    case 'bad-extension':
+      return `Eigendeck doesn't load ${ext || 'this kind of'} files.`;
+    case 'content-mismatch':
+      return isHtml
+        ? "Not a recognized Eigendeck demo (it may be an older or hand-made HTML file), so it won't run live."
+        : `This file's contents don't match a ${ext || 'file'} of that type, so Eigendeck won't load it.`;
+    default:
+      return "Eigendeck can't use this file, so it won't be loaded.";
+  }
+}
 function howLabel(reason: string | null): string {
   switch (reason) {
     case 'add': return 'added';
@@ -186,7 +205,7 @@ function StatusBand({ kase, report, busy, onTrust, onReconfirm, onWatchDeck, onO
         <><b>You trust this deck.</b>{trustedAt ? ` Trusted ${fmtWhen(trustedAt)}.` : ''} Any files added or changed since then are listed below for approval.</>);
     case 'E':
       return box('#fffbeb', '#fde68a', '#92400e',
-        <><b>This deck isn't trusted.</b> You got it from somewhere else. It displays right now. Everything is embedded, but its {counts.eligible} link{counts.eligible === 1 ? '' : 's'} to files on your computer stay off until you trust it. Trusting reads nothing by itself. You then choose which files to watch.</>,
+        <><b>This deck isn't trusted.</b> You got it from somewhere else. It displays right now, using copies embedded in the deck. Its {counts.total} link{counts.total === 1 ? '' : 's'} to files on your computer stay off until you trust it. Trusting reads nothing by itself. You then choose which files to watch.</>,
         <button onClick={onTrust} disabled={busy} style={primaryBtn}>Trust this deck</button>);
     case 'F':
       return box('#fffbeb', '#fde68a', '#92400e',
@@ -199,9 +218,8 @@ function BlockedBand({ n }: { n: number }): React.ReactElement {
   return (
     <div style={{ border: '1px solid #fca5a5', background: '#fee2e2', borderRadius: 6, padding: '10px 12px', marginBottom: 12, color: '#991b1b' }}>
       <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>
-        <b>⚠ {n} link{n === 1 ? '' : 's'} in this deck {n === 1 ? "doesn't" : "don't"} point to presentation files.</b> Eigendeck
-        will never use them in the presentation, trusted or not. This usually means a file was replaced or corrupted on disk.
-        It can also mean a link was tampered with to point somewhere it shouldn't. Review the ⚠ rows below.
+        <b>⚠ {n} linked file{n === 1 ? '' : 's'} can't be used by Eigendeck, so {n === 1 ? "it won't" : "they won't"} be loaded.</b> This
+        usually means an older or unrecognized file. Occasionally it means a link points somewhere unexpected. Review the ⚠ rows below.
       </div>
     </div>
   );
@@ -285,8 +303,8 @@ function Row({ r, canAct, trusted, busy, onApprove, onRevokeApproval }: {
         {r.state === 'approved' && r.approvedAt && (
           <span style={{ fontSize: 11, color: st.color }}>Approved {fmtWhen(r.approvedAt)} · {howLabel(r.approvedHow)}</span>
         )}
-        {r.state === 'forbidden' && <span style={{ fontSize: 11, color: st.color }}>Not a presentation file. Never read.</span>}
-        {r.state === 'missing' && <span style={{ fontSize: 11, color: st.color }}>Source file not found on disk. Showing the last-loaded copy. Relocate it from the asset inspector.</span>}
+        {r.state === 'forbidden' && <span style={{ fontSize: 11, color: st.color }}>{blockedText(r.referencePath, r.reason)}</span>}
+        {r.state === 'missing' && <span style={{ fontSize: 11, color: st.color }}>Source file not found on disk. Eigendeck is showing the last saved copy.</span>}
         <span style={{ flex: 1 }} />
         {r.state === 'approved' && canAct && (
           <button onClick={() => onRevokeApproval(r.assetId)} disabled={busy} style={ghostBtn}>Revoke approval</button>
