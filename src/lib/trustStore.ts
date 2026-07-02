@@ -154,6 +154,20 @@ export async function revokeDeck(token: string): Promise<boolean> {
   return mutate((l) => l.revoke(token));
 }
 
+/**
+ * Drop the in-memory ledger cache so the next access reloads from the appData
+ * file. REQUIRED for multi-window coherence: the Security window is a SEPARATE
+ * webview with its own module instance + its own cache (see the NOTE on `mutate`).
+ * When one window mutates the shared ledger, the other must invalidate before it
+ * reads/mutates — else it acts on a stale copy (e.g. approving against a ledger
+ * that predates the trust the other window just wrote → the approve no-ops).
+ * Wired to `eigendeck:security-changed` (main window) and `security:init`
+ * (Security window).
+ */
+export function invalidateLedgerCache(): void {
+  _ledger = null;
+}
+
 /** Test seam: forget the cached ledger so the next call reloads from disk. */
 export function _resetForTests(): void {
   _ledger = null;

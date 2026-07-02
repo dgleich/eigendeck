@@ -12,6 +12,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { emit } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { usePresentationStore } from '../store/presentation';
 import { buildDeckSecurityReport, approveOne, approveDirectory, type DeckSecurityReport, type RowState } from '../lib/securityReport';
 
 const STATE_STYLE: Record<RowState, { label: string; color: string; bg: string }> = {
@@ -51,6 +52,22 @@ export function SecurityWindowApp(): React.ReactElement {
   const doApproveDir = async (dir: string) => {
     setBusy(true);
     try { setReport(await approveDirectory(dir)); notifyMain(); } finally { setBusy(false); }
+  };
+  // Stop trusting: drops trust AND every approval for this deck. Unlike trusting
+  // (which mints + SAVES a token to the deck file, so it must go through the main
+  // window), revoke only writes the shared appData ledger — so it persists from
+  // here directly. The still-live watcher's next read is then gated off (untrusted
+  // → snapshot only). notifyMain re-scans + refreshes the sidebar.
+  const doRevoke = async () => {
+    const token = usePresentationStore.getState().presentation.config.deckToken;
+    if (!token) return;
+    setBusy(true);
+    try {
+      const { revokeDeck } = await import('../lib/trustStore');
+      await revokeDeck(token);
+      setReport(await buildDeckSecurityReport());
+      notifyMain();
+    } finally { setBusy(false); }
   };
   const closeWindow = () => { void getCurrentWebviewWindow().close(); };
 
@@ -139,6 +156,14 @@ export function SecurityWindowApp(): React.ReactElement {
           <p style={{ color: '#999', fontSize: 11, marginTop: 14 }}>
             Blocked files aren’t a watchable type (e.g. not an image/PDF/video) and can’t be approved.
           </p>
+          {report.trusted && (
+            <div style={{ borderTop: '1px solid #eee', marginTop: 16, paddingTop: 12 }}>
+              <button onClick={doRevoke} disabled={busy} style={dangerBtn}>Stop trusting this deck</button>
+              <span style={{ fontSize: 11, color: '#999', marginLeft: 10 }}>
+                Forgets trust and all approvals; linked files stop updating. The deck still displays (embedded copies).
+              </span>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -152,4 +177,8 @@ const primaryBtn: React.CSSProperties = {
 const smallBtn: React.CSSProperties = {
   padding: '3px 10px', fontSize: 11, background: '#2563eb', color: '#fff',
   border: 'none', borderRadius: 3, cursor: 'pointer',
+};
+const dangerBtn: React.CSSProperties = {
+  padding: '5px 12px', fontSize: 12, background: '#fff', color: '#991b1b',
+  border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer',
 };

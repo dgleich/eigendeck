@@ -1288,6 +1288,11 @@ function App() {
         unlisten = await tauriListen('eigendeck:security-changed', async () => {
           const store = usePresentationStore.getState();
           if (!store.projectPath) return;
+          // The Security window (a separate webview with its own ledger cache) just
+          // mutated the shared appData ledger — drop our stale cache so the re-scan
+          // and subsequent gate reads see the new approvals/revocations.
+          const { invalidateLedgerCache } = await import('./lib/trustStore');
+          invalidateLedgerCache();
           const { scanForChangedAssets, dirname } = await import('./lib/watcherRegistry');
           const presOverride = store.presentation.config.autoReloadAssets ?? null;
           await scanForChangedAssets(dirname(store.projectPath), presOverride).catch(() => {});

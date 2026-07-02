@@ -31,11 +31,16 @@ function SecurityRoot(): React.ReactElement {
     (async () => {
       unlisten = await listen<{ presentation: Presentation; projectPath: string | null }>(
         'security:init',
-        (event) => {
+        async (event) => {
           usePresentationStore.setState({
             presentation: event.payload.presentation,
             projectPath: event.payload.projectPath,
           });
+          // The main window may have just mutated the shared ledger (e.g. trusted
+          // the deck in response to our request). Drop our stale cache so the
+          // remounted report — and any approve/revoke we then do — reads fresh.
+          const { invalidateLedgerCache } = await import('./lib/trustStore');
+          invalidateLedgerCache();
           setReady(true);
           setInitKey((k) => k + 1);
         },
