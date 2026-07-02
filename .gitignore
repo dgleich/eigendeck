@@ -73,3 +73,6 @@ spike-tools/.venv/
 spike-tools/lite-build/
 spike-tools/jupyter.log
 spike-tools/nohup.out
+
+# Vitest coverage reports
+coverage/

@@ -32,6 +32,22 @@ export default defineConfig(async () => ({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     css: true,
+    // Coverage (npm run test:coverage). v8 provider; report to terminal + HTML.
+    // No hard thresholds yet — establish a baseline first, then ratchet (see #114).
+    coverage: {
+      provider: "v8",
+      reporter: ["text-summary", "html"],
+      reportsDirectory: "./coverage",
+      include: ["src/**/*.{ts,tsx,mjs}"],
+      exclude: [
+        "src/**/*.test.*",
+        "src/**/*.d.mts",
+        "src/test/**",
+        "src/main.tsx",
+        "src/presenter.tsx",
+        "src/security.tsx",
+      ],
+    },
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
