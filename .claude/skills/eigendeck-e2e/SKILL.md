@@ -103,6 +103,33 @@ Rules of thumb:
 - If you're tempted to add an action seam "so the probe is simpler," that's the smell:
   the probe should drive the real control so it exercises the real path.
 
+### Driving the real UI (helpers + hard-won gotchas)
+
+`e2e/_ui.mjs` has the shared real-UI drivers (open app, window-handle switch, the
+Security window trust/approve/revoke, `dragElementToX`). Use them instead of seams.
+Gotchas that cost hours (all encoded in `_ui.mjs`):
+
+- **Identify the main window by the `__eigendeck` seam, never by handle index.**
+  Opening/closing windows reorders handles; a leftover Security window at `handles[0]`
+  gets mistaken for main and every subsequent action targets the wrong window
+  (`findMainHandle`).
+- **Close a second window via its REAL control** (the Security window's `×` button).
+  A probe-side `import('@tauri-apps/api/...')` of a **bare specifier fails at runtime**
+  (only the app's bundled imports resolve), so programmatic `WebviewWindow.close()`/
+  `getCurrentWebviewWindow().close()` from `execute/sync` silently no-ops. A window that
+  won't close gets **reused with its stale first-mount report**.
+- **The ledger cache is per-window.** After the Security window mutates it, the main
+  window must invalidate before reading (`invalidateLedgerCache`, wired to
+  `eigendeck:security-changed`) — else it reads stale approvals. (This was a real bug the
+  action-seams masked.)
+- **The Security window builds its report from the SAVED deck.** If a probe changes the
+  deck via a raw `invoke` (e.g. `db_store_asset`), `save()` before opening the window or
+  it'll show stale linked paths.
+- **System-dialog stand-ins are the sanctioned exception.** `src/lib/filePicker.ts`
+  reads `window.__eigendeckPickFile` (dev/seam builds only) so a probe can drive the real
+  "Relocate…" button + handler without the native picker — the ONE blocked step is
+  stubbed, the app logic still runs.
+
 ## 3. Run a scenario
 
 ```bash
