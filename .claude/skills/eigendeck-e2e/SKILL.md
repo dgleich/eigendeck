@@ -128,7 +128,15 @@ Gotchas that cost hours (all encoded in `_ui.mjs`):
 - **System-dialog stand-ins are the sanctioned exception.** `src/lib/filePicker.ts`
   reads `window.__eigendeckPickFile` (dev/seam builds only) so a probe can drive the real
   "Relocate…" button + handler without the native picker — the ONE blocked step is
-  stubbed, the app logic still runs.
+  stubbed, the app logic still runs. `src/lib/confirmDialog.ts` is the same pattern for a
+  native confirm (`window.__eigendeckConfirm`, e.g. "Stop trusting this deck").
+- **You CAN screenshot to verify layout.** `GET /session/{id}/screenshot` returns a
+  base64 PNG of the CURRENT window and works for normal windows (incl. the Security
+  window — switch to its handle first). Decode with `Buffer.from(v,'base64')` → a `.png`
+  you can open/view. The `/screenshot` HANG is specific to PRESENT MODE's fullscreen
+  compositing; that's the only case needing the `captureElement` seam (modern-screenshot).
+  Screenshotting the real window catches layout bugs (redundant lines, bad spacing) that
+  DOM assertions miss.
 
 ## 3. Run a scenario
 
