@@ -104,12 +104,17 @@ export async function isTrusted(token: string): Promise<boolean> {
 export async function isPathApproved(token: string, resolvedPath: string): Promise<boolean> {
   return (await ledger()).isApproved(token, resolvedPath, Date.now());
 }
+/** Provenance for one approved resolved path: { at, reason } or null. */
+export async function approvalDetail(token: string, resolvedPath: string): Promise<{ at: number; reason: string } | null> {
+  return (await ledger()).approvalDetail(token, resolvedPath);
+}
 
 // --- transitions (persisted) ------------------------------------------------
 
-/** File → New: mark a freshly-created local deck trusted. */
-export async function createTrustedDeck(token: string): Promise<void> {
-  await mutate((l, now) => l.createTrusted(token, now));
+/** File → New: mark a freshly-created local deck trusted. `reason` records how
+ *  ('file-new' by default, 'trusted' for an explicit trust of a received deck). */
+export async function createTrustedDeck(token: string, reason: 'file-new' | 'trusted' = 'file-new'): Promise<void> {
+  await mutate((l, now) => l.createTrusted(token, now, reason));
 }
 /** Explicitly trust a received deck, approving the reviewed assets (assetId → resolved). */
 export async function trustDeck(token: string, approvals: Record<string, string>): Promise<void> {
@@ -117,9 +122,10 @@ export async function trustDeck(token: string, approvals: Record<string, string>
 }
 /** Approve (or re-point) one asset's resolved target on an already-trusted deck.
  *  Replaces the asset's prior entry — a relocate updates in place, never orphaning
- *  the old path. */
-export async function approvePath(token: string, assetId: string, resolvedPath: string): Promise<boolean> {
-  return mutate((l, now) => l.approve(token, assetId, resolvedPath, now));
+ *  the old path. `reason` is provenance (add | relocate | relocate-folder | approve |
+ *  approve-folder | trust-all). */
+export async function approvePath(token: string, assetId: string, resolvedPath: string, reason: string): Promise<boolean> {
+  return mutate((l, now) => l.approve(token, assetId, resolvedPath, reason, now));
 }
 /** Record the eligible (unapproved) resolved paths surfaced by the on-open review nudge,
  *  and report how many are NEW since last open (so the toast can scope its wording). */

@@ -44,7 +44,7 @@ export async function trustCurrentDeck(): Promise<void> {
       for (const a of linked) {
         if (!a.external_path || !a.asset_id) continue;
         const gate = await resolveAndGate(resolvePosixPath(projectDir, a.external_path));
-        if (gate.ok && gate.canonicalPath) await approvePath(token, a.asset_id, gate.canonicalPath);
+        if (gate.ok && gate.canonicalPath) await approvePath(token, a.asset_id, gate.canonicalPath, 'trust-all');
       }
       const presOverride = store.presentation.config.autoReloadAssets ?? null;
       await scanForChangedAssets(projectDir, presOverride).catch(() => {});

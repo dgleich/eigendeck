@@ -208,7 +208,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
       // as add. Keyed by asset id, so it REPLACES this asset's old approval in place
       // (the pre-move path is dropped, not orphaned). No-op for an untrusted deck, so
       // the gate below still refuses with "trust first".
-      await approveExternalAbsPath(meta.asset_id, picked);
+      await approveExternalAbsPath(meta.asset_id, picked, 'relocate');
       // Gated read of the user-picked file: untrusted deck → refuse (trust first);
       // a file whose real target isn't a watchable asset type → refuse.
       const read = await gatedExternalRead(picked);

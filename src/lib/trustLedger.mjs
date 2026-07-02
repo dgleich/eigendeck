@@ -28,8 +28,13 @@ export const TRUST_TTL_MS = TRUST_TTL_DAYS * 24 * 60 * 60 * 1000;
 /**
  * @typedef {Object} DeckEntry
  * @property {boolean} trusted       ever trusted (File → New, or explicitly trusted)
+ * @property {number}  trustedAt     epoch ms the deck was first trusted (provenance)
+ * @property {string}  trustReason   how it became trusted: 'file-new' | 'trusted'
  * @property {number}  lastOpenMs    epoch ms of last open — the TTL is measured from here
- * @property {Record<string,string>} approvals  assetId → approved RESOLVED path
+ * @property {Record<string,{resolved:string,at:number,reason:string}>} approvals
+ *           assetId → { approved RESOLVED path, epoch ms approved, why (add | relocate |
+ *           relocate-folder | approve | approve-folder | trust-all) } — provenance so
+ *           the Security window can show when + how each file was approved.
  * @property {string[]} seenEligible  resolved eligible paths already surfaced by the
  *                                    on-open review nudge (to scope "new" vs "seen")
  */
@@ -50,12 +55,28 @@ export class TrustLedger {
    *  even when lapsed (retained-but-inactive), so callers can offer "restore". */
   deckState(token, now) {
     const e = this.decks.get(token);
-    if (!e || !e.trusted) return { status: 'untrusted-new', approvals: [], lapsed: false };
+    if (!e || !e.trusted) return { status: 'untrusted-new', approvals: [], lapsed: false, trustedAt: null, trustReason: null };
     const lapsed = now - e.lastOpenMs > TRUST_TTL_MS;
-    const approvals = uniq(Object.values(e.approvals)); // resolved paths (deduped)
-    return lapsed
-      ? { status: 'untrusted-ttl', approvals, lapsed: true }
-      : { status: 'trusted', approvals, lapsed: false };
+    const approvals = uniq(Object.values(e.approvals).map((a) => a.resolved)); // resolved paths (deduped)
+    return {
+      status: lapsed ? 'untrusted-ttl' : 'trusted',
+      approvals,
+      lapsed,
+      trustedAt: e.trustedAt,
+      trustReason: e.trustReason,
+    };
+  }
+
+  /** Provenance for one approved resolved path: { at, reason } or null. Trusted-only
+   *  (a lapsed deck's retained approvals don't authorize, but their provenance is still
+   *  useful in the re-confirm UI, so this returns them regardless of TTL). */
+  approvalDetail(token, resolvedPath) {
+    const e = this.decks.get(token);
+    if (!e || !e.trusted) return null;
+    for (const a of Object.values(e.approvals)) {
+      if (a.resolved === resolvedPath) return { at: a.at, reason: a.reason };
+    }
+    return null;
   }
 
   /** Is this deck effectively trusted right now (trusted AND not TTL-lapsed)? */
@@ -72,16 +93,24 @@ export class TrustLedger {
 
   // --- transitions (mutating; callers persist afterward) --------------------
 
-  /** File → New: stamp a fresh trusted deck with no approvals yet. */
-  createTrusted(token, now) {
-    this.decks.set(token, { trusted: true, lastOpenMs: now, approvals: {}, seenEligible: [] });
+  /** File → New (or explicit trust): stamp a fresh trusted deck with no approvals yet.
+   *  `reason` records HOW it was trusted ('file-new' by default, or 'trusted'). */
+  createTrusted(token, now, reason = 'file-new') {
+    this.decks.set(token, { trusted: true, trustedAt: now, trustReason: reason, lastOpenMs: now, approvals: {}, seenEligible: [] });
     return this;
   }
 
   /** Explicitly trust a (received) deck, approving the reviewed assets. `approvals`
-   *  is an `{ assetId: resolvedPath }` map. Replaces any prior approval set. */
+   *  is an `{ assetId: resolvedPath }` map; each is stamped now + reason 'trusted'.
+   *  Replaces any prior approval set. */
   trust(token, approvals, now) {
-    this.decks.set(token, { trusted: true, lastOpenMs: now, approvals: normApprovals(approvals), seenEligible: [] });
+    const stamped = {};
+    for (const [assetId, resolved] of Object.entries(approvals || {})) {
+      if (typeof assetId === 'string' && typeof resolved === 'string') {
+        stamped[assetId] = { resolved, at: now, reason: 'trusted' };
+      }
+    }
+    this.decks.set(token, { trusted: true, trustedAt: now, trustReason: 'trusted', lastOpenMs: now, approvals: stamped, seenEligible: [] });
     return this;
   }
 
@@ -102,12 +131,13 @@ export class TrustLedger {
 
   /** Approve (or re-point) ONE asset's resolved target on an already-trusted deck.
    *  REPLACES any prior entry for that asset — so a relocate updates in place and the
-   *  old path is dropped atomically, never orphaned. No-op (returns false) if the deck
-   *  isn't effectively trusted right now. */
-  approve(token, assetId, resolvedPath, now) {
+   *  old path is dropped atomically, never orphaned. `reason` records HOW (add |
+   *  relocate | relocate-folder | approve | approve-folder | trust-all). No-op (returns
+   *  false) if the deck isn't effectively trusted right now. */
+  approve(token, assetId, resolvedPath, reason, now) {
     if (!this.isTrusted(token, now)) return false;
     if (typeof assetId !== 'string' || typeof resolvedPath !== 'string') return false;
-    this.decks.get(token).approvals[assetId] = resolvedPath;
+    this.decks.get(token).approvals[assetId] = { resolved: resolvedPath, at: now, reason: reason || 'approve' };
     return true;
   }
 
@@ -160,7 +190,11 @@ export class TrustLedger {
   serialize() {
     /** @type {Record<string, DeckEntry>} */
     const out = {};
-    for (const [k, v] of this.decks) out[k] = { trusted: v.trusted, lastOpenMs: v.lastOpenMs, approvals: { ...v.approvals }, seenEligible: [...v.seenEligible] };
+    for (const [k, v] of this.decks) {
+      const approvals = {};
+      for (const [id, a] of Object.entries(v.approvals)) approvals[id] = { resolved: a.resolved, at: a.at, reason: a.reason };
+      out[k] = { trusted: v.trusted, trustedAt: v.trustedAt, trustReason: v.trustReason, lastOpenMs: v.lastOpenMs, approvals, seenEligible: [...v.seenEligible] };
+    }
     return out;
   }
 
@@ -174,13 +208,23 @@ function uniq(arr) {
   return Array.isArray(arr) ? [...new Set(arr.filter((x) => typeof x === 'string'))] : [];
 }
 
-/** Coerce a persisted/handed-in approvals value to a clean `{assetId: resolved}` map.
- *  Only string→string entries survive; anything else (arrays, junk) → {}. */
+/** Coerce a persisted/handed-in approvals value to a clean `{assetId: {resolved, at,
+ *  reason}}` map. Accepts the current object form; also tolerates a bare `{assetId:
+ *  resolvedString}` (older shape) → stamped with at:0, reason:'unknown'. Junk dropped. */
 function normApprovals(a) {
   const out = {};
   if (a && typeof a === 'object' && !Array.isArray(a)) {
     for (const [k, v] of Object.entries(a)) {
-      if (typeof k === 'string' && typeof v === 'string') out[k] = v;
+      if (typeof k !== 'string') continue;
+      if (typeof v === 'string') {
+        out[k] = { resolved: v, at: 0, reason: 'unknown' };
+      } else if (v && typeof v === 'object' && typeof v.resolved === 'string') {
+        out[k] = {
+          resolved: v.resolved,
+          at: Number.isFinite(v.at) ? v.at : 0,
+          reason: typeof v.reason === 'string' ? v.reason : 'unknown',
+        };
+      }
     }
   }
   return out;
@@ -189,6 +233,8 @@ function normApprovals(a) {
 function normalizeEntry(v) {
   return {
     trusted: !!(v && v.trusted),
+    trustedAt: v && Number.isFinite(v.trustedAt) ? v.trustedAt : (v && Number.isFinite(v.lastOpenMs) ? v.lastOpenMs : 0),
+    trustReason: v && typeof v.trustReason === 'string' ? v.trustReason : 'trusted',
     lastOpenMs: v && Number.isFinite(v.lastOpenMs) ? v.lastOpenMs : 0,
     approvals: normApprovals(v && v.approvals),
     seenEligible: uniq(v && v.seenEligible),

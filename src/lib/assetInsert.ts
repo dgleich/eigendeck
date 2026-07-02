@@ -185,7 +185,7 @@ function maybeWarnUnsavedProject(externalPath: string | null): void {
  * file "just works" on a trusted deck without a separate approval step (a native
  * file-pick is itself the consent). See docs/ASSETS-SECURITY.md.
  */
-export async function approveExternalAbsPath(assetId: string, absPath: string): Promise<void> {
+export async function approveExternalAbsPath(assetId: string, absPath: string, reason: string): Promise<void> {
   try {
     const token = usePresentationStore.getState().presentation.config.deckToken;
     if (!token || !assetId) return;
@@ -193,7 +193,7 @@ export async function approveExternalAbsPath(assetId: string, absPath: string): 
     if (!(await isTrusted(token))) return;
     const { resolveAndGate } = await import('./assetGate');
     const gate = await resolveAndGate(absPath);
-    if (gate.ok && gate.canonicalPath) await approvePath(token, assetId, gate.canonicalPath);
+    if (gate.ok && gate.canonicalPath) await approvePath(token, assetId, gate.canonicalPath, reason);
   } catch (e) {
     console.warn('[approveExternalAbsPath] failed (non-fatal):', e);
   }
@@ -202,13 +202,13 @@ export async function approveExternalAbsPath(assetId: string, absPath: string): 
 /**
  * Auto-approve a just-added linked asset (keyed by its asset id). Resolves its
  * (possibly relative) external_path against the project dir, then defers to
- * approveExternalAbsPath.
+ * approveExternalAbsPath with reason 'add'.
  */
 async function autoApproveExternalPath(assetId: string, externalPath: string): Promise<void> {
   const store = usePresentationStore.getState();
   if (!store.projectPath) return;
   const { resolvePosixPath, dirname } = await import('./watcherRegistry');
-  await approveExternalAbsPath(assetId, resolvePosixPath(dirname(store.projectPath), externalPath));
+  await approveExternalAbsPath(assetId, resolvePosixPath(dirname(store.projectPath), externalPath), 'add');
 }
 
 export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<StoreResult> {

@@ -473,7 +473,7 @@ export async function relocateMissingByOffset(
       // so it replaces that asset's old approval in place) on the trusted deck — same
       // single approval path as add/relocate — so the gated read accepts it.
       const { approveExternalAbsPath } = await import('./assetInsert');
-      await approveExternalAbsPath(a.asset_id, candidate);
+      await approveExternalAbsPath(a.asset_id, candidate, 'relocate-folder');
       // Gated read: untrusted deck or a blocked/wrong-type relocation target → skip.
       const read = await gatedExternalRead(candidate);
       if (read.status !== 'ok') continue;

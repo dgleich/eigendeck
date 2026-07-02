@@ -89,7 +89,7 @@ async function ensureTrusted(): Promise<string> {
   let token = store.presentation.config.deckToken;
   if (!token) { token = crypto.randomUUID(); store.updateConfig({ deckToken: token }); }
   const { createTrustedDeck, isTrusted: chk } = await import('./trustStore');
-  if (!(await chk(token))) await createTrustedDeck(token);
+  if (!(await chk(token))) await createTrustedDeck(token, 'trusted');
   return token;
 }
 
@@ -113,7 +113,7 @@ export async function approveOne(assetId: string, referencePath: string): Promis
     const gate = await resolveAndGate(resolvePosixPath(projectDir, referencePath));
     if (gate.ok && gate.canonicalPath) {
       const { approvePath } = await import('./trustStore'); // approvePath no-ops if untrusted
-      await approvePath(token, assetId, gate.canonicalPath);
+      await approvePath(token, assetId, gate.canonicalPath, 'approve');
     }
   }
   return buildDeckSecurityReport();
@@ -132,7 +132,7 @@ export async function approveDirectory(resolvedDir: string): Promise<DeckSecurit
     const report = await buildDeckSecurityReport();
     for (const r of report.rows) {
       if (r.state === 'eligible' && r.resolvedPath && r.resolvedDir === resolvedDir) {
-        await approvePath(token, r.assetId, r.resolvedPath);
+        await approvePath(token, r.assetId, r.resolvedPath, 'approve-folder');
       }
     }
   }

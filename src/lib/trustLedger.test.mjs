@@ -11,7 +11,7 @@ const A2 = 'asset-2';
 describe('TrustLedger — untrusted by default', () => {
   it('an unknown deck is untrusted-new with no approvals', () => {
     const l = new TrustLedger();
-    expect(l.deckState('tok', T0)).toEqual({ status: 'untrusted-new', approvals: [], lapsed: false });
+    expect(l.deckState('tok', T0)).toEqual({ status: 'untrusted-new', approvals: [], lapsed: false, trustedAt: null, trustReason: null });
     expect(l.isTrusted('tok', T0)).toBe(false);
     expect(l.isApproved('tok', P, T0)).toBe(false);
   });
@@ -23,20 +23,20 @@ describe('createTrusted + approve (asset-keyed)', () => {
     l.createTrusted('tok', T0);
     expect(l.isTrusted('tok', T0)).toBe(true);
     expect(l.isApproved('tok', P, T0)).toBe(false);   // nothing approved yet
-    expect(l.approve('tok', A1, P, T0)).toBe(true);
+    expect(l.approve('tok', A1, P, 'add', T0)).toBe(true);
     expect(l.isApproved('tok', P, T0)).toBe(true);
     expect(l.isApproved('tok', Q, T0)).toBe(false);   // per-path (via resolved target)
   });
   it('approve is a no-op on an untrusted deck', () => {
     const l = new TrustLedger();
-    expect(l.approve('tok', A1, P, T0)).toBe(false);
+    expect(l.approve('tok', A1, P, 'add', T0)).toBe(false);
     expect(l.isApproved('tok', P, T0)).toBe(false);
   });
   it('re-approving the SAME asset replaces its path in place (relocate) — no orphan', () => {
     const l = new TrustLedger();
     l.createTrusted('tok', T0);
-    l.approve('tok', A1, P, T0);      // approved at the old location
-    l.approve('tok', A1, Q, T0);      // relocate: same asset, new resolved target
+    l.approve('tok', A1, P, 'add', T0);      // approved at the old location
+    l.approve('tok', A1, Q, 'add', T0);      // relocate: same asset, new resolved target
     expect(l.isApproved('tok', Q, T0)).toBe(true);   // new path authorized
     expect(l.isApproved('tok', P, T0)).toBe(false);  // OLD path dropped atomically
     expect(l.deckState('tok', T0).approvals).toEqual([Q]);
@@ -44,8 +44,8 @@ describe('createTrusted + approve (asset-keyed)', () => {
   it('two assets can approve the SAME resolved path (ref-count); one stays after the other drops', () => {
     const l = new TrustLedger();
     l.createTrusted('tok', T0);
-    l.approve('tok', A1, P, T0);
-    l.approve('tok', A2, P, T0);
+    l.approve('tok', A1, P, 'add', T0);
+    l.approve('tok', A2, P, 'add', T0);
     l.reconcile('tok', [A2], T0);     // A1 no longer referenced
     expect(l.isApproved('tok', P, T0)).toBe(true);   // A2 still holds it
   });
@@ -55,8 +55,8 @@ describe('reconcile — drop approvals for unreferenced assets (ledger hygiene)'
   it('removes approvals whose asset is no longer linked; keeps the rest', () => {
     const l = new TrustLedger();
     l.createTrusted('tok', T0);
-    l.approve('tok', A1, P, T0);
-    l.approve('tok', A2, Q, T0);
+    l.approve('tok', A1, P, 'add', T0);
+    l.approve('tok', A2, Q, 'add', T0);
     expect(l.reconcile('tok', [A2], T0)).toBe(1);    // A1 dropped
     expect(l.isApproved('tok', P, T0)).toBe(false);
     expect(l.isApproved('tok', Q, T0)).toBe(true);   // still referenced → kept
@@ -64,7 +64,7 @@ describe('reconcile — drop approvals for unreferenced assets (ledger hygiene)'
   it('keeps a still-referenced asset even if its file is currently missing', () => {
     const l = new TrustLedger();
     l.createTrusted('tok', T0);
-    l.approve('tok', A1, P, T0);
+    l.approve('tok', A1, P, 'add', T0);
     // A1 still referenced by the deck (its id is in keep) though the file may be gone
     expect(l.reconcile('tok', [A1], T0)).toBe(0);
     expect(l.isApproved('tok', P, T0)).toBe(true);
@@ -149,7 +149,7 @@ describe('revoke removes approvals', () => {
     const l = new TrustLedger();
     l.trust('tok', { [A1]: P }, T0);
     l.revoke('tok');
-    expect(l.deckState('tok', T0)).toEqual({ status: 'untrusted-new', approvals: [], lapsed: false });
+    expect(l.deckState('tok', T0)).toEqual({ status: 'untrusted-new', approvals: [], lapsed: false, trustedAt: null, trustReason: null });
   });
 });
 
@@ -165,5 +165,44 @@ describe('serialize / deserialize', () => {
     expect(TrustLedger.deserialize(null).isTrusted('x', T0)).toBe(false);
     const l = TrustLedger.deserialize({ tok: { trusted: true, lastOpenMs: T0, approvals: { [A1]: P, bad: 5, worse: null } } });
     expect(l.deckState('tok', T0).approvals).toEqual([P]); // non-string values dropped
+  });
+  it('deserialize accepts the bare {assetId: resolvedString} shape (stamps unknown provenance)', () => {
+    const l = TrustLedger.deserialize({ tok: { trusted: true, trustedAt: T0, lastOpenMs: T0, approvals: { [A1]: P } } });
+    expect(l.isApproved('tok', P, T0)).toBe(true);
+    expect(l.approvalDetail('tok', P)).toEqual({ at: 0, reason: 'unknown' });
+  });
+});
+
+describe('provenance — timestamps + reasons', () => {
+  it('createTrusted records trustedAt + trustReason; approve records at + reason', () => {
+    const l = new TrustLedger();
+    l.createTrusted('tok', T0);                 // default reason
+    l.approve('tok', A1, P, 'relocate', T0 + 5);
+    const s = l.deckState('tok', T0 + 5);
+    expect(s.trustedAt).toBe(T0);
+    expect(s.trustReason).toBe('file-new');
+    expect(l.approvalDetail('tok', P)).toEqual({ at: T0 + 5, reason: 'relocate' });
+  });
+  it('explicit trust records reason "trusted" for the deck and each approval', () => {
+    const l = new TrustLedger();
+    l.trust('tok', { [A1]: P }, T0);
+    expect(l.deckState('tok', T0).trustReason).toBe('trusted');
+    expect(l.approvalDetail('tok', P)).toEqual({ at: T0, reason: 'trusted' });
+  });
+  it('re-approve (relocate) updates the reason + timestamp in place', () => {
+    const l = new TrustLedger();
+    l.createTrusted('tok', T0);
+    l.approve('tok', A1, P, 'add', T0);
+    l.approve('tok', A1, Q, 'relocate', T0 + 100);
+    expect(l.approvalDetail('tok', P)).toBeNull();               // old path gone
+    expect(l.approvalDetail('tok', Q)).toEqual({ at: T0 + 100, reason: 'relocate' });
+  });
+  it('provenance survives serialize/deserialize', () => {
+    const l = new TrustLedger();
+    l.createTrusted('tok', T0, 'trusted');
+    l.approve('tok', A1, P, 'approve-folder', T0 + 9);
+    const round = TrustLedger.deserialize(JSON.parse(JSON.stringify(l.serialize())));
+    expect(round.deckState('tok', T0 + 9)).toMatchObject({ trustedAt: T0, trustReason: 'trusted' });
+    expect(round.approvalDetail('tok', P)).toEqual({ at: T0 + 9, reason: 'approve-folder' });
   });
 });

@@ -55,14 +55,14 @@ describe('trustStore (persistence + accessors)', () => {
 
   it('approvePath(asset, path) adds to an already-trusted deck', async () => {
     await store.createTrustedDeck('tok');
-    expect(await store.approvePath('tok', A1, P)).toBe(true);
+    expect(await store.approvePath('tok', A1, P, 'add')).toBe(true);
     expect(await store.isPathApproved('tok', P)).toBe(true);
   });
 
   it('re-approving an asset re-points it (relocate) — old path dropped, persists', async () => {
     await store.createTrustedDeck('tok');
-    await store.approvePath('tok', A1, P);
-    await store.approvePath('tok', A1, Q);   // relocate the same asset
+    await store.approvePath('tok', A1, P, 'add');
+    await store.approvePath('tok', A1, Q, 'add');   // relocate the same asset
     expect(await store.isPathApproved('tok', Q)).toBe(true);
     expect(await store.isPathApproved('tok', P)).toBe(false);
     store._resetForTests();
@@ -71,8 +71,8 @@ describe('trustStore (persistence + accessors)', () => {
 
   it('reconcileApprovals drops approvals for unreferenced assets, keeps referenced ones', async () => {
     await store.createTrustedDeck('tok');
-    await store.approvePath('tok', A1, P);
-    await store.approvePath('tok', A2, Q);
+    await store.approvePath('tok', A1, P, 'add');
+    await store.approvePath('tok', A2, Q, 'add');
     const removed = await store.reconcileApprovals('tok', [A2]);   // A1 no longer linked
     expect(removed).toBe(1);
     expect(await store.isPathApproved('tok', P)).toBe(false);
