@@ -133,6 +133,19 @@ describe('computeAssetUsage', () => {
     expect(u.elementCount).toBe(1);
   });
 
+  it('notebook elements match by assetId (regression: showed "unused" in Security)', () => {
+    const nb = { id: 'nb1', type: 'notebook', assetId: 'A', position: { x: 0, y: 0, width: 100, height: 100 } } as SlideElement;
+    const u = computeAssetUsage(pres([slide([nb])]), 'A');
+    expect(u.elementCount).toBe(1);
+  });
+
+  it('file-kind video elements match by assetId; embed videos (no assetId) do not', () => {
+    const fileVid = { id: 'v1', type: 'video', kind: 'file', assetId: 'A', position: { x: 0, y: 0, width: 100, height: 100 } } as SlideElement;
+    const embedVid = { id: 'v2', type: 'video', kind: 'embed', url: 'https://y', position: { x: 0, y: 0, width: 100, height: 100 } } as SlideElement;
+    const u = computeAssetUsage(pres([slide([fileVid, embedVid])]), 'A');
+    expect(u.elementCount).toBe(1);
+  });
+
   it('slide with no bound elements does NOT inflate slideNumbers', () => {
     const p = pres([
       slide([image({ assetId: 'B' })]),  // unrelated asset

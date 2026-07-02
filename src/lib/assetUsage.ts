@@ -11,8 +11,13 @@ import { getSlideNumber } from '../types/presentation';
 
 type AssetBearingElement = { assetId?: string };
 
+// Every element type that carries an `assetId` binding (src/types/presentation.ts):
+// image, demo, demo-piece, notebook, and file-kind video. Omitting notebook/video made
+// their linked assets count as "unused" everywhere usage is shown (e.g. the Security
+// window) and under-counted the blast radius of asset-scoped actions (Restore, collision).
 function isAssetBearing(elType: string): boolean {
-  return elType === 'image' || elType === 'demo' || elType === 'demo-piece';
+  return elType === 'image' || elType === 'demo' || elType === 'demo-piece'
+    || elType === 'notebook' || elType === 'video';
 }
 
 function elementBoundToAsset(
