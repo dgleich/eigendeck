@@ -351,6 +351,11 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
       {src ? (
         <iframe key={reloadKey} ref={iframeRef} src={src} sandbox={DEMO_SANDBOX} title={piece ? `demo-piece: ${piece}` : 'demo'}
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
+      ) : src === null ? (
+        // Blocked by the demo-mount gate: bytes aren't a marked eigendeck demo.
+        <div style={{ padding: 20, color: '#b91c1c', fontSize: 12, lineHeight: 1.4 }}>
+          This isn’t a valid Eigendeck demo, so it isn’t shown.{piece ? ` (piece #${piece})` : ''}
+        </div>
       ) : <div style={{ padding: 20, color: '#999' }}>{piece ? `Demo piece: #${piece}` : 'Demo'}</div>}
       {!interacting && (
         <div className="demo-overlay"

@@ -145,7 +145,7 @@ def make_hyphenpiece():
     # a hyphenated name were truncated (the #44 bug, 'force-graph' -> 'force') the
     # matched branch wouldn't fire and the probe's text check fails.
     demo_html = (
-        "<!DOCTYPE html><html><head><meta charset=utf-8>"
+        "<!DOCTYPE html><!--eigendeck-demo-v1--><html><head><meta charset=utf-8>"
         "<style>html,body{width:100%;height:100%;margin:0}"
         ".hp{font:bold 40px sans-serif;padding:20px}</style></head><body><script>\n"
         "/* BroadcastChannel marker — reads as a multi-piece demo */\n"

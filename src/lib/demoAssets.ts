@@ -90,9 +90,64 @@ export function useAssetUrl(
   return url;
 }
 
-// Convenience aliases (demos use the same machinery, just with a hash
-// for piece routing).
-export const useDemoUrl = useAssetUrl;
+// assetIds whose bytes were checked and are NOT a marked eigendeck demo → don't mount.
+const demoBlockedCache = new Set<string>();
+
+/**
+ * Demo-mount gate (docs/ASSETS-SECURITY.md — "demo-ingestion invariant"): re-check the
+ * eigendeck-demo marker on the bytes BEFORE creating the iframe URL, so a deck can never
+ * RENDER non-demo HTML as a demo even if such bytes got in outside the add/watch gates
+ * (CLI import, hand-edited DB, a pre-marker legacy demo). Returns the blob URL, or null
+ * if the bytes aren't a marked demo (the caller shows a "not a valid demo" notice).
+ */
+async function getDemoUrl(assetId: string | undefined, hash?: string): Promise<string | null> {
+  if (!assetId) return null;
+  if (demoBlockedCache.has(assetId)) return null;
+  let blobUrl = blobCache.get(assetId);
+  if (!blobUrl) {
+    try {
+      const data = await invoke<ArrayBuffer>('db_get_asset_by_id', { assetId });
+      const bytes = new Uint8Array(data);
+      const { isEigendeckDemo } = await import('./assetTypes.mjs');
+      if (!isEigendeckDemo(bytes).ok) { demoBlockedCache.add(assetId); return null; }
+      blobUrl = URL.createObjectURL(new Blob([bytes], { type: 'text/html' }));
+      blobCache.set(assetId, blobUrl);
+    } catch {
+      return null;
+    }
+  }
+  return hash ? `${blobUrl}#${hash}` : blobUrl;
+}
+
+/** React hook for a demo iframe source. Like useAssetUrl, but validates the demo marker
+ *  first (see getDemoUrl). Returns a blob URL, `undefined` while loading, or `null` when
+ *  the bytes are blocked (not a marked eigendeck demo). */
+export function useDemoUrl(assetId: string | undefined, hash?: string): string | null | undefined {
+  const [url, setUrl] = useState<string | null | undefined>(undefined);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (!assetId) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { assetId?: string } | undefined;
+      if (detail?.assetId === assetId) {
+        invalidateAsset(assetId);
+        setRefreshKey((k) => k + 1);
+      }
+    };
+    window.addEventListener('eigendeck:asset-changed', handler);
+    return () => window.removeEventListener('eigendeck:asset-changed', handler);
+  }, [assetId]);
+
+  useEffect(() => {
+    if (!assetId) { setUrl(undefined); return; }
+    let alive = true;
+    getDemoUrl(assetId, hash).then((r) => { if (alive) setUrl(r); });
+    return () => { alive = false; };
+  }, [assetId, hash, refreshKey]);
+
+  return url;
+}
 
 /** Invalidate a specific cached asset (e.g. after re-import). */
 export function invalidateAsset(assetId: string) {
@@ -102,6 +157,7 @@ export function invalidateAsset(assetId: string) {
     blobCache.delete(assetId);
   }
   mimeCache.delete(assetId);
+  demoBlockedCache.delete(assetId); // re-validate the marker on next mount
 }
 
 /** Clean up all cached blob URLs (call on project close) */
