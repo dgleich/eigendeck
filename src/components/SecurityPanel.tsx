@@ -61,6 +61,14 @@ export function SecurityWindowApp(): React.ReactElement {
   const doRevoke = async () => {
     const token = usePresentationStore.getState().presentation.config.deckToken;
     if (!token) return;
+    const title = usePresentationStore.getState().presentation.title || 'this deck';
+    const approved = report?.rows.filter((r) => r.state === 'approved').length ?? 0;
+    const { askConfirm } = await import('../lib/confirmDialog');
+    const ok = await askConfirm(
+      `Stop trusting "${title}"? Its linked files stop updating and all ${approved} approval${approved === 1 ? '' : 's'} are forgotten. The deck still displays fully using the embedded copies. You can trust it again later.`,
+      { title: 'Stop trusting this deck', kind: 'warning', okLabel: 'Stop trusting', cancelLabel: 'Cancel' },
+    );
+    if (!ok) return;
     setBusy(true);
     try {
       const { revokeDeck } = await import('../lib/trustStore');

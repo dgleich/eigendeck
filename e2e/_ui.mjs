@@ -185,6 +185,9 @@ export async function revokeViaUI(sid, mainH) {
   if (!secH) return false;
   await switchTo(sid, secH);
   await waitForText(sid, 'Stop trusting this deck');
+  // "Stop trusting" guards on a NATIVE confirm dialog (WebDriver can't click it) —
+  // preset the sanctioned test stand-in (src/lib/confirmDialog.ts) to answer "yes".
+  await exec(sid, "window.__eigendeckConfirm = true;");
   if (!(await clickButtonWithText(sid, 'Stop trusting this deck'))) { await switchTo(sid, mainH); return false; }
   await sleep(800);
   await closeSecurityWindow(sid, mainH);
