@@ -77,6 +77,28 @@ describe('reconcile — drop approvals for unreferenced assets (ledger hygiene)'
   });
 });
 
+describe('noteEligible — scope the on-open nudge (new vs already-seen)', () => {
+  const R = '/deck/figs/c.png';
+  it('all eligible are NEW the first open, none the next, then the freshly-appeared one', () => {
+    const l = new TrustLedger();
+    l.createTrusted('tok', T0);
+    expect(l.noteEligible('tok', [P, Q], T0)).toEqual({ total: 2, newCount: 2 });
+    expect(l.noteEligible('tok', [P, Q], T0)).toEqual({ total: 2, newCount: 0 }); // seen
+    expect(l.noteEligible('tok', [P, Q, R], T0)).toEqual({ total: 3, newCount: 1 }); // R new
+  });
+  it('is a no-op (0/0) on an untrusted deck', () => {
+    const l = new TrustLedger();
+    expect(l.noteEligible('tok', [P], T0)).toEqual({ total: 0, newCount: 0 });
+  });
+  it('the seen set persists across serialize/deserialize', () => {
+    const l = new TrustLedger();
+    l.createTrusted('tok', T0);
+    l.noteEligible('tok', [P], T0);
+    const round = TrustLedger.deserialize(JSON.parse(JSON.stringify(l.serialize())));
+    expect(round.noteEligible('tok', [P, Q], T0)).toEqual({ total: 2, newCount: 1 }); // P seen, Q new
+  });
+});
+
 describe('trust a received deck (with reviewed assets)', () => {
   it('sets trust + the approved set at once (assetId → resolved map)', () => {
     const l = new TrustLedger();

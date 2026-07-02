@@ -30,6 +30,8 @@ export const TRUST_TTL_MS = TRUST_TTL_DAYS * 24 * 60 * 60 * 1000;
  * @property {boolean} trusted       ever trusted (File → New, or explicitly trusted)
  * @property {number}  lastOpenMs    epoch ms of last open — the TTL is measured from here
  * @property {Record<string,string>} approvals  assetId → approved RESOLVED path
+ * @property {string[]} seenEligible  resolved eligible paths already surfaced by the
+ *                                    on-open review nudge (to scope "new" vs "seen")
  */
 
 /** Deck-level status derived from an entry + the current time. */
@@ -72,15 +74,30 @@ export class TrustLedger {
 
   /** File → New: stamp a fresh trusted deck with no approvals yet. */
   createTrusted(token, now) {
-    this.decks.set(token, { trusted: true, lastOpenMs: now, approvals: {} });
+    this.decks.set(token, { trusted: true, lastOpenMs: now, approvals: {}, seenEligible: [] });
     return this;
   }
 
   /** Explicitly trust a (received) deck, approving the reviewed assets. `approvals`
    *  is an `{ assetId: resolvedPath }` map. Replaces any prior approval set. */
   trust(token, approvals, now) {
-    this.decks.set(token, { trusted: true, lastOpenMs: now, approvals: normApprovals(approvals) });
+    this.decks.set(token, { trusted: true, lastOpenMs: now, approvals: normApprovals(approvals), seenEligible: [] });
     return this;
+  }
+
+  /** Record the deck's currently-ELIGIBLE (unapproved, in-policy) resolved paths that
+   *  the on-open review nudge surfaced, and report how many are NEW since last time.
+   *  Lets the toast scope its wording — a trusted deck newly pointing at unreviewed
+   *  content is the risk to call out ("N NEW files"), vs links you've already seen
+   *  ("N files still…"). Mutating; caller persists. No-op unless effectively trusted. */
+  noteEligible(token, resolvedPaths, now) {
+    if (!this.isTrusted(token, now)) return { total: 0, newCount: 0 };
+    const e = this.decks.get(token);
+    const cur = uniq(resolvedPaths);
+    const seen = new Set(e.seenEligible || []);
+    const newCount = cur.reduce((n, p) => n + (seen.has(p) ? 0 : 1), 0);
+    e.seenEligible = cur; // remember exactly what we surfaced this open
+    return { total: cur.length, newCount };
   }
 
   /** Approve (or re-point) ONE asset's resolved target on an already-trusted deck.
@@ -143,7 +160,7 @@ export class TrustLedger {
   serialize() {
     /** @type {Record<string, DeckEntry>} */
     const out = {};
-    for (const [k, v] of this.decks) out[k] = { trusted: v.trusted, lastOpenMs: v.lastOpenMs, approvals: { ...v.approvals } };
+    for (const [k, v] of this.decks) out[k] = { trusted: v.trusted, lastOpenMs: v.lastOpenMs, approvals: { ...v.approvals }, seenEligible: [...v.seenEligible] };
     return out;
   }
 
@@ -174,5 +191,6 @@ function normalizeEntry(v) {
     trusted: !!(v && v.trusted),
     lastOpenMs: v && Number.isFinite(v.lastOpenMs) ? v.lastOpenMs : 0,
     approvals: normApprovals(v && v.approvals),
+    seenEligible: uniq(v && v.seenEligible),
   };
 }

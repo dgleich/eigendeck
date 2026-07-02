@@ -378,19 +378,27 @@ export async function notifyTrustStatusOnOpen(): Promise<void> {
       return;
     }
 
-    // T-Won-E: trusted + watching on + linked files still awaiting approval.
+    // T-Won-E: trusted + watching on + linked files still awaiting approval. This fires
+    // on EVERY open by design — a trusted deck referencing unreviewed content is the risk
+    // to keep surfacing — but the message is SCOPED to acknowledge prior behavior: NEW
+    // eligible paths (never surfaced before, e.g. added or a changed target) are the
+    // dangerous case and are called out distinctly from ones you've already seen.
     if (state.status !== 'trusted') return;
     if (!getPreference('autoReloadAssets') || store.presentation.config.autoReloadAssets === 'off') return;
     const { buildDeckSecurityReport } = await import('../lib/securityReport');
     const rep = await buildDeckSecurityReport();
-    const n = rep.rows.filter((r) => r.state === 'eligible').length;
-    if (n > 0) {
-      showToast({
-        kind: 'info', ttl: 12000, key: 'deck-eligible-review',
-        message: `${n} linked file${n === 1 ? '' : 's'} ${n === 1 ? 'isn’t' : 'aren’t'} watched — review to approve.`,
-        action: { label: 'Review', onClick: () => void import('../lib/securityWindow').then((m) => m.openSecurityWindow()) },
-      });
-    }
+    const eligible = rep.rows.filter((r) => r.state === 'eligible' && r.resolvedPath).map((r) => r.resolvedPath as string);
+    if (eligible.length === 0) return;
+    const { noteEligibleOnOpen } = await import('../lib/trustStore');
+    const { total, newCount } = await noteEligibleOnOpen(token, eligible);
+    const message = newCount > 0
+      ? `${newCount} NEW linked file${newCount === 1 ? '' : 's'} ${newCount === 1 ? 'isn’t' : 'aren’t'} watched — review to approve.`
+      : `${total} linked file${total === 1 ? '' : 's'} still ${total === 1 ? 'isn’t' : 'aren’t'} watched — review to approve.`;
+    showToast({
+      kind: newCount > 0 ? 'warning' : 'info', ttl: 12000, key: 'deck-eligible-review',
+      message,
+      action: { label: 'Review', onClick: () => void import('../lib/securityWindow').then((m) => m.openSecurityWindow()) },
+    });
   } catch (e) {
     console.warn('[notifyTrustStatusOnOpen] failed (non-fatal):', e);
   }

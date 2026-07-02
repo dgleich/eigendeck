@@ -121,6 +121,11 @@ export async function trustDeck(token: string, approvals: Record<string, string>
 export async function approvePath(token: string, assetId: string, resolvedPath: string): Promise<boolean> {
   return mutate((l, now) => l.approve(token, assetId, resolvedPath, now));
 }
+/** Record the eligible (unapproved) resolved paths surfaced by the on-open review nudge,
+ *  and report how many are NEW since last open (so the toast can scope its wording). */
+export async function noteEligibleOnOpen(token: string, resolvedPaths: string[]): Promise<{ total: number; newCount: number }> {
+  return mutate((l, now) => l.noteEligible(token, resolvedPaths, now));
+}
 /** Ledger hygiene: drop approvals for assets the deck no longer references.
  *  `keepAssetIds` = the deck's current linked asset ids. Persists only when something
  *  was actually removed (avoids churning the ledger file on every save). */

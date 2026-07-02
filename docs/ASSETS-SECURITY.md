@@ -228,9 +228,13 @@ behaves as its T-Woff-\* row even while the deck watches.)
 - **T-Woff-E** — open: snapshot; inspector "eligible — approve". Reload: flag →
   approve → read once.
 - **T-Woff-A** — open: snapshot. Reload: read once (refresh).
-- **T-Won-E** — open: snapshot, not watched; if newly appeared → persistent "N new
-  linked files aren't watched — Review" toast; inspector "eligible — approve".
-  Reload: flag → approve → read + start watching.
+- **T-Won-E** — open: snapshot, not watched; a review toast fires on EVERY open (a
+  trusted deck referencing unreviewed content is the risk to keep surfacing), but the
+  message is scoped by prior behavior: NEW eligible paths (never surfaced before —
+  added, or a changed resolved target) read "N NEW linked files aren't watched —
+  Review" (warning); paths already seen read "N linked files still aren't watched —
+  Review" (info). The seen-set is per-deck in the ledger (`seenEligible`). Inspector:
+  "eligible — approve". Reload: flag → approve → read + start watching.
 - **T-Won-A** — open: snapshot renders; path handed to the watcher (`ASSETS.md`).
   Reload: read now (stays watched).
 
@@ -367,7 +371,10 @@ without opening the deck-wide window.
 - Allowlist contents (extensions + per-format content checks / the demo marker),
   and whether to layer a sensitive-path denylist on top as extra defense.
 - The per-action trust cap number.
-- Toast dismissal memory (session vs "don't ask again for this deck").
+- ~~Toast dismissal memory~~ (decided): the T-Won-E review toast fires on every open of
+  a trusted deck with eligible links — trusted-with-unreviewed-content is the dangerous
+  case, so it stays visible; the wording is scoped new-vs-seen (per-deck `seenEligible`)
+  rather than suppressed.
 - Whether the inspector offers inline approve or always routes to the window.
 
 ## References

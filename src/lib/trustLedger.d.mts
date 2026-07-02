@@ -9,6 +9,8 @@ export interface DeckEntry {
   lastOpenMs: number;
   /** assetId → approved RESOLVED path */
   approvals: Record<string, string>;
+  /** resolved eligible paths already surfaced by the on-open review nudge */
+  seenEligible: string[];
 }
 
 export type DeckStatus = 'untrusted-new' | 'untrusted-ttl' | 'trusted';
@@ -32,6 +34,8 @@ export class TrustLedger {
   approve(token: string, assetId: string, resolvedPath: string, now: number): boolean;
   /** Drop approvals for assets not in `keepAssetIds`; returns the count removed. */
   reconcile(token: string, keepAssetIds: string[], now: number): number;
+  /** Record surfaced eligible paths + report how many are new since last time. */
+  noteEligible(token: string, resolvedPaths: string[], now: number): { total: number; newCount: number };
   open(token: string, now: number): DeckStatus;
   reconfirm(token: string, now: number): boolean;
   revoke(token: string): boolean;
