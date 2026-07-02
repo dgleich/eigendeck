@@ -76,18 +76,21 @@ window that lists, for the deck:
 - whether each is **watched**, **awaiting your approval**, or **refused** (not a
   presentation file).
 
-You approve the files you want watched — individually, or a whole folder at once.
-Refused files are shown so you understand what a deck tried to reach, but they can't
-be approved. You can also see a single file's status right in its **inspector** when
-you select that element on the canvas.
+There are two steps, and they're separate on purpose. First you **Trust this deck** —
+a one-time decision that unlocks watching and, by itself, reads nothing. Then you
+**approve the files** you actually want watched — one at a time, or a whole folder at
+once. (There's no single "trust everything" button; trusting the deck and choosing its
+files are deliberately two decisions.) Refused files are shown so you understand what a
+deck tried to reach, but they can't be approved. You can also see a single file's status
+right in its **inspector** when you select that element on the canvas.
 
 ## Working with a deck someone sent you
 
 1. **Open it.** It displays completely — every image, demo, and notebook. Nothing is
    hidden.
 2. **If you want its linked files to stay live** (update as they change on disk),
-   open the Security Panel, look over the list of files it wants to read, and trust
-   the ones you recognise. Until then it shows the embedded copies it came with.
+   open the Security Panel, click **Trust this deck**, then approve the files (or whole
+   folders) you recognise. Until then it shows the embedded copies it came with.
 3. **If a link points somewhere you don't expect**, don't approve it — the panel
    shows you the real destination precisely so you can catch that.
 4. **Later, if it asks you to re-confirm** (about a month on), that's the trust

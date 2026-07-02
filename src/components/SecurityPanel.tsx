@@ -11,7 +11,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { emit } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
-import { buildDeckSecurityReport, approveOne, trustAllCurrent, type DeckSecurityReport, type RowState } from '../lib/securityReport';
+import { buildDeckSecurityReport, trustThisDeck, approveOne, approveDirectory, type DeckSecurityReport, type RowState } from '../lib/securityReport';
 
 const STATE_STYLE: Record<RowState, { label: string; color: string; bg: string }> = {
   approved:  { label: 'Watched',     color: '#166534', bg: '#dcfce7' },
@@ -29,17 +29,31 @@ export function SecurityWindowApp(): React.ReactElement {
 
   const notifyMain = () => { void emit('eigendeck:security-changed'); };
 
-  const eligibleCount = report?.rows.filter((r) => r.state === 'eligible').length ?? 0;
-
+  // TWO SEPARATE steps, never combined (docs/ASSETS-SECURITY.md):
+  //   1. Trust the deck — a deck-level decision that unlocks watching + approval and
+  //      reads NOTHING on its own.
+  //   2. Approve files — only after the deck is trusted; per file OR a whole folder.
+  const doTrust = async () => {
+    setBusy(true);
+    try { setReport(await trustThisDeck()); notifyMain(); } finally { setBusy(false); }
+  };
   const doApprove = async (assetId: string, referencePath: string) => {
     setBusy(true);
     try { setReport(await approveOne(assetId, referencePath)); notifyMain(); } finally { setBusy(false); }
   };
-  const doTrustAll = async () => {
+  const doApproveDir = async (dir: string) => {
     setBusy(true);
-    try { setReport(await trustAllCurrent()); notifyMain(); } finally { setBusy(false); }
+    try { setReport(await approveDirectory(dir)); notifyMain(); } finally { setBusy(false); }
   };
   const closeWindow = () => { void getCurrentWebviewWindow().close(); };
+
+  // Eligible files grouped by their resolved folder, for the per-folder bulk approve.
+  const eligibleDirs: Array<[string, number]> = report
+    ? Object.entries(report.rows.reduce<Record<string, number>>((m, r) => {
+        if (r.state === 'eligible' && r.resolvedDir) m[r.resolvedDir] = (m[r.resolvedDir] ?? 0) + 1;
+        return m;
+      }, {}))
+    : [];
 
   return (
     <div style={{ padding: 20, maxWidth: 760, margin: '0 auto' }}>
@@ -59,11 +73,34 @@ export function SecurityWindowApp(): React.ReactElement {
         <div style={{ color: '#999', padding: 12 }}>This deck has no linked external files — everything is embedded.</div>
       ) : (
         <>
-          {!report.trusted && eligibleCount > 0 && (
-            <button onClick={doTrustAll} disabled={busy} style={primaryBtn}>
-              Trust this deck &amp; watch all {eligibleCount} file{eligibleCount === 1 ? '' : 's'}
-            </button>
+          {/* Step 1 — trust the deck. Distinct from approving files; reads nothing. */}
+          {!report.trusted && (
+            <div style={{ border: '1px solid #fde68a', background: '#fffbeb', borderRadius: 6, padding: '10px 12px', marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: '#92400e', marginBottom: 8 }}>
+                This deck isn’t trusted, so Eigendeck isn’t reading any of these files — you’re
+                seeing the embedded copies. Trust the deck to <em>choose</em> which files it may
+                read &amp; watch. Trusting reads nothing on its own; you approve files next.
+              </div>
+              <button onClick={doTrust} disabled={busy} style={primaryBtn}>Trust this deck</button>
+            </div>
           )}
+
+          {/* Step 2 — approve files, per folder or per file (trusted decks only). */}
+          {report.trusted && eligibleDirs.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 6 }}>Approve a whole folder:</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {eligibleDirs.map(([dir, n]) => (
+                  <button key={dir} onClick={() => doApproveDir(dir)} disabled={busy}
+                    style={{ ...smallBtn, alignSelf: 'flex-start', textAlign: 'left' }}
+                    title={dir}>
+                    Approve all {n} file{n === 1 ? '' : 's'} in <span style={{ fontFamily: 'monospace' }}>{dir}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
             {report.rows.map((r) => {
               const st = STATE_STYLE[r.state];
@@ -83,7 +120,9 @@ export function SecurityWindowApp(): React.ReactElement {
                     {r.reason && <span style={{ fontSize: 11, color: st.color }}>{r.reason}</span>}
                     <span style={{ flex: 1 }} />
                     {r.state === 'eligible' && (
-                      <button onClick={() => doApprove(r.assetId, r.referencePath)} disabled={busy} style={smallBtn}>Approve</button>
+                      report.trusted
+                        ? <button onClick={() => doApprove(r.assetId, r.referencePath)} disabled={busy} style={smallBtn}>Approve</button>
+                        : <span style={{ fontSize: 11, color: '#999' }}>trust the deck first</span>
                     )}
                   </div>
                 </div>

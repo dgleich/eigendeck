@@ -383,6 +383,11 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
   // the per-asset opt-out (the only knob this UI offers).
   const effective = effectiveAutoReload(meta.auto_reload, presOverride, globalAutoReload);
   const optedOut = meta.auto_reload === 'off';
+  // Deck-level watch INTENT (ignoring this asset's own opt-out): the deck watches only
+  // if global watching is on AND the deck hasn't turned it off. When watching is off
+  // there's nothing to live-update, so the "untrusted → won't update" nudge is noise —
+  // don't show it (matches the PowerPoint model). See docs/ASSETS-SECURITY.md.
+  const deckWatchOn = globalAutoReload && presOverride !== 'off';
   // Why the asset isn't being watched, if it isn't. Used for the caption
   // under the checkbox so the user knows where the off came from.
   const cascadeBlock: 'global' | 'presentation' | 'asset' | null =
@@ -419,36 +424,25 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
         )}
       </div>
 
-      {/* Passive trust affordance: a linked asset on an untrusted deck shows the
-          embedded snapshot and won't live-update. Offer trust + a review link here,
-          in-context — NOT as an on-open prompt. Any linked asset gets a quiet
-          "Review linked files…" that opens the deck-wide Security panel. */}
-      {meta.external_path && deckTrusted === false && globalAutoReload && (
+      {/* Passive trust affordance: a linked asset on an untrusted deck (that WANTS to
+          watch) shows the embedded snapshot and won't live-update. We nudge to the
+          per-file review — there is deliberately NO "trust this deck & watch all files"
+          shortcut; trust is granted by approving individual files. Shown in-context, NOT
+          as an on-open prompt, and only when watching is on (else it's irrelevant). */}
+      {meta.external_path && deckTrusted === false && deckWatchOn && (
         <div style={{
           fontSize: 11, padding: '6px 8px',
           background: '#fffbeb', border: '1px solid #fde68a',
           borderRadius: 3, color: '#92400e',
           display: 'flex', flexDirection: 'column', gap: 6,
         }}>
-          <span>This deck isn’t trusted, so its linked files don’t live-update — you’re seeing the embedded snapshot.</span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={async () => {
-                const { trustCurrentDeck } = await import('../store/fileOps');
-                await trustCurrentDeck();
-                await refreshTrust();
-              }}
-              disabled={reloading}
-              style={{ padding: '3px 10px', fontSize: 11, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer' }}>
-              Trust this deck
-            </button>
-            <button onClick={() => { void openSecurityWindow(); }} style={{ padding: '3px 10px', fontSize: 11, background: 'transparent', color: '#92400e', border: '1px solid #fde68a', borderRadius: 3, cursor: 'pointer' }}>
-              Review linked files…
-            </button>
-          </div>
+          <span>This deck isn’t trusted, so its linked files don’t live-update — you’re seeing the embedded snapshot. Trust the deck &amp; approve files in the Security window to enable updates.</span>
+          <button onClick={() => { void openSecurityWindow(); }} style={{ alignSelf: 'flex-start', padding: '3px 10px', fontSize: 11, background: 'transparent', color: '#92400e', border: '1px solid #fde68a', borderRadius: 3, cursor: 'pointer' }}>
+            Review linked files…
+          </button>
         </div>
       )}
-      {meta.external_path && !(deckTrusted === false && globalAutoReload) && (
+      {meta.external_path && !(deckTrusted === false && deckWatchOn) && (
         <button onClick={() => { void openSecurityWindow(); }}
           style={{ alignSelf: 'flex-start', fontSize: 11, background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: 0 }}>
           Review linked files…

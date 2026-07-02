@@ -89,6 +89,7 @@ MANIFEST=(
   "asset-open-untrusted-probe.mjs|empty.eigendeck||$EMPTY"
   "asset-open-trusted-probe.mjs|empty.eigendeck||$EMPTY"
   "asset-approval-cleanup-probe.mjs|empty.eigendeck||$EMPTY"
+  "asset-watch-warning-probe.mjs|empty.eigendeck||$EMPTY"
 
   # ── sync / link / promote round-trips (built fixture decks) ─────────────
   "roundtrip-probe.mjs|rt.eigendeck|E2E_MODE=linkpromote|python3 $EXFIX/make_roundtrip_decks.py ab \$DECKDIR/rt.json; import_json \$DECKDIR/rt.json"

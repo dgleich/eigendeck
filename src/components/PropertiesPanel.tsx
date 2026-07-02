@@ -315,6 +315,7 @@ export function PropertiesPanel() {
             <PropSection label="Auto-reload Assets">
               <AutoReloadAssetsControl
                 value={presentation.config.autoReloadAssets}
+                deckToken={presentation.config.deckToken}
                 onChange={(v) => updateConfig({ autoReloadAssets: v })} />
             </PropSection>
             <PropSection label="Security">
@@ -1369,29 +1370,50 @@ function PreambleField({
 function AutoReloadAssetsControl({
   value,
   onChange,
+  deckToken,
 }: {
   value: 'on' | 'off' | undefined;
   onChange: (v: 'on' | 'off' | undefined) => void;
+  deckToken?: string;
 }) {
   const [globalDefault] = usePreference('autoReloadAssets');
-  // Checkbox is checked when the effective behavior for this deck is "watch."
-  // That means: not explicitly opted out, AND global is on.
-  const checked = value !== 'off' && globalDefault;
+  // An untrusted deck can't watch anything (docs/ASSETS-SECURITY.md) — a deck with no
+  // token is untrusted by construction; a tokened one is trusted only if it's in the
+  // ledger. Watching is moot until it's trusted, so we grey + uncheck the control and
+  // say why. Refreshes when trust changes (approve in the Security window).
+  const [trusted, setTrusted] = useState<boolean | null>(deckToken ? null : false);
+  useEffect(() => {
+    if (!deckToken) { setTrusted(false); return; }
+    let alive = true;
+    const load = () => import('../lib/trustStore').then((m) => m.isTrusted(deckToken))
+      .then((t) => { if (alive) setTrusted(t); }).catch(() => { if (alive) setTrusted(false); });
+    load();
+    const onChanged = () => load();
+    window.addEventListener('eigendeck:security-changed', onChanged);
+    return () => { alive = false; window.removeEventListener('eigendeck:security-changed', onChanged); };
+  }, [deckToken]);
+
+  const untrusted = trusted === false;
   const optedOut = value === 'off';
+  // Checked only when it will actually watch: trusted, not opted out, global on.
+  const checked = !untrusted && value !== 'off' && globalDefault;
+  const disabled = untrusted || (!globalDefault && !optedOut);
 
   return (
     <div>
-      <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start', cursor: 'pointer' }}>
+      <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start', cursor: disabled ? 'default' : 'pointer', opacity: untrusted ? 0.55 : 1 }}>
         <input
           type="checkbox"
           checked={checked}
-          disabled={!globalDefault && !optedOut}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.checked ? undefined : 'off')}
           style={{ marginTop: 2 }} />
         <span style={{ fontSize: 11 }}>Watch source files for changes</span>
       </label>
       <HelpText style={{ fontSize: 10, marginTop: 4, marginLeft: 22 }}>
-        {!globalDefault && !optedOut ? (
+        {untrusted ? (
+          <>Untrusted decks can’t watch assets. Approve files in Window → Deck Security Settings to enable this.</>
+        ) : !globalDefault && !optedOut ? (
           <>Disabled because the global setting (Cmd+,) is off.</>
         ) : optedOut ? (
           <>Off: nothing in this presentation auto-updates when source files change.</>

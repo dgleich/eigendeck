@@ -13,11 +13,15 @@ import { getPreference } from '../lib/preferences';
 import { showToast, dismissToast } from '../lib/toasts';
 
 /**
- * Trust the currently-open deck for asset watching (invoked from the untrusted-deck
- * prompt / a future Security surface). Mints a deck identity token if the deck
- * predates the feature (persisted via updateConfig write-through), records trust in
- * the ledger, and re-scans so live watching resumes immediately. See
- * docs/ASSETS-SECURITY.md.
+ * Trust the currently-open deck AND approve all its current linked paths at once.
+ *
+ * NOT wired to any UI: the app keeps deck-trust and file-approval as two separate steps
+ * (Trust this deck → then approve files, per file or per folder), and there is
+ * deliberately no combined "trust deck & approve all" button. This helper collapses
+ * both into one call solely as the e2e automation seam (`window.__eigendeck.trustDeck`),
+ * which needs a one-shot way to put a fixture deck into the trusted+watched state. Mints
+ * a deck token if the deck predates the feature, records trust in the ledger, and
+ * re-scans so watching resumes. See docs/ASSETS-SECURITY.md.
  */
 export async function trustCurrentDeck(): Promise<void> {
   const store = usePresentationStore.getState();

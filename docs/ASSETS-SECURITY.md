@@ -263,9 +263,12 @@ on, the "file changed on disk → reload" behavior is the *watcher's* design
 - **Open a trusted deck** (token in ledger, TTL not lapsed) → Trusted; TTL
   refreshed; paths resume stored state; a path new since last-trust is Eligible
   (surfaces per T-Won-E).
-- **Trust a received deck** (Security window: review + approve; "trust folder X",
-  capped per action) → Trusted; reviewed allowed paths Approved; watch toggle
-  unlocks.
+- **Trust a received deck** → TWO distinct steps, never combined. (1) **Trust this
+  deck** (Security window) — a deck-level act that unlocks watching + approval and reads
+  nothing on its own; approves no files. (2) **Approve files** — only after trust, and
+  either per file or per folder ("approve all N files in this folder"). What's forbidden
+  is a single "trust deck **and** approve all files" button that launders the two
+  decisions together.
 - **Trust TTL lapses** (open 30+ days later) → U-ttl; approvals retained-inactive;
   non-blocking toast.
 - **Re-confirm after TTL lapse** → one confirmation restores the prior approvals
@@ -282,15 +285,25 @@ on, the "file changed on disk → reload" behavior is the *watcher's* design
 external path with the path *as referenced*, its *resolved realpath target*, where
 it's used, and its state (approved-green / eligible / Forbidden). Existence info is
 shown only for eligible in-policy paths (Forbidden rows show the reason, not
-exists/missing — this avoids a filesystem-recon oracle). Actions: approve per file;
-"Trust folder X" bulk-approve of the *current* eligible paths (capped per action);
-Forbidden rows have no approve action; approved rows go green and stay. For a
-**U-ttl** deck it shows the previously-approved paths "paused (trust expired)" with
-a single **Re-confirm to resume watching** restore.
+exists/missing — this avoids a filesystem-recon oracle). Two-step actions: first
+**Trust this deck** (deck-level; shown only while untrusted; reads nothing), then
+approve files — **per file** or **per folder** ("Approve all N files in `<dir>`").
+Deck-trust and file-approval are deliberately separate; there is no combined "trust &
+approve all" button. Forbidden rows have no approve action; approved rows go green and
+stay. For a **U-ttl** deck it shows the previously-approved paths "paused (trust
+expired)" with a single **Re-confirm to resume watching** restore.
+
+**Deck inspector (PropertiesPanel → Deck tab).** A **Security → "Linked files &
+security…"** entry opens the window (also under **Window → Deck Security Settings**).
+The **"Watch source files for changes"** control is unchecked + greyed for an
+**untrusted** deck, with the note *"Untrusted decks can't watch assets — approve files
+in Deck Security Settings"* (watching is moot until the deck is trusted).
 
 **Element inspector (per-element, AssetSection).** For a selected linked element,
 shows that asset's status: watched (green) / eligible / **Forbidden** (with the
-destination-forward reason) — so the user learns "this linked file is Forbidden"
+destination-forward reason) — so the user learns "this linked file is Forbidden".
+The untrusted "files won't live-update — review & approve" nudge appears **only when
+watching is on** (deck + global); with watching off it's hidden (nothing to update)
 without opening the deck-wide window.
 
 ## Residuals / non-goals

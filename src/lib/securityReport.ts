@@ -20,6 +20,8 @@ export interface ExternalPathRow {
   referencePath: string;
   /** Fully resolved real target, or null if it couldn't be resolved. */
   resolvedPath: string | null;
+  /** Directory of the resolved target (for "approve all in this folder"), or null. */
+  resolvedDir: string | null;
   state: RowState;
   /** Short reason for forbidden/missing (destination-forward for the UI). */
   reason: string | null;
@@ -70,6 +72,7 @@ export async function buildDeckSecurityReport(): Promise<DeckSecurityReport> {
       assetId: a.asset_id,
       referencePath: a.external_path,
       resolvedPath: gate.canonicalPath ?? null,
+      resolvedDir: gate.canonicalPath ? dirname(gate.canonicalPath) : null,
       state,
       reason,
       usage: usageLabel(a.asset_id),
@@ -90,33 +93,48 @@ async function ensureTrusted(): Promise<string> {
   return token;
 }
 
-/** Approve one eligible asset (by its id + reference path). Trusts the deck first if
- *  needed. LEDGER-ONLY. Returns the fresh report. */
+/** Explicitly TRUST the current deck — the deck-level decision that unlocks watching
+ *  and approval. Approves NO files by itself (paths stay Eligible until approved); this
+ *  is a SEPARATE step from approving files, never combined. Mints a token for a legacy
+ *  deck. Returns the fresh report. See docs/ASSETS-SECURITY.md ("Trust store"). */
+export async function trustThisDeck(): Promise<DeckSecurityReport> {
+  await ensureTrusted();
+  return buildDeckSecurityReport();
+}
+
+/** Approve one eligible asset. REQUIRES the deck to be trusted already — trust is a
+ *  separate, explicit act (trustThisDeck); this never trusts on your behalf. A no-op if
+ *  the deck isn't trusted (approvePath guards it) or the target no longer resolves. */
 export async function approveOne(assetId: string, referencePath: string): Promise<DeckSecurityReport> {
-  const token = await ensureTrusted();
   const store = usePresentationStore.getState();
-  const projectDir = store.projectPath ? dirname(store.projectPath) : '';
-  const gate = await resolveAndGate(resolvePosixPath(projectDir, referencePath));
-  if (gate.ok && gate.canonicalPath) {
-    const { approvePath } = await import('./trustStore');
-    await approvePath(token, assetId, gate.canonicalPath);
+  const token = store.presentation.config.deckToken;
+  if (token) {
+    const projectDir = store.projectPath ? dirname(store.projectPath) : '';
+    const gate = await resolveAndGate(resolvePosixPath(projectDir, referencePath));
+    if (gate.ok && gate.canonicalPath) {
+      const { approvePath } = await import('./trustStore'); // approvePath no-ops if untrusted
+      await approvePath(token, assetId, gate.canonicalPath);
+    }
   }
   return buildDeckSecurityReport();
 }
 
-/** Trust the deck + approve ALL its current resolvable paths. LEDGER-ONLY.
- *  Returns the fresh report. */
-export async function trustAllCurrent(): Promise<DeckSecurityReport> {
-  const token = await ensureTrusted();
+/** Approve ALL currently-eligible files whose resolved target sits in `resolvedDir`
+ *  — the "approve everything in this folder" bulk action (still a per-path decision,
+ *  just batched by directory). REQUIRES a trusted deck; no-op otherwise. This is NOT a
+ *  trust action — the deck must already be trusted (trustThisDeck), keeping deck-trust
+ *  and file-approval two distinct steps. Returns the fresh report. */
+export async function approveDirectory(resolvedDir: string): Promise<DeckSecurityReport> {
   const store = usePresentationStore.getState();
-  const projectDir = store.projectPath ? dirname(store.projectPath) : '';
-  const { approvePath } = await import('./trustStore');
-  let linked: LinkedRow[] = [];
-  try { linked = await invoke<LinkedRow[]>('db_list_linked_assets'); } catch { linked = []; }
-  for (const a of linked) {
-    if (!a.external_path || !a.asset_id) continue;
-    const gate = await resolveAndGate(resolvePosixPath(projectDir, a.external_path));
-    if (gate.ok && gate.canonicalPath) await approvePath(token, a.asset_id, gate.canonicalPath);
+  const token = store.presentation.config.deckToken;
+  if (token) {
+    const { approvePath } = await import('./trustStore');
+    const report = await buildDeckSecurityReport();
+    for (const r of report.rows) {
+      if (r.state === 'eligible' && r.resolvedPath && r.resolvedDir === resolvedDir) {
+        await approvePath(token, r.assetId, r.resolvedPath);
+      }
+    }
   }
   return buildDeckSecurityReport();
 }

@@ -229,6 +229,9 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
   its approval in place; the old resolved path is dropped, leaving no orphan (asserts
   the raw ledger approvals via the `trustReport` seam). The delete/reconcile-on-save
   side is unit-covered (`trustStore.test.ts`).
+- **asset-watch-warning-probe.mjs** — UX: the untrusted "files won't live-update" nudge
+  in the asset inspector shows only when watching is on; toggling the deck's watch
+  setting off hides it, on shows it again.
 - **off-missing.mjs** — a missing source is flagged even when auto-reload is OFF, on a
   trusted deck (#74 ungating).
 - The exhaustive content-gate matrix is a **unit** test: `src/lib/assetTypes.test.mjs`
