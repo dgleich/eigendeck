@@ -93,7 +93,10 @@ if (
     trustReport: async () => {
       const s = usePresentationStore.getState();
       const token = s.presentation.config.deckToken;
-      const { isTrusted, isPathApproved } = await import('./lib/trustStore');
+      const { isTrusted, isPathApproved, deckState } = await import('./lib/trustStore');
+      // Raw ledger approvals (resolved paths) for THIS deck — lets cleanup probes
+      // assert an orphaned path is actually gone, independent of current links.
+      const ledgerApprovals = token ? (await deckState(token)).approvals : [];
       const { resolveAndGate } = await import('./lib/assetGate');
       const { gatedExternalRead, resolvePosixPath, dirname } = await import('./lib/watcherRegistry');
       const { invoke } = await import('@tauri-apps/api/core');
@@ -104,7 +107,7 @@ if (
         const gate = await resolveAndGate(abs);
         rows.push({ ext: a.external_path, gateOk: gate.ok, reason: gate.reason, approved: (token && gate.canonicalPath) ? await isPathApproved(token, gate.canonicalPath) : false, read: (await gatedExternalRead(abs)).status });
       }
-      return JSON.stringify({ token: token ?? null, trusted: token ? await isTrusted(token) : false, rows });
+      return JSON.stringify({ token: token ?? null, trusted: token ? await isTrusted(token) : false, ledgerApprovals, rows });
     },
     // Asset-security: the "Trust this deck" action (mints a token if legacy, trusts
     // it, approves current linked paths, re-scans). Watch/scan probes call this to
@@ -1420,6 +1423,7 @@ function App() {
           s.setInspectorTab('slide');
           break;
         }
+        case 'deck-security': void import('./lib/securityWindow').then((m) => m.openSecurityWindow()); break;
         case 'slide-new': usePresentationStore.getState().addSlide(); break;
         case 'slide-duplicate': {
           const s = usePresentationStore.getState();

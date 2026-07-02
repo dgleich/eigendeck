@@ -185,35 +185,39 @@ function maybeWarnUnsavedProject(externalPath: string | null): void {
  * file "just works" on a trusted deck without a separate approval step (a native
  * file-pick is itself the consent). See docs/ASSETS-SECURITY.md.
  */
-export async function approveExternalAbsPath(absPath: string): Promise<void> {
+export async function approveExternalAbsPath(assetId: string, absPath: string): Promise<void> {
   try {
     const token = usePresentationStore.getState().presentation.config.deckToken;
-    if (!token) return;
+    if (!token || !assetId) return;
     const { isTrusted, approvePath } = await import('./trustStore');
     if (!(await isTrusted(token))) return;
     const { resolveAndGate } = await import('./assetGate');
     const gate = await resolveAndGate(absPath);
-    if (gate.ok && gate.canonicalPath) await approvePath(token, gate.canonicalPath);
+    if (gate.ok && gate.canonicalPath) await approvePath(token, assetId, gate.canonicalPath);
   } catch (e) {
     console.warn('[approveExternalAbsPath] failed (non-fatal):', e);
   }
 }
 
 /**
- * Auto-approve a just-added linked asset. Resolves its (possibly relative)
- * external_path against the project dir, then defers to approveExternalAbsPath.
+ * Auto-approve a just-added linked asset (keyed by its asset id). Resolves its
+ * (possibly relative) external_path against the project dir, then defers to
+ * approveExternalAbsPath.
  */
-async function autoApproveExternalPath(externalPath: string): Promise<void> {
+async function autoApproveExternalPath(assetId: string, externalPath: string): Promise<void> {
   const store = usePresentationStore.getState();
   if (!store.projectPath) return;
   const { resolvePosixPath, dirname } = await import('./watcherRegistry');
-  await approveExternalAbsPath(resolvePosixPath(dirname(store.projectPath), externalPath));
+  await approveExternalAbsPath(assetId, resolvePosixPath(dirname(store.projectPath), externalPath));
 }
 
 export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<StoreResult> {
   const result = await storeAssetWithCollisionCheckImpl(args);
-  // Added a linked asset to a trusted deck → approve its path so it watches.
-  if (!result.cancelled && args.externalPath) void autoApproveExternalPath(args.externalPath);
+  // Added a linked asset to a trusted deck → approve its path (keyed by the asset id
+  // actually stored) so it watches.
+  if (!result.cancelled && args.externalPath && result.assetId) {
+    void autoApproveExternalPath(result.assetId, args.externalPath);
+  }
   return result;
 }
 

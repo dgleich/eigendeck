@@ -668,6 +668,9 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .map_err(|e| e.to_string())?;
 
     let window_menu = SubmenuBuilder::new(app, "Window")
+        .item(&MenuItemBuilder::new("Deck Security Settings").id("deck-security")
+            .build(app).map_err(|e| e.to_string())?)
+        .separator()
         .minimize().maximize().separator().close_window()
         .build().map_err(|e| e.to_string())?;
 

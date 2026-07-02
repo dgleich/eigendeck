@@ -111,13 +111,24 @@ export async function isPathApproved(token: string, resolvedPath: string): Promi
 export async function createTrustedDeck(token: string): Promise<void> {
   await mutate((l, now) => l.createTrusted(token, now));
 }
-/** Explicitly trust a received deck, approving the reviewed resolved paths. */
-export async function trustDeck(token: string, resolvedPaths: string[]): Promise<void> {
-  await mutate((l, now) => l.trust(token, resolvedPaths, now));
+/** Explicitly trust a received deck, approving the reviewed assets (assetId → resolved). */
+export async function trustDeck(token: string, approvals: Record<string, string>): Promise<void> {
+  await mutate((l, now) => l.trust(token, approvals, now));
 }
-/** Approve one more resolved path on an already-trusted deck. */
-export async function approvePath(token: string, resolvedPath: string): Promise<boolean> {
-  return mutate((l, now) => l.approve(token, resolvedPath, now));
+/** Approve (or re-point) one asset's resolved target on an already-trusted deck.
+ *  Replaces the asset's prior entry — a relocate updates in place, never orphaning
+ *  the old path. */
+export async function approvePath(token: string, assetId: string, resolvedPath: string): Promise<boolean> {
+  return mutate((l, now) => l.approve(token, assetId, resolvedPath, now));
+}
+/** Ledger hygiene: drop approvals for assets the deck no longer references.
+ *  `keepAssetIds` = the deck's current linked asset ids. Persists only when something
+ *  was actually removed (avoids churning the ledger file on every save). */
+export async function reconcileApprovals(token: string, keepAssetIds: string[]): Promise<number> {
+  const l = await ledger();
+  const removed = l.reconcile(token, keepAssetIds, Date.now());
+  if (removed > 0) await persist(l);
+  return removed;
 }
 /** Re-confirm after a TTL lapse — restore the retained approvals. */
 export async function reconfirmDeck(token: string): Promise<boolean> {

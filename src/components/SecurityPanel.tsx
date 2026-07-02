@@ -31,9 +31,9 @@ export function SecurityWindowApp(): React.ReactElement {
 
   const eligibleCount = report?.rows.filter((r) => r.state === 'eligible').length ?? 0;
 
-  const doApprove = async (referencePath: string) => {
+  const doApprove = async (assetId: string, referencePath: string) => {
     setBusy(true);
-    try { setReport(await approveOne(referencePath)); notifyMain(); } finally { setBusy(false); }
+    try { setReport(await approveOne(assetId, referencePath)); notifyMain(); } finally { setBusy(false); }
   };
   const doTrustAll = async () => {
     setBusy(true);
@@ -83,7 +83,7 @@ export function SecurityWindowApp(): React.ReactElement {
                     {r.reason && <span style={{ fontSize: 11, color: st.color }}>{r.reason}</span>}
                     <span style={{ flex: 1 }} />
                     {r.state === 'eligible' && (
-                      <button onClick={() => doApprove(r.referencePath)} disabled={busy} style={smallBtn}>Approve</button>
+                      <button onClick={() => doApprove(r.assetId, r.referencePath)} disabled={busy} style={smallBtn}>Approve</button>
                     )}
                   </div>
                 </div>

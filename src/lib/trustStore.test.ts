@@ -21,6 +21,9 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
 import * as store from './trustStore';
 
 const P = '/deck/figs/a.png';
+const Q = '/deck/figs/b.png';
+const A1 = 'asset-1';
+const A2 = 'asset-2';
 
 describe('trustStore (persistence + accessors)', () => {
   beforeEach(() => {
@@ -43,21 +46,43 @@ describe('trustStore (persistence + accessors)', () => {
     expect(await store.isTrusted('tok')).toBe(true);
   });
 
-  it('trustDeck approves the reviewed paths and persists', async () => {
-    await store.trustDeck('tok', [P]);
+  it('trustDeck approves the reviewed assets and persists', async () => {
+    await store.trustDeck('tok', { [A1]: P });
     expect(await store.isPathApproved('tok', P)).toBe(true);
     store._resetForTests();
     expect(await store.isPathApproved('tok', P)).toBe(true);
   });
 
-  it('approvePath adds to an already-trusted deck', async () => {
+  it('approvePath(asset, path) adds to an already-trusted deck', async () => {
     await store.createTrustedDeck('tok');
-    expect(await store.approvePath('tok', P)).toBe(true);
+    expect(await store.approvePath('tok', A1, P)).toBe(true);
     expect(await store.isPathApproved('tok', P)).toBe(true);
   });
 
+  it('re-approving an asset re-points it (relocate) — old path dropped, persists', async () => {
+    await store.createTrustedDeck('tok');
+    await store.approvePath('tok', A1, P);
+    await store.approvePath('tok', A1, Q);   // relocate the same asset
+    expect(await store.isPathApproved('tok', Q)).toBe(true);
+    expect(await store.isPathApproved('tok', P)).toBe(false);
+    store._resetForTests();
+    expect(await store.isPathApproved('tok', P)).toBe(false); // survived the reload
+  });
+
+  it('reconcileApprovals drops approvals for unreferenced assets, keeps referenced ones', async () => {
+    await store.createTrustedDeck('tok');
+    await store.approvePath('tok', A1, P);
+    await store.approvePath('tok', A2, Q);
+    const removed = await store.reconcileApprovals('tok', [A2]);   // A1 no longer linked
+    expect(removed).toBe(1);
+    expect(await store.isPathApproved('tok', P)).toBe(false);
+    expect(await store.isPathApproved('tok', Q)).toBe(true);
+    store._resetForTests();
+    expect(await store.isPathApproved('tok', P)).toBe(false);      // persisted
+  });
+
   it('revokeDeck removes trust + approvals and persists', async () => {
-    await store.trustDeck('tok', [P]);
+    await store.trustDeck('tok', { [A1]: P });
     await store.revokeDeck('tok');
     expect(await store.isTrusted('tok')).toBe(false);
     store._resetForTests();

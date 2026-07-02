@@ -1353,7 +1353,11 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
         try {
           const { touchOpen } = await import('../lib/trustStore');
           await touchOpen(deckToken);
-        } catch (e) { console.warn('[openProject] trust touchOpen failed (non-fatal):', e); }
+          // Ledger hygiene: sweep approvals orphaned by edits in a PRIOR session
+          // (deletes/re-links that never got a save-time reconcile). See fileOps.
+          const { reconcileDeckApprovals } = await import('./fileOps');
+          await reconcileDeckApprovals();
+        } catch (e) { console.warn('[openProject] trust touchOpen/reconcile failed (non-fatal):', e); }
       })();
     }
 

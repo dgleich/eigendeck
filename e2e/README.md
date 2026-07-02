@@ -225,6 +225,10 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
   source on open, and proves trust persists across the reopen (token in deck + ledger
   in appData). Uses an svg image asset (headless WebKit hangs re-rendering a synthetic
   mp4 during init — a container artifact).
+- **asset-approval-cleanup-probe.mjs** — ledger hygiene: relocating an asset re-points
+  its approval in place; the old resolved path is dropped, leaving no orphan (asserts
+  the raw ledger approvals via the `trustReport` seam). The delete/reconcile-on-save
+  side is unit-covered (`trustStore.test.ts`).
 - **off-missing.mjs** — a missing source is flagged even when auto-reload is OFF, on a
   trusted deck (#74 ungating).
 - The exhaustive content-gate matrix is a **unit** test: `src/lib/assetTypes.test.mjs`

@@ -86,10 +86,14 @@ its security surface should be **completely invisible**.
 
 ## Trust store
 
-- **App-side ledger in appData**, *not in the deck*. Keyed by
-  `(deck-token, resolved-path)`. `deck-token` = a random id stamped at create;
-  survives file moves; a received deck's token isn't in your ledger → untrusted by
-  default.
+- **App-side ledger in appData**, *not in the deck*. Per `deck-token`, approvals are
+  `{ assetId: resolved-path }` — keyed by the linked **asset**, valued by its approved
+  **resolved** target. `deck-token` = a random id stamped at create; survives file
+  moves; a received deck's token isn't in your ledger → untrusted by default. Keying by
+  asset (stable across relocate) is what lets an approval be **re-pointed in place** on
+  relocate and **swept by asset id** on delete (see Ledger hygiene); the read gate still
+  authorizes by the *resolved* target (symlink defense) — it checks whether any asset's
+  resolved matches.
 - **Trust attaches ONLY to File → New** (and only when global watching is on — off
   is the PowerPoint model, so trust is moot). **Save / Save-As of an untrusted
   (received) deck does not create trust** — persisting a received deck never
@@ -99,6 +103,18 @@ its security surface should be **completely invisible**.
   lapse, approvals are **retained but inactive** so the prior state can be restored
   in one confirmation — distinct from **revoke**, which *removes* approvals. The TTL
   also bounds the copyable-token residual and forces periodic re-review.
+- **Ledger hygiene — least privilege over time.** An approval exists ONLY while the
+  deck still references that path. The moment a path stops being referenced — an
+  asset is **relocated** to a new path, or the element/asset is **deleted** — its
+  approval is removed immediately (reconciled against the deck's current linked
+  paths). The **only** case where an approval persists without active authorization
+  is **TTL lapse** (retained-inactive for one-click re-confirm); a **currently-
+  missing but still-referenced** path is *not* an exception — it is still needed, so
+  its approval is kept until the reference itself goes away. Rationale: without this,
+  every path you ever relocated away from or deleted would stay approved forever,
+  growing the copyable-token transplant surface unbounded — directly defeating the
+  "bounded to *currently*-approved paths" residual below. So the ledger is kept
+  reconciled to exactly the deck's live references, nothing more.
 - **HTML export is terminal.** Assets are inlined as base64 `data:` URLs, so no
   `external_path`, watching, or trust token survives an export. Any deck derived
   from exported HTML is untrusted by construction with nothing watched.
@@ -233,11 +249,15 @@ on, the "file changed on disk → reload" behavior is the *watcher's* design
 - **Add a linked asset to a trusted deck** (drag-drop / file picker) → its resolved
   path is Approved. A native file-pick *is* the consent — the same act as trusting.
 - **Relocate a missing asset on a trusted deck** (picker: "point it here") → the
-  picked path is Approved (same consent as add). If the pick reveals a whole folder
-  moved, the offset-relocated **siblings within that moved tree inherit the consent**
-  and are Approved too — the user relocated their asset folder, not just one file.
-  (One approval code path — `approveExternalAbsPath` — serves add, relocate, and
-  offset-relocate, so the rule can't drift.)
+  picked path is Approved (same consent as add), **and the old path's approval is
+  removed** (it's no longer referenced — see Ledger hygiene). If the pick reveals a
+  whole folder moved, the offset-relocated **siblings within that moved tree inherit
+  the consent** and are Approved too (their old paths likewise removed) — the user
+  relocated their asset folder, not just one file. (One approval code path —
+  `approveExternalAbsPath` — serves add, relocate, and offset-relocate, so the rule
+  can't drift.)
+- **Delete an element/asset, or otherwise drop a linked path** → that path's approval
+  is removed once nothing in the deck references it anymore.
 - **Save / Save-As of an untrusted deck** → stays Untrusted (no laundering).
 - **Open a received deck** → Untrusted (U).
 - **Open a trusted deck** (token in ledger, TTL not lapsed) → Trusted; TTL
@@ -314,8 +334,13 @@ without opening the deck-wide window.
   - `asset-open-untrusted-probe` / `asset-open-trusted-probe` — opening a deck whose
     linked source changed while closed: untrusted reads nothing (snapshot stays);
     trusted reconciles on open (and trust persists across the reopen).
+  - `asset-approval-cleanup-probe` — relocating an asset re-points its ledger approval
+    in place; the OLD resolved path leaves no orphan (asserts the raw ledger approvals).
   - `video-watch` / `video-captions-watch` / `asset-missing` / `asset-relocate-offset`
     / `off-missing` — the watch/reload/missing/relocate flows, each on a trusted deck.
+- **Ledger logic (unit):** `trustLedger.test.mjs` — asset-keyed approve/replace/
+  reconcile + the TTL lapse/re-confirm/retain semantics; `trustStore.test.ts` — the
+  same through the persistence layer (relocate-replace and reconcile survive a reload).
   - Note: e2e watch fixtures must use real-enough bytes (mp4 `ftyp`, leading `<svg>`,
     `WEBVTT`) or the content gate rejects them — the gate working as designed. Video
     *on-open* reconcile is exercised with an image asset because this headless

@@ -317,6 +317,15 @@ export function PropertiesPanel() {
                 value={presentation.config.autoReloadAssets}
                 onChange={(v) => updateConfig({ autoReloadAssets: v })} />
             </PropSection>
+            <PropSection label="Security">
+              <button
+                className="prop-input"
+                style={{ cursor: 'pointer', textAlign: 'left', width: '100%' }}
+                title="Review which files on your computer this deck links to, and approve or block them"
+                onClick={() => void import('../lib/securityWindow').then((m) => m.openSecurityWindow())}>
+                Linked files &amp; security…
+              </button>
+            </PropSection>
           </>
         )}
 

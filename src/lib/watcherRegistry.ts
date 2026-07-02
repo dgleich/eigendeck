@@ -469,10 +469,11 @@ export async function relocateMissingByOffset(
     checked++;
     try {
       // The user relocated the anchor file, revealing this whole folder moved; the
-      // siblings within it inherit that consent. Approve each on the trusted deck
-      // (same single approval path as add/relocate) so the gated read accepts it.
+      // siblings within it inherit that consent. Approve each (keyed by its asset id,
+      // so it replaces that asset's old approval in place) on the trusted deck — same
+      // single approval path as add/relocate — so the gated read accepts it.
       const { approveExternalAbsPath } = await import('./assetInsert');
-      await approveExternalAbsPath(candidate);
+      await approveExternalAbsPath(a.asset_id, candidate);
       // Gated read: untrusted deck or a blocked/wrong-type relocation target → skip.
       const read = await gatedExternalRead(candidate);
       if (read.status !== 'ok') continue;

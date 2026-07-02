@@ -90,16 +90,16 @@ async function ensureTrusted(): Promise<string> {
   return token;
 }
 
-/** Approve one eligible path (by its resolved target). Trusts the deck first if
+/** Approve one eligible asset (by its id + reference path). Trusts the deck first if
  *  needed. LEDGER-ONLY. Returns the fresh report. */
-export async function approveOne(referencePath: string): Promise<DeckSecurityReport> {
+export async function approveOne(assetId: string, referencePath: string): Promise<DeckSecurityReport> {
   const token = await ensureTrusted();
   const store = usePresentationStore.getState();
   const projectDir = store.projectPath ? dirname(store.projectPath) : '';
   const gate = await resolveAndGate(resolvePosixPath(projectDir, referencePath));
   if (gate.ok && gate.canonicalPath) {
     const { approvePath } = await import('./trustStore');
-    await approvePath(token, gate.canonicalPath);
+    await approvePath(token, assetId, gate.canonicalPath);
   }
   return buildDeckSecurityReport();
 }
@@ -114,9 +114,9 @@ export async function trustAllCurrent(): Promise<DeckSecurityReport> {
   let linked: LinkedRow[] = [];
   try { linked = await invoke<LinkedRow[]>('db_list_linked_assets'); } catch { linked = []; }
   for (const a of linked) {
-    if (!a.external_path) continue;
+    if (!a.external_path || !a.asset_id) continue;
     const gate = await resolveAndGate(resolvePosixPath(projectDir, a.external_path));
-    if (gate.ok && gate.canonicalPath) await approvePath(token, gate.canonicalPath);
+    if (gate.ok && gate.canonicalPath) await approvePath(token, a.asset_id, gate.canonicalPath);
   }
   return buildDeckSecurityReport();
 }

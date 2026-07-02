@@ -36,11 +36,11 @@ export async function trustCurrentDeck(): Promise<void> {
       // "Trust this deck" = trust + approve its CURRENT linked paths (per-path gate).
       // Forbidden/unreadable targets are skipped (never approved). New paths added
       // later are approved on add; changed targets resurface as unapproved.
-      const linked = await invoke<Array<{ external_path: string }>>('db_list_linked_assets').catch(() => []);
+      const linked = await invoke<Array<{ asset_id: string; external_path: string }>>('db_list_linked_assets').catch(() => []);
       for (const a of linked) {
-        if (!a.external_path) continue;
+        if (!a.external_path || !a.asset_id) continue;
         const gate = await resolveAndGate(resolvePosixPath(projectDir, a.external_path));
-        if (gate.ok && gate.canonicalPath) await approvePath(token, gate.canonicalPath);
+        if (gate.ok && gate.canonicalPath) await approvePath(token, a.asset_id, gate.canonicalPath);
       }
       const presOverride = store.presentation.config.autoReloadAssets ?? null;
       await scanForChangedAssets(projectDir, presOverride).catch(() => {});
@@ -310,9 +310,31 @@ export async function saveProject(): Promise<void> {
   try {
     await flushToSqlite();
     store.markClean();
+    void reconcileDeckApprovals();   // ledger hygiene: drop approvals for dropped assets
   } catch (e) {
     console.error('Save failed:', e);
     await showError(`Failed to save: ${e}`);
+  }
+}
+
+/**
+ * Ledger hygiene (docs/ASSETS-SECURITY.md): prune the trust ledger to exactly the
+ * deck's CURRENT linked assets. Called on save + on open. Removing an element/asset
+ * (or otherwise dropping a linked source) leaves an orphaned approval; this drops it
+ * so a copied deck-token can never reach a path the deck no longer references. Relocate
+ * doesn't need this (it re-points the asset's approval in place), but delete/re-link do.
+ * No-op for an untrusted / TTL-lapsed deck (the ledger guards that too). Best-effort.
+ */
+export async function reconcileDeckApprovals(): Promise<void> {
+  try {
+    const token = usePresentationStore.getState().presentation.config.deckToken;
+    if (!token) return;
+    const { isTrusted, reconcileApprovals } = await import('../lib/trustStore');
+    if (!(await isTrusted(token))) return;
+    const linked = await invoke<Array<{ asset_id: string }>>('db_list_linked_assets').catch(() => []);
+    await reconcileApprovals(token, linked.map((a) => a.asset_id).filter(Boolean));
+  } catch (e) {
+    console.warn('[reconcileDeckApprovals] failed (non-fatal):', e);
   }
 }
 

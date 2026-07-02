@@ -6,7 +6,17 @@
 //
 // Keyed by `deck-token` (a random id stamped into the deck at File → New; a received
 // deck's token isn't in the ledger). Per deck we keep: whether it was ever trusted,
-// the last-open time (for the TTL), and the set of approved *resolved* paths.
+// the last-open time (for the TTL), and the approved *resolved* paths — keyed by the
+// linked asset's id (`{ [assetId]: resolvedPath }`).
+//
+// Why key approvals by asset, not by path: an approval belongs to a linked asset, and
+// the asset id is STABLE across relocate (only the path changes). So `approve` REPLACES
+// an asset's entry in place — a relocate never orphans the old path — and `reconcile`
+// can drop approvals for assets the deck no longer references (delete / re-link) with a
+// plain id set-diff, no filesystem access, keeping a temporarily-missing-but-still-
+// referenced asset's approval intact. The READ gate still authorizes by resolved
+// target (symlink defense): isApproved checks whether ANY asset's resolved matches.
+// See docs/ASSETS-SECURITY.md ("Ledger hygiene").
 //
 // Three nested levels live here only for the DECK/TRUST axis: whether a deck is
 // trusted and whether a path is approved. Watching on/off and the asset-type gate
@@ -19,7 +29,7 @@ export const TRUST_TTL_MS = TRUST_TTL_DAYS * 24 * 60 * 60 * 1000;
  * @typedef {Object} DeckEntry
  * @property {boolean} trusted       ever trusted (File → New, or explicitly trusted)
  * @property {number}  lastOpenMs    epoch ms of last open — the TTL is measured from here
- * @property {string[]} approvals    approved RESOLVED paths (see the assetTypeGate contract)
+ * @property {Record<string,string>} approvals  assetId → approved RESOLVED path
  */
 
 /** Deck-level status derived from an entry + the current time. */
@@ -40,9 +50,10 @@ export class TrustLedger {
     const e = this.decks.get(token);
     if (!e || !e.trusted) return { status: 'untrusted-new', approvals: [], lapsed: false };
     const lapsed = now - e.lastOpenMs > TRUST_TTL_MS;
+    const approvals = uniq(Object.values(e.approvals)); // resolved paths (deduped)
     return lapsed
-      ? { status: 'untrusted-ttl', approvals: [...e.approvals], lapsed: true }
-      : { status: 'trusted', approvals: [...e.approvals], lapsed: false };
+      ? { status: 'untrusted-ttl', approvals, lapsed: true }
+      : { status: 'trusted', approvals, lapsed: false };
   }
 
   /** Is this deck effectively trusted right now (trusted AND not TTL-lapsed)? */
@@ -61,24 +72,43 @@ export class TrustLedger {
 
   /** File → New: stamp a fresh trusted deck with no approvals yet. */
   createTrusted(token, now) {
-    this.decks.set(token, { trusted: true, lastOpenMs: now, approvals: [] });
+    this.decks.set(token, { trusted: true, lastOpenMs: now, approvals: {} });
     return this;
   }
 
-  /** Explicitly trust a (received) deck, approving the reviewed resolved paths.
-   *  Also used by File → New (paths = []). Replaces any prior approval set. */
-  trust(token, resolvedPaths, now) {
-    this.decks.set(token, { trusted: true, lastOpenMs: now, approvals: uniq(resolvedPaths) });
+  /** Explicitly trust a (received) deck, approving the reviewed assets. `approvals`
+   *  is an `{ assetId: resolvedPath }` map. Replaces any prior approval set. */
+  trust(token, approvals, now) {
+    this.decks.set(token, { trusted: true, lastOpenMs: now, approvals: normApprovals(approvals) });
     return this;
   }
 
-  /** Approve one more resolved path on an already-trusted deck. No-op (returns
-   *  false) if the deck isn't effectively trusted right now. */
-  approve(token, resolvedPath, now) {
+  /** Approve (or re-point) ONE asset's resolved target on an already-trusted deck.
+   *  REPLACES any prior entry for that asset — so a relocate updates in place and the
+   *  old path is dropped atomically, never orphaned. No-op (returns false) if the deck
+   *  isn't effectively trusted right now. */
+  approve(token, assetId, resolvedPath, now) {
     if (!this.isTrusted(token, now)) return false;
-    const e = this.decks.get(token);
-    if (!e.approvals.includes(resolvedPath)) e.approvals.push(resolvedPath);
+    if (typeof assetId !== 'string' || typeof resolvedPath !== 'string') return false;
+    this.decks.get(token).approvals[assetId] = resolvedPath;
     return true;
+  }
+
+  /** Ledger hygiene: drop approvals for assets the deck no longer references.
+   *  `keepAssetIds` = the deck's CURRENT linked asset ids. Returns the count removed.
+   *  No-op unless effectively trusted — a TTL-lapsed deck's retained approvals are
+   *  preserved for one-click re-confirm (the sole retain exception). A still-referenced
+   *  but currently-missing asset keeps its approval (its id is still in keepAssetIds).
+   *  See docs/ASSETS-SECURITY.md ("Ledger hygiene"). */
+  reconcile(token, keepAssetIds, now) {
+    if (!this.isTrusted(token, now)) return 0;
+    const keep = new Set(keepAssetIds);
+    const e = this.decks.get(token);
+    let removed = 0;
+    for (const id of Object.keys(e.approvals)) {
+      if (!keep.has(id)) { delete e.approvals[id]; removed++; }
+    }
+    return removed;
   }
 
   /** Opening a trusted (non-lapsed) deck refreshes the TTL clock. A lapsed deck is
@@ -113,7 +143,7 @@ export class TrustLedger {
   serialize() {
     /** @type {Record<string, DeckEntry>} */
     const out = {};
-    for (const [k, v] of this.decks) out[k] = { trusted: v.trusted, lastOpenMs: v.lastOpenMs, approvals: [...v.approvals] };
+    for (const [k, v] of this.decks) out[k] = { trusted: v.trusted, lastOpenMs: v.lastOpenMs, approvals: { ...v.approvals } };
     return out;
   }
 
@@ -127,10 +157,22 @@ function uniq(arr) {
   return Array.isArray(arr) ? [...new Set(arr.filter((x) => typeof x === 'string'))] : [];
 }
 
+/** Coerce a persisted/handed-in approvals value to a clean `{assetId: resolved}` map.
+ *  Only string→string entries survive; anything else (arrays, junk) → {}. */
+function normApprovals(a) {
+  const out = {};
+  if (a && typeof a === 'object' && !Array.isArray(a)) {
+    for (const [k, v] of Object.entries(a)) {
+      if (typeof k === 'string' && typeof v === 'string') out[k] = v;
+    }
+  }
+  return out;
+}
+
 function normalizeEntry(v) {
   return {
     trusted: !!(v && v.trusted),
     lastOpenMs: v && Number.isFinite(v.lastOpenMs) ? v.lastOpenMs : 0,
-    approvals: uniq(v && v.approvals),
+    approvals: normApprovals(v && v.approvals),
   };
 }
