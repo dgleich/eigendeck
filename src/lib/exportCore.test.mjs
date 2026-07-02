@@ -465,7 +465,9 @@ describe('[simplify-guard] exportCore full-output snapshot (all element types)',
     const html = await buildExportHtml({
       presentation: everyTypeDeck(),
       readFile: async () => new Uint8Array([1, 2, 3]),
-      readTextFile: async () => '<html><body>demo-fixed</body></html>',
+      // A real (marked) eigendeck demo — the export marker gate renders it; an unmarked
+      // .html would export the "not a valid demo" placeholder instead (see exportCore).
+      readTextFile: async () => '<!DOCTYPE html><!--eigendeck-demo-v1--><html><body>demo-fixed</body></html>',
       renderMath: (h) => h,
       applyMathPreamble: null,
       getElementPreview: async () => 'data:image/png;base64,UFJFVklFVw==',
