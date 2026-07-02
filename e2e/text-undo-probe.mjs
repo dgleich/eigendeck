@@ -14,9 +14,14 @@ const sid=await open(); if(!sid||!await waitSeam(sid)){console.error('TU_FAIL: o
 
 await exec(sid,"window.__eigendeck.store.getState().addElement({id:'k',type:'text',preset:'body',html:'orig',position:{x:100,y:100,width:300,height:120}});");
 await sleep(300);
-// one deterministic store step: orig → changed
-await exec(sid,"window.__eigendeck.pauseUndo(); window.__eigendeck.store.getState().updateElement('k',{html:'changed'}); window.__eigendeck.resumeUndo();");
+// One deterministic store step (orig → changed) via a REAL text edit: enter editing,
+// change the contentEditable, commit by clicking outside. (No pause/resume seam.)
+await exec(sid,"document.querySelector('[data-element-id=\"k\"]').dispatchEvent(new CustomEvent('start-editing'));");
+await sleep(500);
+await exec(sid,"const ce=document.querySelector('[data-element-id=\"k\"] [contenteditable=\"true\"]'); ce.focus(); ce.innerHTML='changed';");
 await sleep(200);
+await exec(sid,"document.body.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:5,clientY:700}));");
+await sleep(400);
 
 // (B) OUTSIDE editing: Cmd+Z on body SHOULD store-undo → back to 'orig'
 const nB=await past(sid);

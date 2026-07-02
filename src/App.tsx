@@ -44,7 +44,7 @@ import {
   openRecentProject,
   syncRecentMenu,
 } from './store/fileOps';
-import { flushToSqlite, pauseUndo, resumeUndo, undoWithNav, redoWithNav } from './store/presentation';
+import { flushToSqlite, undoWithNav, redoWithNav } from './store/presentation';
 import { withBusy } from './store/busy';
 import { BusyOverlay } from './components/BusyOverlay';
 import './App.css';
@@ -135,9 +135,6 @@ if (
       const { domToDataUrl } = await import('modern-screenshot');
       return domToDataUrl(node, { width: Math.round(r.width), height: Math.round(r.height), scale: 1 });
     },
-    // Undo-gesture transaction helpers (#55) — lets E2E exercise the real
-    // pause/resume the canvas drag + inspector sliders use.
-    pauseUndo, resumeUndo,
   };
 }
 

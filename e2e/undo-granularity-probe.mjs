@@ -1,4 +1,5 @@
-// MEASURE undo granularity (#55): drag pause/resume + typing coalescing.
+// MEASURE undo granularity (#55): drag (real gesture) + typing coalescing.
+import { dragElementToX } from './_ui.mjs';
 const BASE='http://127.0.0.1:4444', APP=process.env.E2E_APP, DECK=process.env.E2E_DECK;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function post(p,b){const r=await fetch(BASE+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const t=await r.text();try{return JSON.parse(t)}catch{return t}}
@@ -12,8 +13,6 @@ const htmlOf=(sid,id)=>exec(sid,"const e=window.__eigendeck.store.getState().pre
 const has=(sid,id)=>exec(sid,"return !!window.__eigendeck.store.getState().presentation.slides[0].elements.find(x=>x.id==='"+id+"');");
 const clear=sid=>exec(sid,"window.__eigendeck.store.temporal.getState().clear();");
 const undo=sid=>exec(sid,"window.__eigendeck.store.temporal.getState().undo();");
-const pause=sid=>exec(sid,"window.__eigendeck.pauseUndo();");
-const resume=sid=>exec(sid,"window.__eigendeck.resumeUndo();");
 
 const sid=await open(); if(!sid||!await waitSeam(sid)){console.error('open fail');process.exit(1);}
 
@@ -22,9 +21,7 @@ await clear(sid);
 await exec(sid,"window.__eigendeck.store.getState().addElement({id:'a',type:'text',preset:'body',html:'A',position:{x:100,y:100,width:200,height:80}});");
 await sleep(350);
 const pAdd=await past(sid);
-await pause(sid);
-await exec(sid,"const s=window.__eigendeck.store.getState(); for(let x=140;x<=500;x+=90){ s.updateElement('a',{position:{x:x,y:100,width:200,height:80}}); }");
-await resume(sid);
+await dragElementToX(sid,'a',500);   // REAL drag gesture → the renderer groups it as one undo step
 await sleep(350);
 const pDrag=await past(sid);
 const xBeforeUndo=await xOf(sid,'a');

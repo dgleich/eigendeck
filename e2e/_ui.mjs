@@ -62,6 +62,33 @@ export async function openSecurityWindow(sid, mainH) {
   return null;
 }
 
+// Drag an element on the canvas via a REAL pointer gesture (pointerdown on the
+// element → pointermoves past the 4px dead-zone → pointerup), exercising the real
+// SlideElementRenderer drag handler — including its pauseUndo/resumeUndo grouping,
+// so a drag collapses to ONE undo step. Moves the element to logical x=`targetX`
+// (keeps y). Returns the element's resulting logical x. Replaces the pauseUndo/
+// resumeUndo seam for undo-granularity tests.
+export async function dragElementToX(sid, elementId, targetX) {
+  return exec(sid, `
+    const node = document.querySelector('[data-element-id="${elementId}"]');
+    if (!node) return 'no-node';
+    const st = window.__eigendeck.store.getState();
+    const el = st.presentation.slides[0].elements.find(x => x.id === '${elementId}');
+    if (!el) return 'no-el';
+    const r = node.getBoundingClientRect();
+    const scale = r.width / el.position.width;         // screen px per logical px
+    const x0 = r.left + r.width / 2, y0 = r.top + r.height / 2;
+    const dxScreen = (${targetX} - el.position.x) * scale;
+    const opt = (x, y) => ({ clientX: x, clientY: y, bubbles: true, pointerId: 1, button: 0 });
+    node.dispatchEvent(new PointerEvent('pointerdown', opt(x0, y0)));
+    const N = 6;
+    for (let i = 1; i <= N; i++) window.dispatchEvent(new PointerEvent('pointermove', opt(x0 + (dxScreen * i / N), y0)));
+    window.dispatchEvent(new PointerEvent('pointerup', opt(x0 + dxScreen, y0)));
+    const after = window.__eigendeck.store.getState().presentation.slides[0].elements.find(x => x.id === '${elementId}');
+    return after ? after.position.x : 'gone';
+  `);
+}
+
 // The following run in the SECURITY window (switch to secH first).
 // Poll until the window's text contains `substr` (report finished rendering).
 export async function waitForText(sid, substr, tries = 15) {

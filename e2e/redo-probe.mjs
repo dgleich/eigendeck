@@ -1,4 +1,5 @@
 // Verify REDO works across add, gesture (drag), and a REAL text-edit commit.
+import { dragElementToX } from './_ui.mjs';
 const BASE='http://127.0.0.1:4444', APP=process.env.E2E_APP, DECK=process.env.E2E_DECK;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function post(p,b){const r=await fetch(BASE+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const t=await r.text();try{return JSON.parse(t)}catch{return t}}
@@ -23,17 +24,19 @@ await redo(sid); await sleep(150);
 if(!await has(sid,'a')) probs.push('add/REDO: not restored');
 console.log('  add: undo+redo', !probs.length?'ok':'FAIL');
 
-// 2) DRAG (real pauseUndo/resumeUndo): undo→pre-drag, redo→dragged
-await exec(sid,"window.__eigendeck.pauseUndo(); const s=window.__eigendeck.store.getState(); [120,240,400].forEach(x=>s.updateElement('a',{position:{x:x,y:50,width:200,height:80}})); window.__eigendeck.resumeUndo();");
+// 2) DRAG (REAL pointer gesture → the renderer's real pauseUndo/resumeUndo grouping):
+//    a drag collapses to ONE undo step, so undo→pre-drag, redo→dragged.
+const xDragged = await dragElementToX(sid, 'a', 400);
 await sleep(250);
+if(xDragged!==400) probs.push('drag did not land at 400 (got '+xDragged+')');
 await undo(sid); await sleep(150);
 const xUndo=await xOf(sid,'a');
-if(xUndo!==50) probs.push('drag/undo x='+xUndo+' (want 50)');
+if(xUndo!==50) probs.push('drag/undo x='+xUndo+' (want 50 — drag was not one undo step)');
 await redo(sid); await sleep(150);
 const xRedo=await xOf(sid,'a');
 if(xRedo!==400) probs.push('drag/REDO x='+xRedo+' (want 400)');
 if(!await has(sid,'a')) probs.push('drag/redo: element vanished');
-console.log('  drag: undo x='+xUndo+' redo x='+xRedo);
+console.log('  drag: dragged x='+xDragged+' undo x='+xUndo+' redo x='+xRedo);
 
 // 3) REAL text edit commit: type into contentEditable, commit, undo, redo
 await exec(sid,"document.querySelector('[data-element-id=\"a\"]').dispatchEvent(new CustomEvent('start-editing'));");
