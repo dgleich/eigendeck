@@ -120,6 +120,17 @@ if (
       const t = usePresentationStore.getState().presentation.config.deckToken;
       if (t) await import('./lib/trustStore').then((m) => m.revokeDeck(t));
     },
+    // Asset-security: the EXACT operations the Security window's buttons invoke, run
+    // against the real invoke + ledger + store. The window itself is a separate Tauri
+    // webview the WebDriver rig can't reliably switch to, but its behavior is window-
+    // agnostic — so a probe drives these to test the two-step model (trust, then
+    // approve per file / per folder) and the "can't approve without trust" invariant.
+    security: {
+      report: () => import('./lib/securityReport').then((m) => m.buildDeckSecurityReport()),
+      trust: () => import('./lib/securityReport').then((m) => m.trustThisDeck()),
+      approve: (assetId: string, ref: string) => import('./lib/securityReport').then((m) => m.approveOne(assetId, ref)),
+      approveDir: (dir: string) => import('./lib/securityReport').then((m) => m.approveDirectory(dir)),
+    },
     // Cached element preview as a data URL (#86) — lets E2E verify a demo's
     // preview is RE-captured after a theme switch (the bytes must change).
     previewDataUrl: (key: string) => loadPreviewDataUrl(key),

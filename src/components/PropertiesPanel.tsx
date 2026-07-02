@@ -1408,7 +1408,7 @@ function AutoReloadAssetsControl({
           disabled={disabled}
           onChange={(e) => onChange(e.target.checked ? undefined : 'off')}
           style={{ marginTop: 2 }} />
-        <span style={{ fontSize: 11 }}>Watch source files for changes</span>
+        <span style={{ fontSize: 11, textDecoration: untrusted ? 'line-through' : 'none' }}>Watch source files for changes</span>
       </label>
       <HelpText style={{ fontSize: 10, marginTop: 4, marginLeft: 22 }}>
         {untrusted ? (
