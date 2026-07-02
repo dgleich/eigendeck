@@ -9,7 +9,7 @@ import { ArrowGlyph } from './ArrowGlyph';
 import { imageVisualStyle } from '../lib/imageVisualStyle';
 import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
 import { sanitizeRichText } from '../lib/sanitizeRichText';
-import { useDemoUrl } from '../lib/demoAssets';
+import { useDemoUrl, useAssetUrl } from '../lib/demoAssets';
 import { useDemoThemeInjection, demoVarsCssForSlide } from '../lib/demoThemeInject';
 import { capturePreview } from '../lib/previewCache';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
@@ -383,8 +383,10 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
 }) {
   const [interacting, setInteracting] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const src = useDemoUrl(element.assetId);                  // file kind
-  const captionsSrc = useDemoUrl(element.captionsAssetId);
+  const src = useAssetUrl(element.assetId);                  // file kind — a plain
+  const captionsSrc = useAssetUrl(element.captionsAssetId);  // asset, NOT a demo (no
+  // demo-marker gate: videos/captions aren't demos, so they use useAssetUrl, not
+  // useDemoUrl — which now blocks non-marked HTML for the demo-mount gate, #196).
   // In the EDITOR, never autoplay an embed while you're designing — it's
   // distracting and noisy. Build the src with autoplay suppressed until you
   // double-click to interact (files already don't autoplay in the editor —

@@ -7,7 +7,7 @@
 
 import { useRef } from 'react';
 import { resolveTheme } from '../lib/themes';
-import { useDemoUrl } from '../lib/demoAssets';
+import { useDemoUrl, useAssetUrl } from '../lib/demoAssets';
 import { useImageSrc } from '../lib/imageSrc';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
 import { buildEmbedSrc, DEMO_SANDBOX, VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
@@ -106,8 +106,8 @@ function PresentVideo({ element: el, zIndex, style }: {
   const pos = el.position;
   const ref = useRef<HTMLVideoElement>(null);
   const embedRef = useRef<HTMLIFrameElement>(null);
-  const src = useDemoUrl(el.assetId);
-  const captionsSrc = useDemoUrl(el.captionsAssetId);
+  const src = useAssetUrl(el.assetId);                 // video FILE — a plain asset,
+  const captionsSrc = useAssetUrl(el.captionsAssetId); // not a demo (no demo-marker gate)
   const embedSrc = el.kind === 'embed' ? buildEmbedSrc(el) : null;
   usePlaybackRate(ref, el.playbackRate ?? 1, src);
   usePingPong(ref, !!el.pingPong, el.playbackRate ?? 1, src);
