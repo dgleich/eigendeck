@@ -390,8 +390,11 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
   const deckWatchOn = globalAutoReload && presOverride !== 'off';
   // Why the asset isn't being watched, if it isn't. Used for the caption
   // under the checkbox so the user knows where the off came from.
-  const cascadeBlock: 'global' | 'presentation' | 'asset' | null =
-    !globalAutoReload ? 'global'
+  // Untrusted trumps everything: an untrusted deck watches nothing, so the per-asset
+  // toggle is moot regardless of the global/presentation/asset cascade below.
+  const cascadeBlock: 'untrusted' | 'global' | 'presentation' | 'asset' | null =
+    deckTrusted === false ? 'untrusted'
+    : !globalAutoReload ? 'global'
     : presOverride === 'off' ? 'presentation'
     : optedOut ? 'asset'
     : null;
@@ -517,13 +520,16 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
           <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start', cursor: cascadeBlock && cascadeBlock !== 'asset' ? 'not-allowed' : 'pointer' }}>
             <input
               type="checkbox"
-              checked={effective}
+              checked={effective && cascadeBlock !== 'untrusted'}
               disabled={cascadeBlock !== null && cascadeBlock !== 'asset'}
               onChange={(e) => setAutoReload(e.target.checked ? null : 'off')}
               style={{ marginTop: 2 }} />
-            <span>Watch this file for changes</span>
+            <span style={{ textDecoration: cascadeBlock === 'untrusted' ? 'line-through' : 'none' }}>Watch this file for changes</span>
           </label>
           <HelpText style={{ fontSize: 10, marginTop: 4, marginLeft: 22 }}>
+            {cascadeBlock === 'untrusted' && (
+              <>Untrusted decks can’t watch assets. Approve this file in Window → Deck Security Settings.</>
+            )}
             {cascadeBlock === 'global' && (
               <>Disabled because the global setting (Cmd+,) is off.</>
             )}

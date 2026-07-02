@@ -343,6 +343,60 @@ export async function reconcileDeckApprovals(): Promise<void> {
 }
 
 /**
+ * On OPEN, surface the deck's trust status as a non-blocking, dismissible toast — never
+ * a modal (docs/ASSETS-SECURITY.md, "default to silence"). Two cases only:
+ *   - U-ttl (trust lapsed by the 30-day TTL) → offer one-click Re-confirm.
+ *   - T-Won-E (trusted + watching on + some linked files still unapproved) → offer Review.
+ * Silent otherwise (untrusted deck, watching off, or everything already approved).
+ * Open-only — NOT called on save. Best-effort.
+ */
+export async function notifyTrustStatusOnOpen(): Promise<void> {
+  try {
+    const store = usePresentationStore.getState();
+    const token = store.presentation.config.deckToken;
+    if (!token) return;
+    const { deckState, reconfirmDeck } = await import('../lib/trustStore');
+    const state = await deckState(token);
+
+    if (state.status === 'untrusted-ttl') {
+      showToast({
+        kind: 'warning', ttl: 12000, key: 'deck-trust-ttl',
+        message: 'This deck’s trust expired — re-confirm to resume watching its linked files.',
+        action: {
+          label: 'Re-confirm',
+          onClick: () => void (async () => {
+            await reconfirmDeck(token);
+            const { scanForChangedAssets, dirname } = await import('../lib/watcherRegistry');
+            if (store.projectPath) {
+              const presOverride = store.presentation.config.autoReloadAssets ?? null;
+              await scanForChangedAssets(dirname(store.projectPath), presOverride).catch(() => {});
+            }
+            showToast({ kind: 'success', ttl: 5000, message: 'Trust restored — linked files will live-update again.' });
+          })(),
+        },
+      });
+      return;
+    }
+
+    // T-Won-E: trusted + watching on + linked files still awaiting approval.
+    if (state.status !== 'trusted') return;
+    if (!getPreference('autoReloadAssets') || store.presentation.config.autoReloadAssets === 'off') return;
+    const { buildDeckSecurityReport } = await import('../lib/securityReport');
+    const rep = await buildDeckSecurityReport();
+    const n = rep.rows.filter((r) => r.state === 'eligible').length;
+    if (n > 0) {
+      showToast({
+        kind: 'info', ttl: 12000, key: 'deck-eligible-review',
+        message: `${n} linked file${n === 1 ? '' : 's'} ${n === 1 ? 'isn’t' : 'aren’t'} watched — review to approve.`,
+        action: { label: 'Review', onClick: () => void import('../lib/securityWindow').then((m) => m.openSecurityWindow()) },
+      });
+    }
+  } catch (e) {
+    console.warn('[notifyTrustStatusOnOpen] failed (non-fatal):', e);
+  }
+}
+
+/**
  * Save As: prompt for a new path, copy the current in-memory DB to that
  * file, and switch the active project to it. The original file (if any)
  * is left untouched on disk.

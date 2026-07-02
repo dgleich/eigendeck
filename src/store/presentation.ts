@@ -1355,8 +1355,10 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
           await touchOpen(deckToken);
           // Ledger hygiene: sweep approvals orphaned by edits in a PRIOR session
           // (deletes/re-links that never got a save-time reconcile). See fileOps.
-          const { reconcileDeckApprovals } = await import('./fileOps');
+          const { reconcileDeckApprovals, notifyTrustStatusOnOpen } = await import('./fileOps');
           await reconcileDeckApprovals();
+          // Non-blocking status nudge: TTL re-confirm, or "N files not watched — Review".
+          await notifyTrustStatusOnOpen();
         } catch (e) { console.warn('[openProject] trust touchOpen/reconcile failed (non-fatal):', e); }
       })();
     }
