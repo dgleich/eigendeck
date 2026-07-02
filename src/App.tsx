@@ -1281,9 +1281,10 @@ function App() {
   // canvas/sidebar refresh without needing a reopen. (docs/ASSETS-SECURITY.md)
   useEffect(() => {
     let unlisten: (() => void) | null = null;
+    let unlistenTrust: (() => void) | null = null;
     (async () => {
       try {
-        const { listen: tauriListen } = await import('@tauri-apps/api/event');
+        const { listen: tauriListen, emitTo, emit: tauriEmit } = await import('@tauri-apps/api/event');
         unlisten = await tauriListen('eigendeck:security-changed', async () => {
           const store = usePresentationStore.getState();
           if (!store.projectPath) return;
@@ -1291,9 +1292,24 @@ function App() {
           const presOverride = store.presentation.config.autoReloadAssets ?? null;
           await scanForChangedAssets(dirname(store.projectPath), presOverride).catch(() => {});
         });
+        // The separate Security window CANNOT trust the deck itself — it has its own
+        // store copy, so minting a token there never reaches the deck file or this
+        // window (the trust-persistence bug). It asks THIS (main) window to do it, where
+        // the store IS the live deck: mint+record trust, SAVE so the token persists, then
+        // re-send the now-tokened deck to the Security window + refresh the sidebar.
+        unlistenTrust = await tauriListen('eigendeck:security-trust-request', async () => {
+          try {
+            const { trustThisDeck } = await import('./lib/securityReport');
+            await trustThisDeck();               // mints token in THIS store + createTrustedDeck
+            await saveProject();                 // persist the token to the deck file
+            const st = usePresentationStore.getState();
+            await emitTo('security', 'security:init', { presentation: st.presentation, projectPath: st.projectPath });
+            await tauriEmit('eigendeck:security-changed'); // sidebar re-checks trust
+          } catch (e) { console.warn('[trust-request] failed:', e); }
+        });
       } catch { /* not in Tauri */ }
     })();
-    return () => { if (unlisten) unlisten(); };
+    return () => { if (unlisten) unlisten(); if (unlistenTrust) unlistenTrust(); };
   }, []);
 
   // Context menu: global event listener + suppress default

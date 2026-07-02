@@ -20,6 +20,11 @@ initRuntime();
 
 function SecurityRoot(): React.ReactElement {
   const [ready, setReady] = useState(false);
+  // Bumped on every security:init. The main window re-sends init after it trusts the
+  // deck (see App.tsx trust-request handler), so remounting SecurityWindowApp via this
+  // key rebuilds the report against the now-trusted deck — deterministically, without
+  // racing the store update against the report's own listeners.
+  const [initKey, setInitKey] = useState(0);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -32,6 +37,7 @@ function SecurityRoot(): React.ReactElement {
             projectPath: event.payload.projectPath,
           });
           setReady(true);
+          setInitKey((k) => k + 1);
         },
       );
       // Signal the main window we're mounted and listening.
@@ -41,7 +47,7 @@ function SecurityRoot(): React.ReactElement {
   }, []);
 
   if (!ready) return <div style={{ padding: 20, color: '#999' }}>Loading…</div>;
-  return <SecurityWindowApp />;
+  return <SecurityWindowApp key={initKey} />;
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<SecurityRoot />);

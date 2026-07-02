@@ -12,7 +12,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { emit } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
-import { buildDeckSecurityReport, trustThisDeck, approveOne, approveDirectory, type DeckSecurityReport, type RowState } from '../lib/securityReport';
+import { buildDeckSecurityReport, approveOne, approveDirectory, type DeckSecurityReport, type RowState } from '../lib/securityReport';
 
 const STATE_STYLE: Record<RowState, { label: string; color: string; bg: string }> = {
   approved:  { label: 'Watched',     color: '#166534', bg: '#dcfce7' },
@@ -35,8 +35,14 @@ export function SecurityWindowApp(): React.ReactElement {
   //      reads NOTHING on its own.
   //   2. Approve files — only after the deck is trusted; per file OR a whole folder.
   const doTrust = async () => {
+    // The Security window has its OWN store copy — trusting here wouldn't reach the
+    // deck file or the main window. Ask the main window (which owns the deck + saves it)
+    // to mint+record+SAVE trust; it re-sends security:init, remounting this window with
+    // the now-trusted deck. See App.tsx 'eigendeck:security-trust-request'.
     setBusy(true);
-    try { setReport(await trustThisDeck()); notifyMain(); } finally { setBusy(false); }
+    await emit('eigendeck:security-trust-request');
+    // Fallback: if no re-init arrives (e.g. main window busy), un-stick the button.
+    setTimeout(() => setBusy(false), 4000);
   };
   const doApprove = async (assetId: string, referencePath: string) => {
     setBusy(true);

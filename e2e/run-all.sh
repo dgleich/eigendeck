@@ -91,6 +91,11 @@ MANIFEST=(
   "asset-approval-cleanup-probe.mjs|empty.eigendeck||$EMPTY"
   "asset-watch-warning-probe.mjs|empty.eigendeck||$EMPTY"
   "security-actions-probe.mjs|empty.eigendeck||$EMPTY"
+  # REAL second-window trust: drives the actual Security window (window-handle
+  # switch) + clicks the real "Trust this deck" button — NOT the trust seam — and
+  # asserts trust reaches + persists on the MAIN deck. Catches the trust-
+  # persistence bug the seam-based probes structurally could not (seam discipline).
+  "security-window-trust-probe.mjs|empty.eigendeck||$EMPTY"
   "demo-mount-gate-probe.mjs|empty.eigendeck||$EMPTY"
 
   # ── sync / link / promote round-trips (built fixture decks) ─────────────

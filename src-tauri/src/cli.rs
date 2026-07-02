@@ -60,10 +60,17 @@ fn main() {
         }
     }
 
-    // Open the database using the library
-    if let Err(e) = storage::open_db(db_path) {
-        eprintln!("Error opening {}: {}", db_path, e);
-        process::exit(1);
+    // Open the database using the library. `import` is the CLI's "New Project":
+    // it builds a FRESH in-memory deck and atomically writes db_path (see
+    // cmd_import), so it must work when db_path does NOT yet exist — and open_db
+    // opens EXISTING files only (#103, so a missing Recent entry can't silently
+    // create a blank deck). Skip the open-existing step for import; it manages
+    // its own DB. All other verbs require the file to be there.
+    if verb != "import" {
+        if let Err(e) = storage::open_db(db_path) {
+            eprintln!("Error opening {}: {}", db_path, e);
+            process::exit(1);
+        }
     }
 
     let result = match verb.as_str() {
