@@ -92,6 +92,12 @@ export function useAssetUrl(
 
 // assetIds whose bytes were checked and are NOT a marked eigendeck demo → don't mount.
 const demoBlockedCache = new Set<string>();
+// Demo iframe blob URLs, kept SEPARATE from `blobCache`. Critical for the mount gate:
+// blobCache is shared with getAssetUrl (images/video), so if a crafted deck bound an
+// image AND a demo to the same assetId, the image would populate blobCache first and a
+// blobCache-keyed demo lookup would return that blob WITHOUT ever running the marker
+// check. A dedicated cache means the marker is validated per-asset on this path, always.
+const demoBlobCache = new Map<string, string>();
 
 /**
  * Demo-mount gate (docs/ASSETS-SECURITY.md — "demo-ingestion invariant"): re-check the
@@ -103,7 +109,7 @@ const demoBlockedCache = new Set<string>();
 async function getDemoUrl(assetId: string | undefined, hash?: string): Promise<string | null> {
   if (!assetId) return null;
   if (demoBlockedCache.has(assetId)) return null;
-  let blobUrl = blobCache.get(assetId);
+  let blobUrl = demoBlobCache.get(assetId);
   if (!blobUrl) {
     try {
       const data = await invoke<ArrayBuffer>('db_get_asset_by_id', { assetId });
@@ -111,7 +117,7 @@ async function getDemoUrl(assetId: string | undefined, hash?: string): Promise<s
       const { isEigendeckDemo } = await import('./assetTypes.mjs');
       if (!isEigendeckDemo(bytes).ok) { demoBlockedCache.add(assetId); return null; }
       blobUrl = URL.createObjectURL(new Blob([bytes], { type: 'text/html' }));
-      blobCache.set(assetId, blobUrl);
+      demoBlobCache.set(assetId, blobUrl);
     } catch {
       return null;
     }
@@ -156,6 +162,11 @@ export function invalidateAsset(assetId: string) {
     URL.revokeObjectURL(old);
     blobCache.delete(assetId);
   }
+  const oldDemo = demoBlobCache.get(assetId);
+  if (oldDemo) {
+    URL.revokeObjectURL(oldDemo);
+    demoBlobCache.delete(assetId);
+  }
   mimeCache.delete(assetId);
   demoBlockedCache.delete(assetId); // re-validate the marker on next mount
 }
@@ -165,7 +176,12 @@ export function clearAssetCache() {
   for (const url of blobCache.values()) {
     URL.revokeObjectURL(url);
   }
+  for (const url of demoBlobCache.values()) {
+    URL.revokeObjectURL(url);
+  }
   blobCache.clear();
+  demoBlobCache.clear();
   mimeCache.clear();
+  demoBlockedCache.clear();
 }
 

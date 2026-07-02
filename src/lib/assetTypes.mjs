@@ -122,14 +122,17 @@ function isMp4(input) {
 }
 
 function isVtt(input) {
-  // WebVTT: the file must start with "WEBVTT" (after an optional BOM).
-  return /^WEBVTT/.test(prefixString(input, 16));
+  // WebVTT: the file must start with "WEBVTT" followed by a space, tab, newline, or EOF
+  // (per the spec — so "WEBVTTX" is NOT a cue file), after an optional BOM.
+  return /^WEBVTT(?:[ \t\r\n]|$)/.test(prefixString(input, 16));
 }
 
 function isSvg(input) {
-  // Text/XML: a *leading* <svg root — after only an optional BOM/xml-decl/comments,
-  // matching the spec's "<svg> root" (not merely an <svg somewhere in the file).
-  return /^\s*(?:<\?xml[^>]*>\s*)?(?:<!--[\s\S]*?-->\s*)*<svg[\s>]/i.test(prefixString(input, 512));
+  // Text/XML: a *leading* <svg root (the spec's "<svg> root", not merely an <svg
+  // somewhere in the file). Tolerate any prolog of xml-decl / <!DOCTYPE svg …> /
+  // comments in any order — Illustrator + Inkscape emit an SVG DOCTYPE before <svg>.
+  return /^\s*(?:(?:<\?xml[^>]*>|<!doctype\s+svg[^>]*>|<!--[\s\S]*?-->)\s*)*<svg[\s>]/i
+    .test(prefixString(input, 512));
 }
 
 /** Upper bound on a notebook we'll parse. Notebooks with embedded plot/image

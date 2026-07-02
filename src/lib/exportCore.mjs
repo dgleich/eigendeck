@@ -1,4 +1,5 @@
 import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
+import { isEigendeckDemo } from './assetTypes.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
 import { coverHtml, arrowSvgHtml, imageHtml } from './elementHtml.mjs';
 import { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
@@ -43,6 +44,14 @@ const absBox = (p) => `position:absolute;left:${p.x}px;top:${p.y}px;width:${p.wi
 function demoIframeHtml(html, slide, p, demoThemeVarsCss) {
   const themed = injectDemoThemeIntoHtml(html, '', demoThemeVarsCss ? (demoThemeVarsCss(slide) || '') : '');
   return `<iframe srcdoc="${htmlEscapeForSrcdoc(themed)}" style="${absBox(p)};border:none;" sandbox="${DEMO_SANDBOX}"></iframe>`;
+}
+
+/** Demo-mount gate on the EXPORT path (docs/ASSETS-SECURITY.md — the demo-ingestion
+ *  invariant runs wherever HTML enters the demo pipeline, and export renders demos as
+ *  live iframes). Non-marked HTML gets a visible notice instead of a running iframe,
+ *  matching the on-screen block. */
+function demoBlockedHtml(p) {
+  return `<div style="${absBox(p)};display:flex;align-items:center;justify-content:center;padding:20px;color:#b91c1c;font:12px sans-serif;text-align:center;">This isn't a valid Eigendeck demo, so it isn't shown.</div>`;
 }
 
 
@@ -314,14 +323,20 @@ export async function buildExportHtml(opts) {
           // Fonts are NOT baked here — injected at runtime from the parent's
           // single #eigendeck-fonts block (see the font-share script).
           try {
-            inner += demoIframeHtml(await readTextFile(el.src), slide, p, demoThemeVarsCss);
+            const rawDemo = await readTextFile(el.src);
+            inner += isEigendeckDemo(rawDemo).ok
+              ? demoIframeHtml(rawDemo, slide, p, demoThemeVarsCss)
+              : demoBlockedHtml(p);
           } catch (e) { console.error('Demo export failed:', e); }
           break;
         case 'demo-piece':
           demoPieceSrcs.add(el.demoSrc);
           try {
+            // Validate the RAW bytes before bootstrap injection (which prepends script).
+            const rawPiece = await readTextFile(el.demoSrc);
+            if (!isEigendeckDemo(rawPiece).ok) { inner += demoBlockedHtml(p); break; }
             const channelKey = `slide${i}-${el.demoSrc.replace(/[^a-z0-9]/gi, '')}`;
-            const pieceHtml = injectDemoBootstrap(await readTextFile(el.demoSrc), `#piece=${el.piece}`, channelKey);
+            const pieceHtml = injectDemoBootstrap(rawPiece, `#piece=${el.piece}`, channelKey);
             inner += demoIframeHtml(pieceHtml, slide, p, demoThemeVarsCss);
           } catch (e) { console.error('Demo piece export failed:', e); }
           break;

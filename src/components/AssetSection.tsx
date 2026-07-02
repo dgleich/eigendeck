@@ -122,6 +122,13 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
     } catch { setDeckTrusted(false); }
   }, []);
   useEffect(() => { void refreshTrust(); }, [refreshTrust, assetId]);
+  // Re-check trust when it changes elsewhere (approving in the separate Security window
+  // emits this) so the untrusted nudge clears without needing to reselect the element.
+  useEffect(() => {
+    const onChanged = () => { void refreshTrust(); };
+    window.addEventListener('eigendeck:security-changed', onChanged);
+    return () => window.removeEventListener('eigendeck:security-changed', onChanged);
+  }, [refreshTrust]);
 
   const fetchMeta = useCallback(async () => {
     const m = await invoke<AssetMeta | null>('db_get_asset_meta_by_id', { assetId }).catch(() => null);

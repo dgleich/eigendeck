@@ -35,11 +35,20 @@ for (let i = 0; i < 20; i++) {
   blocked = await hasBlockedNotice(sid);
   if (iframes === 1 && blocked) break;
 }
-await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {});
-
 if (iframes !== 1) fail(`expected exactly 1 demo iframe (only the marked demo mounts), got ${iframes}`);
 if (!blocked) fail('expected the "isn’t a valid Eigendeck demo" notice for the unmarked demo');
 console.log('  unmarked demo → blocked (notice shown, no iframe) ✓');
 console.log('  marked demo   → mounts (iframe) ✓');
+
+// Shared-cache collision (the HIGH review finding): bind an IMAGE and a DEMO to the SAME
+// unmarked-HTML asset. The image populates the shared asset blob cache first; the demo
+// must STILL be blocked (demo blobs are cached separately + always marker-checked).
+if (await store(sid, 'demos/shared.html', 'sc', UNMARKED) === undefined) fail('store shared');
+await exec(sid, "const g=window.__eigendeck.store.getState; g().selectSlide(0); g().updateSlide(0,{elements:[]}); g().addElement({id:'im-sc',type:'image',assetId:'sc',position:{x:0,y:0,width:400,height:300}}); g().addElement({id:'dm-sc',type:'demo',assetId:'sc',position:{x:420,y:0,width:400,height:300}});");
+let collideIframes = 1;
+for (let i = 0; i < 15; i++) { await sleep(700); collideIframes = await iframeCount(sid); if (collideIframes === 0) break; }
+await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {});
+if (collideIframes !== 0) fail(`shared-asset demo mounted despite unmarked bytes — cache-collision bypass (iframes=${collideIframes})`);
+console.log('  image+demo share one unmarked asset → demo still blocked (no cache-collision bypass) ✓');
 console.log('DEMO_GATE_PASS: the mount gate renders only marked eigendeck demos');
 process.exit(0);

@@ -143,6 +143,18 @@ describe('adversarial + regression cases', () => {
     expect(contentMatchesExtension('<?xml version="1.0"?><svg></svg>', 'svg')).toBe(true);
     expect(contentMatchesExtension('a note mentioning <svg> in prose', 'svg')).toBe(false);
   });
+  it('svg accepts a leading <!DOCTYPE svg …> prolog (Illustrator / Inkscape)', () => {
+    expect(contentMatchesExtension('<?xml version="1.0"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n<svg xmlns="http://www.w3.org/2000/svg"></svg>', 'svg')).toBe(true);
+    expect(contentMatchesExtension('<!DOCTYPE svg>\n<svg></svg>', 'svg')).toBe(true);
+    // but a non-svg doctype is not an svg
+    expect(contentMatchesExtension('<!DOCTYPE html>\n<svg></svg>', 'svg')).toBe(false);
+  });
+  it('vtt requires WEBVTT to be terminated (space/tab/newline/EOF), not a prefix', () => {
+    expect(contentMatchesExtension('WEBVTT', 'vtt')).toBe(true);            // EOF
+    expect(contentMatchesExtension('WEBVTT\n\n00:00.000 --> 00:01.000\nhi', 'vtt')).toBe(true);
+    expect(contentMatchesExtension('WEBVTT - Some title', 'vtt')).toBe(true);
+    expect(contentMatchesExtension('WEBVTTX not really vtt', 'vtt')).toBe(false); // prefix, not a real header
+  });
   it('a notebook over NOTEBOOK_MAX_BYTES is rejected without parsing', () => {
     const over = new Uint8Array(NOTEBOOK_MAX_BYTES + 1); // one byte past the cap
     expect(contentMatchesExtension(over, 'ipynb')).toBe(false);

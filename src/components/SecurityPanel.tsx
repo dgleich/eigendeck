@@ -2,8 +2,9 @@
 // OWN Tauri window (security.html / security.tsx), which receives the deck via a
 // `security:init` event. Lists every external file the deck links, its RESOLVED real
 // target (plain sight), where it's used, and its state (approved/eligible/forbidden/
-// missing), with per-path Approve and a trust-all action. Forbidden rows are shown
-// (see what a deck tried to reach) but never approvable.
+// missing). Two separate steps, never combined: a deck-level "Trust this deck" (shown
+// while untrusted; reads nothing), then per-file / per-folder Approve. Forbidden rows
+// are shown (see what a deck tried to reach) but never approvable.
 //
 // Ledger writes happen here (shared appData); after any change we emit
 // `eigendeck:security-changed` so the MAIN window (which owns the watcher) re-scans.
