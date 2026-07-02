@@ -78,6 +78,31 @@ CLI → `/tmp/el-target/debug/eigendeck-cli` (builds fixture decks).
 > localStorage (and `run.sh` wipes `XDG_DATA_HOME` per run anyway). The flag
 > must be baked into the `dist/` the harness serves. See `src/App.tsx`.
 
+## Seam discipline — DO NOT put app logic behind the seam
+
+**A seam may ONLY exist to work around an interaction WebDriver genuinely cannot
+perform** — chiefly the native OS dialogs (file **Open / Save / picker / New**) and
+the read/observe + save-in-place that replace them. That's it.
+
+**A seam must NEVER invoke or reimplement application behaviour** (trust a deck, approve
+a file, relocate, revoke, etc.). Doing so creates a *parallel code path*: the probe runs
+the seam's copy of the logic and goes green while the **real UI is broken** — because
+the seam skips the actual plumbing (event round-trips, separate windows, deck save,
+store wiring). This is the same "divergence" hazard we guard against in app code, in the
+*test* layer. It really bit us: the asset-security `trust`/`approve` action-seams passed
+while clicking "Trust this deck" in the real Security window didn't persist at all.
+
+Rules of thumb:
+- **Bypass (OK):** `store` (read to assert; drive input the UI would), `save()`/`flush()`
+  (stand in for the Save dialog / autosave), `exportHtml()` (dialog-free export),
+  `captureElement()` (WebDriver `/screenshot` hangs), `missingAssets()` (observe).
+- **Reimplement (NOT OK):** any seam that *performs* a user action with its own logic
+  instead of clicking the real control. Drive the real button; for a second Tauri
+  window, switch to its WebDriver window handle (`GET /session/{id}/window/handles` →
+  `POST /session/{id}/window`) and click there — see `e2e/security-window-handle-spike.mjs`.
+- If you're tempted to add an action seam "so the probe is simpler," that's the smell:
+  the probe should drive the real control so it exercises the real path.
+
 ## 3. Run a scenario
 
 ```bash

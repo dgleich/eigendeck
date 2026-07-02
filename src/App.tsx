@@ -70,6 +70,13 @@ registerNotebookLifecycle();
 //   • `VITE_EIGENDECK_SEAM=1` baked into the build — used for the E2E dist.
 // Both are compile-time constants, so a plain release build tree-shakes the
 // install away entirely.
+//
+// SEAM DISCIPLINE (see .claude/skills/eigendeck-e2e SKILL.md): the seam may ONLY
+// bypass what WebDriver can't do — native Open/Save/picker dialogs and the read/
+// save-in-place that stand in for them. NEVER put application logic behind the seam
+// (trust/approve/relocate/etc.): that's a parallel path that passes while the real UI
+// is broken. Drive the real controls instead (for a second window, switch WebDriver
+// window handles). The security action-seams here are being retired for exactly this.
 if (
   import.meta.env.DEV ||
   import.meta.env.VITE_EIGENDECK_SEAM === '1'
