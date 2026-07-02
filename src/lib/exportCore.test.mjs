@@ -152,7 +152,7 @@ describe('buildExportHtml', () => {
   });
 
   it('round-trips with demo and demo-piece elements', async () => {
-    const demoHtml = '<!DOCTYPE html><html><head></head><body><script>var params = new URLSearchParams(location.hash.slice(1));</script></body></html>';
+    const demoHtml = '<!DOCTYPE html><!--eigendeck-demo-v1--><html><head></head><body><script>var params = new URLSearchParams(location.hash.slice(1));</script></body></html>';
     const p = makePresentation({
       slides: [{
         id: 's1', layout: 'default', notes: '',
@@ -193,6 +193,40 @@ describe('buildExportHtml', () => {
     expect(restored.slides[0].elements[1].type).toBe('demo-piece');
     expect(restored.slides[0].elements[1].piece).toBe('graph');
     expect(restored.slides[0].elements[2].piece).toBe('controls');
+  });
+
+  it('demo-mount gate on export: an UNMARKED demo exports as a placeholder, not a live iframe', async () => {
+    const p = makePresentation({
+      slides: [{
+        id: 's1', layout: 'default', notes: '',
+        elements: [{ id: 'd', type: 'demo', src: 'demos/x.html', position: { x: 0, y: 0, width: 400, height: 300 } }],
+      }],
+    });
+    const html = await buildExportHtml({
+      presentation: p,
+      readFile: async () => new Uint8Array([0]),
+      readTextFile: async () => '<!DOCTYPE html><html><body>PLAIN PAGE NOT A DEMO</body></html>', // no marker
+      renderMath: null, applyMathPreamble: null,
+    });
+    expect(html).toContain("isn't a valid Eigendeck demo"); // the placeholder
+    expect(html).not.toContain('PLAIN PAGE NOT A DEMO');     // raw bytes NOT spliced into a srcdoc
+  });
+
+  it('demo-mount gate on export: a MARKED demo exports as a live iframe', async () => {
+    const p = makePresentation({
+      slides: [{
+        id: 's1', layout: 'default', notes: '',
+        elements: [{ id: 'd', type: 'demo', src: 'demos/x.html', position: { x: 0, y: 0, width: 400, height: 300 } }],
+      }],
+    });
+    const html = await buildExportHtml({
+      presentation: p,
+      readFile: async () => new Uint8Array([0]),
+      readTextFile: async () => '<!DOCTYPE html><!--eigendeck-demo-v1--><html><body>REAL DEMO BODY</body></html>',
+      renderMath: null, applyMathPreamble: null,
+    });
+    expect(html).toContain('srcdoc=');
+    expect(html).not.toContain("isn't a valid Eigendeck demo");
   });
 
   it('round-trips with arrows and covers', async () => {

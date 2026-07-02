@@ -179,7 +179,7 @@ fn cli_write_and_exit(path: String, content: String, error: Option<String>) -> R
     std::process::exit(0);
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct ResolvedRead {
     canonical_path: String,
@@ -934,6 +934,77 @@ pub fn run() {
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod resolve_read_tests {
+    // Direct tests of the asset-security read primitive (docs/ASSETS-SECURITY.md). The
+    // whole realpath/symlink defense rests on this: it must resolve symlinks + `..` to
+    // the REAL target (so the caller judges the resolved path), read only regular files,
+    // and surface missing/oversized/non-file as errors ("unreadable → not watchable").
+    use super::resolve_and_read;
+    use std::env::temp_dir;
+    use std::fs;
+
+    fn tmp(name: &str) -> std::path::PathBuf {
+        temp_dir().join(format!("rr-{}-{}", std::process::id(), name))
+    }
+
+    #[test]
+    fn reads_a_regular_file_and_returns_its_canonical_path() {
+        let p = tmp("reg.png");
+        fs::write(&p, b"hello").unwrap();
+        let r = resolve_and_read(p.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(r.bytes, b"hello");
+        assert_eq!(r.canonical_path, fs::canonicalize(&p).unwrap().to_string_lossy());
+        let _ = fs::remove_file(&p);
+    }
+
+    #[test]
+    fn a_missing_file_is_an_error() {
+        assert!(resolve_and_read(tmp("nope.png").to_string_lossy().into_owned()).is_err());
+    }
+
+    #[test]
+    fn a_directory_is_rejected_as_not_a_regular_file() {
+        let d = tmp("adir");
+        fs::create_dir_all(&d).unwrap();
+        let err = resolve_and_read(d.to_string_lossy().into_owned()).unwrap_err();
+        assert!(err.contains("not a regular file"), "got: {err}");
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    // THE symlink defense: an innocuously-named link pointing at a secret must resolve
+    // to the secret's real path (so the caller's extension/type gate judges *that*).
+    #[cfg(unix)]
+    #[test]
+    fn a_symlink_resolves_to_and_reads_its_real_target() {
+        use std::os::unix::fs::symlink;
+        let target = tmp("secret.txt");
+        fs::write(&target, b"SECRET").unwrap();
+        let link = tmp("a.png"); // looks like an image, actually points at the secret
+        let _ = fs::remove_file(&link);
+        symlink(&target, &link).unwrap();
+        let r = resolve_and_read(link.to_string_lossy().into_owned()).unwrap();
+        // canonicalize followed the symlink → canonical is the TARGET, not the link name
+        assert_eq!(r.bytes, b"SECRET");
+        assert_eq!(r.canonical_path, fs::canonicalize(&target).unwrap().to_string_lossy());
+        assert!(r.canonical_path.ends_with("secret.txt"));
+        let _ = fs::remove_file(&link);
+        let _ = fs::remove_file(&target);
+    }
+
+    // `..` traversal is normalized by canonicalize too (belt-and-suspenders on the path).
+    #[test]
+    fn dot_dot_traversal_is_normalized() {
+        let p = tmp("trav.png");
+        fs::write(&p, b"x").unwrap();
+        let messy = temp_dir().join("sub").join("..").join(format!("rr-{}-trav.png", std::process::id()));
+        fs::create_dir_all(temp_dir().join("sub")).ok();
+        let r = resolve_and_read(messy.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(r.canonical_path, fs::canonicalize(&p).unwrap().to_string_lossy());
+        let _ = fs::remove_file(&p);
+    }
 }
 
 #[cfg(test)]

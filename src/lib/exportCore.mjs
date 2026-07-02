@@ -330,11 +330,13 @@ export async function buildExportHtml(opts) {
           } catch (e) { console.error('Demo export failed:', e); }
           break;
         case 'demo-piece':
-          demoPieceSrcs.add(el.demoSrc);
           try {
             // Validate the RAW bytes before bootstrap injection (which prepends script).
+            // Only register the demoSrc for a controller iframe if it's a real demo —
+            // otherwise a blocked piece would still spawn an ungated controller below.
             const rawPiece = await readTextFile(el.demoSrc);
             if (!isEigendeckDemo(rawPiece).ok) { inner += demoBlockedHtml(p); break; }
+            demoPieceSrcs.add(el.demoSrc);
             const channelKey = `slide${i}-${el.demoSrc.replace(/[^a-z0-9]/gi, '')}`;
             const pieceHtml = injectDemoBootstrap(rawPiece, `#piece=${el.piece}`, channelKey);
             inner += demoIframeHtml(pieceHtml, slide, p, demoThemeVarsCss);
@@ -411,10 +413,13 @@ export async function buildExportHtml(opts) {
       }
     }
 
-    // Hidden controller iframes for demo-pieces
+    // Hidden controller iframes for demo-pieces. demoPieceSrcs only holds marked demos
+    // (the piece case gates before adding), but re-check here — this is another point
+    // where HTML enters the demo pipeline (docs/ASSETS-SECURITY.md demo-ingestion).
     for (const demoSrc of demoPieceSrcs) {
       try {
         const demoHtml = await readTextFile(demoSrc);
+        if (!isEigendeckDemo(demoHtml).ok) continue;
         const channelKey = `slide${i}-${demoSrc.replace(/[^a-z0-9]/gi, '')}`;
         const ctrlHtml = injectDemoBootstrap(demoHtml, '#role=controller', channelKey);
         const escaped = htmlEscapeForSrcdoc(ctrlHtml);
