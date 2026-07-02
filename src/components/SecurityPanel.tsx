@@ -1,19 +1,23 @@
 // Deck-wide asset-security window content (docs/ASSETS-SECURITY.md). Renders in its
 // OWN Tauri window (security.html / security.tsx), which receives the deck via a
-// `security:init` event. Lists every external file the deck links, its RESOLVED real
-// target (plain sight), where it's used, and its state (approved/eligible/forbidden/
-// missing). Two separate steps, never combined: a deck-level "Trust this deck" (shown
-// while untrusted; reads nothing), then per-file / per-folder Approve. Forbidden rows
-// are shown (see what a deck tried to reach) but never approvable.
+// `security:init` event. Shows one deck-status band (six cases), a loud Blocked band,
+// and the linked files grouped by their real folder (tinted when a folder sits outside
+// the deck's directory), each with its state, provenance, and per-file/per-folder
+// actions. Deck trust and file approval are always two separate steps.
 //
 // Ledger writes happen here (shared appData); after any change we emit
 // `eigendeck:security-changed` so the MAIN window (which owns the watcher) re-scans.
+// Actions that must persist to the deck file (trust, watch-this-deck) or open the main
+// window's Settings are routed to the main window by event (its store is the live deck).
 
 import { useEffect, useState, useCallback } from 'react';
 import { emit } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { usePresentationStore } from '../store/presentation';
-import { buildDeckSecurityReport, approveOne, approveDirectory, type DeckSecurityReport, type RowState } from '../lib/securityReport';
+import {
+  buildDeckSecurityReport, approveOne, approveDirectory, reconfirmThisDeck, revokeApproval,
+  type DeckSecurityReport, type ExternalPathRow, type RowState,
+} from '../lib/securityReport';
 
 const STATE_STYLE: Record<RowState, { label: string; color: string; bg: string }> = {
   approved:  { label: 'Watched',     color: '#166534', bg: '#dcfce7' },
@@ -22,47 +26,69 @@ const STATE_STYLE: Record<RowState, { label: string; color: string; bg: string }
   missing:   { label: 'Missing',     color: '#6b7280', bg: '#f3f4f6' },
 };
 
+type DeckCase = 'A' | 'B1' | 'B2' | 'C' | 'D' | 'E' | 'F';
+
+// Which band to show, in precedence order: nothing linked → watching off (global wins
+// over per-deck) → trust state.
+function deckCase(r: DeckSecurityReport): DeckCase {
+  if (r.rows.length === 0) return 'A';
+  if (!r.watch.global) return 'B1';
+  if (r.watch.deck === 'off') return 'B2';
+  if (r.status === 'untrusted-ttl') return 'F';
+  if (r.status === 'untrusted-new') return 'E';
+  return r.trustReason === 'file-new' ? 'C' : 'D';
+}
+
+// Relative for the last week, absolute after.
+function fmtWhen(at: number | null): string {
+  if (!at) return '';
+  const ms = Date.now() - at, day = 86_400_000;
+  if (ms < 3_600_000) return 'just now';
+  if (ms < day) { const h = Math.round(ms / 3_600_000); return h <= 1 ? '1 hour ago' : `${h} hours ago`; }
+  if (ms < 7 * day) { const d = Math.round(ms / day); return d <= 1 ? 'yesterday' : `${d} days ago`; }
+  return new Date(at).toLocaleDateString();
+}
+function howLabel(reason: string | null): string {
+  switch (reason) {
+    case 'add': return 'added';
+    case 'relocate': case 'relocate-folder': return 'relocated';
+    case 'approve': return 'approved here';
+    case 'approve-folder': return 'approved (whole folder)';
+    case 'trusted': case 'trust-all': return 'trusted';
+    default: return reason || '';
+  }
+}
+// A resolved folder counts as "inside the deck" if it's the deck dir or below it.
+function isInsideDeck(dir: string | null, projectDir: string): boolean {
+  if (!projectDir || !dir) return true; // unknown → don't tint
+  const base = projectDir.replace(/\/$/, '');
+  return dir === base || dir.startsWith(base + '/');
+}
+
 export function SecurityWindowApp(): React.ReactElement {
   const [report, setReport] = useState<DeckSecurityReport | null>(null);
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(() => { void buildDeckSecurityReport().then(setReport); }, []);
   useEffect(() => { refresh(); }, [refresh]);
-
   const notifyMain = () => { void emit('eigendeck:security-changed'); };
 
-  // TWO SEPARATE steps, never combined (docs/ASSETS-SECURITY.md):
-  //   1. Trust the deck — a deck-level decision that unlocks watching + approval and
-  //      reads NOTHING on its own.
-  //   2. Approve files — only after the deck is trusted; per file OR a whole folder.
-  const doTrust = async () => {
-    // The Security window has its OWN store copy — trusting here wouldn't reach the
-    // deck file or the main window. Ask the main window (which owns the deck + saves it)
-    // to mint+record+SAVE trust; it re-sends security:init, remounting this window with
-    // the now-trusted deck. See App.tsx 'eigendeck:security-trust-request'.
-    setBusy(true);
-    await emit('eigendeck:security-trust-request');
-    // Fallback: if no re-init arrives (e.g. main window busy), un-stick the button.
-    setTimeout(() => setBusy(false), 4000);
-  };
-  const doApprove = async (assetId: string, referencePath: string) => {
-    setBusy(true);
-    try { setReport(await approveOne(assetId, referencePath)); notifyMain(); } finally { setBusy(false); }
-  };
-  const doApproveDir = async (dir: string) => {
-    setBusy(true);
-    try { setReport(await approveDirectory(dir)); notifyMain(); } finally { setBusy(false); }
-  };
-  // Stop trusting: drops trust AND every approval for this deck. Unlike trusting
-  // (which mints + SAVES a token to the deck file, so it must go through the main
-  // window), revoke only writes the shared appData ledger — so it persists from
-  // here directly. The still-live watcher's next read is then gated off (untrusted
-  // → snapshot only). notifyMain re-scans + refreshes the sidebar.
+  // Trust + watch-this-deck must persist to the deck FILE, which only the main window
+  // (whose store is the live deck) can do. Ask it; it re-sends security:init, remounting
+  // this window with the updated deck. See App.tsx security-*-request handlers.
+  const doTrust = async () => { setBusy(true); await emit('eigendeck:security-trust-request'); setTimeout(() => setBusy(false), 4000); };
+  const doWatchDeck = async () => { setBusy(true); await emit('eigendeck:security-watch-request'); setTimeout(() => setBusy(false), 4000); };
+  const doOpenSettings = () => { void emit('eigendeck:open-settings'); };
+  // Approve / revoke / reconfirm only write the shared ledger, so they run here directly.
+  const doApprove = async (assetId: string, ref: string) => { setBusy(true); try { setReport(await approveOne(assetId, ref)); notifyMain(); } finally { setBusy(false); } };
+  const doApproveDir = async (dir: string) => { setBusy(true); try { setReport(await approveDirectory(dir)); notifyMain(); } finally { setBusy(false); } };
+  const doRevokeApproval = async (assetId: string) => { setBusy(true); try { setReport(await revokeApproval(assetId)); notifyMain(); } finally { setBusy(false); } };
+  const doReconfirm = async () => { setBusy(true); try { setReport(await reconfirmThisDeck()); notifyMain(); } finally { setBusy(false); } };
   const doRevoke = async () => {
     const token = usePresentationStore.getState().presentation.config.deckToken;
     if (!token) return;
     const title = usePresentationStore.getState().presentation.title || 'this deck';
-    const approved = report?.rows.filter((r) => r.state === 'approved').length ?? 0;
+    const approved = report?.counts.approved ?? 0;
     const { askConfirm } = await import('../lib/confirmDialog');
     const ok = await askConfirm(
       `Stop trusting "${title}"? Its linked files stop updating and all ${approved} approval${approved === 1 ? '' : 's'} are forgotten. The deck still displays fully using the embedded copies. You can trust it again later.`,
@@ -70,123 +96,210 @@ export function SecurityWindowApp(): React.ReactElement {
     );
     if (!ok) return;
     setBusy(true);
-    try {
-      const { revokeDeck } = await import('../lib/trustStore');
-      await revokeDeck(token);
-      setReport(await buildDeckSecurityReport());
-      notifyMain();
-    } finally { setBusy(false); }
+    try { const { revokeDeck } = await import('../lib/trustStore'); await revokeDeck(token); setReport(await buildDeckSecurityReport()); notifyMain(); }
+    finally { setBusy(false); }
   };
   const closeWindow = () => { void getCurrentWebviewWindow().close(); };
 
-  // Eligible files grouped by their resolved folder, for the per-folder bulk approve.
-  const eligibleDirs: Array<[string, number]> = report
-    ? Object.entries(report.rows.reduce<Record<string, number>>((m, r) => {
-        if (r.state === 'eligible' && r.resolvedDir) m[r.resolvedDir] = (m[r.resolvedDir] ?? 0) + 1;
-        return m;
-      }, {}))
-    : [];
+  const kase = report ? deckCase(report) : null;
+  // File actions (approve / revoke) apply only on a trusted deck that's actually
+  // watching. On B1/B2 (watching off) the files are listed read-only.
+  const canAct = !!report?.trusted && kase !== 'B1' && kase !== 'B2';
 
   return (
-    <div style={{ padding: 20, maxWidth: 760, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
-        <h1 style={{ margin: 0, fontSize: 18 }}>Linked files &amp; security</h1>
+    <div style={{ padding: 20, maxWidth: 780, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
+        <h1 style={{ margin: 0, fontSize: 18 }}>Security &amp; linked files</h1>
         <button onClick={closeWindow} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#666' }}>×</button>
       </div>
-      <p style={{ marginTop: 0, color: '#555', lineHeight: 1.45 }}>
-        This deck links to files on your computer. Eigendeck reads them only after you
-        approve them — until then it shows the copy embedded in the deck. Approve only
-        files you recognize; check the <em>real target</em> shown for each.
+      <p style={{ marginTop: 0, color: '#555', lineHeight: 1.45, fontSize: 13 }}>
+        Eigendeck can keep this deck's images, demos, and notebooks linked to files on your
+        computer so they update as you edit them. That means reading those files. So it only
+        does that for decks you trust, and only for files you approve.
+      </p>
+      <p style={{ marginTop: -4, color: '#111', fontSize: 12, fontWeight: 600 }}>
+        You never need to trust a deck just to view it. Every asset is already embedded.
+        Trust only affects whether linked files stay live.
       </p>
 
-      {!report ? (
+      {!report || !kase ? (
         <div style={{ color: '#999', padding: 12 }}>Scanning…</div>
-      ) : report.rows.length === 0 ? (
-        <div style={{ color: '#999', padding: 12 }}>This deck has no linked external files — everything is embedded.</div>
       ) : (
         <>
-          {/* Step 1 — trust the deck. Distinct from approving files; reads nothing. */}
-          {!report.trusted && (
-            <div style={{ border: '1px solid #fde68a', background: '#fffbeb', borderRadius: 6, padding: '10px 12px', marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: '#92400e', marginBottom: 8 }}>
-                This deck isn’t trusted, so Eigendeck isn’t reading any of these files — you’re
-                seeing the embedded copies. Trust the deck to <em>choose</em> which files it may
-                read &amp; watch. Trusting reads nothing on its own; you approve files next.
-              </div>
-              <button onClick={doTrust} disabled={busy} style={primaryBtn}>Trust this deck</button>
-            </div>
+          <StatusBand kase={kase} report={report} busy={busy}
+            onTrust={doTrust} onReconfirm={doReconfirm} onWatchDeck={doWatchDeck} onOpenSettings={doOpenSettings} />
+
+          {report.counts.blocked > 0 && <BlockedBand n={report.counts.blocked} />}
+
+          {kase !== 'A' && (
+            <>
+              <CountsHeader counts={report.counts} />
+              <GroupedRows report={report} canAct={canAct} busy={busy}
+                onApprove={doApprove} onApproveDir={doApproveDir} onRevokeApproval={doRevokeApproval} />
+            </>
           )}
 
-          {/* Step 2 — approve files, per folder or per file (trusted decks only). */}
-          {report.trusted && eligibleDirs.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: '#666', marginBottom: 6 }}>Approve a whole folder:</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {eligibleDirs.map(([dir, n]) => (
-                  <button key={dir} onClick={() => doApproveDir(dir)} disabled={busy}
-                    style={{ ...smallBtn, alignSelf: 'flex-start', textAlign: 'left' }}
-                    title={dir}>
-                    Approve all {n} file{n === 1 ? '' : 's'} in <span style={{ fontFamily: 'monospace' }}>{dir}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-            {report.rows.map((r) => {
-              const st = STATE_STYLE[r.state];
-              return (
-                <div key={r.assetId} style={{ border: '1px solid #eee', borderRadius: 6, padding: '9px 11px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-                    <span style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{r.referencePath}</span>
-                    <span style={{ flexShrink: 0, fontSize: 11, padding: '2px 8px', borderRadius: 10, color: st.color, background: st.bg }}>{st.label}</span>
-                  </div>
-                  {r.resolvedPath && r.resolvedPath !== r.referencePath && (
-                    <div style={{ fontFamily: 'monospace', fontSize: 11, color: r.state === 'forbidden' ? '#991b1b' : '#888', wordBreak: 'break-all', marginTop: 3 }}>
-                      → {r.resolvedPath}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5 }}>
-                    <span style={{ fontSize: 11, color: '#999' }}>{r.usage}</span>
-                    {r.reason && <span style={{ fontSize: 11, color: st.color }}>{r.reason}</span>}
-                    <span style={{ flex: 1 }} />
-                    {r.state === 'eligible' && (
-                      report.trusted
-                        ? <button onClick={() => doApprove(r.assetId, r.referencePath)} disabled={busy} style={smallBtn}>Approve</button>
-                        : <span style={{ fontSize: 11, color: '#999' }}>trust the deck first</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          {/* Deck-level action bar. Stop-trusting is deliberately separate from per-file
+              revoke, and guards on a native confirm (see doRevoke). */}
+          <div style={{ borderTop: '1px solid #eee', marginTop: 16, paddingTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+            {report.trusted && <button onClick={doRevoke} disabled={busy} style={dangerBtn}>Stop trusting this deck</button>}
+            <span style={{ flex: 1 }} />
+            <button onClick={() => { void import('@tauri-apps/plugin-opener').then((m) => m.openUrl('https://eigendeck.dev/manual/security')).catch(() => {}); }}
+              style={{ border: 'none', background: 'none', color: '#2563eb', fontSize: 11, cursor: 'pointer' }}>
+              Learn about deck security
+            </button>
           </div>
-          <p style={{ color: '#999', fontSize: 11, marginTop: 14 }}>
-            Blocked files aren’t a watchable type (e.g. not an image/PDF/video) and can’t be approved.
-          </p>
-          {report.trusted && (
-            <div style={{ borderTop: '1px solid #eee', marginTop: 16, paddingTop: 12 }}>
-              <button onClick={doRevoke} disabled={busy} style={dangerBtn}>Stop trusting this deck</button>
-              <span style={{ fontSize: 11, color: '#999', marginLeft: 10 }}>
-                Forgets trust and all approvals; linked files stop updating. The deck still displays (embedded copies).
-              </span>
-            </div>
-          )}
         </>
       )}
     </div>
   );
 }
 
-const primaryBtn: React.CSSProperties = {
-  padding: '7px 14px', fontSize: 13, background: '#2563eb', color: '#fff',
-  border: 'none', borderRadius: 4, cursor: 'pointer',
-};
-const smallBtn: React.CSSProperties = {
-  padding: '3px 10px', fontSize: 11, background: '#2563eb', color: '#fff',
-  border: 'none', borderRadius: 3, cursor: 'pointer',
-};
-const dangerBtn: React.CSSProperties = {
-  padding: '5px 12px', fontSize: 12, background: '#fff', color: '#991b1b',
-  border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer',
-};
+function StatusBand({ kase, report, busy, onTrust, onReconfirm, onWatchDeck, onOpenSettings }: {
+  kase: DeckCase; report: DeckSecurityReport; busy: boolean;
+  onTrust: () => void; onReconfirm: () => void; onWatchDeck: () => void; onOpenSettings: () => void;
+}): React.ReactElement {
+  const { counts, trustedAt } = report;
+  const box = (bg: string, border: string, color: string, body: React.ReactNode, action?: React.ReactNode) => (
+    <div style={{ border: `1px solid ${border}`, background: bg, borderRadius: 6, padding: '10px 12px', marginBottom: 12, color }}>
+      <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>{body}</div>
+      {action && <div style={{ marginTop: 8 }}>{action}</div>}
+    </div>
+  );
+  switch (kase) {
+    case 'A':
+      return box('#f8fafc', '#e5e7eb', '#374151',
+        <><b>Nothing to manage.</b> This deck is fully self-contained. Nothing links to files on your computer, so there's nothing to trust or watch.</>);
+    case 'B1':
+      return box('#f8fafc', '#e5e7eb', '#374151',
+        <><b>File watching is off for all decks.</b> You turned off <i>Watch source files</i> in Settings, so linked files never update live. Every deck stays a self-contained copy.</>,
+        <button onClick={onOpenSettings} style={secondaryBtn}>Open Settings…</button>);
+    case 'B2':
+      return box('#f8fafc', '#e5e7eb', '#374151',
+        <><b>File watching is off for this deck.</b> You turned it off for this presentation, so its linked files never update live. It stays a self-contained copy. Other decks are unaffected.</>,
+        <button onClick={onWatchDeck} disabled={busy} style={secondaryBtn}>Watch files for this deck</button>);
+    case 'C':
+      return box('#ecfdf5', '#a7f3d0', '#065f46',
+        <><b>You created this deck, so it's trusted.</b> Its linked files are watched by default. {counts.approved} of {counts.total} approved.{trustedAt ? ` Trusted ${fmtWhen(trustedAt)}, created here.` : ''}</>);
+    case 'D':
+      return box('#ecfdf5', '#a7f3d0', '#065f46',
+        <><b>You trust this deck.</b>{trustedAt ? ` Trusted ${fmtWhen(trustedAt)}.` : ''} {counts.approved} of {counts.total} approved. Any files added or changed since then are listed below for approval.</>);
+    case 'E':
+      return box('#fffbeb', '#fde68a', '#92400e',
+        <><b>This deck isn't trusted.</b> You got it from somewhere else. It displays right now. Everything is embedded, but its {counts.eligible} link{counts.eligible === 1 ? '' : 's'} to files on your computer stay off until you trust it. Trusting reads nothing by itself. You then choose which files to watch.</>,
+        <button onClick={onTrust} disabled={busy} style={primaryBtn}>Trust this deck</button>);
+    case 'F':
+      return box('#fffbeb', '#fde68a', '#92400e',
+        <><b>This deck's trust expired.</b>{trustedAt ? ` You trusted it ${fmtWhen(trustedAt)},` : ' You trusted it earlier,'} but it's been dormant about 30 days, so watching is paused. Your {counts.approved} previous approval{counts.approved === 1 ? '' : 's'} {counts.approved === 1 ? 'is' : 'are'} remembered. Re-confirm to resume.</>,
+        <button onClick={onReconfirm} disabled={busy} style={primaryBtn}>Re-confirm to resume watching</button>);
+  }
+}
+
+function BlockedBand({ n }: { n: number }): React.ReactElement {
+  return (
+    <div style={{ border: '1px solid #fca5a5', background: '#fee2e2', borderRadius: 6, padding: '10px 12px', marginBottom: 12, color: '#991b1b' }}>
+      <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+        <b>⚠ {n} link{n === 1 ? '' : 's'} in this deck {n === 1 ? "doesn't" : "don't"} point to presentation files.</b> Eigendeck
+        will never use them in the presentation, trusted or not. This usually means a file was replaced or corrupted on disk.
+        It can also mean a link was tampered with to point somewhere it shouldn't. Review the ⚠ rows below.
+      </div>
+    </div>
+  );
+}
+
+function CountsHeader({ counts }: { counts: DeckSecurityReport['counts'] }): React.ReactElement {
+  const parts = [`${counts.approved} watched`, `${counts.eligible} not watched`];
+  if (counts.blocked) parts.push(`${counts.blocked} blocked`);
+  if (counts.missing) parts.push(`${counts.missing} missing`);
+  return (
+    <div style={{ fontSize: 12, color: '#374151', margin: '2px 0 8px', fontWeight: 600 }}>
+      {counts.total} linked file{counts.total === 1 ? '' : 's'}. <span style={{ fontWeight: 400, color: '#6b7280' }}>{parts.join(' · ')}</span>
+    </div>
+  );
+}
+
+function GroupedRows({ report, canAct, busy, onApprove, onApproveDir, onRevokeApproval }: {
+  report: DeckSecurityReport; canAct: boolean; busy: boolean;
+  onApprove: (assetId: string, ref: string) => void; onApproveDir: (dir: string) => void; onRevokeApproval: (assetId: string) => void;
+}): React.ReactElement {
+  // Group by resolved folder; unresolved rows (blocked / missing) share one group.
+  const groups = new Map<string, ExternalPathRow[]>();
+  for (const r of report.rows) {
+    const key = r.resolvedDir ?? '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(r);
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {[...groups.entries()].map(([dir, rows]) => {
+        const outside = dir !== '' && !isInsideDeck(dir, report.projectDir);
+        const eligibleHere = rows.filter((r) => r.state === 'eligible');
+        return (
+          <div key={dir || '(unresolved)'} style={{
+            border: `1px solid ${outside ? '#fde68a' : '#eee'}`,
+            background: outside ? '#fffbeb' : 'transparent',
+            borderRadius: 6, padding: 8,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ fontFamily: 'monospace', fontSize: 11, color: outside ? '#92400e' : '#6b7280', wordBreak: 'break-all' }}>
+                {dir || 'Unresolved links'}{outside ? '  (outside the deck folder)' : ''}
+              </span>
+              <span style={{ flex: 1 }} />
+              {canAct && eligibleHere.length > 0 && dir && (
+                <button onClick={() => onApproveDir(dir)} disabled={busy} style={smallBtn}>
+                  Approve all {eligibleHere.length} file{eligibleHere.length === 1 ? '' : 's'} in <span style={{ fontFamily: 'monospace' }}>{dir}</span>
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {rows.map((r) => <Row key={r.assetId} r={r} canAct={canAct} trusted={!!report.trusted} busy={busy} onApprove={onApprove} onRevokeApproval={onRevokeApproval} />)}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Row({ r, canAct, trusted, busy, onApprove, onRevokeApproval }: {
+  r: ExternalPathRow; canAct: boolean; trusted: boolean; busy: boolean;
+  onApprove: (assetId: string, ref: string) => void; onRevokeApproval: (assetId: string) => void;
+}): React.ReactElement {
+  const st = STATE_STYLE[r.state];
+  return (
+    <div style={{ border: '1px solid #f1f5f9', borderRadius: 5, padding: '8px 10px', background: '#fff' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+        <span style={{ fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>{r.referencePath}</span>
+        <span style={{ flexShrink: 0, fontSize: 11, padding: '2px 8px', borderRadius: 10, color: st.color, background: st.bg }}>{st.label}</span>
+      </div>
+      {r.resolvedPath && r.resolvedPath !== r.referencePath && (
+        <div style={{ fontFamily: 'monospace', fontSize: 11, color: r.state === 'forbidden' ? '#991b1b' : '#888', wordBreak: 'break-all', marginTop: 3 }}>
+          → {r.resolvedPath}
+        </div>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5 }}>
+        <span style={{ fontSize: 11, color: '#999' }}>{r.usage}</span>
+        {r.state === 'approved' && r.approvedAt && (
+          <span style={{ fontSize: 11, color: st.color }}>Approved {fmtWhen(r.approvedAt)} · {howLabel(r.approvedHow)}</span>
+        )}
+        {r.state === 'forbidden' && <span style={{ fontSize: 11, color: st.color }}>Not a presentation file. Never read.</span>}
+        {r.state === 'missing' && <span style={{ fontSize: 11, color: st.color }}>Source file not found on disk. Showing the last-loaded copy. Relocate it from the asset inspector.</span>}
+        <span style={{ flex: 1 }} />
+        {r.state === 'approved' && canAct && (
+          <button onClick={() => onRevokeApproval(r.assetId)} disabled={busy} style={ghostBtn}>Revoke approval</button>
+        )}
+        {r.state === 'eligible' && (
+          canAct
+            ? <button onClick={() => onApprove(r.assetId, r.referencePath)} disabled={busy} style={smallBtn}>Approve</button>
+            : <span style={{ fontSize: 11, color: '#999' }}>{trusted ? 'watching is off' : 'trust the deck first'}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const primaryBtn: React.CSSProperties = { padding: '7px 14px', fontSize: 13, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' };
+const secondaryBtn: React.CSSProperties = { padding: '5px 12px', fontSize: 12, background: '#fff', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' };
+const smallBtn: React.CSSProperties = { padding: '3px 10px', fontSize: 11, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer', textAlign: 'left' };
+const ghostBtn: React.CSSProperties = { padding: '3px 10px', fontSize: 11, background: '#fff', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 3, cursor: 'pointer' };
+const dangerBtn: React.CSSProperties = { padding: '5px 12px', fontSize: 12, background: '#fff', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' };

@@ -1252,6 +1252,8 @@ function App() {
   useEffect(() => {
     let unlisten: (() => void) | null = null;
     let unlistenTrust: (() => void) | null = null;
+    let unlistenWatch: (() => void) | null = null;
+    let unlistenSettings: (() => void) | null = null;
     (async () => {
       try {
         const { listen: tauriListen, emitTo, emit: tauriEmit } = await import('@tauri-apps/api/event');
@@ -1272,19 +1274,36 @@ function App() {
         // window (the trust-persistence bug). It asks THIS (main) window to do it, where
         // the store IS the live deck: mint+record trust, SAVE so the token persists, then
         // re-send the now-tokened deck to the Security window + refresh the sidebar.
+        // Requests from the separate Security window that must run in THIS (main)
+        // window, because they mutate the live deck + must be SAVED (its own store copy
+        // wouldn't reach the deck file — the trust-persistence bug). Each re-sends
+        // security:init so the window rebuilds against the updated deck.
+        const reinit = async () => {
+          const st = usePresentationStore.getState();
+          await emitTo('security', 'security:init', { presentation: st.presentation, projectPath: st.projectPath });
+          await tauriEmit('eigendeck:security-changed'); // sidebar re-checks trust/watch
+        };
         unlistenTrust = await tauriListen('eigendeck:security-trust-request', async () => {
           try {
             const { trustThisDeck } = await import('./lib/securityReport');
             await trustThisDeck();               // mints token in THIS store + createTrustedDeck
             await saveProject();                 // persist the token to the deck file
-            const st = usePresentationStore.getState();
-            await emitTo('security', 'security:init', { presentation: st.presentation, projectPath: st.projectPath });
-            await tauriEmit('eigendeck:security-changed'); // sidebar re-checks trust
+            await reinit();
           } catch (e) { console.warn('[trust-request] failed:', e); }
         });
+        // CASE B2: "Watch files for this deck" — clear the per-deck watch-off override.
+        unlistenWatch = await tauriListen('eigendeck:security-watch-request', async () => {
+          try {
+            usePresentationStore.getState().updateConfig({ autoReloadAssets: 'on' });
+            await saveProject();
+            await reinit();
+          } catch (e) { console.warn('[watch-request] failed:', e); }
+        });
+        // CASE B1: "Open Settings…" — global watch lives in the main window's Settings.
+        unlistenSettings = await tauriListen('eigendeck:open-settings', () => setSettingsOpen(true));
       } catch { /* not in Tauri */ }
     })();
-    return () => { if (unlisten) unlisten(); if (unlistenTrust) unlistenTrust(); };
+    return () => { if (unlisten) unlisten(); if (unlistenTrust) unlistenTrust(); if (unlistenWatch) unlistenWatch(); if (unlistenSettings) unlistenSettings(); };
   }, []);
 
   // Context menu: global event listener + suppress default

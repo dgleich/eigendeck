@@ -141,6 +141,17 @@ export class TrustLedger {
     return true;
   }
 
+  /** Revoke ONE asset's approval (the per-file "Revoke approval" action) without
+   *  touching deck trust or the other approvals. Returns true if an approval was
+   *  removed. No-op unless effectively trusted. */
+  unapprove(token, assetId, now) {
+    if (!this.isTrusted(token, now)) return false;
+    const e = this.decks.get(token);
+    if (!e || !(assetId in e.approvals)) return false;
+    delete e.approvals[assetId];
+    return true;
+  }
+
   /** Ledger hygiene: drop approvals for assets the deck no longer references.
    *  `keepAssetIds` = the deck's CURRENT linked asset ids. Returns the count removed.
    *  No-op unless effectively trusted — a TTL-lapsed deck's retained approvals are

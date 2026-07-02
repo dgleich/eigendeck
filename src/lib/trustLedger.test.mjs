@@ -51,6 +51,25 @@ describe('createTrusted + approve (asset-keyed)', () => {
   });
 });
 
+describe('unapprove — revoke ONE asset approval (per-file), trust intact', () => {
+  it('removes only that asset; deck stays trusted and other approvals remain', () => {
+    const l = new TrustLedger();
+    l.createTrusted('tok', T0);
+    l.approve('tok', A1, P, 'add', T0);
+    l.approve('tok', A2, Q, 'add', T0);
+    expect(l.unapprove('tok', A1, T0)).toBe(true);
+    expect(l.isApproved('tok', P, T0)).toBe(false);  // A1 gone
+    expect(l.isApproved('tok', Q, T0)).toBe(true);    // A2 kept
+    expect(l.isTrusted('tok', T0)).toBe(true);         // trust untouched
+  });
+  it('is a no-op for an unknown asset or an untrusted deck', () => {
+    const l = new TrustLedger();
+    expect(l.unapprove('tok', A1, T0)).toBe(false);   // untrusted
+    l.createTrusted('tok', T0);
+    expect(l.unapprove('tok', A1, T0)).toBe(false);   // nothing approved
+  });
+});
+
 describe('reconcile — drop approvals for unreferenced assets (ledger hygiene)', () => {
   it('removes approvals whose asset is no longer linked; keeps the rest', () => {
     const l = new TrustLedger();

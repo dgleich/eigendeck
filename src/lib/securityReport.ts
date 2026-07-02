@@ -9,8 +9,10 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore } from '../store/presentation';
 import { resolveAndGate } from './assetGate';
 import { resolvePosixPath, dirname } from './watcherRegistry';
-import { isTrusted, isPathApproved } from './trustStore';
+import { isTrusted, isPathApproved, deckState, approvalDetail } from './trustStore';
+import { getPreference } from './preferences';
 import { computeAssetUsage } from './assetUsage';
+import type { DeckStatus } from './trustLedger.d.mts';
 
 export type RowState = 'approved' | 'eligible' | 'forbidden' | 'missing';
 
@@ -27,11 +29,27 @@ export interface ExternalPathRow {
   reason: string | null;
   /** "Used on 2 slides" style label. */
   usage: string;
+  /** Approval provenance (approved rows only): when + how it was approved. */
+  approvedAt: number | null;
+  approvedHow: string | null;
 }
 
 export interface DeckSecurityReport {
   deckHasToken: boolean;
   trusted: boolean;
+  /** Ledger trust status: untrusted-new (received, never trusted) / untrusted-ttl
+   *  (trust lapsed) / trusted. */
+  status: DeckStatus;
+  /** When the deck was first trusted (epoch ms), or null. */
+  trustedAt: number | null;
+  /** How it became trusted ('file-new' = you created it, 'trusted' = you trusted a
+   *  received deck), or null. */
+  trustReason: string | null;
+  /** Watch settings: global (Settings) and this deck's per-presentation override. */
+  watch: { global: boolean; deck: 'on' | 'off' | null };
+  /** The presentation's directory (for the "outside the deck folder" tint). */
+  projectDir: string;
+  counts: { total: number; approved: number; eligible: number; blocked: number; missing: number };
   rows: ExternalPathRow[];
 }
 
@@ -61,12 +79,19 @@ export async function buildDeckSecurityReport(): Promise<DeckSecurityReport> {
     const gate = await resolveAndGate(resolvePosixPath(projectDir, a.external_path));
     let state: RowState;
     let reason: string | null = null;
+    let approvedAt: number | null = null;
+    let approvedHow: string | null = null;
     if (!gate.ok) {
       if (gate.reason === 'unreadable') { state = 'missing'; reason = 'source not found on disk'; }
       else { state = 'forbidden'; reason = gate.reason; }
     } else {
       const approved = token ? await isPathApproved(token, gate.canonicalPath!) : false;
       state = approved ? 'approved' : 'eligible';
+      if (approved && token) {
+        const detail = await approvalDetail(token, gate.canonicalPath!);
+        approvedAt = detail?.at ?? null;
+        approvedHow = detail?.reason ?? null;
+      }
     }
     rows.push({
       assetId: a.asset_id,
@@ -76,9 +101,30 @@ export async function buildDeckSecurityReport(): Promise<DeckSecurityReport> {
       state,
       reason,
       usage: usageLabel(a.asset_id),
+      approvedAt,
+      approvedHow,
     });
   }
-  return { deckHasToken: !!token, trusted, rows };
+
+  const ds = token ? await deckState(token) : null;
+  const counts = {
+    total: rows.length,
+    approved: rows.filter((r) => r.state === 'approved').length,
+    eligible: rows.filter((r) => r.state === 'eligible').length,
+    blocked: rows.filter((r) => r.state === 'forbidden').length,
+    missing: rows.filter((r) => r.state === 'missing').length,
+  };
+  return {
+    deckHasToken: !!token,
+    trusted,
+    status: ds?.status ?? 'untrusted-new',
+    trustedAt: ds?.trustedAt ?? null,
+    trustReason: ds?.trustReason ?? null,
+    watch: { global: getPreference('autoReloadAssets'), deck: store.presentation.config.autoReloadAssets ?? null },
+    projectDir,
+    counts,
+    rows,
+  };
 }
 
 /** Ensure the current deck has a trusted identity, minting a token for a legacy
@@ -102,6 +148,15 @@ export async function trustThisDeck(): Promise<DeckSecurityReport> {
   return buildDeckSecurityReport();
 }
 
+/** Re-confirm a deck whose trust lapsed (TTL): restores its retained approvals in one
+ *  act. LEDGER-ONLY (shared appData persists it) — caller notifies the main window to
+ *  re-scan. Returns the fresh report. */
+export async function reconfirmThisDeck(): Promise<DeckSecurityReport> {
+  const token = usePresentationStore.getState().presentation.config.deckToken;
+  if (token) { const { reconfirmDeck } = await import('./trustStore'); await reconfirmDeck(token); }
+  return buildDeckSecurityReport();
+}
+
 /** Approve one eligible asset. REQUIRES the deck to be trusted already — trust is a
  *  separate, explicit act (trustThisDeck); this never trusts on your behalf. A no-op if
  *  the deck isn't trusted (approvePath guards it) or the target no longer resolves. */
@@ -116,6 +171,14 @@ export async function approveOne(assetId: string, referencePath: string): Promis
       await approvePath(token, assetId, gate.canonicalPath, 'approve');
     }
   }
+  return buildDeckSecurityReport();
+}
+
+/** Revoke ONE approved asset's approval (per-file). Leaves deck trust and every other
+ *  approval intact. Returns the fresh report. */
+export async function revokeApproval(assetId: string): Promise<DeckSecurityReport> {
+  const token = usePresentationStore.getState().presentation.config.deckToken;
+  if (token) { const { unapproveAsset } = await import('./trustStore'); await unapproveAsset(token, assetId); }
   return buildDeckSecurityReport();
 }
 

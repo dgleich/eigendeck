@@ -56,6 +56,8 @@ export class TrustLedger {
   trust(token: string, approvals: Record<string, string>, now: number): this;
   /** Approve/re-point one asset's resolved target (replaces the asset's prior entry). */
   approve(token: string, assetId: string, resolvedPath: string, reason: string, now: number): boolean;
+  /** Revoke one asset's approval without touching trust or the others. */
+  unapprove(token: string, assetId: string, now: number): boolean;
   /** Drop approvals for assets not in `keepAssetIds`; returns the count removed. */
   reconcile(token: string, keepAssetIds: string[], now: number): number;
   /** Record surfaced eligible paths + report how many are new since last time. */

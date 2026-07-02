@@ -127,6 +127,10 @@ export async function trustDeck(token: string, approvals: Record<string, string>
 export async function approvePath(token: string, assetId: string, resolvedPath: string, reason: string): Promise<boolean> {
   return mutate((l, now) => l.approve(token, assetId, resolvedPath, reason, now));
 }
+/** Revoke ONE asset's approval (per-file "Revoke approval"), leaving trust + the rest. */
+export async function unapproveAsset(token: string, assetId: string): Promise<boolean> {
+  return mutate((l, now) => l.unapprove(token, assetId, now));
+}
 /** Record the eligible (unapproved) resolved paths surfaced by the on-open review nudge,
  *  and report how many are NEW since last open (so the toast can scope its wording). */
 export async function noteEligibleOnOpen(token: string, resolvedPaths: string[]): Promise<{ total: number; newCount: number }> {
