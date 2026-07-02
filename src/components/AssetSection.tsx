@@ -103,6 +103,8 @@ function previewMimeFor(mimeType: string | null | undefined, path: string | null
 export function AssetSection({ assetId, elementId }: { assetId: string; elementId?: string }) {
   const projectPath = usePresentationStore((s) => s.projectPath);
   const [meta, setMeta] = useState<AssetMeta | null>(null);
+  const metaRef = useRef<AssetMeta | null>(null);
+  useEffect(() => { metaRef.current = meta; }, [meta]);
   const [history, setHistory] = useState<AssetVersion[]>([]);
   const [reloading, setReloading] = useState(false);
   const isMissing = useAssetMissing(assetId);
@@ -113,17 +115,31 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
   // live-update. We surface this PASSIVELY here (the user is already inspecting the
   // asset) with a one-click Trust — never as an on-open nag. See docs/ASSETS-SECURITY.md.
   const [deckTrusted, setDeckTrusted] = useState<boolean | null>(null);
+  // Per-asset approval on a TRUSTED deck: true = approved (watchable), false = trusted
+  // but this file isn't approved yet, null = not applicable (untrusted / no source /
+  // blocked / missing → approval isn't the relevant gate). Watching a file requires it
+  // to be approved, so an unapproved file must NOT be togglable to "watched".
+  const [approved, setApproved] = useState<boolean | null>(null);
   const refreshTrust = useCallback(async () => {
     const token = usePresentationStore.getState().presentation?.config?.deckToken;
-    if (!token) { setDeckTrusted(false); return; }
+    const pp = usePresentationStore.getState().projectPath;
+    if (!token) { setDeckTrusted(false); setApproved(null); return; }
     try {
-      const { isTrusted } = await import('../lib/trustStore');
-      setDeckTrusted(await isTrusted(token));
-    } catch { setDeckTrusted(false); }
+      const { isTrusted, isPathApproved } = await import('../lib/trustStore');
+      const trusted = await isTrusted(token);
+      setDeckTrusted(trusted);
+      // Resolve THIS asset's real target and check the per-path ledger approval.
+      const ext = metaRef.current?.external_path;
+      if (!trusted || !ext || !pp) { setApproved(null); return; }
+      const { resolveAndGate } = await import('../lib/assetGate');
+      const gate = await resolveAndGate(resolvePosixPath(dirname(pp), ext));
+      if (!gate.ok || !gate.canonicalPath) { setApproved(null); return; } // blocked/missing → not an approval question
+      setApproved(await isPathApproved(token, gate.canonicalPath));
+    } catch { setDeckTrusted(false); setApproved(null); }
   }, []);
-  useEffect(() => { void refreshTrust(); }, [refreshTrust, assetId]);
-  // Re-check trust when it changes elsewhere (approving in the separate Security window
-  // emits this) so the untrusted nudge clears without needing to reselect the element.
+  useEffect(() => { void refreshTrust(); }, [refreshTrust, assetId, meta?.external_path]);
+  // Re-check trust + approval when either changes elsewhere (approving in the separate
+  // Security window emits this) so the nudge/toggle update without reselecting the element.
   useEffect(() => {
     const onChanged = () => { void refreshTrust(); };
     window.addEventListener('eigendeck:security-changed', onChanged);
@@ -164,7 +180,14 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
       // genuinely missing source → flag missing (#74).
       const read = await gatedExternalRead(absPath);
       if (read.status === 'gated') {
-        showToast({ kind: 'warning', ttl: 8000, message: 'This deck isn’t trusted, so reloading from disk is off. Trust the deck to enable live updates.' });
+        // Gated = untrusted deck OR (trusted but) this file not approved. Message the
+        // actual blocker so "reload does nothing" isn't a mystery.
+        const token = usePresentationStore.getState().presentation?.config?.deckToken;
+        let trusted = false;
+        try { const { isTrusted } = await import('../lib/trustStore'); trusted = !!token && await isTrusted(token); } catch { /* fail-safe: treat as untrusted */ }
+        showToast({ kind: 'warning', ttl: 8000, message: trusted
+          ? 'This file isn’t approved, so reloading from disk is off. Approve it in Window → Deck Security Settings.'
+          : 'This deck isn’t trusted, so reloading from disk is off. Trust the deck to enable live updates.' });
         return;
       }
       if (read.status === 'unreadable') {
@@ -399,10 +422,12 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
   // under the checkbox so the user knows where the off came from.
   // Untrusted trumps everything: an untrusted deck watches nothing, so the per-asset
   // toggle is moot regardless of the global/presentation/asset cascade below.
-  const cascadeBlock: 'untrusted' | 'global' | 'presentation' | 'asset' | null =
+  const cascadeBlock: 'untrusted' | 'unapproved' | 'global' | 'presentation' | 'asset' | null =
     deckTrusted === false ? 'untrusted'
     : !globalAutoReload ? 'global'
     : presOverride === 'off' ? 'presentation'
+    // Trusted + watching on, but THIS file isn't approved → can't be watched until it is.
+    : approved === false ? 'unapproved'
     : optedOut ? 'asset'
     : null;
   // Phrasing variations cover the 4 layout cases honestly:
@@ -527,15 +552,18 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
           <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start', cursor: cascadeBlock && cascadeBlock !== 'asset' ? 'not-allowed' : 'pointer' }}>
             <input
               type="checkbox"
-              checked={effective && cascadeBlock !== 'untrusted'}
+              checked={effective && cascadeBlock !== 'untrusted' && cascadeBlock !== 'unapproved'}
               disabled={cascadeBlock !== null && cascadeBlock !== 'asset'}
               onChange={(e) => setAutoReload(e.target.checked ? null : 'off')}
               style={{ marginTop: 2 }} />
-            <span style={{ textDecoration: cascadeBlock === 'untrusted' ? 'line-through' : 'none' }}>Watch this file for changes</span>
+            <span style={{ textDecoration: (cascadeBlock === 'untrusted' || cascadeBlock === 'unapproved') ? 'line-through' : 'none' }}>Watch this file for changes</span>
           </label>
           <HelpText style={{ fontSize: 10, marginTop: 4, marginLeft: 22 }}>
             {cascadeBlock === 'untrusted' && (
               <>Untrusted decks can’t watch assets. Approve this file in Window → Deck Security Settings.</>
+            )}
+            {cascadeBlock === 'unapproved' && (
+              <>This file isn’t approved yet, so it can’t be watched. Approve it in Window → Deck Security Settings.</>
             )}
             {cascadeBlock === 'global' && (
               <>Disabled because the global setting (Cmd+,) is off.</>

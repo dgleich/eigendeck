@@ -11,6 +11,17 @@ import { AssetSection } from './AssetSection';
 import { usePresentationStore } from '../store/presentation';
 import type { Presentation, SlideElement } from '../types/presentation';
 
+// Mock the trust/gate modules AssetSection dynamically imports so we can put an
+// asset into the "trusted deck, this file unapproved" state. Defaults match the
+// pre-trust world (untrusted), so the other mount tests are unaffected.
+vi.mock('../lib/trustStore', () => ({
+  isTrusted: vi.fn(async () => false),
+  isPathApproved: vi.fn(async () => false),
+}));
+vi.mock('../lib/assetGate', () => ({
+  resolveAndGate: vi.fn(async () => ({ ok: true, canonicalPath: '/path/to/talk/images/chart.svg', bytes: new Uint8Array() })),
+}));
+
 const mockedInvoke = vi.mocked(invoke);
 
 function img(id: string, assetId = 'A'): SlideElement {
@@ -182,5 +193,27 @@ describe('AssetSection — mount', () => {
     await waitFor(() => {
       expect(screen.getByText(/Not yet stored/i)).toBeInTheDocument();
     });
+  });
+
+  it('a trusted deck with an UNAPPROVED file cannot toggle "Watch this file" on', async () => {
+    const ts = await import('../lib/trustStore');
+    vi.mocked(ts.isTrusted).mockResolvedValue(true);
+    vi.mocked(ts.isPathApproved).mockResolvedValue(false);   // trusted, but this file not approved
+    setupHappyInvoke({ asset_id: 'A' });
+    const base = deckWith([[img('e1', 'A')]]);
+    usePresentationStore.setState({
+      projectPath: '/path/to/talk',
+      presentation: { ...base, config: { ...base.config, deckToken: 'tok' } },
+    });
+
+    render(<AssetSection assetId="A" elementId="e1" />);
+
+    // The watch toggle must be disabled + unchecked, with the "not approved" reason.
+    await waitFor(() => {
+      expect(screen.getByText(/isn.t approved yet/i)).toBeInTheDocument();
+    });
+    const cb = screen.getByRole('checkbox', { name: /Watch this file/i }) as HTMLInputElement;
+    expect(cb).toBeDisabled();
+    expect(cb).not.toBeChecked();
   });
 });
