@@ -180,10 +180,10 @@ function StatusBand({ kase, report, busy, onTrust, onReconfirm, onWatchDeck, onO
         <button onClick={onWatchDeck} disabled={busy} style={secondaryBtn}>Watch files for this deck</button>);
     case 'C':
       return box('#ecfdf5', '#a7f3d0', '#065f46',
-        <><b>You created this deck, so it's trusted.</b> Its linked files are watched by default. {counts.approved} of {counts.total} approved.{trustedAt ? ` Trusted ${fmtWhen(trustedAt)}, created here.` : ''}</>);
+        <><b>You created this deck, so it's trusted.</b> Its linked files are watched by default.{trustedAt ? ` Trusted ${fmtWhen(trustedAt)}, created here.` : ''}</>);
     case 'D':
       return box('#ecfdf5', '#a7f3d0', '#065f46',
-        <><b>You trust this deck.</b>{trustedAt ? ` Trusted ${fmtWhen(trustedAt)}.` : ''} {counts.approved} of {counts.total} approved. Any files added or changed since then are listed below for approval.</>);
+        <><b>You trust this deck.</b>{trustedAt ? ` Trusted ${fmtWhen(trustedAt)}.` : ''} Any files added or changed since then are listed below for approval.</>);
     case 'E':
       return box('#fffbeb', '#fde68a', '#92400e',
         <><b>This deck isn't trusted.</b> You got it from somewhere else. It displays right now. Everything is embedded, but its {counts.eligible} link{counts.eligible === 1 ? '' : 's'} to files on your computer stay off until you trust it. Trusting reads nothing by itself. You then choose which files to watch.</>,
@@ -272,7 +272,10 @@ function Row({ r, canAct, trusted, busy, onApprove, onRevokeApproval }: {
         <span style={{ fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>{r.referencePath}</span>
         <span style={{ flexShrink: 0, fontSize: 11, padding: '2px 8px', borderRadius: 10, color: st.color, background: st.bg }}>{st.label}</span>
       </div>
-      {r.resolvedPath && r.resolvedPath !== r.referencePath && (
+      {/* Show the real target ONLY when it isn't just the authored reference resolved
+          in place, i.e. a symlink or ../ traversal points somewhere unexpected. A normal
+          in-folder link (resolved = deck dir + reference) needs no second line. */}
+      {r.resolvedPath && r.resolvedPath !== r.referencePath && !r.resolvedPath.endsWith('/' + r.referencePath) && (
         <div style={{ fontFamily: 'monospace', fontSize: 11, color: r.state === 'forbidden' ? '#991b1b' : '#888', wordBreak: 'break-all', marginTop: 3 }}>
           → {r.resolvedPath}
         </div>
