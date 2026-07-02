@@ -88,7 +88,6 @@ MANIFEST=(
   "asset-trust-states-probe.mjs|empty.eigendeck||$EMPTY"
   "asset-open-untrusted-probe.mjs|empty.eigendeck||$EMPTY"
   "asset-open-trusted-probe.mjs|empty.eigendeck||$EMPTY"
-  "asset-approval-cleanup-probe.mjs|empty.eigendeck||$EMPTY"
   "asset-watch-warning-probe.mjs|empty.eigendeck||$EMPTY"
   "security-actions-probe.mjs|empty.eigendeck||$EMPTY"
   # REAL second-window trust: drives the actual Security window (window-handle

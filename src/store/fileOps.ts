@@ -10,52 +10,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { Presentation } from '../types/presentation';
 import { usePresentationStore, openSqliteProject, flushToSqlite, createSeededPresentation } from './presentation';
 import { getPreference } from '../lib/preferences';
-import { showToast, dismissToast } from '../lib/toasts';
+import { showToast } from '../lib/toasts';
 
-/**
- * Trust the currently-open deck AND approve all its current linked paths at once.
- *
- * NOT wired to any UI: the app keeps deck-trust and file-approval as two separate steps
- * (Trust this deck → then approve files, per file or per folder), and there is
- * deliberately no combined "trust deck & approve all" button. This helper collapses
- * both into one call solely as the e2e automation seam (`window.__eigendeck.trustDeck`),
- * which needs a one-shot way to put a fixture deck into the trusted+watched state. Mints
- * a deck token if the deck predates the feature, records trust in the ledger, and
- * re-scans so watching resumes. See docs/ASSETS-SECURITY.md.
- */
-export async function trustCurrentDeck(): Promise<void> {
-  const store = usePresentationStore.getState();
-  let token = store.presentation.config.deckToken;
-  if (!token) {
-    token = crypto.randomUUID();
-    store.updateConfig({ deckToken: token }); // persists via the write-through subscriber
-  }
-  try {
-    const { createTrustedDeck, approvePath } = await import('../lib/trustStore');
-    await createTrustedDeck(token);
-    if (store.projectPath) {
-      const { scanForChangedAssets, dirname, resolvePosixPath } = await import('../lib/watcherRegistry');
-      const { resolveAndGate } = await import('../lib/assetGate');
-      const projectDir = dirname(store.projectPath);
-      // "Trust this deck" = trust + approve its CURRENT linked paths (per-path gate).
-      // Forbidden/unreadable targets are skipped (never approved). New paths added
-      // later are approved on add; changed targets resurface as unapproved.
-      const linked = await invoke<Array<{ asset_id: string; external_path: string }>>('db_list_linked_assets').catch(() => []);
-      for (const a of linked) {
-        if (!a.external_path || !a.asset_id) continue;
-        const gate = await resolveAndGate(resolvePosixPath(projectDir, a.external_path));
-        if (gate.ok && gate.canonicalPath) await approvePath(token, a.asset_id, gate.canonicalPath, 'trust-all');
-      }
-      const presOverride = store.presentation.config.autoReloadAssets ?? null;
-      await scanForChangedAssets(projectDir, presOverride).catch(() => {});
-    }
-    dismissToast('deck-untrusted-watch');
-    showToast({ kind: 'success', ttl: 5000, message: 'Deck trusted — its linked files will now live-update.' });
-  } catch (e) {
-    console.warn('[trustCurrentDeck] failed:', e);
-    showToast({ kind: 'error', ttl: 6000, message: 'Couldn’t trust this deck.' });
-  }
-}
 
 /**
  * File → New / scratch: mark a freshly-CREATED local deck trusted for asset

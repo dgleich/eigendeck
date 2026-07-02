@@ -12,6 +12,7 @@
 // fs:allow-watch / read scope. E2E_DECK must be an empty deck under HOME.
 import { writeFileSync, unlinkSync } from 'fs';
 import { dirname, join } from 'path';
+import { trustAndWatchAllViaUI } from './_ui.mjs';
 const BASE='http://127.0.0.1:4444', APP=process.env.E2E_APP, DECK=process.env.E2E_DECK;
 const IMG = join(dirname(DECK), 'img.svg');
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="red"/></svg>';
@@ -26,7 +27,9 @@ const fail=(m)=>{console.error('AM_FAIL:',m);process.exit(1);};
 // Asset-security: a CLI-built fixture is untrusted, so the on-open scan performs
 // ZERO disk reads (no missing detection). Trust it — the real "Trust this deck"
 // action — so the scan runs and reconciles the linked source. Idempotent per session.
-const trust=(sid)=>execA(sid,"const d=arguments[arguments.length-1];window.__eigendeck.trustDeck().then(()=>d('ok')).catch(e=>d('ERR'+e));");
+// Trust + watch-all through the REAL Security window (no action seam). Keeps the
+// local `trust(sid)` shape ('ok'/'ERR') so existing call sites are unchanged.
+const trust = (sid) => trustAndWatchAllViaUI(sid).then((ok) => (ok ? 'ok' : 'ERR'));
 // poll the seam's missing list for `id` to (dis)appear
 async function pollMissing(sid, wantPresent, id){
   for(let i=0;i<20;i++){

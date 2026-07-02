@@ -10,6 +10,7 @@
 // deck under HOME, e.g. /tmp/vidwatch/deck.eigendeck.
 import { writeFileSync } from 'fs';
 import { dirname, join } from 'path';
+import { trustAndWatchAllViaUI } from './_ui.mjs';
 const BASE = 'http://127.0.0.1:4444', APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
 const CLIP = join(dirname(DECK), 'clip.mp4');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -22,7 +23,9 @@ const fail = (m) => { console.error('VW_FAIL:', m); process.exit(1); };
 // Asset-security: a CLI-built fixture is untrusted, so the watcher performs ZERO
 // disk reads (snapshot only). Trust it — the real "Trust this deck" action — after
 // the linked asset exists, so its path is approved and live-reload turns on.
-const trust = (sid) => execA(sid, "const d=arguments[arguments.length-1];window.__eigendeck.trustDeck().then(()=>d('ok')).catch(e=>d('ERR'+e));");
+// Trust + watch-all through the REAL Security window (no action seam). Keeps the
+// local `trust(sid)` shape ('ok'/'ERR') so existing call sites are unchanged.
+const trust = (sid) => trustAndWatchAllViaUI(sid).then((ok) => (ok ? 'ok' : 'ERR'));
 const len = (sid) => execA(sid, "const d=arguments[arguments.length-1];window.__TAURI_INTERNALS__.invoke('db_get_asset_by_id',{assetId:'va1'}).then(b=>d(new Uint8Array(b).length)).catch(()=>d(-1));");
 // The asset-type gate validates content matches the extension, so the bytes must be
 // a real-enough mp4: "ftyp" box signature at offset 4. (A blob of zeros is rejected

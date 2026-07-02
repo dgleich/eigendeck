@@ -1,6 +1,7 @@
 // Bug hunt: a missing source is flagged even when auto-reload is OFF (#74 ungating).
 import { writeFileSync, unlinkSync } from 'fs';
 import { dirname, join } from 'path';
+import { trustAndWatchAllViaUI } from './_ui.mjs';
 const BASE='http://127.0.0.1:4444', APP=process.env.E2E_APP, DECK=process.env.E2E_DECK;
 const IMG=join(dirname(DECK),'pic.svg');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -13,7 +14,9 @@ async function quit(sid){await fetch(`${BASE}/session/${sid}`,{method:'DELETE'})
 const fail=m=>{console.error('OFF_FAIL:',m);process.exit(1);};
 // Trust the (untrusted) CLI fixture so the on-open scan runs and can flag a missing
 // source even for an auto-reload-OFF asset (the #74 ungating this probe guards).
-const trust=sid=>execA(sid,"const d=arguments[arguments.length-1];window.__eigendeck.trustDeck().then(()=>d('ok')).catch(e=>d('ERR'+e));");
+// Trust + watch-all through the REAL Security window (no action seam). Keeps the
+// local `trust(sid)` shape ('ok'/'ERR') so existing call sites are unchanged.
+const trust = (sid) => trustAndWatchAllViaUI(sid).then((ok) => (ok ? 'ok' : 'ERR'));
 const miss=sid=>exec(sid,"try{return JSON.stringify(window.__eigendeck.missingAssets().map(m=>m.assetId));}catch(e){return '[]';}");
 
 writeFileSync(IMG,'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>');

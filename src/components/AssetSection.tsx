@@ -198,9 +198,9 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
    *  watching resumes), then clears the missing flag. */
   const relocate = useCallback(async () => {
     if (!meta || !projectPath) return;
-    const { open } = await import('@tauri-apps/plugin-dialog');
-    const picked = await open({ title: 'Locate source file', multiple: false, directory: false });
-    if (!picked || typeof picked !== 'string') return;
+    const { pickFile } = await import('../lib/filePicker');
+    const picked = await pickFile({ title: 'Locate source file', multiple: false, directory: false });
+    if (!picked) return;
     setReloading(true);
     try {
       // A native file-pick IS consent: approve the picked path FOR THIS ASSET on a

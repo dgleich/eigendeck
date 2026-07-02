@@ -43,7 +43,6 @@ import {
   importFromHtml,
   openRecentProject,
   syncRecentMenu,
-  trustCurrentDeck,
 } from './store/fileOps';
 import { flushToSqlite, pauseUndo, resumeUndo, undoWithNav, redoWithNav } from './store/presentation';
 import { withBusy } from './store/busy';
@@ -116,28 +115,10 @@ if (
       }
       return JSON.stringify({ token: token ?? null, trusted: token ? await isTrusted(token) : false, ledgerApprovals, rows });
     },
-    // Asset-security: the "Trust this deck" action (mints a token if legacy, trusts
-    // it, approves current linked paths, re-scans). Watch/scan probes call this to
-    // exercise live-file behavior on a CLI-built (untrusted) fixture — mirroring the
-    // real user flow (received decks are untrusted until trusted).
-    trustDeck: () => trustCurrentDeck(),
-    // Asset-security: revoke trust on the current deck (drops trust AND approvals) —
-    // lets spec probes assert a revoked deck reverts to snapshot-only (zero reads).
-    revokeDeck: async () => {
-      const t = usePresentationStore.getState().presentation.config.deckToken;
-      if (t) await import('./lib/trustStore').then((m) => m.revokeDeck(t));
-    },
-    // Asset-security: the EXACT operations the Security window's buttons invoke, run
-    // against the real invoke + ledger + store. The window itself is a separate Tauri
-    // webview the WebDriver rig can't reliably switch to, but its behavior is window-
-    // agnostic — so a probe drives these to test the two-step model (trust, then
-    // approve per file / per folder) and the "can't approve without trust" invariant.
-    security: {
-      report: () => import('./lib/securityReport').then((m) => m.buildDeckSecurityReport()),
-      trust: () => import('./lib/securityReport').then((m) => m.trustThisDeck()),
-      approve: (assetId: string, ref: string) => import('./lib/securityReport').then((m) => m.approveOne(assetId, ref)),
-      approveDir: (dir: string) => import('./lib/securityReport').then((m) => m.approveDirectory(dir)),
-    },
+    // NOTE: asset-security actions (trust / approve / approve-folder / revoke) and
+    // relocate are deliberately NOT seams — a probe must drive the REAL Security
+    // window + AssetSection controls (see e2e/_ui.mjs and the seam-discipline note).
+    // Action-seams here once masked a real trust-persistence bug; don't re-add them.
     // Cached element preview as a data URL (#86) — lets E2E verify a demo's
     // preview is RE-captured after a theme switch (the bytes must change).
     previewDataUrl: (key: string) => loadPreviewDataUrl(key),
@@ -157,14 +138,6 @@ if (
     // Undo-gesture transaction helpers (#55) — lets E2E exercise the real
     // pause/resume the canvas drag + inspector sliders use.
     pauseUndo, resumeUndo,
-    // Relocate-all-by-offset (#74) — E2E hook mirroring what AssetSection does
-    // after the user picks one moved file.
-    relocateByOffset: (skipAssetId: string, oldAbs: string, newAbs: string) =>
-      import('./lib/watcherRegistry').then((m) =>
-        m.relocateMissingByOffset(
-          m.dirname(usePresentationStore.getState().projectPath || ''),
-          skipAssetId, oldAbs, newAbs,
-        )),
   };
 }
 

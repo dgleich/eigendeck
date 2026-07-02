@@ -3,6 +3,7 @@
 // deck under HOME=/tmp (fs:allow-watch scope).
 import { writeFileSync } from 'fs';
 import { dirname, join } from 'path';
+import { trustAndWatchAllViaUI } from './_ui.mjs';
 const BASE = 'http://127.0.0.1:4444', APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
 const VTT = join(dirname(DECK), 'caps.vtt');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -13,7 +14,9 @@ async function open(){for(let i=0;i<12;i++){const j=await post('/session',{capab
 async function waitSeam(sid){for(let i=0;i<20;i++){await sleep(800);if(await exec(sid,"return !!(window.__eigendeck&&window.__eigendeck.store.getState().projectPath)"))return true;}return false;}
 const fail = (m) => { console.error('VTT_FAIL:', m); process.exit(1); };
 // Trust the (untrusted) CLI fixture so the captions watcher may read from disk.
-const trust = (sid) => execA(sid, "const d=arguments[arguments.length-1];window.__eigendeck.trustDeck().then(()=>d('ok')).catch(e=>d('ERR'+e));");
+// Trust + watch-all through the REAL Security window (no action seam). Keeps the
+// local `trust(sid)` shape ('ok'/'ERR') so existing call sites are unchanged.
+const trust = (sid) => trustAndWatchAllViaUI(sid).then((ok) => (ok ? 'ok' : 'ERR'));
 const len = (sid) => execA(sid, "const d=arguments[arguments.length-1];window.__TAURI_INTERNALS__.invoke('db_get_asset_by_id',{assetId:'cap1'}).then(b=>d(new Uint8Array(b).length)).catch(()=>d(-1));");
 
 writeFileSync(VTT, 'WEBVTT\n\n00:00.000 --> 00:01.000\nhi\n');

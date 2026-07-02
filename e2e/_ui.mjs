@@ -31,17 +31,30 @@ export async function waitSeam(sid) {
 export async function quit(sid) { await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {}); }
 export async function handles(sid) { return (await get(`/session/${sid}/window/handles`))?.value || []; }
 export async function switchTo(sid, h) { await post(`/session/${sid}/window`, { handle: h }); }
+// The MAIN window is the only one carrying the __eigendeck seam (the Security window
+// is a separate entry point without it). Identify it by that, never by handle index —
+// window open/close reorders handles, and a leftover Security window at [0] would be
+// mistaken for main. Returns the handle, and leaves the session switched to it.
+export async function findMainHandle(sid) {
+  for (const h of await handles(sid)) {
+    await switchTo(sid, h);
+    if (await exec(sid, "return !!(window.__eigendeck)")) return h;
+  }
+  return (await handles(sid))[0];
+}
 
 // Read-only observer (allowed seam): the main-window trust report — deck token,
 // trusted flag, per-linked-asset {approved, read} gate decision.
 export async function trustReport(sid) {
-  return JSON.parse(await execA(sid, "const d=arguments[arguments.length-1];window.__eigendeck.trustReport().then(r=>d(r)).catch(e=>d(JSON.stringify({error:String(e)})))"));
+  const raw = await execA(sid, "const d=arguments[arguments.length-1];window.__eigendeck.trustReport().then(r=>d(r)).catch(e=>d(JSON.stringify({error:String(e)})))");
+  try { return JSON.parse(raw); } catch { return { error: 'no-value', rows: [] }; }
 }
 
 // Open the REAL Security window from the main window's inspector ("Linked files &
 // security…"). Returns the new window's WebDriver handle (or null). Call while
 // switched to the MAIN handle.
 export async function openSecurityWindow(sid, mainH) {
+  await switchTo(sid, mainH);
   await exec(sid, "const s=window.__eigendeck.store.getState();if(!s.showProperties)s.toggleProperties();s.setInspectorTab('presentation');");
   await sleep(1200);
   await exec(sid, "const b=[...document.querySelectorAll('button')].find(x=>(x.textContent||'').includes('Linked files'));if(b)b.click();");
@@ -83,12 +96,32 @@ export async function hasApproveControls(sid) {
   return await exec(sid, "return [...document.querySelectorAll('button')].some(x=>x.textContent.trim()==='Approve'||/^Approve all /.test(x.textContent.trim()));");
 }
 
+// Close the Security window RELIABLY: switch to the MAIN window first, then close
+// the 'security' webview by label from there. Closing it from inside itself would
+// destroy the WebDriver session's current window and make the next switch/exec fail
+// (returns undefined). Waits until only the main handle remains.
+export async function closeSecurityWindow(sid, mainH) {
+  // Click the window's REAL "×" button — its onClick calls the bundled
+  // getCurrentWebviewWindow().close(). (A probe-side dynamic import() of a bare
+  // '@tauri-apps/...' specifier fails at runtime, so programmatic close doesn't
+  // work; the app's own bundled import does.) Closing properly matters: a reused
+  // window keeps its first-mount report and would act on stale deck state.
+  const secH = (await handles(sid)).find((h) => h !== mainH);
+  if (secH) {
+    await switchTo(sid, secH);
+    await exec(sid, "const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()==='×');if(b)b.click();");
+  }
+  for (let i = 0; i < 12; i++) { await sleep(400); if ((await handles(sid)).length <= 1) break; }
+  await switchTo(sid, mainH);
+}
+
 // End-to-end "trust + watch everything" through the REAL Security window, replacing
 // the retired trust-all seam. Opens the window, clicks "Trust this deck" (if
 // untrusted), approves every eligible folder, then switches back to the main window
 // and waits until every linked asset reads OK. Closes the Security window.
 // Returns true on success. `mainH` is the main window handle.
 export async function trustAndWatchAllViaUI(sid, mainH) {
+  if (!mainH) mainH = await findMainHandle(sid);
   const secH = await openSecurityWindow(sid, mainH);
   if (!secH) return false;
   await switchTo(sid, secH);
@@ -97,16 +130,38 @@ export async function trustAndWatchAllViaUI(sid, mainH) {
   // Wait for the re-init remount to finish rendering the trusted report (the
   // folder-approve buttons) — clicking during "Scanning…" would find nothing.
   await waitForText(sid, 'Approve all');
-  await clickAllFolderApprovals(sid);
+  const nApproved = await clickAllFolderApprovals(sid);
   await sleep(600);
-  await exec(sid, "try{window.__TAURI_INTERNALS__ && (async()=>{const {getCurrentWebviewWindow}=await import('@tauri-apps/api/webviewWindow');getCurrentWebviewWindow().close();})();}catch(e){}");
-  await switchTo(sid, mainH);
-  // Confirm via the main-window observer that trust + approvals took.
+  await closeSecurityWindow(sid, mainH);
+  // Force a main-window rescan + ledger-cache invalidation even when nothing was
+  // approvable (e.g. all files missing) — the old trust seam re-scanned too.
+  await exec(sid, "import('@tauri-apps/api/event').then(m=>m.emit('eigendeck:security-changed')).catch(()=>{});");
+  // Confirm via the main-window observer that trust + approvals took: the deck is
+  // trusted and every gateable (present, allowed-type) linked file is approved.
+  // Missing / blocked rows can't be approved from the window, so they're excluded —
+  // trusting is enough for them (the relocate flow approves a moved file separately).
   for (let i = 0; i < 15; i++) {
     await sleep(700);
     const rep = await trustReport(sid);
-    if (rep.trusted && rep.rows.length > 0 && rep.rows.every((r) => r.read === 'ok')) return true;
-    if (rep.trusted && rep.rows.length === 0) return true;
+    // trustReport can transiently error mid-rescan (no .rows) — just retry.
+    if (rep && rep.trusted && Array.isArray(rep.rows) && rep.rows.filter((r) => r.gateOk).every((r) => r.approved)) return true;
+    if (i === 14) console.error('  [trustAndWatchAllViaUI] gave up:', JSON.stringify({ nApproved, rep }));
   }
+  return false;
+}
+
+// Stop trusting the deck through the REAL "Stop trusting this deck" button, replacing
+// the retired revokeDeck seam. Returns true once the main window observes untrusted.
+export async function revokeViaUI(sid, mainH) {
+  if (!mainH) mainH = await findMainHandle(sid);
+  const secH = await openSecurityWindow(sid, mainH);
+  if (!secH) return false;
+  await switchTo(sid, secH);
+  await waitForText(sid, 'Stop trusting this deck');
+  if (!(await clickButtonWithText(sid, 'Stop trusting this deck'))) { await switchTo(sid, mainH); return false; }
+  await sleep(800);
+  await closeSecurityWindow(sid, mainH);
+  await exec(sid, "import('@tauri-apps/api/event').then(m=>m.emit('eigendeck:security-changed')).catch(()=>{});");
+  for (let i = 0; i < 15; i++) { await sleep(700); const rep = await trustReport(sid); if (rep && !rep.trusted) return true; }
   return false;
 }

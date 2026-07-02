@@ -14,6 +14,7 @@
 // isolates the security behavior. (Byte-level; needs an empty deck under HOME.)
 import { writeFileSync } from 'fs';
 import { dirname, join } from 'path';
+import { trustAndWatchAllViaUI } from './_ui.mjs';
 const BASE = 'http://127.0.0.1:4444', APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
 const FIG = join(dirname(DECK), 'fig.svg');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -25,7 +26,9 @@ async function waitSeam(sid){for(let i=0;i<20;i++){await sleep(800);if(await exe
 async function quit(sid){await fetch(`${BASE}/session/${sid}`,{method:'DELETE'}).catch(()=>{});}
 const fail = (m) => { console.error('OPEN_TRUSTED_FAIL:', m); process.exit(1); };
 const len = (sid) => execA(sid, "const d=arguments[arguments.length-1];window.__TAURI_INTERNALS__.invoke('db_get_asset_by_id',{assetId:'ia1'}).then(b=>d(new Uint8Array(b).length)).catch(()=>d(-1));");
-const trust = (sid) => execA(sid, "const d=arguments[arguments.length-1];window.__eigendeck.trustDeck().then(()=>d('ok')).catch(e=>d('ERR'+e));");
+// Trust + watch-all through the REAL Security window (no action seam). Keeps the
+// local `trust(sid)` shape ('ok'/'ERR') so existing call sites are unchanged.
+const trust = (sid) => trustAndWatchAllViaUI(sid).then((ok) => (ok ? 'ok' : 'ERR'));
 const save = (sid) => execA(sid, "const d=arguments[arguments.length-1];window.__eigendeck.save().then(()=>d('ok')).catch(e=>d('ERR'+e));");
 async function waitLen(sid, want){ for(let i=0;i<20;i++){ await sleep(800); if(await len(sid)===want) return true; } return false; }
 const svg = (n) => '<svg>' + 'x'.repeat(Math.max(0, n - 11)) + '</svg>';   // valid svg of length n
