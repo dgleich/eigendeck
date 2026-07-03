@@ -209,6 +209,22 @@ fails if `E2E_ABSENT` appears.
    pattern (`-f "^<bin>"`); ad-hoc commands should use `pkill -x <comm>` and
    `fuser -k 1420/tcp` instead.
 
+## PDF rendering in the rig (pdfium dylib location)
+
+PDF rendering (`db_render_pdf_page` → pdfium) fails in the bare-binary rig with "pdfium
+dylib not found. Checked: /usr/lib/Eigendeck/resources/pdfium/libpdfium.so". The debug
+binary's `resource_dir()` resolves to the Linux INSTALL path (`/usr/lib/Eigendeck`), not
+the build's `resources/`, so the bundled lib isn't found. It's a rig/packaging detail,
+NOT a code bug (a packaged app bundles it correctly). To exercise PDF rendering headlessly,
+put the lib where `resource_dir()` looks:
+```bash
+sudo mkdir -p /usr/lib/Eigendeck/resources/pdfium
+sudo cp src-tauri/resources/pdfium/libpdfium.so /usr/lib/Eigendeck/resources/pdfium/
+```
+Then drive `invoke('db_render_pdf_page', {assetId, page:0, maxWidth, maxHeight})` and
+assert the returned bytes are a PNG. Rebuild the torture deck (55 embedded PDFs) with
+`python3 tools/build_pdf_stress_test.py` (reads gitignore/test-pdfs/*.pdf).
+
 ## 5. Writing a new e2e for a feature
 
 - **Fixture:** craft the deck via `eigendeck-cli ... import json <file>` —
