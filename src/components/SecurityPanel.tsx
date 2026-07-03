@@ -149,7 +149,6 @@ export function SecurityWindowApp(): React.ReactElement {
           {kase !== 'A' && (
             <>
               <CountsHeader counts={report.counts} />
-              <UnusedHint n={report.rows.filter((r) => r.usage === 'unused').length} />
               <GroupedRows report={report} canAct={canAct} busy={busy}
                 onApprove={doApprove} onApproveDir={doApproveDir} onRevokeApproval={doRevokeApproval} />
             </>
@@ -233,17 +232,11 @@ function CountsHeader({ counts }: { counts: DeckSecurityReport['counts'] }): Rea
   );
 }
 
-// Some linked files aren't placed on any slide. They stay in the deck (kept for undo
-// history) until you compact, so point the user at the menu command that clears them.
-function UnusedHint({ n }: { n: number }): React.ReactElement | null {
-  if (n <= 0) return null;
-  return (
-    <div style={{ fontSize: 11, color: '#6b7280', margin: '0 0 10px', lineHeight: 1.5 }}>
-      {n === 1 ? "1 file below isn't used on any slide." : `${n} files below aren't used on any slide.`} They're
-      kept so you can undo, and removed when you compact the deck: <b>File → Compact (Free Unused Assets)</b>.
-    </div>
-  );
-}
+// Explains the "unused" badge in-place: a linked file on no slide is kept for undo and
+// cleared by compacting. Shown as a hover tooltip next to the badge (see Row).
+const UNUSED_TOOLTIP =
+  "This file isn't used on any slide. It's kept so you can undo, and removed when you "
+  + 'compact the deck: File → Compact (Free Unused Assets).';
 
 function GroupedRows({ report, canAct, busy, onApprove, onApproveDir, onRevokeApproval }: {
   report: DeckSecurityReport; canAct: boolean; busy: boolean;
@@ -308,7 +301,13 @@ function Row({ r, canAct, trusted, busy, onApprove, onRevokeApproval }: {
         </div>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5 }}>
-        <span style={{ fontSize: 11, color: '#999' }}>{r.usage}</span>
+        <span style={{ fontSize: 11, color: '#999' }}>
+          {r.usage}
+          {r.usage === 'unused' && (
+            <span title={UNUSED_TOOLTIP} aria-label={UNUSED_TOOLTIP}
+              style={{ marginLeft: 4, cursor: 'help', color: '#9ca3af', fontSize: 11 }}>ⓘ</span>
+          )}
+        </span>
         {r.state === 'approved' && r.approvedAt && (
           <span style={{ fontSize: 11, color: st.color }}>Approved {fmtWhen(r.approvedAt)} · {howLabel(r.approvedHow)}</span>
         )}
