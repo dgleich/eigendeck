@@ -19,11 +19,17 @@ vi.mock('@tauri-apps/api/core', () => ({
     throw new Error(`unexpected invoke ${cmd}`);
   },
 }));
-vi.mock('./assetGate', () => ({
-  resolveAndGate: async (abs: string) => (fx.forbidden.has(abs)
+vi.mock('./assetGate', () => {
+  const gate = (abs: string) => (fx.forbidden.has(abs)
     ? { ok: false, reason: 'bad-extension', canonicalPath: null, bytes: null }
-    : { ok: true, reason: null, canonicalPath: abs, bytes: new Uint8Array([1]), kind: 'image' }),
-}));
+    : { ok: true, reason: null, canonicalPath: abs, bytes: new Uint8Array([1]), kind: 'image' });
+  // resolveAndGateDecision mirrors the full gate's verdict but hands back no bytes — the
+  // report path uses only ok/reason/canonicalPath.
+  return {
+    resolveAndGate: async (abs: string) => gate(abs),
+    resolveAndGateDecision: async (abs: string) => ({ ...gate(abs), bytes: null }),
+  };
+});
 vi.mock('../lib/watcherRegistry', () => ({
   resolvePosixPath: (dir: string, rel: string) => (rel.startsWith('/') ? rel : `${dir}/${rel}`),
   dirname: (p: string) => p.slice(0, p.lastIndexOf('/')) || '/',

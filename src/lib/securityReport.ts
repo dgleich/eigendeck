@@ -7,7 +7,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, getDeckToken } from '../store/presentation';
-import { resolveAndGate } from './assetGate';
+import { resolveAndGate, resolveAndGateDecision } from './assetGate';
 import { resolvePosixPath, dirname } from './watcherRegistry';
 import { isTrusted, isPathApproved, deckState, approvalDetail } from './trustStore';
 import { getPreference } from './preferences';
@@ -75,7 +75,9 @@ export async function buildDeckSecurityReport(): Promise<DeckSecurityReport> {
   const rows: ExternalPathRow[] = [];
   for (const a of linked) {
     if (!a.external_path) continue;
-    const gate = await resolveAndGate(resolvePosixPath(projectDir, a.external_path));
+    // Decision-only (bounded) read: the report classifies each linked file but never
+    // uses its bytes, so it must not read a large video/PDF in full just to build a row.
+    const gate = await resolveAndGateDecision(resolvePosixPath(projectDir, a.external_path));
     let state: RowState;
     let reason: string | null = null;
     let approvedAt: number | null = null;

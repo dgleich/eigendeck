@@ -131,8 +131,10 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
       // Resolve THIS asset's real target and check the per-path ledger approval.
       const ext = metaRef.current?.external_path;
       if (!trusted || !ext || !pp) { setApproved(null); return; }
-      const { resolveAndGate } = await import('../lib/assetGate');
-      const gate = await resolveAndGate(resolvePosixPath(dirname(pp), ext));
+      const { resolveAndGateDecision } = await import('../lib/assetGate');
+      // Decision-only (bounded) read — we only need the resolved path + approval state to
+      // set the checkbox, never the file's bytes (don't read a 100 MB video for that).
+      const gate = await resolveAndGateDecision(resolvePosixPath(dirname(pp), ext));
       if (!gate.ok || !gate.canonicalPath) { setApproved(null); return; } // blocked/missing → not an approval question
       setApproved(await isPathApproved(token, gate.canonicalPath));
     } catch { setDeckTrusted(false); setApproved(null); }

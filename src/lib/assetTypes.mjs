@@ -153,6 +153,16 @@ function isNotebookJson(input) {
   } catch { return false; }
 }
 
+/** Does this extension's content check need the WHOLE file rather than a short prefix?
+ *  Every other type is decided from magic bytes / a <=512B prolog / the demo marker, so
+ *  a bounded "sniff" read gives the same verdict as a full read. Only .ipynb parses the
+ *  entire JSON. Callers doing a bounded read must re-read these in full. Keeping the fact
+ *  HERE (beside isNotebookJson) is the single source of truth, so the read-size choice
+ *  can't drift from what the gate actually inspects. */
+export function needsFullContent(ext) {
+  return String(ext).toLowerCase() === 'ipynb';
+}
+
 // Notebooks need the whole file to JSON.parse, not just a prefix.
 function prefixStringFull(input) {
   if (typeof input === 'string') return input;

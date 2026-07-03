@@ -12,6 +12,8 @@ export const NOTEBOOK_MAX_BYTES: number;
 export function extensionOf(path: string): string;
 export function assetKindForPath(path: string): AssetKind | null;
 export function isAllowedExtension(path: string): boolean;
+/** True if the type needs the whole file to gate (only .ipynb); else a prefix suffices. */
+export function needsFullContent(ext: string): boolean;
 
 export function isEigendeckDemo(input: Bytes): { ok: boolean; version: number | null; supported: boolean };
 export function checkContent(input: Bytes, ext: string): { ok: boolean; reason: GateReason | null };

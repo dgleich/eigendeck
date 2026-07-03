@@ -184,6 +184,10 @@ fn cli_write_and_exit(path: String, content: String, error: Option<String>) -> R
 struct ResolvedRead {
     canonical_path: String,
     bytes: Vec<u8>,
+    /// The resolved file's FULL size on disk. `bytes` may be shorter than this when a
+    /// bounded read was requested (see `max_bytes`), so callers can tell a prefix read
+    /// from a whole-file read.
+    size: u64,
 }
 
 /// The single external-file read primitive for asset security (docs/ASSETS-SECURITY.md).
@@ -194,8 +198,16 @@ struct ResolvedRead {
 /// re-run the gate on every read. Rejects non-regular files (dirs, fifos, devices)
 /// and anything over a sane size cap. Errors (missing/too-big/not-a-file) are
 /// returned so the caller can treat them as "unreadable → not watchable".
+///
+/// `max_bytes`: read at most this many bytes (a bounded "sniff" read). None reads the
+/// whole file (the read path, which needs the bytes). The whole-file SIZE is still
+/// checked against the cap first — so an oversized file is rejected identically whether
+/// the caller wants a sniff or the full bytes, keeping the report's verdict in lockstep
+/// with the read gate. The type gate inspects at most a small prefix (except .ipynb,
+/// which the caller re-reads in full), so a bounded read yields the same verdict.
 #[tauri::command]
-fn resolve_and_read(path: String) -> Result<ResolvedRead, String> {
+fn resolve_and_read(path: String, max_bytes: Option<u64>) -> Result<ResolvedRead, String> {
+    use std::io::Read;
     const MAX_BYTES: u64 = 512 * 1024 * 1024;
     let canonical = std::fs::canonicalize(&path)
         .map_err(|e| format!("cannot resolve {}: {}", path, e))?;
@@ -203,13 +215,21 @@ fn resolve_and_read(path: String) -> Result<ResolvedRead, String> {
     if !meta.is_file() {
         return Err(format!("not a regular file: {}", canonical.display()));
     }
-    if meta.len() > MAX_BYTES {
-        return Err(format!("file too large ({} bytes): {}", meta.len(), canonical.display()));
+    let size = meta.len();
+    if size > MAX_BYTES {
+        return Err(format!("file too large ({} bytes): {}", size, canonical.display()));
     }
-    let bytes = std::fs::read(&canonical).map_err(|e| e.to_string())?;
+    let to_read = max_bytes.map(|m| m.min(size)).unwrap_or(size);
+    let mut bytes = Vec::with_capacity(to_read as usize);
+    std::fs::File::open(&canonical)
+        .map_err(|e| e.to_string())?
+        .take(to_read)
+        .read_to_end(&mut bytes)
+        .map_err(|e| e.to_string())?;
     Ok(ResolvedRead {
         canonical_path: canonical.to_string_lossy().to_string(),
         bytes,
+        size,
     })
 }
 
@@ -954,7 +974,7 @@ mod resolve_read_tests {
     fn reads_a_regular_file_and_returns_its_canonical_path() {
         let p = tmp("reg.png");
         fs::write(&p, b"hello").unwrap();
-        let r = resolve_and_read(p.to_string_lossy().into_owned()).unwrap();
+        let r = resolve_and_read(p.to_string_lossy().into_owned(), None).unwrap();
         assert_eq!(r.bytes, b"hello");
         assert_eq!(r.canonical_path, fs::canonicalize(&p).unwrap().to_string_lossy());
         let _ = fs::remove_file(&p);
@@ -962,14 +982,26 @@ mod resolve_read_tests {
 
     #[test]
     fn a_missing_file_is_an_error() {
-        assert!(resolve_and_read(tmp("nope.png").to_string_lossy().into_owned()).is_err());
+        assert!(resolve_and_read(tmp("nope.png").to_string_lossy().into_owned(), None).is_err());
+    }
+
+    #[test]
+    fn max_bytes_reads_only_a_bounded_prefix_and_reports_full_size() {
+        let p = tmp("big.png");
+        fs::write(&p, vec![7u8; 10_000]).unwrap();
+        let r = resolve_and_read(p.to_string_lossy().into_owned(), Some(512)).unwrap();
+        assert_eq!(r.bytes.len(), 512, "read only the requested prefix");
+        assert_eq!(r.size, 10_000, "size is still the FULL file length");
+        let full = resolve_and_read(p.to_string_lossy().into_owned(), None).unwrap();
+        assert_eq!(full.bytes.len(), 10_000);
+        let _ = fs::remove_file(&p);
     }
 
     #[test]
     fn a_directory_is_rejected_as_not_a_regular_file() {
         let d = tmp("adir");
         fs::create_dir_all(&d).unwrap();
-        let err = resolve_and_read(d.to_string_lossy().into_owned()).unwrap_err();
+        let err = resolve_and_read(d.to_string_lossy().into_owned(), None).unwrap_err();
         assert!(err.contains("not a regular file"), "got: {err}");
         let _ = fs::remove_dir_all(&d);
     }
@@ -985,7 +1017,7 @@ mod resolve_read_tests {
         let link = tmp("a.png"); // looks like an image, actually points at the secret
         let _ = fs::remove_file(&link);
         symlink(&target, &link).unwrap();
-        let r = resolve_and_read(link.to_string_lossy().into_owned()).unwrap();
+        let r = resolve_and_read(link.to_string_lossy().into_owned(), None).unwrap();
         // canonicalize followed the symlink → canonical is the TARGET, not the link name
         assert_eq!(r.bytes, b"SECRET");
         assert_eq!(r.canonical_path, fs::canonicalize(&target).unwrap().to_string_lossy());
@@ -1001,7 +1033,7 @@ mod resolve_read_tests {
         fs::write(&p, b"x").unwrap();
         let messy = temp_dir().join("sub").join("..").join(format!("rr-{}-trav.png", std::process::id()));
         fs::create_dir_all(temp_dir().join("sub")).ok();
-        let r = resolve_and_read(messy.to_string_lossy().into_owned()).unwrap();
+        let r = resolve_and_read(messy.to_string_lossy().into_owned(), None).unwrap();
         assert_eq!(r.canonical_path, fs::canonicalize(&p).unwrap().to_string_lossy());
         let _ = fs::remove_file(&p);
     }

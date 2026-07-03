@@ -20,6 +20,8 @@ vi.mock('../lib/trustStore', () => ({
 }));
 vi.mock('../lib/assetGate', () => ({
   resolveAndGate: vi.fn(async () => ({ ok: true, canonicalPath: '/path/to/talk/images/chart.svg', bytes: new Uint8Array() })),
+  // refreshTrust now uses the bounded decision read (no bytes needed for the checkbox).
+  resolveAndGateDecision: vi.fn(async () => ({ ok: true, canonicalPath: '/path/to/talk/images/chart.svg', bytes: null })),
 }));
 
 const mockedInvoke = vi.mocked(invoke);

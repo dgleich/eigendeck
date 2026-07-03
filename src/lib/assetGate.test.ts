@@ -8,22 +8,25 @@ vi.mock('@tauri-apps/api/core', () => ({
   },
 }));
 
-import { resolveAndGate } from './assetGate';
+import { resolveAndGate, resolveAndGateDecision } from './assetGate';
 
 const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0];
 const DEMO = '<!DOCTYPE html>\n<!--eigendeck-demo-v1-->\n<html></html>';
 
-/** Fake resolve_and_read: maps referencePath → { canonicalPath, bytes }. */
+/** Fake resolve_and_read: maps referencePath → { canonicalPath, bytes }. Honors the
+ *  maxBytes bound (returns a prefix) and always reports the FULL size, like the Rust
+ *  primitive — so the decision/sniff path is exercised faithfully. */
 function fakeFs(map: Record<string, { canonical: string; bytes: number[] | string }>) {
   state.impl = async (cmd, args) => {
     expect(cmd).toBe('resolve_and_read');
-    const path = (args as { path: string }).path;
+    const { path, maxBytes } = args as { path: string; maxBytes: number | null };
     const hit = map[path];
     if (!hit) throw new Error(`cannot resolve ${path}`);
-    const bytes = typeof hit.bytes === 'string'
+    const full = typeof hit.bytes === 'string'
       ? [...hit.bytes].map((c) => c.charCodeAt(0) & 0xff)
       : hit.bytes;
-    return { canonicalPath: hit.canonical, bytes };
+    const bytes = maxBytes == null ? full : full.slice(0, maxBytes);
+    return { canonicalPath: hit.canonical, bytes, size: full.length };
   };
 }
 
@@ -68,4 +71,36 @@ describe('resolveAndGate', () => {
     expect(r.reason).toBe('unreadable');
     expect(r.error).toBeTruthy();
   });
+});
+
+// The bounded "sniff" read must reach the SAME verdict as the full read, or the report
+// would classify a file differently from the actual read gate. All inputs here are
+// LARGER than the 4 KB sniff bound, so the equivalence is genuinely exercised (incl. the
+// .ipynb full re-read fallback).
+describe('resolveAndGateDecision matches resolveAndGate (no divergence)', () => {
+  const bigValidPng = [...PNG, ...Array(6000).fill(0)];                 // magic ok, big
+  const bigNotPng = 'X'.repeat(6000);                                   // magic fail, big
+  const bigDemo = DEMO + '\n' + '<!-- pad -->'.repeat(600);             // marker in prefix, big
+  const bigNotebook = JSON.stringify({ nbformat: 4, cells: [{ cell_type: 'code', source: 'x'.repeat(6000) }] }); // valid, > sniff
+  const brokenNotebook = '{ not valid json '.repeat(500);              // .ipynb but unparseable, > sniff
+
+  const cases: Array<[string, string, number[] | string]> = [
+    ['big.png', '/deck/big.png', bigValidPng],
+    ['bad.png', '/deck/bad.png', bigNotPng],
+    ['d.html', '/deck/d.html', bigDemo],
+    ['nb.ipynb', '/deck/nb.ipynb', bigNotebook],
+    ['broken.ipynb', '/deck/broken.ipynb', brokenNotebook],
+  ];
+  beforeEach(() => { state.impl = null; });
+  for (const [ref, canon, bytes] of cases) {
+    it(`${ref}: decision verdict == full verdict`, async () => {
+      fakeFs({ [ref]: { canonical: canon, bytes } });
+      const full = await resolveAndGate(ref);
+      const dec = await resolveAndGateDecision(ref);
+      expect(dec.ok).toBe(full.ok);
+      expect(dec.reason).toBe(full.reason);
+      expect(dec.canonicalPath).toBe(full.canonicalPath);
+      expect(dec.bytes).toBeNull();  // decision never hands back (possibly partial) bytes
+    });
+  }
 });
