@@ -1728,6 +1728,21 @@ pub fn db_compact(keep_all: bool) -> Result<String, String> {
 
         let tx = conn.unchecked_transaction()?;
 
+        // Retire ORPHANED elements: live rows (valid_to IS NULL) that are on NO current
+        // slide. Deleting an element from a slide closes its slide_elements junction but
+        // leaves the element row live (see db_remove_element_from_slide), so its asset_id
+        // keeps the source asset reachable and it never gets collected — surfacing as an
+        // "unused" linked asset. Retiring them here (compact time, deck settled, so no
+        // in-flight cross-slide move to race) lets gc_assets_inner below reclaim their
+        // now-unreferenced sources. A shared/synced element still on another slide keeps a
+        // junction, so it's untouched.
+        tx.execute(
+            "UPDATE elements SET valid_to = ?1
+             WHERE valid_to IS NULL
+               AND id NOT IN (SELECT element_id FROM slide_elements WHERE valid_to IS NULL)",
+            params![timestamp()],
+        )?;
+
         if keep_all {
             // Delete ALL history + cached renders. asset_cache rows are
             // pure derived state (sidebar thumbnails, downscaled tiers);
@@ -3095,6 +3110,47 @@ mod tests {
             )
             .unwrap();
         assert_eq!(version, "3");
+    }
+
+    #[test]
+    fn test_compact_retires_orphaned_element_and_gcs_its_asset() {
+        // Regression: deleting an element from a slide closes its slide_elements
+        // junction but leaves the element row live, so its asset stayed reachable and
+        // never got collected (surfaced as an "unused" linked asset). Compact must
+        // retire the now-slideless element and reclaim its source.
+        setup_global_db();
+        db_add_slide("s1".into(), 0, None).unwrap();
+        db_store_asset("img.png".into(), vec![1, 2, 3], "image/png".into(), Some("ext/img.png".into()), None, Some("A".into()), None, None).unwrap();
+        db_add_element("s1".into(), "e1".into(), "image".into(), "{}".into(), None, Some("A".into()), 0).unwrap();
+        // Delete from the slide the way the flush does: close the junction only.
+        db_remove_element_from_slide("s1".into(), "e1".into()).unwrap();
+
+        let live_before: i64 = with_db(|c| Ok(c.query_row("SELECT COUNT(*) FROM elements WHERE id='e1' AND valid_to IS NULL", [], |r| r.get(0))?)).unwrap();
+        assert_eq!(live_before, 1, "element row stays live after remove-from-slide (the leak)");
+
+        db_compact(true).unwrap();
+
+        let live_after: i64 = with_db(|c| Ok(c.query_row("SELECT COUNT(*) FROM elements WHERE id='e1' AND valid_to IS NULL", [], |r| r.get(0))?)).unwrap();
+        assert_eq!(live_after, 0, "compact retires the slideless orphan element");
+        let asset_after: i64 = with_db(|c| Ok(c.query_row("SELECT COUNT(*) FROM assets WHERE asset_id='A'", [], |r| r.get(0))?)).unwrap();
+        assert_eq!(asset_after, 0, "its now-unreferenced asset is GC'd");
+        teardown_global_db();
+    }
+
+    #[test]
+    fn test_compact_keeps_asset_of_element_still_on_a_slide() {
+        // The retire must NOT touch an element that's still placed (e.g. a shared/synced
+        // element with a remaining junction).
+        setup_global_db();
+        db_add_slide("s1".into(), 0, None).unwrap();
+        db_store_asset("img.png".into(), vec![1, 2, 3], "image/png".into(), Some("ext/img.png".into()), None, Some("A".into()), None, None).unwrap();
+        db_add_element("s1".into(), "e1".into(), "image".into(), "{}".into(), None, Some("A".into()), 0).unwrap();
+        db_compact(true).unwrap();
+        let live: i64 = with_db(|c| Ok(c.query_row("SELECT COUNT(*) FROM elements WHERE id='e1' AND valid_to IS NULL", [], |r| r.get(0))?)).unwrap();
+        let asset: i64 = with_db(|c| Ok(c.query_row("SELECT COUNT(*) FROM assets WHERE asset_id='A'", [], |r| r.get(0))?)).unwrap();
+        assert_eq!(live, 1, "on-slide element survives compact");
+        assert_eq!(asset, 1, "its asset is kept");
+        teardown_global_db();
     }
 
     #[test]
