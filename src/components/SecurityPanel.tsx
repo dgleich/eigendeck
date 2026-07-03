@@ -233,10 +233,40 @@ function CountsHeader({ counts }: { counts: DeckSecurityReport['counts'] }): Rea
 }
 
 // Explains the "unused" badge in-place: a linked file on no slide is kept for undo and
-// cleared by compacting. Shown as a hover tooltip next to the badge (see Row).
+// cleared by compacting. Shown via InfoTip next to the badge (see Row).
 const UNUSED_TOOLTIP =
   "This file isn't used on any slide. It's kept so you can undo, and removed when you "
   + 'compact the deck: File → Compact (Free Unused Assets).';
+
+// Small "i" info icon with a hover tooltip. Rolls its own tooltip (React state) rather
+// than the native `title` attribute, which doesn't fire reliably in Tauri's WebKit, and
+// draws the icon with CSS (a bordered "i") instead of a Unicode glyph like ⓘ that the
+// window's font renders as a "?".
+function InfoTip({ text }: { text: string }): React.ReactElement {
+  const [show, setShow] = useState(false);
+  return (
+    <span
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: 5 }}
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: 13, height: 13, borderRadius: '50%', border: '1px solid #9ca3af',
+        color: '#6b7280', fontSize: 9, fontStyle: 'italic', fontWeight: 700,
+        fontFamily: 'Georgia, "Times New Roman", serif', cursor: 'help', userSelect: 'none',
+      }}>i</span>
+      {show && (
+        <span style={{
+          position: 'absolute', top: '150%', left: 0, zIndex: 50, width: 240,
+          background: '#111827', color: '#fff', fontSize: 11, lineHeight: 1.4,
+          padding: '7px 9px', borderRadius: 5, boxShadow: '0 2px 10px rgba(0,0,0,.35)',
+          fontStyle: 'normal', fontWeight: 400, pointerEvents: 'none',
+        }}>{text}</span>
+      )}
+    </span>
+  );
+}
 
 function GroupedRows({ report, canAct, busy, onApprove, onApproveDir, onRevokeApproval }: {
   report: DeckSecurityReport; canAct: boolean; busy: boolean;
@@ -301,12 +331,9 @@ function Row({ r, canAct, trusted, busy, onApprove, onRevokeApproval }: {
         </div>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5 }}>
-        <span style={{ fontSize: 11, color: '#999' }}>
+        <span style={{ fontSize: 11, color: '#999', display: 'inline-flex', alignItems: 'center' }}>
           {r.usage}
-          {r.usage === 'unused' && (
-            <span title={UNUSED_TOOLTIP} aria-label={UNUSED_TOOLTIP}
-              style={{ marginLeft: 4, cursor: 'help', color: '#9ca3af', fontSize: 11 }}>ⓘ</span>
-          )}
+          {r.usage === 'unused' && <InfoTip text={UNUSED_TOOLTIP} />}
         </span>
         {r.state === 'approved' && r.approvedAt && (
           <span style={{ fontSize: 11, color: st.color }}>Approved {fmtWhen(r.approvedAt)} · {howLabel(r.approvedHow)}</span>
