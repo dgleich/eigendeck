@@ -12,7 +12,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { emit } from '@tauri-apps/api/event';
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { usePresentationStore } from '../store/presentation';
 import {
   buildDeckSecurityReport, approveOne, approveDirectory, reconfirmThisDeck, revokeApproval,
@@ -118,7 +117,6 @@ export function SecurityWindowApp(): React.ReactElement {
     try { const { revokeDeck } = await import('../lib/trustStore'); await revokeDeck(token); setReport(await buildDeckSecurityReport()); notifyMain(); }
     finally { setBusy(false); }
   };
-  const closeWindow = () => { void getCurrentWebviewWindow().close(); };
 
   const kase = report ? deckCase(report) : null;
   // File actions (approve / revoke) apply only on a trusted deck that's actually
@@ -127,10 +125,8 @@ export function SecurityWindowApp(): React.ReactElement {
 
   return (
     <div style={{ padding: 20, maxWidth: 780, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
-        <h1 style={{ margin: 0, fontSize: 18 }}>Security &amp; linked files</h1>
-        <button onClick={closeWindow} style={{ border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#666' }}>×</button>
-      </div>
+      {/* No in-content title or × — this is a dialog-style window; the OS window
+          title + native close button are the single title / close affordance. */}
       <p style={{ marginTop: 0, color: '#555', lineHeight: 1.45, fontSize: 13 }}>
         Eigendeck can keep this deck's images, demos, and notebooks linked to files on your
         computer so they update as you edit them. That means reading those files. So it only
@@ -153,6 +149,7 @@ export function SecurityWindowApp(): React.ReactElement {
           {kase !== 'A' && (
             <>
               <CountsHeader counts={report.counts} />
+              <UnusedHint n={report.rows.filter((r) => r.usage === 'unused').length} />
               <GroupedRows report={report} canAct={canAct} busy={busy}
                 onApprove={doApprove} onApproveDir={doApproveDir} onRevokeApproval={doRevokeApproval} />
             </>
@@ -232,6 +229,18 @@ function CountsHeader({ counts }: { counts: DeckSecurityReport['counts'] }): Rea
   return (
     <div style={{ fontSize: 12, color: '#374151', margin: '2px 0 8px', fontWeight: 600 }}>
       {counts.total} linked file{counts.total === 1 ? '' : 's'}. <span style={{ fontWeight: 400, color: '#6b7280' }}>{parts.join(' · ')}</span>
+    </div>
+  );
+}
+
+// Some linked files aren't placed on any slide. They stay in the deck (kept for undo
+// history) until you compact, so point the user at the menu command that clears them.
+function UnusedHint({ n }: { n: number }): React.ReactElement | null {
+  if (n <= 0) return null;
+  return (
+    <div style={{ fontSize: 11, color: '#6b7280', margin: '0 0 10px', lineHeight: 1.5 }}>
+      {n === 1 ? "1 file below isn't used on any slide." : `${n} files below aren't used on any slide.`} They're
+      kept so you can undo, and removed when you compact the deck: <b>File → Compact (Free Unused Assets)</b>.
     </div>
   );
 }

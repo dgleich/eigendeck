@@ -22,7 +22,7 @@ export async function openSecurityWindow(): Promise<void> {
 
   new WebviewWindow('security', {
     url: '/security.html',
-    title: 'Linked files & security',
+    title: 'Security & linked files',
     width: 760,
     height: 660,
     resizable: true,

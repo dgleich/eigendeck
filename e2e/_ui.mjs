@@ -128,17 +128,12 @@ export async function hasApproveControls(sid) {
 // destroy the WebDriver session's current window and make the next switch/exec fail
 // (returns undefined). Waits until only the main handle remains.
 export async function closeSecurityWindow(sid, mainH) {
-  // Click the window's REAL "×" button — its onClick calls the bundled
-  // getCurrentWebviewWindow().close(). (A probe-side dynamic import() of a bare
-  // '@tauri-apps/...' specifier fails at runtime, so programmatic close doesn't
-  // work; the app's own bundled import does.) Closing properly matters: a reused
-  // window keeps its first-mount report and would act on stale deck state.
-  const secH = (await handles(sid)).find((h) => h !== mainH);
-  if (secH) {
-    await switchTo(sid, secH);
-    await exec(sid, "const b=[...document.querySelectorAll('button')].find(x=>x.textContent.trim()==='×');if(b)b.click();");
-  }
-  for (let i = 0; i < 12; i++) { await sleep(400); if ((await handles(sid)).length <= 1) break; }
+  // The window is now dialog-style with no in-content close (OS close only), and the
+  // app re-sends security:init when the window is reopened — which remounts it with
+  // fresh deck state (invalidating its ledger cache). So instead of forcing a close
+  // (WebDriver's window-delete doesn't cleanly tear down the Tauri window, and a real
+  // OS-chrome click isn't scriptable here), just return to the main window; the next
+  // openSecurityWindow reuses + refreshes the same window. No stale-report risk.
   await switchTo(sid, mainH);
 }
 
