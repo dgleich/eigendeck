@@ -6,7 +6,7 @@
 // in plain sight (transparency) and gates approval on state. See docs/ASSETS-SECURITY.md.
 
 import { invoke } from '@tauri-apps/api/core';
-import { usePresentationStore } from '../store/presentation';
+import { usePresentationStore, getDeckToken } from '../store/presentation';
 import { resolveAndGate } from './assetGate';
 import { resolvePosixPath, dirname } from './watcherRegistry';
 import { isTrusted, isPathApproved, deckState, approvalDetail } from './trustStore';
@@ -65,7 +65,7 @@ function usageLabel(assetId: string): string {
 /** Build the report for the currently-open deck. Never throws. */
 export async function buildDeckSecurityReport(): Promise<DeckSecurityReport> {
   const store = usePresentationStore.getState();
-  const token = store.presentation.config.deckToken;
+  const token = getDeckToken();
   const trusted = token ? await isTrusted(token) : false;
   const projectDir = store.projectPath ? dirname(store.projectPath) : '';
 
@@ -106,13 +106,6 @@ export async function buildDeckSecurityReport(): Promise<DeckSecurityReport> {
   }
 
   const ds = token ? await deckState(token) : null;
-  const counts = {
-    total: rows.length,
-    approved: rows.filter((r) => r.state === 'approved').length,
-    eligible: rows.filter((r) => r.state === 'eligible').length,
-    blocked: rows.filter((r) => r.state === 'forbidden').length,
-    missing: rows.filter((r) => r.state === 'missing').length,
-  };
   return {
     trusted,
     status: ds?.status ?? 'untrusted-new',
@@ -120,8 +113,20 @@ export async function buildDeckSecurityReport(): Promise<DeckSecurityReport> {
     trustReason: ds?.trustReason ?? null,
     watch: { global: getPreference('autoReloadAssets'), deck: store.presentation.config.autoReloadAssets ?? null },
     projectDir,
-    counts,
+    counts: countRows(rows),
     rows,
+  };
+}
+
+/** Tally the per-state counts for a row set. Shared by buildDeckSecurityReport and the
+ *  in-place update in approveDirectory (which flips rows without a second full build). */
+function countRows(rows: ExternalPathRow[]): DeckSecurityReport['counts'] {
+  return {
+    total: rows.length,
+    approved: rows.filter((r) => r.state === 'approved').length,
+    eligible: rows.filter((r) => r.state === 'eligible').length,
+    blocked: rows.filter((r) => r.state === 'forbidden').length,
+    missing: rows.filter((r) => r.state === 'missing').length,
   };
 }
 
@@ -130,7 +135,7 @@ export async function buildDeckSecurityReport(): Promise<DeckSecurityReport> {
  *  window, which owns the watcher, to re-scan. */
 async function ensureTrusted(): Promise<string> {
   const store = usePresentationStore.getState();
-  let token = store.presentation.config.deckToken;
+  let token = getDeckToken();
   if (!token) { token = crypto.randomUUID(); store.updateConfig({ deckToken: token }); }
   const { createTrustedDeck, isTrusted: chk } = await import('./trustStore');
   if (!(await chk(token))) await createTrustedDeck(token, 'trusted');
@@ -150,7 +155,7 @@ export async function trustThisDeck(): Promise<DeckSecurityReport> {
  *  act. LEDGER-ONLY (shared appData persists it) — caller notifies the main window to
  *  re-scan. Returns the fresh report. */
 export async function reconfirmThisDeck(): Promise<DeckSecurityReport> {
-  const token = usePresentationStore.getState().presentation.config.deckToken;
+  const token = getDeckToken();
   if (token) { const { reconfirmDeck } = await import('./trustStore'); await reconfirmDeck(token); }
   return buildDeckSecurityReport();
 }
@@ -160,7 +165,7 @@ export async function reconfirmThisDeck(): Promise<DeckSecurityReport> {
  *  the deck isn't trusted (approvePath guards it) or the target no longer resolves. */
 export async function approveOne(assetId: string, referencePath: string): Promise<DeckSecurityReport> {
   const store = usePresentationStore.getState();
-  const token = store.presentation.config.deckToken;
+  const token = getDeckToken();
   if (token) {
     const projectDir = store.projectPath ? dirname(store.projectPath) : '';
     const gate = await resolveAndGate(resolvePosixPath(projectDir, referencePath));
@@ -175,7 +180,7 @@ export async function approveOne(assetId: string, referencePath: string): Promis
 /** Revoke ONE approved asset's approval (per-file). Leaves deck trust and every other
  *  approval intact. Returns the fresh report. */
 export async function revokeApproval(assetId: string): Promise<DeckSecurityReport> {
-  const token = usePresentationStore.getState().presentation.config.deckToken;
+  const token = getDeckToken();
   if (token) { const { unapproveAsset } = await import('./trustStore'); await unapproveAsset(token, assetId); }
   return buildDeckSecurityReport();
 }
@@ -186,16 +191,22 @@ export async function revokeApproval(assetId: string): Promise<DeckSecurityRepor
  *  trust action — the deck must already be trusted (trustThisDeck), keeping deck-trust
  *  and file-approval two distinct steps. Returns the fresh report. */
 export async function approveDirectory(resolvedDir: string): Promise<DeckSecurityReport> {
-  const store = usePresentationStore.getState();
-  const token = store.presentation.config.deckToken;
-  if (token) {
-    const { approvePath } = await import('./trustStore');
-    const report = await buildDeckSecurityReport();
-    for (const r of report.rows) {
-      if (r.state === 'eligible' && r.resolvedPath && r.resolvedDir === resolvedDir) {
-        await approvePath(token, r.assetId, r.resolvedPath, 'approve-folder');
+  const token = getDeckToken();
+  const report = await buildDeckSecurityReport();   // built ONCE
+  if (!token) return report;
+  const { approvePath } = await import('./trustStore');
+  const now = Date.now();
+  // Approve the eligible rows in this folder and flip them IN the already-built report
+  // (state + provenance), instead of a second full buildDeckSecurityReport() that would
+  // re-resolve and re-read every linked file off disk.
+  let changed = false;
+  for (const r of report.rows) {
+    if (r.state === 'eligible' && r.resolvedPath && r.resolvedDir === resolvedDir) {
+      if (await approvePath(token, r.assetId, r.resolvedPath, 'approve-folder')) {
+        r.state = 'approved'; r.approvedAt = now; r.approvedHow = 'approve-folder'; changed = true;
       }
     }
   }
-  return buildDeckSecurityReport();
+  if (changed) report.counts = countRows(report.rows);
+  return report;
 }

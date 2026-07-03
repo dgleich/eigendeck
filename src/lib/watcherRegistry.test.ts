@@ -9,6 +9,7 @@ const { g } = vi.hoisted(() => ({ g: {
 } }));
 vi.mock('../store/presentation', () => ({
   usePresentationStore: { getState: () => ({ presentation: { config: { deckToken: g.token } } }) },
+  getDeckToken: () => g.token,
 }));
 vi.mock('./trustStore', () => ({ isTrusted: async () => g.trusted, isPathApproved: async () => g.approved }));
 vi.mock('./assetGate', () => ({ resolveAndGate: async () => g.gate }));

@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
-import { usePresentationStore } from '../store/presentation';
+import { usePresentationStore, getDeckToken } from '../store/presentation';
 import { HelpText } from './HelpText';
 import { invalidateRenderedAsset } from '../lib/assetRenderer';
 import { storeAssetRaw, approveExternalAbsPath } from '../lib/assetInsert';
@@ -121,7 +121,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
   // to be approved, so an unapproved file must NOT be togglable to "watched".
   const [approved, setApproved] = useState<boolean | null>(null);
   const refreshTrust = useCallback(async () => {
-    const token = usePresentationStore.getState().presentation?.config?.deckToken;
+    const token = getDeckToken();
     const pp = usePresentationStore.getState().projectPath;
     if (!token) { setDeckTrusted(false); setApproved(null); return; }
     try {
@@ -182,7 +182,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
       if (read.status === 'gated') {
         // Gated = untrusted deck OR (trusted but) this file not approved. Message the
         // actual blocker so "reload does nothing" isn't a mystery.
-        const token = usePresentationStore.getState().presentation?.config?.deckToken;
+        const token = getDeckToken();
         let trusted = false;
         try { const { isTrusted } = await import('../lib/trustStore'); trusted = !!token && await isTrusted(token); } catch { /* fail-safe: treat as untrusted */ }
         showToast({ kind: 'warning', ttl: 8000, message: trusted

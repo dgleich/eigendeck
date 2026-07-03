@@ -7,7 +7,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { sha256Hex } from './hash';
-import { usePresentationStore } from '../store/presentation';
+import { usePresentationStore, getDeckToken } from '../store/presentation';
 import { invalidateRenderedAsset } from './assetRenderer';
 import { showCollisionDialog } from './collisionDialog';
 import { effectiveAutoReload, getPreference } from './preferences';
@@ -187,7 +187,7 @@ function maybeWarnUnsavedProject(externalPath: string | null): void {
  */
 export async function approveExternalAbsPath(assetId: string, absPath: string, reason: string): Promise<void> {
   try {
-    const token = usePresentationStore.getState().presentation.config.deckToken;
+    const token = getDeckToken();
     if (!token || !assetId) return;
     const { isTrusted, approvePath } = await import('./trustStore');
     if (!(await isTrusted(token))) return;

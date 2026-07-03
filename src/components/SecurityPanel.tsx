@@ -12,7 +12,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { emit } from '@tauri-apps/api/event';
-import { usePresentationStore } from '../store/presentation';
+import { usePresentationStore, getDeckToken } from '../store/presentation';
 import {
   buildDeckSecurityReport, approveOne, approveDirectory, reconfirmThisDeck, revokeApproval,
   type DeckSecurityReport, type ExternalPathRow, type RowState,
@@ -106,7 +106,7 @@ export function SecurityWindowApp(): React.ReactElement {
   const doRevokeApproval = async (assetId: string) => { setBusy(true); try { setReport(await revokeApproval(assetId)); notifyMain(); } finally { setBusy(false); } };
   const doReconfirm = async () => { setBusy(true); try { setReport(await reconfirmThisDeck()); notifyMain(); } finally { setBusy(false); } };
   const doRevoke = async () => {
-    const token = usePresentationStore.getState().presentation.config.deckToken;
+    const token = getDeckToken();
     if (!token) return;
     const title = usePresentationStore.getState().presentation.title || 'this deck';
     const approved = report?.counts.approved ?? 0;

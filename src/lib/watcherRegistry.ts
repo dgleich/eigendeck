@@ -54,8 +54,8 @@ export type GatedRead =
  */
 export async function gatedExternalRead(absPath: string): Promise<GatedRead> {
   try {
-    const { usePresentationStore } = await import('../store/presentation');
-    const token = usePresentationStore.getState().presentation?.config?.deckToken;
+    const { getDeckToken } = await import('../store/presentation');
+    const token = getDeckToken();
     if (!token) return { status: 'gated' };
     const { isTrusted, isPathApproved } = await import('./trustStore');
     if (!(await isTrusted(token))) return { status: 'gated' };
@@ -348,8 +348,8 @@ export async function scanForChangedAssets(
   // render. (docs/ASSETS-SECURITY.md.) Trusted decks scan as before, with each
   // byte-read routed through the gate for realpath + type safety.
   {
-    const { usePresentationStore } = await import('../store/presentation');
-    const token = usePresentationStore.getState().presentation?.config?.deckToken;
+    const { getDeckToken } = await import('../store/presentation');
+    const token = getDeckToken();
     if (!token) return { checked: 0, reloaded: 0 };
     const { isTrusted } = await import('./trustStore');
     if (!(await isTrusted(token))) { wlog('scanForChangedAssets skipped — deck untrusted'); return { checked: 0, reloaded: 0 }; }

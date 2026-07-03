@@ -37,6 +37,7 @@ vi.mock('../store/presentation', () => ({
       updateConfig: (c: { deckToken?: string }) => { if (c.deckToken) fx.deckToken = c.deckToken; },
     }),
   },
+  getDeckToken: () => fx.deckToken,
 }));
 // In-memory ledger persistence (so the REAL trustStore/trustLedger run without Tauri).
 vi.mock('@tauri-apps/api/path', () => ({ appDataDir: async () => '/appdata', join: async (...p: string[]) => p.join('/') }));

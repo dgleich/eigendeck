@@ -876,6 +876,13 @@ export const usePresentationStore = create<PresentationState>()(
 let undoTxnSnapshot: { presentation: Presentation } | null = null;
 let undoTxnDepth = 0;
 
+/** The current deck's asset-security token (the stable id trust/approvals are keyed
+ *  by), or undefined for a legacy/untrusted deck. One accessor so the many read sites
+ *  don't each spell out the store path (and drift on optional-chaining). */
+export function getDeckToken(): string | undefined {
+  return usePresentationStore.getState().presentation.config.deckToken;
+}
+
 export function pauseUndo() {
   if (undoTxnDepth === 0) {
     undoTxnSnapshot = { presentation: usePresentationStore.getState().presentation };

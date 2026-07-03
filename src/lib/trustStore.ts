@@ -98,6 +98,11 @@ async function mutate<T>(fn: (l: TrustLedger, now: number) => T): Promise<T> {
 export async function deckState(token: string) {
   return (await ledger()).deckState(token, Date.now());
 }
+/** Asset ids with an active approval — a cheap "is everything approved?" check by id
+ *  (no path resolution / disk reads). See the ledger method for why it's sound. */
+export async function approvedAssetIds(token: string): Promise<string[]> {
+  return (await ledger()).approvedAssetIds(token, Date.now());
+}
 export async function isTrusted(token: string): Promise<boolean> {
   return (await ledger()).isTrusted(token, Date.now());
 }

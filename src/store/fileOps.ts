@@ -8,7 +8,7 @@
 import { save, message } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { Presentation } from '../types/presentation';
-import { usePresentationStore, openSqliteProject, flushToSqlite, createSeededPresentation } from './presentation';
+import { usePresentationStore, getDeckToken, openSqliteProject, flushToSqlite, createSeededPresentation } from './presentation';
 import { getPreference } from '../lib/preferences';
 import { showToast } from '../lib/toasts';
 
@@ -287,7 +287,7 @@ export async function saveProject(): Promise<void> {
  */
 export async function reconcileDeckApprovals(): Promise<void> {
   try {
-    const token = usePresentationStore.getState().presentation.config.deckToken;
+    const token = getDeckToken();
     if (!token) return;
     const { isTrusted, reconcileApprovals } = await import('../lib/trustStore');
     if (!(await isTrusted(token))) return;
@@ -308,8 +308,8 @@ export async function reconcileDeckApprovals(): Promise<void> {
  */
 export async function notifyTrustStatusOnOpen(): Promise<void> {
   try {
+    const token = getDeckToken();
     const store = usePresentationStore.getState();
-    const token = store.presentation.config.deckToken;
     if (!token) return;
     const { deckState, reconfirmDeck } = await import('../lib/trustStore');
     const state = await deckState(token);
@@ -341,6 +341,15 @@ export async function notifyTrustStatusOnOpen(): Promise<void> {
     // dangerous case and are called out distinctly from ones you've already seen.
     if (state.status !== 'trusted') return;
     if (!getPreference('autoReloadAssets') || store.presentation.config.autoReloadAssets === 'off') return;
+    // Cheap gate before the expensive report: if EVERY linked asset id is already
+    // approved, there's nothing to nudge — skip building the report (which resolves +
+    // reads every linked file off disk). This is the common case for a settled trusted
+    // deck. Sound because the app re-approves on any external_path change (see
+    // ledger.approvedAssetIds), so an approved id's current target is the approved one.
+    const { approvedAssetIds } = await import('../lib/trustStore');
+    const linkedIds = await invoke<Array<{ asset_id: string }>>('db_list_linked_assets').catch(() => []);
+    const approvedIds = new Set(await approvedAssetIds(token));
+    if (linkedIds.every((a) => approvedIds.has(a.asset_id))) return;
     const { buildDeckSecurityReport } = await import('../lib/securityReport');
     const rep = await buildDeckSecurityReport();
     const eligible = rep.rows.filter((r) => r.state === 'eligible' && r.resolvedPath).map((r) => r.resolvedPath as string);

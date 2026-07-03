@@ -51,6 +51,18 @@ describe('createTrusted + approve (asset-keyed)', () => {
   });
 });
 
+describe('approvedAssetIds — cheap "is everything approved?" by id', () => {
+  it('returns the approved asset ids on a trusted deck; empty when untrusted/lapsed', () => {
+    const l = new TrustLedger();
+    expect(l.approvedAssetIds('tok', T0)).toEqual([]);        // untrusted
+    l.createTrusted('tok', T0);
+    l.approve('tok', A1, P, 'add', T0);
+    l.approve('tok', A2, Q, 'add', T0);
+    expect(l.approvedAssetIds('tok', T0).sort()).toEqual([A1, A2].sort());
+    expect(l.approvedAssetIds('tok', LATER)).toEqual([]);      // TTL-lapsed → inactive
+  });
+});
+
 describe('unapprove — revoke ONE asset approval (per-file), trust intact', () => {
   it('removes only that asset; deck stays trusted and other approvals remain', () => {
     const l = new TrustLedger();
