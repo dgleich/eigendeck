@@ -47,8 +47,6 @@ export class TrustLedger {
   deckState(token: string, now: number): DeckStateResult;
   /** Provenance for one approved resolved path, or null. */
   approvalDetail(token: string, resolvedPath: string): { at: number; reason: string } | null;
-  /** Asset ids with an active approval (empty if untrusted/lapsed). */
-  approvedAssetIds(token: string, now: number): string[];
   isTrusted(token: string, now: number): boolean;
   isApproved(token: string, resolvedPath: string, now: number): boolean;
   createTrusted(token: string, now: number, reason?: TrustReason): this;

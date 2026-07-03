@@ -79,16 +79,6 @@ export class TrustLedger {
     return null;
   }
 
-  /** The asset ids with an ACTIVE approval right now (empty if untrusted/lapsed). Lets
-   *  callers cheaply answer "is every linked asset approved?" by id, without resolving
-   *  paths off disk. Sound because the app re-approves on every external_path change
-   *  (add / relocate / approve all key by asset id), so an approved id's current
-   *  resolved target is always the approved one. */
-  approvedAssetIds(token, now) {
-    if (!this.isTrusted(token, now)) return [];
-    return Object.keys(this.decks.get(token).approvals);
-  }
-
   /** Is this deck effectively trusted right now (trusted AND not TTL-lapsed)? */
   isTrusted(token, now) {
     return this.deckState(token, now).status === 'trusted';

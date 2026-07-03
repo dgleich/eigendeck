@@ -97,24 +97,26 @@ if (
     // and, per linked asset, the resolve/approve/read-gate decision. Lets spec probes
     // assert WHY a file is (not) watched, not just the resulting bytes.
     trustReport: async () => {
+      const s = usePresentationStore.getState();
       const token = getDeckToken();
-      const { deckState } = await import('./lib/trustStore');
+      const { isTrusted, isPathApproved, deckState } = await import('./lib/trustStore');
       // Raw ledger approvals (resolved paths) for THIS deck — lets cleanup probes
       // assert an orphaned path is actually gone, independent of current links.
       const ledgerApprovals = token ? (await deckState(token)).approvals : [];
-      // Delegate the per-asset decision to the ONE report builder (no shadow copy of the
-      // resolve/gate/approve logic). Each row's read-gate outcome is derivable from its
-      // state: approved→ok, missing→unreadable, else (forbidden/eligible/untrusted)→gated.
-      const { buildDeckSecurityReport } = await import('./lib/securityReport');
-      const report = await buildDeckSecurityReport();
-      const rows = report.rows.map((r) => ({
-        ext: r.referencePath,
-        gateOk: r.state === 'approved' || r.state === 'eligible',
-        reason: r.reason,
-        approved: r.state === 'approved',
-        read: r.state === 'approved' ? 'ok' : r.state === 'missing' ? 'unreadable' : 'gated',
-      }));
-      return JSON.stringify({ token: token ?? null, trusted: report.trusted, ledgerApprovals, rows });
+      // Observe the REAL gate independently (call gatedExternalRead per row) rather than
+      // deriving from buildDeckSecurityReport — the point of this seam is to let a probe
+      // cross-check the report against the actual read gate, so it must NOT be a tautology.
+      const { resolveAndGate } = await import('./lib/assetGate');
+      const { gatedExternalRead, resolvePosixPath, dirname } = await import('./lib/watcherRegistry');
+      const { invoke } = await import('@tauri-apps/api/core');
+      const linked = (await invoke('db_list_linked_assets').catch(() => [])) as Array<{ external_path: string }>;
+      const rows: unknown[] = [];
+      for (const a of linked) {
+        const abs = resolvePosixPath(dirname(s.projectPath || ''), a.external_path);
+        const gate = await resolveAndGate(abs);
+        rows.push({ ext: a.external_path, gateOk: gate.ok, reason: gate.reason, approved: (token && gate.canonicalPath) ? await isPathApproved(token, gate.canonicalPath) : false, read: (await gatedExternalRead(abs)).status });
+      }
+      return JSON.stringify({ token: token ?? null, trusted: token ? await isTrusted(token) : false, ledgerApprovals, rows });
     },
     // NOTE: asset-security actions (trust / approve / approve-folder / revoke) and
     // relocate are deliberately NOT seams — a probe must drive the REAL Security
