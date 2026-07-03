@@ -91,12 +91,15 @@ export function SecurityWindowApp(): React.ReactElement {
   useEffect(() => { refresh(); }, [refresh]);
   const notifyMain = () => { void emit('eigendeck:security-changed'); };
 
-  // Trust + watch-this-deck must persist to the deck FILE, which only the main window
-  // (whose store is the live deck) can do. Ask it; it re-sends security:init, remounting
-  // this window with the updated deck. See App.tsx security-*-request handlers.
-  const doTrust = async () => { setBusy(true); await emit('eigendeck:security-trust-request'); setTimeout(() => setBusy(false), 4000); };
-  const doWatchDeck = async () => { setBusy(true); await emit('eigendeck:security-watch-request'); setTimeout(() => setBusy(false), 4000); };
-  const doOpenSettings = () => { void emit('eigendeck:open-settings'); };
+  // Actions that mutate the live deck (trust, watch) must persist to the deck FILE, which
+  // only the main window (whose store is the live deck) can do. We ask it over one
+  // `security:request` channel; it runs the action, saves, and re-sends security:init —
+  // which remounts this window (resetting `busy`). The setTimeout is only a fallback for
+  // the (rare) case that reply never arrives. See App.tsx's security-request handler.
+  const request = (action: 'trust' | 'watch' | 'open-settings') => emit('eigendeck:security-request', { action });
+  const doTrust = async () => { setBusy(true); await request('trust'); setTimeout(() => setBusy(false), 4000); };
+  const doWatchDeck = async () => { setBusy(true); await request('watch'); setTimeout(() => setBusy(false), 4000); };
+  const doOpenSettings = () => { void request('open-settings'); };
   // Approve / revoke / reconfirm only write the shared ledger, so they run here directly.
   const doApprove = async (assetId: string, ref: string) => { setBusy(true); try { setReport(await approveOne(assetId, ref)); notifyMain(); } finally { setBusy(false); } };
   const doApproveDir = async (dir: string) => { setBusy(true); try { setReport(await approveDirectory(dir)); notifyMain(); } finally { setBusy(false); } };

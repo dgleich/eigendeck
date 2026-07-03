@@ -116,10 +116,6 @@ export async function approvalDetail(token: string, resolvedPath: string): Promi
 export async function createTrustedDeck(token: string, reason: 'file-new' | 'trusted' = 'file-new'): Promise<void> {
   await mutate((l, now) => l.createTrusted(token, now, reason));
 }
-/** Explicitly trust a received deck, approving the reviewed assets (assetId → resolved). */
-export async function trustDeck(token: string, approvals: Record<string, string>): Promise<void> {
-  await mutate((l, now) => l.trust(token, approvals, now));
-}
 /** Approve (or re-point) one asset's resolved target on an already-trusted deck.
  *  Replaces the asset's prior entry — a relocate updates in place, never orphaning
  *  the old path. `reason` is provenance (add | relocate | relocate-folder | approve |

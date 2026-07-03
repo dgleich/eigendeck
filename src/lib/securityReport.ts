@@ -35,7 +35,6 @@ export interface ExternalPathRow {
 }
 
 export interface DeckSecurityReport {
-  deckHasToken: boolean;
   trusted: boolean;
   /** Ledger trust status: untrusted-new (received, never trusted) / untrusted-ttl
    *  (trust lapsed) / trusted. */
@@ -115,7 +114,6 @@ export async function buildDeckSecurityReport(): Promise<DeckSecurityReport> {
     missing: rows.filter((r) => r.state === 'missing').length,
   };
   return {
-    deckHasToken: !!token,
     trusted,
     status: ds?.status ?? 'untrusted-new',
     trustedAt: ds?.trustedAt ?? null,

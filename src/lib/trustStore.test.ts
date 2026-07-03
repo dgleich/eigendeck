@@ -46,13 +46,6 @@ describe('trustStore (persistence + accessors)', () => {
     expect(await store.isTrusted('tok')).toBe(true);
   });
 
-  it('trustDeck approves the reviewed assets and persists', async () => {
-    await store.trustDeck('tok', { [A1]: P });
-    expect(await store.isPathApproved('tok', P)).toBe(true);
-    store._resetForTests();
-    expect(await store.isPathApproved('tok', P)).toBe(true);
-  });
-
   it('approvePath(asset, path) adds to an already-trusted deck', async () => {
     await store.createTrustedDeck('tok');
     expect(await store.approvePath('tok', A1, P, 'add')).toBe(true);
@@ -82,7 +75,8 @@ describe('trustStore (persistence + accessors)', () => {
   });
 
   it('revokeDeck removes trust + approvals and persists', async () => {
-    await store.trustDeck('tok', { [A1]: P });
+    await store.createTrustedDeck('tok');
+    await store.approvePath('tok', A1, P, 'add');
     await store.revokeDeck('tok');
     expect(await store.isTrusted('tok')).toBe(false);
     store._resetForTests();

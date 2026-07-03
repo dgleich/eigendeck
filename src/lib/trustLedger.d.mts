@@ -4,8 +4,6 @@
 export const TRUST_TTL_DAYS: number;
 export const TRUST_TTL_MS: number;
 
-/** How a file's approval was granted (provenance). */
-export type ApprovalReason = 'add' | 'relocate' | 'relocate-folder' | 'approve' | 'approve-folder' | 'trust-all' | 'trusted' | 'unknown';
 /** How a deck became trusted. */
 export type TrustReason = 'file-new' | 'trusted';
 
