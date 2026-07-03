@@ -13,7 +13,7 @@ import { showCollisionDialog } from './collisionDialog';
 import { effectiveAutoReload, getPreference } from './preferences';
 import { showToast } from './toasts';
 import { computeAssetUsage } from './assetUsage';
-import { assetTypeGate, extensionOf } from './assetTypes.mjs';
+import { assetTypeGate, extensionOf, MAX_ASSET_BYTES } from './assetTypes.mjs';
 import type { GateReason } from './assetTypes.mjs';
 
 /** User-facing reason an add was refused by the asset-type gate. */
@@ -28,6 +28,10 @@ function addRejectMessage(reason: GateReason | null, path: string): string {
       return extensionOf(path) === 'html'
         ? 'That .html isn’t an Eigendeck demo, so it can’t be added. Only demos authored for Eigendeck can be embedded (see DEMO_AUTHORING) — an arbitrary web page or HTML file can’t.'
         : `That file isn’t a valid ${ext} (its contents don’t match its name), so it can’t be added.`;
+    case 'too-large':
+      return 'That file is over Eigendeck’s 512 MB per-file limit, so it can’t be added. '
+        + 'If you need larger files (for example long videos), please open an issue at '
+        + 'https://github.com/dgleich/eigendeck describing the file so we can look at raising the limit.';
     default:
       return 'That file couldn’t be added.';
   }
@@ -209,6 +213,25 @@ async function autoApproveExternalPath(assetId: string, externalPath: string): P
   if (!store.projectPath) return;
   const { resolvePosixPath, dirname } = await import('./watcherRegistry');
   await approveExternalAbsPath(assetId, resolvePosixPath(dirname(store.projectPath), externalPath), 'add');
+}
+
+/**
+ * Read a file to add as an asset, rejecting oversized ones BEFORE loading them into
+ * memory. Every add-from-disk site should use this instead of a raw `readFile`: a
+ * multi-GB pick would otherwise be slurped whole (choking the app) only to be rejected
+ * by the gate afterwards. Stats first; over the cap → shows the "too large" toast and
+ * returns null (caller should bail). Returns the bytes otherwise.
+ */
+export async function readAddFileCapped(fullPath: string): Promise<Uint8Array | null> {
+  const { stat, readFile } = await import('@tauri-apps/plugin-fs');
+  try {
+    const st = await stat(fullPath);
+    if (typeof st.size === 'number' && st.size > MAX_ASSET_BYTES) {
+      showToast({ kind: 'error', ttl: 9000, message: addRejectMessage('too-large', fullPath) });
+      return null;
+    }
+  } catch { /* stat failed → let readFile surface the real error below */ }
+  return readFile(fullPath);
 }
 
 export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<StoreResult> {

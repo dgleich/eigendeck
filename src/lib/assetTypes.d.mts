@@ -1,13 +1,14 @@
 // Type declarations for assetTypes.mjs (see the .mjs/.d.mts convention in src/lib).
 
 export type AssetKind = 'image' | 'pdf' | 'video' | 'notebook' | 'demo' | 'captions';
-export type GateReason = 'bad-extension' | 'content-mismatch' | 'unsupported-demo-version';
+export type GateReason = 'bad-extension' | 'content-mismatch' | 'unsupported-demo-version' | 'too-large';
 export type Bytes = Uint8Array | ArrayBuffer | string;
 
 export const ASSET_EXTENSIONS: Readonly<Record<string, AssetKind>>;
 export const DEMO_MARKER_PREFIX: string;
 export const SUPPORTED_DEMO_VERSIONS: ReadonlySet<number>;
 export const NOTEBOOK_MAX_BYTES: number;
+export const MAX_ASSET_BYTES: number;
 
 export function extensionOf(path: string): string;
 export function assetKindForPath(path: string): AssetKind | null;

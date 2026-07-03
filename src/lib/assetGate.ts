@@ -38,8 +38,8 @@ export interface GateResult {
   ok: boolean;
   /** asset kind when ok; null otherwise */
   kind: AssetKind | null;
-  /** why it failed: the type-gate reason, or 'unreadable' when the file couldn't
-   *  be resolved/read at all (missing, too big, not a regular file, denied). */
+  /** why it failed: the type-gate reason (incl. 'too-large'), or 'unreadable' when the
+   *  file couldn't be resolved/read at all (missing, not a regular file, denied). */
   reason: GateReason | 'unreadable' | null;
   /** the fully-resolved real target (null if it couldn't be resolved) */
   canonicalPath: string | null;
@@ -57,7 +57,11 @@ async function gateRead(referencePath: string, maxBytes?: number): Promise<{ res
   try {
     res = await invoke<ResolvedRead>('resolve_and_read', { path: referencePath, maxBytes: maxBytes ?? null });
   } catch (e) {
-    return { result: { ok: false, kind: null, reason: 'unreadable', canonicalPath: null, bytes: null, error: String(e) }, truncated: false };
+    // resolve_and_read rejects oversized files ("file too large (N bytes)") BEFORE reading;
+    // surface that distinctly so the UI can say so (vs a generic missing/unreadable file).
+    const err = String(e);
+    const reason = /file too large/i.test(err) ? 'too-large' : 'unreadable';
+    return { result: { ok: false, kind: null, reason, canonicalPath: null, bytes: null, error: err }, truncated: false };
   }
   const bytes = new Uint8Array(res.bytes);
   const gate = assetTypeGate(bytes, res.canonicalPath);

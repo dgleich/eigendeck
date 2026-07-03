@@ -71,6 +71,13 @@ describe('resolveAndGate', () => {
     expect(r.reason).toBe('unreadable');
     expect(r.error).toBeTruthy();
   });
+
+  it('an oversized file (Rust "file too large") maps to "too-large", not "unreadable"', async () => {
+    state.impl = async (cmd) => { expect(cmd).toBe('resolve_and_read'); throw new Error('file too large (700000000 bytes): /deck/big.mp4'); };
+    const r = await resolveAndGate('big.mp4');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('too-large');   // distinct so the UI can say "over the 512 MB limit"
+  });
 });
 
 // The bounded "sniff" read must reach the SAME verdict as the full read, or the report

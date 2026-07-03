@@ -668,9 +668,10 @@ export function PropertiesPanel() {
                           if (!sel) return;
                           const full = sel as string;
                           try {
-                            const { readFile } = await import('@tauri-apps/plugin-fs');
+                            const { readAddFileCapped } = await import('../lib/assetInsert');
                             const { relPath } = await import('../App');
-                            const bytes = await readFile(full);
+                            const bytes = await readAddFileCapped(full);
+                            if (!bytes) return;  // over the size cap → toast shown
                             // externalPath keeps the source link so the .vtt is
                             // file-watched (edit captions on disk → they reload).
                             const relativePath = relPath(usePresentationStore.getState().projectPath, full);

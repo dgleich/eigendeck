@@ -543,9 +543,10 @@ export function SlideEditor() {
               if (isImage) {
                 try {
                   const { invoke } = await import('@tauri-apps/api/core');
-                  const { readFile } = await import('@tauri-apps/plugin-fs');
+                  const { readAddFileCapped } = await import('../lib/assetInsert');
                   const relativePath = relPath(store.projectPath, fullPath);
-                  const bytes = await readFile(fullPath);
+                  const bytes = await readAddFileCapped(fullPath);
+                  if (!bytes) continue;  // over the size cap → toast shown, skip this file
                   const ext = name.split('.').pop()?.toLowerCase() || 'png';
                   const mime = ext === 'svg' ? 'image/svg+xml'
                     : ext === 'pdf' ? 'application/pdf'
@@ -594,9 +595,11 @@ export function SlideEditor() {
                 } catch (err) { console.error('Failed to handle dropped image:', err); }
               } else if (isHtml) {
                 try {
-                  const { readFile, readTextFile } = await import('@tauri-apps/plugin-fs');
+                  const { readTextFile } = await import('@tauri-apps/plugin-fs');
+                  const { readAddFileCapped } = await import('../lib/assetInsert');
                   const relativePath = relPath(store.projectPath, fullPath);
-                  const bytes = await readFile(fullPath);
+                  const bytes = await readAddFileCapped(fullPath);
+                  if (!bytes) continue;  // over the size cap → toast shown, skip this file
                   // Demo HTML — pass externalPath so the file watcher
                   // can subscribe (auto-reload on disk edits). Same
                   // pattern as image drag-drop above. externalMtime
@@ -636,9 +639,10 @@ export function SlideEditor() {
                 } catch (err) { console.error('Failed to handle dropped HTML:', err); }
               } else if (isIpynb) {
                 try {
-                  const { readFile } = await import('@tauri-apps/plugin-fs');
+                  const { readAddFileCapped } = await import('../lib/assetInsert');
                   const relativePath = relPath(store.projectPath, fullPath);
-                  const bytes = await readFile(fullPath);
+                  const bytes = await readAddFileCapped(fullPath);
+                  if (!bytes) continue;  // over the size cap → toast shown, skip this file
                   // .ipynb is JSON; store as application/x-ipynb+json so
                   // isNotebookFile recognizes the asset on later loads.
                   // externalPath set so the file-watcher reloads the
@@ -658,9 +662,10 @@ export function SlideEditor() {
                 } catch (err) { console.error('Failed to handle dropped notebook:', err); }
               } else if (isVideo) {
                 try {
-                  const { readFile } = await import('@tauri-apps/plugin-fs');
+                  const { readAddFileCapped } = await import('../lib/assetInsert');
                   const relativePath = relPath(store.projectPath, fullPath);
-                  const bytes = await readFile(fullPath);
+                  const bytes = await readAddFileCapped(fullPath);
+                  if (!bytes) continue;  // over the size cap → toast shown, skip this file
                   const ext = name.split('.').pop()?.toLowerCase() || 'mp4';
                   const mime = ext === 'webm' ? 'video/webm' : ext === 'mov' ? 'video/quicktime'
                     : ext === 'm4v' ? 'video/x-m4v' : (ext === 'ogv' || ext === 'ogg') ? 'video/ogg' : 'video/mp4';

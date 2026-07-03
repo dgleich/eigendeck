@@ -140,6 +140,12 @@ function isSvg(input) {
  *  path against a pathological input. */
 export const NOTEBOOK_MAX_BYTES = 128 * 1024 * 1024;
 
+/** Hard per-asset size cap. MUST match `MAX_BYTES` in src-tauri/src/lib.rs
+ *  (resolve_and_read) — the read primitive rejects external files over this, and the
+ *  add path checks the same limit here so both surface a "too large" verdict. Files
+ *  above it are rejected (reason 'too-large'); see docs/ASSETS.md. */
+export const MAX_ASSET_BYTES = 512 * 1024 * 1024;
+
 function byteLength(input) {
   if (typeof input === 'string') return input.length;
   return input instanceof Uint8Array ? input.length : input.byteLength;
@@ -231,6 +237,11 @@ export function assetTypeGate(input, resolvedRealPath) {
   const ext = extensionOf(resolvedRealPath);
   const kind = ASSET_EXTENSIONS[ext] ?? null;
   if (!kind) return { ok: false, kind: null, reason: 'bad-extension' };
+  // Size cap. The read primitive (resolve_and_read) already rejects oversized EXTERNAL
+  // files before reading; this catches the add path, which gates on already-read bytes.
+  // (A bounded "sniff" read is under the cap and won't false-trip — the Rust side reports
+  // the true too-large for that path.)
+  if (byteLength(input) > MAX_ASSET_BYTES) return { ok: false, kind, reason: 'too-large' };
   const c = checkContent(input, ext); // one code path; no per-site re-implementation
   return { ok: c.ok, kind, reason: c.reason };
 }
