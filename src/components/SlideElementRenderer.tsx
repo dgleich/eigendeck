@@ -337,6 +337,7 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
     channelKey: element.assetId || 'demo',
     varsCss: themeSalt,
     fontFacesCss,
+    capture: true, // editor: inline the capture handler for thumbnails
   });
   // Capture the preview TRANSPARENT (no baked backdrop). A demo iframe is
   // transparent so the slide — and any elements beneath the demo — must show

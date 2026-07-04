@@ -75,19 +75,36 @@ export async function capturePreview(
   let node: HTMLElement = (innerSelector
     ? (host.querySelector(innerSelector) as HTMLElement | null)
     : host) ?? host;
-  // A demo renders in a (same-origin, blob:) sandboxed iframe. The <iframe>
-  // element is opaque to DOM cloning, so capture its inner document instead —
-  // allow-same-origin lets the parent reach contentDocument. Bail silently if
-  // it's unreachable (cross-origin) or not loaded yet.
-  if (node instanceof HTMLIFrameElement) {
-    const doc = node.contentDocument;
-    const root = doc?.body ?? doc?.documentElement ?? null;
-    if (!root) return;
-    node = root as HTMLElement;
-  }
   const width = Math.round(el.position.width);
   const height = Math.round(el.position.height);
   if (!width || !height) return;
+
+  // A demo renders in an OPAQUE-ORIGIN iframe (docs/DEMO-PLATFORM.md §8): the
+  // parent can't reach its DOM, so ask the in-demo bridge to rasterize itself and
+  // post the PNG back. Dedup by size + theme salt (the content HTML is unreadable).
+  if (node instanceof HTMLIFrameElement) {
+    const dsig = hashString(`${width}x${height}|${cacheSalt ?? ''}|${backgroundColor ?? ''}`);
+    if (lastHash.get(key) === dsig) return;
+    try {
+      const variants = await invoke<CacheVariant[]>('db_list_asset_cache_variants', { sourceId: key });
+      const ex = variants.find((v) => v.variant === 'preview' && v.width === width && v.height === height);
+      if (ex && ex.source_hash === dsig) { lastHash.set(key, dsig); return; }
+    } catch { /* recapture */ }
+    if (inflight.has(key)) return;
+    inflight.add(key);
+    try {
+      const { requestDemoCapture } = await import('./demoMount');
+      const dataUrl = await requestDemoCapture(node, { width, height, backgroundColor });
+      if (dataUrl) {
+        const bytes = dataUrlToBytes(dataUrl);
+        await invoke('db_put_asset_cache', { sourceId: key, variant: 'preview', width, height, png: Array.from(bytes), sourceHash: dsig });
+        lastHash.set(key, dsig);
+        bumpPreviewVersion(key);
+      }
+    } catch (e) { console.warn('capturePreview (demo) failed:', e); }
+    finally { inflight.delete(key); }
+    return;
+  }
 
   // Skip the (expensive) rasterization when the content + size are unchanged
   // since the last capture. The hash is over the to-be-captured node's HTML +

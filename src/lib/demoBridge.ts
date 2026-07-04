@@ -10,9 +10,46 @@
 // unified on this module when the platform work hardens. Kept as a pure string
 // builder (no DOM/React) so it can be shared and tested.
 
+// modern-screenshot UMD, inlined so the OPAQUE-ORIGIN demo can rasterize ITSELF
+// (the parent can't reach contentDocument). Only spliced when capture is on
+// (editor mounts) — docs/DEMO-PLATFORM.md §8. The UMD sets window.modernScreenshot.
+import MS_UMD_RAW from 'modern-screenshot/dist/index.js?raw';
+
+// modern-screenshot minimizes serialized styles by diffing against defaults
+// computed in a NESTED sandbox iframe (`getSandBox` -> `contentWindow.document`).
+// Inside our opaque-sandboxed demo that nested iframe is also opaque, so that
+// access throws "Blocked a frame ... cross-origin". Neuter the sandbox lookup so
+// getDefaultStyle takes its graceful empty-Map path (no minimization, still
+// correct). Version-specific token — if a modern-screenshot bump breaks capture,
+// re-derive it from dist/index.js. See docs/DEMO-PLATFORM.md §8.
+const MS_UMD = MS_UMD_RAW.replace('u=c==null?void 0:c.contentWindow', 'u=void 0');
+
+// Capture handler: on a {type:'capture'} request, rasterize document.body and
+// post the PNG data URL back. Runs modern-screenshot on the MAIN thread (no
+// worker option) so Tauri's blocked blob-Worker never comes into play.
+const CAPTURE_HANDLER = `<script>
+(function(){
+  window.addEventListener('message', function(e){
+    var d=e.data;
+    if(!d||d.__eigendeck!==1||d.type!=='capture') return;
+    var ms=window.modernScreenshot;
+    function send(m){ try{ window.parent.postMessage(m,'*'); }catch(_){} }
+    if(!ms||!ms.domToDataUrl){ send({__eigendeck:1,type:'capture-result',id:d.id,error:'no-modern-screenshot'}); return; }
+    ms.domToDataUrl(document.body||document.documentElement, {width:d.width,height:d.height,scale:1,backgroundColor:d.backgroundColor})
+      .then(function(u){ send({__eigendeck:1,type:'capture-result',id:d.id,dataUrl:u}); })
+      .catch(function(err){ send({__eigendeck:1,type:'capture-result',id:d.id,error:String(err)}); });
+  });
+})();
+</script>`;
+
+export interface DemoBridgeOpts {
+  /** editor-only: inline modern-screenshot + a capture handler for thumbnails. */
+  capture?: boolean;
+}
+
 /** Splice the bridge <script> into a demo HTML string. `hash` is like
  *  "#piece=graph" (or ""), `channelKey` namespaces the relay per demo instance. */
-export function injectDemoBridge(html: string, hash: string, channelKey: string): string {
+export function injectDemoBridge(html: string, hash: string, channelKey: string, opts: DemoBridgeOpts = {}): string {
   const hashParams: Record<string, string> = {};
   if (hash) {
     const qs = hash.startsWith('#') ? hash.slice(1) : hash;
@@ -50,6 +87,7 @@ export function injectDemoBridge(html: string, hash: string, channelKey: string)
   window.BroadcastChannel.prototype.close = function() { this.onmessage = null; };
 })();
 </script>`;
-  if (html.includes('<head>')) return html.replace('<head>', '<head>' + bootstrap);
-  return bootstrap + html;
+  const scripts = opts.capture ? bootstrap + `<script>${MS_UMD}</script>` + CAPTURE_HANDLER : bootstrap;
+  if (html.includes('<head>')) return html.replace('<head>', '<head>' + scripts);
+  return scripts + html;
 }
