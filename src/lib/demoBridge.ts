@@ -62,6 +62,13 @@ export function injectDemoBridge(html: string, hash: string, channelKey: string,
 (function(){
   var __ch = ${JSON.stringify(channelKey)};
   var __hp = ${JSON.stringify(hashParams)};
+  // Forward demo errors to the parent (opaque origin hides the demo console).
+  function __report(msg, src){ try{ window.parent.postMessage({__eigendeck:1,type:'demo-error',message:String(msg),src:src}, '*'); }catch(_){} }
+  window.addEventListener('error', function(e){ __report(e.message || e.error, 'error'); });
+  window.addEventListener('unhandledrejection', function(e){ __report(e.reason, 'rejection'); });
+  var _ce=console.error, _cw=console.warn;
+  console.error=function(){ __report([].slice.call(arguments).map(String).join(' '), 'console.error'); return _ce.apply(console,arguments); };
+  console.warn=function(){ __report([].slice.call(arguments).map(String).join(' '), 'console.warn'); return _cw.apply(console,arguments); };
   try { window.location.hash = ${JSON.stringify(hash || '')}; } catch(e) {}
   var _USP = window.URLSearchParams;
   window.URLSearchParams = function(init) {
