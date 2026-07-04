@@ -104,6 +104,26 @@ export function injectDemoBridge(html: string, hash: string, channelKey: string,
     try { window.parent.postMessage({ __bc: this._name, payload: msg }, '*'); } catch(e) {}
   };
   window.BroadcastChannel.prototype.close = function() { this.onmessage = null; };
+
+  // Drive requestAnimationFrame from the parent's UN-throttled 60fps loop. WebKit
+  // throttles rAF in cross-origin (opaque) frames to 30fps until interaction; the
+  // parent top document isn't throttled, so it pumps ticks and we fire the demo's
+  // rAF callbacks on each. Falls back to native rAF if no tick arrives (e.g. no
+  // parent pump, as in a plain browser). See docs/DEMO-PLATFORM.md §16.
+  var __nativeRaf = window.requestAnimationFrame.bind(window);
+  var __nativeCancel = window.cancelAnimationFrame.bind(window);
+  var __rafMap = Object.create(null), __rafNextId = 1, __pumped = false;
+  function __flush(t){ var due = __rafMap; __rafMap = Object.create(null); for (var id in due){ try { due[id](t); } catch(e){} } }
+  window.requestAnimationFrame = function(cb){ var id = __rafNextId++; __rafMap[id] = cb; return id; };
+  window.cancelAnimationFrame = function(id){ delete __rafMap[id]; };
+  window.addEventListener('message', function(e){
+    if (e.data && e.data.__eigendeck === 1 && e.data.type === 'raf-tick'){ __pumped = true; __flush(e.data.t); }
+  });
+  // Fallback: if no parent tick has arrived shortly after load, revert to native
+  // rAF so a demo opened outside Eigendeck (or without a pump) still animates.
+  setTimeout(function(){ if (!__pumped){ var due = __rafMap;
+    window.requestAnimationFrame = __nativeRaf; window.cancelAnimationFrame = __nativeCancel;
+    for (var id in due) __nativeRaf(due[id]); } }, 400);
 })();
 </script>`;
   const scripts = opts.capture ? bootstrap + `<script>${MS_UMD}</script>` + CAPTURE_HANDLER : bootstrap;

@@ -484,7 +484,20 @@ Consequences:
   trusted gesture and stays at 30 fps. (Present mode delivers events to the demo
   once interacting.)
 
-**Mitigations (no flag exists, so these are the only levers).**
+**Resolution — parent-driven rAF (implemented).** The throttle is on rAF
+*callback scheduling*, not paint, and the **top document is never throttled**. So
+the parent runs one un-throttled 60 fps `requestAnimationFrame` loop
+(`installRafPump` in `demoMount.ts`) and posts `{type:'raf-tick', t}` to every
+demo frame each frame; the bridge **overrides the demo's `requestAnimationFrame`**
+to fire its callbacks on each tick (`demoBridge.ts`). Demos keep calling `rAF`
+normally and are clocked at the parent's full rate — **zero demo changes, opaque
+origin (and the security fix) fully intact**. Measured: a solo demo 30 → 60+ fps,
+a multi-part controller 30 → 63 fps with the viewport receiving ~62/sec. The
+override falls back to native rAF if no tick arrives within 400 ms (a demo opened
+in a plain browser, or the export artifact, which has no parent pump). This
+supersedes the manual levers below.
+
+**Manual mitigations (moot now that parent-driven rAF is in; kept for context).**
 
 - Accept 30 fps for un-interacted ambient animation; full rate after interaction.
 - Author demos so the *rAF-driven* animation isn't the throttled cross-origin

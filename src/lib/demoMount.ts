@@ -159,6 +159,29 @@ export function requestDemoCapture(
   });
 }
 
+// --- parent-side rAF pump ----------------------------------------------------
+// WebKit throttles rAF to 30fps in cross-origin (opaque) demo frames until they
+// see a trusted interaction (docs/DEMO-PLATFORM.md §16). The parent top document
+// is NOT throttled, so run one 60fps rAF loop and post a tick to every demo frame
+// each frame; the bridge fires the demo's rAF callbacks on each tick.
+let rafPumpInstalled = false;
+export function installRafPump(): () => void {
+  if (rafPumpInstalled || typeof window === 'undefined') return () => {};
+  rafPumpInstalled = true;
+  let running = true;
+  const pump = (t: number) => {
+    if (!running) return;
+    const frames = document.querySelectorAll('iframe.el-demo-frame');
+    for (const f of frames) {
+      const cw = (f as HTMLIFrameElement).contentWindow;
+      if (cw) { try { cw.postMessage({ __eigendeck: 1, type: 'raf-tick', t }, '*'); } catch { /* opaque */ } }
+    }
+    requestAnimationFrame(pump);
+  };
+  requestAnimationFrame(pump);
+  return () => { running = false; rafPumpInstalled = false; };
+}
+
 // --- parent-side relay -------------------------------------------------------
 // Opaque-origin demos can't share a BroadcastChannel, so the injected bootstrap
 // posts {__bc, payload} to window.parent; this relay fans each message out to

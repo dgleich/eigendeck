@@ -1234,11 +1234,13 @@ function App() {
   }, [startPresenting]);
 
   // Opaque-origin demos can't share a BroadcastChannel; the parent relays their
-  // messages between pieces (docs/DEMO-PLATFORM.md).
+  // messages between pieces. The parent also pumps rAF ticks so demos run at 60fps
+  // despite WebKit's cross-origin rAF throttle (docs/DEMO-PLATFORM.md §6, §16).
   useEffect(() => {
     let cleanup: (() => void) | undefined;
-    import('./lib/demoMount').then((m) => { cleanup = m.installDemoRelay(); });
-    return () => cleanup?.();
+    let cleanupPump: (() => void) | undefined;
+    import('./lib/demoMount').then((m) => { cleanup = m.installDemoRelay(); cleanupPump = m.installRafPump(); });
+    return () => { cleanup?.(); cleanupPump?.(); };
   }, []);
 
   // Listen for presenter window closing (Escape in presenter)
