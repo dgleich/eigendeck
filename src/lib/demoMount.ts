@@ -159,6 +159,30 @@ export function requestDemoCapture(
   });
 }
 
+// --- demo host infrastructure (shared by every window that renders demos) ----
+// Both the relay and the rAF pump are per-window infra. Rather than wire them into
+// each window entry (App, the presenter window, …) — which is exactly how the
+// presenter kept missing demo features — any component that HOSTS demos calls
+// useDemoHost(). Ref-counted so overlapping hosts share one install and it tears
+// down when the last unmounts. This is the single source of truth for "a window
+// is showing demos, so it needs the relay + pump".
+let hostRefs = 0;
+let hostCleanup: (() => void) | null = null;
+export function useDemoHost(): void {
+  useEffect(() => {
+    hostRefs++;
+    if (hostRefs === 1) {
+      const relay = installDemoRelay();
+      const pump = installRafPump();
+      hostCleanup = () => { relay(); pump(); };
+    }
+    return () => {
+      hostRefs--;
+      if (hostRefs === 0 && hostCleanup) { hostCleanup(); hostCleanup = null; }
+    };
+  }, []);
+}
+
 // --- parent-side rAF pump ----------------------------------------------------
 // WebKit throttles rAF to 30fps in cross-origin (opaque) demo frames until they
 // see a trusted interaction (docs/DEMO-PLATFORM.md §16). The parent top document

@@ -5,7 +5,7 @@ import { extractDemoPieceNames } from '../lib/demoPieces';
 import { gridOverlaySvg } from '../lib/grid';
 import { captureHtmlToPng, looksLikeRichHtml } from '../lib/htmlPasteCapture';
 import { relPath } from '../App';
-import { useDemoDoc, useDeckFontFacesCss } from '../lib/demoMount';
+import { useDemoDoc, useDeckFontFacesCss, useDemoHost } from '../lib/demoMount';
 import { demoVarsCssForSlide } from '../lib/demoThemeInject';
 import { SlideElementRenderer } from './SlideElementRenderer';
 import { getSlideNumber, createTextElement } from '../types/presentation';
@@ -29,6 +29,7 @@ export function SlideEditor() {
     selectObject, toggleSelectElement, selectedObject, projectPath,
     showGrid,
   } = usePresentationStore();
+  useDemoHost(); // relay + rAF pump for the editor's live demos
   const [gridSpacing] = usePreference('gridSpacing');
 
   const slide = presentation.slides[currentSlideIndex];

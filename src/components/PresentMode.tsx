@@ -7,6 +7,7 @@ import type { SlideElement } from '../types/presentation';
 // Live-present element rendering is shared with the projector window
 // (src/presenter.tsx) via PresentSlide — one renderer, no drift.
 import { PresentElement, PresentControllerIframe, type PresentCtx } from './PresentSlide';
+import { useDemoHost } from '../lib/demoMount';
 import { planPresentTransition } from '../lib/presentTransition';
 import { arrowGeometry, triPoints } from '../lib/arrowGeometry.mjs';
 import { listen } from '@tauri-apps/api/event';
@@ -34,6 +35,7 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
 } = {}) {
   const { presentation, setPresenting, selectSlide } =
     usePresentationStore();
+  useDemoHost(); // relay + rAF pump — shared by the main present view AND the presenter window
   const controlled = controlledIndex !== undefined;
   const [localIndex, setLocalIndex] = useState(
     usePresentationStore.getState().currentSlideIndex
