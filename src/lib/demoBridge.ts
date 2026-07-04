@@ -20,9 +20,21 @@ import MS_UMD_RAW from 'modern-screenshot/dist/index.js?raw';
 // Inside our opaque-sandboxed demo that nested iframe is also opaque, so that
 // access throws "Blocked a frame ... cross-origin". Neuter the sandbox lookup so
 // getDefaultStyle takes its graceful empty-Map path (no minimization, still
-// correct). Version-specific token — if a modern-screenshot bump breaks capture,
-// re-derive it from dist/index.js. See docs/DEMO-PLATFORM.md §8.
-const MS_UMD = MS_UMD_RAW.replace('u=c==null?void 0:c.contentWindow', 'u=void 0');
+// correct). See docs/DEMO-PLATFORM.md §8 and issue #117.
+//
+// The match is a MINIFIED token, so modern-screenshot is PINNED (exact 4.7.0 in
+// package.json). The guard below turns a token mismatch into a loud build/import
+// error instead of a silent capture regression — a deliberate version bump must
+// re-derive the token from dist/index.js.
+const MS_SANDBOX_TOKEN = 'u=c==null?void 0:c.contentWindow';
+const MS_UMD = MS_UMD_RAW.replace(MS_SANDBOX_TOKEN, 'u=void 0');
+if (MS_UMD === MS_UMD_RAW) {
+  throw new Error(
+    'demoBridge: modern-screenshot sandbox patch did not apply. The pinned build ' +
+    '(package.json: modern-screenshot 4.7.0) changed its minified output. Re-derive ' +
+    'MS_SANDBOX_TOKEN from node_modules/modern-screenshot/dist/index.js — see issue #117.',
+  );
+}
 
 // Capture handler: on a {type:'capture'} request, rasterize document.body and
 // post the PNG data URL back. Runs modern-screenshot on the MAIN thread (no
