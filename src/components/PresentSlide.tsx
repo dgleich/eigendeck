@@ -138,7 +138,6 @@ function PresentDemoIframe({ assetId, hash, title, pos, zIndex, style, ctx }: {
   pos: { x: number; y: number; width: number; height: number }; zIndex: number;
   style?: React.CSSProperties; ctx?: PresentCtx;
 }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   // Opaque-origin mount (docs/DEMO-PLATFORM.md): theme vars + data-URL fonts
   // spliced at build; comm over the parent relay.
   const fontFacesCss = useDeckFontFacesCss();
@@ -153,7 +152,7 @@ function PresentDemoIframe({ assetId, hash, title, pos, zIndex, style, ctx }: {
   });
   if (!src) return null;
   return (
-    <iframe ref={iframeRef} src={src} sandbox="allow-scripts" className="el-demo-frame" title={title || 'demo'} style={{
+    <iframe src={src} sandbox="allow-scripts" className="el-demo-frame" title={title || 'demo'} style={{
       position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, border: 'none', zIndex, ...style,
     }} />
   );

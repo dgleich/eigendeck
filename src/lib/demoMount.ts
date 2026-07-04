@@ -16,14 +16,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { injectDemoBridge } from './demoBridge';
 import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { buildEmbeddedFontFacesCSS } from './fonts';
+import { hashString } from './hash';
 import { usePresentationStore } from '../store/presentation';
-
-// --- small non-crypto hash for the blob cache key (cyrb-ish) ---
-function sig(s: string): string {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
-  return (h >>> 0).toString(36);
-}
 
 // composite-key -> blob URL. Keyed so a theme/font/hash change makes a new blob.
 const docBlobCache = new Map<string, string>();
@@ -65,7 +59,7 @@ export async function getDemoDocumentUrl(assetId: string | undefined, opts: Demo
   if (!assetId) return null;
   if (blockedCache.has(assetId)) return null;
   const { hash = '', channelKey, varsCss = '', fontFacesCss = '', capture = false } = opts;
-  const key = `${assetId} ${hash} ${channelKey} ${capture ? 'C' : ''} ${sig(varsCss)} ${sig(fontFacesCss)}`;
+  const key = `${assetId} ${hash} ${channelKey} ${capture ? 'C' : ''} ${hashString(varsCss)} ${hashString(fontFacesCss)}`;
   const existing = docBlobCache.get(key);
   if (existing) return existing;
   const raw = await fetchRawDemo(assetId);
@@ -187,15 +181,18 @@ export function useDemoHost(): void {
 // WebKit throttles rAF to 30fps in cross-origin (opaque) demo frames until they
 // see a trusted interaction (docs/DEMO-PLATFORM.md §16). The parent top document
 // is NOT throttled, so run one 60fps rAF loop and post a tick to every demo frame
-// each frame; the bridge fires the demo's rAF callbacks on each tick.
-let rafPumpInstalled = false;
-export function installRafPump(): () => void {
-  if (rafPumpInstalled || typeof window === 'undefined') return () => {};
-  rafPumpInstalled = true;
+// each frame; the bridge fires the demo's rAF callbacks on each tick. When no
+// demo is on screen the loop idles at ~10Hz (well under the bridge's 400ms native
+// fallback) so a text-only slide doesn't spin the main thread at 60fps.
+// Single-install is guaranteed by useDemoHost's ref-count; no self-guard needed.
+function installRafPump(): () => void {
+  if (typeof window === 'undefined') return () => {};
   let running = true;
+  let idle: ReturnType<typeof setTimeout> | undefined;
   const pump = (t: number) => {
     if (!running) return;
     const frames = document.querySelectorAll('iframe.el-demo-frame');
+    if (frames.length === 0) { idle = setTimeout(() => requestAnimationFrame(pump), 100); return; }
     for (const f of frames) {
       const cw = (f as HTMLIFrameElement).contentWindow;
       if (cw) { try { cw.postMessage({ __eigendeck: 1, type: 'raf-tick', t }, '*'); } catch { /* opaque */ } }
@@ -203,7 +200,7 @@ export function installRafPump(): () => void {
     requestAnimationFrame(pump);
   };
   requestAnimationFrame(pump);
-  return () => { running = false; rafPumpInstalled = false; };
+  return () => { running = false; if (idle) clearTimeout(idle); };
 }
 
 // --- parent-side relay -------------------------------------------------------
@@ -211,17 +208,12 @@ export function installRafPump(): () => void {
 // posts {__bc, payload} to window.parent; this relay fans each message out to
 // every OTHER demo iframe (sender excluded). Receivers filter by their own
 // channel name, so per-demo/per-instance keying happens on the receive side
-// (same as the export relay). Idempotent + returns a cleanup.
-let relayInstalled = false;
-export function installDemoRelay(): () => void {
-  if (relayInstalled || typeof window === 'undefined') return () => {};
-  relayInstalled = true;
-  // last {__bc} message per channel name, replayed to late-joining frames.
-  const lastByChannel = new Map<string, unknown>();
+// (same as the export relay). Single-install is guaranteed by useDemoHost.
+function installDemoRelay(): () => void {
+  if (typeof window === 'undefined') return () => {};
   const onMessage = (e: MessageEvent) => {
     const d = e.data as { __bc?: string } | undefined;
     if (!d || !d.__bc) return;
-    lastByChannel.set(d.__bc, d);
     const frames = document.querySelectorAll('iframe.el-demo-frame');
     frames.forEach((f) => {
       const cw = (f as HTMLIFrameElement).contentWindow;
@@ -229,5 +221,5 @@ export function installDemoRelay(): () => void {
     });
   };
   window.addEventListener('message', onMessage);
-  return () => { window.removeEventListener('message', onMessage); relayInstalled = false; };
+  return () => window.removeEventListener('message', onMessage);
 }

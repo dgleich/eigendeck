@@ -317,7 +317,6 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
     window.addEventListener('eigendeck:asset-changed', onChanged as EventListener);
     return () => window.removeEventListener('eigendeck:asset-changed', onChanged as EventListener);
   }, [element.assetId]);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const demoConfig = usePresentationStore((s) => s.presentation.config);
   const demoTheme = usePresentationStore((s) => s.presentation.theme);
   const demoSlide = usePresentationStore((s) => s.presentation.slides[s.currentSlideIndex]);
@@ -358,7 +357,7 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
       onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
     >
       {src ? (
-        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox="allow-scripts" className="el-demo-frame" title={piece ? `demo-piece: ${piece}` : 'demo'}
+        <iframe key={reloadKey} src={src} sandbox="allow-scripts" className="el-demo-frame" title={piece ? `demo-piece: ${piece}` : 'demo'}
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
       ) : src === null ? (
         // Blocked by the demo-mount gate: bytes aren't a marked eigendeck demo.

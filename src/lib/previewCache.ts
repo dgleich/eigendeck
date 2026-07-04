@@ -12,6 +12,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { SlideElement } from '../types/presentation';
 import { bytesToBase64 } from './base64';
+import { hashString } from './hash';
 
 /** The cache key for an element's preview: its sync identity. */
 export function previewKey(el: Pick<SlideElement, 'id' | 'syncId'>): string {
@@ -35,17 +36,34 @@ const inflight = new Set<string>();
 // domToDataUrl when the to-be-captured content + size are unchanged.
 const lastHash = new Map<string, string>();
 
-/** Fast non-crypto string hash (cyrb53) — ample as a cache-bust key. */
-function hashString(s: string): string {
-  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
-  for (let i = 0; i < s.length; i++) {
-    const ch = s.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
+/** Dedup + persist a capture: skip if the size/theme signature is unchanged
+ *  (in-memory + persisted), else run `produce` for the PNG data URL and store it.
+ *  Shared by the demo-iframe path (bridge round-trip) and the in-DOM path
+ *  (modern-screenshot) — they differ only in the signature and the producer. */
+async function storeCapture(
+  key: string, width: number, height: number, sig: string,
+  produce: () => Promise<string | null | undefined>,
+): Promise<void> {
+  if (lastHash.get(key) === sig) return;
+  try {
+    const variants = await invoke<CacheVariant[]>('db_list_asset_cache_variants', { sourceId: key });
+    const ex = variants.find((v) => v.variant === 'preview' && v.width === width && v.height === height);
+    if (ex && ex.source_hash === sig) { lastHash.set(key, sig); return; }  // persisted + unchanged
+  } catch { /* fall through and (re)capture */ }
+  if (inflight.has(key)) return;
+  inflight.add(key);
+  try {
+    const dataUrl = await produce();
+    if (!dataUrl) return;
+    const bytes = dataUrlToBytes(dataUrl);
+    await invoke('db_put_asset_cache', { sourceId: key, variant: 'preview', width, height, png: Array.from(bytes), sourceHash: sig });
+    lastHash.set(key, sig);
+    bumpPreviewVersion(key);
+  } catch (e) {
+    console.warn('capturePreview failed:', e);
+  } finally {
+    inflight.delete(key);
   }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 
 /** Capture the element's rendered content to a PNG and store it as the cached
@@ -83,61 +101,23 @@ export async function capturePreview(
   // parent can't reach its DOM, so ask the in-demo bridge to rasterize itself and
   // post the PNG back. Dedup by size + theme salt (the content HTML is unreadable).
   if (node instanceof HTMLIFrameElement) {
-    const dsig = hashString(`${width}x${height}|${cacheSalt ?? ''}|${backgroundColor ?? ''}`);
-    if (lastHash.get(key) === dsig) return;
-    try {
-      const variants = await invoke<CacheVariant[]>('db_list_asset_cache_variants', { sourceId: key });
-      const ex = variants.find((v) => v.variant === 'preview' && v.width === width && v.height === height);
-      if (ex && ex.source_hash === dsig) { lastHash.set(key, dsig); return; }
-    } catch { /* recapture */ }
-    if (inflight.has(key)) return;
-    inflight.add(key);
-    try {
+    const iframe = node;
+    const sig = hashString(`${width}x${height}|${cacheSalt ?? ''}|${backgroundColor ?? ''}`);
+    await storeCapture(key, width, height, sig, async () => {
       const { requestDemoCapture } = await import('./demoMount');
-      const dataUrl = await requestDemoCapture(node, { width, height, backgroundColor });
-      if (dataUrl) {
-        const bytes = dataUrlToBytes(dataUrl);
-        await invoke('db_put_asset_cache', { sourceId: key, variant: 'preview', width, height, png: Array.from(bytes), sourceHash: dsig });
-        lastHash.set(key, dsig);
-        bumpPreviewVersion(key);
-      }
-    } catch (e) { console.warn('capturePreview (demo) failed:', e); }
-    finally { inflight.delete(key); }
+      return requestDemoCapture(iframe, { width, height, backgroundColor });
+    });
     return;
   }
 
-  // Skip the (expensive) rasterization when the content + size are unchanged
-  // since the last capture. The hash is over the to-be-captured node's HTML +
-  // size, so it changes exactly when the picture's structure does. (Canvas
+  // In-DOM node (notebook / video): rasterize directly. The signature includes the
+  // node's HTML so it changes exactly when the picture's structure does. (Canvas
   // pixel state isn't in the HTML — acceptable: a thumbnail is a single frame.)
   const sig = hashString(`${width}x${height}|${cacheSalt ?? ''}|${backgroundColor ?? ''}|${node.outerHTML}`);
-  if (lastHash.get(key) === sig) return;
-  try {
-    const variants = await invoke<CacheVariant[]>('db_list_asset_cache_variants', { sourceId: key });
-    const ex = variants.find((v) => v.variant === 'preview' && v.width === width && v.height === height);
-    if (ex && ex.source_hash === sig) { lastHash.set(key, sig); return; }  // persisted + unchanged
-  } catch { /* fall through and (re)capture */ }
-
-  inflight.add(key);
-  try {
+  await storeCapture(key, width, height, sig, async () => {
     const { domToDataUrl } = await import('modern-screenshot');
-    const dataUrl = await domToDataUrl(node, { width, height, scale: 1, backgroundColor });
-    const bytes = dataUrlToBytes(dataUrl);
-    await invoke('db_put_asset_cache', {
-      sourceId: key,
-      variant: 'preview',
-      width,
-      height,
-      png: Array.from(bytes),
-      sourceHash: sig,
-    });
-    lastHash.set(key, sig);
-    bumpPreviewVersion(key);
-  } catch (e) {
-    console.warn('capturePreview failed:', e);
-  } finally {
-    inflight.delete(key);
-  }
+    return domToDataUrl(node, { width, height, scale: 1, backgroundColor });
+  });
 }
 
 // --- read side ----------------------------------------------------------
