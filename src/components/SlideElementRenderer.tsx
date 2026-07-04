@@ -321,11 +321,11 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
   const demoTheme = usePresentationStore((s) => s.presentation.theme);
   const demoSlide = usePresentationStore((s) => s.presentation.slides[s.currentSlideIndex]);
   // Proactively cache a PNG preview of the rendered demo (sidebar thumbs /
-  // export) once it's loaded + settled. The demo is a same-origin blob iframe,
-  // so capturePreview reaches its contentDocument. Debounced; re-runs on
-  // reload/resize AND on theme/font change — the theme is injected as CSS vars in
-  // the iframe <head>, so it isn't in the captured <body> HTML; pass it as the
-  // cache salt so a theme switch busts the preview (#86). (No phase awareness yet.)
+  // export) once it's loaded + settled. The demo is OPAQUE-origin, so capturePreview
+  // can't read its contentDocument — it asks the in-demo bridge to rasterize itself
+  // (docs/DEMO-PLATFORM.md §8). Debounced; re-runs on reload/resize AND on theme/font
+  // change — the theme is spliced as CSS vars at mount, not in the captured content,
+  // so it's passed as the cache salt so a theme switch busts the preview (#86).
   const themeSalt = demoSlide ? demoVarsCssForSlide(demoConfig, demoTheme, demoSlide) : '';
   // Opaque-origin mount (docs/DEMO-PLATFORM.md): theme vars + data-URL fonts are
   // spliced into the built document, and comm goes over the parent relay. No more

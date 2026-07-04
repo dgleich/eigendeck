@@ -50,31 +50,25 @@ for(let k=1;k<combos.length;k++){
 const n=await exec(sid,'return window.__eigendeck.store.getState().presentation.slides.length');
 console.log('  built '+n+' slides');
 
-const readState=(fam)=>`return await (async()=>{
-  const ifr=[...document.querySelectorAll('.slide-canvas iframe')].find(f=>{try{return f.contentDocument&&f.contentDocument.getElementById('sw-bg')}catch(e){return false}});
-  if(!ifr) return {ready:false};
-  const doc=ifr.contentDocument, win=ifr.contentWindow;
-  const bg=id=>win.getComputedStyle(doc.getElementById(id)).backgroundColor;
-  const root=win.getComputedStyle(doc.documentElement);
-  const fam=${JSON.stringify(fam)};
-  let fontLoaded=false;
-  try{ await doc.fonts.load('32px "'+fam+'"'); fontLoaded=doc.fonts.check('32px "'+fam+'"'); }catch(e){}
-  return {ready:true, swBg:bg('sw-bg'), swFg:bg('sw-fg'), swHeading:bg('sw-heading'),
-    swAccent:bg('sw-accent'), swMuted:bg('sw-muted'),
-    fontVar:root.getPropertyValue('--eigendeck-font').trim(), fontLoaded};
-})()`;
+// Opaque origin: the demo can't be read from the parent, so theme-probe-demo.html
+// self-reports its resolved --eigendeck-* colors + font via postMessage; collect it.
+await exec(sid,`window.__tr=null; window.addEventListener('message',e=>{var d=e.data; if(d&&d.__eigendeck===1&&d.type==='theme-report') window.__tr=d;});`);
 
 const fails=[]; let ok=0;
 for(let idx=0; idx<combos.length; idx++){
   const c=combos[idx], exp=THEMES[c.tn];
   await exec(sid,`window.__eigendeck.store.getState().selectSlide(${idx});`);
-  await sleep(550);
+  await sleep(700); // let the outgoing demo unmount before we request
   let r=null;
-  for(let k=0;k<12;k++){ r=await exec(sid,readState(c.fam)); if(r&&r.ready) break; await sleep(500); }
+  for(let k=0;k<16;k++){
+    await exec(sid,`window.__tr=null; var f=document.querySelector('iframe.el-demo-frame'); if(f&&f.contentWindow) f.contentWindow.postMessage({__eigendeck:1,type:'request-theme-report'},'*');`);
+    await sleep(300);
+    const t=await exec(sid,`return window.__tr`); if(t){ r=t; if(t.fontLoaded) break; }
+  }
   const tag=`[${idx}] ${c.fid}/${c.tn}`;
-  if(!r||!r.ready){ fails.push(`${tag}: demo iframe not ready`); continue; }
+  if(!r){ fails.push(`${tag}: demo never reported`); continue; }
   let slideOk=true;
-  const colorChecks=[['bg',r.swBg,exp.bg],['fg',r.swFg,exp.fg],['heading',r.swHeading,exp.heading],['accent',r.swAccent,exp.accent],['muted',r.swMuted,exp.muted]];
+  const colorChecks=[['bg',r.bg,exp.bg],['fg',r.fg,exp.fg],['heading',r.heading,exp.heading],['accent',r.accent,exp.accent],['muted',r.muted,exp.muted]];
   for(const [nm,got,wantHex] of colorChecks){ const want=hexToRgb(wantHex); if(got!==want){ fails.push(`${tag}: ${nm} ${got} != ${want}`); slideOk=false; } }
   if(!r.fontVar||!r.fontVar.includes(c.fam)){ fails.push(`${tag}: --eigendeck-font "${r.fontVar}" !~ "${c.fam}"`); slideOk=false; }
   if(!r.fontLoaded){ fails.push(`${tag}: font "${c.fam}" did not load`); slideOk=false; }

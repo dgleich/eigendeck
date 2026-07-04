@@ -155,6 +155,11 @@ def make_hyphenpiece():
         "else if (piece === 'bar-chart-2') d.textContent = 'BAR-CHART-2-OK';\n"
         "else d.textContent = 'UNMATCHED piece=' + piece;\n"
         "document.body.appendChild(d);\n"
+        "/* opaque origin: the parent can't read our body, so self-report the routed */\n"
+        "/* piece — on load AND on request (a walking probe may miss the load report). */\n"
+        "function rep(){try{window.parent.postMessage({__eigendeck:1,type:'piece-report',text:d.textContent},'*')}catch(e){}}\n"
+        "rep();\n"
+        "window.addEventListener('message',function(e){if(e.data&&e.data.__eigendeck===1&&e.data.type==='request-piece-report')rep()});\n"
         "</script></body></html>"
     )
     asset_id = "demohp"

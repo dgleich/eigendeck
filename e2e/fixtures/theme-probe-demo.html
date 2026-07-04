@@ -56,5 +56,33 @@
     <div class="tp-swatch" id="sw-accent" title="--eigendeck-accent"></div>
     <div class="tp-swatch" id="sw-muted" title="--eigendeck-muted"></div>
   </div>
+  <script>
+    // Opaque origin: the parent can't read our contentDocument, so we SELF-REPORT
+    // the resolved --eigendeck-* colors (as computed swatch backgrounds) + the deck
+    // font + whether it actually loaded. A theme switch re-mounts this demo, so each
+    // mount posts a fresh report for the current theme. See DEMO-PLATFORM.md §16.
+    (function(){
+      function g(id){ try { return getComputedStyle(document.getElementById(id)).backgroundColor; } catch(e){ return ''; } }
+      function fam(){ return (getComputedStyle(document.documentElement).getPropertyValue('--eigendeck-font').trim().replace(/^['"]|['"]$/g, '')) || 'PT Sans'; }
+      function measure(){
+        var fontVar = getComputedStyle(document.documentElement).getPropertyValue('--eigendeck-font').trim();
+        var loaded = false; try { loaded = document.fonts.check('32px "' + fam() + '"'); } catch(e){}
+        return { __eigendeck: 1, type: 'theme-report',
+          bg: g('sw-bg'), fg: g('sw-fg'), heading: g('sw-heading'), accent: g('sw-accent'), muted: g('sw-muted'),
+          fontVar: fontVar, fontLoaded: loaded };
+      }
+      // Force the deck font to load before reporting (else fonts.check is passively
+      // false until first use), then post — matches the old probe's fonts.load.
+      function report(){ function send(){ try { window.parent.postMessage(measure(), '*'); } catch(e){} }
+        try { document.fonts.load('32px "' + fam() + '"').then(send, send); } catch(e){ send(); } }
+      report();                                              // colors are correct immediately
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(report); // fontLoaded after decode
+      // Respond to a request so a walking probe gets THIS (mounted) slide's report,
+      // not a stale spontaneous one from the outgoing slide's demo mid-transition.
+      window.addEventListener('message', function(e){
+        if (e.data && e.data.__eigendeck === 1 && e.data.type === 'request-theme-report') report();
+      });
+    })();
+  </script>
 </body>
 </html>
