@@ -263,3 +263,19 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
   demo-piece names route end-to-end (#44)**: the demo renders `FORCE-GRAPH-OK`
   only if `force-graph` wasn't truncated to `force`. (Detection-on-add is covered
   by the `extractDemoPieceNames` unit test.)
+
+## Demo framerate regression (relay-fps-probe.mjs)
+
+Measures a demo's rAF fps via `fixtures/fps-probe.html`. Catches the opaque-origin
+**cross-origin rAF throttle**: WebKit caps rAF in cross-origin/sandboxed iframes,
+so a demo drops from ~60 fps (same-origin, main) to ~30 fps (opaque, this branch).
+Affects ALL animated demos (single + multi-part), not just the relay.
+
+    # build a 1-demo deck from the fixture, then:
+    PROBE=$PWD/e2e/relay-fps-probe.mjs E2E_DECK=/tmp/fps-solo.eigendeck \
+      FPS_MIN=45 bash e2e/run-probe.sh
+    # -> FPS_REGRESSION (exit 1) while the throttle stands; FPS_PASS once fixed.
+
+NOT in the gating suite yet: it is RED until the throttle is addressed (see the
+demo-platform framerate discussion). Same fixture also measures multi-part relay
+throughput (controller fps + viewport received/sec).

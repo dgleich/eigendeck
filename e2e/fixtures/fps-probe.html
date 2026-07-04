@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<!--eigendeck-demo-v1-->
+<html><head><meta charset="utf-8"><title>fps-probe</title></head>
+<body>
+<!--
+  Relay-throughput / framerate probe. Mimics a multi-part d3-force demo: a hidden
+  controller runs a rAF loop, broadcasts a ~200-node position array every frame,
+  and reports its own fps; a viewport piece counts received broadcasts/sec. Both
+  report to the parent via postMessage {type:'fps'}. Used by relay-fps-probe.mjs
+  to catch relay regressions (native BroadcastChannel vs parent-relayed).
+-->
+<script>
+(function(){
+  var params = new URLSearchParams(location.hash.slice(1));
+  var role = params.get('role'), piece = params.get('piece');
+  var ch = new BroadcastChannel('eigendeck-demo:fps-probe.html');
+  function report(o){ try{ window.parent.postMessage(Object.assign({__eigendeck:1, type:'fps'}, o), '*'); }catch(e){} }
+
+  if (role === 'controller') {
+    document.body.style.display = 'none';
+    var frames = 0, last = performance.now(), n = 0;
+    var N = 200, payload = new Array(N);
+    function tick(){
+      n++; frames++;
+      for (var i=0;i<N;i++) payload[i] = { x: Math.random()*100, y: Math.random()*100 };
+      ch.postMessage({ type:'state', n:n, pos:payload });
+      var now = performance.now();
+      if (now - last >= 1000){ report({ who:'controller', fps: frames*1000/(now-last) }); frames=0; last=now; }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+    return;
+  }
+
+  if (piece) {
+    // a viewport that counts received broadcasts/sec (relay throughput)
+    document.body.textContent = 'viewport ' + piece;
+    var recv = 0, vlast = performance.now();
+    ch.onmessage = function(e){
+      if (e.data && e.data.type === 'state'){
+        recv++;
+        var now = performance.now();
+        if (now - vlast >= 1000){ report({ who:'viewport', recvPerSec: recv*1000/(now-vlast), lastN: e.data.n }); recv=0; vlast=now; }
+      }
+    };
+    ch.postMessage({ type:'request-state' });
+    return;
+  }
+
+  // STANDALONE (plain visible demo): run a rAF loop + report its own fps. This is
+  // the CORE throttle test — WebKit throttles rAF in cross-origin/sandboxed
+  // iframes, so this drops from ~60 (same-origin) to ~30 (opaque origin).
+  var cv = document.createElement('canvas'); cv.width=300; cv.height=200; document.body.appendChild(cv);
+  var g = cv.getContext('2d'); var frames=0, slast=performance.now(), tt=0;
+  function raf(){
+    frames++; tt+=0.1; g.clearRect(0,0,300,200); g.fillStyle='#39c'; g.fillRect(30+30*Math.sin(tt),30,60,60);
+    var now=performance.now();
+    if (now - slast >= 1000){ report({ who:'solo', fps: frames*1000/(now-slast) }); frames=0; slast=now; }
+    requestAnimationFrame(raf);
+  }
+  requestAnimationFrame(raf);
+})();
+</script>
+</body></html>
