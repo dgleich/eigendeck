@@ -429,3 +429,81 @@ Two routes when we build it:
    at the cost of a scoped Rust handler and demos sharing an origin.
 3. **Live theme:** re-mount (v1) vs an `onTheme` push that avoids losing demo
    state on a theme switch.
+
+---
+
+## 16. Known limitation: cross-origin rAF throttle (30 fps until interaction)
+
+The opaque-origin isolation (§3) has a measured cost: **WebKit throttles
+`requestAnimationFrame` to 30 fps in cross-origin iframes that have not been
+interacted with**. Animated demos (canvas / WebGL / d3, anything rAF-driven)
+drop from ~60 fps (the old same-origin blob) to ~30 fps under opaque origin.
+Confirmed on the e2e rig: a plain visible demo runs ~64 fps on `main`
+(same-origin) vs ~30 fps on the opaque branch. Regression test:
+`e2e/relay-fps-probe.mjs` + `e2e/fixtures/fps-probe.html`.
+
+**Mechanism (WebCore, both ports).** `Document::requestAnimationFrame()` adds
+`ThrottlingReason::NonInteractedCrossOriginFrame` when
+`!topOrigin().isSameOriginDomain(securityOrigin()) && !hasHadUserInteraction()`.
+It is:
+
+- **origin-based, not visibility-based** — a fully visible cross-origin frame is
+  throttled (independent of the `OutsideViewport`/`VisuallyIdle` reasons);
+- **cross-ORIGIN, not cross-site** — different scheme/host/port qualifies, and a
+  `sandbox="allow-scripts"` opaque origin can never be same-origin-domain with
+  the app, so it is always throttled;
+- **unconditional** — there is **no `Settings`/preference, no WKPreferences key
+  (public or private), no `WebKitSettings` property, no `WEBKIT_*` env var, and
+  no feature flag** that disables it, on **either** WKWebView (macOS) or
+  WebKitGTK (Linux). It is shared WebCore with no port `#ifdef`, so macOS behaves
+  the same as the Linux rig.
+- **not a compositing/headless artifact** — it is a JS-callback scheduling
+  decision upstream of the compositor; `WEBKIT_DISABLE_COMPOSITING_MODE` is
+  unrelated.
+
+**Cleared by a real user interaction** inside the frame. The reason is removed in
+`Document::updateLastHandledUserGestureTimestamp()` on a **trusted** gesture
+(`isTrusted=true`); it then propagates **child → ancestor** up the frame tree.
+Consequences:
+
+- A synthetic/dispatched event (`el.click()`, dispatched `MouseEvent`) does **not**
+  clear it — it must be a genuine OS input event.
+- Interaction must land **inside the cross-origin frame (or a descendant)**;
+  interacting with the app chrome only does not reach down into the demo.
+- **click/tap** clears it; a pure drag/swipe may not (WebKit bug 213344).
+- Once cleared it is **permanent for that document** (until navigation).
+
+**Implications for Eigendeck.**
+
+- Post-interaction, demos run at 60 fps. In present mode, the moment the
+  presenter clicks/taps a demo it un-throttles for the rest of the slide.
+- **Ambient (pre-interaction) animation is 30 fps** — e.g. a d3 force layout
+  auto-settling on slide entry, before anyone clicks. This is the jank we see.
+- In the **editor**, the demo's transparent drag-overlay intercepts pointer
+  events until double-click, so an un-double-clicked demo never receives a
+  trusted gesture and stays at 30 fps. (Present mode delivers events to the demo
+  once interacting.)
+
+**Mitigations (no flag exists, so these are the only levers).**
+
+- Accept 30 fps for un-interacted ambient animation; full rate after interaction.
+- Author demos so the *rAF-driven* animation isn't the throttled cross-origin
+  document — e.g. drive the animation from the top document, or design demos to
+  reach a static state quickly and animate on interaction.
+- Keep a demo same-origin-domain with the app (the pre-fix posture) — rejected,
+  it is exactly the C-3 escape we closed.
+- (Deferred, unproven) a dedicated demo origin does **not** help: it is still
+  cross-origin to the app, so the same throttle applies.
+
+**Sources.** WebKit bug [170534](https://bugs.webkit.org/show_bug.cgi?id=170534)
+and changeset [r215070](https://trac.webkit.org/changeset/215070/webkit) (the
+feature); bug [213344](https://bugs.webkit.org/show_bug.cgi?id=213344)
+(drag/touch doesn't clear); WebCore
+[`Document.cpp`](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/dom/Document.cpp)
+(`requestAnimationFrame` / `updateLastHandledUserGestureTimestamp`),
+[`UserGestureIndicator.cpp`](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/dom/UserGestureIndicator.cpp),
+[`AnimationFrameRate.h`](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/platform/graphics/AnimationFrameRate.h);
+[`WKPreferencesPrivate.h`](https://github.com/WebKit/WebKit/blob/main/Source/WebKit/UIProcess/API/Cocoa/WKPreferencesPrivate.h)
+(no disable key). Corroboration:
+[Motion Magazine](https://motion.dev/magazine/when-browsers-throttle-requestanimationframe),
+[Popmotion](https://popmotion.io/blog/20180104-when-ios-throttles-requestanimationframe/).
