@@ -59,9 +59,18 @@ export async function getDemoDocumentUrl(assetId: string | undefined, opts: Demo
   if (!assetId) return null;
   if (blockedCache.has(assetId)) return null;
   const { hash = '', channelKey, varsCss = '', fontFacesCss = '', capture = false } = opts;
-  const key = `${assetId} ${hash} ${channelKey} ${capture ? 'C' : ''} ${hashString(varsCss)} ${hashString(fontFacesCss)}`;
+  // The prefix identifies ONE mount (asset+role/piece+capture); only the trailing
+  // theme/font hashes vary. So a theme switch or the async fonts resolving from ''
+  // supersedes the prior blob for the same prefix — revoke it (else it leaks, with
+  // the inlined modern-screenshot bytes when capture is on). Other pieces of the
+  // same demo use a different `hash` → different prefix → untouched.
+  const prefix = `${assetId} ${hash} ${channelKey} ${capture ? 'C' : ''} `;
+  const key = prefix + `${hashString(varsCss)} ${hashString(fontFacesCss)}`;
   const existing = docBlobCache.get(key);
   if (existing) return existing;
+  for (const [k, u] of docBlobCache) {
+    if (k !== key && k.startsWith(prefix)) { URL.revokeObjectURL(u); docBlobCache.delete(k); }
+  }
   const raw = await fetchRawDemo(assetId);
   if (raw == null) return null;
   const withBridge = injectDemoBridge(raw, hash ? `#${hash}` : '', channelKey, { capture });
@@ -75,13 +84,26 @@ export async function getDemoDocumentUrl(assetId: string | undefined, opts: Demo
 export function useDemoDoc(assetId: string | undefined, opts: DemoMountOpts): string | null | undefined {
   const { hash, channelKey, varsCss, fontFacesCss, capture } = opts;
   const [url, setUrl] = useState<string | null | undefined>(undefined);
+  const [refresh, setRefresh] = useState(0);
+  // Reload when the underlying asset bytes change on disk (file-watch / "Reload
+  // from disk now" fire eigendeck:asset-changed). invalidateDemoDoc drops the
+  // cached raw bytes + blobs so the refetch below rebuilds from the new content —
+  // the behavior the old same-origin useDemoUrl had.
+  useEffect(() => {
+    if (!assetId) return;
+    const onChanged = (e: Event) => {
+      if ((e as CustomEvent).detail?.assetId === assetId) { invalidateDemoDoc(assetId); setRefresh((k) => k + 1); }
+    };
+    window.addEventListener('eigendeck:asset-changed', onChanged);
+    return () => window.removeEventListener('eigendeck:asset-changed', onChanged);
+  }, [assetId]);
   useEffect(() => {
     if (!assetId) { setUrl(undefined); return; }
     let alive = true;
     getDemoDocumentUrl(assetId, { hash, channelKey, varsCss, fontFacesCss, capture })
       .then((r) => { if (alive) setUrl(r); });
     return () => { alive = false; };
-  }, [assetId, hash, channelKey, varsCss, fontFacesCss, capture]);
+  }, [assetId, hash, channelKey, varsCss, fontFacesCss, capture, refresh]);
   return url;
 }
 

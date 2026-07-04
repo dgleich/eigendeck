@@ -112,18 +112,28 @@ export function injectDemoBridge(html: string, hash: string, channelKey: string,
   // parent pump, as in a plain browser). See docs/DEMO-PLATFORM.md §16.
   var __nativeRaf = window.requestAnimationFrame.bind(window);
   var __nativeCancel = window.cancelAnimationFrame.bind(window);
-  var __rafMap = Object.create(null), __rafNextId = 1, __pumped = false;
-  function __flush(t){ var due = __rafMap; __rafMap = Object.create(null); for (var id in due){ try { due[id](t); } catch(e){} } }
-  window.requestAnimationFrame = function(cb){ var id = __rafNextId++; __rafMap[id] = cb; return id; };
-  window.cancelAnimationFrame = function(id){ delete __rafMap[id]; };
-  window.addEventListener('message', function(e){
-    if (e.data && e.data.__eigendeck === 1 && e.data.type === 'raf-tick'){ __pumped = true; __flush(e.data.t); }
-  });
-  // Fallback: if no parent tick has arrived shortly after load, revert to native
-  // rAF so a demo opened outside Eigendeck (or without a pump) still animates.
-  setTimeout(function(){ if (!__pumped){ var due = __rafMap;
+  var __rafMap = Object.create(null), __rafNextId = 1, __seenTick = false, __native = false;
+  // Fire callbacks queued for this frame. Delete-before-call so cancelAnimationFrame
+  // during a flush (deletes from the map) is honored, and re-scheduled ids (added
+  // during the flush) fire on the NEXT tick, matching native rAF semantics.
+  function __flush(t){ var ids = Object.keys(__rafMap); for (var i = 0; i < ids.length; i++){ var id = ids[i], cb = __rafMap[id]; if (cb){ delete __rafMap[id]; try { cb(t); } catch(e){} } } }
+  function __pumpMode(){ __native = false;
+    window.requestAnimationFrame = function(cb){ var id = __rafNextId++; __rafMap[id] = cb; return id; };
+    window.cancelAnimationFrame = function(id){ delete __rafMap[id]; }; }
+  function __nativeMode(){ __native = true; var due = __rafMap; __rafMap = Object.create(null);
     window.requestAnimationFrame = __nativeRaf; window.cancelAnimationFrame = __nativeCancel;
-    for (var id in due) __nativeRaf(due[id]); } }, 400);
+    for (var id in due) __nativeRaf(due[id]); }
+  __pumpMode();
+  window.addEventListener('message', function(e){
+    if (e.data && e.data.__eigendeck === 1 && e.data.type === 'raf-tick'){
+      __seenTick = true;
+      if (__native) __pumpMode();   // a slow/returning pump re-takes the clock (re-armable)
+      __flush(e.data.t);
+    }
+  });
+  // If no parent tick arrives within a generous margin, assume there's no pump
+  // (plain browser / export) and use native rAF. Re-armable above if a tick shows up.
+  setTimeout(function(){ if (!__seenTick) __nativeMode(); }, 1500);
 })();
 </script>`;
   const scripts = opts.capture ? bootstrap + `<script>${MS_UMD}</script>` + CAPTURE_HANDLER : bootstrap;

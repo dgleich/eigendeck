@@ -566,14 +566,17 @@ export async function invalidateRenderedAsset(assetId: string): Promise<void> {
   } catch (e) {
     console.warn(`[invalidateRenderedAsset] db_clear_asset_cache failed for ${assetId.slice(0, 8)}:`, e);
   }
-  // Also drop the demoAssets blob cache so any consumer using useAssetUrl
-  // / getAssetUrl re-fetches the new bytes instead of handing out a stale
-  // URL.
+  // Also drop the blob caches so any consumer re-fetches the new bytes instead of
+  // handing out a stale URL: demoAssets (useAssetUrl images/video) AND demoMount
+  // (opaque-origin demo documents — else an edited demo file reloads stale bytes).
   try {
-    const { invalidateAsset } = await import('./demoAssets');
+    const [{ invalidateAsset }, { invalidateDemoDoc }] = await Promise.all([
+      import('./demoAssets'), import('./demoMount'),
+    ]);
     invalidateAsset(assetId);
+    invalidateDemoDoc(assetId);
   } catch (e) {
-    console.warn(`[invalidateRenderedAsset] demoAssets.invalidateAsset failed for ${assetId.slice(0, 8)}:`, e);
+    console.warn(`[invalidateRenderedAsset] blob-cache invalidation failed for ${assetId.slice(0, 8)}:`, e);
   }
   window.dispatchEvent(new CustomEvent('eigendeck:asset-changed', { detail: { assetId } }));
 }
