@@ -7,14 +7,15 @@
 
 import { useRef } from 'react';
 import { resolveTheme } from '../lib/themes';
-import { useDemoUrl, useAssetUrl } from '../lib/demoAssets';
+import { useAssetUrl } from '../lib/demoAssets';
+import { useDemoDoc, useDeckFontFacesCss } from '../lib/demoMount';
 import { useImageSrc } from '../lib/imageSrc';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
-import { buildEmbedSrc, DEMO_SANDBOX, VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
+import { buildEmbedSrc, VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
 import type { Presentation, Slide, SlideElement, TextElement } from '../types/presentation';
 import { TextElementSvg } from './TextElementSvg';
 import { NotebookContent } from './notebook/NotebookContent';
-import { useDemoThemeInjection } from '../lib/demoThemeInject';
+import { demoVarsCssForSlide } from '../lib/demoThemeInject';
 import { ArrowGlyph } from './ArrowGlyph';
 import { imageVisualStyle } from '../lib/imageVisualStyle';
 import { CoverView } from './ElementView';
@@ -137,13 +138,22 @@ function PresentDemoIframe({ assetId, hash, title, pos, zIndex, style, ctx }: {
   pos: { x: number; y: number; width: number; height: number }; zIndex: number;
   style?: React.CSSProperties; ctx?: PresentCtx;
 }) {
-  const src = useDemoUrl(assetId, hash);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  // Inject the deck's fonts + theme vars (#86) into the demo's contentDocument.
-  useDemoThemeInjection(iframeRef, ctx?.presentationConfig as any, ctx?.presentationTheme || 'white', ctx?.slide, src);
+  // Opaque-origin mount (docs/DEMO-PLATFORM.md): theme vars + data-URL fonts
+  // spliced at build; comm over the parent relay.
+  const fontFacesCss = useDeckFontFacesCss();
+  const varsCss = ctx?.slide
+    ? demoVarsCssForSlide(ctx.presentationConfig as any, ctx.presentationTheme || 'white', ctx.slide)
+    : '';
+  const src = useDemoDoc(assetId, {
+    hash: hash || '',
+    channelKey: assetId,
+    varsCss,
+    fontFacesCss,
+  });
   if (!src) return null;
   return (
-    <iframe ref={iframeRef} src={src} sandbox={DEMO_SANDBOX} title={title || 'demo'} style={{
+    <iframe ref={iframeRef} src={src} sandbox="allow-scripts" className="el-demo-frame" title={title || 'demo'} style={{
       position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, border: 'none', zIndex, ...style,
     }} />
   );
@@ -153,10 +163,11 @@ function PresentDemoIframe({ assetId, hash, title, pos, zIndex, style, ctx }: {
  *  assetId). Without these, demo-pieces don't update — the bug that hit the
  *  old presenter window, which never rendered them. */
 export function PresentControllerIframe({ assetId }: { assetId: string }) {
-  const src = useDemoUrl(assetId, 'role=controller');
+  const fontFacesCss = useDeckFontFacesCss();
+  const src = useDemoDoc(assetId, { hash: 'role=controller', channelKey: assetId, fontFacesCss });
   if (!src) return null;
   return (
-    <iframe src={src} sandbox={DEMO_SANDBOX} title={`controller: ${assetId.slice(0, 8)}`}
+    <iframe src={src} sandbox="allow-scripts" className="el-demo-frame" title={`controller: ${assetId.slice(0, 8)}`}
       style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }} />
   );
 }

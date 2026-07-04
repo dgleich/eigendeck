@@ -5,7 +5,8 @@ import { extractDemoPieceNames } from '../lib/demoPieces';
 import { gridOverlaySvg } from '../lib/grid';
 import { captureHtmlToPng, looksLikeRichHtml } from '../lib/htmlPasteCapture';
 import { relPath } from '../App';
-import { useDemoUrl } from '../lib/demoAssets';
+import { useDemoDoc, useDeckFontFacesCss } from '../lib/demoMount';
+import { demoVarsCssForSlide } from '../lib/demoThemeInject';
 import { SlideElementRenderer } from './SlideElementRenderer';
 import { getSlideNumber, createTextElement } from '../types/presentation';
 import { resolveTheme } from '../lib/themes';
@@ -807,14 +808,21 @@ export function SlideEditor() {
   );
 }
 
-/** Hidden controller iframe that loads demo HTML from SQLite */
+/** Hidden controller iframe that loads demo HTML from SQLite (opaque origin;
+ *  docs/DEMO-PLATFORM.md). Comm with its pieces goes over the parent relay. */
 function ControllerIframe({ assetId }: { assetId: string }) {
-  const src = useDemoUrl(assetId, 'role=controller');
+  const config = usePresentationStore((s) => s.presentation.config);
+  const theme = usePresentationStore((s) => s.presentation.theme);
+  const slide = usePresentationStore((s) => s.presentation.slides[s.currentSlideIndex]);
+  const fontFacesCss = useDeckFontFacesCss();
+  const varsCss = slide ? demoVarsCssForSlide(config, theme, slide) : '';
+  const src = useDemoDoc(assetId, { hash: 'role=controller', channelKey: assetId, varsCss, fontFacesCss });
   if (!src) return null;
   return (
     <iframe
       src={src}
-      sandbox="allow-scripts allow-same-origin"
+      sandbox="allow-scripts"
+      className="el-demo-frame"
       title={`controller: ${assetId.slice(0, 8)}`}
       style={{ position: 'absolute', width: 0, height: 0, border: 'none', opacity: 0, pointerEvents: 'none' }}
     />

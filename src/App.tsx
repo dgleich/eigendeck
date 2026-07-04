@@ -1233,6 +1233,14 @@ function App() {
     return () => window.removeEventListener('start-presenting', handler);
   }, [startPresenting]);
 
+  // Opaque-origin demos can't share a BroadcastChannel; the parent relays their
+  // messages between pieces (docs/DEMO-PLATFORM.md).
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    import('./lib/demoMount').then((m) => { cleanup = m.installDemoRelay(); });
+    return () => cleanup?.();
+  }, []);
+
   // Listen for presenter window closing (Escape in presenter)
   useEffect(() => {
     let unlisten: (() => void) | null = null;

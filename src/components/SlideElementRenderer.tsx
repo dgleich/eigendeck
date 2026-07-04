@@ -9,11 +9,12 @@ import { ArrowGlyph } from './ArrowGlyph';
 import { imageVisualStyle } from '../lib/imageVisualStyle';
 import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
 import { sanitizeRichText } from '../lib/sanitizeRichText';
-import { useDemoUrl, useAssetUrl } from '../lib/demoAssets';
-import { useDemoThemeInjection, demoVarsCssForSlide } from '../lib/demoThemeInject';
+import { useAssetUrl } from '../lib/demoAssets';
+import { demoVarsCssForSlide } from '../lib/demoThemeInject';
+import { useDemoDoc, useDeckFontFacesCss } from '../lib/demoMount';
 import { capturePreview } from '../lib/previewCache';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
-import { buildEmbedSrc, DEMO_SANDBOX, VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
+import { buildEmbedSrc, VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
 import { NotebookBox } from './NotebookBox';
 import { useImageSrc } from '../lib/imageSrc';
 import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
@@ -316,13 +317,10 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
     window.addEventListener('eigendeck:asset-changed', onChanged as EventListener);
     return () => window.removeEventListener('eigendeck:asset-changed', onChanged as EventListener);
   }, [element.assetId]);
-  const src = useDemoUrl(element.assetId, piece ? `piece=${piece}` : undefined);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  // Inject the deck's fonts + theme vars (#86) into the demo's contentDocument.
   const demoConfig = usePresentationStore((s) => s.presentation.config);
   const demoTheme = usePresentationStore((s) => s.presentation.theme);
   const demoSlide = usePresentationStore((s) => s.presentation.slides[s.currentSlideIndex]);
-  useDemoThemeInjection(iframeRef, demoConfig, demoTheme, demoSlide, reloadKey);
   // Proactively cache a PNG preview of the rendered demo (sidebar thumbs /
   // export) once it's loaded + settled. The demo is a same-origin blob iframe,
   // so capturePreview reaches its contentDocument. Debounced; re-runs on
@@ -330,6 +328,16 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
   // the iframe <head>, so it isn't in the captured <body> HTML; pass it as the
   // cache salt so a theme switch busts the preview (#86). (No phase awareness yet.)
   const themeSalt = demoSlide ? demoVarsCssForSlide(demoConfig, demoTheme, demoSlide) : '';
+  // Opaque-origin mount (docs/DEMO-PLATFORM.md): theme vars + data-URL fonts are
+  // spliced into the built document, and comm goes over the parent relay. No more
+  // contentDocument writes (the sandbox drops allow-same-origin below).
+  const fontFacesCss = useDeckFontFacesCss();
+  const src = useDemoDoc(element.assetId, {
+    hash: piece ? `piece=${piece}` : '',
+    channelKey: element.assetId || 'demo',
+    varsCss: themeSalt,
+    fontFacesCss,
+  });
   // Capture the preview TRANSPARENT (no baked backdrop). A demo iframe is
   // transparent so the slide — and any elements beneath the demo — must show
   // through in the static renders too; the render context supplies the slide
@@ -349,7 +357,7 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
       onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
     >
       {src ? (
-        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox={DEMO_SANDBOX} title={piece ? `demo-piece: ${piece}` : 'demo'}
+        <iframe key={reloadKey} ref={iframeRef} src={src} sandbox="allow-scripts" className="el-demo-frame" title={piece ? `demo-piece: ${piece}` : 'demo'}
           style={{ width: '100%', height: '100%', border: 'none', pointerEvents: interacting ? 'auto' : 'none' }} />
       ) : src === null ? (
         // Blocked by the demo-mount gate: bytes aren't a marked eigendeck demo.
