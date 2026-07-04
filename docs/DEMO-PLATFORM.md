@@ -90,11 +90,22 @@ paranoid.
   already re-mount on `reloadKey`).
 - **Settings, both app-side (never in the deck, so a malicious deck can't grant
   its own demos network):**
-  - Global preference: *Allow demos to access the internet* (default on).
-  - Per-deck override in the Security window: a single checkbox, default off,
+  - Global preference: *Allow demos to access the internet* (default on). This is
+    the master switch.
+  - Per-deck control in the Security window: a single checkbox, default off,
     *Block internet access for this deck's demos*. Stored alongside the trust
     ledger, keyed by deck.
-  - Effective policy = per-deck override if set, else the global default.
+- **The cascade is restrictive-only.** A per-deck setting can only *tighten*, it
+  can never *grant* internet against a global block. So:
+
+  > effective-allow = (global allows) AND (this deck is not blocked)
+
+  When the global switch is **off**, every demo is blocked everywhere and the
+  per-deck control cannot re-enable it. In that state the per-deck checkbox is
+  shown disabled with a note pointing at the global setting, because it can only
+  block and blocking is already in force. When the global switch is **on**, the
+  per-deck checkbox blocks this one deck. This mirrors the trust model: local
+  policy may restrict a stricter global, never loosen it.
 
 ## 4. The two-tier interface
 
@@ -203,25 +214,81 @@ no delivery scheme can make decode synchronous.
 Live theme switches (user changes the deck theme while a demo is mounted) re-mount
 the demo in v1 (re-splice, new blob). A live `onTheme` push is **[deferred]**.
 
-## 6. Runtime bridge [v1 transport]
+## 6. Multi-part demos & the relay
 
 The bridge is one shared module, injected in-app and baked at export, promoted
 from today's export shim (`injectDemoBootstrap` in `exportCore.mjs`). It carries
-only live traffic over a versioned, additive envelope `{__eigendeck: 1, type,
+only live traffic, over a versioned, additive envelope `{__eigendeck: 1, type,
 …}`; both sides ignore unknown types.
 
-- **BroadcastChannel relay** — the bridge overrides `BroadcastChannel` to relay
-  via `parent.postMessage`; the parent fans out to sibling frames of the same
-  demo. **Keyed per element instance** so two copies of a demo on a slide do not
-  cross-talk (fixes today's cross-instance bleed), and the broker **retains last
-  state** so a late-joining piece (thumbnail, present mode) syncs. This
-  generalizes the export relay to in-app.
-- **Lifecycle** — `ready`/`rendered` let the host act at the right moment instead
-  of the current blind 900 ms `setTimeout` and the export `request-state` retry
-  loop.
-- **[deferred] messages** layered on later, no demo changes required: parameter
+### The multi-part model [v1]
+
+A demo can be split into independently positioned **pieces**, each an iframe, plus
+a hidden **controller**. This is the existing model (see `DEMO_SPEC.md`); opaque
+origin changes only the transport, not the roles.
+
+- Roles are selected by URL hash: `#role=controller` (hidden 0×0 iframe, owns the
+  logic + state), `#piece=<name>` (a visible viewport that renders one part and
+  forwards interactions), or none (standalone fallback).
+- One HTML file serves all roles by branching on the hash.
+- Eigendeck auto-creates one `demo-piece` element per declared piece and one
+  hidden controller per unique demo on the slide. Piece discovery moves from
+  today's brittle source regex to the `<!--eigendeck-v1-capability:
+  {"pieces":[…]}-->` declaration (§4), with the regex kept as a fallback for
+  un-migrated demos.
+
+### How pieces communicate (the relay) [v1]
+
+Same-origin `BroadcastChannel` cannot work once each piece is its own opaque
+origin, so the bridge provides a drop-in replacement with an identical
+author-facing API:
+
+- The bridge overrides `BroadcastChannel`. Calling `postMessage` on a channel
+  sends `{__eigendeck:1, type:'bc', key, payload}` to `window.parent`.
+- The parent is a **dumb star relay**: on a `bc` message it fans the payload out
+  to every *other* frame carrying the same `key` (sender excluded) — the pieces
+  and controller of that one demo instance. It never delivers to the app, to
+  other demos, or to demos in other windows.
+- Topology is a **star through the parent, not a mesh**. Delivery is
+  "everyone-but-me," reproducing BroadcastChannel semantics.
+
+Two behaviors make it robust across mount/unmount:
+
+- **Per-instance keying.** `key` is the demo's element/sync identity, so two
+  copies of the same demo on a slide (or the same synced demo across slides) do
+  not cross-talk. This fixes today's cross-instance bleed, where same-origin
+  BroadcastChannel names collided.
+- **Retained last state.** The relay caches the last message of a declared
+  `state` type per key and replays it to a piece that mounts later (present mode,
+  thumbnail capture, slide navigation). This replaces the `request-state` retry
+  loop; a late viewport is current immediately.
+
+### Relay limitations (author-facing) [v1]
+
+- **Structured-clone only.** Payloads cross `postMessage`, so no functions, DOM
+  nodes, or class instances (they arrive as plain objects). Keep messages to
+  plain JSON-like data.
+- **Two hops per message** (piece → parent → sibling). Fine for event-driven
+  traffic (clicks, drags, state broadcasts). **Not** for per-frame streaming: do
+  not relay at ~60 fps. The controller broadcasts *state changes*; each viewport
+  runs its own `requestAnimationFrame` locally. (Only `harper_electron` streams
+  cross-frame today and should move to this pattern.)
+- **Bulk binary is copied, not moved.** A Transferable cannot be transferred to N
+  targets, so large `ArrayBuffer`s fan out as copies. Push big data once at mount
+  (§10), not repeatedly over the relay.
+- **Same-instance scope.** A message reaches only frames of the same demo instance
+  (same `key`). There is no cross-demo or cross-slide channel; that is intentional
+  isolation.
+- **Ordering** is preserved per sender; interleaving across senders is not
+  guaranteed.
+
+### Lifecycle & other live traffic
+
+- `ready`/`rendered` let the host act at the right moment instead of the blind
+  900 ms `setTimeout` and the export `request-state` retries. **[v1]**
+- **[deferred]** messages layered on later with no demo changes: parameter
   delivery + `reportValid` (§7), state get/set (§8), `goto-step` (§8), image
-  request/response (§8), live `onTheme`.
+  request/response (§8), live `onTheme` (§5).
 
 ## 7. Parameters & validation [deferred]
 
