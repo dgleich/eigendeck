@@ -32,6 +32,7 @@ fn app_about_icon() -> Option<Image<'static>> {
 
 mod clip;
 mod debug;
+mod fscmds;
 mod llmtools;
 mod pasteboard;
 mod pdf;
@@ -741,6 +742,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .manage(debug_flag)
+        .manage(Mutex::new(fscmds::WatchState::default()))
         .invoke_handler(tauri::generate_handler![
             debug::debug_enabled,
             pasteboard::pasteboard_list_types,
@@ -818,6 +820,16 @@ pub fn run() {
             cli_write_and_exit,
             resolve_and_read,
             llmtools::install_llm_tools,
+            fscmds::write_file,
+            fscmds::write_text_file,
+            fscmds::make_dir,
+            fscmds::path_stat,
+            fscmds::path_exists,
+            fscmds::read_dir,
+            fscmds::read_trust_ledger,
+            fscmds::write_trust_ledger,
+            fscmds::watch_path,
+            fscmds::unwatch_path,
         ])
         // MUST be the first plugin. A second launch (e.g. double-clicking
         // another .eigendeck while the app is open) forwards its args to THIS
