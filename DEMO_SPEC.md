@@ -6,6 +6,25 @@ An Eigendeck demo can be split into **pieces** — independently positionable re
 
 All communication happens via `BroadcastChannel`. The demo HTML file serves all roles based on URL hash parameters.
 
+Demos run in an **opaque-origin sandbox** (`sandbox="allow-scripts"`, no
+`allow-same-origin`): no access to the app, Tauri, `window.top`/`window.parent`,
+and no `localStorage`/`sessionStorage`/`cookies`/`IndexedDB`. The
+`BroadcastChannel` you use is **not** a native same-origin channel — an
+app-injected bridge **relays** it through the parent, keyed per demo instance.
+Fetching from the internet / a CDN still works.
+
+### Required marker
+
+Every demo file **must** begin with the marker `<!--eigendeck-demo-v1-->`, placed
+**immediately after** `<!DOCTYPE html>`. It's the mount gate — an unmarked file is
+not shown as a demo:
+
+```html
+<!DOCTYPE html>
+<!--eigendeck-demo-v1-->
+<html> …
+```
+
 ## Architecture
 
 ```
@@ -43,11 +62,11 @@ const role = params.get('role');   // 'controller' or null
 const piece = params.get('piece'); // piece name or null
 ```
 
-> **Export compatibility:** In HTML exports, demos run inside `srcdoc` iframes where `location.hash` and `location.pathname` are empty. Eigendeck injects a bootstrap script that patches `URLSearchParams` and `BroadcastChannel` so the above patterns work in all contexts. No special handling needed in your demo code.
+> **Bridge (all contexts):** In every context — editor, presenter, and HTML export — demos run inside sandboxed iframes where `location.hash` and `location.pathname` are empty. Eigendeck injects a bridge script that patches `URLSearchParams` and `location.hash` and `BroadcastChannel` so the above patterns work everywhere. No special handling needed in your demo code.
 
 ## BroadcastChannel
 
-All iframes from the same demo communicate via a shared `BroadcastChannel`:
+All iframes from the same demo communicate via `BroadcastChannel`:
 
 ```js
 // Hardcode your demo's filename — don't use location.pathname (empty in srcdoc)
@@ -55,7 +74,16 @@ const channelName = 'eigendeck-demo:mydemo.html';
 const channel = new BroadcastChannel(channelName);
 ```
 
-> **Note:** In exported HTML, the bootstrap overrides the `BroadcastChannel` constructor to add a unique per-slide channel prefix, preventing collisions between demos on different slides.
+> **Note:** In **all** contexts (editor, presenter, export) the injected bridge
+> overrides the `BroadcastChannel` constructor, keyed per demo instance. It is
+> **not** a native same-origin channel: it's a **star relay through the parent**
+> ("everyone-but-me" — a sender never receives its own message), which also keeps
+> demos on different slides from colliding.
+>
+> - **Payloads are structured-clone only** — plain data (objects, arrays,
+>   typed arrays). No functions, DOM nodes, or class instances.
+> - **Don't stream at ~60fps** across the relay. Broadcast *state changes*, and
+>   run `requestAnimationFrame` locally in each viewport.
 
 ### Controller Messages (outgoing)
 
@@ -107,6 +135,7 @@ channel.onmessage = (e) => {
 
 ```html
 <!DOCTYPE html>
+<!--eigendeck-demo-v1-->
 <html>
 <head>
 <style>
@@ -202,7 +231,7 @@ The controller iframe runs as long as any piece from the demo is on the current 
 
 2. **Prefix CSS**: Use a unique prefix for all CSS selectors (e.g., `.ge-graph`) to avoid conflicts with the Eigendeck UI.
 
-3. **CDN scripts**: External scripts (D3, etc.) are cached after first load. Each iframe loads them independently but the browser cache handles it.
+3. **CDN scripts**: External scripts (D3, etc.) are fetched independently by **each** iframe — every opaque-origin iframe is its own origin with no shared cache, so there's no cross-iframe reuse. Keep CDN payloads modest.
 
 4. **Keep viewports lightweight**: Heavy computation belongs in the controller. Viewports should only render.
 

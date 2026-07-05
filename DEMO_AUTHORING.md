@@ -24,6 +24,13 @@ A demo is a single HTML file that serves three roles based on URL hash:
 
 All communication between controller and viewports uses `BroadcastChannel`.
 
+Demos run in an **opaque-origin sandbox** — no access to the app, Tauri,
+`window.top`/`window.parent`, and no `localStorage`/`sessionStorage`/`cookies`/
+`IndexedDB` (see "Isolation — what a demo cannot do" below). The
+`BroadcastChannel` you use is **not** a native same-origin channel: an
+app-injected bridge **relays** it through the parent, keyed per demo instance.
+Fetching from the internet / a CDN still works.
+
 **Piece names** can be any string of letters, digits, `_`, and `-`
 (e.g. `graph`, `force-graph`, `bar-chart-2`). When you add a demo to a slide,
 Eigendeck **scans the HTML for your `piece === '...'` checks and auto-creates a
@@ -243,24 +250,47 @@ harness, a dev server, or BroadcastChannel.
 
 ## How Eigendeck Loads Demos
 
-Demos run in three contexts, all handled automatically:
+Demos run in three contexts, all **opaque-origin** and all handled
+automatically. None of them get `location.hash` or `BroadcastChannel` natively —
+an app-injected **bridge** provides them in **every** context:
 
-| Context | iframe type | `location.hash` | `BroadcastChannel` |
-|---------|------------|------------------|---------------------|
-| **Editor** | blob URL | Works natively | Works natively |
-| **Presenter** | blob URL | Works natively | Works natively |
-| **HTML Export** | srcdoc | Empty (broken) | Pathname empty (broken) |
+| Context | `location.hash` (role/piece) | `BroadcastChannel` |
+|---------|------------------------------|---------------------|
+| **Editor** | Provided by the bridge | Provided by the bridge |
+| **Presenter** | Provided by the bridge | Provided by the bridge |
+| **HTML Export** | Provided by the bridge | Provided by the bridge |
 
-For HTML export, Eigendeck injects a bootstrap `<script>` before your code that:
-1. Patches `URLSearchParams` — if `location.hash` is empty (srcdoc), the constructor injects the correct piece/role params
-2. Patches `BroadcastChannel` — adds a unique per-slide prefix so demos on different slides don't collide
+In every context Eigendeck injects a bridge `<script>` before your code that:
+1. Patches `URLSearchParams` + `location.hash` — supplies the correct
+   piece/role params (the raw `location.hash` is empty in a sandboxed iframe).
+2. Patches `BroadcastChannel` — keyed per demo instance, so it relays through the
+   parent and demos on different slides don't collide.
+3. Parent-drives `requestAnimationFrame` — the parent runs an un-throttled 60fps
+   pump, so your animations aren't capped to the ~30fps WebKit imposes on
+   cross-origin iframes.
+4. Forwards demo errors + `console.error`/`console.warn` to the app's debug
+   console.
 
-**You don't need to handle this.** Just use the standard pattern:
+**You don't need to handle any of this.** Just use the standard pattern:
 ```js
 const params = new URLSearchParams(location.hash.slice(1));
 const channel = new BroadcastChannel('eigendeck-demo:mydemo.html');
 ```
-Use a hardcoded filename for the channel name. The bootstrap patches `URLSearchParams` and adds a unique per-slide prefix to `BroadcastChannel` automatically.
+Use a hardcoded filename for the channel name; the bridge does the rest.
+
+### Isolation — what a demo cannot do
+
+The opaque-origin sandbox is a hard boundary. A demo **cannot**:
+
+- reach `window.top` / `window.parent` / the app / Tauri;
+- use `localStorage` / `sessionStorage` / `cookies` / `IndexedDB`;
+- `fetch` same-origin or app URLs.
+
+It **can** fetch from the internet / a CDN (a deck may switch this off via a
+per-deck toggle). And remember the channel is a relay: **payloads are
+structured-clone only** (plain data — no functions/DOM/class instances), and you
+should **not stream at ~60fps across pieces** (broadcast state changes; run
+`requestAnimationFrame` locally in each viewport).
 
 ## Matching the deck — fonts & theme
 
@@ -274,11 +304,16 @@ deck automatically — the most important one is **don't paint a background**.
    keep in sync. Only set a background when you specifically need to *cover* slide
    content behind the demo, or to guarantee contrast for a busy visualization.
 
-2. **Fonts resolve automatically.** Eigendeck injects `@font-face` for the deck's
-   fonts into every demo (editor, presenter, export), so `font-family: 'PT Sans'`
-   (or whatever the slide uses) just works — no change needed. For text drawn
-   over the transparent background, set `color: var(--eigendeck-fg, #222)` so it
-   stays readable on light AND dark slides.
+2. **Fonts resolve automatically.** Eigendeck splices data-URL `@font-face`
+   rules for the deck's fonts into the demo bytes at mount (editor, presenter,
+   export), scoped to the slide's fonts, so `font-family: 'PT Sans'` (or whatever
+   the slide uses) just works — no change needed. For text drawn over the
+   transparent background, set `color: var(--eigendeck-fg, #222)` so it stays
+   readable on light AND dark slides.
+
+   > Font decode is **async**. A demo that draws text to canvas or WebGL on its
+   > first paint should `await document.fonts.ready` before painting, or the
+   > first frame renders in a fallback face.
 
    ```css
    body {
@@ -307,8 +342,10 @@ the deck base size and express everything else in `em`.**
 .mydemo-cap   { font-size: 0.85em; }   /* footnote */
 ```
 
-- Body-sized UI text is `1em` and matches the slide automatically — and it tracks
-  **live** when the deck theme or base size changes (the demo isn't reloaded).
+- Body-sized UI text is `1em` and matches the slide automatically. The base size
+  is spliced in **at mount**; if the deck theme or base size changes, the demo is
+  **re-mounted** with the new value (see the theme note below), so it always
+  reflects the theme the demo mounts under.
 - For SVG `<text>`, the same idea: use `em` in CSS (it inherits the element font),
   or read the base size in JS for attribute-based sizing:
   ```js
@@ -340,9 +377,13 @@ deck (with a fallback so it still works opened standalone):
 | `--eigendeck-mono` | monospace/code font family |
 | `--eigendeck-base-size` | deck body font size (px) |
 
-The vars update **live** when the slide/deck theme changes (the demo isn't
-reloaded), so a demo authored against them tracks dark/light themes for free. You
-can also read or change them programmatically for dynamic effects, e.g.
+The vars are spliced into the demo bytes **at mount**, not written live. A theme
+switch **re-mounts** the demo (the blob is rebuilt) — so **in-demo JS state is
+lost** across a theme change — but the vars are always correct for the theme the
+demo mounts under. Read them via `var(--eigendeck-*, fallback)` in CSS, or via
+`getComputedStyle` at init in JS, and a demo authored against them matches
+dark/light themes for free. You can also read or change them programmatically for
+dynamic effects, e.g.
 
 ```js
 const fg = getComputedStyle(document.documentElement).getPropertyValue('--eigendeck-fg').trim();
@@ -379,8 +420,10 @@ hardcoded dark. The slide background is transparent and can be anything, so:
     .getPropertyValue('--eigendeck-fg').trim() || '#334155';
   ctx.fillStyle = fg;   // nodes / labels now follow the theme
   ```
-  Reading it inside the draw function (not once at startup) keeps it correct when
-  the theme switches live. Data-driven colors (heatmaps, category palettes) can
+  Reading it inside the draw function (not once at startup) keeps it correct if
+  the var is ever updated within the mount. (A full theme switch re-mounts the
+  demo, so init-time reads are already correct for the new theme.) Data-driven
+  colors (heatmaps, category palettes) can
   stay fixed — only the *chrome* (nodes, axes, gridlines, labels) needs to track
   the theme.
 
@@ -530,16 +573,19 @@ whenever the *point* is "method A vs method B" or "input vs reconstruction":
 - **Segmented presets to swap the scenario** without leaving the comparison (signal
   type; function = Runge / steep / |x|). Selected = accent fill (see the control kit
   in `example-demos/showcase/README.md`).
-- **Static but live.** No animation loop — recompute on input, plus a ~400–500 ms
-  theme-watcher `setInterval` that repaints if `--eigendeck-fg/-accent` changed. Cheap,
-  crisp, and survives a live theme switch.
+- **Static, recompute on input.** No animation loop — recompute on input. Theme
+  vars are correct at mount (and a theme switch re-mounts the demo), so read them
+  at init / in your draw; a theme-watcher `setInterval` is no longer needed to
+  track live changes.
 
 ## Debugging
 
-- Open WebKit devtools (Cmd+Option+I) to see iframe console output
-- Eigendeck's built-in debug console (Cmd+Shift+D) shows app-level logs
-- Add `console.log('[piece-name]', ...)` in your demo for tracing
-- Check that `BroadcastChannel` messages are flowing between controller and viewports
+- The bridge forwards a demo's `console.error`/`console.warn` and uncaught errors
+  to Eigendeck's built-in debug console (Cmd+Shift+D) — that's the **primary**
+  channel for an opaque-origin demo, since the iframe is its own origin.
+- Open WebKit devtools (Cmd+Option+I) to see iframe console output directly.
+- Add `console.log('[piece-name]', ...)` in your demo for tracing.
+- Check that `BroadcastChannel` messages are flowing between controller and viewports.
 
 ## Testing
 

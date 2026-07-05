@@ -239,9 +239,12 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
 
 ### Demo theme inheritance (#86) + text clipping (#79)
 
-- **demo-theme-verify.mjs** — injects the deck's `@font-face` (shared URL) + theme
-  vars into a demo's `contentDocument`; asserts a theme switch updates the vars
-  LIVE with **no iframe reload** (demo state preserved) and the font loads.
+- **demo-theme-verify.mjs** — demos run **opaque-origin**, so the app can't reach
+  their `contentDocument`. The demo **self-reports** its resolved `--eigendeck-*`
+  vars + loaded font back over `postMessage`; the probe asserts they match the
+  slide. Theme vars + `@font-face` are spliced in at mount, so a theme switch
+  **re-mounts** the demo (in-demo state is lost) and it re-reports under the new
+  theme.
 - **demo-theme-scenario.mjs** — builds a 40-slide deck (10 `FONT_PACKAGES` × 4
   themes), full-bleed `fixtures/theme-probe-demo.html` per slide; asserts every
   `--eigendeck-*` color = the slide's theme AND the slide's font face loads
@@ -256,13 +259,15 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
 - **overflow-hunt.mjs** — audit (not pass/fail): walks a deck and reports text
   elements whose content overflows its box (surfaced the #95 cut-off risk).
 - **deck-demos-render-probe.mjs** — opens a deck and asserts every demo /
-  demo-piece iframe actually renders (contentDocument reachable + non-empty). Gated
-  against the real talk decks (`magnetic-powers`, `local-networks`) so a broken or
-  re-themed demo is caught. With `E2E_EXPECT=<csv>` it also asserts text appears in
-  a demo body — used with the `hyphenpiece` fixture to prove **hyphenated
-  demo-piece names route end-to-end (#44)**: the demo renders `FORCE-GRAPH-OK`
-  only if `force-graph` wasn't truncated to `force`. (Detection-on-add is covered
-  by the `extractDemoPieceNames` unit test.)
+  demo-piece MOUNTED (an `iframe.el-demo-frame` exists and isn't the "not a valid
+  demo" block) and didn't crash (no bridge `demo-error`). Opaque origin blocks the
+  parent from reading a demo's contentDocument, so content assertions move to a
+  self-report over the bridge. Gated against the real talk decks (`magnetic-powers`,
+  `local-networks`). With `E2E_EXPECT=<csv>` it asserts the demo self-reports the
+  expected marker — used with the `hyphenpiece` fixture to prove **hyphenated
+  demo-piece names route end-to-end (#44)**: the demo posts `FORCE-GRAPH-OK` only if
+  `force-graph` wasn't truncated to `force`. (Detection-on-add is covered by the
+  `extractDemoPieceNames` unit test.)
 
 ## Demo framerate regression (relay-fps-probe.mjs)
 

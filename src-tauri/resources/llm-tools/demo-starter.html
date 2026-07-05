@@ -1,7 +1,12 @@
 <!DOCTYPE html>
+<!--eigendeck-demo-v1-->
 <html>
 <head>
 <meta charset="utf-8">
+<!-- This demo runs in an opaque-origin sandboxed iframe: no access to the app,
+     Tauri, or window.parent, and no localStorage/sessionStorage/cookies. Theme
+     values arrive as CSS vars — read them via var(--eigendeck-*, fallback).
+     Fetching from the internet / a CDN is fine. -->
 <style>
 /* REQUIRED: html/body need explicit 100% size or the iframe collapses. */
 * { margin: 0; padding: 0; box-sizing: border-box; }

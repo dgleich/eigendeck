@@ -12,9 +12,10 @@ this way.
 ## The shape of an Eigendeck demo
 
 A demo is a **single self-contained HTML file**. It runs in a sandboxed iframe
-over the slide and can be split into *pieces* — separate viewports (a plot, a
-control panel, an info box) that you position independently on the slide and that
-talk to each other over `BroadcastChannel`. Eigendeck scans the HTML for the
+over the slide — isolated, so it can't touch the app or your files — and can be
+split into *pieces* — separate viewports (a plot, a control panel, an info box)
+that you position independently on the slide and that talk to each other over
+`BroadcastChannel`. Eigendeck scans the HTML for the
 piece names you reference and creates a positionable element for each.
 
 The full contract — the file template, the controller/piece/standalone roles,
@@ -45,9 +46,10 @@ Two rules let a demo blend into your slides automatically:
   background shows through and the demo matches every theme for free.
 - **Use the injected theme variables** for any text/controls: `var(--eigendeck-fg)`,
   `--eigendeck-bg`, `--eigendeck-accent`, `--eigendeck-font`, etc. Eigendeck
-  injects the deck's resolved fonts + colors into every demo, live. Control
-  labels and canvas text should track these so they stay legible on light *and*
-  dark slides.
+  splices the deck's resolved fonts + colors into every demo at mount; if you
+  change the theme, the demo re-mounts with the new values. Control labels and
+  canvas text should use these vars so they stay legible on light *and* dark
+  slides.
 
 Both are covered in detail (with a worked example) in the "Matching the deck"
 section of [`DEMO_AUTHORING.md`](../../DEMO_AUTHORING.md).
