@@ -1,21 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// In-memory fake filesystem shared with the mocked Tauri modules (hoisted so the
-// vi.mock factories can close over it).
-const { files } = vi.hoisted(() => ({ files: new Map<string, string>() }));
-
-vi.mock('@tauri-apps/api/path', () => ({
-  appDataDir: async () => '/appdata',
-  join: async (...p: string[]) => p.join('/'),
-}));
-vi.mock('@tauri-apps/plugin-fs', () => ({
-  readTextFile: async (p: string) => {
-    if (!files.has(p)) throw new Error('ENOENT');
-    return files.get(p)!;
+// The trust ledger now persists via the Rust read_trust_ledger / write_trust_ledger
+// commands (the webview has no fs-plugin access). Back them with one JSON slot.
+const { led } = vi.hoisted(() => ({ led: { json: null as string | null } }));
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: async (cmd: string, args?: { json?: string }) => {
+    if (cmd === 'read_trust_ledger') return led.json;
+    if (cmd === 'write_trust_ledger') { led.json = args!.json!; return undefined; }
+    throw new Error(`unexpected invoke ${cmd}`);
   },
-  writeTextFile: async (p: string, s: string) => { files.set(p, s); },
-  mkdir: async () => {},
-  exists: async (p: string) => files.has(p),
 }));
 
 import * as store from './trustStore';
@@ -27,7 +20,7 @@ const A2 = 'asset-2';
 
 describe('trustStore (persistence + accessors)', () => {
   beforeEach(() => {
-    files.clear();
+    led.json = null;
     store._resetForTests();
   });
 
@@ -39,8 +32,8 @@ describe('trustStore (persistence + accessors)', () => {
   it('createTrustedDeck persists — survives a cache reset (reload from disk)', async () => {
     await store.createTrustedDeck('tok');
     expect(await store.isTrusted('tok')).toBe(true);
-    // a file was written
-    expect([...files.keys()]).toContain('/appdata/asset-trust-ledger.json');
+    // a ledger was written
+    expect(led.json).not.toBeNull();
     // drop the in-memory cache → must reload from the persisted file
     store._resetForTests();
     expect(await store.isTrusted('tok')).toBe(true);
@@ -84,7 +77,7 @@ describe('trustStore (persistence + accessors)', () => {
   });
 
   it('a corrupt ledger file starts clean (fail-safe: untrusted)', async () => {
-    files.set('/appdata/asset-trust-ledger.json', '{not json');
+    led.json = '{not json';
     store._resetForTests();
     expect(await store.isTrusted('tok')).toBe(false);
   });

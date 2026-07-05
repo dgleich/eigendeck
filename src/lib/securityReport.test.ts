@@ -14,8 +14,11 @@ const { fx, files } = vi.hoisted(() => ({
 }));
 
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: async (cmd: string) => {
+  invoke: async (cmd: string, args?: { json?: string }) => {
     if (cmd === 'db_list_linked_assets') return fx.linked;
+    // trust ledger now persists via Rust commands (backed by the `files` slot).
+    if (cmd === 'read_trust_ledger') return files.get('ledger') ?? null;
+    if (cmd === 'write_trust_ledger') { files.set('ledger', args!.json!); return undefined; }
     throw new Error(`unexpected invoke ${cmd}`);
   },
 }));

@@ -9,56 +9,25 @@
 // The ledger is app-side (per docs/ASSETS-SECURITY.md) — one ledger per machine,
 // keyed by deck-token; it is NOT stored in any deck.
 
+import { invoke } from '@tauri-apps/api/core';
 import { TrustLedger } from './trustLedger.mjs';
 
-const LEDGER_FILE = 'asset-trust-ledger.json';
-
-type FsLike = {
-  appDataDir: () => Promise<string>;
-  join: (...p: string[]) => Promise<string>;
-  readTextFile: (p: string) => Promise<string>;
-  writeTextFile: (p: string, s: string) => Promise<void>;
-  mkdir: (p: string, o?: { recursive?: boolean }) => Promise<void>;
-  exists: (p: string) => Promise<boolean>;
-};
-
-// Resolve the Tauri path/fs APIs once; null when unavailable (non-Tauri context).
-let _fs: FsLike | null | undefined;
-async function fs(): Promise<FsLike | null> {
-  if (_fs !== undefined) return _fs;
-  try {
-    const path = await import('@tauri-apps/api/path');
-    const plugin = await import('@tauri-apps/plugin-fs');
-    _fs = {
-      appDataDir: path.appDataDir,
-      join: path.join,
-      readTextFile: plugin.readTextFile,
-      writeTextFile: plugin.writeTextFile,
-      mkdir: plugin.mkdir,
-      exists: plugin.exists,
-    };
-  } catch {
-    _fs = null;
-  }
-  return _fs;
-}
+// Persistence is the Rust read_trust_ledger / write_trust_ledger pair (app-data
+// JSON, dir created before write, None-on-missing). The webview has no fs-plugin
+// access; these commands own the file I/O. In a non-Tauri context (tests/CLI)
+// `invoke` throws → we degrade to an in-memory-only ledger, so callers never
+// special-case it.
 
 let _ledger: Promise<TrustLedger> | null = null;
 
-async function ledgerPath(f: FsLike): Promise<string> {
-  const dir = await f.appDataDir();
-  return f.join(dir, LEDGER_FILE);
-}
-
 async function loadLedger(): Promise<TrustLedger> {
-  const f = await fs();
-  if (!f) return new TrustLedger(); // in-memory only
   try {
-    const p = await ledgerPath(f);
-    if (!(await f.exists(p))) return new TrustLedger();
-    return TrustLedger.deserialize(JSON.parse(await f.readTextFile(p)));
+    const json = await invoke<string | null>('read_trust_ledger');
+    if (!json) return new TrustLedger(); // missing → empty (fail-safe: untrusted)
+    return TrustLedger.deserialize(JSON.parse(json));
   } catch {
-    return new TrustLedger(); // corrupt/unreadable → start clean (fail-safe: untrusted)
+    // non-Tauri context, or corrupt/unreadable JSON → start clean (untrusted).
+    return new TrustLedger();
   }
 }
 
@@ -70,14 +39,11 @@ function ledger(): Promise<TrustLedger> {
 
 /** Best-effort write-through. Never throws — a failed persist must not break the
  *  app; worst case a trust decision doesn't survive a restart (fail-safe: the deck
- *  re-prompts, it never silently gains trust). */
+ *  re-prompts, it never silently gains trust). The Rust command creates the
+ *  app-data dir before writing. */
 async function persist(l: TrustLedger): Promise<void> {
-  const f = await fs();
-  if (!f) return;
   try {
-    const dir = await f.appDataDir();
-    await f.mkdir(dir, { recursive: true }).catch(() => {});
-    await f.writeTextFile(await ledgerPath(f), JSON.stringify(l.serialize()));
+    await invoke('write_trust_ledger', { json: JSON.stringify(l.serialize()) });
   } catch { /* ignore — see doc comment */ }
 }
 
@@ -171,5 +137,4 @@ export function invalidateLedgerCache(): void {
 /** Test seam: forget the cached ledger so the next call reloads from disk. */
 export function _resetForTests(): void {
   _ledger = null;
-  _fs = undefined;
 }
