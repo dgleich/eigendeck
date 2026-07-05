@@ -18,7 +18,9 @@ import { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
 // notebook.css has no url()/@import deps so this is the full sheet.)
 import nbCss from '../components/notebook/notebook.css?inline';
 import { NotebookCells } from '../components/notebook/NotebookCells';
+import { StaticExportContext } from '../components/notebook/CellOutput';
 import { loadMarked } from '../components/notebook/MarkdownCell';
+import { preloadSanitizer, sanitizeHtml } from './sanitizeHtml';
 import { filterMerged } from '../components/notebook/NotebookContent';
 import { parseNotebookBytes } from './notebookParser';
 import { mergeNotebook } from './notebookOverlay';
@@ -70,6 +72,11 @@ export async function renderNotebookElementHtml(
   const highlights = new Map<string, string>();
   const markdowns = new Map<string, string>();
   const md = await loadMarked();
+  // Cell OUTPUTS (html/svg) are sanitized SYNCHRONOUSLY during renderToStaticMarkup
+  // via StaticExportContext, so preload DOMPurify once here first. Markdown is
+  // pre-rendered below and also sanitized (untrusted deck content).
+  await preloadSanitizer();
+  const mdSafe = async (src: string) => sanitizeHtml(await md(src));
   for (const m of merged) {
     if (m.origin === 'ipynb') {
       const c = m.cell;
@@ -80,7 +87,7 @@ export async function renderNotebookElementHtml(
           highlights.set(`i${c.index}`, await highlightCode(display, language));
         }
       } else if (c.kind === 'markdown') {
-        markdowns.set(`i${c.index}`, await md(m.source));
+        markdowns.set(`i${c.index}`, await mdSafe(m.source));
       }
     } else {
       const a = m.appended;
@@ -90,7 +97,7 @@ export async function renderNotebookElementHtml(
           highlights.set(key, await highlightCode(a.source.replace(/\n$/, ''), language));
         }
       } else {
-        markdowns.set(key, await md(a.source));
+        markdowns.set(key, await mdSafe(a.source));
       }
     }
   }
@@ -101,18 +108,20 @@ export async function renderNotebookElementHtml(
   const dark = isDarkTheme(theme);
   const kernelDisplayName = nb.kernelDisplayName ?? nb.kernelspecName ?? null;
   const body = renderToStaticMarkup(
-    <NotebookCells
-      merged={merged}
-      language={language}
-      highlight={highlight}
-      dark={dark}
-      baseSize={baseSize}
-      showLineNumbers={element.showLineNumbers}
-      hideHeader={element.hideHeader === true}
-      kernelDisplayName={kernelDisplayName}
-      highlights={highlights}
-      markdowns={markdowns}
-    />,
+    <StaticExportContext.Provider value={true}>
+      <NotebookCells
+        merged={merged}
+        language={language}
+        highlight={highlight}
+        dark={dark}
+        baseSize={baseSize}
+        showLineNumbers={element.showLineNumbers}
+        hideHeader={element.hideHeader === true}
+        kernelDisplayName={kernelDisplayName}
+        highlights={highlights}
+        markdowns={markdowns}
+      />
+    </StaticExportContext.Provider>,
   );
 
   // 6. Compute the same --nb-* CSS variables + frame class NotebookContent

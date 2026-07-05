@@ -51,6 +51,14 @@ describe('sanitizeSvg', () => {
     expect(out).toMatch(/href="#ok"/); // the safe fragment ref survives
   });
 
+  it('drops external/data refs on <image> and <feImage> too, not just <use>', async () => {
+    const img = await sanitizeSvg('<svg><image href="data:image/svg+xml,<svg onload=alert(1)/>"/></svg>');
+    expect(img).not.toContain('data:image/svg');
+    expect(img).not.toContain('onload');
+    const fe = await sanitizeSvg('<svg><filter><feImage href="https://evil.example/x.svg"/></filter></svg>');
+    expect(fe).not.toContain('evil.example');
+  });
+
   it('returns empty string for empty input', async () => {
     expect(await sanitizeSvg('')).toBe('');
     expect(await sanitizeSvg(undefined)).toBe('');
@@ -97,6 +105,11 @@ describe('outputHasExecutable', () => {
   it('detects a LEADING <script> (parser hoists it to <head>)', () => {
     // regression: a body-only scan misses this and would inline (strip) the script
     expect(outputHasExecutable('<script>Plotly.newPlot()</script><div id="p"></div>')).toBe(true);
+  });
+
+  it('routes <style>-bearing output (pandas Styler) to the iframe, not inline', () => {
+    // <style> would be stripped inline (unstyled table); contain it instead
+    expect(outputHasExecutable('<style>.c{color:red}</style><table class="c"><tr><td>1</td></tr></table>')).toBe(true);
   });
 
   it('is true for event handlers and javascript: urls', () => {

@@ -81,6 +81,37 @@ describe('renderNotebookElementHtml', () => {
     // notebook.css inlined → the scoped .nb-body overflow rule travels with it.
     expect(html).toContain('nb-body');
   });
+
+  it('renders html/svg cell outputs (sanitized) — not blanked by async sanitize', async () => {
+    // Regression: SanitizedBlock sanitizes in a useEffect, which renderToStaticMarkup
+    // can't run, so without the sync export path html/svg outputs would export EMPTY.
+    const ipynb = JSON.stringify({
+      nbformat: 4, nbformat_minor: 5,
+      metadata: { language_info: { name: 'python' } },
+      cells: [
+        { cell_type: 'markdown', source: ['# MD-EXPORT-OK\n\n<img src=x onerror="pwn()">'] },
+        { cell_type: 'code', execution_count: 1, source: ['df'], outputs: [
+          { output_type: 'execute_result', execution_count: 1, metadata: {},
+            data: { 'text/html': ['<table><tr><td>TABLE-EXPORT-OK</td></tr></table><script>steal()</script>'],
+                    'image/svg+xml': ['<svg><text>SVG-EXPORT-OK</text><script>evil()</script></svg>'] } },
+        ] },
+      ],
+    });
+    const html = await renderNotebookElementHtml(
+      ELEMENT, SLIDE, PRESENTATION,
+      async (id) => { if (id === 'a-nb-1') return new TextEncoder().encode(ipynb); throw new Error('no'); },
+    );
+    const body = unescapeSrcdoc(html);
+    // svg preferred over html in the bundle → the SVG output must be present, sanitized
+    expect(body).toContain('SVG-EXPORT-OK');
+    // markdown rendered + sanitized (onerror stripped, not executable in the exported file)
+    expect(body).toContain('MD-EXPORT-OK');
+    expect(body.toLowerCase()).not.toContain('onerror');
+    // no raw script survives anywhere in the exported output
+    expect(body).not.toContain('steal()');
+    expect(body).not.toContain('evil()');
+    expect(body).not.toContain('pwn()');
+  });
 });
 
 // --- option permutations ---------------------------------------------------

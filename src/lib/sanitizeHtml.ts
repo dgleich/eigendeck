@@ -35,10 +35,12 @@ function getPurify(): Promise<Purify | null> {
         // and it can't reach external/data: SVG (the actual <use> XSS).
         p.addHook?.('uponSanitizeAttribute', (node, data) => {
           if ((data.attrName === 'href' || data.attrName === 'xlink:href') && !data.attrValue.startsWith('#')) {
-            // <use> (svg) may only reference in-document fragments; but a normal
-            // <a href="https://…"> in html output is fine — keep those.
+            // SVG elements that PULL external content (<use>/<image>/<feImage>) may
+            // only reference in-document fragments (#id) — an external/data: ref is
+            // the SVG-include XSS class. A normal <a href="https://…"> in html output
+            // is fine, so constrain only the content-pulling elements.
             const tag = (node as Element)?.tagName?.toLowerCase?.();
-            if (tag === 'use') data.keepAttr = false;
+            if (tag === 'use' || tag === 'image' || tag === 'feimage') data.keepAttr = false;
           }
         });
         // Any link that survives opens externally with no window.opener handle.
@@ -94,8 +96,27 @@ export async function sanitizeHtml(html: string | undefined | null): Promise<str
   return purify.sanitize(html, HTML_CFG);
 }
 
-// Tags that carry (or load) executable content or that we never inline.
-const EXEC_TAGS = new Set(['script', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'template']);
+// Synchronous sanitize, for the static HTML export: it renders via
+// renderToStaticMarkup (no effects/await per element), so it preloads DOMPurify
+// once up front, then sanitizes each output synchronously during render. Returns
+// '' if not preloaded — call preloadSanitizer() first.
+let _purifySync: Purify | null = null;
+export async function preloadSanitizer(): Promise<void> { _purifySync = await getPurify(); }
+export function sanitizeHtmlSync(html: string | undefined | null): string {
+  if (!html || !_purifySync) return '';
+  return _purifySync.sanitize(html, HTML_CFG);
+}
+export function sanitizeSvgSync(svg: string | undefined | null): string {
+  if (!svg || !_purifySync) return '';
+  return _purifySync.sanitize(svg, SVG_CFG);
+}
+
+// Tags that carry (or load) executable content, or CSS we won't inline into the
+// privileged frame. <style>/<link> are here because a <style> block scopes an
+// output's own CSS (pandas Styler / df.style is exactly this) — DOMPurify would
+// strip it inline (unstyled table), and its CSS can @import/url()-exfil, so such
+// output is routed to the opaque iframe where the CSS renders fully and harmlessly.
+const EXEC_TAGS = new Set(['script', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'template', 'style']);
 
 /**
  * Does this notebook `text/html` output carry executable content? If so it is
