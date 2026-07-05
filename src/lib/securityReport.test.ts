@@ -48,14 +48,8 @@ vi.mock('../store/presentation', () => ({
   },
   getDeckToken: () => fx.deckToken,
 }));
-// In-memory ledger persistence (so the REAL trustStore/trustLedger run without Tauri).
-vi.mock('@tauri-apps/api/path', () => ({ appDataDir: async () => '/appdata', join: async (...p: string[]) => p.join('/') }));
-vi.mock('@tauri-apps/plugin-fs', () => ({
-  readTextFile: async (p: string) => { if (!files.has(p)) throw new Error('ENOENT'); return files.get(p)!; },
-  writeTextFile: async (p: string, s: string) => { files.set(p, s); },
-  mkdir: async () => {},
-  exists: async (p: string) => files.has(p),
-}));
+// Ledger persistence is the Rust read/write_trust_ledger invokes (mocked above,
+// backed by the `files` slot) so the REAL trustStore/trustLedger run in tests.
 
 import * as report from './securityReport';
 import * as trustStore from './trustStore';

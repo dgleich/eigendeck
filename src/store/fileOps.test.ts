@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { open, save, message } from '@tauri-apps/plugin-dialog';
-import { exists } from '@tauri-apps/plugin-fs';
+import { invoke } from '@tauri-apps/api/core';
 import { openProject, saveProject, createProject, openRecentProject, getRecentProjects } from './fileOps';
 import { usePresentationStore } from './presentation';
 import { createDefaultPresentation } from '../types/presentation';
@@ -71,7 +71,8 @@ describe('file operations (SQLite only)', () => {
       localStorage.setItem('eigendeck-recent-projects',
         JSON.stringify([{ path: DEAD, title: 'Gone', lastOpened: 'x' }]));
       const before = usePresentationStore.getState().presentation;
-      vi.mocked(exists).mockResolvedValue(false);
+      // existsNative → invoke('path_exists'); the dead recent file doesn't exist.
+      vi.mocked(invoke).mockImplementation(async (cmd: string) => (cmd === 'path_exists' ? false : undefined));
 
       await openRecentProject(DEAD);
 
