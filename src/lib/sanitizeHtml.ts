@@ -108,7 +108,10 @@ export function outputHasExecutable(html: string | undefined | null): boolean {
   if (!html || html.indexOf('<') < 0) return false;
   let doc: Document;
   try { doc = new DOMParser().parseFromString(html, 'text/html'); } catch { return true; }
-  for (const el of Array.from(doc.body?.getElementsByTagName('*') || [])) {
+  // Scan the WHOLE tree, not just body: a fragment that starts with <script>
+  // (or <link>/<meta>) is hoisted into <head> by the parser, so a body-only scan
+  // would miss it and wrongly route executable output to the inline sanitizer.
+  for (const el of Array.from(doc.documentElement?.getElementsByTagName('*') || [])) {
     if (EXEC_TAGS.has(el.tagName.toLowerCase())) return true;
     for (const attr of Array.from(el.attributes)) {
       const name = attr.name.toLowerCase();

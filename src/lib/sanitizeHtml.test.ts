@@ -94,6 +94,11 @@ describe('outputHasExecutable', () => {
     expect(outputHasExecutable('<div id="plot"></div><script>Plotly.newPlot("plot",[])</script>')).toBe(true);
   });
 
+  it('detects a LEADING <script> (parser hoists it to <head>)', () => {
+    // regression: a body-only scan misses this and would inline (strip) the script
+    expect(outputHasExecutable('<script>Plotly.newPlot()</script><div id="p"></div>')).toBe(true);
+  });
+
   it('is true for event handlers and javascript: urls', () => {
     expect(outputHasExecutable('<img src=x onerror="pwn()">')).toBe(true);
     expect(outputHasExecutable('<a href="javascript:evil()">x</a>')).toBe(true);

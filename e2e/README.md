@@ -284,3 +284,27 @@ Affects ALL animated demos (single + multi-part), not just the relay.
 NOT in the gating suite yet: it is RED until the throttle is addressed (see the
 demo-platform framerate discussion). Same fixture also measures multi-part relay
 throughput (controller fps + viewport received/sec).
+
+## Notebook output isolation (nb-security-probe.mjs, docs/NOTEBOOK-ISOLATION.md)
+
+Verifies the audit **C-1/C-2/C-5** fix end-to-end. `make_nb_security_deck.py`
+builds a deck whose notebook (recorded outputs, no kernel needed) carries the
+payloads: an INTERACTIVE `text/html` output (has `<script>`), a STATIC `text/html`
+output (a table), and a MARKDOWN cell with `<img onerror=…>`. The probe asserts:
+
+  1. the interactive output **ran** (interactivity survives) …
+  2. … from a CONTAINED origin — accessing `window.top.__TAURI_INTERNALS__` throws
+     (`tauri=blocked:SecurityError`), so the output can't reach Tauri;
+  3. the markdown `<img onerror>` **never fired** (sanitized);
+  4. DOM shape: interactive → `iframe.el-demo-frame` (`sandbox="allow-scripts"`),
+     static → inline.
+
+    python3 e2e/fixtures/make_nb_security_deck.py /tmp/nbsec.json
+    /tmp/el-target/debug/eigendeck-cli /tmp/nbsec.eigendeck import json /tmp/nbsec.json
+    PROBE=$PWD/e2e/nb-security-probe.mjs E2E_DECK=/tmp/nbsec.eigendeck bash e2e/run-probe.sh
+    # -> NBSEC_PASS
+
+Note: the payload defers its self-report (load + setTimeout) — a parse-time
+`postMessage` from a freshly-mounted opaque iframe can be lost to the mount race
+(real outputs like Plotly render at parse time and don't post to the parent, so
+this is a probe artifact, not a functional issue).
