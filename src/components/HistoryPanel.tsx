@@ -9,6 +9,17 @@ interface HistoryEntry {
   summary: string;
 }
 
+// Sanitize each history element's html once and cache by the element object
+// (snapshot elements are stable across the panel's re-renders / slide stepping),
+// so we don't re-parse+sanitize every text box on every render.
+const _richCache = new WeakMap<object, string>();
+function cachedSanitizeRichText(el: { html?: string }): string {
+  if (!el.html) return '';
+  let v = _richCache.get(el);
+  if (v === undefined) { v = sanitizeRichText(el.html); _richCache.set(el, v); }
+  return v;
+}
+
 /** Format a timestamp like "2026-04-15T10:30:45.123Z-00000042" for display */
 function formatTime(ts: string): string {
   // Strip the sequence suffix
@@ -149,7 +160,7 @@ export function HistoryPanel() {
                     color: el.color ?? '#222',
                     overflow: 'hidden',
                   }}
-                  dangerouslySetInnerHTML={el.html ? { __html: sanitizeRichText(el.html) } : undefined}
+                  dangerouslySetInnerHTML={el.html ? { __html: cachedSanitizeRichText(el) } : undefined}
                 >
                   {!el.html && el.type === 'image' && (
                     <div style={{ width: '100%', height: '100%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: '#9ca3af' }}>img</div>

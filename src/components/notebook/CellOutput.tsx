@@ -10,7 +10,7 @@
 // DOMPurify'd inline; text/html that carries executable content (Plotly etc.)
 // is mounted in an opaque-origin sandboxed iframe, kept interactive + contained.
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { CellOutput as CellOutputT, MimeBundle, joinMultiline } from '../../lib/notebookFormat';
 import { sanitizeHtml, sanitizeSvg, sanitizeHtmlSync, sanitizeSvgSync, outputHasExecutable } from '../../lib/sanitizeHtml';
 import { IsolatedOutput } from './IsolatedOutput';
@@ -46,6 +46,9 @@ export function CellOutput({ output }: { output: CellOutputT }) {
 
 function MimeRender({ bundle }: { bundle: MimeBundle }) {
   const staticExport = useContext(StaticExportContext);
+  const html = bundle['text/html'] ? joinMultiline(bundle['text/html']) : null;
+  // The routing decision parses the whole output; memoize it per html string.
+  const htmlExecutable = useMemo(() => (html != null ? outputHasExecutable(html) : false), [html]);
   if (bundle['image/png']) {
     const b64 = typeof bundle['image/png'] === 'string'
       ? bundle['image/png']
@@ -58,8 +61,7 @@ function MimeRender({ bundle }: { bundle: MimeBundle }) {
       ? <div className="nb-output nb-image" dangerouslySetInnerHTML={{ __html: sanitizeSvgSync(svg) }} />
       : <SanitizedBlock raw={svg} kind="svg" className="nb-output nb-image" />;
   }
-  if (bundle['text/html']) {
-    const html = joinMultiline(bundle['text/html']);
+  if (html != null) {
     // Export: no scripts can run in the srcdoc, so render sanitized-inline (static)
     // for everything — no blob iframe (it would be a dead src in the exported file).
     if (staticExport) {
@@ -67,7 +69,7 @@ function MimeRender({ bundle }: { bundle: MimeBundle }) {
     }
     // Live: executable output (Plotly etc.) → contained-but-interactive iframe;
     // static output (pandas tables, styled divs) → sanitized inline.
-    return outputHasExecutable(html)
+    return htmlExecutable
       ? <IsolatedOutput html={html} />
       : <SanitizedBlock raw={html} kind="html" className="nb-output nb-html" />;
   }

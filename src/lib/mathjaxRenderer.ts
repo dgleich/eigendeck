@@ -82,19 +82,20 @@ export async function warmMathCacheFromSqlite(): Promise<number> {
     const rows = await invoke<Array<{ key: string; tex: string; bundle: string; display: boolean; preamble: string; svg: string; width: string | null; height: string | null; valign: string | null }>>(
       'db_load_math_cache'
     );
-    for (const row of rows) {
+    // SVG from the deck's math_cache is UNTRUSTED (a crafted .eigendeck can poison
+    // a row with <script>/foreignObject); sanitize at this DB→memory edge so every
+    // downstream splice into slide text is clean (audit C-4). Fresh renders (from
+    // the MathJax iframe) skip this — they're app-generated. Sanitize in parallel
+    // (DOMPurify is loaded once) so the warm-up isn't serialized per row.
+    await Promise.all(rows.map(async (row) => {
       const pool = getOrCreatePool(row.bundle);
-      // SVG from the deck's math_cache is UNTRUSTED (a crafted .eigendeck can
-      // poison a row with <script>/foreignObject); sanitize at this DB→memory
-      // edge so every downstream splice into slide text is clean (audit C-4).
-      // Fresh renders (from the MathJax iframe) skip this — they're app-generated.
       pool.cache.set(row.key, {
         svg: await sanitizeSvg(row.svg),
         width: row.width || '',
         height: row.height || '',
         valign: row.valign || '',
       });
-    }
+    }));
     return rows.length;
   } catch { return 0; }
 }

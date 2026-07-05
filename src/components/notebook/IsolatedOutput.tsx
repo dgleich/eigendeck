@@ -9,7 +9,7 @@
 // reports its content height back so the box grows to fit.
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { buildIsolatedOutputUrl, useDeckFontFacesCss } from '../../lib/demoMount';
+import { buildIsolatedOutputUrl, invalidateIsolatedOutput, useDeckFontFacesCss } from '../../lib/demoMount';
 import { demoVarsCssForSlide } from '../../lib/demoThemeInject';
 import { usePresentationStore } from '../../store/presentation';
 
@@ -22,12 +22,21 @@ export function IsolatedOutput({ html }: { html: string }) {
   const config = usePresentationStore((s) => s.presentation.config);
   const theme = usePresentationStore((s) => s.presentation.theme);
   const slide = usePresentationStore((s) => s.presentation.slides[s.currentSlideIndex]);
-  const varsCss = slide ? demoVarsCssForSlide(config, theme, slide) : '';
+  // demoVarsCssForSlide resolves the theme + font packages; memoize so it doesn't
+  // recompute (and re-hash into the blob key) on every unrelated store re-render.
+  const varsCss = useMemo(
+    () => (slide ? demoVarsCssForSlide(config, theme, slide) : ''),
+    [config, theme, slide],
+  );
 
   const src = useMemo(
     () => buildIsolatedOutputUrl(html, { channelKey, varsCss, fontFacesCss }),
     [html, channelKey, varsCss, fontFacesCss],
   );
+
+  // Revoke this instance's blob(s) on unmount — channelKey is unique per mount,
+  // so nothing else supersedes them.
+  useEffect(() => () => invalidateIsolatedOutput(channelKey), [channelKey]);
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {

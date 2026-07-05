@@ -109,6 +109,15 @@ export function buildIsolatedOutputUrl(html: string, opts: {
   return url;
 }
 
+/** Revoke + drop all cached blobs for an output instance (its channelKey is
+ *  unique per mount). Call on IsolatedOutput unmount so blobs don't accumulate
+ *  across a long presenting session. */
+export function invalidateIsolatedOutput(channelKey: string): void {
+  for (const [k, u] of outputBlobCache) {
+    if (k.includes(` ${channelKey} `)) { URL.revokeObjectURL(u); outputBlobCache.delete(k); }
+  }
+}
+
 /** React hook: the opaque-origin demo document URL, rebuilt when inputs change. */
 export function useDemoDoc(assetId: string | undefined, opts: DemoMountOpts): string | null | undefined {
   const { hash, channelKey, varsCss, fontFacesCss, capture } = opts;

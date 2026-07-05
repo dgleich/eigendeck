@@ -26,9 +26,10 @@ function getPurify(): Promise<Purify | null> {
     _purify = import('dompurify')
       .then((m) => {
         const p = (m.default ?? m) as Purify;
-        // DOMPurify is inert without a DOM (its sanitize is a no-op stub). Only
-        // hand back an instance that can actually filter.
-        if (typeof p?.sanitize !== 'function' || p.sanitize('<svg></svg>', {}) === undefined) return null;
+        // DOMPurify needs a DOM to filter (it's an inert stub without one). Gate on
+        // the DOM directly rather than probing sanitize()'s return — a build that
+        // changed the stub's return value could otherwise flip us fail-open.
+        if (typeof p?.sanitize !== 'function' || typeof document === 'undefined') return null;
         // MathJax references glyph <path>s via <use>, which the svg profile drops
         // as an external-content vector. Re-allow it (see SVG_CFG) but constrain
         // its href to in-document fragment refs (#id) — that's all MathJax emits,
