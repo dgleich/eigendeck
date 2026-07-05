@@ -29,6 +29,7 @@
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2.4.5",
     "@tauri-apps/plugin-opener": "^2",
+    "dompurify": "3.2.4",
     "highlight.js": "^11.11.1",
     "marked": "^18.0.4",
     "modern-screenshot": "4.7.0",

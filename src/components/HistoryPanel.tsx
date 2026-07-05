@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, flushToSqlite } from '../store/presentation';
+import { sanitizeRichText } from '../lib/sanitizeRichText';
 import type { Presentation } from '../types/presentation';
 
 interface HistoryEntry {
@@ -148,7 +149,7 @@ export function HistoryPanel() {
                     color: el.color ?? '#222',
                     overflow: 'hidden',
                   }}
-                  dangerouslySetInnerHTML={el.html ? { __html: el.html } : undefined}
+                  dangerouslySetInnerHTML={el.html ? { __html: sanitizeRichText(el.html) } : undefined}
                 >
                   {!el.html && el.type === 'image' && (
                     <div style={{ width: '100%', height: '100%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: '#9ca3af' }}>img</div>

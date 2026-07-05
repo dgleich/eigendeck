@@ -27,6 +27,7 @@
  */
 
 import { resolveFontPackage } from './fonts';
+import { sanitizeSvg } from './sanitizeHtml';
 
 /**
  * Stable cache key for (tex, bundle, display, preamble). The same string is
@@ -83,8 +84,12 @@ export async function warmMathCacheFromSqlite(): Promise<number> {
     );
     for (const row of rows) {
       const pool = getOrCreatePool(row.bundle);
+      // SVG from the deck's math_cache is UNTRUSTED (a crafted .eigendeck can
+      // poison a row with <script>/foreignObject); sanitize at this DB→memory
+      // edge so every downstream splice into slide text is clean (audit C-4).
+      // Fresh renders (from the MathJax iframe) skip this — they're app-generated.
       pool.cache.set(row.key, {
-        svg: row.svg,
+        svg: await sanitizeSvg(row.svg),
         width: row.width || '',
         height: row.height || '',
         valign: row.valign || '',
