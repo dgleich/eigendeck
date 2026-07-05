@@ -535,6 +535,66 @@ Use `linkId` to animate pieces between slides. Use `syncId` to keep pieces in sy
 - Controls viewport: render sliders/buttons, forward changes to controller
 - Visualization viewport: render from controller state
 
+### Optional: a slide-matched control kit (steal from the showcase)
+
+These are **suggestions, not requirements** — a demo works with any HTML. But the
+`example-demos/showcase/demos/*.html` demos share a small set of controls that
+read well on a slide (they're HTML overlaid on the canvas, styled to feel like the
+deck rather than browser-default widgets). Copy whichever you like. All use the
+theme vars with fallbacks (so they track the slide theme and survive a dark
+slide), and size in `em` (relative to the deck), never hardcoded `px`. Each demo
+namespaces its classes with a short prefix (`fr-` fourier, `ts-` tiled-svd, …) to
+avoid clashes.
+
+**Segmented buttons** — a rounded group where the selected one gets the accent fill
+(fourier signal picker, drum shape, molecule list):
+
+```html
+<span class="seg" id="pick">
+  <button data-v="a" class="on">Square</button><button data-v="b">Chirp</button><button data-v="c">Noisy</button>
+</span>
+```
+```css
+.seg { display:inline-flex; border:1px solid color-mix(in srgb, var(--eigendeck-fg,#333) 26%, transparent); border-radius:6px; overflow:hidden; }
+.seg button { border:0; background:transparent; color:var(--eigendeck-fg,#222); font:inherit; cursor:pointer; padding:.3em .7em; }
+.seg button.on { background:var(--eigendeck-accent,#2563eb); color:#fff; }
+```
+
+**Labelled slider** — a muted label, a themed native range, and an accent
+tabular-nums value (SGD `step`, fourier `keep`, tiled-svd `storage`):
+
+```html
+<span class="row"><span>keep</span>
+  <input type="range" min="1" max="48" value="6" id="k">
+  <span class="val" id="kv">6</span></span>
+```
+```css
+.row { display:flex; align-items:center; gap:.55em; font-size:.62em; color:var(--eigendeck-muted,#888); }
+input[type=range] { accent-color:var(--eigendeck-accent,#2563eb);
+  background: color-mix(in srgb, var(--eigendeck-fg,#333) 20%, transparent); border-radius:4px; height:.35em; }
+.val { color:var(--eigendeck-accent,#2563eb); font-weight:700; font-variant-numeric:tabular-nums; }
+```
+
+**Plain button** (`reset`, `clear`, `new sequence`) — a faint fg-tint fill, accent
+hover; keep it ~0.8–1em of the base size, readable from the back of a room:
+
+```css
+.btn { border:1px solid color-mix(in srgb,var(--eigendeck-fg,#333) 22%,transparent);
+  background: color-mix(in srgb,var(--eigendeck-fg,#333) 6%,transparent); color:var(--eigendeck-fg,#222);
+  font:inherit; border-radius:7px; padding:.35em 1em; cursor:pointer; }
+.btn:hover { background: color-mix(in srgb,var(--eigendeck-accent,#2563eb) 14%,transparent); }
+```
+
+Other showcase idioms worth borrowing: a **readout** (`mode 3 · λ = 0.08` — muted
+label + accent value), a **clickable list** (rows with hover bg + accent fill when
+selected — molecule viewer), a **thumbnail strip** (tiny `<canvas>` previews with
+an accent border on the selected — drum mode picker), and a **fading hint**
+(`drag to rotate` — muted text, `transition:opacity .4s`, add a `.gone{opacity:0}`
+class on first interaction). For a one-off compute, show a translucent "solving…"
+overlay and kick the work in `setTimeout(fn, 30)` so the overlay paints first (JS
+is single-threaded, and Tauri blocks blob Web Workers — so no worker). See
+`example-demos/showcase/README.md` for the full kit and which demo uses each.
+
 ### Step-by-Step Algorithm
 - Controller: maintain algorithm state (current step, data structures)
 - Visualization viewport: render current state
