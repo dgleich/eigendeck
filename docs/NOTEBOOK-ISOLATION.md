@@ -1,6 +1,6 @@
 # Eigendeck Notebook Isolation — design
 
-Status: **design, agreed 2026-07-05.** Not yet implemented. Companion to
+Status: **[v1] implemented 2026-07-05.** Companion to
 [`DEMO-PLATFORM.md`](DEMO-PLATFORM.md) (opaque-origin isolation for demo HTML) and
 to [`ASSETS-SECURITY.md`](ASSETS-SECURITY.md) (the trust/read model for assets).
 This document owns the *why* and the *rules* for how an embedded notebook's
@@ -137,18 +137,28 @@ No trust bit, no signature, no per-machine key anywhere in this design.
 
 ## 7. Interactivity: what works, what doesn't
 
-- **Works fully:** Plotly, bokeh, any self-contained JS/HTML widget (it runs in the
-  sandbox, talks to no one). Static matplotlib (png/svg) and pandas tables were
-  never affected — they render inline exactly as before.
-- **[deferred] ipywidgets / live Comm.** Widgets that need the Jupyter *Comm*
-  protocol (a live message channel back to the kernel) won't function from a jailed
-  iframe without a bridge. Deferred: a relayed Comm channel (the demo relay already
-  proves the pattern) could broker kernel messages to the output iframe later. Until
-  then, ipywidgets render their static initial state.
-- **No regression for the live-kernel path.** When a kernel is attached and a cell
-  is re-run, its fresh output flows through the same router: static inline,
-  interactive in an iframe. Running a cell is already arbitrary code execution via
-  the kernel; the *rendering* of its output stays contained either way.
+Per-output isolation is honest about one limit: a notebook output is authored
+assuming a **page-level runtime that loaded once** for the whole notebook, not as
+an independent document. So the guarantee is scoped to *self-contained* output.
+
+- **Works:** any output that carries its own runtime — Plotly with
+  `include_plotlyjs=True` (or a per-figure loader), self-contained JS/HTML widgets.
+  It runs in the sandbox, talks to no one, and is now safe. Static matplotlib
+  (png/svg) and pandas tables were never affected; they render inline as before.
+- **[deferred] Shared page runtime.** Outputs that assume a library loaded *once*
+  elsewhere on the page (Plotly `include_plotlyjs='cdn'` across several figures,
+  bokeh) can't see that shared global from their own `blob:` document, so a later
+  figure may not render. The fix is a coarser boundary (one iframe for the whole
+  notebook output region so the runtime loads once) — deferred until measured need.
+- **Not a regression: live ipywidgets.** ipywidgets never worked (no
+  `widget-view` mimetype renderer, no Comm protocol in the kernel client). This
+  design does not preserve them because there is nothing to preserve; building them
+  is tracked in **#119**, where they arrive over a relayed Comm channel to the
+  output iframe.
+- **Live-kernel path unchanged.** When a kernel is attached and a cell is re-run,
+  its fresh output flows through the same router (static inline, interactive in an
+  iframe). Running a cell is already arbitrary code execution via the kernel; the
+  *rendering* of its output stays contained either way.
 
 ## 8. Preview/thumbnail & export parity
 
@@ -176,25 +186,29 @@ No trust bit, no signature, no per-machine key anywhere in this design.
 
 ## 10. Phased delivery
 
-- **[v1] — the security fix.** Route static output + markdown through inline
-  sanitization; route script-bearing `text/html` through the opaque-origin iframe
-  with theme + self-sizing; extract `buildIsolatedDoc` from `demoMount`. Closes
-  C-1, C-2, C-5. Verified by: unit tests on the router + `outputWantsScripts`; an
-  e2e that opens a deck whose notebook output carries `<img onerror>` and asserts
-  no privileged execution (self-report over the bridge, as the demo probes do); a
-  visual check that Plotly stays interactive and matplotlib/pandas render inline.
-- **[deferred] — relayed Comm** for live ipywidgets in the output iframe.
-- **[deferred] — one-iframe-per-notebook** option, if per-widget iframes prove
-  too many for pathological decks (measured, not assumed).
+- **[v1] — DONE (2026-07-05).** Static output + markdown sanitized inline
+  (`sanitizeHtml`/`sanitizeSvg`); script-bearing `text/html` mounted in the
+  opaque-origin iframe (`buildIsolatedOutputUrl` + `IsolatedOutput` + the
+  `reportSize` bridge), routed by `outputHasExecutable`. Closes C-1, C-2, C-5.
+  Covered by unit tests on the sanitizers + detector and a `CellOutput` routing
+  test (static→inline, executable→`allow-scripts` iframe, svg sanitized).
+  Remaining verification: an e2e that opens a deck whose output carries
+  `<img onerror>` and asserts no privileged execution (bridge self-report, like
+  the demo probes); a real-app visual check that self-contained Plotly stays
+  interactive.
+- **[deferred] — whole-notebook-output iframe** to restore shared-page-runtime
+  widgets (§7), if measured need arises.
+- **[deferred] — live ipywidgets over a relayed Comm channel** (#119).
 
 ## 11. Files
 
-- `src/components/notebook/CellOutput.tsx` — route by output type; sanitize inline
-  or mount the interactive iframe.
-- `src/components/notebook/MarkdownCell.tsx` — sanitize `marked()` output.
-- `src/lib/demoMount.ts` — extract `buildIsolatedDoc(html, opts)`; add the
-  height-reporter to the injected bridge (`src/lib/demoBridge.ts`).
-- `src/lib/sanitizeHtml.ts` — add `sanitizeHtml` (HTML profile) alongside the
-  existing `sanitizeSvg`; add `outputWantsScripts`.
-- `src/lib/notebookExport.tsx` / `exportCore.mjs` — export parity for static +
-  interactive output.
+- `src/components/notebook/CellOutput.tsx` — route by output type; `SanitizedBlock`
+  inline or `IsolatedOutput` iframe. *(done)*
+- `src/components/notebook/IsolatedOutput.tsx` — opaque iframe + self-sizing. *(done)*
+- `src/components/notebook/MarkdownCell.tsx` — sanitize `marked()` output. *(done)*
+- `src/lib/demoMount.ts` — `buildIsolatedOutputUrl(html, opts)`; `reportSize`
+  bridge option in `src/lib/demoBridge.ts`. *(done)*
+- `src/lib/sanitizeHtml.ts` — `sanitizeHtml` (HTML profile) + `outputHasExecutable`
+  alongside `sanitizeSvg`. *(done)*
+- **[deferred]** `src/lib/notebookExport.tsx` / `exportCore.mjs` — export parity
+  (the static-HTML-export surface, separate from the in-app privileged frame).
