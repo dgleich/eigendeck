@@ -19,10 +19,46 @@
 //   - closeWatcherRegistry(projectId) on project switch or window close
 
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { sha256Hex } from './hash';
 import { invalidateRenderedAsset } from './assetRenderer';
 import { effectiveAutoReload, getPreference } from './preferences';
 import { markAssetMissing, markAssetFound, isAssetMissing } from './missingAssets';
+
+// --- Rust file-watch glue (replaces the JS fs-plugin `watch`) ----------------
+// watch_path returns an id; the Rust side emits `fs-watch-event` {id,path} per
+// change. One process-wide listener fans each event to the registered callback by
+// id. There is no delayMs anymore — Rust emits raw notify events and the per-path
+// COALESCE_MS window in handleChange collapses a save burst (as before).
+const watchCbs = new Map<number, () => void>();
+let watchListenerStarted = false;
+async function ensureWatchListener(): Promise<void> {
+  if (watchListenerStarted) return;
+  watchListenerStarted = true;
+  try {
+    await listen<{ id: number; path: string }>('fs-watch-event', (e) => {
+      watchCbs.get(e.payload.id)?.();
+    });
+  } catch { watchListenerStarted = false; } // non-Tauri context
+}
+/** Start watching `absPath`; returns an unwatch fn. */
+async function startWatch(absPath: string, cb: () => void): Promise<() => void> {
+  await ensureWatchListener();
+  const id = await invoke<number>('watch_path', { path: absPath });
+  watchCbs.set(id, cb);
+  return () => { watchCbs.delete(id); void invoke('unwatch_path', { id }).catch(() => {}); };
+}
+
+interface PathStat { mtimeMs: number | null; size: number; isFile: boolean; isDir: boolean }
+/** Rust path_stat; REJECTS on a missing path (callers rely on that to flag #74). */
+function pathStat(absPath: string): Promise<PathStat> {
+  return invoke<PathStat>('path_stat', { path: absPath });
+}
+/** ISO mtime string from a stat (matches the old plugin-fs `mtime.toISOString()`
+ *  millisecond precision), or null. */
+function statMtimeIso(st: PathStat | null): string | null {
+  return st && st.mtimeMs != null ? new Date(st.mtimeMs).toISOString() : null;
+}
 
 // Verbose logging surfaces in the in-app Debug Console (View menu)
 // because console.log is intercepted there. Prefix `[watcher]` so the
@@ -161,12 +197,10 @@ class WatcherRegistry {
     };
     this.watchers.set(absPath, placeholder);
     try {
-      const { watch } = await import('@tauri-apps/plugin-fs');
-      placeholder.unwatch = await watch(
-        absPath,
-        () => { wlog(`fs.watch FIRED for "${absPath}"`); void this.handleChange(absPath, externalRelPath); },
-        { delayMs: 100 },
-      );
+      placeholder.unwatch = await startWatch(absPath, () => {
+        wlog(`fs.watch FIRED for "${absPath}"`);
+        void this.handleChange(absPath, externalRelPath);
+      });
       wlog(`fs.watch REGISTERED for "${absPath}"`);
     } catch (e) {
       console.warn(`[watcher] watch "${absPath}" FAILED:`, e);
@@ -219,9 +253,8 @@ class WatcherRegistry {
     }
     const bytes = read.bytes;
     try {
-      const { stat } = await import('@tauri-apps/plugin-fs');
-      const st = await stat(absPath).catch(() => null);
-      const mtime = st?.mtime ? st.mtime.toISOString() : null;
+      const st = await pathStat(absPath).catch(() => null);
+      const mtime = statMtimeIso(st);
       wlog(`handleChange read ${bytes.length} bytes from "${absPath}" mtime=${mtime} → fanout to ${entry.assets.size} asset(s)`);
       for (const { assetId, path } of entry.assets.values()) {
         markAssetFound(assetId);  // a successful read means the source is back
@@ -354,14 +387,13 @@ export async function scanForChangedAssets(
     const { isTrusted } = await import('./trustStore');
     if (!(await isTrusted(token))) { wlog('scanForChangedAssets skipped — deck untrusted'); return { checked: 0, reloaded: 0 }; }
   }
-  const { stat } = await import('@tauri-apps/plugin-fs');
   for (const a of linked) {
     const absPath = resolvePosixPath(projectDir, a.external_path);
     // Existence check is UNGATED by the auto-reload toggle: a missing source
     // is worth flagging even when you've opted out of live reloads (#74).
-    let st;
+    let st: PathStat;
     try {
-      st = await stat(absPath);
+      st = await pathStat(absPath);
     } catch (e) {
       markAssetMissing(a.asset_id, a.path ?? a.external_path);
       wlog(`  source-missing ${a.asset_id.slice(0, 8)} path="${a.path}" abs="${absPath}": ${e}`);
@@ -374,7 +406,7 @@ export async function scanForChangedAssets(
       continue;
     }
     try {
-      const diskMtime = st?.mtime ? st.mtime.toISOString() : null;
+      const diskMtime = statMtimeIso(st);
       if (diskMtime && diskMtime !== a.external_mtime) {
         // mtime moved — read bytes and compare hash before deciding
         // whether to invalidate the rendered cache. Common case after
@@ -459,7 +491,6 @@ export async function relocateMissingByOffset(
   if (!offset) return { relocated: 0, checked: 0 };
   const { oldPrefix, newPrefix } = offset;
   const linked = await invoke<LinkedAssetRow[]>('db_list_linked_assets').catch(() => [] as LinkedAssetRow[]);
-  const { stat } = await import('@tauri-apps/plugin-fs');
   let relocated = 0, checked = 0;
   for (const a of linked) {
     if (a.asset_id === skipAssetId || !isAssetMissing(a.asset_id)) continue;
@@ -478,13 +509,13 @@ export async function relocateMissingByOffset(
       const read = await gatedExternalRead(candidate);
       if (read.status !== 'ok') continue;
       const bytes = read.bytes;
-      const st = await stat(candidate).catch(() => null);
+      const st = await pathStat(candidate).catch(() => null);
       await invoke('db_store_asset', {
         path: a.path ?? candidate.split('/').pop() ?? a.asset_id,
         data: Array.from(bytes),
         mimeType: a.mime_type ?? 'application/octet-stream',
         externalPath: candidate,
-        externalMtime: st?.mtime ? st.mtime.toISOString() : null,
+        externalMtime: statMtimeIso(st),
         assetId: a.asset_id,
         autoReload: null,
       });
