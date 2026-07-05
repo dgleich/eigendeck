@@ -20,6 +20,7 @@ import { effectiveAutoReload, usePreference } from '../lib/preferences';
 import { computeAssetUsage } from '../lib/assetUsage';
 import { useAssetMissing, markAssetMissing, markAssetFound } from '../lib/missingAssets';
 import { openSecurityWindow } from '../lib/securityWindow';
+import { statNative } from '../lib/nativeFs';
 
 interface AssetMeta {
   asset_id: string;
@@ -196,8 +197,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
         markAssetMissing(meta.asset_id, meta.path ?? meta.external_path);  // #74
         return;
       }
-      const { stat } = await import('@tauri-apps/plugin-fs');
-      const st = await stat(absPath).catch(() => null);
+      const st = await statNative(absPath).catch(() => null);
       const mtime = st?.mtime ? st.mtime.toISOString() : null;
       await storeAssetRaw({
         path: meta.path ?? '',
@@ -245,8 +245,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
         showToast({ kind: 'error', ttl: 8000, message: 'Couldn’t read that file.' });
         return;
       }
-      const { stat } = await import('@tauri-apps/plugin-fs');
-      const st = await stat(picked).catch(() => null);
+      const st = await statNative(picked).catch(() => null);
       const mtime = st?.mtime ? st.mtime.toISOString() : null;
       await storeAssetRaw({
         path: meta.path ?? '',

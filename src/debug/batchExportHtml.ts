@@ -7,7 +7,7 @@
 // exit ok AND zero CDN leaks.
 
 import { invoke } from '@tauri-apps/api/core';
-import { writeTextFile, mkdir } from '@tauri-apps/plugin-fs';
+import { writeTextFileNative, mkdirNative } from '../lib/nativeFs';
 // @ts-ignore — pure JS module shared with the CLI tool
 import { buildExportHtml } from '../lib/exportCore.mjs';
 import { buildEmbeddedFontFacesCSS } from '../lib/fonts';
@@ -49,7 +49,7 @@ async function exportOne(input: string, outputDir: string): Promise<ExportFileRe
       renderTextElement: makeTextElementRenderer(presentation),
       fontFacesCss,
     });
-    await writeTextFile(output, html);
+    await writeTextFileNative(output, html);
 
     const mathSvgs = (html.match(/role="img"/g) || []).length;
     const fontFamilies = [...new Set([...html.matchAll(/font-family: '([^']+)'/g)].map((m) => m[1]))].sort();
@@ -97,7 +97,7 @@ export async function runBatchExportHtml(): Promise<void> {
     const originalPath = usePresentationStore.getState().projectPath;
 
     const outDir = `${dir}/_debug-export`;
-    try { await mkdir(outDir, { recursive: true }); } catch { /* exists */ }
+    try { await mkdirNative(outDir); } catch { /* exists */ }
 
     const startWall = performance.now();
     const reports: ExportFileReport[] = [];

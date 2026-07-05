@@ -31,7 +31,7 @@ async function markNewDeckTrusted(presentation: Presentation): Promise<void> {
 }
 // @ts-ignore — pure JS module shared with the CLI tool
 import { buildExportHtml } from '../lib/exportCore.mjs';
-import { readTextFile, writeTextFile, exists } from '@tauri-apps/plugin-fs';
+import { readTextFileNative, writeTextFileNative, existsNative, mkdirNative } from '../lib/nativeFs';
 import {
   fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS, resolveMonoFontPackage,
 } from '../lib/fonts';
@@ -174,7 +174,7 @@ export async function openRecentProject(path: string): Promise<void> {
   // silently blanking the editor (#103). Check first: on a miss, surface an
   // error, prune the dead entry, and leave the current document untouched.
   try {
-    if (!(await exists(path))) {
+    if (!(await existsNative(path))) {
       removeRecentProject(path);
       await showError(`Can't open "${path.split('/').pop()}" — the file no longer exists. Removed it from Recent.`);
       return;
@@ -231,11 +231,10 @@ export async function createProject(): Promise<void> {
 export async function createScratchProject(): Promise<void> {
   try {
     const { documentDir, join } = await import('@tauri-apps/api/path');
-    const { mkdir } = await import('@tauri-apps/plugin-fs');
     // ~/Documents/Eigendeck — a real, user-visible, cross-platform home (macOS,
     // Windows, Linux XDG) so scratch decks are easy to find and keep.
     const dir = await join(await documentDir(), 'Eigendeck');
-    await mkdir(dir, { recursive: true }).catch(() => { /* already exists */ });
+    await mkdirNative(dir).catch(() => { /* already exists */ });
     const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ').replace(/:/g, '-');
     const title = `Scratch ${stamp}`;
     const path = await join(dir, `${title}.eigendeck`);
@@ -545,7 +544,7 @@ export async function exportPresentation(): Promise<void> {
 
   try {
     const html = await buildPresentationExportHtml(presentation);
-    await writeTextFile(selected as string, html);
+    await writeTextFileNative(selected as string, html);
   } catch (e) {
     await showError(`Failed to export: ${e}`);
   }
@@ -564,7 +563,7 @@ export async function importFromHtml(): Promise<void> {
   if (!htmlFile) return;
 
   try {
-    const htmlContent = await readTextFile(htmlFile as string);
+    const htmlContent = await readTextFileNative(htmlFile as string);
     const match = htmlContent.match(/<!-- eigendeck-source: (.+?) -->/);
     if (!match) {
       await showError('This HTML file does not contain embedded Eigendeck data.');

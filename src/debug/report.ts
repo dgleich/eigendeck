@@ -2,7 +2,7 @@
 // a native done dialog. Centralised so every batch action surfaces results
 // the same way.
 
-import { writeTextFile } from '@tauri-apps/plugin-fs';
+import { writeTextFileNative } from '../lib/nativeFs';
 import { message, ask } from '@tauri-apps/plugin-dialog';
 import type { RunMeta } from './types';
 
@@ -36,7 +36,7 @@ export async function writeReportAndAlert(
   report: object,
 ): Promise<string> {
   const path = `${dir}/debug-report-${meta.action}-${stampForFilename()}.json`;
-  await writeTextFile(path, JSON.stringify(report, null, 2));
+  await writeTextFileNative(path, JSON.stringify(report, null, 2));
   await message(
     `${meta.passed}/${meta.totalFiles} passed (${meta.failed} failed) in ${meta.elapsedSeconds.toFixed(1)}s\n\nReport: ${path}`,
     { title: `Debug: ${meta.action}`, kind: meta.failed === 0 ? 'info' : 'warning' },

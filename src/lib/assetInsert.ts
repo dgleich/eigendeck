@@ -223,15 +223,17 @@ async function autoApproveExternalPath(assetId: string, externalPath: string): P
  * returns null (caller should bail). Returns the bytes otherwise.
  */
 export async function readAddFileCapped(fullPath: string): Promise<Uint8Array | null> {
-  const { stat, readFile } = await import('@tauri-apps/plugin-fs');
+  const { statNative, readFileNative } = await import('./nativeFs');
   try {
-    const st = await stat(fullPath);
+    const st = await statNative(fullPath);
     if (typeof st.size === 'number' && st.size > MAX_ASSET_BYTES) {
       showToast({ kind: 'error', ttl: 9000, message: addRejectMessage('too-large', fullPath) });
       return null;
     }
-  } catch { /* stat failed → let readFile surface the real error below */ }
-  return readFile(fullPath);
+  } catch { /* stat failed → let the read surface the real error below */ }
+  // readFileNative goes through resolve_and_read (same MAX_ASSET_BYTES cap); the
+  // stat precheck above just gives the nicer "too large" toast before reading.
+  return readFileNative(fullPath);
 }
 
 export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<StoreResult> {

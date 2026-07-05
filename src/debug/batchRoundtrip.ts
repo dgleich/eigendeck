@@ -6,7 +6,7 @@
 // save round-trip from the UI's perspective, end-to-end through the schema.
 
 import { invoke } from '@tauri-apps/api/core';
-import { mkdir } from '@tauri-apps/plugin-fs';
+import { mkdirNative } from '../lib/nativeFs';
 import { usePresentationStore, openSqliteProject } from '../store/presentation';
 import { pickDirectoryWithEigendecks } from './dirPicker';
 import { writeReportAndAlert, showBatchError } from './report';
@@ -106,7 +106,7 @@ export async function runBatchRoundtrip(): Promise<void> {
     }
     const originalPath = usePresentationStore.getState().projectPath;
     const tempDir = `${dir}/_debug-roundtrip`;
-    try { await mkdir(tempDir, { recursive: true }); } catch { /* exists */ }
+    try { await mkdirNative(tempDir); } catch { /* exists */ }
 
     const startWall = performance.now();
     const reports: RoundtripFileReport[] = [];

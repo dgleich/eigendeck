@@ -16,6 +16,7 @@ import { hasEigendeckMarker } from '../lib/clipboard';
 import { handleSvgExternalRefs, invalidateRenderedAsset } from '../lib/assetRenderer';
 import type { SlideElement } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
+import { readTextFileNative } from '../lib/nativeFs';
 
 export const SLIDE_WIDTH = 1920;
 export const SLIDE_HEIGHT = 1080;
@@ -597,7 +598,6 @@ export function SlideEditor() {
                 } catch (err) { console.error('Failed to handle dropped image:', err); }
               } else if (isHtml) {
                 try {
-                  const { readTextFile } = await import('@tauri-apps/plugin-fs');
                   const { readAddFileCapped } = await import('../lib/assetInsert');
                   const relativePath = relPath(store.projectPath, fullPath);
                   const bytes = await readAddFileCapped(fullPath);
@@ -617,7 +617,7 @@ export function SlideEditor() {
                   const assetId = r.assetId;
 
                   // Detect demo-piece demos
-                  const html = await readTextFile(fullPath);
+                  const html = await readTextFileNative(fullPath);
                   const pieces = extractDemoPieceNames(html);
 
                   if (pieces.length > 0 && html.includes('BroadcastChannel')) {

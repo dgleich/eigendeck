@@ -4,6 +4,7 @@
 // in-memory untitled special case). Launching with a file arg skips this.
 import { useEffect, useState } from 'react';
 import { createProject, createScratchProject, openProject, openRecentProject, getRecentProjects, type RecentProject } from '../store/fileOps';
+import { statNative } from '../lib/nativeFs';
 
 type FileMeta = { mtime: number | null; missing: boolean };
 
@@ -18,12 +19,11 @@ export function WelcomeWindow() {
     // ones that have been moved/deleted.
     (async () => {
       try {
-        const { stat } = await import('@tauri-apps/plugin-fs');
         const out: Record<string, FileMeta> = {};
         await Promise.all(list.map(async (r) => {
           try {
-            const st = await stat(r.path);
-            out[r.path] = { mtime: st.mtime ? new Date(st.mtime).getTime() : null, missing: false };
+            const st = await statNative(r.path);
+            out[r.path] = { mtime: st.mtime ? st.mtime.getTime() : null, missing: false };
           } catch {
             out[r.path] = { mtime: null, missing: true };
           }

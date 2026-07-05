@@ -48,6 +48,7 @@ import { flushToSqlite, undoWithNav, redoWithNav, getDeckToken } from './store/p
 import { withBusy } from './store/busy';
 import { BusyOverlay } from './components/BusyOverlay';
 import './App.css';
+import { readFileNative, readTextFileNative, writeFileNative, writeTextFileNative } from './lib/nativeFs';
 import { bytesToBase64 } from './lib/base64';
 import { extractDemoPieceNames } from './lib/demoPieces';
 import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement, textElementClipboardHtml } from './lib/elementClipboard';
@@ -210,8 +211,7 @@ async function exportPdfScreenshots() {
     usePresentationStore.getState().selectSlide(originalSlideIndex);
 
     const pdf = buildPdf(jpegImages, W, H);
-    const { writeFile } = await import('@tauri-apps/plugin-fs');
-    await writeFile(selected as string, pdf);
+    await writeFileNative(selected as string, pdf);
   } catch (e) {
     console.error('PDF screenshot export failed:', e);
   }
@@ -409,8 +409,7 @@ ${slideHtmls.join('\n')}
 </body>
 </html>`;
 
-    const { writeTextFile } = await import('@tauri-apps/plugin-fs');
-    await writeTextFile(selected as string, printHtml);
+    await writeTextFileNative(selected as string, printHtml);
   } catch (e) {
     console.error('PDF export failed:', e);
   }
@@ -603,14 +602,13 @@ function App() {
     let bytes: Uint8Array | null = null;
     let assetId: string | null = null;
     try {
-      const { readFile } = await import('@tauri-apps/plugin-fs');
       const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
       // Picker insertion: track the source link so the file
       // watcher picks up edits to the original file on disk.
       // Routed through collision check; user may cancel. A big image/PDF can
       // take a few seconds to read + embed — show the busy overlay.
       const r = await withBusy('Importing image…', async () => {
-        bytes = await readFile(fullPath);
+        bytes = await readFileNative(fullPath);
         return storeAssetWithCollisionCheck({
           path: relativePath, data: bytes, mimeType: mime,
           externalPath: relativePath, externalMtime: null,
@@ -650,8 +648,7 @@ function App() {
     const relativePath = relPath(store.projectPath, fullPath);
     // Store demo HTML as SQLite asset
     try {
-      const { readFile, readTextFile } = await import('@tauri-apps/plugin-fs');
-      const bytes = await readFile(fullPath);
+      const bytes = await readFileNative(fullPath);
       // Demo HTML — pass externalPath so the file watcher subscribes
       // and the inspector's Watch toggle is meaningful.
       const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
@@ -663,7 +660,7 @@ function App() {
       const assetId = r.assetId;
 
       // Check if this is a demo-piece demo
-      const html = await readTextFile(fullPath);
+      const html = await readTextFileNative(fullPath);
       const pieces = extractDemoPieceNames(html);
 
       if (pieces.length > 0 && html.includes('BroadcastChannel')) {
@@ -693,8 +690,7 @@ function App() {
     const fullPath = selected as string;
     const relativePath = relPath(store.projectPath, fullPath);
     try {
-      const { readFile } = await import('@tauri-apps/plugin-fs');
-      const bytes = await readFile(fullPath);
+      const bytes = await readFileNative(fullPath);
       // Track the source link so the file watcher reloads when the
       // user re-saves the notebook from JupyterLab.
       const { storeAssetWithCollisionCheck } = await import('./lib/assetInsert');
@@ -1533,8 +1529,7 @@ function App() {
     const mime = ext === 'webm' ? 'video/webm' : ext === 'mov' ? 'video/quicktime'
       : ext === 'm4v' ? 'video/x-m4v' : (ext === 'ogv' || ext === 'ogg') ? 'video/ogg' : 'video/mp4';
     try {
-      const { readFile } = await import('@tauri-apps/plugin-fs');
-      const bytes = await withBusy('Reading video…', () => readFile(fullPath));
+      const bytes = await withBusy('Reading video…', () => readFileNative(fullPath));
       const mb = bytes.length / (1024 * 1024);
       if (mb > 250) {
         const ok = await confirm(`This video is ${mb.toFixed(0)} MB. It will be embedded in the deck file, making it large. Continue?`, { title: 'Large video', kind: 'warning' });

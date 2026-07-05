@@ -28,19 +28,18 @@ function scheduleFlush(): void {
     const batch = pendingWrite.splice(0, pendingWrite.length);
     const text = batch.map((e) => `${e.time}\t${e.level}\t${e.message}`).join('\n') + '\n';
     try {
-      // Lazy-import so this module doesn't depend on Tauri at JS-only
-      // test time. plugin-fs's writeTextFile w/ append is the right
-      // primitive — no file handle to manage, atomic per call.
-      const { writeTextFile, mkdir, BaseDirectory } = await import('@tauri-apps/plugin-fs');
-      // BaseDirectory.AppLog resolves to ~/Library/Logs/<identifier>/
-      // on macOS, %LOCALAPPDATA%\<identifier>\logs on Windows, and
-      // $XDG_DATA_HOME/<identifier>/logs on Linux. Standard log home
-      // for the platform — `cat ~/Library/Logs/com.dgleich.eigendeck/debug.log`
-      // on Mac after a crash.
-      // mkdir(recursive) is a no-op if the dir already exists; first
-      // run needs it so writeTextFile doesn't fail with ENOENT.
-      await mkdir('', { baseDir: BaseDirectory.AppLog, recursive: true }).catch(() => {});
-      await writeTextFile('debug.log', text, { baseDir: BaseDirectory.AppLog, append: true });
+      // Lazy-import so this module doesn't depend on Tauri at JS-only test time.
+      // appLogDir() (core path API — not the fs plugin) resolves to
+      // ~/Library/Logs/<identifier>/ on macOS, %LOCALAPPDATA%\<identifier>\logs on
+      // Windows, $XDG_DATA_HOME/<identifier>/logs on Linux — the platform log home.
+      // `cat ~/Library/Logs/com.dgleich.eigendeck/debug.log` on Mac after a crash.
+      // mkdir(recursive) is a no-op if the dir exists; first run needs it so the
+      // append write doesn't fail with ENOENT.
+      const { appLogDir, join } = await import('@tauri-apps/api/path');
+      const { mkdirNative, writeTextFileNative } = await import('../lib/nativeFs');
+      const dir = await appLogDir();
+      await mkdirNative(dir).catch(() => {});
+      await writeTextFileNative(await join(dir, 'debug.log'), text, { append: true });
     } catch {
       // Best-effort: if writing fails (non-Tauri context, perms), drop
       // the batch silently. Re-trying would just back up the queue.
@@ -160,11 +159,11 @@ export function DebugConsole() {
                 .join('\n');
               try {
                 const { save } = await import('@tauri-apps/plugin-dialog');
-                const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+                const { writeTextFileNative } = await import('../lib/nativeFs');
                 const defaultName = `eigendeck-log-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.txt`;
                 const path = await save({ defaultPath: defaultName, filters: [{ name: 'Text', extensions: ['txt', 'log'] }] });
                 if (!path) return;  // user cancelled
-                await writeTextFile(path as string, text);
+                await writeTextFileNative(path as string, text);
               } catch (e) {
                 console.error('Save log failed:', e);
                 alert(`Save log failed: ${e}`);

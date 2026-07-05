@@ -26,8 +26,18 @@ pub fn write_file(path: String, data: Vec<u8>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn write_text_file(path: String, text: String) -> Result<(), String> {
-    std::fs::write(&path, text).map_err(|e| e.to_string())
+pub fn write_text_file(path: String, text: String, append: Option<bool>) -> Result<(), String> {
+    if append.unwrap_or(false) {
+        use std::io::Write;
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)
+            .and_then(|mut f| f.write_all(text.as_bytes()))
+            .map_err(|e| e.to_string())
+    } else {
+        std::fs::write(&path, text).map_err(|e| e.to_string())
+    }
 }
 
 #[tauri::command]
