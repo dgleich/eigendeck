@@ -543,11 +543,13 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build(app).map_err(|e| e.to_string())?;
     let export_item = MenuItemBuilder::new("Export to HTML").id("export").accelerator("CmdOrCtrl+Shift+E")
         .build(app).map_err(|e| e.to_string())?;
-    let export_pdf_item = MenuItemBuilder::new("Export Printable HTML...").id("export-pdf").accelerator("CmdOrCtrl+Shift+P")
+    let export_pdf_item = MenuItemBuilder::new("Export Printable HTML…").id("export-pdf").accelerator("CmdOrCtrl+Shift+P")
         .build(app).map_err(|e| e.to_string())?;
-    let export_pdf_ss_item = MenuItemBuilder::new("Export to PDF (Screenshots)...").id("export-pdf-screenshots")
+    let export_pdf_ss_item = MenuItemBuilder::new("Export to PDF (Screenshots)…").id("export-pdf-screenshots")
         .build(app).map_err(|e| e.to_string())?;
-    let import_item = MenuItemBuilder::new("Import from HTML...").id("import-html")
+    // Import: single source today, in its own group. When a second source lands,
+    // consider promoting this to an "Import From ▸" submenu.
+    let import_item = MenuItemBuilder::new("Import from HTML…").id("import-html")
         .build(app).map_err(|e| e.to_string())?;
     let install_llm_tools_item = MenuItemBuilder::new("Install LLM Tools…").id("install-llm-tools")
         .build(app).map_err(|e| e.to_string())?;
@@ -566,15 +568,17 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .separator()
         .item(&save_item)
         .item(&save_as_item)
+        .separator()
+        .item(&import_item)
+        .separator()
         .item(&export_item)
         .item(&export_pdf_item)
         .item(&export_pdf_ss_item)
-        .item(&import_item)
-        .separator()
-        .item(&install_llm_tools_item)
         .separator()
         .item(&presentation_settings_item)
         .item(&gc_assets_item)
+        .separator()
+        .item(&install_llm_tools_item)
         .separator()
         .close_window()
         .build()
@@ -620,7 +624,7 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
     // plus the speaker view in the main window.
     let screen_share_item = MenuItemBuilder::new("Screen Share Presentation").id("screen-share-present")
         .build(app).map_err(|e| e.to_string())?;
-    let speaker_item = MenuItemBuilder::new("Toggle Speaker Notes").id("speaker").accelerator("CmdOrCtrl+Shift+S")
+    let speaker_item = MenuItemBuilder::new("Toggle Speaker Notes").id("speaker").accelerator("CmdOrCtrl+Alt+S")
         .build(app).map_err(|e| e.to_string())?;
     // No accelerator — Cmd+I is handled in JS (italic in contentEditable, inspector otherwise)
     let inspector_item = MenuItemBuilder::new("Toggle Inspector").id("inspector")

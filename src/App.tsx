@@ -1006,7 +1006,9 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const inEditable = !!(e.target as HTMLElement).closest('[contenteditable="true"]');
-      if (e.key === 's' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); flushToSqlite().then(() => saveProject()); }
+      // Plain Cmd/Ctrl+S only — don't swallow Save As (Shift+S) or Toggle Speaker
+      // Notes (Alt+S), which are handled by the native menu accelerators.
+      if (e.key === 's' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) { e.preventDefault(); flushToSqlite().then(() => saveProject()); }
       // Undo/redo: while editing a text box, let the BROWSER do native
       // character-level undo/redo — people expect Cmd+Z to undo their TYPING,
       // not jump out and undo a slide-level action. The store-level undo/redo
