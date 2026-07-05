@@ -1,13 +1,18 @@
-// Lazy DOMPurify wrapper for UNTRUSTED SVG that gets innerHTML'd into the
-// privileged window. Today that's the math-render cache: a shared .eigendeck can
-// ship a poisoned `math_cache` row whose "SVG" carries <script> or a
-// <foreignObject> with an onerror handler, which would otherwise run with Tauri
-// IPC access when the equation renders (audit C-4).
+// Lazy DOMPurify wrappers for UNTRUSTED strings that get innerHTML'd into the
+// privileged window from a shared .eigendeck:
+//   - sanitizeSvg: the math-render cache (audit C-4) and static notebook
+//     image/svg+xml output (matplotlib).
+//   - sanitizeHtml: static notebook text/html output (pandas tables, styled
+//     divs) and rendered markdown (audit C-1/C-2/C-5).
+//   - outputHasExecutable: routes a notebook output — static content is
+//     sanitized inline (here); executable content (Plotly etc.) is instead
+//     mounted in an opaque-origin iframe (docs/NOTEBOOK-ISOLATION.md), never
+//     sanitized-then-inlined, so it stays interactive AND contained.
 //
-// DOMPurify's SVG profile strips <script>, event handlers, javascript: refs, and
-// external/foreignObject escapes while preserving the <svg>/<g>/<path>/<use
-// xlink:href="#…">/<defs> that a real MathJax render needs. It's lazy-imported so
-// decks without math don't pay for it, and needs a DOM (the app webview / jsdom).
+// DOMPurify strips <script>, event handlers, and javascript: refs while keeping
+// tables/headings/links/img and the <svg>/<path>/<use xlink:href="#…">/<defs> a
+// real MathJax render needs. Lazy-imported (decks without math/notebooks don't
+// pay for it) and needs a DOM (the app webview / jsdom).
 
 type AttrHookData = { attrName: string; attrValue: string; keepAttr: boolean };
 type Purify = {
@@ -28,9 +33,20 @@ function getPurify(): Promise<Purify | null> {
         // as an external-content vector. Re-allow it (see SVG_CFG) but constrain
         // its href to in-document fragment refs (#id) — that's all MathJax emits,
         // and it can't reach external/data: SVG (the actual <use> XSS).
-        p.addHook?.('uponSanitizeAttribute', (_node, data) => {
+        p.addHook?.('uponSanitizeAttribute', (node, data) => {
           if ((data.attrName === 'href' || data.attrName === 'xlink:href') && !data.attrValue.startsWith('#')) {
-            data.keepAttr = false;
+            // <use> (svg) may only reference in-document fragments; but a normal
+            // <a href="https://…"> in html output is fine — keep those.
+            const tag = (node as Element)?.tagName?.toLowerCase?.();
+            if (tag === 'use') data.keepAttr = false;
+          }
+        });
+        // Any link that survives opens externally with no window.opener handle.
+        p.addHook?.('afterSanitizeAttributes', (node) => {
+          const el = node as Element;
+          if (el?.tagName?.toLowerCase?.() === 'a' && el.getAttribute('href')) {
+            el.setAttribute('target', '_blank');
+            el.setAttribute('rel', 'noopener noreferrer');
           }
         });
         return p;
@@ -57,4 +73,49 @@ export async function sanitizeSvg(svg: string | undefined | null): Promise<strin
   const purify = await getPurify();
   if (!purify) return '';
   return purify.sanitize(svg, SVG_CFG);
+}
+
+// HTML profile + inline svg (a table cell may embed an svg icon). Scripts, event
+// handlers, iframes, and javascript:/data:text-html URLs are dropped.
+const HTML_CFG: Record<string, unknown> = {
+  USE_PROFILES: { html: true, svg: true, svgFilters: true },
+  ADD_TAGS: ['use'],
+  ADD_ATTR: ['xlink:href', 'target'],
+};
+
+/**
+ * Sanitize an untrusted HTML string (static notebook output, rendered markdown).
+ * Empty in → '' out. Fails CLOSED (returns '' if the sanitizer can't load).
+ */
+export async function sanitizeHtml(html: string | undefined | null): Promise<string> {
+  if (!html) return '';
+  const purify = await getPurify();
+  if (!purify) return '';
+  return purify.sanitize(html, HTML_CFG);
+}
+
+// Tags that carry (or load) executable content or that we never inline.
+const EXEC_TAGS = new Set(['script', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'template']);
+
+/**
+ * Does this notebook `text/html` output carry executable content? If so it is
+ * routed to an opaque-origin iframe (kept interactive + contained) instead of
+ * being sanitized inline. False positives are harmless (an iframe still renders);
+ * false negatives are impossible — anything a sanitizer would strip is detected.
+ * Sync (plain DOM parse, no DOMPurify) so the render path can branch immediately.
+ */
+export function outputHasExecutable(html: string | undefined | null): boolean {
+  if (!html || html.indexOf('<') < 0) return false;
+  let doc: Document;
+  try { doc = new DOMParser().parseFromString(html, 'text/html'); } catch { return true; }
+  for (const el of Array.from(doc.body?.getElementsByTagName('*') || [])) {
+    if (EXEC_TAGS.has(el.tagName.toLowerCase())) return true;
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith('on')) return true;
+      if ((name === 'href' || name === 'src' || name === 'xlink:href')
+          && /^\s*(javascript:|data:text\/html)/i.test(attr.value)) return true;
+    }
+  }
+  return false;
 }

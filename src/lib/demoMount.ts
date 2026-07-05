@@ -80,6 +80,35 @@ export async function getDemoDocumentUrl(assetId: string | undefined, opts: Demo
   return url;
 }
 
+// --- isolated notebook output (docs/NOTEBOOK-ISOLATION.md) --------------------
+// Script-bearing notebook output (Plotly etc.) is mounted in an opaque-origin
+// iframe — the same containment as a demo — instead of sanitized inline, so it
+// stays interactive AND can't reach Tauri. The output is an HTML FRAGMENT, so we
+// wrap it in a minimal document (natural height; the size reporter grows the host
+// iframe to fit), then splice the bridge + theme like a demo. Keyed by content +
+// theme; superseded theme variants for the same content are revoked.
+const outputBlobCache = new Map<string, string>();
+
+export function buildIsolatedOutputUrl(html: string, opts: {
+  channelKey: string; varsCss?: string; fontFacesCss?: string;
+}): string {
+  const { channelKey, varsCss = '', fontFacesCss = '' } = opts;
+  const contentSig = hashString(html);
+  const key = `${contentSig} ${channelKey} ${hashString(varsCss)} ${hashString(fontFacesCss)}`;
+  const existing = outputBlobCache.get(key);
+  if (existing) return existing;
+  const prefix = `${contentSig} ${channelKey} `;
+  for (const [k, u] of outputBlobCache) {
+    if (k !== key && k.startsWith(prefix)) { URL.revokeObjectURL(u); outputBlobCache.delete(k); }
+  }
+  const page = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:transparent;}</style></head><body>${html}</body></html>`;
+  const withBridge = injectDemoBridge(page, '', channelKey, { reportSize: true });
+  const doc = injectDemoThemeIntoHtml(withBridge, fontFacesCss, varsCss);
+  const url = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
+  outputBlobCache.set(key, url);
+  return url;
+}
+
 /** React hook: the opaque-origin demo document URL, rebuilt when inputs change. */
 export function useDemoDoc(assetId: string | undefined, opts: DemoMountOpts): string | null | undefined {
   const { hash, channelKey, varsCss, fontFacesCss, capture } = opts;

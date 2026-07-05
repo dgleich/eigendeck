@@ -1,6 +1,8 @@
-// Markdown cell — renders via `marked`. The marked output is
-// trusted HTML for the same reason as MimeRender's text/html branch:
-// it's the user's own notebook content.
+// Markdown cell — renders via `marked`, then DOMPurify. A .eigendeck is
+// untrusted shared input and marked() passes raw HTML through, so a markdown cell
+// with <img onerror=…> would otherwise run in the privileged window (audit
+// C-2/C-5). Markdown is prose (no scripts to preserve), so it's always sanitized
+// inline — no iframe needed. See docs/NOTEBOOK-ISOLATION.md.
 //
 // marked is lazy-imported so decks without notebooks don't pay the
 // cost. Module-level dynamic import means the import promise is
@@ -8,6 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { MarkdownCell as MarkdownCellT } from '../../lib/notebookFormat';
+import { sanitizeHtml } from '../../lib/sanitizeHtml';
 
 type MarkedFn = (s: string) => string | Promise<string>;
 let markedPromise: Promise<MarkedFn> | null = null;
@@ -37,7 +40,8 @@ export function MarkdownCell({ cell, prerenderedHtml }: {
     let cancelled = false;
     loadMarked().then(async (md) => {
       const out = await md(cell.source);
-      if (!cancelled) setHtml(out);
+      const clean = await sanitizeHtml(out);
+      if (!cancelled) setHtml(clean);
     });
     return () => { cancelled = true; };
   }, [cell.source, prerenderedHtml]);

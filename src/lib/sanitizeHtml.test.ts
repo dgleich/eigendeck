@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sanitizeSvg } from './sanitizeHtml';
+import { sanitizeSvg, sanitizeHtml, outputHasExecutable } from './sanitizeHtml';
 
 // A representative MathJax-style SVG fragment: <defs> + <path> glyphs referenced
 // by <use xlink:href="#…"> inside <g> transforms. The sanitizer MUST preserve
@@ -55,5 +55,48 @@ describe('sanitizeSvg', () => {
     expect(await sanitizeSvg('')).toBe('');
     expect(await sanitizeSvg(undefined)).toBe('');
     expect(await sanitizeSvg(null)).toBe('');
+  });
+});
+
+describe('sanitizeHtml', () => {
+  it('keeps a pandas-style table intact', async () => {
+    const out = await sanitizeHtml('<table class="df"><thead><tr><th>a</th></tr></thead><tbody><tr><td>1</td></tr></tbody></table>');
+    expect(out).toContain('<table');
+    expect(out).toContain('<th>a</th>');
+    expect(out).toContain('<td>1</td>');
+  });
+
+  it('strips <script> and event handlers', async () => {
+    const out = await sanitizeHtml('<div>ok<script>fetch("//evil")</script><img src=x onerror="pwn()"></div>');
+    expect(out.toLowerCase()).not.toContain('<script');
+    expect(out.toLowerCase()).not.toContain('onerror');
+    expect(out).not.toContain('evil');
+    expect(out).not.toContain('pwn');
+    expect(out).toContain('ok');
+  });
+
+  it('forces links to open externally with no opener', async () => {
+    const out = await sanitizeHtml('<a href="https://example.com">x</a>');
+    expect(out).toContain('rel="noopener noreferrer"');
+    expect(out).toContain('target="_blank"');
+  });
+});
+
+describe('outputHasExecutable', () => {
+  it('is false for static output (tables, images, plain markup)', () => {
+    expect(outputHasExecutable('<table><tr><td>1</td></tr></table>')).toBe(false);
+    expect(outputHasExecutable('<div style="color:red">hi <b>there</b></div>')).toBe(false);
+    expect(outputHasExecutable('plain text')).toBe(false);
+    expect(outputHasExecutable('')).toBe(false);
+  });
+
+  it('is true for script-bearing output (Plotly-style)', () => {
+    expect(outputHasExecutable('<div id="plot"></div><script>Plotly.newPlot("plot",[])</script>')).toBe(true);
+  });
+
+  it('is true for event handlers and javascript: urls', () => {
+    expect(outputHasExecutable('<img src=x onerror="pwn()">')).toBe(true);
+    expect(outputHasExecutable('<a href="javascript:evil()">x</a>')).toBe(true);
+    expect(outputHasExecutable('<iframe src="data:text/html,<script>x</script>"></iframe>')).toBe(true);
   });
 });

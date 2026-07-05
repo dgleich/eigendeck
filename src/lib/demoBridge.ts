@@ -57,7 +57,22 @@ const CAPTURE_HANDLER = `<script>
 export interface DemoBridgeOpts {
   /** editor-only: inline modern-screenshot + a capture handler for thumbnails. */
   capture?: boolean;
+  /** notebook output: report content height to the parent so the host iframe
+   *  grows to fit (a demo owns a fixed box; an output does not). */
+  reportSize?: boolean;
 }
+
+// Post the document's content height to the parent whenever it changes, so the
+// host can size the (opaque) iframe to its content. See docs/NOTEBOOK-ISOLATION.md §5.
+const SIZE_REPORTER = `<script>
+(function(){
+  function send(){ try{ var el=document.documentElement;
+    window.parent.postMessage({__eigendeck:1,type:'iso-size',h:Math.ceil(Math.max(el.scrollHeight, (document.body?document.body.scrollHeight:0)))}, '*'); }catch(_){} }
+  if (window.ResizeObserver){ try{ new ResizeObserver(send).observe(document.documentElement); }catch(_){} }
+  window.addEventListener('load', send);
+  [50,300,1000].forEach(function(ms){ setTimeout(send, ms); });
+})();
+</script>`;
 
 /** Splice the bridge <script> into a demo HTML string. `hash` is like
  *  "#piece=graph" (or ""), `channelKey` namespaces the relay per demo instance. */
@@ -136,7 +151,8 @@ export function injectDemoBridge(html: string, hash: string, channelKey: string,
   setTimeout(function(){ if (!__seenTick) __nativeMode(); }, 1500);
 })();
 </script>`;
-  const scripts = opts.capture ? bootstrap + `<script>${MS_UMD}</script>` + CAPTURE_HANDLER : bootstrap;
+  let scripts = opts.capture ? bootstrap + `<script>${MS_UMD}</script>` + CAPTURE_HANDLER : bootstrap;
+  if (opts.reportSize) scripts += SIZE_REPORTER;
   if (html.includes('<head>')) return html.replace('<head>', '<head>' + scripts);
   return scripts + html;
 }

@@ -4,14 +4,16 @@
 // MIME bundle preference order: image/png → image/svg+xml →
 // text/html → text/plain. Matches what Jupyter Lab does.
 //
-// HTML output is rendered with dangerouslySetInnerHTML for now.
-// Real notebook HTML output (pandas DataFrames, plotly, etc.) is
-// fully trusted in JupyterLab itself; our user is choosing to
-// embed THEIR notebook, so the threat model isn't "arbitrary HTML
-// from a stranger." A sanitization layer can be added later if we
-// ever embed notebooks from untrusted sources.
+// A .eigendeck is UNTRUSTED shared input, so notebook output can't be
+// innerHTML'd raw into the privileged window (audit C-1). Routing
+// (docs/NOTEBOOK-ISOLATION.md): image/svg+xml and static text/html are
+// DOMPurify'd inline; text/html that carries executable content (Plotly etc.)
+// is mounted in an opaque-origin sandboxed iframe, kept interactive + contained.
 
+import { useEffect, useState } from 'react';
 import { CellOutput as CellOutputT, MimeBundle, joinMultiline } from '../../lib/notebookFormat';
+import { sanitizeHtml, sanitizeSvg, outputHasExecutable } from '../../lib/sanitizeHtml';
+import { IsolatedOutput } from './IsolatedOutput';
 
 export function CellOutput({ output }: { output: CellOutputT }) {
   switch (output.kind) {
@@ -44,17 +46,33 @@ function MimeRender({ bundle }: { bundle: MimeBundle }) {
     return <img src={`data:image/png;base64,${b64}`} className="nb-output nb-image" alt="" />;
   }
   if (bundle['image/svg+xml']) {
-    const svg = joinMultiline(bundle['image/svg+xml']);
-    return <div className="nb-output nb-image" dangerouslySetInnerHTML={{ __html: svg }} />;
+    return <SanitizedBlock raw={joinMultiline(bundle['image/svg+xml'])} kind="svg" className="nb-output nb-image" />;
   }
   if (bundle['text/html']) {
     const html = joinMultiline(bundle['text/html']);
-    return <div className="nb-output nb-html" dangerouslySetInnerHTML={{ __html: html }} />;
+    // Executable output (Plotly etc.) → contained-but-interactive iframe; static
+    // output (pandas tables, styled divs) → sanitized inline.
+    return outputHasExecutable(html)
+      ? <IsolatedOutput html={html} />
+      : <SanitizedBlock raw={html} kind="html" className="nb-output nb-html" />;
   }
   if (bundle['text/plain']) {
     return <pre className="nb-output nb-plain">{joinMultiline(bundle['text/plain'])}</pre>;
   }
   return null;
+}
+
+/** Render an untrusted HTML/SVG output string, DOMPurify'd. Sanitization is async
+ *  (DOMPurify is lazy-loaded), so this shows nothing for a frame then the clean
+ *  markup — same async shape the notebook already has. */
+function SanitizedBlock({ raw, kind, className }: { raw: string; kind: 'html' | 'svg'; className: string }) {
+  const [clean, setClean] = useState('');
+  useEffect(() => {
+    let alive = true;
+    (kind === 'svg' ? sanitizeSvg : sanitizeHtml)(raw).then((c) => { if (alive) setClean(c); });
+    return () => { alive = false; };
+  }, [raw, kind]);
+  return <div className={className} dangerouslySetInnerHTML={{ __html: clean }} />;
 }
 
 // Strip ANSI color codes from tracebacks — Jupyter's tracebacks come
