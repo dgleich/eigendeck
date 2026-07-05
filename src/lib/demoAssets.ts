@@ -90,70 +90,10 @@ export function useAssetUrl(
   return url;
 }
 
-// assetIds whose bytes were checked and are NOT a marked eigendeck demo → don't mount.
-const demoBlockedCache = new Set<string>();
-// Demo iframe blob URLs, kept SEPARATE from `blobCache`. Critical for the mount gate:
-// blobCache is shared with getAssetUrl (images/video), so if a crafted deck bound an
-// image AND a demo to the same assetId, the image would populate blobCache first and a
-// blobCache-keyed demo lookup would return that blob WITHOUT ever running the marker
-// check. A dedicated cache means the marker is validated per-asset on this path, always.
-const demoBlobCache = new Map<string, string>();
-
-/**
- * Demo-mount gate (docs/ASSETS-SECURITY.md — "demo-ingestion invariant"): re-check the
- * eigendeck-demo marker on the bytes BEFORE creating the iframe URL, so a deck can never
- * RENDER non-demo HTML as a demo even if such bytes got in outside the add/watch gates
- * (CLI import, hand-edited DB, a pre-marker legacy demo). Returns the blob URL, or null
- * if the bytes aren't a marked demo (the caller shows a "not a valid demo" notice).
- */
-async function getDemoUrl(assetId: string | undefined, hash?: string): Promise<string | null> {
-  if (!assetId) return null;
-  if (demoBlockedCache.has(assetId)) return null;
-  let blobUrl = demoBlobCache.get(assetId);
-  if (!blobUrl) {
-    try {
-      const data = await invoke<ArrayBuffer>('db_get_asset_by_id', { assetId });
-      const bytes = new Uint8Array(data);
-      const { isEigendeckDemo } = await import('./assetTypes.mjs');
-      if (!isEigendeckDemo(bytes).ok) { demoBlockedCache.add(assetId); return null; }
-      blobUrl = URL.createObjectURL(new Blob([bytes], { type: 'text/html' }));
-      demoBlobCache.set(assetId, blobUrl);
-    } catch {
-      return null;
-    }
-  }
-  return hash ? `${blobUrl}#${hash}` : blobUrl;
-}
-
-/** React hook for a demo iframe source. Like useAssetUrl, but validates the demo marker
- *  first (see getDemoUrl). Returns a blob URL, `undefined` while loading, or `null` when
- *  the bytes are blocked (not a marked eigendeck demo). */
-export function useDemoUrl(assetId: string | undefined, hash?: string): string | null | undefined {
-  const [url, setUrl] = useState<string | null | undefined>(undefined);
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  useEffect(() => {
-    if (!assetId) return;
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { assetId?: string } | undefined;
-      if (detail?.assetId === assetId) {
-        invalidateAsset(assetId);
-        setRefreshKey((k) => k + 1);
-      }
-    };
-    window.addEventListener('eigendeck:asset-changed', handler);
-    return () => window.removeEventListener('eigendeck:asset-changed', handler);
-  }, [assetId]);
-
-  useEffect(() => {
-    if (!assetId) { setUrl(undefined); return; }
-    let alive = true;
-    getDemoUrl(assetId, hash).then((r) => { if (alive) setUrl(r); });
-    return () => { alive = false; };
-  }, [assetId, hash, refreshKey]);
-
-  return url;
-}
+// NOTE: opaque-origin demos mount via demoMount.ts (its own marker gate +
+// blob cache); the old same-origin demo-URL path that used to live here was
+// removed with that migration (docs/DEMO-PLATFORM.md). This module now only
+// serves image/video assets (useAssetUrl / getAssetUrl).
 
 /** Invalidate a specific cached asset (e.g. after re-import). */
 export function invalidateAsset(assetId: string) {
@@ -162,13 +102,7 @@ export function invalidateAsset(assetId: string) {
     URL.revokeObjectURL(old);
     blobCache.delete(assetId);
   }
-  const oldDemo = demoBlobCache.get(assetId);
-  if (oldDemo) {
-    URL.revokeObjectURL(oldDemo);
-    demoBlobCache.delete(assetId);
-  }
   mimeCache.delete(assetId);
-  demoBlockedCache.delete(assetId); // re-validate the marker on next mount
 }
 
 /** Clean up all cached blob URLs (call on project close) */
@@ -176,12 +110,7 @@ export function clearAssetCache() {
   for (const url of blobCache.values()) {
     URL.revokeObjectURL(url);
   }
-  for (const url of demoBlobCache.values()) {
-    URL.revokeObjectURL(url);
-  }
   blobCache.clear();
-  demoBlobCache.clear();
   mimeCache.clear();
-  demoBlockedCache.clear();
 }
 

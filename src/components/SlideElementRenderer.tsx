@@ -393,8 +393,8 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
   const videoRef = useRef<HTMLVideoElement>(null);
   const src = useAssetUrl(element.assetId);                  // file kind — a plain
   const captionsSrc = useAssetUrl(element.captionsAssetId);  // asset, NOT a demo (no
-  // demo-marker gate: videos/captions aren't demos, so they use useAssetUrl, not
-  // useDemoUrl — which now blocks non-marked HTML for the demo-mount gate, #196).
+  // demo-marker gate: videos/captions aren't demos, so they use useAssetUrl, not the
+  // demo-mount path in demoMount.ts — which blocks non-marked HTML, #196).
   // In the EDITOR, never autoplay an embed while you're designing — it's
   // distracting and noisy. Build the src with autoplay suppressed until you
   // double-click to interact (files already don't autoplay in the editor —
