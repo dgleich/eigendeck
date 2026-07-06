@@ -15,6 +15,10 @@ export async function openSecurityWindow(): Promise<void> {
 
   const existing = await WebviewWindow.getByLabel('security');
   if (existing) {
+    // Raise it to the top. setFocus() alone won't lift a minimized or
+    // backgrounded window on macOS — unminimize + show first, then focus.
+    await existing.unminimize().catch(() => {});
+    await existing.show().catch(() => {});
     await existing.setFocus().catch(() => {});
     await emitTo('security', 'security:init', payload).catch(() => {});
     return;
