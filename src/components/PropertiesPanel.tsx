@@ -9,6 +9,7 @@ import type { VerticalAlign } from '../types/presentation';
 import { AssetSection } from './AssetSection';
 import { HelpText } from './HelpText';
 import { usePreference } from '../lib/preferences';
+import { OVERRIDDEN_DIM, overriddenLabel } from '../lib/overriddenStyle';
 
 const ARROW_COLORS = [
   '#e53e3e', '#dc2626', '#ea580c', '#16a34a',
@@ -1400,16 +1401,20 @@ function AutoReloadAssetsControl({
   const checked = !untrusted && value !== 'off' && globalDefault;
   const disabled = untrusted || (!globalDefault && !optedOut);
 
+  // Overridden = disabled by a higher state/setting (untrusted deck OR global
+  // watching off) — not the user's own per-deck opt-out. Shared grey+strike+dim
+  // motif (docs/USER-FACING-MESSAGES.md); the help text below says which.
+  const overridden = disabled;
   return (
     <div>
-      <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start', cursor: disabled ? 'default' : 'pointer', opacity: untrusted ? 0.55 : 1 }}>
+      <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start', cursor: disabled ? 'default' : 'pointer', opacity: overridden ? OVERRIDDEN_DIM : 1 }}>
         <input
           type="checkbox"
           checked={checked}
           disabled={disabled}
           onChange={(e) => onChange(e.target.checked ? undefined : 'off')}
           style={{ marginTop: 2 }} />
-        <span style={{ fontSize: 11, textDecoration: untrusted ? 'line-through' : 'none' }}>Watch source files for changes</span>
+        <span style={{ fontSize: 11, ...(overridden ? overriddenLabel : {}) }}>Watch source files for changes</span>
       </label>
       <HelpText style={{ fontSize: 10, marginTop: 4, marginLeft: 22 }}>
         {untrusted ? (

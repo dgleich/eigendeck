@@ -17,6 +17,7 @@ import { storeAssetRaw, approveExternalAbsPath } from '../lib/assetInsert';
 import { dirname, resolvePosixPath, gatedExternalRead } from '../lib/watcherRegistry';
 import { showToast } from '../lib/toasts';
 import { effectiveAutoReload, usePreference } from '../lib/preferences';
+import { OVERRIDDEN_DIM, overriddenLabel } from '../lib/overriddenStyle';
 import { computeAssetUsage } from '../lib/assetUsage';
 import { useAssetMissing, markAssetMissing, markAssetFound } from '../lib/missingAssets';
 import { openSecurityWindow } from '../lib/securityWindow';
@@ -548,16 +549,23 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
       {/* Per-asset 2-state Watch toggle — only meaningful when the
           asset has a source file AND the project has a dir to resolve
           it against. */}
-      {meta.external_path && projectPath && (
-        <div style={{ fontSize: 11 }}>
-          <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start', cursor: cascadeBlock && cascadeBlock !== 'asset' ? 'not-allowed' : 'pointer' }}>
+      {meta.external_path && projectPath && (() => {
+        // Overridden = a higher-level state/setting makes this toggle moot right
+        // now (untrusted, unapproved, global-off, per-deck-off) — everything except
+        // the user's OWN per-asset opt-out ('asset') and the watched state (null).
+        // Render it with the shared grey+strike+dim motif; the help text below says
+        // which. See docs/USER-FACING-MESSAGES.md.
+        const overridden = cascadeBlock !== null && cascadeBlock !== 'asset';
+        return (
+        <div style={{ fontSize: 11, opacity: overridden ? OVERRIDDEN_DIM : 1 }}>
+          <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start', cursor: overridden ? 'not-allowed' : 'pointer' }}>
             <input
               type="checkbox"
               checked={effective && cascadeBlock !== 'untrusted' && cascadeBlock !== 'unapproved'}
-              disabled={cascadeBlock !== null && cascadeBlock !== 'asset'}
+              disabled={overridden}
               onChange={(e) => setAutoReload(e.target.checked ? null : 'off')}
               style={{ marginTop: 2 }} />
-            <span style={{ textDecoration: (cascadeBlock === 'untrusted' || cascadeBlock === 'unapproved') ? 'line-through' : 'none' }}>Watch this file for changes</span>
+            <span style={overridden ? overriddenLabel : undefined}>Watch this file for changes</span>
           </label>
           <HelpText style={{ fontSize: 10, marginTop: 4, marginLeft: 22 }}>
             {cascadeBlock === 'untrusted' && (
@@ -584,7 +592,8 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
             )}
           </HelpText>
         </div>
-      )}
+        );
+      })()}
 
       {/* Actions row */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

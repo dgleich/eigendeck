@@ -66,16 +66,27 @@ consistent visual:
 - **State the reason** — which higher setting wins, and where to change it — in a
   banner or adjacent note.
 
+Shared tokens: `OVERRIDDEN_DIM` + `overriddenLabel` in `src/lib/overriddenStyle.ts`
+— used by the security panel AND the inspector's watch/auto-reload toggles so the
+signal is identical everywhere.
+
 Examples of the same motif:
 - Global "Let demos use the internet" is off → the per-deck "Block internet" toggle
   greys + strikes, and each demo's "Allow internet" toggle greys, under a banner.
 - File watching is off (global or per-deck) → the linked-files list dims and each
   row's "watching is off" note strikes through.
+- The inspector's "Watch this file" / "Watch source files" toggle strikes + dims
+  whenever a higher state makes it moot — global off, per-deck off, untrusted deck,
+  or unapproved file — with help text saying which. (The user's OWN per-asset
+  opt-out is *not* an override, so it stays plain.)
 
-The rule of thumb: *struck + grey = "this setting is real but currently has no
-effect, and here's why."* Reserve it for the override case — not for a control the
-user simply left off, and not for a prerequisite the user hasn't met yet (e.g.
-"trust the deck first" is a next step, not an override, so it stays plain grey).
+The rule of thumb: *struck + grey = "this control is real but currently has no
+effect, and here's why."* Apply it whenever a higher-priority setting OR an unmet
+requirement (trust, approval) makes the control moot. Two things stay plain:
+- a control the user simply turned off themselves (that's its own state), and
+- a control whose own label IS the primary action to fix it — e.g. the security
+  panel's "trust the deck first" on an eligible file is the next step you take
+  there, so striking it would fight the call-to-action.
 
 ## Anti-patterns
 

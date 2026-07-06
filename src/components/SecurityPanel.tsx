@@ -19,6 +19,7 @@ import {
 } from '../lib/securityReport';
 import { buildDemoNetReport, type DemoNetReportEntry } from '../lib/demoNetReport';
 import { usePreference } from '../lib/preferences';
+import { OVERRIDDEN_DIM, overriddenLabel } from '../lib/overriddenStyle';
 
 const STATE_STYLE: Record<RowState, { label: string; color: string; bg: string }> = {
   approved:  { label: 'Watched',     color: '#166534', bg: '#dcfce7' },
@@ -27,14 +28,9 @@ const STATE_STYLE: Record<RowState, { label: string; color: string; bg: string }
   missing:   { label: 'Missing',     color: '#6b7280', bg: '#f3f4f6' },
 };
 
-// UI MOTIF — a lower-priority control OVERRIDDEN by a higher-priority setting
-// (per-deck internet toggle when the global switch is off; per-file approve when
-// watching is off; a demo's toggle when the deck/global blocks everything) renders
-// GREYED + STRUCK-THROUGH, with a short reason nearby. Shared so "this is
-// overridden, and here's why" reads identically everywhere. See
-// docs/USER-FACING-MESSAGES.md → "Overridden by a higher-priority setting".
-const OVERRIDDEN_DIM = 0.55;
-const overriddenLabel: React.CSSProperties = { textDecoration: 'line-through', color: '#9ca3af' };
+// The "overridden by a higher-priority setting" motif (grey + strike + dim) is
+// shared from ../lib/overriddenStyle so it reads identically here and in the
+// inspector's watch/auto-reload controls. See docs/USER-FACING-MESSAGES.md.
 
 type DeckCase = 'A' | 'B1' | 'B2' | 'C' | 'D' | 'E' | 'F';
 
