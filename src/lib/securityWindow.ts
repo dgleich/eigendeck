@@ -24,6 +24,16 @@ export async function openSecurityWindow(): Promise<void> {
     return;
   }
 
+  // Register the ready-handshake listener BEFORE creating the window. The child
+  // emits `security:ready` on mount; if we only start listening after creating it,
+  // a fast child can fire first and we miss it — leaving the window stuck on
+  // "Loading…" until a retrigger (the transient blank). Respond to every ready by
+  // (re)sending the deck; the child's init is idempotent (it just rebuilds).
+  const unlisten = await listen('security:ready', () => {
+    void emitTo('security', 'security:init', payload).catch(() => {});
+  });
+  setTimeout(() => { unlisten(); }, 15000);
+
   new WebviewWindow('security', {
     url: '/security.html',
     title: 'Security & linked files',
@@ -33,10 +43,7 @@ export async function openSecurityWindow(): Promise<void> {
     focus: true,
   });
 
-  // Handshake: the window emits `security:ready` on mount; then we send the deck.
-  const ready = new Promise<void>((resolve) => {
-    listen('security:ready', () => resolve()).then((un) => setTimeout(un, 8000));
-  });
-  await Promise.race([ready, new Promise<void>((r) => setTimeout(r, 8000))]);
-  await emitTo('security', 'security:init', payload).catch(() => {});
+  // Belt-and-suspenders: also push the deck a moment after creation in case the
+  // ready event was missed entirely (idempotent with the listener above).
+  setTimeout(() => { void emitTo('security', 'security:init', payload).catch(() => {}); }, 1200);
 }
