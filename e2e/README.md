@@ -308,3 +308,21 @@ Note: the payload defers its self-report (load + setTimeout) — a parse-time
 `postMessage` from a freshly-mounted opaque iframe can be lost to the mount race
 (real outputs like Plotly render at parse time and don't post to the parent, so
 this is a probe artifact, not a functional issue).
+
+## Demo internet block enforcement (netblock-probe.mjs, docs/CSP-AND-EGRESS.md)
+
+Verifies the demo internet-block ENFORCEMENT. `make_netblock_deck.py` builds a deck
+whose notebook (slide 1) has an interactive output that self-reports whether
+`RTCPeerConnection` is gone and whether a `fetch` trips a `connect-src` CSP
+violation. The probe flips the global `demoInternetAccess` pref OFF *before* the
+notebook mounts (slide 0 is empty), then selects slide 1 and asserts the output
+comes up with **WebRTC neutered** and the **`connect-src 'none'` lockdown
+enforced** — while its inline script still runs (rendering unaffected).
+
+    python3 e2e/fixtures/make_netblock_deck.py /tmp/netblock.json
+    /tmp/el-target/debug/eigendeck-cli /tmp/netblock.eigendeck import json /tmp/netblock.json
+    PROBE=$PWD/e2e/netblock-probe.mjs E2E_DECK=/tmp/netblock.eigendeck bash e2e/run-probe.sh
+    # -> NETBLOCK_PASS
+
+Note: the securitypolicyviolation fires async after the fetch, so the probe waits
+for a report with cspBlocked set (the deferred sends carry it).

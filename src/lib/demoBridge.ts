@@ -60,7 +60,21 @@ export interface DemoBridgeOpts {
   /** notebook output: report content height to the parent so the host iframe
    *  grows to fit (a demo owns a fixed box; an output does not). */
   reportSize?: boolean;
+  /** cut this demo off from the internet (global master switch OFF or the deck's
+   *  per-deck block). Injects a connect-src lockdown across every egress channel
+   *  (fetch/XHR/WS/beacon/pixel/media/font/form) + neuters WebRTC (the CSP blind
+   *  spot). Rendering (inline scripts/styles, data:/blob: assets) is untouched. */
+  blockInternet?: boolean;
 }
+
+// Injected FIRST in <head> when internet is blocked. The CSP <meta> must precede
+// any resource load to be honored; it leaves script-src/style-src unset so the
+// demo still runs and renders, and only closes the network. WebRTC bypasses CSP,
+// so delete its constructors before any demo code runs (robust: the demo is
+// opaque-origin, so it can't steal a fresh copy from a nested frame).
+const NET_BLOCK =
+  `<meta http-equiv="Content-Security-Policy" content="connect-src 'none'; img-src data: blob:; media-src data: blob:; font-src data:; form-action 'none'; frame-src blob: data:">`
+  + `<script>try{delete window.RTCPeerConnection;delete window.webkitRTCPeerConnection;delete window.RTCDataChannel;}catch(e){}</script>`;
 
 // Post the document's content height to the parent whenever it changes, so the
 // host can size the (opaque) iframe to its content. See docs/NOTEBOOK-ISOLATION.md §5.
@@ -153,6 +167,8 @@ export function injectDemoBridge(html: string, hash: string, channelKey: string,
 </script>`;
   let scripts = opts.capture ? bootstrap + `<script>${MS_UMD}</script>` + CAPTURE_HANDLER : bootstrap;
   if (opts.reportSize) scripts += SIZE_REPORTER;
+  // The net-block (CSP meta + WebRTC neuter) must be FIRST in <head>.
+  if (opts.blockInternet) scripts = NET_BLOCK + scripts;
   if (html.includes('<head>')) return html.replace('<head>', '<head>' + scripts);
   return scripts + html;
 }

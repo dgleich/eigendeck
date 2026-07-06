@@ -18,6 +18,38 @@ import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { buildEmbeddedFontFacesCSS } from './fonts';
 import { hashString } from './hash';
 import { usePresentationStore } from '../store/presentation';
+import { usePreference } from './preferences';
+
+/** Whether the current deck's demos should be cut off from the internet: the
+ *  global master switch is OFF, OR this deck is per-deck blocked. Reactive to the
+ *  pref, the open deck, and the deck-security window's live toggle. */
+export function useDemoInternetBlocked(): boolean {
+  const [allow] = usePreference('demoInternetAccess');
+  const projectPath = usePresentationStore((s) => s.projectPath);
+  const [deckBlocked, setDeckBlocked] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const recheck = async (fresh: boolean) => {
+      try {
+        const { getDeckToken } = await import('../store/presentation');
+        const token = getDeckToken();
+        if (!token) { if (alive) setDeckBlocked(false); return; }
+        const ts = await import('./trustStore');
+        if (fresh) ts.invalidateLedgerCache(); // the security window may have just changed it
+        const b = await ts.isDeckInternetBlocked(token);
+        if (alive) setDeckBlocked(b);
+      } catch { /* non-Tauri / test context — leave default (not blocked) */ }
+    };
+    void recheck(false);
+    let unlisten: (() => void) | undefined;
+    void import('@tauri-apps/api/event')
+      .then(({ listen }) => listen('eigendeck:security-changed', () => { void recheck(true); }))
+      .then((fn) => { unlisten = fn; })
+      .catch(() => {});
+    return () => { alive = false; unlisten?.(); };
+  }, [projectPath]);
+  return !allow || deckBlocked;
+}
 
 // composite-key -> blob URL. Keyed so a theme/font/hash change makes a new blob.
 const docBlobCache = new Map<string, string>();
@@ -51,6 +83,9 @@ export interface DemoMountOpts {
   fontFacesCss?: string;
   /** editor-only: inline the capture handler so the demo can rasterize itself. */
   capture?: boolean;
+  /** cut this demo off from the internet (global master switch OFF or the deck's
+   *  per-deck block) — injects a connect-src lockdown + WebRTC neuter (demoBridge). */
+  blockInternet?: boolean;
 }
 
 /** Build (or reuse) the opaque-origin demo document blob URL. Returns null when
@@ -58,13 +93,14 @@ export interface DemoMountOpts {
 export async function getDemoDocumentUrl(assetId: string | undefined, opts: DemoMountOpts): Promise<string | null> {
   if (!assetId) return null;
   if (blockedCache.has(assetId)) return null;
-  const { hash = '', channelKey, varsCss = '', fontFacesCss = '', capture = false } = opts;
-  // The prefix identifies ONE mount (asset+role/piece+capture); only the trailing
-  // theme/font hashes vary. So a theme switch or the async fonts resolving from ''
-  // supersedes the prior blob for the same prefix — revoke it (else it leaks, with
-  // the inlined modern-screenshot bytes when capture is on). Other pieces of the
-  // same demo use a different `hash` → different prefix → untouched.
-  const prefix = `${assetId} ${hash} ${channelKey} ${capture ? 'C' : ''} `;
+  const { hash = '', channelKey, varsCss = '', fontFacesCss = '', capture = false, blockInternet = false } = opts;
+  // The prefix identifies ONE mount (asset+role/piece+capture+net-block); only the
+  // trailing theme/font hashes vary. So a theme switch, the async fonts resolving
+  // from '', OR the internet toggle flipping supersedes the prior blob for the same
+  // prefix — revoke it (else it leaks, with the inlined modern-screenshot bytes when
+  // capture is on). Other pieces of the same demo use a different `hash` → different
+  // prefix → untouched.
+  const prefix = `${assetId} ${hash} ${channelKey} ${capture ? 'C' : ''}${blockInternet ? 'B' : ''} `;
   const key = prefix + `${hashString(varsCss)} ${hashString(fontFacesCss)}`;
   const existing = docBlobCache.get(key);
   if (existing) return existing;
@@ -73,7 +109,7 @@ export async function getDemoDocumentUrl(assetId: string | undefined, opts: Demo
   }
   const raw = await fetchRawDemo(assetId);
   if (raw == null) return null;
-  const withBridge = injectDemoBridge(raw, hash ? `#${hash}` : '', channelKey, { capture });
+  const withBridge = injectDemoBridge(raw, hash ? `#${hash}` : '', channelKey, { capture, blockInternet });
   const doc = injectDemoThemeIntoHtml(withBridge, fontFacesCss, varsCss);
   const url = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
   docBlobCache.set(key, url);
@@ -90,11 +126,11 @@ export async function getDemoDocumentUrl(assetId: string | undefined, opts: Demo
 const outputBlobCache = new Map<string, string>();
 
 export function buildIsolatedOutputUrl(html: string, opts: {
-  channelKey: string; varsCss?: string; fontFacesCss?: string;
+  channelKey: string; varsCss?: string; fontFacesCss?: string; blockInternet?: boolean;
 }): string {
-  const { channelKey, varsCss = '', fontFacesCss = '' } = opts;
+  const { channelKey, varsCss = '', fontFacesCss = '', blockInternet = false } = opts;
   const contentSig = hashString(html);
-  const key = `${contentSig} ${channelKey} ${hashString(varsCss)} ${hashString(fontFacesCss)}`;
+  const key = `${contentSig} ${channelKey} ${blockInternet ? 'B' : ''} ${hashString(varsCss)} ${hashString(fontFacesCss)}`;
   const existing = outputBlobCache.get(key);
   if (existing) return existing;
   const prefix = `${contentSig} ${channelKey} `;
@@ -102,7 +138,7 @@ export function buildIsolatedOutputUrl(html: string, opts: {
     if (k !== key && k.startsWith(prefix)) { URL.revokeObjectURL(u); outputBlobCache.delete(k); }
   }
   const page = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:transparent;}</style></head><body>${html}</body></html>`;
-  const withBridge = injectDemoBridge(page, '', channelKey, { reportSize: true });
+  const withBridge = injectDemoBridge(page, '', channelKey, { reportSize: true, blockInternet });
   const doc = injectDemoThemeIntoHtml(withBridge, fontFacesCss, varsCss);
   const url = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
   outputBlobCache.set(key, url);
@@ -121,6 +157,7 @@ export function invalidateIsolatedOutput(channelKey: string): void {
 /** React hook: the opaque-origin demo document URL, rebuilt when inputs change. */
 export function useDemoDoc(assetId: string | undefined, opts: DemoMountOpts): string | null | undefined {
   const { hash, channelKey, varsCss, fontFacesCss, capture } = opts;
+  const blockInternet = useDemoInternetBlocked();
   const [url, setUrl] = useState<string | null | undefined>(undefined);
   const [refresh, setRefresh] = useState(0);
   // Reload when the underlying asset bytes change on disk (file-watch / "Reload
@@ -138,10 +175,10 @@ export function useDemoDoc(assetId: string | undefined, opts: DemoMountOpts): st
   useEffect(() => {
     if (!assetId) { setUrl(undefined); return; }
     let alive = true;
-    getDemoDocumentUrl(assetId, { hash, channelKey, varsCss, fontFacesCss, capture })
+    getDemoDocumentUrl(assetId, { hash, channelKey, varsCss, fontFacesCss, capture, blockInternet })
       .then((r) => { if (alive) setUrl(r); });
     return () => { alive = false; };
-  }, [assetId, hash, channelKey, varsCss, fontFacesCss, capture, refresh]);
+  }, [assetId, hash, channelKey, varsCss, fontFacesCss, capture, blockInternet, refresh]);
   return url;
 }
 

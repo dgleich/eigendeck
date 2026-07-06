@@ -9,7 +9,7 @@
 // reports its content height back so the box grows to fit.
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { buildIsolatedOutputUrl, invalidateIsolatedOutput, useDeckFontFacesCss } from '../../lib/demoMount';
+import { buildIsolatedOutputUrl, invalidateIsolatedOutput, useDeckFontFacesCss, useDemoInternetBlocked } from '../../lib/demoMount';
 import { demoVarsCssForSlide } from '../../lib/demoThemeInject';
 import { usePresentationStore } from '../../store/presentation';
 
@@ -29,9 +29,10 @@ export function IsolatedOutput({ html }: { html: string }) {
     [config, theme, slide],
   );
 
+  const blockInternet = useDemoInternetBlocked();
   const src = useMemo(
-    () => buildIsolatedOutputUrl(html, { channelKey, varsCss, fontFacesCss }),
-    [html, channelKey, varsCss, fontFacesCss],
+    () => buildIsolatedOutputUrl(html, { channelKey, varsCss, fontFacesCss, blockInternet }),
+    [html, channelKey, varsCss, fontFacesCss, blockInternet],
   );
 
   // Revoke this instance's blob(s) on unmount — channelKey is unique per mount,
