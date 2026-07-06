@@ -1,8 +1,8 @@
 # Security: your files stay yours
 
-> *Status: this describes Eigendeck's asset-security model. The Security Panel and
-> the trust prompts below are being built to match it — this page is written first,
-> so the design and the interface agree.*
+Eigendeck is careful with two things: the **files on your computer** (a deck can't
+read them behind your back) and what a deck's **demos** can do (they're boxed in, and
+they can't use the internet unless you allow it). This page covers both.
 
 ## The rule
 
@@ -46,8 +46,10 @@ Two consequences you'll feel:
 
 - **Your source files are never modified.** Watching reads them; it never writes
   them. (Notebooks work the same way — see [Notebooks](notebooks.md).)
-- **Sharing a deck never sends anything anywhere on its own.** A deck doesn't phone
-  home; the only way content leaves your machine is you sending the deck.
+- **Your content never leaves on its own.** The only way your files or slides go
+  out is you sharing the deck. (Interactive demos *can* use the internet — but only
+  if you allow it and only for the sites they name; see [Demos and the
+  internet](#demos-and-the-internet) below.)
 - **Exported HTML has no live links.** Everything is baked in as static content, so
   an exported deck carries no connection back to your disk.
 
@@ -98,6 +100,33 @@ right in its **inspector** when you select that element on the canvas.
 
 If you'd rather not deal with live files at all, turn off file-watching globally in
 Settings — then decks are always self-contained copies and none of this appears.
+
+## Demos and the internet
+
+Some slides carry **demos** — small interactive widgets like charts, simulations,
+and graphs. Two things to know:
+
+- **A demo can't touch your files or the rest of your computer.** It runs boxed in
+  (a sandbox), the same way a web page in your browser can't reach your files. This
+  holds even for a deck you haven't trusted.
+- **A demo can use the internet — but only if you allow it, and only for the sites
+  it names.** Some demos fetch live data or load a chart library from the web. A demo
+  has to *declare* which sites it uses (and why); it can reach only those, and nothing
+  else. A demo that declares nothing stays offline.
+
+You're in control in three places, from broad to specific:
+
+- **Everywhere** — Settings → Security has a master switch to turn demo internet off
+  for every deck.
+- **Per deck** — a deck's Security window has an **Internet** tab with one switch to
+  keep *this* deck's demos offline. Good for a deck from someone you don't fully trust.
+- **Per demo** — that same Internet tab lists each demo that goes online, the exact
+  sites it uses, and what for — so you can switch off just the one you don't like.
+
+Turning the internet off doesn't break a demo; it just runs offline. It only means the
+demo can't fetch live data or "phone home" — for example, quietly recording when and
+where you open the deck. When something is switched off higher up, the controls below it
+grey out, so you can always see why a demo is offline.
 
 ## Related
 
