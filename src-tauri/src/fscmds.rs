@@ -211,7 +211,7 @@ mod tests {
     fn write_text_roundtrips() {
         let p = tmp("t.txt");
         let _ = std::fs::remove_file(&p);
-        write_text_file(p.to_string_lossy().into_owned(), "héllo".into()).unwrap();
+        write_text_file(p.to_string_lossy().into_owned(), "héllo".into(), None).unwrap();
         assert_eq!(std::fs::read_to_string(&p).unwrap(), "héllo");
         let _ = std::fs::remove_file(&p);
     }

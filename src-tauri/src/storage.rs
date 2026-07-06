@@ -334,7 +334,7 @@ pub fn create_schema(conn: &Connection) -> SqlResult<()> {
 
     // Set schema version
     conn.execute(
-        "INSERT OR REPLACE INTO _meta VALUES ('schema_version', ?1)",
+        "INSERT OR REPLACE INTO _meta (key, value) VALUES ('schema_version', ?1)",
         params![SCHEMA_VERSION.to_string()],
     )?;
 
@@ -699,14 +699,14 @@ pub fn db_import_json(json: String) -> Result<(), String> {
 
         // Presentation metadata
         if let Some(title) = presentation.get("title").and_then(|v| v.as_str()) {
-            tx.execute("INSERT INTO presentation VALUES ('title', ?1)", params![title])?;
+            tx.execute("INSERT INTO presentation (key, value) VALUES ('title', ?1)", params![title])?;
         }
         if let Some(theme) = presentation.get("theme").and_then(|v| v.as_str()) {
-            tx.execute("INSERT INTO presentation VALUES ('theme', ?1)", params![theme])?;
+            tx.execute("INSERT INTO presentation (key, value) VALUES ('theme', ?1)", params![theme])?;
         }
         if let Some(config) = presentation.get("config") {
             tx.execute(
-                "INSERT INTO presentation VALUES ('config', ?1)",
+                "INSERT INTO presentation (key, value) VALUES ('config', ?1)",
                 params![config.to_string()],
             )?;
         }
@@ -805,7 +805,7 @@ pub fn db_import_json(json: String) -> Result<(), String> {
                                         owner_remap.insert(element_id.clone(), existing_id.clone());
                                     }
                                     tx.execute(
-                                        "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
+                                        "INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from, valid_to) VALUES (?1, ?2, ?3, ?4, NULL)",
                                         params![slide_id, existing_id, z as i32, &ts],
                                     )?;
                                     continue;
@@ -846,14 +846,15 @@ pub fn db_import_json(json: String) -> Result<(), String> {
 
                         if !inserted_elements.contains(&element_id) {
                             tx.execute(
-                                "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+                                "INSERT INTO elements (id, type, data, link_id, asset_id, valid_from, valid_to) \
+                                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
                                 params![&element_id, el_type, data_str, row_link_id, asset_id, &ts],
                             )?;
                             inserted_elements.insert(element_id.clone());
                         }
 
                         tx.execute(
-                            "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
+                            "INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from, valid_to) VALUES (?1, ?2, ?3, ?4, NULL)",
                             params![slide_id, &element_id, z as i32, &ts],
                         )?;
                     }
@@ -1213,7 +1214,8 @@ pub fn db_update_element(
         // Insert new version. Column order: id, type, data, link_id,
         // asset_id, valid_from, valid_to.
         tx.execute(
-            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+            "INSERT INTO elements (id, type, data, link_id, asset_id, valid_from, valid_to) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
             params![&id, &el_type, &data, &link_id, &asset_id, &ts],
         )?;
         tx.commit()?;
@@ -1238,11 +1240,12 @@ pub fn db_add_element(
     with_db(|conn| {
         let tx = conn.unchecked_transaction()?;
         tx.execute(
-            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+            "INSERT INTO elements (id, type, data, link_id, asset_id, valid_from, valid_to) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
             params![&element_id, &element_type, &data, &link_id, &asset_id, &ts],
         )?;
         tx.execute(
-            "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
+            "INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from, valid_to) VALUES (?1, ?2, ?3, ?4, NULL)",
             params![&slide_id, &element_id, z_order, &ts],
         )?;
         tx.commit()?;
@@ -1275,7 +1278,7 @@ pub fn db_add_element_to_slide(
             .is_ok();
         if !exists {
             conn.execute(
-                "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
+                "INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from, valid_to) VALUES (?1, ?2, ?3, ?4, NULL)",
                 params![&slide_id, &element_id, z_order, &ts],
             )?;
         }
@@ -1996,7 +1999,7 @@ pub fn db_update_z_order(
         )?;
         // Insert new
         tx.execute(
-            "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
+            "INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from, valid_to) VALUES (?1, ?2, ?3, ?4, NULL)",
             params![&slide_id, &element_id, new_z_order, &ts],
         )?;
         tx.commit()?;
@@ -2035,7 +2038,8 @@ pub fn db_free_element(
         // asset_id binding (per-element duplication should keep its
         // asset reference).
         tx.execute(
-            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+            "INSERT INTO elements (id, type, data, link_id, asset_id, valid_from, valid_to) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
             params![&new_element_id, &el_type, &data, &link_id, &asset_id, &ts],
         )?;
 
@@ -2047,7 +2051,7 @@ pub fn db_free_element(
 
         // Add new reference
         tx.execute(
-            "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
+            "INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from, valid_to) VALUES (?1, ?2, ?3, ?4, NULL)",
             params![&slide_id, &new_element_id, z_order, &ts],
         )?;
 
@@ -3003,7 +3007,7 @@ pub fn db_clear_asset_cache(source_id: String) -> Result<i64, String> {
 pub fn db_update_presentation(key: String, value: String) -> Result<(), String> {
     with_db(|conn| {
         conn.execute(
-            "INSERT OR REPLACE INTO presentation VALUES (?1, ?2)",
+            "INSERT OR REPLACE INTO presentation (key, value) VALUES (?1, ?2)",
             params![&key, &value],
         )?;
         Ok(())
@@ -3876,7 +3880,7 @@ mod tests {
             let c = conn.as_ref().unwrap();
             let ts = timestamp();
             c.execute(
-                "INSERT INTO slide_elements VALUES (?1, ?2, ?3, ?4, NULL)",
+                "INSERT INTO slide_elements (slide_id, element_id, z_order, valid_from, valid_to) VALUES (?1, ?2, ?3, ?4, NULL)",
                 params!["s2", "shared", 0, &ts],
             )
             .unwrap();
@@ -4341,7 +4345,7 @@ mod tests {
                  VALUES ('k', 'x', 'b', 0, '', '<svg/>')",
                 [],
             )?;
-            conn.execute("INSERT OR REPLACE INTO _meta VALUES ('project_id', 'old-uuid')", [])?;
+            conn.execute("INSERT OR REPLACE INTO _meta (key, value) VALUES ('project_id', 'old-uuid')", [])?;
             Ok(())
         }).unwrap();
         *PENDING_PROJECT_ID.lock().unwrap() = Some("session-uuid".into());
@@ -4951,6 +4955,86 @@ mod tests {
         teardown_global_db();
     }
 
+    /// Guard: EVERY insert in this file must list its columns explicitly.
+    /// A positional `VALUES(...)` binds by physical column order, which DRIFTS
+    /// when a column is added to an existing deck via `ALTER TABLE ADD COLUMN`
+    /// (SQLite appends it). That is the asset_id bug (659e476): on a deck
+    /// created before the column existed, a positional element insert wrote the
+    /// asset id into the valid_from slot and NULLed asset_id, so asset-backed
+    /// elements vanished on reload. Named inserts are order-independent. This
+    /// scans our own source so a reintroduced positional insert fails CI.
+    #[test]
+    fn every_insert_names_its_columns() {
+        let src = include_str!("storage.rs");
+        let b = src.as_bytes();
+        let key = "INTO ";
+        let mut offenders = Vec::new();
+        let mut i = 0;
+        while let Some(rel) = src[i..].find(key) {
+            let s = i + rel;
+            let mut j = s + key.len();
+            let tbl_start = j;
+            while j < b.len() && (b[j].is_ascii_alphanumeric() || b[j] == b'_') { j += 1; }
+            let table = &src[tbl_start..j];
+            let mut k = j;
+            while k < b.len() && b[k].is_ascii_whitespace() { k += 1; }
+            // Positional == the token after the table name (skipping whitespace/
+            // newlines) is the values keyword, with no `(columns)` list between.
+            if !table.is_empty() && src[k..].starts_with("VALUES") {
+                let line = 1 + src[..s].bytes().filter(|&c| c == b'\n').count();
+                offenders.push(format!("line {line}: `{table}` insert binds by position"));
+            }
+            i = s + key.len();
+        }
+        assert!(
+            offenders.is_empty(),
+            "positional insert(s) found — list columns explicitly so a future \
+             ALTER TABLE ADD COLUMN can't shift values into the wrong column:\n{}",
+            offenders.join("\n"),
+        );
+    }
+
+    /// Regression: adding an asset-backed element to a deck whose `elements`
+    /// table was MIGRATED (asset_id `ALTER`-appended, so it's the LAST column,
+    /// not mid-table) must still bind asset_id/valid_from correctly. This is the
+    /// exact shape of a pre-2026-05-27 deck, where the column-order bug wrote the
+    /// asset id into valid_from and NULLed asset_id. No prior test built a
+    /// drifted layout and then inserted into it — the gap that hid the bug.
+    #[test]
+    fn asset_element_insert_survives_migrated_column_order() {
+        let conn = Connection::open_in_memory().unwrap();
+        // Pre-phase-3 elements table: NO asset_id column.
+        conn.execute_batch(
+            "CREATE TABLE elements (id TEXT NOT NULL, type TEXT NOT NULL, data TEXT NOT NULL, \
+             link_id TEXT, valid_from TEXT NOT NULL, valid_to TEXT, PRIMARY KEY (id, valid_from));",
+        ).unwrap();
+        create_schema(&conn).unwrap(); // ALTER appends asset_id at the END (drifted order)
+
+        let cols: Vec<String> = conn
+            .prepare("SELECT name FROM pragma_table_info('elements')").unwrap()
+            .query_map([], |r| r.get::<_, String>(0)).unwrap()
+            .map(|r| r.unwrap()).collect();
+        assert!(
+            cols.iter().position(|c| c == "asset_id") > cols.iter().position(|c| c == "valid_from"),
+            "precondition: asset_id should be appended last on a migrated table, got {cols:?}",
+        );
+
+        // The production insert (named columns) — must land right despite the order.
+        conn.execute(
+            "INSERT INTO elements (id, type, data, link_id, asset_id, valid_from, valid_to) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL)",
+            params!["el1", "demo-piece", "{}", None::<String>, "asset-XYZ",
+                    "2026-07-06T00:00:00.000Z-00000000"],
+        ).unwrap();
+
+        let (asset_id, valid_from, valid_to): (Option<String>, String, Option<String>) = conn
+            .query_row("SELECT asset_id, valid_from, valid_to FROM elements WHERE id='el1'", [],
+                       |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?))).unwrap();
+        assert_eq!(asset_id.as_deref(), Some("asset-XYZ"), "asset_id must bind, not shift into valid_from");
+        assert_eq!(valid_from, "2026-07-06T00:00:00.000Z-00000000");
+        assert!(valid_to.is_none(), "row must be current, not instantly-closed");
+    }
+
     /// Migration test: simulate a pre-phase-3 elements table (no
     /// asset_id column), populate with elements whose JSON contains
     /// `assetId`, then run create_schema → assert the ALTER TABLE
@@ -4975,7 +5059,7 @@ mod tests {
         ).unwrap();
         let now = timestamp();
         conn.execute(
-            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+            "INSERT INTO elements (id, type, data, link_id, valid_from, valid_to) VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
             params![
                 "el-img",
                 "image",
@@ -4985,7 +5069,7 @@ mod tests {
             ],
         ).unwrap();
         conn.execute(
-            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+            "INSERT INTO elements (id, type, data, link_id, valid_from, valid_to) VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
             params![
                 "el-text",
                 "text",
@@ -5064,7 +5148,7 @@ mod tests {
         ).unwrap();
         // Image element with src but no assetId.
         conn.execute(
-            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+            "INSERT INTO elements (id, type, data, link_id, valid_from, valid_to) VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
             params![
                 "el-img",
                 "image",
@@ -5080,7 +5164,7 @@ mod tests {
             params!["asset-demo", vec![1u8], "text/html", 1i64, "h2", "demos/x.html", &now],
         ).unwrap();
         conn.execute(
-            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+            "INSERT INTO elements (id, type, data, link_id, valid_from, valid_to) VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
             params![
                 "el-demo",
                 "demo-piece",
@@ -5091,7 +5175,7 @@ mod tests {
         ).unwrap();
         // Element with src that has no matching asset row.
         conn.execute(
-            "INSERT INTO elements VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+            "INSERT INTO elements (id, type, data, link_id, valid_from, valid_to) VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
             params![
                 "el-orphan",
                 "image",
