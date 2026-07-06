@@ -16,6 +16,7 @@ type Pending = {
   path: string;
   slideNumbers: number[];
   existingChanged: boolean;
+  notLiveReason?: string;
   resolve: (choice: 'accept' | 'revert' | 'cancel') => void;
 };
 
@@ -70,9 +71,9 @@ export function CollisionDialog() {
             </>
           ) : (
             <>
-              is different from the copy already used on {slideList}. That copy hasn’t been
-              updated — this deck isn’t set up to auto-update it from the source file, so
-              Eigendeck kept the version you first added. What should happen?
+              is different from the copy already used on {slideList}.{' '}
+              {req.notLiveReason ?? 'Eigendeck isn’t auto-updating this file from its source.'}{' '}
+              So it still shows the version you first added — what should happen?
             </>
           )}
         </div>

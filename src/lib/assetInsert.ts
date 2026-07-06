@@ -236,6 +236,27 @@ export async function readAddFileCapped(fullPath: string): Promise<Uint8Array | 
   return readFileNative(fullPath);
 }
 
+/** Why the existing embedded copy was never live-updated from its source file —
+ *  the concrete reason for the collision dialog (see CollisionRequest.notLiveReason).
+ *  Checked in precedence order; falls back to a neutral phrasing. `perAsset` is the
+ *  asset row's auto_reload override. */
+async function whyNotLive(perAsset: string | null): Promise<string> {
+  const store = usePresentationStore.getState();
+  if (!store.projectPath) return "This presentation isn’t saved yet, so Eigendeck can’t watch the source file.";
+  const token = getDeckToken();
+  if (token) {
+    try {
+      const { isTrusted } = await import('./trustStore');
+      if (!(await isTrusted(token))) return "This deck isn’t trusted, so Eigendeck doesn’t watch its source files for changes.";
+    } catch { /* non-Tauri / test context */ }
+  }
+  const presOverride = store.presentation?.config?.autoReloadAssets ?? null;
+  if (!effectiveAutoReload(perAsset, presOverride, getPreference('autoReloadAssets'))) {
+    return "Auto-updating from source files is turned off for this deck.";
+  }
+  return "Eigendeck isn’t auto-updating this file from its source.";
+}
+
 export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise<StoreResult> {
   const result = await storeAssetWithCollisionCheckImpl(args);
   // Added a linked asset to a trusted deck → approve its path (keyed by the asset id
@@ -354,10 +375,12 @@ async function storeAssetWithCollisionCheckImpl(args: StoreArgs): Promise<StoreR
   // did an auto-update "already happen"; on an untrusted/unwatched deck the copy
   // is still the original, so the dialog must not claim an update occurred.
   const existingChanged = !!meta.hash && !!original.hash && meta.hash !== original.hash;
+  const notLiveReason = existingChanged ? undefined : await whyNotLive(meta.auto_reload);
   const choice = await showCollisionDialog({
     path: args.path,
     slideNumbers: slidesUsing,
     existingChanged,
+    notLiveReason,
   });
   ilog(`user chose: ${choice}`);
 

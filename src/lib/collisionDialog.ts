@@ -42,6 +42,10 @@ export interface CollisionRequest {
    *  only in the NEW file being added — the message must NOT claim an update
    *  already occurred. */
   existingChanged: boolean;
+  /** When `existingChanged` is false, the concrete reason the embedded copy was
+   *  never live-updated (untrusted deck / unsaved / auto-reload off / …), so the
+   *  message can be accurate instead of vaguely saying "isn't set up". */
+  notLiveReason?: string;
 }
 
 interface PendingRequest extends CollisionRequest {
