@@ -70,9 +70,13 @@ Opaque origin **cuts** the demo off from all *local* resources:
 - app-origin blob URLs, `localStorage`, cookies, IndexedDB
 - the shared `BroadcastChannel` (origin-keyed)
 
-It **keeps** outbound network. The `sandbox` attribute has no network token;
-`fetch`/XHR/WebSocket/CDN `<script>`/remote `<img>` still work, governed only by
-CSP. This is intended: real demos load CDN libraries and datasets.
+Outbound network is governed by the injected CSP, NOT by `sandbox` (which has no
+network token). Since the manifest gate shipped, a demo is **offline by default**:
+`fetch`/XHR/WebSocket/CDN `<script>`/remote `<img>` are blocked unless the demo
+**declares the host** in an `application/eigendeck-manifest+json` block, which
+scopes the injected CSP to exactly those hosts. The global + per-deck + per-demo
+switches sit on top. See **[`CSP-AND-EGRESS.md`](CSP-AND-EGRESS.md) §2b/§2c** for
+the full model; the coarse block below is the original v1 slice.
 
 ### Block-internet control [v1]
 

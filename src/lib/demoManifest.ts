@@ -58,7 +58,11 @@ const ORIGIN_RE = /^(?:https?|wss?):\/\/(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[
 /** True iff `h` is a safe declared host (strict hostname or ws(s)/http(s) origin).
  *  Used to filter what the manifest can grant AND what the panel shows as granted. */
 export function isValidManifestHost(h: string): boolean {
-  return typeof h === 'string' && (ORIGIN_RE.test(h) || HOSTNAME_RE.test(h));
+  // Length-guard BEFORE the regex: the host is attacker-controlled, and a bounded
+  // length keeps the regex linear (no pathological backtracking on a huge input).
+  // 253 = DNS max name; +scheme/port headroom.
+  return typeof h === 'string' && h.length > 0 && h.length <= 260
+    && (ORIGIN_RE.test(h) || HOSTNAME_RE.test(h));
 }
 
 /** Map declared hosts to a CSP source list. A bare host → https + secure-ws for it;

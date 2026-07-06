@@ -25,6 +25,32 @@ also what you hand an LLM: it's installable from the app via **File → Install 
 Tools…**, which drops the authoring guide and a starter demo where an
 LLM/agent working in your project can read them.
 
+## Two things that make a demo silently fail
+
+Both are enforced, and both show up as a *blank* demo rather than an error, so
+they're worth knowing up front (the full rules are in `DEMO_AUTHORING.md`):
+
+- **The marker.** A demo must begin with `<!--eigendeck-demo-v1-->` right after
+  `<!DOCTYPE html>`, or Eigendeck won't recognize the file as a demo and won't
+  mount it. (The starter file and the LLM guide already include it — keep it.)
+- **The internet is off by default.** A demo can't reach the network unless it
+  **declares the hosts it needs** in a small JSON manifest in its `<head>`. So if
+  your demo loads a library from a CDN (D3, Plotly, topojson…) or fetches data,
+  you must list that host, e.g.:
+
+  ```html
+  <script type="application/eigendeck-manifest+json">
+  { "network": [ { "host": "d3js.org", "purpose": "D3 visualization library" } ] }
+  </script>
+  ```
+
+  Without it the CDN `<script>`/`fetch` is blocked and the demo renders blank.
+  Declaring a host also shows it (with its purpose) in the deck's Security →
+  Internet panel, where the viewer can allow or block it. Prefer inlining a
+  library when you can — a self-contained demo works even when internet is off.
+  See the "Internet access" section of `DEMO_AUTHORING.md` for the exact rules
+  (valid host formats, per-deck / global switches).
+
 ## A workflow that works
 
 1. **Describe the demo to the LLM**, and point it at `DEMO_AUTHORING.md` (or run

@@ -251,7 +251,7 @@ The `position` field is required but ignored for arrows (use x1/y1/x2/y2).
 }
 ```
 
-Demo files must be self-contained HTML (inline CSS/JS, or CDN references). The asset's `path` (typically `demos/bfs-demo.html`) is its display label; the bytes live in the `assets` table.
+Demo files must be HTML that begins with the `<!--eigendeck-demo-v1-->` marker (right after `<!DOCTYPE html>`) or they won't mount. They should be self-contained (inline CSS/JS); a demo is **offline by default**, so any CDN reference or `fetch` host must be declared in an `application/eigendeck-manifest+json` block in `<head>` or it's blocked and the demo renders blank (see `DEMO_AUTHORING.md` → "Internet access"). The asset's `path` (typically `demos/bfs-demo.html`) is its display label; the bytes live in the `assets` table.
 
 - `assetId`: REQUIRED UUID — stable binding to the demo HTML asset.
 
