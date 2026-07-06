@@ -65,7 +65,8 @@ export interface DemoBridgeOpts {
    *  only the demo's own inline scripts/styles + data:/blob: assets render). { hosts }
    *  = internet SCOPED to those declared hosts (the manifest allowlist) for scripts,
    *  styles, fetch, images, media, fonts; anything else is blocked. Either way the
-   *  demo still renders from its own content, and WebRTC is neutered (CSP blind spot). */
+   *  demo still renders from its own content, and WebRTC is neutered (CSP blind spot).
+   *  Omitted → treated as 'block' (fail closed): a demo is never mounted un-gated. */
   net?: 'block' | { hosts: string[] };
 }
 
@@ -99,7 +100,7 @@ function netBlockMeta(net: 'block' | { hosts: string[] }): string {
     "base-uri 'none'",
   ].join('; ');
   return `<meta http-equiv="Content-Security-Policy" content="${csp}">`
-    + `<script>try{delete window.RTCPeerConnection;delete window.webkitRTCPeerConnection;delete window.RTCDataChannel;}catch(e){}</script>`;
+    + `<script>try{delete window.RTCPeerConnection;delete window.webkitRTCPeerConnection;delete window.RTCDataChannel;delete window.WebTransport;}catch(e){}</script>`;
 }
 
 // Post the document's content height to the parent whenever it changes, so the
@@ -193,8 +194,11 @@ export function injectDemoBridge(html: string, hash: string, channelKey: string,
 </script>`;
   let scripts = opts.capture ? bootstrap + `<script>${MS_UMD}</script>` + CAPTURE_HANDLER : bootstrap;
   if (opts.reportSize) scripts += SIZE_REPORTER;
-  // The network policy (CSP meta + WebRTC neuter) must be FIRST in <head>.
-  if (opts.net) scripts = netBlockMeta(opts.net) + scripts;
+  // The network policy (CSP meta + WebRTC neuter) must be FIRST in <head>. Default
+  // to 'block' (fail CLOSED): a demo built without an explicit net policy gets the
+  // offline lockdown, never an un-gated document — so a future caller that forgets
+  // to pass `net` can't accidentally mount a demo with no CSP at all.
+  scripts = netBlockMeta(opts.net ?? 'block') + scripts;
   if (html.includes('<head>')) return html.replace('<head>', '<head>' + scripts);
   return scripts + html;
 }

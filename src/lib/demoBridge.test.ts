@@ -31,9 +31,11 @@ describe('injectDemoBridge network policy', () => {
     expect(out).toContain('delete window.RTCPeerConnection');
   });
 
-  it('no net → no CSP / neuter injected', () => {
+  it('no net → defaults to BLOCK (fail closed), not an un-gated doc', () => {
     const out = injectDemoBridge(DOC, '', 'ch', {});
-    expect(out).not.toContain('Content-Security-Policy');
-    expect(out).not.toContain('delete window.RTCPeerConnection');
+    expect(out).toContain("default-src 'none'");
+    expect(out).toContain("connect-src 'none'");
+    expect(out).toContain('delete window.RTCPeerConnection');
+    expect(out).toContain('delete window.WebTransport');
   });
 });

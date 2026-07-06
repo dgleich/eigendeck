@@ -34,12 +34,16 @@ export function parseDemoManifest(html: string | undefined | null): DemoManifest
   } catch { return null; }
 }
 
-/** The distinct, VALID hosts a demo declared, or [] if none / no manifest. Invalid
- *  hosts are dropped here too so the injected CSP and the panel never grant them. */
+/** Cap on distinct hosts a single demo can declare — bounds the size of the
+ *  injected CSP string so a pathological manifest can't bloat it. */
+export const MAX_MANIFEST_HOSTS = 32;
+
+/** The distinct, VALID hosts a demo declared (capped), or [] if none / no manifest.
+ *  Invalid hosts are dropped so the injected CSP and the panel never grant them. */
 export function manifestHosts(html: string | undefined | null): string[] {
   const m = parseDemoManifest(html);
   if (!m) return [];
-  return [...new Set(m.network.map((n) => n.host).filter(isValidManifestHost))];
+  return [...new Set(m.network.map((n) => n.host).filter(isValidManifestHost))].slice(0, MAX_MANIFEST_HOSTS);
 }
 
 // The manifest is ATTACKER-CONTROLLED (it lives in the demo's HTML), and its hosts
