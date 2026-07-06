@@ -37,11 +37,13 @@ One coarse, all-or-nothing switch (two toggles that combine), default ON:
 **Enforcement** (`src/lib/demoBridge.ts`): when `useDemoInternetBlocked()` is true
 (master OFF **or** deck blocked), the demo document is built with, injected FIRST in
 `<head>`:
-- a CSP `<meta>`: `connect-src 'none'; img-src data: blob:; media-src data: blob:;
-  font-src data:; form-action 'none'; frame-src blob: data:` — closes every egress
-  channel (fetch/XHR/WS/beacon/pixel/media/font/form) while leaving `script-src`/
-  `style-src` unset, so the demo still runs and renders from its own inline/data:/
-  blob: content;
+- a CSP `<meta>`: `default-src 'none'; script-src 'unsafe-inline'; style-src
+  'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:;
+  connect-src 'none'; frame-src blob: data:; child-src blob:; worker-src blob:;
+  form-action 'none'; base-uri 'none'` — `default-src 'none'` refuses every REMOTE
+  resource (fetch/XHR/WS/beacon/pixel/media/font/**script**/**style**/frame), and
+  only the demo's own inline scripts/styles + `data:`/`blob:` assets are re-opened,
+  so it still runs and renders from its own content;
 - a **WebRTC neuter** (`delete window.RTCPeerConnection` + `webkitRTCPeerConnection`
   + `RTCDataChannel`) — closes the one egress channel CSP doesn't govern (§8).
 
@@ -66,9 +68,12 @@ network. It is **offline unless it declares** the hosts it needs, in a manifest
   remote image/font/form — it just runs locally.
 - **A manifest scopes the injected CSP to the declared hosts**
   (`demoNet()` in `demoMount.ts` → `netBlockMeta({ hosts })` in `demoBridge.ts`):
-  `connect-src https://<host> wss://<host> …`, with `img-src`/`media-src`/`font-src`
-  opened for the same hosts and `form-action` scoped to them. A bare host maps to
-  `https` + `wss`; a full origin (e.g. `http://localhost:8888`) is used verbatim.
+  the meta sets `default-src 'none'` and re-opens only the demo's own inline
+  scripts/styles + `data:`/`blob:` assets + `blob:` frames/workers, plus the declared
+  hosts on `script-src`/`style-src`/`img-src`/`media-src`/`font-src`/`connect-src`/
+  `form-action`. A bare host maps to `https` + `wss`; a full origin (e.g.
+  `http://localhost:8888`) is used verbatim. So a **declared** CDN `<script src>`
+  (e.g. `d3js.org`, `cdn.plot.ly`) loads; an undeclared one is blocked.
 - **Declared ≠ granted, and scoped:** a demo that declares `cdn.plot.ly` but calls
   `tracker.example` is **blocked** — only its own declared hosts get through.
 - **Disclosure:** the security window's Internet tab lists each demo that declares
@@ -78,9 +83,10 @@ network. It is **offline unless it declares** the hosts it needs, in a manifest
 - The outer switches still sit on top: master OFF or deck-blocked overrides any
   manifest and forces `'none'`.
 
-`script-src` is still left unset (a remote `<script src>` is not host-scoped — that
-needs the parent-CSP backstop in §4/#122), so declare CDN script hosts for the
-disclosure but prefer vendoring inline.
+This closes the remote-`<script src>`/`<link>` hole too: a blocked (or undeclared)
+demo can't pull a CDN script or stylesheet — **no internet means no internet**.
+Note this is the *per-demo* CSP; it is distinct from the app-wide *parent*
+`script-src` backstop that protects the privileged frame (still deferred to #122, §4).
 
 ## 3. The mechanism it rests on: CSP inheritance
 
@@ -90,6 +96,12 @@ tighten one demo's egress by injecting a `<meta>` into its doc — the demo can'
 it. It's also why the *global* master switch is a robust wall.
 
 ## 4. Why there is NO app-wide `script-src` CSP (the C-6 backstop)
+
+> This is about the **parent/privileged frame**, and is separate from the
+> **per-demo** `script-src` that §2b now injects into each demo doc. The per-demo
+> one works precisely because it uses `'unsafe-inline'` (+ declared hosts), so the
+> demo's own inline code still runs while remote scripts are gated. A strict *parent*
+> `script-src 'self'` is a different, harder problem, below.
 
 We wanted `script-src 'self'` on the app frame — an injected `<script>` in the
 privileged frame couldn't run. Everything Eigendeck loads is local (bundled MathJax
@@ -160,9 +172,9 @@ cross-origin access → `SecurityError` (the same isolation that blocks
 - The per-deck/global *block* is **coarse** — all-or-nothing per deck. Per-host
   scoping exists (§2b) but is **author-driven** (the demo's manifest), not a
   viewer-set allowlist; a per-demo approve/deny toggle is still deferred (§5).
-- **No parent `script-src` backstop** in v1 (§4, needs #122). A remote `<script src>`
-  is not host-scoped by the manifest, so declaring a CDN is disclosure, not a wall.
-  The parent's residual
+- **No parent `script-src` backstop** in v1 (§4, needs #122) — this is the
+  *privileged frame*, distinct from the per-demo `script-src` (§2b), which IS enforced
+  (a remote `<script src>` from an undeclared host is blocked). The parent's residual
   protection rests on the closed injection sinks + containment, not CSP.
 - **DNS-prefetch** and a few exotic tricks remain theoretical egress edges.
 - The real *un*-covered residual (per the security review) is not exfiltration but

@@ -112,11 +112,11 @@ a JSON `<script>` in the `<head>`:
   one deck (security window) or for every deck (Settings → Security); either
   overrides your manifest. Design demos to degrade gracefully offline.
 
-> Note: this gate covers `fetch`/XHR/WebSocket/beacon, remote images, media,
-> fonts, and form submission. Loading a remote `<script src>` is governed
-> separately and is not yet host-scoped — declare CDN script hosts in the
-> manifest anyway so they show up in the disclosure, and prefer vendoring a
-> library inline when you can.
+> The gate covers everything: `fetch`/XHR/WebSocket/beacon, remote images, media,
+> fonts, form submission, **and remote `<script src>` / `<link>` stylesheets**. A
+> CDN library (D3, Plotly, …) loads only if you declare its host — so declare every
+> host you load from. Vendoring a library inline is still nice (works even when the
+> viewer blocks internet), but no longer required just to run.
 
 ## Template
 
