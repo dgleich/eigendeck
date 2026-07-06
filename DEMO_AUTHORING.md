@@ -29,7 +29,8 @@ Demos run in an **opaque-origin sandbox** — no access to the app, Tauri,
 `IndexedDB` (see "Isolation — what a demo cannot do" below). The
 `BroadcastChannel` you use is **not** a native same-origin channel: an
 app-injected bridge **relays** it through the parent, keyed per demo instance.
-Fetching from the internet / a CDN still works.
+A demo is **offline by default**; to reach the internet it must declare the
+hosts it needs in a manifest (see "Internet access" below).
 
 **Piece names** can be any string of letters, digits, `_`, and `-`
 (e.g. `graph`, `force-graph`, `bar-chart-2`). When you add a demo to a slide,
@@ -76,6 +77,46 @@ Rules for the marker:
   (`/* __D3FORCE__ */` etc.) happens in the body, never the head, so it never
   disturbs the marker. Tools that generate demos (`build-showcase.mjs`, any "new
   demo" template) must emit it.
+
+## Internet access
+
+A demo is **offline by default**. If it needs the network (a data API, a CDN
+library, a tile server), it must **declare each host and why** in a manifest —
+a JSON `<script>` in the `<head>`:
+
+```html
+<head>
+<meta charset="utf-8">
+<script type="application/eigendeck-manifest+json">
+{ "network": [
+  { "host": "api.stockdata.example", "purpose": "Live stock quotes" },
+  { "host": "cdn.plot.ly",           "purpose": "Plotly charting library" }
+] }
+</script>
+…
+```
+
+- **Declared ≠ granted, and scoped:** the hosts you list become the demo's
+  allowlist. A demo that declares `api.stockdata.example` but then tries to
+  reach `tracker.example` is **blocked** — only declared hosts get through.
+- **`host`** is a bare hostname (`api.example.com`) — Eigendeck allows it over
+  `https` and secure WebSocket (`wss`). For a non-default scheme/port (a local
+  dev server) give a full origin: `"http://localhost:8888"`.
+- **`purpose`** is shown to the person opening the deck, in the security window's
+  Internet tab, next to the host. Write it for them ("Live stock quotes"), not
+  for yourself. It's how they decide whether your demo's phoning-home is
+  legitimate.
+- **No manifest → no internet.** A demo with no manifest still runs; it just
+  can't fetch, open a socket, load a remote image/font, or submit a form.
+- **The person opening the deck stays in control.** They can block internet for
+  one deck (security window) or for every deck (Settings → Security); either
+  overrides your manifest. Design demos to degrade gracefully offline.
+
+> Note: this gate covers `fetch`/XHR/WebSocket/beacon, remote images, media,
+> fonts, and form submission. Loading a remote `<script src>` is governed
+> separately and is not yet host-scoped — declare CDN script hosts in the
+> manifest anyway so they show up in the disclosure, and prefer vendoring a
+> library inline when you can.
 
 ## Template
 
@@ -284,13 +325,15 @@ The opaque-origin sandbox is a hard boundary. A demo **cannot**:
 
 - reach `window.top` / `window.parent` / the app / Tauri;
 - use `localStorage` / `sessionStorage` / `cookies` / `IndexedDB`;
-- `fetch` same-origin or app URLs.
+- `fetch` same-origin or app URLs;
+- reach the internet at all unless it **declares the hosts** in its manifest
+  (see "Internet access" above) — and even then only the declared hosts, and
+  only if the person opening the deck hasn't switched internet off.
 
-It **can** fetch from the internet / a CDN (a deck may switch this off via a
-per-deck toggle). And remember the channel is a relay: **payloads are
-structured-clone only** (plain data — no functions/DOM/class instances), and you
-should **not stream at ~60fps across pieces** (broadcast state changes; run
-`requestAnimationFrame` locally in each viewport).
+And remember the channel is a relay: **payloads are structured-clone only**
+(plain data — no functions/DOM/class instances), and you should **not stream at
+~60fps across pieces** (broadcast state changes; run `requestAnimationFrame`
+locally in each viewport).
 
 ## Matching the deck — fonts & theme
 

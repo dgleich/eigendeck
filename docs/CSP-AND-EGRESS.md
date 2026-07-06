@@ -1,6 +1,6 @@
 # Eigendeck CSP & Demo Network Egress — design + status
 
-Status: **[v1] internet block implemented 2026-07-06.** Companion to
+Status: **[v1] internet block + manifest-scoped egress implemented 2026-07-06.** Companion to
 [`DEMO-PLATFORM.md`](DEMO-PLATFORM.md) (opaque-origin demo isolation) and
 [`NOTEBOOK-ISOLATION.md`](NOTEBOOK-ISOLATION.md). Covers audit finding **C-6 / H-6**
 (`csp: null`) and the control over where embedded demos may talk on the network.
@@ -49,6 +49,39 @@ Verified in real WebKit (e2e `netblock-probe`, `NETBLOCK_PASS`): with internet o
 a demo mounts with `RTCPeerConnection` gone AND a `fetch` tripping a `connect-src`
 violation, while its inline script still runs.
 
+## 2b. Manifest-scoped egress — offline by default  **[v1, done]**
+
+Even when internet is *allowed* (both switches ON), a demo does not get open
+network. It is **offline unless it declares** the hosts it needs, in a manifest
+(`src/lib/demoManifest.ts`):
+
+```html
+<script type="application/eigendeck-manifest+json">
+{ "network": [ { "host": "api.stockdata.example", "purpose": "Live stock quotes" } ] }
+</script>
+```
+
+- **No manifest → `connect-src 'none'`** (same wall as the block, minus the outer
+  toggle). A demo that declares nothing can't fetch, socket, beacon, or load a
+  remote image/font/form — it just runs locally.
+- **A manifest scopes the injected CSP to the declared hosts**
+  (`demoNet()` in `demoMount.ts` → `netBlockMeta({ hosts })` in `demoBridge.ts`):
+  `connect-src https://<host> wss://<host> …`, with `img-src`/`media-src`/`font-src`
+  opened for the same hosts and `form-action` scoped to them. A bare host maps to
+  `https` + `wss`; a full origin (e.g. `http://localhost:8888`) is used verbatim.
+- **Declared ≠ granted, and scoped:** a demo that declares `cdn.plot.ly` but calls
+  `tracker.example` is **blocked** — only its own declared hosts get through.
+- **Disclosure:** the security window's Internet tab lists each demo that declares
+  network — the slides it's on, its hosts, and the stated purpose of each
+  (`src/lib/demoNetReport.ts` → `SecurityPanel`'s `DemoNetList`). This is the
+  "what phones home, and why" view.
+- The outer switches still sit on top: master OFF or deck-blocked overrides any
+  manifest and forces `'none'`.
+
+`script-src` is still left unset (a remote `<script src>` is not host-scoped — that
+needs the parent-CSP backstop in §4/#122), so declare CDN script hosts for the
+disclosure but prefer vendoring inline.
+
 ## 3. The mechanism it rests on: CSP inheritance
 
 A `blob:` document **inherits the embedding page's CSP** and can only make it *more*
@@ -78,26 +111,23 @@ CSP** — i.e. serving demos from a **custom Tauri protocol** instead of `blob:`
 would break demos and shipping `'self' 'unsafe-inline' https:` buys almost nothing.
 So v1 ships **no app-wide CSP**; the backstop waits for #122.
 
-## 5. Deferred — finer-grained egress control
+## 5. Deferred — what's still not built
 
-We'd like to do more than a single on/off. It all needs **finer control** than a
-boolean (per-host, per-purpose), which is meaningfully more machinery — and the most
-valuable piece (a strict parent) is gated on #122. Deferred:
+The manifest gate (§2b) delivers the "allow stock-data but not trackers" scoping.
+What remains deferred:
 
-- **Per-deck egress modes** — Open / Local-only / **Allowlist** (allow `localhost` +
-  specific hosts, block the rest). The allowlist is just a different injected CSP
-  (`default-src 'self' <hosts>`), but it needs a host-list UI + storage.
-- **Per-demo network manifest + approval** — a demo *declares* the hosts + purpose it
-  needs; the user approves a subset; only approved hosts enter the injected
-  allowlist. Core rule: **declared ≠ granted** (the manifest is consent/transparency;
-  the CSP is the wall). Keep the manifest in the file format for authoring, out of
-  the everyday UI.
-- **Violation reporting** — surface when a demo tries to reach an undeclared/
-  unapproved host (`report-to`) as tamper-evidence. (We already lean on
-  `securitypolicyviolation` in the e2e; not a user feature yet.)
-
-These are the "allow stock-data but not trackers, per demo" future. Not needed for
-v1; the coarse block covers the real user need ("keep this deck offline").
+- **Per-demo approval / block** — the manifest currently *auto-scopes* to whatever a
+  demo declares (permissive default, minimized attack surface). A per-demo toggle in
+  the Internet tab — approve/deny an individual demo's declared hosts, e.g. deny one
+  that declares broad access — is the natural next lever. It needs per-assetId state
+  in the trust ledger + a mount-time consult. The disclosure list (§2b) is already
+  structured so a toggle drops into each row.
+- **Strict parent `script-src`** — the real backstop against remote `<script src>`
+  and inline injection in the *privileged* frame. Gated on serving demos from a
+  custom Tauri protocol so they don't inherit the parent CSP (#122, §4).
+- **Violation reporting** — surface when a demo tries to reach an undeclared host
+  (`report-to`) as tamper-evidence. (We already lean on `securitypolicyviolation` in
+  the e2e; not a user feature yet.)
 
 ## 6. Directive → exfil-channel map (reference for the allowlist future)
 
@@ -127,9 +157,12 @@ cross-origin access → `SecurityError` (the same isolation that blocks
 
 ## 8. Honest limits
 
-- The block is **coarse** — all-or-nothing per deck. No "allow localhost only" yet
-  (§5).
-- **No parent `script-src` backstop** in v1 (§4, needs #122). The parent's residual
+- The per-deck/global *block* is **coarse** — all-or-nothing per deck. Per-host
+  scoping exists (§2b) but is **author-driven** (the demo's manifest), not a
+  viewer-set allowlist; a per-demo approve/deny toggle is still deferred (§5).
+- **No parent `script-src` backstop** in v1 (§4, needs #122). A remote `<script src>`
+  is not host-scoped by the manifest, so declaring a CDN is disclosure, not a wall.
+  The parent's residual
   protection rests on the closed injection sinks + containment, not CSP.
 - **DNS-prefetch** and a few exotic tricks remain theoretical egress edges.
 - The real *un*-covered residual (per the security review) is not exfiltration but
@@ -143,11 +176,16 @@ cross-origin access → `SecurityError` (the same isolation that blocks
   `blockInternet` + `isDeckInternetBlocked` / `setDeckInternetBlocked`.
 - `src/components/SettingsModal.tsx` — Settings → Security tab.
 - `src/components/SecurityPanel.tsx` — deck Security window "Internet" tab.
-- `src/lib/demoMount.ts` — `useDemoInternetBlocked()`; thread `blockInternet` through
-  `getDemoDocumentUrl` / `buildIsolatedOutputUrl` (+ blob-cache key).
-- `src/lib/demoBridge.ts` — the `NET_BLOCK` injection (CSP meta + WebRTC neuter).
+- `src/lib/demoManifest.ts` — parse the manifest, extract hosts, map to CSP sources.
+- `src/lib/demoNetReport.ts` — walk the deck → per-demo declared-network report.
+- `src/lib/demoMount.ts` — `useDemoInternetBlocked()` + `demoNet(outerBlock, html)`;
+  thread the net policy through `getDemoDocumentUrl` / `buildIsolatedOutputUrl`.
+- `src/lib/demoBridge.ts` — `netBlockMeta(net)` injection: scoped CSP meta (or
+  `'none'`) + WebRTC neuter, first in `<head>`.
+- `src/components/SecurityPanel.tsx` — Internet tab: per-deck block toggle +
+  `DemoNetList` disclosure.
 - `src/components/notebook/IsolatedOutput.tsx` — passes the flag for notebook output.
 - e2e: `netblock-probe.mjs` + `fixtures/make_netblock_deck.py`.
 
 **Deferred / tracked:** app-wide `script-src` via a custom demo protocol (#122);
-per-deck allowlist modes, per-demo manifest + approval, violation reporting (§5).
+per-demo approve/deny toggle, violation reporting (§5).
