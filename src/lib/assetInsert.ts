@@ -350,9 +350,14 @@ async function storeAssetWithCollisionCheckImpl(args: StoreArgs): Promise<StoreR
   }
 
   ilog(`showing collision dialog`);
+  // Did the existing embedded copy already diverge from its original? Only then
+  // did an auto-update "already happen"; on an untrusted/unwatched deck the copy
+  // is still the original, so the dialog must not claim an update occurred.
+  const existingChanged = !!meta.hash && !!original.hash && meta.hash !== original.hash;
   const choice = await showCollisionDialog({
     path: args.path,
     slideNumbers: slidesUsing,
+    existingChanged,
   });
   ilog(`user chose: ${choice}`);
 

@@ -15,6 +15,7 @@ type Pending = {
   id: number;
   path: string;
   slideNumbers: number[];
+  existingChanged: boolean;
   resolve: (choice: 'accept' | 'revert' | 'cancel') => void;
 };
 
@@ -54,24 +55,38 @@ export function CollisionDialog() {
           display: 'flex', flexDirection: 'column',
         }}>
         <div style={{ padding: '16px 20px 8px', fontSize: 15, fontWeight: 600 }}>
-          {fileName} has changed
+          {req.existingChanged ? `${fileName} has changed` : `${fileName} is different from the copy in this deck`}
         </div>
         <div style={{ padding: '0 20px 14px', fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
           <code style={{ background: '#f3f4f6', padding: '1px 4px', borderRadius: 3 }}>
             {fileName}
           </code>{' '}
-          has changed since you added it on {slideList}. The default
-          behavior in Eigendeck is to update it to the latest version when
-          it changes, which has already happened. Both the existing and
-          new copy will now show the updated version.
+          {req.existingChanged ? (
+            <>
+              has changed since you added it on {slideList}. The default behavior in
+              Eigendeck is to update it to the latest version when it changes, which has
+              already happened. Both the existing and new copy will now show the updated
+              version.
+            </>
+          ) : (
+            <>
+              is different from the copy already used on {slideList}. That copy hasn’t been
+              updated — this deck isn’t set up to auto-update it from the source file, so
+              Eigendeck kept the version you first added. What should happen?
+            </>
+          )}
         </div>
         <div style={{ padding: '0 20px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <ChoiceButton
-            label="I understand and want this auto-updating behavior."
+            label={req.existingChanged
+              ? 'I understand and want this auto-updating behavior.'
+              : `Update ${slideList} to this new version too.`}
             onClick={() => req.resolve('accept')}
           />
           <ChoiceButton
-            label={`I want to revert the contents of ${slideList} to the previous version and add this as a new version. I don't want the auto-updating behavior. (This will disable it for this presentation.)`}
+            label={req.existingChanged
+              ? `I want to revert the contents of ${slideList} to the previous version and add this as a new version. I don't want the auto-updating behavior. (This will disable it for this presentation.)`
+              : `Keep ${slideList} as-is and add this as a separate copy.`}
             onClick={() => req.resolve('revert')}
           />
         </div>

@@ -35,6 +35,13 @@ export interface CollisionRequest {
    *  (per getSlideNumber). May be a single slide or several. Used to
    *  render the "added on slide X" / "added on slides 2 and 7" copy. */
   slideNumbers: number[];
+  /** Did the EXISTING embedded copy already change from what was first added
+   *  (current hash != original hash)? True = a watcher auto-update already
+   *  happened (the "…which has already happened" framing). False = the embedded
+   *  copy is still the original (untrusted/unwatched deck), so the divergence is
+   *  only in the NEW file being added — the message must NOT claim an update
+   *  already occurred. */
+  existingChanged: boolean;
 }
 
 interface PendingRequest extends CollisionRequest {
