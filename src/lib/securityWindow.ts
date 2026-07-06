@@ -15,17 +15,15 @@ export async function openSecurityWindow(): Promise<void> {
 
   const existing = await WebviewWindow.getByLabel('security');
   if (existing) {
-    // Raise it to the top. On macOS setFocus() alone often WON'T lift a window
-    // owned by another window (the case here — we're calling from the main
-    // window), so unminimize + show, then a brief always-on-top PULSE forces it
-    // to the front, then setFocus for keyboard focus. The pulse is the documented
-    // workaround for Tauri's "window won't come forward on macOS" behavior.
-    await existing.unminimize().catch(() => {});
-    await existing.show().catch(() => {});
-    await existing.setAlwaysOnTop(true).catch(() => {});
-    await existing.setFocus().catch(() => {});
-    await existing.setAlwaysOnTop(false).catch(() => {});
-    await emitTo('security', 'security:init', payload).catch(() => {});
+    // Raise it to the top: unminimize (if minimized) + show (if hidden) + focus.
+    // These require core:window:allow-{unminimize,show,set-focus} in the capability
+    // (default.json) — without them the calls are DENIED by the ACL, which is what
+    // made this silently do nothing before. Don't swallow errors: a rejected call
+    // means a missing permission, and we want that to surface, not hide.
+    await existing.unminimize();
+    await existing.show();
+    await existing.setFocus();
+    await emitTo('security', 'security:init', payload);
     return;
   }
 
