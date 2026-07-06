@@ -27,6 +27,15 @@ const STATE_STYLE: Record<RowState, { label: string; color: string; bg: string }
   missing:   { label: 'Missing',     color: '#6b7280', bg: '#f3f4f6' },
 };
 
+// UI MOTIF — a lower-priority control OVERRIDDEN by a higher-priority setting
+// (per-deck internet toggle when the global switch is off; per-file approve when
+// watching is off; a demo's toggle when the deck/global blocks everything) renders
+// GREYED + STRUCK-THROUGH, with a short reason nearby. Shared so "this is
+// overridden, and here's why" reads identically everywhere. See
+// docs/USER-FACING-MESSAGES.md → "Overridden by a higher-priority setting".
+const OVERRIDDEN_DIM = 0.55;
+const overriddenLabel: React.CSSProperties = { textDecoration: 'line-through', color: '#9ca3af' };
+
 type DeckCase = 'A' | 'B1' | 'B2' | 'C' | 'D' | 'E' | 'F';
 
 // Which band to show, in precedence order: nothing linked → watching off (global wins
@@ -242,11 +251,11 @@ export function SecurityWindowApp(): React.ReactElement {
             </div>
           )}
           <div style={{ borderTop: '1px solid #eee', marginTop: 12, paddingTop: 14 }}>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: globalOff ? 'default' : 'pointer', opacity: globalOff ? 0.5 : 1 }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: globalOff ? 'default' : 'pointer', opacity: globalOff ? OVERRIDDEN_DIM : 1 }}>
               <input type="checkbox" checked={blockNet} disabled={globalOff}
                 onChange={(e) => void doToggleBlockNet(e.target.checked)} style={{ marginTop: 3 }} />
               <div>
-                <div style={{ fontSize: 13, fontWeight: 500, textDecoration: globalOff ? 'line-through' : 'none' }}>Block internet access for this deck's demos</div>
+                <div style={{ fontSize: 13, fontWeight: 500, ...(globalOff ? overriddenLabel : {}) }}>Block internet access for this deck's demos</div>
                 <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
                   Demos still run, just offline — they can't fetch live data or phone home
                   (for example, tracking when and where you open this deck). Use this for a
@@ -311,7 +320,7 @@ function DemoNetList({ demos, deckBlocked, globalOff, demoBlocks, onToggle }: {
               return (
                 <div key={d.assetId} style={{
                   border: '1px solid #eef2f7', borderRadius: 6, padding: '8px 10px',
-                  background: eff ? '#f8fafc' : '#fff', opacity: overridden ? 0.6 : 1,
+                  background: eff ? '#f8fafc' : '#fff', opacity: overridden ? OVERRIDDEN_DIM : 1,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                     <span style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{slidesLabel(d.slides)}</span>
@@ -323,7 +332,8 @@ function DemoNetList({ demos, deckBlocked, globalOff, demoBlocks, onToggle }: {
                     <span style={{ flex: 1 }} />
                     {/* Per-demo switch: checked = this demo may use the internet. */}
                     <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11,
-                      color: overridden ? '#9ca3af' : '#374151', cursor: overridden ? 'default' : 'pointer' }}>
+                      cursor: overridden ? 'default' : 'pointer',
+                      ...(overridden ? overriddenLabel : { color: '#374151' }) }}>
                       <input type="checkbox" checked={!eff} disabled={overridden}
                         onChange={(e) => onToggle(d.assetId, e.target.checked)} />
                       Allow internet
@@ -476,8 +486,11 @@ function GroupedRows({ report, canAct, busy, onApprove, onApproveDir, onRevokeAp
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(r);
   }
+  // Trusted-but-can't-act == watching is off (global or per-deck) — the per-file
+  // controls are OVERRIDDEN by that higher-priority switch, so dim the list (motif).
+  const watchingOff = !!report.trusted && !canAct;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, opacity: watchingOff ? OVERRIDDEN_DIM : 1 }}>
       {[...groups.entries()].map(([dir, rows]) => {
         const outside = dir !== '' && !isInsideDeck(dir, report.projectDir);
         const eligibleHere = rows.filter((r) => r.state === 'eligible');
@@ -544,7 +557,9 @@ function Row({ r, canAct, trusted, busy, onApprove, onRevokeApproval }: {
         {r.state === 'eligible' && (
           canAct
             ? <button onClick={() => onApprove(r.assetId, r.referencePath)} disabled={busy} style={smallBtn}>Approve</button>
-            : <span style={{ fontSize: 11, color: '#999' }}>{trusted ? 'watching is off' : 'trust the deck first'}</span>
+            : trusted
+              ? <span style={{ fontSize: 11, ...overriddenLabel }}>watching is off</span>
+              : <span style={{ fontSize: 11, color: '#999' }}>trust the deck first</span>
         )}
       </div>
     </div>

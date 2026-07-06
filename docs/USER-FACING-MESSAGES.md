@@ -53,6 +53,30 @@ never optional.
   explain the gap, rather than blanking the whole thing (the live-crypto demo keeps
   the last prices and annotates the status line on a failed refresh).
 
+## Motif: overridden by a higher-priority setting
+
+Eigendeck's settings cascade (global → per-deck → per-item). When a lower control
+has **no effect because a higher one overrides it**, don't leave it looking like a
+live choice (an active, unchecked box reads as "the user set this to off"). Use one
+consistent visual:
+
+- **Grey + strike through** the overridden control's label, and **dim** its
+  container (`OVERRIDDEN_DIM`, `overriddenLabel` in `SecurityPanel.tsx`).
+- **Disable** the control (it can't do anything).
+- **State the reason** — which higher setting wins, and where to change it — in a
+  banner or adjacent note.
+
+Examples of the same motif:
+- Global "Let demos use the internet" is off → the per-deck "Block internet" toggle
+  greys + strikes, and each demo's "Allow internet" toggle greys, under a banner.
+- File watching is off (global or per-deck) → the linked-files list dims and each
+  row's "watching is off" note strikes through.
+
+The rule of thumb: *struck + grey = "this setting is real but currently has no
+effect, and here's why."* Reserve it for the override case — not for a control the
+user simply left off, and not for a prerequisite the user hasn't met yet (e.g.
+"trust the deck first" is a next step, not an override, so it stays plain grey).
+
 ## Anti-patterns
 
 - Silent no-op (the action appears to do nothing, no feedback).
