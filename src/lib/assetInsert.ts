@@ -239,10 +239,10 @@ export async function readAddFileCapped(fullPath: string): Promise<Uint8Array | 
 /** Why the existing embedded copy was never live-updated from its source file —
  *  the concrete reason for the collision dialog (see CollisionRequest.notLiveReason).
  *  Checked in precedence order; falls back to a neutral phrasing. `perAsset` is the
- *  asset row's auto_reload override. */
+ *  asset row's auto_reload override. (No "unsaved" case: since #66 every deck has a
+ *  path — scratch decks save to ~/Documents/Eigendeck, no untitled in-memory deck.) */
 async function whyNotLive(perAsset: string | null): Promise<string> {
   const store = usePresentationStore.getState();
-  if (!store.projectPath) return "This presentation isn’t saved yet, so Eigendeck can’t watch the source file.";
   const token = getDeckToken();
   if (token) {
     try {
