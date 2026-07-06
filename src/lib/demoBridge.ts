@@ -61,25 +61,43 @@ export interface DemoBridgeOpts {
   /** notebook output: report content height to the parent so the host iframe
    *  grows to fit (a demo owns a fixed box; an output does not). */
   reportSize?: boolean;
-  /** network policy for this demo. 'block' = no internet (connect-src 'none').
-   *  { hosts } = internet SCOPED to those declared hosts (the manifest allowlist);
-   *  anything else is blocked. Either way rendering (inline scripts/styles,
-   *  data:/blob: assets) is untouched, and WebRTC is neutered (the CSP blind spot). */
+  /** network policy for this demo. 'block' = no internet at all (default-src 'none';
+   *  only the demo's own inline scripts/styles + data:/blob: assets render). { hosts }
+   *  = internet SCOPED to those declared hosts (the manifest allowlist) for scripts,
+   *  styles, fetch, images, media, fonts; anything else is blocked. Either way the
+   *  demo still renders from its own content, and WebRTC is neutered (CSP blind spot). */
   net?: 'block' | { hosts: string[] };
 }
 
 // Injected FIRST in <head>. The CSP <meta> must precede any resource load to be
-// honored; it leaves script-src/style-src unset so the demo still runs + renders,
-// and only scopes the network to the demo's declared hosts (or 'none'). WebRTC
-// bypasses CSP, so delete its constructors before any demo code runs (robust: the
-// demo is opaque-origin, so it can't steal a fresh copy from a nested frame).
+// honored. It sets `default-src 'none'` and re-opens ONLY what a demo needs to
+// render: its own INLINE scripts/styles ('unsafe-inline'), data:/blob: assets, and
+// blob: frames/workers — plus the demo's DECLARED hosts (scoped connect, and the
+// same hosts opened for script/style/img/media/font so a declared CDN works). A
+// "block" demo declares no hosts, so every REMOTE resource — scripts, styles,
+// fetches, images, media, fonts, frames — is refused: no internet means no internet.
+// Inline scripts still run, so the demo renders from its own content. WebRTC bypasses
+// CSP, so delete its constructors before any demo code runs (robust: the demo is
+// opaque-origin, so it can't steal a fresh copy from a nested frame).
 function netBlockMeta(net: 'block' | { hosts: string[] }): string {
-  const src = net === 'block' ? '' : hostsToCspSources(net.hosts);
-  const connect = src || "'none'";
-  const withHosts = src ? ` ${src}` : '';       // extra sources for img/media/font
-  const form = src || "'none'";
-  const csp = `connect-src ${connect}; img-src data: blob:${withHosts}; media-src data: blob:${withHosts}; `
-    + `font-src data:${withHosts}; form-action ${form}; frame-src blob: data:`;
+  const hostSrc = net === 'block' ? '' : hostsToCspSources(net.hosts);
+  const s = hostSrc ? ` ${hostSrc}` : '';        // declared hosts appended to a directive
+  const connect = hostSrc || "'none'";
+  const form = hostSrc || "'none'";
+  const csp = [
+    "default-src 'none'",
+    `script-src 'unsafe-inline'${s}`,
+    `style-src 'unsafe-inline'${s}`,
+    `img-src data: blob:${s}`,
+    `media-src data: blob:${s}`,
+    `font-src data:${s}`,
+    `connect-src ${connect}`,
+    'frame-src blob: data:',
+    'child-src blob:',
+    'worker-src blob:',
+    `form-action ${form}`,
+    "base-uri 'none'",
+  ].join('; ');
   return `<meta http-equiv="Content-Security-Policy" content="${csp}">`
     + `<script>try{delete window.RTCPeerConnection;delete window.webkitRTCPeerConnection;delete window.RTCDataChannel;}catch(e){}</script>`;
 }

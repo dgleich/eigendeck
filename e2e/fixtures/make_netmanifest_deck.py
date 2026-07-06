@@ -11,12 +11,17 @@ PAYLOAD = (
     '<script type="application/eigendeck-manifest+json">'
     '{"network":[{"host":"allowed.example","purpose":"probe"}]}'
     '</script>'
+    # remote <script src>: the declared host is allowed by script-src, the undeclared
+    # one must trip a script-src violation (CSP rejects it before any network request,
+    # so this holds even with no network in the rig). "No internet means no internet."
+    '<script src="https://allowed.example/lib.js"></script>'
+    '<script src="https://blocked.example/evil.js"></script>'
     '<div id="p">plot</div><script>'
     '(function(){'
     'function rep(o){try{parent.postMessage(Object.assign({__netprobe:1},o),"*");}catch(e){}}'
     'var viol=[];'
     'document.addEventListener("securitypolicyviolation",function(e){'
-    'if(e.violatedDirective&&String(e.violatedDirective).indexOf("connect-src")>=0)viol.push(String(e.blockedURI||""));});'
+    'viol.push({d:String(e.violatedDirective||""),u:String(e.blockedURI||"")});});'
     'function f(u){try{fetch(u).then(function(){},function(){});}catch(e){}}'
     'f("https://allowed.example/x");'
     'f("https://blocked.example/y");'
