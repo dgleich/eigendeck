@@ -40,6 +40,13 @@ const EQ = JSON.parse(readFileSync(join(HERE, 'demo-equations.json'), 'utf8'));
 const assets = [];
 const assetId = {};                 // file/key -> assetId
 function addAsset(key, path, mime, bytes) {
+  // A demo HTML asset MUST carry the <!--eigendeck-demo-vN--> marker or it won't
+  // mount in the app (isEigendeckDemo rejects it → blank). Fail the build loudly
+  // rather than ship a downloadable deck with dead demos — this was a real bug:
+  // the committed artifact predated the sources getting markers.
+  if (mime === 'text/html' && !/<!--eigendeck-demo-v[0-9]+-->/.test(bytes.toString('utf8', 0, 400))) {
+    throw new Error(`addAsset("${path}"): demo HTML is missing the <!--eigendeck-demo-vN--> marker (put it right after <!DOCTYPE html>) — it would render blank in the app.`);
+  }
   const id = 'asset-' + key.replace(/[^a-z0-9]+/gi, '-');
   assetId[key] = id;
   assets.push({ assetId: id, path, mime, size: bytes.length, data: b64(bytes) });
