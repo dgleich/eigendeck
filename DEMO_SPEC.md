@@ -11,7 +11,10 @@ Demos run in an **opaque-origin sandbox** (`sandbox="allow-scripts"`, no
 and no `localStorage`/`sessionStorage`/`cookies`/`IndexedDB`. The
 `BroadcastChannel` you use is **not** a native same-origin channel — an
 app-injected bridge **relays** it through the parent, keyed per demo instance.
-Fetching from the internet / a CDN still works.
+A demo is **offline by default**: to `fetch`/socket/load remote assets it must
+declare the hosts (and why) in an `application/eigendeck-manifest+json` script,
+and it can only reach the hosts it declares. See DEMO_AUTHORING.md → "Internet
+access".
 
 ### Required marker
 

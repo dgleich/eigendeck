@@ -6,7 +6,12 @@
 <!-- This demo runs in an opaque-origin sandboxed iframe: no access to the app,
      Tauri, or window.parent, and no localStorage/sessionStorage/cookies. Theme
      values arrive as CSS vars — read them via var(--eigendeck-*, fallback).
-     Fetching from the internet / a CDN is fine. -->
+     This demo is OFFLINE by default. To reach the internet, declare each host
+     and why in the manifest below (uncomment + edit); a demo can only reach the
+     hosts it declares. See DEMO_AUTHORING.md → "Internet access". -->
+<!-- <script type="application/eigendeck-manifest+json">
+{ "network": [ { "host": "api.example.com", "purpose": "Live data feed" } ] }
+</script> -->
 <style>
 /* REQUIRED: html/body need explicit 100% size or the iframe collapses. */
 * { margin: 0; padding: 0; box-sizing: border-box; }
