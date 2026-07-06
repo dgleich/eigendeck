@@ -87,6 +87,7 @@ export function SecurityWindowApp(): React.ReactElement {
   const [report, setReport] = useState<DeckSecurityReport | null>(null);
   const [busy, setBusy] = useState(false);
   const [blockNet, setBlockNet] = useState(false);
+  const [tab, setTab] = useState<'files' | 'internet'>('files');
 
   const refresh = useCallback(() => { void buildDeckSecurityReport().then(setReport); }, []);
   useEffect(() => { refresh(); }, [refresh]);
@@ -145,62 +146,100 @@ export function SecurityWindowApp(): React.ReactElement {
     <div style={{ padding: 20, maxWidth: 780, margin: '0 auto' }}>
       {/* No in-content title or × — this is a dialog-style window; the OS window
           title + native close button are the single title / close affordance. */}
-      <p style={{ marginTop: 0, color: '#555', lineHeight: 1.45, fontSize: 13 }}>
-        Eigendeck can keep this deck's images, demos, and notebooks linked to files on your
-        computer so they update as you edit them. That means reading those files. So it only
-        does that for decks you trust, and only for files you approve.
-      </p>
-      <p style={{ marginTop: -4, color: '#111', fontSize: 12, fontWeight: 600 }}>
-        You never need to trust a deck just to view it. Every asset is already embedded.
-        Trust only affects whether linked files stay live.
-      </p>
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: 16 }}>
+        <SecTabBtn active={tab === 'files'} onClick={() => setTab('files')}>Linked files</SecTabBtn>
+        <SecTabBtn active={tab === 'internet'} onClick={() => setTab('internet')}>Internet</SecTabBtn>
+      </div>
 
-      {!report || !kase ? (
-        <div style={{ color: '#999', padding: 12 }}>Scanning…</div>
-      ) : (
+      {tab === 'files' && (
         <>
-          <StatusBand kase={kase} report={report} busy={busy}
-            onTrust={doTrust} onReconfirm={doReconfirm} onWatchDeck={doWatchDeck} onOpenSettings={doOpenSettings} />
+          <p style={{ marginTop: 0, color: '#555', lineHeight: 1.45, fontSize: 13 }}>
+            Eigendeck can keep this deck's images, demos, and notebooks linked to files on your
+            computer so they update as you edit them. That means reading those files. So it only
+            does that for decks you trust, and only for files you approve.
+          </p>
+          <p style={{ marginTop: -4, color: '#111', fontSize: 12, fontWeight: 600 }}>
+            You never need to trust a deck just to view it. Every asset is already embedded.
+            Trust only affects whether linked files stay live.
+          </p>
 
-          {report.counts.blocked > 0 && <BlockedBand n={report.counts.blocked} />}
-
-          {kase !== 'A' && (
+          {!report || !kase ? (
+            <div style={{ color: '#999', padding: 12 }}>Scanning…</div>
+          ) : (
             <>
-              <CountsHeader counts={report.counts} />
-              <GroupedRows report={report} canAct={canAct} busy={busy}
-                onApprove={doApprove} onApproveDir={doApproveDir} onRevokeApproval={doRevokeApproval} />
+              <StatusBand kase={kase} report={report} busy={busy}
+                onTrust={doTrust} onReconfirm={doReconfirm} onWatchDeck={doWatchDeck} onOpenSettings={doOpenSettings} />
+
+              {report.counts.blocked > 0 && <BlockedBand n={report.counts.blocked} />}
+
+              {kase !== 'A' && (
+                <>
+                  <CountsHeader counts={report.counts} />
+                  <GroupedRows report={report} canAct={canAct} busy={busy}
+                    onApprove={doApprove} onApproveDir={doApproveDir} onRevokeApproval={doRevokeApproval} />
+                </>
+              )}
+
+              {/* Deck-level action bar. Stop-trusting is deliberately separate from per-file
+                  revoke, and guards on a native confirm (see doRevoke). */}
+              <div style={{ borderTop: '1px solid #eee', marginTop: 16, paddingTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                {report.trusted && <button onClick={doRevoke} disabled={busy} style={dangerBtn}>Stop trusting this deck</button>}
+                <span style={{ flex: 1 }} />
+                <button onClick={() => { void import('@tauri-apps/plugin-opener').then((m) => m.openUrl('https://eigendeck.dev/manual/security')).catch(() => {}); }}
+                  style={{ border: 'none', background: 'none', color: '#2563eb', fontSize: 11, cursor: 'pointer' }}>
+                  Learn about deck security
+                </button>
+              </div>
             </>
           )}
+        </>
+      )}
 
-          {/* Per-deck demo internet control (separate from file trust above). */}
-          <div style={{ borderTop: '1px solid #eee', marginTop: 16, paddingTop: 12 }}>
+      {tab === 'internet' && (
+        <>
+          <p style={{ marginTop: 0, color: '#555', lineHeight: 1.45, fontSize: 13 }}>
+            Demos are the little interactive web widgets in this deck's slides — charts,
+            simulations, graphs. They run in a sandbox and <strong>can't open, read, or change
+            your files.</strong> Some fetch live data from the internet.
+          </p>
+          <div style={{ borderTop: '1px solid #eee', marginTop: 12, paddingTop: 14 }}>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
               <input type="checkbox" checked={blockNet}
                 onChange={(e) => void doToggleBlockNet(e.target.checked)} style={{ marginTop: 3 }} />
               <div>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>Block internet access for this deck’s demos</div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>Block internet access for this deck's demos</div>
                 <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
-                  Demos still run, just offline — they can’t fetch live data or phone home
+                  Demos still run, just offline — they can't fetch live data or phone home
                   (for example, tracking when and where you open this deck). Use this for a
-                  deck from someone you don’t fully trust.
+                  deck from someone you don't fully trust.
                 </div>
               </div>
             </label>
           </div>
-
-          {/* Deck-level action bar. Stop-trusting is deliberately separate from per-file
-              revoke, and guards on a native confirm (see doRevoke). */}
-          <div style={{ borderTop: '1px solid #eee', marginTop: 16, paddingTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
-            {report.trusted && <button onClick={doRevoke} disabled={busy} style={dangerBtn}>Stop trusting this deck</button>}
-            <span style={{ flex: 1 }} />
-            <button onClick={() => { void import('@tauri-apps/plugin-opener').then((m) => m.openUrl('https://eigendeck.dev/manual/security')).catch(() => {}); }}
-              style={{ border: 'none', background: 'none', color: '#2563eb', fontSize: 11, cursor: 'pointer' }}>
-              Learn about deck security
-            </button>
-          </div>
+          <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 14 }}>
+            There's also an app-wide switch in Settings → Security. Turning demo internet off
+            there blocks it for every deck, overriding this per-deck choice.
+          </p>
         </>
       )}
     </div>
+  );
+}
+
+function SecTabBtn({ active, onClick, children }: {
+  active: boolean; onClick: () => void; children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <button onClick={onClick}
+      style={{
+        padding: '9px 14px', background: 'transparent', border: 'none', cursor: 'pointer',
+        fontSize: 13, fontWeight: active ? 600 : 400,
+        color: active ? '#111827' : '#6b7280',
+        borderBottom: active ? '2px solid #2563eb' : '2px solid transparent',
+        marginBottom: -1,
+      }}>
+      {children}
+    </button>
   );
 }
 
