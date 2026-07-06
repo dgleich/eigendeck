@@ -92,28 +92,56 @@ body {
     status.textContent = 'updated ' + new Date().toLocaleTimeString();
   }
 
-  function renderOffline() {
-    grid.innerHTML =
-      '<div class="lc-offline">' +
-        '<b>Live data unavailable</b>' +
-        '<div>This demo needs <code>api.coingecko.com</code>. Internet access for ' +
-        "demos looks like it's switched off (deck Security → Internet, or Settings → " +
-        'Security), or you are offline. Everything else in the demo still works.</div>' +
-      '</div>';
-    status.textContent = 'offline';
+  var haveData = false;      // have we ever rendered real prices?
+  var lastFetch = 0;
+  var MIN_MS = 6000;         // throttle: CoinGecko's free tier rate-limits bursts
+
+  function panel(msg) {
+    grid.innerHTML = '<div class="lc-offline"><b>Live data unavailable</b><div>' + msg + '</div></div>';
+  }
+
+  // kind: 'rate' (429) | 'http' (other error status) | 'offline' (fetch rejected —
+  // network down or internet blocked by the security panel/CSP).
+  function onError(kind) {
+    if (haveData) {
+      // Keep the last good prices on screen; just annotate the status line.
+      status.textContent = kind === 'rate' ? 'rate-limited — showing last update'
+        : kind === 'offline' ? 'offline — showing last update'
+        : "couldn't refresh — showing last update";
+      return;
+    }
+    if (kind === 'rate') {
+      panel('CoinGecko is rate-limiting requests (its free tier caps how often you can '
+        + 'refresh). Wait a few seconds, then refresh.');
+      status.textContent = 'rate-limited';
+    } else if (kind === 'offline') {
+      panel('This demo needs <code>api.coingecko.com</code>. Internet for demos may be '
+        + 'switched off (deck Security → Internet, or Settings → Security), or you are offline.');
+      status.textContent = 'offline';
+    } else {
+      panel('CoinGecko returned an error. Try again shortly.');
+      status.textContent = 'error';
+    }
   }
 
   function load() {
+    var now = Date.now();
+    if (now - lastFetch < MIN_MS) { status.textContent = 'please wait a moment…'; return; }
+    lastFetch = now;
     status.textContent = 'loading…';
     fetch(URL, { cache: 'no-store' })
-      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(renderData)
-      .catch(function () { renderOffline(); });
+      .then(function (r) {
+        if (r.status === 429) { var e = new Error('rate'); e.kind = 'rate'; throw e; }
+        if (!r.ok) { var e2 = new Error('http ' + r.status); e2.kind = 'http'; throw e2; }
+        return r.json();
+      })
+      .then(function (d) { renderData(d); haveData = true; })
+      .catch(function (err) { onError(err && err.kind ? err.kind : 'offline'); });
   }
 
   document.getElementById('lc-refresh').addEventListener('click', load);
   load();
-  setInterval(load, 60000);   // refresh every minute
+  setInterval(load, 60000);   // auto-refresh every minute (well under the throttle)
 })();
 </script>
 </body>
