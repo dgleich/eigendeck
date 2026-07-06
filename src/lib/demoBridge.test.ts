@@ -3,25 +3,31 @@ import { injectDemoBridge } from './demoBridge';
 
 const DOC = '<html><head></head><body><div>demo</div></body></html>';
 
-describe('injectDemoBridge blockInternet (net-block enforcement)', () => {
-  it('injects a connect-src lockdown + WebRTC neuter when blockInternet is set', () => {
-    const out = injectDemoBridge(DOC, '', 'ch', { blockInternet: true });
-    // CSP meta closes every egress channel...
+describe('injectDemoBridge network policy', () => {
+  it("net:'block' → connect-src 'none' across every channel + WebRTC neuter", () => {
+    const out = injectDemoBridge(DOC, '', 'ch', { net: 'block' });
     expect(out).toContain('http-equiv="Content-Security-Policy"');
     expect(out).toContain("connect-src 'none'");
     expect(out).toContain("form-action 'none'");
-    // ...but leaves script-src/style-src unset so the demo still runs + renders
-    expect(out).not.toContain("script-src 'none'");
-    // WebRTC (the CSP blind spot) is deleted before demo code runs
+    expect(out).not.toContain("script-src 'none'"); // demo still runs + renders
     expect(out).toContain('delete window.RTCPeerConnection');
-    expect(out).toContain('delete window.webkitRTCPeerConnection');
-    // the CSP meta precedes the bridge/demo (must be first in <head> to be honored)
+    // CSP must precede the demo (first in <head> to be honored)
     expect(out.indexOf('Content-Security-Policy')).toBeLessThan(out.indexOf('<div>demo</div>'));
   });
 
-  it('does NOT inject the net-block when internet is allowed', () => {
-    const out = injectDemoBridge(DOC, '', 'ch', {});
+  it('net:{hosts} → connect-src SCOPED to the declared hosts (https + wss)', () => {
+    const out = injectDemoBridge(DOC, '', 'ch', { net: { hosts: ['api.stock.example', 'http://localhost:8888'] } });
+    expect(out).toContain('connect-src https://api.stock.example wss://api.stock.example http://localhost:8888');
     expect(out).not.toContain("connect-src 'none'");
+    // the scoped hosts also open img/media/font (a declared host can serve those)
+    expect(out).toContain('img-src data: blob: https://api.stock.example');
+    // WebRTC still neutered even when scoped (it can't be host-limited via CSP)
+    expect(out).toContain('delete window.RTCPeerConnection');
+  });
+
+  it('no net → no CSP / neuter injected', () => {
+    const out = injectDemoBridge(DOC, '', 'ch', {});
+    expect(out).not.toContain('Content-Security-Policy');
     expect(out).not.toContain('delete window.RTCPeerConnection');
   });
 });

@@ -19,6 +19,17 @@ import { buildEmbeddedFontFacesCSS } from './fonts';
 import { hashString } from './hash';
 import { usePresentationStore } from '../store/presentation';
 import { usePreference } from './preferences';
+import { manifestHosts } from './demoManifest';
+
+// A demo reaches the internet ONLY via a network MANIFEST that declares its hosts
+// (src/lib/demoManifest.ts). No manifest → no network (it can't silently phone
+// home); a manifest → scoped to exactly its declared hosts. The global master +
+// per-deck switches sit on top (either forces a full block).
+function demoNet(outerBlock: boolean, html: string): 'block' | { hosts: string[] } {
+  if (outerBlock) return 'block';
+  const hosts = manifestHosts(html);
+  return hosts.length ? { hosts } : 'block';
+}
 
 /** Whether the current deck's demos should be cut off from the internet: the
  *  global master switch is OFF, OR this deck is per-deck blocked. Reactive to the
@@ -109,7 +120,7 @@ export async function getDemoDocumentUrl(assetId: string | undefined, opts: Demo
   }
   const raw = await fetchRawDemo(assetId);
   if (raw == null) return null;
-  const withBridge = injectDemoBridge(raw, hash ? `#${hash}` : '', channelKey, { capture, blockInternet });
+  const withBridge = injectDemoBridge(raw, hash ? `#${hash}` : '', channelKey, { capture, net: demoNet(blockInternet, raw) });
   const doc = injectDemoThemeIntoHtml(withBridge, fontFacesCss, varsCss);
   const url = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
   docBlobCache.set(key, url);
@@ -138,7 +149,7 @@ export function buildIsolatedOutputUrl(html: string, opts: {
     if (k !== key && k.startsWith(prefix)) { URL.revokeObjectURL(u); outputBlobCache.delete(k); }
   }
   const page = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:transparent;}</style></head><body>${html}</body></html>`;
-  const withBridge = injectDemoBridge(page, '', channelKey, { reportSize: true, blockInternet });
+  const withBridge = injectDemoBridge(page, '', channelKey, { reportSize: true, net: demoNet(blockInternet, html) });
   const doc = injectDemoThemeIntoHtml(withBridge, fontFacesCss, varsCss);
   const url = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
   outputBlobCache.set(key, url);
