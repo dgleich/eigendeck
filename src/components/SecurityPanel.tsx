@@ -18,6 +18,7 @@ import {
   type DeckSecurityReport, type ExternalPathRow, type RowState,
 } from '../lib/securityReport';
 import { buildDemoNetReport, type DemoNetReportEntry } from '../lib/demoNetReport';
+import { usePreference } from '../lib/preferences';
 
 const STATE_STYLE: Record<RowState, { label: string; color: string; bg: string }> = {
   approved:  { label: 'Watched',     color: '#166534', bg: '#dcfce7' },
@@ -90,6 +91,13 @@ export function SecurityWindowApp(): React.ReactElement {
   const [blockNet, setBlockNet] = useState(false);
   const [netDemos, setNetDemos] = useState<DemoNetReportEntry[] | null>(null);
   const [tab, setTab] = useState<'files' | 'internet'>('files');
+  // Global master switch (Settings → Security). OFF trumps everything: every
+  // demo is offline regardless of the per-deck toggle, so the per-deck control
+  // and the demo list render as OVERRIDDEN (disabled/struck), not as an active
+  // choice. `effectiveBlocked` = what actually happens to this deck's demos.
+  const [allowGlobal] = usePreference('demoInternetAccess');
+  const globalOff = !allowGlobal;
+  const effectiveBlocked = globalOff || blockNet;
 
   const refresh = useCallback(() => { void buildDeckSecurityReport().then(setReport); }, []);
   useEffect(() => { refresh(); }, [refresh]);
@@ -205,12 +213,19 @@ export function SecurityWindowApp(): React.ReactElement {
             simulations, graphs. They run in a sandbox and <strong>can't open, read, or change
             your files.</strong> Some fetch live data from the internet.
           </p>
+          {globalOff && (
+            <div style={{ border: '1px solid #fca5a5', background: '#fee2e2', borderRadius: 6, padding: '10px 12px', marginTop: 12, color: '#991b1b', fontSize: 12.5, lineHeight: 1.5 }}>
+              <b>Demo internet is off for every deck.</b> You turned off <i>Let demos use the
+              internet</i> in Settings → Security, so all demos here are offline. The per-deck
+              control below has no effect until you turn it back on.
+            </div>
+          )}
           <div style={{ borderTop: '1px solid #eee', marginTop: 12, paddingTop: 14 }}>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
-              <input type="checkbox" checked={blockNet}
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: globalOff ? 'default' : 'pointer', opacity: globalOff ? 0.5 : 1 }}>
+              <input type="checkbox" checked={blockNet} disabled={globalOff}
                 onChange={(e) => void doToggleBlockNet(e.target.checked)} style={{ marginTop: 3 }} />
               <div>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>Block internet access for this deck's demos</div>
+                <div style={{ fontSize: 13, fontWeight: 500, textDecoration: globalOff ? 'line-through' : 'none' }}>Block internet access for this deck's demos</div>
                 <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
                   Demos still run, just offline — they can't fetch live data or phone home
                   (for example, tracking when and where you open this deck). Use this for a
@@ -219,12 +234,14 @@ export function SecurityWindowApp(): React.ReactElement {
               </div>
             </label>
           </div>
-          <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 14 }}>
-            There's also an app-wide switch in Settings → Security. Turning demo internet off
-            there blocks it for every deck, overriding this per-deck choice.
-          </p>
+          {!globalOff && (
+            <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 14 }}>
+              There's also an app-wide switch in Settings → Security. Turning demo internet off
+              there blocks it for every deck, overriding this per-deck choice.
+            </p>
+          )}
 
-          <DemoNetList demos={netDemos} blocked={blockNet} />
+          <DemoNetList demos={netDemos} blocked={effectiveBlocked} globalOff={globalOff} />
         </>
       )}
     </div>
@@ -238,14 +255,15 @@ function slidesLabel(slides: number[]): string {
   const s = slides.length === 1 ? 'Slide' : 'Slides';
   return `${s} ${slides.join(', ')}`;
 }
-function DemoNetList({ demos, blocked }: {
-  demos: DemoNetReportEntry[] | null; blocked: boolean;
+function DemoNetList({ demos, blocked, globalOff }: {
+  demos: DemoNetReportEntry[] | null; blocked: boolean; globalOff: boolean;
 }): React.ReactElement | null {
   if (demos === null) {
     return <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 16 }}>Checking demos…</div>;
   }
+  const chip = globalOff ? 'Off globally' : 'Blocked (offline)';
   return (
-    <div style={{ marginTop: 18, borderTop: '1px solid #eee', paddingTop: 14 }}>
+    <div style={{ marginTop: 18, borderTop: '1px solid #eee', paddingTop: 14, opacity: globalOff ? 0.6 : 1 }}>
       <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
         What this deck's demos reach
       </div>
@@ -270,7 +288,7 @@ function DemoNetList({ demos, blocked }: {
                   <span style={{ flex: 1 }} />
                   {blocked && (
                     <span style={{ fontSize: 10.5, padding: '1px 7px', borderRadius: 10, color: '#991b1b', background: '#fee2e2' }}>
-                      Blocked (offline)
+                      {chip}
                     </span>
                   )}
                 </div>
