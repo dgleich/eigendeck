@@ -13,7 +13,7 @@ import { usePreference, type JupyterServerEntry } from '../lib/preferences';
 import { DEFAULT_TEXT_SIZES, type NamedSize } from '../types/presentation';
 import { INSERT_ITEMS, INSERT_GROUP_ORDER, type InsertGroup } from '../lib/insertItems';
 
-type Tab = 'general' | 'ui' | 'servers';
+type Tab = 'general' | 'security' | 'ui' | 'servers';
 
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [tab, setTab] = useState<Tab>('general');
@@ -64,6 +64,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           padding: '0 18px',
         }}>
           <TabButton active={tab === 'general'} onClick={() => setTab('general')}>General</TabButton>
+          <TabButton active={tab === 'security'} onClick={() => setTab('security')}>Security</TabButton>
           <TabButton active={tab === 'ui'} onClick={() => setTab('ui')}>UI &amp; Toolbar</TabButton>
           <TabButton active={tab === 'servers'} onClick={() => setTab('servers')}>Jupyter servers</TabButton>
         </div>
@@ -75,6 +76,11 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               <TryProjectorModeSetting />
               <DefaultTextSizesSetting />
               <MathPreambleSetting />
+            </div>
+          )}
+          {tab === 'security' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <DemoInternetSetting />
             </div>
           )}
           {tab === 'ui' && (
@@ -403,6 +409,35 @@ function DefaultNotebookEditableSetting() {
             editable its .ipynb is no longer auto-watched for on-disk
             changes (so your edits aren't clobbered) — pull external
             changes yourself with the inspector's "Reload from disk".
+          </div>
+        </div>
+      </label>
+    </div>
+  );
+}
+
+function DemoInternetSetting() {
+  const [value, setValue] = usePreference('demoInternetAccess');
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 10, lineHeight: 1.5 }}>
+        Demos are little interactive web widgets on your slides — charts, simulations,
+        graphs. They run in a safe sandbox and <strong>can’t open, read, or change your
+        files.</strong>
+      </div>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={value}
+          onChange={(e) => setValue(e.target.checked)}
+          style={{ marginTop: 3 }} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Let demos use the internet</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+            Some demos fetch live data (weather, stock prices, maps). But internet access
+            can also let a demo phone home — for example, tracking when and where you open
+            a deck. Turn this off to keep every demo offline. This is the master switch —
+            when it’s off, no presentation’s demos can go online, even if a deck asks to.
           </div>
         </div>
       </label>

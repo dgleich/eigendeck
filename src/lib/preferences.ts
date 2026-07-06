@@ -68,6 +68,13 @@ export interface PrefSchema {
    *  detection). Default true. The "Present in This Window" and "Screen
    *  Share Presentation" menu items are explicit and ignore this. */
   tryProjectorMode: boolean;
+  /** Master switch: may embedded demos use the internet at all. ON by default
+   *  (demos are sandboxed web widgets — they can't touch your files; letting them
+   *  reach the network is like a browser tab). When OFF, this TRUMPS everything —
+   *  no demo in any deck can reach the network, regardless of the per-deck setting.
+   *  (Enforcement — a CSP connect-src lockdown + WebRTC neuter on the demo docs —
+   *  is wired separately; this is the setting it reads.) */
+  demoInternetAccess: boolean;
 }
 
 export interface JupyterServerEntry {
@@ -99,6 +106,7 @@ const DEFAULTS: PrefSchema = {
   gridSpacing: 30,   // 960×540 (slide center) is a grid point at 30 → center "+" sits on a dot
   hiddenToolbarItems: [],
   tryProjectorMode: true,
+  demoInternetAccess: true,
 };
 
 const KEY_PREFIX = 'eigendeck:pref:';

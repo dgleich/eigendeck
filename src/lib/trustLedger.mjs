@@ -91,6 +91,27 @@ export class TrustLedger {
     return s.status === 'trusted' && s.approvals.includes(resolvedPath);
   }
 
+  /** Is this deck's demo internet access blocked (per-deck local choice)?
+   *  Independent of trust — settable even on an untrusted deck. */
+  isInternetBlocked(token) {
+    const e = this.decks.get(token);
+    return !!(e && e.blockInternet);
+  }
+
+  /** Set the per-deck internet block. Creates a minimal (untrusted) entry if the
+   *  deck has none yet, so the choice persists for any deck. Mutating; caller persists. */
+  setInternetBlocked(token, blocked, now) {
+    let e = this.decks.get(token);
+    if (!e) {
+      if (!blocked) return this; // nothing to store
+      e = { trusted: false, trustedAt: 0, trustReason: 'trusted', lastOpenMs: now || 0, approvals: {}, seenEligible: [], blockInternet: true };
+      this.decks.set(token, e);
+    } else {
+      e.blockInternet = !!blocked;
+    }
+    return this;
+  }
+
   // --- transitions (mutating; callers persist afterward) --------------------
 
   /** File → New (or explicit trust): stamp a fresh trusted deck with no approvals yet.
@@ -204,7 +225,7 @@ export class TrustLedger {
     for (const [k, v] of this.decks) {
       const approvals = {};
       for (const [id, a] of Object.entries(v.approvals)) approvals[id] = { resolved: a.resolved, at: a.at, reason: a.reason };
-      out[k] = { trusted: v.trusted, trustedAt: v.trustedAt, trustReason: v.trustReason, lastOpenMs: v.lastOpenMs, approvals, seenEligible: [...v.seenEligible] };
+      out[k] = { trusted: v.trusted, trustedAt: v.trustedAt, trustReason: v.trustReason, lastOpenMs: v.lastOpenMs, approvals, seenEligible: [...v.seenEligible], blockInternet: !!v.blockInternet };
     }
     return out;
   }
@@ -249,5 +270,8 @@ function normalizeEntry(v) {
     lastOpenMs: v && Number.isFinite(v.lastOpenMs) ? v.lastOpenMs : 0,
     approvals: normApprovals(v && v.approvals),
     seenEligible: uniq(v && v.seenEligible),
+    // Per-deck: block this deck's demos from the internet (independent of trust —
+    // you can block a deck you don't otherwise trust). Default false (allowed).
+    blockInternet: !!(v && v.blockInternet),
   };
 }

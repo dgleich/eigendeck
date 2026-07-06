@@ -27,6 +27,8 @@ export interface DeckEntry {
   approvals: Record<string, ApprovalEntry>;
   /** resolved eligible paths already surfaced by the on-open review nudge */
   seenEligible: string[];
+  /** per-deck: block this deck's demos from the internet (default false) */
+  blockInternet?: boolean;
 }
 
 export type DeckStatus = 'untrusted-new' | 'untrusted-ttl' | 'trusted';
@@ -49,6 +51,10 @@ export class TrustLedger {
   approvalDetail(token: string, resolvedPath: string): { at: number; reason: string } | null;
   isTrusted(token: string, now: number): boolean;
   isApproved(token: string, resolvedPath: string, now: number): boolean;
+  /** Is this deck's demo internet access blocked (per-deck local choice)? */
+  isInternetBlocked(token: string): boolean;
+  /** Set the per-deck internet block; creates a minimal entry if none exists. */
+  setInternetBlocked(token: string, blocked: boolean, now?: number): this;
   createTrusted(token: string, now: number, reason?: TrustReason): this;
   /** `approvals`: assetId → resolved path (each stamped now + reason 'trusted') */
   trust(token: string, approvals: Record<string, string>, now: number): this;

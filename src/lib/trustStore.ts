@@ -74,6 +74,14 @@ export async function isPathApproved(token: string, resolvedPath: string): Promi
 export async function approvalDetail(token: string, resolvedPath: string): Promise<{ at: number; reason: string } | null> {
   return (await ledger()).approvalDetail(token, resolvedPath);
 }
+/** Is this deck's demo internet access blocked (per-deck local choice)? */
+export async function isDeckInternetBlocked(token: string): Promise<boolean> {
+  return (await ledger()).isInternetBlocked(token);
+}
+/** Set the per-deck internet block (persisted). Works for any deck, trusted or not. */
+export async function setDeckInternetBlocked(token: string, blocked: boolean): Promise<void> {
+  await mutate((l, now) => l.setInternetBlocked(token, blocked, now));
+}
 
 // --- transitions (persisted) ------------------------------------------------
 

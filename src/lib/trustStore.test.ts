@@ -81,4 +81,14 @@ describe('trustStore (persistence + accessors)', () => {
     store._resetForTests();
     expect(await store.isTrusted('tok')).toBe(false);
   });
+
+  it('per-deck internet block persists and works on an untrusted deck', async () => {
+    expect(await store.isDeckInternetBlocked('tok')).toBe(false); // default: allowed
+    await store.setDeckInternetBlocked('tok', true);              // block (deck not trusted)
+    expect(await store.isDeckInternetBlocked('tok')).toBe(true);
+    store._resetForTests();                                       // reload from persisted json
+    expect(await store.isDeckInternetBlocked('tok')).toBe(true);  // survived
+    await store.setDeckInternetBlocked('tok', false);
+    expect(await store.isDeckInternetBlocked('tok')).toBe(false);
+  });
 });

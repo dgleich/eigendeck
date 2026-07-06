@@ -86,10 +86,25 @@ function isInsideDeck(dir: string | null, projectDir: string): boolean {
 export function SecurityWindowApp(): React.ReactElement {
   const [report, setReport] = useState<DeckSecurityReport | null>(null);
   const [busy, setBusy] = useState(false);
+  const [blockNet, setBlockNet] = useState(false);
 
   const refresh = useCallback(() => { void buildDeckSecurityReport().then(setReport); }, []);
   useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    const token = getDeckToken();
+    if (!token) return;
+    void import('../lib/trustStore').then(async (m) => setBlockNet(await m.isDeckInternetBlocked(token)));
+  }, [report]);
   const notifyMain = () => { void emit('eigendeck:security-changed'); };
+
+  const doToggleBlockNet = async (blocked: boolean) => {
+    const token = getDeckToken();
+    if (!token) return;
+    setBlockNet(blocked);
+    const { setDeckInternetBlocked } = await import('../lib/trustStore');
+    await setDeckInternetBlocked(token, blocked);
+    notifyMain();
+  };
 
   // Actions that mutate the live deck (trust, watch) must persist to the deck FILE, which
   // only the main window (whose store is the live deck) can do. We ask it over one
@@ -156,6 +171,22 @@ export function SecurityWindowApp(): React.ReactElement {
                 onApprove={doApprove} onApproveDir={doApproveDir} onRevokeApproval={doRevokeApproval} />
             </>
           )}
+
+          {/* Per-deck demo internet control (separate from file trust above). */}
+          <div style={{ borderTop: '1px solid #eee', marginTop: 16, paddingTop: 12 }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+              <input type="checkbox" checked={blockNet}
+                onChange={(e) => void doToggleBlockNet(e.target.checked)} style={{ marginTop: 3 }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>Block internet access for this deck’s demos</div>
+                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                  Demos still run, just offline — they can’t fetch live data or phone home
+                  (for example, tracking when and where you open this deck). Use this for a
+                  deck from someone you don’t fully trust.
+                </div>
+              </div>
+            </label>
+          </div>
 
           {/* Deck-level action bar. Stop-trusting is deliberately separate from per-file
               revoke, and guards on a native confirm (see doRevoke). */}
