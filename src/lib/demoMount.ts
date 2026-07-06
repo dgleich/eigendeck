@@ -42,16 +42,23 @@ export function useDemoInternetBlocked(assetId?: string): boolean {
   useEffect(() => {
     let alive = true;
     const recheck = async (fresh: boolean) => {
+      // Loading the store/ledger modules can only fail outside Tauri (tests, SSR),
+      // where "not blocked" is the correct default. But once we HAVE a deck token,
+      // a failure to READ the block state is unexpected in the app — fail CLOSED
+      // (treat as blocked) rather than silently ignoring a viewer's block.
+      let ts: typeof import('./trustStore');
+      let token: string | null | undefined;
       try {
-        const { getDeckToken } = await import('../store/presentation');
-        const token = getDeckToken();
+        token = (await import('../store/presentation')).getDeckToken();
         if (!token) { if (alive) setBlocked(false); return; }
-        const ts = await import('./trustStore');
+        ts = await import('./trustStore');
+      } catch { if (alive) setBlocked(false); return; }  // non-Tauri / test → not blocked
+      try {
         if (fresh) ts.invalidateLedgerCache(); // the security window may have just changed it
         const deck = await ts.isDeckInternetBlocked(token);
         const demo = assetId ? await ts.isDeckDemoBlocked(token, assetId) : false;
         if (alive) setBlocked(deck || demo);
-      } catch { /* non-Tauri / test context — leave default (not blocked) */ }
+      } catch { if (alive) setBlocked(true); }  // read error with a real deck → fail CLOSED
     };
     void recheck(false);
     let unlisten: (() => void) | undefined;
