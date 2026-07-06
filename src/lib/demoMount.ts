@@ -31,24 +31,26 @@ function demoNet(outerBlock: boolean, html: string): 'block' | { hosts: string[]
   return hosts.length ? { hosts } : 'block';
 }
 
-/** Whether the current deck's demos should be cut off from the internet: the
- *  global master switch is OFF, OR this deck is per-deck blocked. Reactive to the
- *  pref, the open deck, and the deck-security window's live toggle. */
-export function useDemoInternetBlocked(): boolean {
+/** Whether a demo should be cut off from the internet. Blocked if ANY layer says
+ *  so: the global master switch is OFF, OR this deck is per-deck blocked, OR (when
+ *  `assetId` is given) this specific demo is individually denied. Reactive to the
+ *  pref, the open deck, and the deck-security window's live toggles. */
+export function useDemoInternetBlocked(assetId?: string): boolean {
   const [allow] = usePreference('demoInternetAccess');
   const projectPath = usePresentationStore((s) => s.projectPath);
-  const [deckBlocked, setDeckBlocked] = useState(false);
+  const [blocked, setBlocked] = useState(false); // deck OR per-demo block
   useEffect(() => {
     let alive = true;
     const recheck = async (fresh: boolean) => {
       try {
         const { getDeckToken } = await import('../store/presentation');
         const token = getDeckToken();
-        if (!token) { if (alive) setDeckBlocked(false); return; }
+        if (!token) { if (alive) setBlocked(false); return; }
         const ts = await import('./trustStore');
         if (fresh) ts.invalidateLedgerCache(); // the security window may have just changed it
-        const b = await ts.isDeckInternetBlocked(token);
-        if (alive) setDeckBlocked(b);
+        const deck = await ts.isDeckInternetBlocked(token);
+        const demo = assetId ? await ts.isDeckDemoBlocked(token, assetId) : false;
+        if (alive) setBlocked(deck || demo);
       } catch { /* non-Tauri / test context — leave default (not blocked) */ }
     };
     void recheck(false);
@@ -58,8 +60,8 @@ export function useDemoInternetBlocked(): boolean {
       .then((fn) => { unlisten = fn; })
       .catch(() => {});
     return () => { alive = false; unlisten?.(); };
-  }, [projectPath]);
-  return !allow || deckBlocked;
+  }, [projectPath, assetId]);
+  return !allow || blocked;
 }
 
 // composite-key -> blob URL. Keyed so a theme/font/hash change makes a new blob.
@@ -168,7 +170,7 @@ export function invalidateIsolatedOutput(channelKey: string): void {
 /** React hook: the opaque-origin demo document URL, rebuilt when inputs change. */
 export function useDemoDoc(assetId: string | undefined, opts: DemoMountOpts): string | null | undefined {
   const { hash, channelKey, varsCss, fontFacesCss, capture } = opts;
-  const blockInternet = useDemoInternetBlocked();
+  const blockInternet = useDemoInternetBlocked(assetId);
   const [url, setUrl] = useState<string | null | undefined>(undefined);
   const [refresh, setRefresh] = useState(0);
   // Reload when the underlying asset bytes change on disk (file-watch / "Reload

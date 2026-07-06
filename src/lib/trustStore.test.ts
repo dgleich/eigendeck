@@ -91,4 +91,15 @@ describe('trustStore (persistence + accessors)', () => {
     await store.setDeckInternetBlocked('tok', false);
     expect(await store.isDeckInternetBlocked('tok')).toBe(false);
   });
+
+  it('per-demo internet block is independent per assetId, persists, and toggles off', async () => {
+    expect(await store.isDeckDemoBlocked('tok', 'demoA')).toBe(false); // default allowed
+    await store.setDeckDemoBlocked('tok', 'demoA', true);              // deny just demoA
+    expect(await store.isDeckDemoBlocked('tok', 'demoA')).toBe(true);
+    expect(await store.isDeckDemoBlocked('tok', 'demoB')).toBe(false); // others unaffected
+    store._resetForTests();                                            // reload from persisted json
+    expect(await store.isDeckDemoBlocked('tok', 'demoA')).toBe(true);  // survived
+    await store.setDeckDemoBlocked('tok', 'demoA', false);             // re-allow
+    expect(await store.isDeckDemoBlocked('tok', 'demoA')).toBe(false);
+  });
 });

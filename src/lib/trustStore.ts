@@ -82,6 +82,14 @@ export async function isDeckInternetBlocked(token: string): Promise<boolean> {
 export async function setDeckInternetBlocked(token: string, blocked: boolean): Promise<void> {
   await mutate((l, now) => l.setInternetBlocked(token, blocked, now));
 }
+/** Is THIS demo (by assetId) individually blocked from the internet in this deck? */
+export async function isDeckDemoBlocked(token: string, assetId: string): Promise<boolean> {
+  return (await ledger()).isDemoBlocked(token, assetId);
+}
+/** Allow/deny one demo's internet by assetId (persisted). */
+export async function setDeckDemoBlocked(token: string, assetId: string, blocked: boolean): Promise<void> {
+  await mutate((l, now) => l.setDemoBlocked(token, assetId, blocked, now));
+}
 
 // --- transitions (persisted) ------------------------------------------------
 

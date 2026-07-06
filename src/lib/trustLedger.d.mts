@@ -29,6 +29,8 @@ export interface DeckEntry {
   seenEligible: string[];
   /** per-deck: block this deck's demos from the internet (default false) */
   blockInternet?: boolean;
+  /** per-demo: assetIds denied internet individually (default []) */
+  blockedDemos?: string[];
 }
 
 export type DeckStatus = 'untrusted-new' | 'untrusted-ttl' | 'trusted';
@@ -55,6 +57,10 @@ export class TrustLedger {
   isInternetBlocked(token: string): boolean;
   /** Set the per-deck internet block; creates a minimal entry if none exists. */
   setInternetBlocked(token: string, blocked: boolean, now?: number): this;
+  /** Is THIS demo (by assetId) individually blocked from the internet? */
+  isDemoBlocked(token: string, assetId: string): boolean;
+  /** Allow/deny one demo's internet by assetId; creates a minimal entry if none. */
+  setDemoBlocked(token: string, assetId: string, blocked: boolean, now?: number): this;
   createTrusted(token: string, now: number, reason?: TrustReason): this;
   /** `approvals`: assetId → resolved path (each stamped now + reason 'trusted') */
   trust(token: string, approvals: Record<string, string>, now: number): this;

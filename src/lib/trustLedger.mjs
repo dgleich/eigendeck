@@ -112,6 +112,30 @@ export class TrustLedger {
     return this;
   }
 
+  /** Is THIS demo (by assetId) blocked from the internet in this deck? Per-demo
+   *  local choice, layered under the deck + global switches (any one blocks).
+   *  Default false = a declared demo may reach its manifest hosts. */
+  isDemoBlocked(token, assetId) {
+    const e = this.decks.get(token);
+    return !!(e && e.blockedDemos && e.blockedDemos.includes(assetId));
+  }
+
+  /** Allow/deny one demo's internet by assetId. Creates a minimal (untrusted)
+   *  entry if the deck has none. Mutating; caller persists. */
+  setDemoBlocked(token, assetId, blocked, now) {
+    let e = this.decks.get(token);
+    if (!e) {
+      if (!blocked) return this; // nothing to store
+      e = { trusted: false, trustedAt: 0, trustReason: 'trusted', lastOpenMs: now || 0, approvals: {}, seenEligible: [], blockInternet: false, blockedDemos: [] };
+      this.decks.set(token, e);
+    }
+    if (!Array.isArray(e.blockedDemos)) e.blockedDemos = [];
+    const has = e.blockedDemos.includes(assetId);
+    if (blocked && !has) e.blockedDemos.push(assetId);
+    else if (!blocked && has) e.blockedDemos = e.blockedDemos.filter((a) => a !== assetId);
+    return this;
+  }
+
   // --- transitions (mutating; callers persist afterward) --------------------
 
   /** File → New (or explicit trust): stamp a fresh trusted deck with no approvals yet.
@@ -225,7 +249,7 @@ export class TrustLedger {
     for (const [k, v] of this.decks) {
       const approvals = {};
       for (const [id, a] of Object.entries(v.approvals)) approvals[id] = { resolved: a.resolved, at: a.at, reason: a.reason };
-      out[k] = { trusted: v.trusted, trustedAt: v.trustedAt, trustReason: v.trustReason, lastOpenMs: v.lastOpenMs, approvals, seenEligible: [...v.seenEligible], blockInternet: !!v.blockInternet };
+      out[k] = { trusted: v.trusted, trustedAt: v.trustedAt, trustReason: v.trustReason, lastOpenMs: v.lastOpenMs, approvals, seenEligible: [...v.seenEligible], blockInternet: !!v.blockInternet, blockedDemos: [...(v.blockedDemos || [])] };
     }
     return out;
   }
@@ -273,5 +297,8 @@ function normalizeEntry(v) {
     // Per-deck: block this deck's demos from the internet (independent of trust —
     // you can block a deck you don't otherwise trust). Default false (allowed).
     blockInternet: !!(v && v.blockInternet),
+    // Per-demo: assetIds of demos in this deck denied internet individually
+    // (layered under the deck + global switches). Default [] (all declared allowed).
+    blockedDemos: uniq(v && v.blockedDemos),
   };
 }

@@ -88,6 +88,21 @@ demo can't pull a CDN script or stylesheet — **no internet means no internet**
 Note this is the *per-demo* CSP; it is distinct from the app-wide *parent*
 `script-src` backstop that protects the privileged frame (still deferred to #122, §4).
 
+## 2c. Per-demo toggle — deny one demo individually  **[v1, done]**
+
+The third and finest layer. Each demo in the security panel's Internet tab has an
+**"Allow internet"** switch (default on — permissive, since the attack surface is
+minimized). Turning it off denies THAT demo (by assetId) even when global + deck
+allow internet and it has a valid manifest. Stored per deck as `blockedDemos`
+(assetId list) in the trust ledger (`isDemoBlocked`/`setDemoBlocked` →
+`trustStore.isDeckDemoBlocked`/`setDeckDemoBlocked`), so it's the viewer's local
+choice and works on an untrusted deck. Enforcement: `useDemoInternetBlocked(assetId)`
+ORs it into the outer block, and toggling emits `eigendeck:security-changed` so the
+open deck re-mounts the demo offline. When global or the deck blocks everything, the
+per-demo switches are disabled (overridden). Effective rule:
+
+    demo online  ⇔  globalAllow ∧ ¬deckBlock ∧ ¬demoBlock[assetId] ∧ hasManifest
+
 ## 3. The mechanism it rests on: CSP inheritance
 
 A `blob:` document **inherits the embedding page's CSP** and can only make it *more*
@@ -123,17 +138,12 @@ CSP** — i.e. serving demos from a **custom Tauri protocol** instead of `blob:`
 would break demos and shipping `'self' 'unsafe-inline' https:` buys almost nothing.
 So v1 ships **no app-wide CSP**; the backstop waits for #122.
 
+
 ## 5. Deferred — what's still not built
 
-The manifest gate (§2b) delivers the "allow stock-data but not trackers" scoping.
-What remains deferred:
+The manifest gate (§2b) + per-demo toggle (§2c) deliver "allow stock-data but not
+trackers, per demo." What remains deferred:
 
-- **Per-demo approval / block** — the manifest currently *auto-scopes* to whatever a
-  demo declares (permissive default, minimized attack surface). A per-demo toggle in
-  the Internet tab — approve/deny an individual demo's declared hosts, e.g. deny one
-  that declares broad access — is the natural next lever. It needs per-assetId state
-  in the trust ledger + a mount-time consult. The disclosure list (§2b) is already
-  structured so a toggle drops into each row.
 - **Strict parent `script-src`** — the real backstop against remote `<script src>`
   and inline injection in the *privileged* frame. Gated on serving demos from a
   custom Tauri protocol so they don't inherit the parent CSP (#122, §4).
@@ -171,7 +181,7 @@ cross-origin access → `SecurityError` (the same isolation that blocks
 
 - The per-deck/global *block* is **coarse** — all-or-nothing per deck. Per-host
   scoping exists (§2b) but is **author-driven** (the demo's manifest), not a
-  viewer-set allowlist; a per-demo approve/deny toggle is still deferred (§5).
+  viewer-set allowlist. A per-demo approve/deny toggle now exists too (§2c).
 - **No parent `script-src` backstop** in v1 (§4, needs #122) — this is the
   *privileged frame*, distinct from the per-demo `script-src` (§2b), which IS enforced
   (a remote `<script src>` from an undeclared host is blocked). The parent's residual
@@ -200,4 +210,4 @@ cross-origin access → `SecurityError` (the same isolation that blocks
 - e2e: `netblock-probe.mjs` + `fixtures/make_netblock_deck.py`.
 
 **Deferred / tracked:** app-wide `script-src` via a custom demo protocol (#122);
-per-demo approve/deny toggle, violation reporting (§5).
+violation reporting (§5).

@@ -90,6 +90,8 @@ export function SecurityWindowApp(): React.ReactElement {
   const [busy, setBusy] = useState(false);
   const [blockNet, setBlockNet] = useState(false);
   const [netDemos, setNetDemos] = useState<DemoNetReportEntry[] | null>(null);
+  // per-demo internet block: assetId → blocked. Layered under global + per-deck.
+  const [demoBlocks, setDemoBlocks] = useState<Record<string, boolean>>({});
   const [tab, setTab] = useState<'files' | 'internet'>('files');
   // Global master switch (Settings → Security). OFF trumps everything: every
   // demo is offline regardless of the per-deck toggle, so the per-deck control
@@ -107,7 +109,26 @@ export function SecurityWindowApp(): React.ReactElement {
     if (!token) return;
     void import('../lib/trustStore').then(async (m) => setBlockNet(await m.isDeckInternetBlocked(token)));
   }, [report]);
+  // Load each listed demo's individual block state.
+  useEffect(() => {
+    const token = getDeckToken();
+    if (!token || !netDemos) return;
+    void import('../lib/trustStore').then(async (m) => {
+      const pairs = await Promise.all(netDemos.map(async (d) => [d.assetId, await m.isDeckDemoBlocked(token, d.assetId)] as const));
+      setDemoBlocks(Object.fromEntries(pairs));
+    });
+  }, [netDemos]);
   const notifyMain = () => { void emit('eigendeck:security-changed'); };
+
+  // Toggle ONE demo's internet. `allow` true = let it reach its declared hosts.
+  const doToggleDemo = async (assetId: string, allow: boolean) => {
+    const token = getDeckToken();
+    if (!token) return;
+    setDemoBlocks((prev) => ({ ...prev, [assetId]: !allow }));
+    const { setDeckDemoBlocked } = await import('../lib/trustStore');
+    await setDeckDemoBlocked(token, assetId, !allow);
+    notifyMain();
+  };
 
   const doToggleBlockNet = async (blocked: boolean) => {
     const token = getDeckToken();
@@ -241,7 +262,8 @@ export function SecurityWindowApp(): React.ReactElement {
             </p>
           )}
 
-          <DemoNetList demos={netDemos} blocked={effectiveBlocked} globalOff={globalOff} />
+          <DemoNetList demos={netDemos} deckBlocked={effectiveBlocked} globalOff={globalOff}
+            demoBlocks={demoBlocks} onToggle={doToggleDemo} />
         </>
       )}
     </div>
@@ -255,15 +277,15 @@ function slidesLabel(slides: number[]): string {
   const s = slides.length === 1 ? 'Slide' : 'Slides';
   return `${s} ${slides.join(', ')}`;
 }
-function DemoNetList({ demos, blocked, globalOff }: {
-  demos: DemoNetReportEntry[] | null; blocked: boolean; globalOff: boolean;
+function DemoNetList({ demos, deckBlocked, globalOff, demoBlocks, onToggle }: {
+  demos: DemoNetReportEntry[] | null; deckBlocked: boolean; globalOff: boolean;
+  demoBlocks: Record<string, boolean>; onToggle: (assetId: string, allow: boolean) => void;
 }): React.ReactElement | null {
   if (demos === null) {
     return <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 16 }}>Checking demos…</div>;
   }
-  const chip = globalOff ? 'Off globally' : 'Blocked (offline)';
   return (
-    <div style={{ marginTop: 18, borderTop: '1px solid #eee', paddingTop: 14, opacity: globalOff ? 0.6 : 1 }}>
+    <div style={{ marginTop: 18, borderTop: '1px solid #eee', paddingTop: 14 }}>
       <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
         What this deck's demos reach
       </div>
@@ -275,36 +297,52 @@ function DemoNetList({ demos, blocked, globalOff }: {
         <>
           <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 10 }}>
             These demos declare the hosts they connect to and why. A demo can only reach the
-            hosts it lists here{blocked ? '' : ' — anything else is blocked'}.
+            hosts it lists here — anything else is blocked. Turn any one off individually.
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {demos.map((d) => (
-              <div key={d.assetId} style={{
-                border: '1px solid #eef2f7', borderRadius: 6, padding: '8px 10px',
-                background: blocked ? '#f8fafc' : '#fff',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{slidesLabel(d.slides)}</span>
-                  <span style={{ flex: 1 }} />
-                  {blocked && (
-                    <span style={{ fontSize: 10.5, padding: '1px 7px', borderRadius: 10, color: '#991b1b', background: '#fee2e2' }}>
-                      {chip}
-                    </span>
-                  )}
+            {demos.map((d) => {
+              const perDemoBlocked = !!demoBlocks[d.assetId];
+              const eff = deckBlocked || perDemoBlocked;     // is this demo offline?
+              // The per-demo toggle only matters while the deck+global allow internet;
+              // once those block everything it's overridden (disabled).
+              const overridden = deckBlocked;
+              const chip = overridden ? (globalOff ? 'Off globally' : 'Off for this deck')
+                : (perDemoBlocked ? 'Off' : null);
+              return (
+                <div key={d.assetId} style={{
+                  border: '1px solid #eef2f7', borderRadius: 6, padding: '8px 10px',
+                  background: eff ? '#f8fafc' : '#fff', opacity: overridden ? 0.6 : 1,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{slidesLabel(d.slides)}</span>
+                    {chip && (
+                      <span style={{ fontSize: 10.5, padding: '1px 7px', borderRadius: 10, color: '#991b1b', background: '#fee2e2' }}>
+                        {chip}
+                      </span>
+                    )}
+                    <span style={{ flex: 1 }} />
+                    {/* Per-demo switch: checked = this demo may use the internet. */}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11,
+                      color: overridden ? '#9ca3af' : '#374151', cursor: overridden ? 'default' : 'pointer' }}>
+                      <input type="checkbox" checked={!eff} disabled={overridden}
+                        onChange={(e) => onToggle(d.assetId, e.target.checked)} />
+                      Allow internet
+                    </label>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {d.hosts.map((h) => (
+                      <div key={h.host} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 12 }}>
+                        <span style={{
+                          fontFamily: 'monospace', fontSize: 11.5, color: eff ? '#9ca3af' : '#111827',
+                          textDecoration: eff ? 'line-through' : 'none', wordBreak: 'break-all', flexShrink: 0,
+                        }}>{h.host}</span>
+                        <span style={{ color: '#6b7280', fontSize: 11.5 }}>{h.purpose || 'no purpose given'}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {d.hosts.map((h) => (
-                    <div key={h.host} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 12 }}>
-                      <span style={{
-                        fontFamily: 'monospace', fontSize: 11.5, color: blocked ? '#9ca3af' : '#111827',
-                        textDecoration: blocked ? 'line-through' : 'none', wordBreak: 'break-all', flexShrink: 0,
-                      }}>{h.host}</span>
-                      <span style={{ color: '#6b7280', fontSize: 11.5 }}>{h.purpose || 'no purpose given'}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
