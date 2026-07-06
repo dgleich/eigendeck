@@ -17,6 +17,7 @@ import {
   buildDeckSecurityReport, approveOne, approveDirectory, reconfirmThisDeck, revokeApproval,
   type DeckSecurityReport, type ExternalPathRow, type RowState,
 } from '../lib/securityReport';
+import { buildDemoNetReport, type DemoNetReportEntry } from '../lib/demoNetReport';
 
 const STATE_STYLE: Record<RowState, { label: string; color: string; bg: string }> = {
   approved:  { label: 'Watched',     color: '#166534', bg: '#dcfce7' },
@@ -87,10 +88,12 @@ export function SecurityWindowApp(): React.ReactElement {
   const [report, setReport] = useState<DeckSecurityReport | null>(null);
   const [busy, setBusy] = useState(false);
   const [blockNet, setBlockNet] = useState(false);
+  const [netDemos, setNetDemos] = useState<DemoNetReportEntry[] | null>(null);
   const [tab, setTab] = useState<'files' | 'internet'>('files');
 
   const refresh = useCallback(() => { void buildDeckSecurityReport().then(setReport); }, []);
   useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { void buildDemoNetReport().then(setNetDemos); }, []);
   useEffect(() => {
     const token = getDeckToken();
     if (!token) return;
@@ -220,6 +223,71 @@ export function SecurityWindowApp(): React.ReactElement {
             There's also an app-wide switch in Settings → Security. Turning demo internet off
             there blocks it for every deck, overriding this per-deck choice.
           </p>
+
+          <DemoNetList demos={netDemos} blocked={blockNet} />
+        </>
+      )}
+    </div>
+  );
+}
+
+// The per-demo declared-network list. A demo declares which hosts it reaches and
+// why (its manifest); we surface that so "what phones home, and for what" is legible.
+// Undeclared demos get no internet, so they aren't listed (nothing to disclose).
+function slidesLabel(slides: number[]): string {
+  const s = slides.length === 1 ? 'Slide' : 'Slides';
+  return `${s} ${slides.join(', ')}`;
+}
+function DemoNetList({ demos, blocked }: {
+  demos: DemoNetReportEntry[] | null; blocked: boolean;
+}): React.ReactElement | null {
+  if (demos === null) {
+    return <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 16 }}>Checking demos…</div>;
+  }
+  return (
+    <div style={{ marginTop: 18, borderTop: '1px solid #eee', paddingTop: 14 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+        What this deck's demos reach
+      </div>
+      {demos.length === 0 ? (
+        <div style={{ fontSize: 12, color: '#6b7280' }}>
+          No demo in this deck declares any internet access, so none of them go online.
+        </div>
+      ) : (
+        <>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 10 }}>
+            These demos declare the hosts they connect to and why. A demo can only reach the
+            hosts it lists here{blocked ? '' : ' — anything else is blocked'}.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {demos.map((d) => (
+              <div key={d.assetId} style={{
+                border: '1px solid #eef2f7', borderRadius: 6, padding: '8px 10px',
+                background: blocked ? '#f8fafc' : '#fff',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{slidesLabel(d.slides)}</span>
+                  <span style={{ flex: 1 }} />
+                  {blocked && (
+                    <span style={{ fontSize: 10.5, padding: '1px 7px', borderRadius: 10, color: '#991b1b', background: '#fee2e2' }}>
+                      Blocked (offline)
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {d.hosts.map((h) => (
+                    <div key={h.host} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 12 }}>
+                      <span style={{
+                        fontFamily: 'monospace', fontSize: 11.5, color: blocked ? '#9ca3af' : '#111827',
+                        textDecoration: blocked ? 'line-through' : 'none', wordBreak: 'break-all', flexShrink: 0,
+                      }}>{h.host}</span>
+                      <span style={{ color: '#6b7280', fontSize: 11.5 }}>{h.purpose || 'no purpose given'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </>
       )}
     </div>
