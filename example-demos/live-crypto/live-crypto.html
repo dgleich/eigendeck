@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<!--eigendeck-demo-v1-->
+<html>
+<head>
+<meta charset="utf-8">
+<!-- This demo reaches the internet, so it DECLARES the host it needs and why.
+     Eigendeck scopes the demo to exactly this host: a fetch to anything else is
+     blocked. The person opening the deck sees "api.coingecko.com — Live
+     cryptocurrency prices" in the security window's Internet tab, and can switch
+     it off (per deck or globally), which this demo handles gracefully. -->
+<script type="application/eigendeck-manifest+json">
+{ "network": [
+  { "host": "api.coingecko.com", "purpose": "Live cryptocurrency prices (BTC, ETH, SOL)" }
+] }
+</script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; }
+/* Transparent — the slide background shows through on every theme. */
+body {
+  font-family: 'PT Sans', system-ui, sans-serif;
+  color: var(--eigendeck-fg, #1a1a1a);
+  display: flex; flex-direction: column; overflow: hidden;
+  padding: 20px 22px;
+}
+.lc-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.lc-title { font-size: 22px; font-weight: 700; }
+.lc-status { font-size: 12px; color: var(--eigendeck-muted, #888); margin-left: auto; }
+.lc-grid { display: flex; gap: 14px; flex: 1; align-items: stretch; }
+.lc-card {
+  flex: 1; border: 1px solid var(--eigendeck-muted, #ccc); border-radius: 12px;
+  padding: 16px 18px; display: flex; flex-direction: column; justify-content: center;
+  min-width: 0;
+}
+.lc-coin { font-size: 13px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--eigendeck-muted, #888); }
+.lc-price { font-size: 30px; font-weight: 700; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+.lc-chg { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.lc-up { color: #16a34a; } .lc-down { color: #dc2626; }
+.lc-btn {
+  font: inherit; font-size: 13px; cursor: pointer; border-radius: 8px;
+  border: 1px solid var(--eigendeck-accent, #2563eb); background: transparent;
+  color: var(--eigendeck-accent, #2563eb); padding: 5px 12px;
+}
+.lc-offline {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; text-align: center; color: var(--eigendeck-muted, #888);
+}
+.lc-offline b { color: var(--eigendeck-fg, #1a1a1a); font-size: 16px; }
+</style>
+</head>
+<body>
+<div class="lc-head">
+  <span class="lc-title">Live crypto prices</span>
+  <span class="lc-status" id="lc-status">loading…</span>
+</div>
+<div class="lc-grid" id="lc-grid"></div>
+<div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+  <button class="lc-btn" id="lc-refresh">Refresh</button>
+  <span style="font-size:11px;color:var(--eigendeck-muted,#999)">Data: CoinGecko · declared in this demo's manifest</span>
+</div>
+
+<script>
+(function () {
+  var COINS = [
+    { id: 'bitcoin',  label: 'Bitcoin (BTC)'  },
+    { id: 'ethereum', label: 'Ethereum (ETH)' },
+    { id: 'solana',   label: 'Solana (SOL)'   },
+  ];
+  var URL = 'https://api.coingecko.com/api/v3/simple/price?ids='
+    + COINS.map(function (c) { return c.id; }).join(',')
+    + '&vs_currencies=usd&include_24hr_change=true';
+  var grid = document.getElementById('lc-grid');
+  var status = document.getElementById('lc-status');
+  var fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+  function renderData(d) {
+    grid.innerHTML = '';
+    COINS.forEach(function (c) {
+      var row = d[c.id]; if (!row) return;
+      var chg = row.usd_24h_change || 0;
+      var up = chg >= 0;
+      var card = document.createElement('div');
+      card.className = 'lc-card';
+      card.innerHTML =
+        '<div class="lc-coin">' + c.label + '</div>' +
+        '<div class="lc-price">' + fmt.format(row.usd) + '</div>' +
+        '<div class="lc-chg ' + (up ? 'lc-up' : 'lc-down') + '">' +
+          (up ? '▲ ' : '▼ ') + Math.abs(chg).toFixed(2) + '% (24h)</div>';
+      grid.appendChild(card);
+    });
+    status.textContent = 'updated ' + new Date().toLocaleTimeString();
+  }
+
+  function renderOffline() {
+    grid.innerHTML =
+      '<div class="lc-offline">' +
+        '<b>Live data unavailable</b>' +
+        '<div>This demo needs <code>api.coingecko.com</code>. Internet access for ' +
+        "demos looks like it's switched off (deck Security → Internet, or Settings → " +
+        'Security), or you are offline. Everything else in the demo still works.</div>' +
+      '</div>';
+    status.textContent = 'offline';
+  }
+
+  function load() {
+    status.textContent = 'loading…';
+    fetch(URL, { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(renderData)
+      .catch(function () { renderOffline(); });
+  }
+
+  document.getElementById('lc-refresh').addEventListener('click', load);
+  load();
+  setInterval(load, 60000);   // refresh every minute
+})();
+</script>
+</body>
+</html>
