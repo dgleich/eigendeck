@@ -22,7 +22,9 @@ PURPOSE = {
     'unpkg.com': 'JavaScript libraries',
     'cdnjs.cloudflare.com': 'JavaScript libraries',
 }
-HOST_RE = re.compile(r'<(?:script|link)[^>]*(?:src|href)="https?://([a-zA-Z0-9.\-]+)', re.I)
+# Match a remote script/link/iframe/img load on either quote style, capturing
+# host[:port] (so a non-default-port CDN is declared correctly, not silently dropped).
+HOST_RE = re.compile(r'''<(?:script|link|iframe|img)[^>]*(?:src|href)=["']https?://([a-zA-Z0-9.\-]+(?::\d+)?)''', re.I)
 CHARSET_RE = re.compile(r'(<meta[^>]*charset[^>]*>)', re.I)
 HEAD_RE = re.compile(r'(<head[^>]*>)', re.I)
 

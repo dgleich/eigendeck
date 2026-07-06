@@ -141,7 +141,11 @@ export class TrustLedger {
   /** File → New (or explicit trust): stamp a fresh trusted deck with no approvals yet.
    *  `reason` records HOW it was trusted ('file-new' by default, or 'trusted'). */
   createTrusted(token, now, reason = 'file-new') {
-    this.decks.set(token, { trusted: true, trustedAt: now, trustReason: reason, lastOpenMs: now, approvals: {}, seenEligible: [] });
+    // Preserve the viewer's per-deck / per-demo internet block across the trust
+    // transition — those are independent of trust and must NOT be reset by trusting.
+    const prev = this.decks.get(token);
+    this.decks.set(token, { trusted: true, trustedAt: now, trustReason: reason, lastOpenMs: now, approvals: {}, seenEligible: [],
+      blockInternet: !!(prev && prev.blockInternet), blockedDemos: [...((prev && prev.blockedDemos) || [])] });
     return this;
   }
 
@@ -155,7 +159,9 @@ export class TrustLedger {
         stamped[assetId] = { resolved, at: now, reason: 'trusted' };
       }
     }
-    this.decks.set(token, { trusted: true, trustedAt: now, trustReason: 'trusted', lastOpenMs: now, approvals: stamped, seenEligible: [] });
+    const prev = this.decks.get(token);
+    this.decks.set(token, { trusted: true, trustedAt: now, trustReason: 'trusted', lastOpenMs: now, approvals: stamped, seenEligible: [],
+      blockInternet: !!(prev && prev.blockInternet), blockedDemos: [...((prev && prev.blockedDemos) || [])] });
     return this;
   }
 

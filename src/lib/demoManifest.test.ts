@@ -33,4 +33,18 @@ describe('hostsToCspSources', () => {
     expect(hostsToCspSources(['api.x'])).toBe('https://api.x wss://api.x');
     expect(hostsToCspSources(['http://localhost:8888'])).toBe('http://localhost:8888');
   });
+  it('accepts *.subdomain and host:port', () => {
+    expect(hostsToCspSources(['*.example.com'])).toBe('https://*.example.com wss://*.example.com');
+    expect(hostsToCspSources(['cdn.x:8443'])).toBe('https://cdn.x:8443 wss://cdn.x:8443');
+  });
+  it('REJECTS injection / wildcard / junk hosts (CSP-safe)', () => {
+    // ; and " would inject directives / break out of the <meta content="..."> attr
+    expect(hostsToCspSources(['evil.test; script-src https:'])).toBe('');
+    expect(hostsToCspSources(['x"><script>alert(1)</script>'])).toBe('');
+    expect(hostsToCspSources(['a b'])).toBe('');            // space
+    expect(hostsToCspSources(['*'])).toBe('');              // bare wildcard = whole internet
+    expect(hostsToCspSources(['https://*'])).toBe('');
+    // a valid host alongside junk still comes through; junk is dropped
+    expect(hostsToCspSources(['ok.x', 'bad;host'])).toBe('https://ok.x wss://ok.x');
+  });
 });

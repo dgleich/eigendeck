@@ -34,19 +34,38 @@ export function parseDemoManifest(html: string | undefined | null): DemoManifest
   } catch { return null; }
 }
 
-/** The distinct hosts a demo declared, or [] if none / no manifest. */
+/** The distinct, VALID hosts a demo declared, or [] if none / no manifest. Invalid
+ *  hosts are dropped here too so the injected CSP and the panel never grant them. */
 export function manifestHosts(html: string | undefined | null): string[] {
   const m = parseDemoManifest(html);
-  return m ? [...new Set(m.network.map((n) => n.host))] : [];
+  if (!m) return [];
+  return [...new Set(m.network.map((n) => n.host).filter(isValidManifestHost))];
+}
+
+// The manifest is ATTACKER-CONTROLLED (it lives in the demo's HTML), and its hosts
+// are interpolated into the injected CSP `<meta content="...">`. So a host must be a
+// strict hostname (optionally `*.sub`, optional :port) or a full ws(s)/http(s)
+// origin — nothing containing a space, `;`, `"`, `'`, `,`, `<`, `>`, or a bare `*`,
+// which would otherwise inject extra CSP directives or break out of the attribute
+// and defeat the gate entirely. Anything else is rejected.
+const HOSTNAME_RE = /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:\d{1,5})?$/i;
+const ORIGIN_RE = /^(?:https?|wss?):\/\/(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:\d{1,5})?$/i;
+
+/** True iff `h` is a safe declared host (strict hostname or ws(s)/http(s) origin).
+ *  Used to filter what the manifest can grant AND what the panel shows as granted. */
+export function isValidManifestHost(h: string): boolean {
+  return typeof h === 'string' && (ORIGIN_RE.test(h) || HOSTNAME_RE.test(h));
 }
 
 /** Map declared hosts to a CSP source list. A bare host → https + secure-ws for it;
- *  a full origin (has a scheme) is used verbatim. */
+ *  a full origin (has a scheme) is used verbatim. Invalid/unsafe hosts are dropped
+ *  so they can never inject into the CSP. */
 export function hostsToCspSources(hosts: string[]): string {
   const out: string[] = [];
   for (const h of hosts) {
-    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(h)) out.push(h);
-    else out.push(`https://${h}`, `wss://${h}`);
+    if (!isValidManifestHost(h)) continue;               // reject injection / wildcards / junk
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(h)) out.push(h); // full origin, verbatim
+    else out.push(`https://${h}`, `wss://${h}`);         // bare host → https + wss
   }
   return out.join(' ');
 }

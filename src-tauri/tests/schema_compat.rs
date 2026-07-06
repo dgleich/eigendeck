@@ -41,7 +41,8 @@ fn demo_loads_cdn_without_manifest(html: &str) -> bool {
     if !is_demo || html.contains("eigendeck-manifest") {
         return false;
     }
-    html.contains("src=\"http") || (html.contains("<link") && html.contains("href=\"http"))
+    html.contains("src=\"http") || html.contains("src='http")
+        || (html.contains("<link") && (html.contains("href=\"http") || html.contains("href='http")))
 }
 
 /// One file: open + export + minimal shape check + demo-manifest guard.

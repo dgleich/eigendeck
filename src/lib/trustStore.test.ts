@@ -102,4 +102,13 @@ describe('trustStore (persistence + accessors)', () => {
     await store.setDeckDemoBlocked('tok', 'demoA', false);             // re-allow
     expect(await store.isDeckDemoBlocked('tok', 'demoA')).toBe(false);
   });
+
+  it('internet block (deck + per-demo) SURVIVES trusting the deck', async () => {
+    await store.setDeckInternetBlocked('tok', true);          // block on an untrusted deck
+    await store.setDeckDemoBlocked('tok', 'demoZ', true);
+    await store.createTrustedDeck('tok');                     // now trust it
+    expect(await store.isTrusted('tok')).toBe(true);
+    expect(await store.isDeckInternetBlocked('tok')).toBe(true);   // block NOT wiped by trust
+    expect(await store.isDeckDemoBlocked('tok', 'demoZ')).toBe(true);
+  });
 });
