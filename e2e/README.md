@@ -326,3 +326,18 @@ enforced** — while its inline script still runs (rendering unaffected).
 
 Note: the securitypolicyviolation fires async after the fetch, so the probe waits
 for a report with cspBlocked set (the deferred sends carry it).
+
+## Manifest-scoped egress (netmanifest-probe.mjs, docs/CSP-AND-EGRESS.md §2b)
+
+Verifies that a demo is offline-by-default and reaches ONLY its declared hosts.
+Internet stays ON (the probe does not flip the master switch). `make_netmanifest_deck.py`
+builds a deck whose notebook (slide 1) output declares a manifest for
+`allowed.example`, then fetches both the declared host and an undeclared
+`blocked.example`, reporting which fetches tripped a `connect-src` violation. The
+probe selects slide 1 and asserts the **undeclared host is blocked** while the
+**declared host is allowed** by the injected scoped `connect-src` (declared ≠ granted).
+
+    python3 e2e/fixtures/make_netmanifest_deck.py /tmp/netmanifest.json
+    /tmp/el-target/debug/eigendeck-cli /tmp/netmanifest.eigendeck import json /tmp/netmanifest.json
+    PROBE=$PWD/e2e/netmanifest-probe.mjs E2E_DECK=/tmp/netmanifest.eigendeck bash e2e/run-probe.sh
+    # -> NETMANIFEST_PASS
