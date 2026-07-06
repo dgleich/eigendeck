@@ -33,13 +33,46 @@ fn temp_copy(src: &Path, scratch_dir: &Path) -> PathBuf {
     dest
 }
 
-/// One file: open + export + minimal shape check. Returns Err with a
-/// short reason on any failure so the outer test can aggregate them.
+/// A marked demo loads a remote resource the per-demo CSP would gate
+/// (remote <script src>/<img>/<iframe> or a <link> stylesheet). If it does
+/// AND declares no manifest, its library is blocked → the demo renders blank.
+fn demo_loads_cdn_without_manifest(html: &str) -> bool {
+    let is_demo = html.get(..400).unwrap_or(html).contains("eigendeck-demo-v");
+    if !is_demo || html.contains("eigendeck-manifest") {
+        return false;
+    }
+    html.contains("src=\"http") || (html.contains("<link") && html.contains("href=\"http"))
+}
+
+/// One file: open + export + minimal shape check + demo-manifest guard.
+/// Returns Err with a short reason on any failure so the outer test aggregates.
 fn validate_one(path: &Path) -> Result<(), String> {
+    use base64::Engine;
     let path_str = path.to_str().ok_or_else(|| "non-utf8 path".to_string())?;
 
     storage::open_db(path_str)
         .map_err(|e| format!("open_db: {}", e))?;
+
+    // Guard: every committed deck's CDN-loading demos must declare a manifest,
+    // else the per-demo CSP blanks them on open (the 2026-07 script-src-gate
+    // regression — no test caught it because no test read demo bytes).
+    let with_assets = storage::db_export_json_with_assets()
+        .map_err(|e| format!("db_export_json_with_assets: {}", e))?;
+    let wa: serde_json::Value = serde_json::from_str(&with_assets)
+        .map_err(|e| format!("assets JSON invalid: {}", e))?;
+    if let Some(assets) = wa.get("assets").and_then(|a| a.as_array()) {
+        for a in assets {
+            if a.get("mime").and_then(|m| m.as_str()) != Some("text/html") { continue; }
+            let Some(b64) = a.get("data").and_then(|d| d.as_str()) else { continue; };
+            let bytes = base64::engine::general_purpose::STANDARD.decode(b64)
+                .map_err(|e| format!("asset base64: {}", e))?;
+            let html = String::from_utf8_lossy(&bytes);
+            if demo_loads_cdn_without_manifest(&html) {
+                let id = a.get("assetId").and_then(|v| v.as_str()).unwrap_or("?");
+                return Err(format!("demo asset {} loads a CDN but declares no manifest → renders blank (run tools/demo_manifests.py fix)", &id[..id.len().min(8)]));
+            }
+        }
+    }
 
     let json = storage::db_export_json()
         .map_err(|e| format!("db_export_json: {}", e))?;

@@ -80,6 +80,27 @@ if relevant.) Time: ~0.2s after compile.
 has broken one of the example decks; either fix the migration or
 regenerate the affected deck.
 
+### Gate 2b — demo-manifest check
+
+```bash
+uv run tools/demo_manifests.py check <paths>
+```
+
+Pass: exit 0, `✓ every CDN-loading demo declares a manifest`.
+Fail: exit 1, lists demos that load a CDN (`<script src>`/`<link>`)
+without an `eigendeck-manifest+json` block.
+
+Since the per-demo CSP gates remote script/style/img/etc. (offline
+unless declared), such a demo would render **blank** when the deck is
+opened — its library can't load. This is the check that would have
+caught the 2026-07 breakage where the script-src gate blanked every
+CDN demo in the shipped decks.
+
+**If gate 2b fails**: run `uv run tools/demo_manifests.py fix <paths>`
+(injects a manifest declaring the hosts each demo actually loads),
+then re-run the check. Strip history again afterward (the fix rewrites
+asset bytes) before committing.
+
 ### Gate 3 — staging
 
 If both gates pass:

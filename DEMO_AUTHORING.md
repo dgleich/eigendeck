@@ -106,8 +106,13 @@ a JSON `<script>` in the `<head>`:
   Internet tab, next to the host. Write it for them ("Live stock quotes"), not
   for yourself. It's how they decide whether your demo's phoning-home is
   legitimate.
-- **No manifest → no internet.** A demo with no manifest still runs; it just
-  can't fetch, open a socket, load a remote image/font, or submit a form.
+- **No manifest → no internet — and a CDN demo goes BLANK.** With no manifest a
+  demo can't fetch, open a socket, load a remote image/font/stylesheet, *or load a
+  remote `<script src>`*. So if your demo pulls a library from a CDN (D3, Plotly,
+  topojson, …) and you don't declare that CDN's host, the library never loads and
+  the demo renders blank. **Declare every host you load from.** (Deck authors: run
+  `uv run tools/demo_manifests.py check <deck>.eigendeck` to catch demos that load a
+  CDN without declaring it; `fix` injects the manifest.)
 - **The person opening the deck stays in control.** They can block internet for
   one deck (security window) or for every deck (Settings → Security); either
   overrides your manifest. Design demos to degrade gracefully offline.
