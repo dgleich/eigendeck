@@ -146,10 +146,23 @@ trackers, per demo." What remains deferred:
 
 - **Strict parent `script-src`** — the real backstop against remote `<script src>`
   and inline injection in the *privileged* frame. Gated on serving demos from a
-  custom Tauri protocol so they don't inherit the parent CSP (#122, §4).
+  custom Tauri protocol so they don't inherit the parent CSP (#122, §4). Biggest
+  remaining gap: today `tauri.conf.json` has `csp: null` on the app frame.
+- **Least-privilege capability scope** — `src-tauri/capabilities/default.json` is
+  `windows: ["main","*"]`, so the whole permission set (incl. `allow-create-webview-
+  window`, `opener`, `dialog`, window controls) is granted to ANY window label. Not
+  demo-reachable (demos are sandboxed sub-frames with no IPC), but it should be
+  scoped to the explicit labels (`main`, `security`, `presenter`) with each given
+  only what it needs.
 - **Violation reporting** — surface when a demo tries to reach an undeclared host
   (`report-to`) as tamper-evidence. (We already lean on `securitypolicyviolation` in
   the e2e; not a user feature yet.)
+
+**Hardened since v1:** `assetProtocol` is now **disabled** (was `enable:true` /
+`allow:["**/*"]` — an unused read-any-file surface; the `protocol-asset` Cargo
+feature is dropped). Demo network defaults to `block` (fail closed) when no policy
+is passed; the bridge neuter also deletes `WebTransport`; manifest hosts are
+validated (no CSP injection) and capped at 32.
 
 ## 6. Directive → exfil-channel map (reference for the allowlist future)
 
