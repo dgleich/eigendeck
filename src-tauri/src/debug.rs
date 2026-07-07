@@ -33,8 +33,8 @@ pub struct DebugFlag(pub bool);
 ///   - `EIGENDECK_DEBUG=1` env var — needed for `tauri dev`, because the
 ///     Tauri CLI's argv passthrough places args BEFORE cargo's `--`
 ///     separator, so they reach cargo (which rejects them) instead of the
-///     binary. mac-build.sh translates its own `--debug` arg into the env
-///     var so the user only ever types `bash mac-build.sh --debug`.
+///     binary. tools/mac-build.sh translates its own `--debug` arg into the env
+///     var so the user only ever types `bash tools/mac-build.sh --debug`.
 pub fn parse_debug_flag() -> bool {
     if std::env::args().any(|a| a == "--debug") {
         return true;

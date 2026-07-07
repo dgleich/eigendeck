@@ -9,7 +9,7 @@ MathJax bundles that embed a specific font; those bundles come from the sibling
 
 - The app loads `public/mathjax/tex-mml-svg-mathjax-<id>.js` at runtime (one
   bundle per font, lazy-loaded by `src/lib/fonts.ts` / `fontRegistry.mjs`).
-- Those files are **copied in** by `npm run setup` (`scripts/setup-fonts.mjs`)
+- Those files are **copied in** by `npm run setup` (`tools/setup-fonts.mjs`)
   from the sibling `mathjax-fonts/` clone. They are **gitignored** in this repo
   (`public/mathjax/`), so a font update commits **nothing** here — it's a
   per-machine build step. Don't look for the bundles in git; rebuild them.
@@ -77,7 +77,7 @@ update.
 1. Build it in `mathjax-fonts` (its own `mathjax-<id>/` with a
    `build/webpack-nosre.config.cjs`), and add `<id>` to the `packages` list in
    `mathjax-shantell/build/build-all-nosre.cjs`.
-2. Add `<id>` to `MATHJAX_FONTS_PACKAGES` in `scripts/setup-fonts.mjs`.
+2. Add `<id>` to `MATHJAX_FONTS_PACKAGES` in `tools/setup-fonts.mjs`.
 3. Register the text font + math bundle in `src/lib/fontRegistry.mjs`
    (`FONT_PACKAGES`), and drop the text-font TTFs in `public/fonts/<id>/`
    (these TTFs **are** committed, unlike the math bundles).

@@ -61,7 +61,7 @@ favor the surrounding body context.
 
 1. Build the MathJax bundle in [dgleich/mathjax-fonts](https://github.com/dgleich/mathjax-fonts).
 2. Add a `FontPackage` entry to `src/lib/fonts.ts`.
-3. Add the source font URLs to `scripts/download-fonts.mjs` and run it.
+3. Add the source font URLs to `tools/download-fonts.mjs` and run it.
 4. Run `npm run setup` to copy the new MathJax bundle into `public/mathjax/`.
 5. Update this file (`FONTS.md`).
 

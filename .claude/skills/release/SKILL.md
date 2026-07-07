@@ -16,7 +16,7 @@ Ship the current font builds:
 ```bash
 cd /work/mathjax-fonts && git pull --ff-only      # note the new SHA
 ```
-- Bump `MATHJAX_FONTS_COMMIT` in `scripts/setup-fonts.mjs` to that SHA.
+- Bump `MATHJAX_FONTS_COMMIT` in `tools/setup-fonts.mjs` to that SHA.
 - `npm run setup` (copies the prebuilt `-nosre` bundles into `public/mathjax/`).
 - See the **update-fonts** skill for details.
 

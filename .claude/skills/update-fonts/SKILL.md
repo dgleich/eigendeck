@@ -23,7 +23,7 @@ is `docs/updating-fonts.md`.
   source-sans source-code shantell concrete-euler`.
 - mathjax-fonts **commits the prebuilt `-nosre` bundles at its repo root**
   (`tex-mml-svg-mathjax-<id>-nosre.js`; older checkouts also keep per-package
-  copies under `mathjax-<id>/`). `scripts/setup-fonts.mjs` reads from the root
+  copies under `mathjax-<id>/`). `tools/setup-fonts.mjs` reads from the root
   (falls back to the subdir) and **pins** a fresh clone to `MATHJAX_FONTS_COMMIT`.
 - In eigendeck, `public/mathjax/` is gitignored → a font update commits *nothing*
   here except registry / setup / doc / new-TTF changes. The font bytes don't
@@ -36,7 +36,7 @@ cd /work/mathjax-fonts && git pull --ff-only    # brings the updated prebuilt bu
 ```
 If there's no sibling clone, `npm run setup` clones it at `MATHJAX_FONTS_COMMIT`.
 To move to a newer build: pull, then bump `MATHJAX_FONTS_COMMIT` in
-`scripts/setup-fonts.mjs` to the new SHA. (An existing clone is used as-is; setup
+`tools/setup-fonts.mjs` to the new SHA. (An existing clone is used as-is; setup
 warns if its HEAD differs from the pin.)
 
 > **Each release should ship the latest fonts** — refresh the pin (pull + bump
@@ -62,7 +62,7 @@ cd /work && npm run setup        # copies -nosre.js → public/mathjax/ (no buil
 1. **In mathjax-fonts:** add it (`mathjax-<id>/` with a `build/webpack-nosre.config.cjs`),
    add `<id>` to `build-all-nosre.cjs`'s `packages` list, rebuild, and **commit
    the prebuilt `-nosre` bundle** (see below).
-2. Add its id to `MATHJAX_FONTS_PACKAGES` in `scripts/setup-fonts.mjs`.
+2. Add its id to `MATHJAX_FONTS_PACKAGES` in `tools/setup-fonts.mjs`.
 3. Add a `FONT_PACKAGES` entry in `src/lib/fontRegistry.mjs` (`mathjaxBundle:
    'tex-mml-svg-mathjax-<id>-nosre.js'`, `files` = its text-font TTF names; mirror
    an existing `kind: 'static'`/`'variable'` entry), and a label.

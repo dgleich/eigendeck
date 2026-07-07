@@ -813,7 +813,7 @@ cd src-tauri && cargo check && cargo test --lib -- --test-threads=1  # Rust (29 
 
 ```bash
 npm install          # Reinstalls macOS-native node_modules
-bash mac-build.sh    # Full dev mode with hot-reload
+bash tools/mac-build.sh    # Full dev mode with hot-reload
 ```
 
 `node_modules/` is platform-specific — `npm install` when switching between Linux and Mac.
@@ -821,7 +821,7 @@ bash mac-build.sh    # Full dev mode with hot-reload
 ### CLI Tool
 
 ```bash
-bash build-cli.sh    # Builds src-tauri/target/release/eigendeck-cli
+bash tools/build-cli.sh    # Builds src-tauri/target/release/eigendeck-cli
 
 # Usage:
 eigendeck-cli myproject.eigendeck info

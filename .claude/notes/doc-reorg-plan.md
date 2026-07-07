@@ -75,6 +75,17 @@ the PUBLIC website source (build-manual.mjs), so only the new
 `development-setup.md` belongs there. `entitlements.plist` is correctly in
 `src-tauri/` (not misplaced).
 
+## 8. Consolidate scripts/ → tools/ (one tooling dir) — DONE 2026-07-07
+Moved setup-fonts.mjs + download-fonts.mjs → tools/ (both use resolve(__dirname,'..')
+so root resolution survives), scripts/ removed. Moved build-cli.sh + mac-build.sh →
+tools/ (mac-build.sh's `cd "$(dirname "$0")"` → `.../..`); deleted dead linux-build.sh.
+Updated refs: package.json "setup", release+update-fonts skills, docs/FONTS.md,
+docs/updating-fonts.md, SPEC.md command examples, src-tauri/src/debug.rs comment,
+.claude/settings.local.json Mac-path allowlist. §7 scratch (test-shift.html, todo.txt)
+handled with §3; export-cli.html KEPT (it's a vite entry); sync-and-link "dup" is
+NOT a dup (docs/ = design doc, docs/manual/ = user page).
+
+--- original plan below ---
 ## 8. Consolidate scripts/ → tools/ (one tooling dir)
 `scripts/` holds only `setup-fonts.mjs` + `download-fonts.mjs`; `tools/` holds
 everything else. Merge into `tools/`, delete `scripts/`:

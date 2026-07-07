@@ -11,10 +11,10 @@
 #              timing measurements.
 #
 # Examples:
-#   bash mac-build.sh                       # plain dev (debug profile)
-#   bash mac-build.sh --debug               # dev + Debug menu
-#   bash mac-build.sh --release             # release profile, no Debug menu
-#   bash mac-build.sh --debug --release     # release profile + Debug menu
+#   bash tools/mac-build.sh                      # plain dev (debug profile)
+#   bash tools/mac-build.sh--debug               # dev + Debug menu
+#   bash tools/mac-build.sh--release             # release profile, no Debug menu
+#   bash tools/mac-build.sh--debug --release     # release profile + Debug menu
 #
 # (We translate --debug to EIGENDECK_DEBUG=1 because Tauri's `tauri dev`
 # argv passthrough places extra args BEFORE cargo's `--` separator, so a
@@ -23,7 +23,7 @@
 
 set -e
 source "$HOME/.cargo/env" 2>/dev/null || true
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."   # tools/ -> repo root
 
 release_mode=0
 while [ $# -gt 0 ]; do
