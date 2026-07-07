@@ -4,8 +4,14 @@ Decided 2026-07-07; execute in a fresh-context session (ref-heavy). Verify each
 move with `grep -rn <oldpath>` and fix links; `npm run build` + `node
 tools/build-manual.mjs` at the end.
 
-## 1. Delete
-- `CHANGELOG.md` — stale (last 2026-06-01), unmaintained; git log covers it.
+## 1. CHANGELOG → fold into `.claude/logs/` — DONE 2026-07-07
+- Renamed `.claude/log/` → `.claude/logs/`.
+- `CHANGELOG.md`'s founding arc (Mar 31 – Apr 2) → `logs/2026-03-31-to-04-02-session.md`;
+  its Notebooks arc (May 31 – Jun 1) → `logs/2026-05-31-to-06-01-notebooks-session.md`.
+  Its May 19–25 asset-versioning arc was already covered by
+  `logs/worklog-2026-05-19-to-05-25.md` (more detailed) → no new file.
+- Deleted `CHANGELOG.md`; repointed the stale "append to CHANGELOG" note in
+  `.claude/notes/startup-notes.md` to `.claude/logs/`.
 
 ## 2. Keep in root
 - `README.md`, `CONTRIBUTING.md`.

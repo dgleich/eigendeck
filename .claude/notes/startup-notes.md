@@ -140,10 +140,9 @@ Tracked design docs:
 - `/work/CLAUDE.md` — project guide
 - `/work/LLM-EDITING.md` — JSON schema docs (needs phase-4 update
   to remove `src`/`demoSrc` from element examples)
-- `/work/CHANGELOG.md` — user-facing arc-level worklog. Append an
-  entry when shipping a meaningful chunk (last entry was the May
-  19-25 asset-versioning arc; the post-refactor entry is owed
-  once the asset refactor is fully landed).
+- `/work/.claude/logs/` — arc-level session logs (the old root
+  `CHANGELOG.md` was folded in here 2026-07-07). Append a
+  `YYYY-MM-DD-...-session.md` entry when shipping a meaningful chunk.
 - `/work/SPEC.md` — stale (April 15), superseded by `docs/ASSETS.md`
   for the asset domain.
 
