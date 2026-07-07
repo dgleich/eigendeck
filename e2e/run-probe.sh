@@ -35,10 +35,19 @@ cleanup_rig() {
   pkill -9 -f "^/usr/bin/WebKitWebDriver" 2>/dev/null
   pkill -9 -f "^python3 -m http.server 1420" 2>/dev/null
   [ -n "$E2E_APP" ] && pkill -9 -f "^${E2E_APP}" 2>/dev/null
+  type jupyter_stop >/dev/null 2>&1 && jupyter_stop
 }
 cleanup_rig
 sleep 1
 trap cleanup_rig EXIT
+
+# Live-kernel probes (E2E_JUPYTER=1) need a real jupyter server on 127.0.0.1:8888.
+# Start it on the host BEFORE the app launches (localhost is shared into xvfb).
+if [ "${E2E_JUPYTER:-}" = "1" ]; then
+  # shellcheck disable=SC1090
+  source "$ROOT/e2e/jupyter-server.sh"
+  jupyter_start || exit 1
+fi
 
 xvfb-run -a -s "-screen 0 1280x900x24" bash -c "
   export WEBKIT_DISABLE_COMPOSITING_MODE=1 WEBKIT_DISABLE_DMABUF_RENDERER=1 LIBGL_ALWAYS_SOFTWARE=1

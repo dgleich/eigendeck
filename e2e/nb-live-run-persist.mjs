@@ -22,10 +22,45 @@ async function pollDom(sid,needle,ms=20000){for(let t=0;t<ms;t+=500){if((await d
   const sid = await open();
   if (!sid) fail('no session');
   if (!await waitSeam(sid)) fail('no seam');
-  // inject the per-machine jupyterServers pref BEFORE the kernel connects
+  // inject the per-machine jupyterServers pref, then fire the pref-changed event
+  // so usePreference('jupyterServers') re-reads (a raw setItem alone doesn't
+  // notify subscribers, so the already-mounted notebook keeps its empty registry).
   await execSync(sid, `localStorage.setItem('eigendeck:pref:jupyterServers', JSON.stringify(
-    [{ label: 'e2e', baseUrl: ${JSON.stringify(JUP_URL)}, token: ${JSON.stringify(JUP_TOKEN)}, availableKernels: ['python3'] }]));`);
+    [{ label: 'e2e', baseUrl: ${JSON.stringify(JUP_URL)}, token: ${JSON.stringify(JUP_TOKEN)}, availableKernels: ['python3'] }]));
+    window.dispatchEvent(new CustomEvent('eigendeck:pref-changed', { detail: { key: 'jupyterServers' } }));`);
   if (!await pollDom(sid, 'k = 5')) fail('cell source k = 5 not rendered');
-  console.log('E2E_OK render');
+
+  // enter interact mode (double-click the overlay) so cell buttons + editor take input
+  await execSync(sid, `document.querySelector('.el-notebook .nb-overlay')?.dispatchEvent(new MouseEvent('dblclick',{bubbles:true,cancelable:true}));`);
+  // wait for the CodeMirror editor to mount (lazy-loaded)
+  for (let t = 0; t < 15000 && !(await execSync(sid, `return !!document.querySelector('.cm-content')`)); t += 500) await sleep(500);
+  // edit: replace the CodeMirror doc with a computed-output line
+  const NEWSRC = 'print("E2E_LIVE_%d" % (6*7))';
+  const setOk = await execSync(sid, `return (() => {
+    const cm = document.querySelector('.cm-content');
+    if (!cm) return 'no-cm';
+    cm.focus();
+    const sel = window.getSelection(); const r = document.createRange();
+    r.selectNodeContents(cm); sel.removeAllRanges(); sel.addRange(r);
+    document.execCommand('insertText', false, ${JSON.stringify(NEWSRC)});
+    return document.querySelector('.cm-content')?.textContent?.includes('E2E_LIVE') ? 'ok' : 'no-set';
+  })();`);
+  if (setOk !== 'ok') fail('could not set cell source via CodeMirror (' + setOk + ') — see FALLBACK in plan');
+  // run the cell (lazy WS connect happens here)
+  const runBtn = await execSync(sid, `return !!document.querySelector('.nb-cell-run')`);
+  await execSync(sid, `document.querySelector('.nb-cell-run')?.click();`);
+  if (!await pollDom(sid, 'E2E_LIVE_42', 30000)) {
+    const diag = await execSync(sid, `return JSON.stringify({
+      runBtnPresent: ${runBtn},
+      pref: localStorage.getItem('eigendeck:pref:jupyterServers'),
+      kernelLabel: document.querySelector('.nb-kernel-label')?.textContent || null,
+      status: document.querySelector('.nb-status')?.textContent || null,
+      pill: document.querySelector('.server-status-pill,[class*=status-pill]')?.textContent || null,
+      nbText: (document.querySelector('.nb-body')?.textContent || '').slice(0, 400),
+    })`);
+    console.error('DIAG ' + diag);
+    fail('live kernel output E2E_LIVE_42 not seen');
+  }
+  console.log('E2E_OK live-run');
   process.exit(0);
 })();
