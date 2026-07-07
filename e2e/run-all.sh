@@ -121,6 +121,10 @@ MANIFEST=(
   "export-image-deck-probe.mjs|examples/intro-slide.eigendeck||"
   # notebook-watch-takecontrol is NOT gated — see e2e/README.md "Not yet gated"
   # (real fs-watch depends on the per-user auto-reload preference run-probe wipes).
+  # nb-live-run-persist is NOT gated — needs a REAL jupyter server (uv + network
+  # for the first venv build), so it's non-hermetic. Enable when the CI image
+  # ships jupyter. To run standalone see e2e/README.md "Live kernel".
+  # "nb-live-run-persist.mjs|live.eigendeck|E2E_JUPYTER=1|python3 $EXFIX/make_live_nb_deck.py \$DECKDIR/live.json; import_json \$DECKDIR/live.json"
 
   # ── video (codec-INDEPENDENT: round-trip + byte-level file/caption watch) ─
   "video-roundtrip-probe.mjs|empty.eigendeck||$EMPTY"

@@ -63,6 +63,25 @@ These live in `e2e/` but are NOT in `run-all.sh`, by design:
   measurement reads `null` (the glyph Range rect isn't resolvable), so it can't
   gate. The text-render path is covered deterministically by the
   `buildTextElementSvgMarkup` unit test (`src/components/TextElementSvg.test.ts`).
+- **nb-live-run-persist.mjs** — the only probe that boots a REAL Jupyter kernel
+  and runs a cell. Proves the live path unit/overlay tests can't: edit a cell's
+  source in-app (CodeMirror), run it against an external `python3` kernel, and
+  assert the computed output (`E2E_LIVE_42` = `6*7`, un-fakeable) plus the edited
+  source both survive save→quit→reopen (via the overlay). Excluded from the gate
+  because it's non-hermetic: it needs `uv` and a real `jupyter server` (network
+  for the first venv build). Run it standalone:
+
+  ```bash
+  python3 e2e/fixtures/make_live_nb_deck.py /tmp/live-nb.json
+  eigendeck-cli /tmp/live-nb.eigendeck import json /tmp/live-nb.json
+  PROBE=e2e/nb-live-run-persist.mjs E2E_DECK=/tmp/live-nb.eigendeck \
+    E2E_JUPYTER=1 bash e2e/run-probe.sh   # -> E2E_PASS live edit+run+persist
+  ```
+
+  `E2E_JUPYTER=1` makes `run-probe.sh` source `e2e/jupyter-server.sh`, which
+  boots (and tears down) a `jupyter server` on `127.0.0.1:8888` (token
+  `e2e-token`) via a cached `uv` venv. Enable the commented `run-all.sh` entry
+  once the CI image ships jupyter.
 
 ## Platform
 
