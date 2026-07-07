@@ -6,8 +6,8 @@
  * Clones the repo if missing.
  *
  * The list of expected packages mirrors src/lib/fonts.ts FONT_PACKAGES.
- * The local ptsans bundle is copied from mathjax-ptsans-bundle/ (in-tree)
- * for now, until ptsans is migrated to mathjax-fonts.
+ * All packages — including PT Sans (the default) — come from mathjax-fonts;
+ * the old in-tree mathjax-ptsans-bundle/ is gone.
  */
 
 import { execSync } from 'node:child_process';

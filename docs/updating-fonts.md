@@ -63,10 +63,9 @@ To pull a NEW font that didn't exist before, see "Adding a font" below.
 ## PT Sans (the default) — now sourced from mathjax-fonts
 
 PT Sans is the **default** font. As of 2026-06-14 it is sourced from
-`mathjax-fonts/mathjax-ptsans` like every other font (migrated off the old
-in-tree `mathjax-ptsans-bundle/`), so it tracks upstream fixes via the normal
-pull + `build-all-nosre.cjs` + `npm run setup` flow above. The in-tree
-`mathjax-ptsans-bundle/` is no longer used by `setup-fonts.mjs`.
+`mathjax-fonts/mathjax-ptsans` like every other font, so it tracks upstream fixes
+via the normal pull + `build-all-nosre.cjs` + `npm run setup` flow above. The old
+in-tree `mathjax-ptsans-bundle/` has been removed (2026-07-07).
 
 The text-font TTFs still live in `public/fonts/ptsans/` (regular/bold/italic +
 the PT Sans Narrow faces) — those are committed and unaffected by the math-bundle

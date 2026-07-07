@@ -512,7 +512,7 @@ Used for build animations, step-by-step demos, and linked object transitions.
 
 ### MathJax Tilde Fix
 - Tilde accent (`\tilde{x}`) positioned too high in PT Sans math font
-- Fix requires adjusting glyph metrics (y-coordinate 732) in mathjax-ptsans-bundle font data
+- Fix requires adjusting glyph metrics (y-coordinate 732) in the PT Sans font data (mathjax-fonts repo)
 
 ### Section Properties
 - Per-section styling and configuration
@@ -735,23 +735,24 @@ MathJax 4 with a custom PT Sans math font renders `$...$` (inline) and `$$...$$`
 
 ### Build & Setup
 
-The MathJax bundle lives in `mathjax-ptsans-bundle/` (committed to repo).
+All MathJax math packs — PT Sans (the default) included — are built in the
+sibling **dgleich/mathjax-fonts** repo, one `-nosre` bundle per font. They are
+NOT committed here; `npm run setup` (`tools/setup-fonts.mjs`) copies the prebuilt
+bundles into `public/mathjax/` (both `public/mathjax/` and the bundles are
+gitignored). The old in-tree `mathjax-ptsans-bundle/` is gone.
 
-**To deploy**: copy the nosre build to public/:
-```bash
-cp mathjax-ptsans-bundle/tex-mml-svg-mathjax-ptsans-nosre.js public/mathjax/tex-mml-svg-mathjax-ptsans.js
-```
+**To deploy**: `npm run setup`.
 
-**To rebuild** (from `mathjax-ptsans-bundle/build/`):
-```bash
-npx webpack --config webpack-nosre.config.cjs
-```
+**To rebuild a font** (changed metrics, MathJax bump): see the `update-fonts`
+skill / `docs/updating-fonts.md` — pull mathjax-fonts, run its `build-all-nosre`
+webpack, then `npm run setup`.
 
 The `-nosre` variant excludes the Speech Rule Engine which creates blob: Workers that Tauri blocks.
 
 ### Font Parameters
 
-In `mathjax-ptsans-bundle/cjs/common.js`:
+Font metrics live in each pack's `cjs/common.js` in the mathjax-fonts repo, e.g.
+for PT Sans:
 ```js
 x_height: .500  // = OS/2.sxHeight / head.unitsPerEm for PT Sans
 ```
@@ -790,7 +791,7 @@ This is the critical parameter for text/math size matching. Don't change `em_sca
 
 ### Known Issues
 
-- `\tilde{x}` accent — fixed in mathjax-ptsans-bundle update (April 2026)
+- `\tilde{x}` accent — fixed in the PT Sans math font (April 2026)
 - First MathJax render has a brief delay (script loading + first tex2svgPromise)
 - fontCache: 'none' means SVG paths are duplicated (slightly larger HTML export)
 - WebKit contentEditable: cursor appears left of list marker on empty new lines
@@ -870,7 +871,7 @@ Or use the batch script: `bash tools/convert-examples.sh`
 ### MathJax Setup
 
 ```bash
-cp mathjax-ptsans-bundle/tex-mml-svg-mathjax-ptsans-nosre.js public/mathjax/tex-mml-svg-mathjax-ptsans.js
+npm run setup   # copies the mathjax-fonts bundles into public/mathjax/
 ```
 
 ### Performance Benchmarks

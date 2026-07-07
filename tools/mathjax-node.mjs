@@ -8,7 +8,19 @@
  */
 
 import { createRequire } from 'node:module';
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
+
+// PT Sans now lives in the sibling mathjax-fonts repo (migrated off the old
+// in-tree mathjax-ptsans-bundle/). Look for it as a sibling of the repo, then
+// inside it; if absent (it's a gitignored clone), fall back to MathJax's default.
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const PTSANS_SVG = [
+  resolve(REPO_ROOT, '..', 'mathjax-fonts', 'mathjax-ptsans', 'cjs', 'svg.js'),
+  resolve(REPO_ROOT, 'mathjax-fonts', 'mathjax-ptsans', 'cjs', 'svg.js'),
+].find(existsSync);
 
 let mjxPromise = null;
 
@@ -17,11 +29,12 @@ async function getMathJax() {
   mjxPromise = (async () => {
     const MathJax = require('@mathjax/src');
 
-    // Try to load the custom PT Sans font from the bundled cjs/ output
+    // Try to load the custom PT Sans font from the mathjax-fonts cjs/ output.
     let PTSansFont = null;
     try {
-      const fontModule = require('/work/mathjax-ptsans-bundle/cjs/svg.js');
-      PTSansFont = fontModule.MathJaxPTSansFont;
+      if (!PTSANS_SVG) throw new Error('mathjax-fonts/mathjax-ptsans not found');
+      const fontModule = require(PTSANS_SVG);
+      PTSansFont = fontModule.MathJaxPTSans;
     } catch (e) {
       console.warn('  ! Could not load PT Sans font, using MathJax default:', e.message);
     }
