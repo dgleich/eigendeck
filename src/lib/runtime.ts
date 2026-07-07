@@ -6,10 +6,13 @@
 
 import { injectFontFaces } from './fonts';
 import { discoverAllServers } from './serverDiscovery';
+import { initPrefSync } from './preferences';
 
 export function initRuntime(): void {
   // Register @font-face for all bundled font packages (text + math).
   injectFontFaces();
   // Refresh the Jupyter server registry in the background (live notebooks).
   void discoverAllServers();
+  // Keep preferences in sync across webview windows (main ↔ Settings window).
+  initPrefSync();
 }

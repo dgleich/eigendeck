@@ -122,13 +122,35 @@ export function getPreference<K extends keyof PrefSchema>(key: K): PrefSchema[K]
   }
 }
 
+// Cross-window Tauri event: localStorage is shared across same-origin webview
+// windows, but the DOM CHANGE_EVENT is per-document — so a pref written in the
+// Settings window won't notify usePreference() in the main window without this
+// bridge. setPreference emits it; initPrefSync() (runtime.ts) re-dispatches the
+// local CHANGE_EVENT in every window. Guarded so non-Tauri contexts (tests) no-op.
+export const PREF_SYNC_EVENT = 'eigendeck:pref-sync';
+
 export function setPreference<K extends keyof PrefSchema>(key: K, value: PrefSchema[K]): void {
   try {
     localStorage.setItem(KEY_PREFIX + key, JSON.stringify(value));
     window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: { key } }));
+    // Notify other webview windows (best-effort; no-op outside Tauri).
+    void import('@tauri-apps/api/event')
+      .then(({ emit }) => emit(PREF_SYNC_EVENT, { key }))
+      .catch(() => {});
   } catch (e) {
     console.warn(`[prefs] setPreference(${key}) failed:`, e);
   }
+}
+
+/** Re-dispatch the local CHANGE_EVENT when another window changes a pref.
+ *  Called once per window from initRuntime(). Guarded for non-Tauri contexts. */
+export function initPrefSync(): void {
+  void import('@tauri-apps/api/event')
+    .then(({ listen }) =>
+      listen<{ key?: string }>(PREF_SYNC_EVENT, (e) => {
+        window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: { key: e.payload?.key } }));
+      }))
+    .catch(() => {});
 }
 
 /**

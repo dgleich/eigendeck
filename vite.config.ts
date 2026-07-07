@@ -21,6 +21,7 @@ export default defineConfig(async () => ({
         main: resolve(__dirname, 'index.html'),
         presenter: resolve(__dirname, 'presenter.html'),
         security: resolve(__dirname, 'security.html'),
+        settings: resolve(__dirname, 'settings.html'),
         'export-cli': resolve(__dirname, 'export-cli.html'),
       },
     },

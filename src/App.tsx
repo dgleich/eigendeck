@@ -16,7 +16,7 @@ import { ContextMenu } from './components/ContextMenu';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import { DebugMenu } from './debug';
 import { ToastHost } from './components/ToastHost';
-import { SettingsModal } from './components/SettingsModal';
+import { openSettingsWindow } from './lib/settingsWindow';
 import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
 import { detachDelta, pasteElementDelta } from './lib/syncLink';
@@ -574,7 +574,6 @@ function App() {
   const [linkOverlayElementId, setLinkOverlayElementId] = useState<string | null>(null);
   const [promoteCandidates, setPromoteCandidates] = useState<{ elementId: string; slideNo: number; summary: string }[] | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuEntry[] } | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [multiMonitorPresenting, setMultiMonitorPresenting] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
@@ -1297,8 +1296,8 @@ function App() {
                 await saveProject();
                 await reinit();
                 break;
-              case 'open-settings':  // global watch lives in the main window's Settings
-                setSettingsOpen(true);
+              case 'open-settings':  // global watch lives in the app-wide Settings
+                void openSettingsWindow();
                 break;
             }
           } catch (err) { console.warn('[security-request]', e.payload?.action, err); }
@@ -1422,7 +1421,7 @@ function App() {
         })(); break;
         case 'debug-console': window.dispatchEvent(new CustomEvent('toggle-debug-console')); break;
         case 'settings':
-          setSettingsOpen(true);
+          void openSettingsWindow();
           break;
         case 'help-learning':
         case 'help-manual':
@@ -1513,9 +1512,9 @@ function App() {
   // No project open → welcome screen (issue #66). Editing only begins once a
   // deck is anchored on disk, so file-watching / linked assets work from the
   // start. Launching with a file arg sets projectPath before this renders.
-  // App-level Settings (⌘,) must work here too — the modal is mounted in this
-  // branch as well, else File → Settings flips state with nothing to render (#100).
-  if (!projectPath) return (<><ToastHost /><WelcomeWindow /><SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} /></>);
+  // App-level Settings (⌘,) opens its own window (openSettingsWindow), so it
+  // works from the Welcome screen too without mounting anything here (#62).
+  if (!projectPath) return (<><ToastHost /><WelcomeWindow /></>);
 
   const store = usePresentationStore.getState();
 
@@ -1606,7 +1605,6 @@ function App() {
           onCancel={() => setPromoteCandidates(null)}
         />
       )}
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       {videoModalOpen && (
         <div onClick={() => setVideoModalOpen(false)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
