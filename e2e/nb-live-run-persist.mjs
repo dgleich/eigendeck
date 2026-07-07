@@ -46,6 +46,10 @@ async function pollDom(sid,needle,ms=20000){for(let t=0;t<ms;t+=500){if((await d
     return document.querySelector('.cm-content')?.textContent?.includes('E2E_LIVE') ? 'ok' : 'no-set';
   })();`);
   if (setOk !== 'ok') fail('could not set cell source via CodeMirror (' + setOk + ') — see FALLBACK in plan');
+  // blur the editor → onCommit → ov.setEdit → the source edit lands in cellEdits
+  // (without this only cellOutputs persists; the edited source is lost on reopen)
+  await execSync(sid, `document.querySelector('.cm-content')?.blur();`);
+  await sleep(400);
   // run the cell (lazy WS connect happens here)
   const runBtn = await execSync(sid, `return !!document.querySelector('.nb-cell-run')`);
   await execSync(sid, `document.querySelector('.nb-cell-run')?.click();`);
@@ -62,5 +66,24 @@ async function pollDom(sid,needle,ms=20000){for(let t=0;t<ms;t+=500){if((await d
     fail('live kernel output E2E_LIVE_42 not seen');
   }
   console.log('E2E_OK live-run');
+
+  // persist: flush store deltas + save to sqlite, then close the session
+  const saved = await execAsync(sid, `const d=arguments[arguments.length-1];
+    (async()=>{ await window.__eigendeck.flush(); await window.__eigendeck.save(); })()
+      .then(()=>d('saved')).catch(e=>d('ERR:'+e));`);
+  if (saved !== 'saved') fail('save failed: ' + saved);
+  await sleep(800);
+  await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {});
+  await sleep(1500);
+
+  // reopen fresh (new XDG_DATA_HOME → no kernel; the overlay renders edit+output
+  // WITHOUT a live kernel, which is exactly what we're asserting persisted)
+  const sid2 = await open();
+  if (!sid2) fail('no reopen session');
+  if (!await waitSeam(sid2)) fail('no seam on reopen');
+  if (!await pollDom(sid2, 'E2E_LIVE_42')) fail('live output did NOT persist across reopen');
+  if (!await pollDom(sid2, 'E2E_LIVE_%d')) fail('edited source did NOT persist across reopen');
+  await fetch(`${BASE}/session/${sid2}`, { method: 'DELETE' }).catch(() => {});
+  console.log('E2E_PASS live edit+run+persist');
   process.exit(0);
 })();
