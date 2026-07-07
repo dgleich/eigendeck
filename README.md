@@ -4,8 +4,6 @@
 
 <h1 align="center">Eigendeck</h1>
 
-<p align="center"><em>The characteristic presentation tool.</em></p>
-
 <p align="center">
   A desktop presentation tool with embedded interactive demos and LaTeX math.<br>
   Built for academics and researchers who give technical talks.
