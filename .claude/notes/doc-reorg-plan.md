@@ -68,3 +68,16 @@ SQLITE_STORAGE, FONTS) go to **`docs/`**, NOT `docs/manual/` — `docs/manual/` 
 the PUBLIC website source (build-manual.mjs), so only the new
 `development-setup.md` belongs there. `entitlements.plist` is correctly in
 `src-tauri/` (not misplaced).
+
+## 8. Consolidate scripts/ → tools/ (one tooling dir)
+`scripts/` holds only `setup-fonts.mjs` + `download-fonts.mjs`; `tools/` holds
+everything else. Merge into `tools/`, delete `scripts/`:
+- `git mv scripts/setup-fonts.mjs scripts/download-fonts.mjs tools/`
+- **package.json**: `"setup": "node scripts/setup-fonts.mjs"` → `node tools/setup-fonts.mjs`.
+- Check setup-fonts.mjs's own import of `./download-fonts.mjs` (relative — stays OK
+  after moving both together) and any `scripts/` refs in docs / the `update-fonts`
+  skill / CLAUDE(AGENTS).md.
+- **Root build scripts → tools/** (from §7): `git mv build-cli.sh mac-build.sh tools/`
+  and update their refs (build-cli 1, mac-build 4); verify+delete `linux-build.sh`
+  (0 refs). Update `convert-examples.sh`/`generate-icons.sh` are already in tools/.
+Result: `tools/` is the single home for build/dev tooling; `scripts/` gone.
