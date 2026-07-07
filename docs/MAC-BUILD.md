@@ -1,5 +1,10 @@
 # Building Eigendeck on macOS
 
+> **Internal runbook.** This is for a coding agent (Claude Code) running on the
+> Mac side of a shared Colima dir — not general contributor docs (see
+> `manual/development-setup.md` for those). **Stale re: code signing /
+> notarization** — rewrite once the Apple Developer signing setup lands.
+
 Instructions for a Claude Code instance running on a Mac to build and test Eigendeck.
 A Linux Colima container does the main development in this same directory.
 

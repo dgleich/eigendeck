@@ -17,11 +17,13 @@ tools/build-manual.mjs` at the end.
 - `README.md`, `CONTRIBUTING.md`.
 - `CLAUDE.md` → becomes a **thin pointer to AGENTS.md** (see §5).
 
-## 3. Move to `docs/` — low churn (few refs)
+## STATUS 2026-07-07: §1 §3 §4 §5 §6 §7 §8 ALL DONE. Website push = last step (below).
+
+## 3. Move to `docs/` — low churn (few refs) — DONE
 `DESIGN_DECISIONS.md`, `FONTS.md`, `PLUGIN_IDEAS.md`, `SQLITE_STORAGE.md`,
 `FORKS.md`. (git mv, then fix the handful of cross-refs in docs/ + .claude/notes/.)
 
-## 4. Move to `docs/` — load-bearing (move + fix ALL refs)
+## 4. Move to `docs/` — load-bearing (move + fix ALL refs) — DONE (build.rs repointed to docs/, verified; sync test fixed)
 - `SPEC.md` → `docs/SPEC.md`: update CLAUDE.md/AGENTS.md ("See SPEC.md"), ~12 refs.
 - `LLM-EDITING.md` → `docs/LLM-EDITING.md`: update CLAUDE.md/AGENTS.md, the
   **PostToolUse hook** in `.claude/settings.local.json` (mentions LLM-EDITING.md),
@@ -32,7 +34,7 @@ tools/build-manual.mjs` at the end.
   - `docs/manual/building-demos-with-llms.md` link `../../DEMO_AUTHORING.md`,
   - `build-manual.mjs` GH base-URL refs if any, ~15/7 refs.
 
-## 5. AGENTS.md (canonical) + CLAUDE.md (pointer)
+## 5. AGENTS.md (canonical) + CLAUDE.md (pointer) — DONE (CLAUDE.md @-imports AGENTS.md so it still auto-loads)
 - Move CLAUDE.md's project-guide content → new root `AGENTS.md`.
 - CLAUDE.md becomes just: "See [AGENTS.md](AGENTS.md)." (matches
   `src-tauri/resources/llm-tools/CLAUDE.md`, which already does this).
@@ -40,7 +42,11 @@ tools/build-manual.mjs` at the end.
 - Sanity: Claude Code still auto-loads CLAUDE.md → it points to AGENTS.md. Confirm
   hooks/tooling that read CLAUDE.md still work.
 
-## 6. Website: development-setup page(s)
+## 6. Website: development-setup page(s) — DONE (main repo); WEBSITE PUSH PENDING
+SETUP.md folded into new docs/manual/development-setup.md + deleted; README repointed.
+MAC-BUILD.md (agent Colima runbook, stale) moved to docs/ with a stale note.
+build-manual.mjs gained a "Development" TOC section; manual rebuilt (15 pages) into
+website/. REMAINING: commit + push website repo (dgleich/eigendeck-web) — outward-facing.
 - New `docs/manual/development-setup.md` consolidating `SETUP.md` + `MAC-BUILD.md`
   + the Prereqs/Build-commands from CLAUDE.md (Node 20+, Rust 1.85+, npm run
   setup/build/tauri dev, cargo check/clippy, MathJax bundle rebuild).

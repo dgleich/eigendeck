@@ -41,6 +41,9 @@ const TOC = [
   { section: 'Trust & safety', pages: [
     { file: 'security.md', out: 'security.html', title: 'Security & privacy' },
   ]},
+  { section: 'Development', pages: [
+    { file: 'development-setup.md', out: 'development-setup.html', title: 'Development setup' },
+  ]},
 ];
 const MD_TO_HTML = new Map(TOC.flatMap((s) => s.pages).map((p) => [p.file, p.out]));
 

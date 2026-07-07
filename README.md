@@ -32,7 +32,7 @@
 
 ## Getting Started
 
-Requires Node.js 20+ and Rust 1.85+. See [SETUP.md](SETUP.md) for full setup instructions.
+Requires Node.js 20+ and Rust 1.85+. See the [development setup guide](docs/manual/development-setup.md) for full per-platform instructions.
 
 ```bash
 npm install
