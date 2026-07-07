@@ -103,3 +103,11 @@ See SPEC.md for full schema and LLM-EDITING.md for programmatic editing guide.
 ## Hooks
 
 PostToolUse hook on Write|Edit reminds to update LLM-EDITING.md when src/types/presentation.ts changes. (In .claude/settings.local.json)
+
+## Session logs
+
+Arc-level dev history lives in `.claude/logs/` (tracked). When you ship a
+meaningful chunk of work, add a `YYYY-MM-DD-<topic>-session.md` entry there — a
+short narrative of *what* and *why* (git log has the commit-level detail). This
+replaces the old root `CHANGELOG.md`, which was folded into `.claude/logs/` on
+2026-07-07.
