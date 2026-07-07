@@ -57,7 +57,7 @@ Contributions of new element types are expected and welcome.
 
 The plug-in interface is still being defined. If you have an element type in mind,
 open an issue to start the conversation — concrete use cases drive the design of
-the extension API. (For interactive HTML demos *today*, see `DEMO_AUTHORING.md`,
+the extension API. (For interactive HTML demos *today*, see `docs/DEMO_AUTHORING.md`,
 which already lets you drop custom interactive content onto a slide.)
 
 ## Building from source

@@ -4,7 +4,7 @@
 //!
 //! The kit is shipped as a bundled resource (`resources/llm-tools/`): the
 //! committed AGENTS.md / CLAUDE.md / demo-starter.html plus the 4 docs that
-//! build.rs copies from the repo root (LLM-EDITING.md, SPEC.md,
+//! build.rs copies from docs/ (LLM-EDITING.md, SPEC.md,
 //! DEMO_AUTHORING.md, DEMO_SPEC.md). The install copies every file into
 //! `<target>/eigendeck-llm-tools/` and substitutes the real absolute path to
 //! the app's `eigendeck-cli` for the `__EIGENDECK_CLI_PATH__` placeholder in

@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://eigendeck.dev">Website</a> ·
   <a href="https://github.com/dgleich/eigendeck/releases">Downloads</a> ·
-  <a href="SPEC.md">Spec</a>
+  <a href="docs/SPEC.md">Spec</a>
 </p>
 
 ---
@@ -58,14 +58,14 @@ node tools/export-eigendeck.mjs deck.eigendeck output.html
 
 ## Demo Development
 
-Demos are standalone HTML files stored as assets in the `.eigendeck` file. See [DEMO_AUTHORING.md](DEMO_AUTHORING.md) for the full guide.
+Demos are standalone HTML files stored as assets in the `.eigendeck` file. See [DEMO_AUTHORING.md](docs/DEMO_AUTHORING.md) for the full guide.
 
 ```bash
 # Add a demo to an open presentation
 # Just drag an HTML file onto the slide editor
 
 # For LLM-assisted editing
-# See LLM-EDITING.md for the programmatic editing guide
+# See docs/LLM-EDITING.md for the programmatic editing guide
 ```
 
 ## Manual

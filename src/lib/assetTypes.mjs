@@ -22,7 +22,7 @@ export const ASSET_EXTENSIONS = Object.freeze({
   vtt: 'captions',
 });
 
-/** Marker that identifies eigendeck's own demo format (see DEMO_AUTHORING.md). */
+/** Marker that identifies eigendeck's own demo format (see docs/DEMO_AUTHORING.md). */
 export const DEMO_MARKER_PREFIX = 'eigendeck-demo-v';
 /** Demo-marker format versions this build understands. Unknown → fail closed. */
 export const SUPPORTED_DEMO_VERSIONS = Object.freeze(new Set([1]));

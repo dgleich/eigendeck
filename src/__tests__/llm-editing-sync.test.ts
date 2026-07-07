@@ -8,7 +8,7 @@ import { resolve } from 'path';
  */
 describe('LLM-EDITING.md sync', () => {
   const typesSource = readFileSync(resolve(__dirname, '../../src/types/presentation.ts'), 'utf-8');
-  const llmDoc = readFileSync(resolve(__dirname, '../../LLM-EDITING.md'), 'utf-8');
+  const llmDoc = readFileSync(resolve(__dirname, '../../docs/LLM-EDITING.md'), 'utf-8');
 
   it('documents all element type interfaces', () => {
     // Check each element type is mentioned

@@ -64,7 +64,7 @@ registerNotebookLifecycle();
 // headless E2E and live scripting can drive store actions and persist them
 // through the real SQLite path. Dev/test only — NOT shipped in release builds
 // and NOT a user-facing feature. This is a test hook, not the documented
-// editing path (LLM-EDITING.md uses the offline `eigendeck-cli` against the
+// editing path (docs/LLM-EDITING.md uses the offline `eigendeck-cli` against the
 // file at rest). It installs when either holds:
 //   • dev build (`import.meta.env.DEV`) — convenience while developing.
 //   • `VITE_EIGENDECK_SEAM=1` baked into the build — used for the E2E dist.

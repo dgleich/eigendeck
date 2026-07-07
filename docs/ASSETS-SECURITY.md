@@ -145,7 +145,7 @@ target passes only if **both** hold:
      standards mode in every load context). The marker is versioned and checked
      **fail-closed** — an unknown/newer version is "not a demo I can run," never
      assumed safe. Existing demos are re-stamped / rebuilt to carry it (an accepted
-     lift). Full contract: [`DEMO_AUTHORING.md`](../DEMO_AUTHORING.md).
+     lift). Full contract: [`DEMO_AUTHORING.md`](DEMO_AUTHORING.md).
 
 **Principle: for a format we *own*, require our own signature; for an *interchange*
 format, use its native type identity.** Both checks run on the resolved target's

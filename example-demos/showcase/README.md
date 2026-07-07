@@ -91,7 +91,7 @@ This rewrites `title-equations.json` + `demo-equations.json`; then re-run the Bu
 
 Every demo here is a **single self-contained `.html`** — no build step, no external
 deps, no message protocol (unlike the controller/viewport "demo pieces" in
-`../../DEMO_AUTHORING.md`). It must read on *any* slide and feel native to the deck.
+`../../docs/DEMO_AUTHORING.md`). It must read on *any* slide and feel native to the deck.
 The shared skeleton:
 
 ```html
@@ -133,7 +133,7 @@ The shared skeleton:
   warm `rgba(224,72,59,a)` for + and cool `rgba(59,130,246,a)` for −, with
   `a ∝ |value|` so zero is transparent (the slide shows through = automatic theme fit).
 
-See `../../DEMO_AUTHORING.md` for the deeper rules these build on: **controls/labels
+See `../../docs/DEMO_AUTHORING.md` for the deeper rules these build on: **controls/labels
 must survive a DARK slide** and **size text relative to the deck, never hardcoded px**.
 
 ### The slide-matched control kit

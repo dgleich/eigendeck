@@ -20,7 +20,7 @@ piece names you reference and creates a positionable element for each.
 
 The full contract — the file template, the controller/piece/standalone roles,
 how export works, and the rules that keep a demo robust — is in
-**[`DEMO_AUTHORING.md`](../../DEMO_AUTHORING.md)** at the repo root. That file is
+**[`DEMO_AUTHORING.md`](../../docs/DEMO_AUTHORING.md)** in the repo's `docs/`. That file is
 also what you hand an LLM: it's installable from the app via **File → Install LLM
 Tools…**, which drops the authoring guide and a starter demo where an
 LLM/agent working in your project can read them.
@@ -78,7 +78,7 @@ Two rules let a demo blend into your slides automatically:
   slides.
 
 Both are covered in detail (with a worked example) in the "Matching the deck"
-section of [`DEMO_AUTHORING.md`](../../DEMO_AUTHORING.md).
+section of [`DEMO_AUTHORING.md`](../../docs/DEMO_AUTHORING.md).
 
 ## Configurable demos
 

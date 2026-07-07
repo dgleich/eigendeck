@@ -29,7 +29,7 @@ A run-through of the building blocks:
 - **[Text sizes](text-sizes.md)** — the named type scale and why slide-level
   overrides don't exist.
 - **[Interactive demos →](building-demos-with-llms.md)** — see the LLM guide above;
-  the full authoring contract is [`DEMO_AUTHORING.md`](../../DEMO_AUTHORING.md).
+  the full authoring contract is [`DEMO_AUTHORING.md`](../../docs/DEMO_AUTHORING.md).
 - **[Notebooks](notebooks.md)** — embedding Jupyter notebooks, in-deck recording
   (your source file is never touched), editable vs. file-watching, display
   options, and syncing a notebook across slides.

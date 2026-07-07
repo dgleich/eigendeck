@@ -171,7 +171,7 @@ fn main() {
     tauri_build::build()
 }
 
-/// Copy the 4 root-level LLM docs into src-tauri/resources/llm-tools/ so they
+/// Copy the 4 LLM docs from docs/ into src-tauri/resources/llm-tools/ so they
 /// ship as bundled resources next to the committed AGENTS.md / CLAUDE.md /
 /// demo-starter.html. The File → Install LLM Tools… command writes the whole
 /// folder to a user-chosen location. The copies are gitignored (generated
@@ -184,10 +184,13 @@ fn stage_llm_tools_docs() {
         println!("cargo:warning=could not create {}: {}", dest_dir.display(), e);
         return;
     }
-    // Repo root is the parent of src-tauri (CARGO_MANIFEST_DIR).
-    let root = manifest_dir.parent().map(PathBuf::from).unwrap_or(manifest_dir.clone());
+    // Docs live in <repo root>/docs (repo root is the parent of src-tauri).
+    let docs = manifest_dir
+        .parent()
+        .map(|p| p.join("docs"))
+        .unwrap_or_else(|| manifest_dir.join("docs"));
     for name in ["LLM-EDITING.md", "SPEC.md", "DEMO_AUTHORING.md", "DEMO_SPEC.md"] {
-        let src = root.join(name);
+        let src = docs.join(name);
         // Re-stage when the source doc changes.
         println!("cargo:rerun-if-changed={}", src.display());
         if src.exists() {

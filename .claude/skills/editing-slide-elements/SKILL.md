@@ -149,8 +149,8 @@ Create a TodoWrite item per applicable line.
     **promoted column** (a new top-level asset id, etc.) must be stripped here
     AND added on the Rust side (`src-tauri/src/storage.rs` schema + migration).
     `el.type` persists as `elementType`.
-11. **Docs** — add a section to `LLM-EDITING.md` (authoring/JSON reference) and
-    `SPEC.md` (architecture/behavior).
+11. **Docs** — add a section to `docs/LLM-EDITING.md` (authoring/JSON reference) and
+    `docs/SPEC.md` (architecture/behavior).
 
 ## Checklist: adding a NEW property on an existing type
 
@@ -170,7 +170,7 @@ Create a TodoWrite item per applicable line.
 4. **Sanitizer** — `sanitizeRichText.ts`: ONLY if it's an authorable inline
    **text-HTML** style — add to `ALLOWED_STYLE_PROPS` (or `ALLOWED_TAGS`) or it's
    stripped on load/import.
-5. **Docs** — `LLM-EDITING.md` + `SPEC.md` bullet.
+5. **Docs** — `docs/LLM-EDITING.md` + `docs/SPEC.md` bullet.
 
 Store sync, clipboard, and persistence usually need **nothing** for a plain new
 property: `updateElement` propagates every non-identity key to synced peers, and
