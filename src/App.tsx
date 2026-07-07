@@ -85,6 +85,7 @@ if (
     store: usePresentationStore,
     flush: flushToSqlite,
     save: saveProject,   // flush + atomic save-in-place to the open file
+    openSettings: () => openSettingsWindow(),  // opens the independent Settings window (E2E)
     // Interactive-HTML export builder (dialog-free) — lets E2E verify the real
     // invoke-backed export pipeline (notebook/preview/asset reads) end to end
     // without a native save dialog.
