@@ -48,3 +48,23 @@ tools/build-manual.mjs` at the end.
 - Root moves + AGENTS.md + build-manual.mjs → `dgleich/eigendeck` (main).
 - Regenerated `website/manual/*.html` (new dev page + any link changes) →
   `dgleich/eigendeck-web`.
+
+## 7. Also found (beyond .md) — don't miss these
+- **Root build scripts → `scripts/`**: `build-cli.sh` (1 ref), `mac-build.sh`
+  (4 refs) — move + update refs. `linux-build.sh` (0 refs) — likely dead, verify
+  then delete.
+- **Stray root HTML**: `test-shift.html`, `export-cli.html` look like scratch —
+  inspect + delete. KEEP `index.html` / `presenter.html` / `security.html` (Vite
+  multi-page entries, referenced by vite.config).
+- **`todo.txt`**: not gitignored (untracked scratch) → add to `.gitignore`.
+- **Dup check**: `docs/sync-and-link.md` vs `docs/manual/sync-and-link.md` — one
+  is likely stale; dedup.
+- **Tokens OK**: `.gh_token` / `.github_token` / `.DS_Store` are gitignored +
+  untracked (no leak) — leave as-is.
+
+## Correction to §4/§6
+Dev docs (SPEC, LLM-EDITING, DEMO_AUTHORING, DEMO_SPEC, DESIGN_DECISIONS,
+SQLITE_STORAGE, FONTS) go to **`docs/`**, NOT `docs/manual/` — `docs/manual/` is
+the PUBLIC website source (build-manual.mjs), so only the new
+`development-setup.md` belongs there. `entitlements.plist` is correctly in
+`src-tauri/` (not misplaced).
