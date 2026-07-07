@@ -32,7 +32,7 @@ function scheduleFlush(): void {
       // appLogDir() (core path API — not the fs plugin) resolves to
       // ~/Library/Logs/<identifier>/ on macOS, %LOCALAPPDATA%\<identifier>\logs on
       // Windows, $XDG_DATA_HOME/<identifier>/logs on Linux — the platform log home.
-      // `cat ~/Library/Logs/com.dgleich.eigendeck/debug.log` on Mac after a crash.
+      // `cat ~/Library/Logs/dev.eigendeck.Eigendeck/debug.log` on Mac after a crash.
       // mkdir(recursive) is a no-op if the dir exists; first run needs it so the
       // append write doesn't fail with ENOENT.
       const { appLogDir, join } = await import('@tauri-apps/api/path');
