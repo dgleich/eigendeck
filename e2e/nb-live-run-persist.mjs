@@ -67,7 +67,13 @@ async function pollDom(sid,needle,ms=20000){for(let t=0;t<ms;t+=500){if((await d
   }
   console.log('E2E_OK live-run');
 
-  // persist: flush store deltas + save to sqlite, then close the session
+  // The overlay (cellEdits + cellOutputs) persists via its OWN debounced flush
+  // (useOverlay FLUSH_DEBOUNCE_MS=800, writes db_store_asset directly — NOT via
+  // window.__eigendeck.save). Wait out the debounce + async write while the
+  // session is still alive; a hard session close won't run the unmount flush.
+  await sleep(2000);
+
+  // persist store deltas too (slide/element), then close the session
   const saved = await execAsync(sid, `const d=arguments[arguments.length-1];
     (async()=>{ await window.__eigendeck.flush(); await window.__eigendeck.save(); })()
       .then(()=>d('saved')).catch(e=>d('ERR:'+e));`);
