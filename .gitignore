@@ -40,6 +40,9 @@ gitignore/
 .gh_token
 .github_token
 
+# Scratch
+todo.txt
+
 # Website repo (separate GitHub repo, hosted on Cloudflare Pages)
 website/
 
