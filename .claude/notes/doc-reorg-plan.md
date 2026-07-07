@@ -20,8 +20,9 @@ tools/build-manual.mjs` at the end.
 ## STATUS 2026-07-07: §1 §3 §4 §5 §6 §7 §8 ALL DONE. Website push = last step (below).
 
 ## 3. Move to `docs/` — low churn (few refs) — DONE
-`DESIGN_DECISIONS.md`, `FONTS.md`, `PLUGIN_IDEAS.md`, `SQLITE_STORAGE.md`,
-`FORKS.md`. (git mv, then fix the handful of cross-refs in docs/ + .claude/notes/.)
+`DESIGN_DECISIONS.md`, `FONTS.md`, `PLUGIN_IDEAS.md`, `SQLITE_STORAGE.md`.
+NOTE: `FORKS.md` stays in ROOT — it's contributor-facing (linked from
+CONTRIBUTING.md, lives alongside README/CONTRIBUTING), not an internal design doc.
 
 ## 4. Move to `docs/` — load-bearing (move + fix ALL refs) — DONE (build.rs repointed to docs/, verified; sync test fixed)
 - `SPEC.md` → `docs/SPEC.md`: update CLAUDE.md/AGENTS.md ("See SPEC.md"), ~12 refs.
