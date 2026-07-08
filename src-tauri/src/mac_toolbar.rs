@@ -30,7 +30,7 @@ use tauri::{AppHandle, Emitter, Manager};
 /// Author/Venue field size (logical points). Both width and height are
 /// constrained; the toolbar centers the definite-size field vertically.
 const FIELD_WIDTH: f64 = 130.0;
-const FIELD_HEIGHT: f64 = 24.0;
+const FIELD_HEIGHT: f64 = 28.0;
 
 const TITLE_ID: &str = "title";
 const AUTHOR_ID: &str = "author";
