@@ -11,8 +11,6 @@
 //! Feature-gating means any such error can't break the default build. Build +
 //! iterate with `bash tools/mac-build.sh --toolbar`. See docs/mac-smoke.md §B.
 
-use std::sync::OnceLock;
-
 use objc2::rc::Retained;
 use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
@@ -66,17 +64,18 @@ define_class!(
     unsafe impl NSObjectProtocol for ToolbarDelegate {}
 
     unsafe impl NSToolbarDelegate for ToolbarDelegate {
-        #[unsafe(method(toolbarDefaultItemIdentifiers:))]
+        // Object (`Retained<T>`) returns use method_id, not method.
+        #[unsafe(method_id(toolbarDefaultItemIdentifiers:))]
         fn default_ids(&self, _toolbar: &NSToolbar) -> Retained<NSArray<NSString>> {
             identifiers()
         }
 
-        #[unsafe(method(toolbarAllowedItemIdentifiers:))]
+        #[unsafe(method_id(toolbarAllowedItemIdentifiers:))]
         fn allowed_ids(&self, _toolbar: &NSToolbar) -> Retained<NSArray<NSString>> {
             identifiers()
         }
 
-        #[unsafe(method(toolbar:itemForItemIdentifier:willBeInsertedIntoToolbar:))]
+        #[unsafe(method_id(toolbar:itemForItemIdentifier:willBeInsertedIntoToolbar:))]
         fn item_for(
             &self,
             _toolbar: &NSToolbar,
@@ -125,10 +124,6 @@ impl ToolbarDelegate {
     }
 }
 
-// NSToolbar's `delegate` is a weak reference, so keep ours alive for the app's
-// lifetime (single main window → a process-wide slot is fine).
-static DELEGATE: OnceLock<Retained<ToolbarDelegate>> = OnceLock::new();
-
 /// Install the native toolbar on the main window. Call from the Tauri setup hook.
 pub fn install(app: &AppHandle) {
     let Some(mtm) = MainThreadMarker::new() else { return };
@@ -147,5 +142,8 @@ pub fn install(app: &AppHandle) {
     ns_win.setToolbar(Some(&toolbar));
     // Unified titlebar material (macOS 11+); keeps the title centered.
     ns_win.setToolbarStyle(NSWindowToolbarStyle::Unified);
-    let _ = DELEGATE.set(delegate);
+    // NSToolbar's delegate ref is weak and the class is MainThreadOnly (so it
+    // can't live in a Sync static). It's a per-app singleton on the main thread,
+    // so leak it to keep it alive for the process lifetime.
+    std::mem::forget(delegate);
 }
