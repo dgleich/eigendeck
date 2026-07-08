@@ -20,7 +20,7 @@ use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
     NSFont, NSFontWeightRegular, NSImage, NSImageSymbolConfiguration, NSImageSymbolScale,
-    NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow,
+    NSTextAlignment, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow,
     NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSSize, NSString};
@@ -30,9 +30,9 @@ use tauri::{AppHandle, Emitter, Manager};
 /// Author/Venue toolbar-item size (logical points); the toolbar centers the item.
 const FIELD_WIDTH: f64 = 130.0;
 const FIELD_HEIGHT: f64 = 28.0;
-/// SF Symbol point size for the button icons (the real lever for icon size in a
-/// bordered toolbar item). Bump for larger icons.
-const ICON_POINT_SIZE: f64 = 18.0;
+/// SF Symbol point size for the button icons. 18 clipped the taller glyphs
+/// (Export's up-arrow) against the button; 15 stays comfortably inside.
+const ICON_POINT_SIZE: f64 = 15.0;
 
 const TITLE_ID: &str = "title";
 const TITLE_WIDTH: f64 = 240.0;
@@ -130,6 +130,7 @@ define_class!(
                 field.setBezeled(false);
                 field.setDrawsBackground(false);
                 field.setFont(Some(&NSFont::boldSystemFontOfSize(TITLE_FONT_SIZE)));
+                field.setAlignment(NSTextAlignment::Center);
                 let target: &objc2::runtime::AnyObject = self;
                 unsafe {
                     field.setTarget(Some(target));
