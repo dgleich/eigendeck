@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { useContextTarget, setContextTarget } from '../lib/contextTarget';
 import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
@@ -807,6 +808,8 @@ export function DraggableBox({
   const elementId = element.id;
   const pos = element.position;
   const { linkId, syncId, _linkId, _syncId } = element;
+  // Highlight this box while a context menu targets it (no selection change).
+  const isContextTarget = useContextTarget() === elementId;
   const onPositionChange = (p: ElementPosition) => onUpdate({ position: p } as Partial<SlideElement>);
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
@@ -816,6 +819,9 @@ export function DraggableBox({
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if ((e.target as HTMLElement).closest('.el-resize-handle, .el-delete-btn, [contenteditable="true"]')) return;
+      // Only the primary button selects/drags. A right-click (button 2) must reach
+      // the context menu WITHOUT changing selection (Mac convention, #5).
+      if (e.button !== 0) return;
       e.preventDefault(); e.stopPropagation();
 
       // Shift+click toggles selection without starting drag
@@ -939,7 +945,7 @@ export function DraggableBox({
 
   return (
     <div
-      className={`slide-element ${className} ${isDragging ? 'is-dragging' : ''} ${isSelected ? 'is-selected' : ''} ${isSelected && syncId ? 'is-synced' : ''}`}
+      className={`slide-element ${className} ${isDragging ? 'is-dragging' : ''} ${isSelected ? 'is-selected' : ''} ${isSelected && syncId ? 'is-synced' : ''}${isContextTarget ? ' context-target' : ''}`}
       data-element-id={elementId}
       data-valign={dataValign}
       style={{
@@ -960,6 +966,13 @@ export function DraggableBox({
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        // Highlight the right-clicked element for the menu's lifetime so the
+        // target is always visible — including when it's one of a multi-selection
+        // (cleared on close by SlideEditor's context-menu-closed listener).
+        setContextTarget(elementId);
+        // Finder rule: right-clicking an item that's NOT already in the selection
+        // selects it (so the menu acts on it); a right-click WITHIN an existing
+        // (multi-)selection leaves the selection intact.
         if (!isSelected) onSelect();
         const store = usePresentationStore.getState();
         const items: import('./ContextMenu').MenuEntry[] = [
@@ -1167,7 +1180,7 @@ function ArrowRenderer({
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        onSelect();
+        if (!isSelected) onSelect();  // Finder rule: don't clobber an existing selection
         const store = usePresentationStore.getState();
         const items: import('./ContextMenu').MenuEntry[] = [
           { label: 'Cut', shortcut: '\u2318X', onClick: () => {

@@ -16,6 +16,7 @@ import { hasEigendeckMarker } from '../lib/clipboard';
 import { handleSvgExternalRefs, invalidateRenderedAsset } from '../lib/assetRenderer';
 import type { SlideElement } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
+import { setContextTarget } from '../lib/contextTarget';
 import { readTextFileNative } from '../lib/nativeFs';
 
 export const SLIDE_WIDTH = 1920;
@@ -368,7 +369,8 @@ export function SlideEditor() {
     window.addEventListener('pointerup', handleUp);
   }, [scale, selectObject]);
 
-  // Context menu for canvas background
+  // Context menu for canvas background. (Per-element right-click is handled in
+  // DraggableBox, which stops propagation before this fires.)
   const handleCanvasContextMenu = useCallback((e: React.MouseEvent) => {
     if (e.target !== e.currentTarget) return;
     e.preventDefault();
@@ -390,6 +392,13 @@ export function SlideEditor() {
       }},
     ];
     window.dispatchEvent(new CustomEvent('show-context-menu', { detail: { x: e.clientX, y: e.clientY, items } }));
+  }, []);
+
+  // Clear the context-target highlight when any context menu closes.
+  useEffect(() => {
+    const clear = () => setContextTarget(null);
+    window.addEventListener('context-menu-closed', clear);
+    return () => window.removeEventListener('context-menu-closed', clear);
   }, []);
 
   // Drag-and-drop files onto canvas

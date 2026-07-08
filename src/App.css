@@ -1081,6 +1081,14 @@ body.window-inactive .welcome-root {
   border-radius: 4px;
 }
 
+/* Right-clicked element while its context menu is open. Amber, distinct from the
+   blue selection outline — the menu targets THIS element without selecting it
+   (Mac convention). Cleared on menu close. */
+.context-target {
+  outline: 2px solid #f59e0b !important;
+  outline-offset: 1px;
+}
+
 /* Title element */
 .el-title-text {
   font-family: 'PT Sans', sans-serif;

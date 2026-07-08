@@ -1620,7 +1620,7 @@ function App() {
       <DebugConsole />
       {contextMenu && (
         <ContextMenu x={contextMenu.x} y={contextMenu.y} items={contextMenu.items}
-          onClose={() => setContextMenu(null)} />
+          onClose={() => { setContextMenu(null); window.dispatchEvent(new CustomEvent('context-menu-closed')); }} />
       )}
       {linkOverlayElementId && (
         <LinkOverlay

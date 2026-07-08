@@ -97,6 +97,7 @@ MANIFEST=(
   "security-window-trust-probe.mjs|empty.eigendeck||$EMPTY"
   "settings-window-probe.mjs|examples/intro-slide.eigendeck||"
   "keyboard-shortcuts-probe.mjs|examples/intro-slide.eigendeck||"
+  "context-menu-target-probe.mjs|examples/intro-slide.eigendeck||"
   "demo-mount-gate-probe.mjs|empty.eigendeck||$EMPTY"
 
   # ── sync / link / promote round-trips (built fixture decks) ─────────────
