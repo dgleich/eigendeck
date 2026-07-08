@@ -303,21 +303,20 @@ fn set_window_document(
         let win = window.clone();
         let _ = window.run_on_main_thread(move || {
             use objc2_app_kit::NSWindow;
-            use objc2_foundation::NSString;
+            use objc2_foundation::{NSString, NSURL};
             let Ok(ns_win_ptr) = win.ns_window() else { return };
             // Safety: Tauri owns a valid NSWindow for this label's lifetime.
             let ns_win: &NSWindow = unsafe { &*(ns_win_ptr as *const NSWindow) };
             match &path {
                 Some(p) => {
-                    ns_win.setRepresentedFilename(&NSString::from_str(p));
+                    // representedURL (canonical) gives the centered native title's
+                    // proxy icon + path popover + drag-to-share for free.
+                    let url = unsafe { NSURL::fileURLWithPath(&NSString::from_str(p)) };
+                    ns_win.setRepresentedURL(Some(&url));
                     ns_win.setTitle(&NSString::from_str(&document_title(p)));
-                    // The window title is hidden when the native toolbar is on, so
-                    // push the filename into the toolbar's centered label instead.
-                    #[cfg(feature = "mac-toolbar")]
-                    crate::mac_toolbar::set_document_title(&document_title(p));
                 }
-                // Empty represented filename clears the proxy icon (unsaved deck).
-                None => ns_win.setRepresentedFilename(&NSString::from_str("")),
+                // Clear the proxy for an unsaved deck.
+                None => ns_win.setRepresentedURL(None),
             }
             ns_win.setDocumentEdited(dirty);
         });

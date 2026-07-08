@@ -1,18 +1,17 @@
-//! Native macOS NSToolbar for the main window (unified titlebar material),
-//! mirroring the HTML toolbar: Add Slide / Add Build / Save on the left, a
-//! centered filename, then Author / Venue / Export / Present on the right. The
-//! window's own title is hidden so the three zones lay out cleanly.
+//! Native macOS NSToolbar for the main window. Uses the Expanded toolbar style,
+//! so the window's native title + proxy icon render CENTERED on their own row
+//! (the BBEdit/Keynote look) — giving the proxy path popover, drag-to-share, and
+//! the edited dot for free — with the toolbar buttons/fields in the row below:
+//! Add Slide / Add Build / Save on the left, Author / Venue / Export / Present on
+//! the right. The title/proxy are driven from lib.rs `set_window_document`
+//! (setRepresentedURL + setTitle + setDocumentEdited).
 //!
 //! - BUTTON items post a Rust→JS `toolbar:action` event; the frontend runs the
 //!   same action as the HTML button (dispatchToolbarAction).
 //! - The Author/Venue TEXT FIELDS post `toolbar:field` {id,value} on edit; the
-//!   frontend writes them to config. set_fields() pushes the current values back.
+//!   frontend writes them to config. set_fields() pushes current values back.
 //!
-//! SPIKE — behind the `mac-toolbar` cargo feature (off by default). Authored
-//! without a macOS compiler; build + iterate with `mac-build.sh --toolbar`.
-//!
-//! TODO (approach A): nest the editable presentation title under the filename in
-//! the centered item, with a custom drag source for the file.
+//! SPIKE — behind the `mac-toolbar` cargo feature (off by default).
 
 use std::cell::RefCell;
 
@@ -21,22 +20,19 @@ use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
     NSFontWeightRegular, NSImage, NSImageSymbolConfiguration, NSImageSymbolScale, NSTextField,
-    NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow, NSWindowTitleVisibility,
-    NSWindowToolbarStyle,
+    NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow, NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSSize, NSString};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
-/// Author/Venue toolbar-item size (logical points). The item is given this fixed
-/// size (setMinSize/setMaxSize) and the toolbar centers it vertically.
+/// Author/Venue toolbar-item size (logical points); the toolbar centers the item.
 const FIELD_WIDTH: f64 = 130.0;
 const FIELD_HEIGHT: f64 = 28.0;
 /// SF Symbol point size for the button icons (the real lever for icon size in a
 /// bordered toolbar item). Bump for larger icons.
 const ICON_POINT_SIZE: f64 = 18.0;
 
-const TITLE_ID: &str = "title";
 const AUTHOR_ID: &str = "author";
 const VENUE_ID: &str = "venue";
 const FLEX_ID: &str = "NSToolbarFlexibleSpaceItem";
@@ -62,10 +58,11 @@ const ITEMS: &[(&str, &str, &str)] = &[
 ];
 
 fn identifiers() -> Retained<NSArray<NSString>> {
-    // left group | flex | centered filename | flex | right group.
+    // left group | flexible space | right group. The document title is the native
+    // centered title row (Expanded style), NOT a toolbar item.
     let order = [
         "add-slide", "add-build", "save",
-        FLEX_ID, TITLE_ID, FLEX_ID,
+        FLEX_ID,
         AUTHOR_ID, VENUE_ID, "export", "present",
     ];
     let ids: Vec<Retained<NSString>> = order.iter().map(|id| NSString::from_str(id)).collect();
@@ -83,8 +80,6 @@ fn meta_for(identifier: &NSString) -> Option<(&'static str, &'static str)> {
 
 struct Ivars {
     app: AppHandle,
-    /// Text fields we push values into (set_fields) and read on edit.
-    title_field: RefCell<Option<Retained<NSTextField>>>,
     author_field: RefCell<Option<Retained<NSTextField>>>,
     venue_field: RefCell<Option<Retained<NSTextField>>>,
 }
@@ -122,13 +117,7 @@ define_class!(
             let id = identifier.to_string();
             let item = NSToolbarItem::initWithItemIdentifier(NSToolbarItem::alloc(mtm), identifier);
 
-            if id == TITLE_ID {
-                let field = NSTextField::labelWithString(&NSString::from_str(""), mtm);
-                *self.ivars().title_field.borrow_mut() = Some(field.clone());
-                let view: &NSView = &field;
-                item.setView(Some(view));
-                Some(item)
-            } else if id == AUTHOR_ID || id == VENUE_ID {
+            if id == AUTHOR_ID || id == VENUE_ID {
                 let (placeholder, action, slot): (&str, _, &RefCell<_>) = if id == AUTHOR_ID {
                     ("Author", sel!(onAuthorEdit:), &self.ivars().author_field)
                 } else {
@@ -151,7 +140,6 @@ define_class!(
                 }
                 let view: &NSView = &field;
                 item.setView(Some(view));
-                // No item label — it renders under the view; the placeholder labels it.
                 item.setLabel(&NSString::from_str(""));
                 Some(item)
             } else {
@@ -168,8 +156,7 @@ define_class!(
                             )
                         {
                             // Enlarge the SF Symbol — a bordered item otherwise
-                            // renders it at the small control size. Point size is
-                            // the real lever (ICON_POINT_SIZE).
+                            // renders it at the small control size.
                             let cfg = unsafe {
                                 NSImageSymbolConfiguration::configurationWithPointSize_weight_scale(
                                     ICON_POINT_SIZE,
@@ -182,8 +169,7 @@ define_class!(
                             item.setImage(Some(&sized));
                         }
                         // Bordered → native toolbar-button chrome: hover highlight,
-                        // pressed state, standard control sizing (macOS 11+). Without
-                        // this a toolbar item with an image is a passive icon.
+                        // pressed state, standard control sizing (macOS 11+).
                         item.setBordered(true);
                         let target: &objc2::runtime::AnyObject = self;
                         unsafe {
@@ -220,7 +206,6 @@ impl ToolbarDelegate {
     fn new(mtm: MainThreadMarker, app: AppHandle) -> Retained<Self> {
         let this = Self::alloc(mtm).set_ivars(Ivars {
             app,
-            title_field: RefCell::new(None),
             author_field: RefCell::new(None),
             venue_field: RefCell::new(None),
         });
@@ -237,39 +222,23 @@ impl ToolbarDelegate {
 }
 
 // Delegate is MainThreadOnly (!Send/!Sync). Keep it in a main-thread thread-local:
-// keeps it alive (NSToolbar's delegate ref is weak) AND lets the setters reach it.
+// keeps it alive (NSToolbar's delegate ref is weak) AND lets set_fields reach it.
 thread_local! {
     static DELEGATE: RefCell<Option<Retained<ToolbarDelegate>>> = const { RefCell::new(None) };
 }
 
-/// Set a field's text. `fit` sizes the view to its content — right for the
-/// unconstrained centered label, wrong for the fixed-size Author/Venue fields
-/// (it would fight the item's min/max size), so those pass false.
-fn set_string(field: &RefCell<Option<Retained<NSTextField>>>, value: &str, fit: bool) {
+fn set_string(field: &RefCell<Option<Retained<NSTextField>>>, value: &str) {
     if let Some(f) = field.borrow().as_ref() {
         f.setStringValue(&NSString::from_str(value));
-        if fit {
-            f.sizeToFit();
-        }
     }
-}
-
-/// Update the centered filename label. Called on the main thread from
-/// set_window_document whenever the open file changes.
-pub fn set_document_title(title: &str) {
-    DELEGATE.with(|d| {
-        if let Some(del) = d.borrow().as_ref() {
-            set_string(&del.ivars().title_field, title, true);
-        }
-    });
 }
 
 /// Push the current author/venue into the toolbar fields (main thread).
 pub fn set_fields(author: &str, venue: &str) {
     DELEGATE.with(|d| {
         if let Some(del) = d.borrow().as_ref() {
-            set_string(&del.ivars().author_field, author, false);
-            set_string(&del.ivars().venue_field, venue, false);
+            set_string(&del.ivars().author_field, author);
+            set_string(&del.ivars().venue_field, venue);
         }
     });
 }
@@ -289,12 +258,11 @@ pub fn install(app: &AppHandle) {
     );
     let proto: &ProtocolObject<dyn NSToolbarDelegate> = ProtocolObject::from_ref(&*delegate);
     toolbar.setDelegate(Some(proto));
-    // centeredItemIdentifier (singular) is deprecated on macOS 13 but works on 11+.
-    #[allow(deprecated)]
-    toolbar.setCenteredItemIdentifier(Some(&NSString::from_str(TITLE_ID)));
     ns_win.setToolbar(Some(&toolbar));
-    ns_win.setToolbarStyle(NSWindowToolbarStyle::Unified);
-    ns_win.setTitleVisibility(NSWindowTitleVisibility::Hidden);
+    // Expanded → native title + proxy centered on their own row (BBEdit/Keynote),
+    // toolbar items on the row below. The native title provides the proxy path
+    // popover + drag + edited dot for free (driven by setRepresentedURL in lib.rs).
+    ns_win.setToolbarStyle(NSWindowToolbarStyle::Expanded);
 
     DELEGATE.with(|d| *d.borrow_mut() = Some(delegate));
 }
