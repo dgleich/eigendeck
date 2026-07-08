@@ -27,9 +27,10 @@ use objc2_foundation::{NSArray, NSObjectProtocol, NSString};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
-/// Author/Venue field width (logical points). Only the width is constrained; the
-/// field keeps its natural height and the toolbar centers it vertically.
+/// Author/Venue field size (logical points). Both width and height are
+/// constrained; the toolbar centers the definite-size field vertically.
 const FIELD_WIDTH: f64 = 130.0;
+const FIELD_HEIGHT: f64 = 24.0;
 
 const TITLE_ID: &str = "title";
 const AUTHOR_ID: &str = "author";
@@ -142,8 +143,8 @@ define_class!(
                 // it vertically. This is the fix for both the stretch and the
                 // squished/top-aligned look.
                 field.setTranslatesAutoresizingMaskIntoConstraints(false);
-                let w = field.widthAnchor().constraintEqualToConstant(FIELD_WIDTH);
-                w.setActive(true);
+                field.widthAnchor().constraintEqualToConstant(FIELD_WIDTH).setActive(true);
+                field.heightAnchor().constraintEqualToConstant(FIELD_HEIGHT).setActive(true);
                 let view: &NSView = &field;
                 item.setView(Some(view));
                 // No item label — it renders UNDER the view and squishes it; the
