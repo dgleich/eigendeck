@@ -23,9 +23,16 @@ use objc2_app_kit::{
     NSImage, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow,
     NSWindowTitleVisibility, NSWindowToolbarStyle,
 };
-use objc2_foundation::{NSArray, NSObjectProtocol, NSSize, NSString};
+use objc2_foundation::{NSArray, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
+
+// Author/Venue field sizing (logical points). The field is centered vertically in
+// a taller item so it aligns with the labeled buttons and the row is tall enough
+// that button icons aren't clipped.
+const FIELD_WIDTH: f64 = 100.0;
+const FIELD_HEIGHT: f64 = 22.0;
+const ITEM_HEIGHT: f64 = 30.0;
 
 const TITLE_ID: &str = "title";
 const AUTHOR_ID: &str = "author";
@@ -127,15 +134,36 @@ define_class!(
                 };
                 let field = NSTextField::textFieldWithString(&NSString::from_str(""), mtm);
                 field.setPlaceholderString(Some(&NSString::from_str(placeholder)));
-                field.setFrameSize(NSSize { width: 100.0, height: 22.0 });
                 let target: &objc2::runtime::AnyObject = self;
                 unsafe {
                     field.setTarget(Some(target));
                     field.setAction(Some(action));
                 }
                 *slot.borrow_mut() = Some(field.clone());
-                let view: &NSView = &field;
-                item.setView(Some(view));
+                // Center the field vertically inside a fixed-size container so the
+                // toolbar can't stretch it and it aligns with the buttons.
+                let field_frame = NSRect {
+                    origin: NSPoint { x: 0.0, y: (ITEM_HEIGHT - FIELD_HEIGHT) / 2.0 },
+                    size: NSSize { width: FIELD_WIDTH, height: FIELD_HEIGHT },
+                };
+                field.setFrame(field_frame);
+                let container = NSView::initWithFrame(
+                    NSView::alloc(mtm),
+                    NSRect {
+                        origin: NSPoint { x: 0.0, y: 0.0 },
+                        size: NSSize { width: FIELD_WIDTH, height: ITEM_HEIGHT },
+                    },
+                );
+                let fv: &NSView = &field;
+                unsafe { container.addSubview(fv) };
+                let cv: &NSView = &container;
+                item.setView(Some(cv));
+                // Lock the item size so the toolbar doesn't stretch the field.
+                #[allow(deprecated)]
+                {
+                    item.setMinSize(NSSize { width: FIELD_WIDTH, height: ITEM_HEIGHT });
+                    item.setMaxSize(NSSize { width: FIELD_WIDTH, height: ITEM_HEIGHT });
+                }
                 // No item label — it renders UNDER the view and squishes the
                 // field; the placeholder inside already labels it.
                 item.setLabel(&NSString::from_str(""));
