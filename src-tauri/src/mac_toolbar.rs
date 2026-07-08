@@ -20,8 +20,8 @@ use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
     NSFont, NSFontWeightRegular, NSImage, NSImageSymbolConfiguration, NSImageSymbolScale,
-    NSTextAlignment, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarDisplayMode,
-    NSToolbarItem, NSView, NSWindow, NSWindowToolbarStyle,
+    NSTextAlignment, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow,
+    NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSSize, NSString};
 use serde::Serialize;
@@ -176,10 +176,12 @@ define_class!(
                     None => None, // system-provided (flexible space)
                     Some((label, symbol)) => {
                         let ns_label = NSString::from_str(label);
-                        item.setLabel(&ns_label);
+                        // Expanded style ignores displayMode(IconOnly) and always
+                        // reserves a label row, so an EMPTY visible label is what
+                        // gives icon-only. paletteLabel (a11y/customization) +
+                        // toolTip (hover) keep the name available.
+                        item.setLabel(&NSString::from_str(""));
                         item.setPaletteLabel(&ns_label);
-                        // Icon-only toolbar (see setDisplayMode) → show the label
-                        // as a hover tooltip instead.
                         item.setToolTip(Some(&ns_label));
                         if let Some(image) =
                             NSImage::imageWithSystemSymbolName_accessibilityDescription(
@@ -297,9 +299,8 @@ pub fn install(app: &AppHandle) {
     );
     let proto: &ProtocolObject<dyn NSToolbarDelegate> = ProtocolObject::from_ref(&*delegate);
     toolbar.setDelegate(Some(proto));
-    // Icon-only: hide the button labels; each button's label shows as a hover
-    // tooltip (item.setToolTip) instead.
-    toolbar.setDisplayMode(NSToolbarDisplayMode::IconOnly);
+    // (Icon-only is achieved per-item via empty labels — Expanded style ignores
+    // displayMode, so we don't set it.)
     // Center the editable presentation-title item in the toolbar row. (Singular
     // API is deprecated on 13+ but works on 11+; the native title lives on the
     // separate Expanded row, so this only centers our title field.)

@@ -1020,6 +1020,16 @@ function App() {
       .then(({ invoke }) => invoke('set_toolbar_fields', { title: tbTitle, author: tbAuthor, venue: tbVenue }))
       .catch(() => {});
   }, [tbTitle, tbAuthor, tbVenue]);
+
+  // On macOS with the native toolbar (mac-toolbar build), hide the HTML toolbar —
+  // it duplicates the native one. False everywhere else (HTML toolbar stays).
+  const [nativeToolbar, setNativeToolbar] = useState(false);
+  useEffect(() => {
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke<boolean>('native_toolbar_active'))
+      .then((v) => setNativeToolbar(!!v))
+      .catch(() => {});
+  }, []);
   // Receive edits made IN the toolbar fields:
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -1646,7 +1656,7 @@ function App() {
       <DebugMenu />
       <ToastHost />
       <BusyOverlay />
-      <Toolbar />
+      {!nativeToolbar && <Toolbar />}
       <div className="main-area">
         <div style={{ width: sidebarWidth, minWidth: 150, maxWidth: 400, flexShrink: 0 }}>
           <SlideSidebar />

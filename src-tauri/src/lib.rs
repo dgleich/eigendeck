@@ -347,6 +347,13 @@ fn set_toolbar_fields(window: tauri::WebviewWindow, title: String, author: Strin
     Ok(())
 }
 
+/// Whether the native macOS NSToolbar is active (macOS + mac-toolbar feature).
+/// The frontend hides its duplicated HTML toolbar row when true.
+#[tauri::command]
+fn native_toolbar_active() -> bool {
+    cfg!(all(target_os = "macos", feature = "mac-toolbar"))
+}
+
 /// Check if displays are mirrored and return info about available displays.
 #[tauri::command]
 fn check_display_mirroring() -> Result<serde_json::Value, String> {
@@ -840,6 +847,7 @@ pub fn run() {
             set_window_above_menubar,
             set_window_document,
             set_toolbar_fields,
+            native_toolbar_active,
             check_display_mirroring,
             disable_display_mirroring,
             enable_display_mirroring,
