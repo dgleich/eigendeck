@@ -1670,7 +1670,7 @@ function App() {
   };
 
   return (
-    <div className="app">
+    <div className={`app${nativeToolbar ? ' native-toolbar' : ''}`}>
       <DebugMenu />
       <ToastHost />
       <BusyOverlay />

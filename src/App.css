@@ -98,6 +98,15 @@
   overflow: hidden;
   background: #f0f0f0;
 }
+/* On the native macOS toolbar build the HTML top toolbar is hidden, so the app
+   content butts directly against the native NSToolbar with no visual break. Draw
+   a contrasting hairline at the very top of the webview (border-box keeps it
+   inside the 100vh so nothing clips) to separate the toolbar chrome from the
+   editor below. */
+.app.native-toolbar {
+  box-sizing: border-box;
+  border-top: 1px solid var(--toolbar-separator, #c8c8c8);
+}
 
 /* Toolbar */
 /* Inactive window: macOS tints the chrome a touch grayer — swap the bars and

@@ -331,12 +331,28 @@ fn restyle_buttons(del: &ToolbarDelegate) {
     }
 }
 
-/// Toggle compact view (labels off + smaller icons) live. Main thread.
+/// Toggle compact view live. Compact = labels off + smaller icons AND a shorter
+/// toolbar: switch the window's toolbar style from Expanded (a dedicated centered
+/// title row PLUS a per-item label row — tall) to UnifiedCompact (one short row,
+/// title inline). Labels-off alone can't reclaim height because Expanded always
+/// reserves the label row. Main thread.
 pub fn set_compact(compact: bool) {
     DELEGATE.with(|d| {
         if let Some(del) = d.borrow().as_ref() {
             del.ivars().compact.set(compact);
             restyle_buttons(del);
+            if let Some(win) = del.ivars().app.get_webview_window("main") {
+                if let Ok(ptr) = win.ns_window() {
+                    // Safety: Tauri owns a valid NSWindow for "main" for its lifetime.
+                    let ns_win: &NSWindow = unsafe { &*(ptr as *const NSWindow) };
+                    let style = if compact {
+                        NSWindowToolbarStyle::UnifiedCompact
+                    } else {
+                        NSWindowToolbarStyle::Expanded
+                    };
+                    ns_win.setToolbarStyle(style);
+                }
+            }
         }
     });
 }
