@@ -18,6 +18,7 @@ import { DebugMenu } from './debug';
 import { ToastHost } from './components/ToastHost';
 import { openSettingsWindow } from './lib/settingsWindow';
 import { nudgeDelta, zOrderDirection } from './lib/keyboardShortcuts';
+import { dispatchToolbarAction } from './lib/toolbarActions';
 import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
 import { detachDelta, pasteElementDelta } from './lib/syncLink';
@@ -983,6 +984,26 @@ function App() {
     setMultiMonitorPresenting(true);
     state.setPresenting(true);
   }, []);
+
+  // Native macOS NSToolbar (behind the mac-toolbar cargo feature) posts
+  // `toolbar:action` events; route each to the SAME action as the HTML toolbar
+  // button, so the two toolbars stay in lock-step. Harmless off macOS (the event
+  // never fires). See src-tauri/src/mac_toolbar.rs + docs/mac-smoke.md §B.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void import('@tauri-apps/api/event').then(({ listen }) =>
+      listen<{ id: string }>('toolbar:action', ({ payload }) => {
+        const store = usePresentationStore.getState();
+        dispatchToolbarAction(payload.id, {
+          addSlide: () => store.addSlide(),
+          addBuild: () => store.addBuildSlide(),
+          present: () => void flushToSqlite().then(() => startPresenting()),
+          save: () => void flushToSqlite().then(() => saveProject()),
+        });
+      }).then((u) => { unlisten = u; }),
+    ).catch(() => {});
+    return () => unlisten?.();
+  }, [startPresenting]);
 
   // DEBUG: force the SINGLE-window live present, bypassing multi-monitor
   // detection entirely — the explicit counterpart to the 2-window test.
