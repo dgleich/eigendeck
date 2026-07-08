@@ -127,7 +127,7 @@ define_class!(
                 };
                 let field = NSTextField::textFieldWithString(&NSString::from_str(""), mtm);
                 field.setPlaceholderString(Some(&NSString::from_str(placeholder)));
-                field.setFrameSize(NSSize { width: 140.0, height: 22.0 });
+                field.setFrameSize(NSSize { width: 100.0, height: 22.0 });
                 let target: &objc2::runtime::AnyObject = self;
                 unsafe {
                     field.setTarget(Some(target));
@@ -136,7 +136,9 @@ define_class!(
                 *slot.borrow_mut() = Some(field.clone());
                 let view: &NSView = &field;
                 item.setView(Some(view));
-                item.setLabel(&NSString::from_str(placeholder));
+                // No item label — it renders UNDER the view and squishes the
+                // field; the placeholder inside already labels it.
+                item.setLabel(&NSString::from_str(""));
                 Some(item)
             } else {
                 match meta_for(identifier) {
