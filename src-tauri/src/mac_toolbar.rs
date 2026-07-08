@@ -57,6 +57,8 @@ struct Ivars {
 
 define_class!(
     #[unsafe(super(objc2::runtime::NSObject))]
+    // NSToolbarDelegate requires the delegate class to be main-thread-only.
+    #[thread_kind = MainThreadOnly]
     #[name = "EigendeckToolbarDelegate"]
     #[ivars = Ivars]
     struct ToolbarDelegate;
@@ -96,7 +98,10 @@ define_class!(
                     ) {
                         item.setImage(Some(&image));
                     }
-                    item.setTarget(Some(self));
+                    // Coerce &ToolbarDelegate → &AnyObject (deref chain) for the
+                    // target/action click callback.
+                    let target: &objc2::runtime::AnyObject = self;
+                    item.setTarget(Some(target));
                     item.setAction(Some(sel!(onItem:)));
                 }
             }
@@ -107,7 +112,7 @@ define_class!(
     impl ToolbarDelegate {
         #[unsafe(method(onItem:))]
         fn on_item(&self, sender: &NSToolbarItem) {
-            let id = unsafe { sender.itemIdentifier() }.to_string();
+            let id = sender.itemIdentifier().to_string();
             let _ = self.ivars().app.emit("toolbar:action", ToolbarPayload { id });
         }
     }
@@ -133,18 +138,14 @@ pub fn install(app: &AppHandle) {
     let ns_win: &NSWindow = unsafe { &*(ns_win_ptr as *const NSWindow) };
 
     let delegate = ToolbarDelegate::new(mtm, app.clone());
-    let toolbar = unsafe {
-        NSToolbar::initWithIdentifier(
-            NSToolbar::alloc(mtm),
-            &NSString::from_str("EigendeckMainToolbar"),
-        )
-    };
+    let toolbar = NSToolbar::initWithIdentifier(
+        NSToolbar::alloc(mtm),
+        &NSString::from_str("EigendeckMainToolbar"),
+    );
     let proto: &ProtocolObject<dyn NSToolbarDelegate> = ProtocolObject::from_ref(&*delegate);
-    unsafe {
-        toolbar.setDelegate(Some(proto));
-        ns_win.setToolbar(Some(&toolbar));
-        // Unified titlebar material (macOS 11+); keeps the title centered.
-        ns_win.setToolbarStyle(NSWindowToolbarStyle::Unified);
-    }
+    toolbar.setDelegate(Some(proto));
+    ns_win.setToolbar(Some(&toolbar));
+    // Unified titlebar material (macOS 11+); keeps the title centered.
+    ns_win.setToolbarStyle(NSWindowToolbarStyle::Unified);
     let _ = DELEGATE.set(delegate);
 }
