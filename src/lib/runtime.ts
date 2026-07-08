@@ -7,6 +7,7 @@
 import { injectFontFaces } from './fonts';
 import { discoverAllServers } from './serverDiscovery';
 import { initPrefSync } from './preferences';
+import { initWindowFocus } from './windowFocus';
 
 export function initRuntime(): void {
   // Register @font-face for all bundled font packages (text + math).
@@ -15,4 +16,6 @@ export function initRuntime(): void {
   void discoverAllServers();
   // Keep preferences in sync across webview windows (main ↔ Settings window).
   initPrefSync();
+  // Subdue chrome when this window is inactive (macOS-style).
+  initWindowFocus();
 }

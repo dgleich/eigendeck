@@ -1089,6 +1089,22 @@ body.window-inactive .welcome-root {
   outline-offset: 1px;
 }
 
+/* Inactive window: the chrome recedes — "subdued and visually farther away"
+   (macOS convention). Subtle desaturate + fade of the chrome only; the slide
+   canvas itself is left alone. AppKit dims native controls automatically; this
+   covers the webview content. Applied to body by src/lib/windowFocus.ts. */
+.toolbar, .sidebar, .properties-panel, .history-panel, .speaker-panel {
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+body.window-inactive .toolbar,
+body.window-inactive .sidebar,
+body.window-inactive .properties-panel,
+body.window-inactive .history-panel,
+body.window-inactive .speaker-panel {
+  filter: saturate(0.55);
+  opacity: 0.8;
+}
+
 /* Title element */
 .el-title-text {
   font-family: 'PT Sans', sans-serif;
