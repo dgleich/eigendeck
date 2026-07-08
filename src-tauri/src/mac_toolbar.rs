@@ -19,8 +19,9 @@ use objc2::rc::Retained;
 use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
-    NSFontWeightRegular, NSImage, NSImageSymbolConfiguration, NSImageSymbolScale, NSTextField,
-    NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow, NSWindowToolbarStyle,
+    NSFont, NSFontWeightRegular, NSImage, NSImageSymbolConfiguration, NSImageSymbolScale,
+    NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow,
+    NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSSize, NSString};
 use serde::Serialize;
@@ -33,6 +34,9 @@ const FIELD_HEIGHT: f64 = 28.0;
 /// bordered toolbar item). Bump for larger icons.
 const ICON_POINT_SIZE: f64 = 18.0;
 
+const TITLE_ID: &str = "title";
+const TITLE_WIDTH: f64 = 240.0;
+const TITLE_FONT_SIZE: f64 = 14.0;
 const AUTHOR_ID: &str = "author";
 const VENUE_ID: &str = "venue";
 const FLEX_ID: &str = "NSToolbarFlexibleSpaceItem";
@@ -62,7 +66,7 @@ fn identifiers() -> Retained<NSArray<NSString>> {
     // centered title row (Expanded style), NOT a toolbar item.
     let order = [
         "add-slide", "add-build", "save",
-        FLEX_ID,
+        FLEX_ID, TITLE_ID, FLEX_ID,
         AUTHOR_ID, VENUE_ID, "export", "present",
     ];
     let ids: Vec<Retained<NSString>> = order.iter().map(|id| NSString::from_str(id)).collect();
@@ -80,6 +84,7 @@ fn meta_for(identifier: &NSString) -> Option<(&'static str, &'static str)> {
 
 struct Ivars {
     app: AppHandle,
+    title_field: RefCell<Option<Retained<NSTextField>>>,
     author_field: RefCell<Option<Retained<NSTextField>>>,
     venue_field: RefCell<Option<Retained<NSTextField>>>,
 }
@@ -117,7 +122,30 @@ define_class!(
             let id = identifier.to_string();
             let item = NSToolbarItem::initWithItemIdentifier(NSToolbarItem::alloc(mtm), identifier);
 
-            if id == AUTHOR_ID || id == VENUE_ID {
+            if id == TITLE_ID {
+                // Bold, borderless, editable presentation title — centered in the
+                // toolbar row (centeredItemIdentifier). Two-way synced to
+                // presentation.title (onTitleEdit → toolbar:field; set_fields pushes back).
+                let field = NSTextField::textFieldWithString(&NSString::from_str(""), mtm);
+                field.setBezeled(false);
+                field.setDrawsBackground(false);
+                field.setFont(Some(&NSFont::boldSystemFontOfSize(TITLE_FONT_SIZE)));
+                let target: &objc2::runtime::AnyObject = self;
+                unsafe {
+                    field.setTarget(Some(target));
+                    field.setAction(Some(sel!(onTitleEdit:)));
+                }
+                *self.ivars().title_field.borrow_mut() = Some(field.clone());
+                #[allow(deprecated)]
+                {
+                    item.setMinSize(NSSize { width: TITLE_WIDTH, height: FIELD_HEIGHT });
+                    item.setMaxSize(NSSize { width: TITLE_WIDTH, height: FIELD_HEIGHT });
+                }
+                let view: &NSView = &field;
+                item.setView(Some(view));
+                item.setLabel(&NSString::from_str(""));
+                Some(item)
+            } else if id == AUTHOR_ID || id == VENUE_ID {
                 let (placeholder, action, slot): (&str, _, &RefCell<_>) = if id == AUTHOR_ID {
                     ("Author", sel!(onAuthorEdit:), &self.ivars().author_field)
                 } else {
@@ -190,6 +218,11 @@ define_class!(
             let _ = self.ivars().app.emit("toolbar:action", ActionPayload { id });
         }
 
+        #[unsafe(method(onTitleEdit:))]
+        fn on_title(&self, sender: &NSTextField) {
+            self.emit_field(TITLE_ID, sender);
+        }
+
         #[unsafe(method(onAuthorEdit:))]
         fn on_author(&self, sender: &NSTextField) {
             self.emit_field(AUTHOR_ID, sender);
@@ -206,6 +239,7 @@ impl ToolbarDelegate {
     fn new(mtm: MainThreadMarker, app: AppHandle) -> Retained<Self> {
         let this = Self::alloc(mtm).set_ivars(Ivars {
             app,
+            title_field: RefCell::new(None),
             author_field: RefCell::new(None),
             venue_field: RefCell::new(None),
         });
@@ -233,10 +267,11 @@ fn set_string(field: &RefCell<Option<Retained<NSTextField>>>, value: &str) {
     }
 }
 
-/// Push the current author/venue into the toolbar fields (main thread).
-pub fn set_fields(author: &str, venue: &str) {
+/// Push the current title/author/venue into the toolbar fields (main thread).
+pub fn set_fields(title: &str, author: &str, venue: &str) {
     DELEGATE.with(|d| {
         if let Some(del) = d.borrow().as_ref() {
+            set_string(&del.ivars().title_field, title);
             set_string(&del.ivars().author_field, author);
             set_string(&del.ivars().venue_field, venue);
         }
@@ -258,6 +293,11 @@ pub fn install(app: &AppHandle) {
     );
     let proto: &ProtocolObject<dyn NSToolbarDelegate> = ProtocolObject::from_ref(&*delegate);
     toolbar.setDelegate(Some(proto));
+    // Center the editable presentation-title item in the toolbar row. (Singular
+    // API is deprecated on 13+ but works on 11+; the native title lives on the
+    // separate Expanded row, so this only centers our title field.)
+    #[allow(deprecated)]
+    toolbar.setCenteredItemIdentifier(Some(&NSString::from_str(TITLE_ID)));
     ns_win.setToolbar(Some(&toolbar));
     // Expanded → native title + proxy centered on their own row (BBEdit/Keynote),
     // toolbar items on the row below. The native title provides the proxy path

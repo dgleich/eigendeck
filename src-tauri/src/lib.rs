@@ -333,16 +333,16 @@ fn set_window_document(
 /// Push the current author/venue into the native toolbar's text fields (macOS +
 /// mac-toolbar feature). no-op otherwise. Called from the frontend on config change.
 #[tauri::command]
-fn set_toolbar_fields(window: tauri::WebviewWindow, author: String, venue: String) -> Result<(), String> {
+fn set_toolbar_fields(window: tauri::WebviewWindow, title: String, author: String, venue: String) -> Result<(), String> {
     #[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
     {
         let _ = window.run_on_main_thread(move || {
-            crate::mac_toolbar::set_fields(&author, &venue);
+            crate::mac_toolbar::set_fields(&title, &author, &venue);
         });
     }
     #[cfg(not(all(target_os = "macos", feature = "mac-toolbar")))]
     {
-        let _ = (&window, &author, &venue);
+        let _ = (&window, &title, &author, &venue);
     }
     Ok(())
 }
