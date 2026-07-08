@@ -8,6 +8,7 @@ export interface ToolbarHandlers {
   addBuild: () => void;
   present: () => void;
   save: () => void;
+  export: () => void;
 }
 
 /** Returns true if the id was handled. */
@@ -17,6 +18,7 @@ export function dispatchToolbarAction(id: string, h: ToolbarHandlers): boolean {
     case 'add-build': h.addBuild(); return true;
     case 'present': h.present(); return true;
     case 'save': h.save(); return true;
+    case 'export': h.export(); return true;
     default: return false;
   }
 }

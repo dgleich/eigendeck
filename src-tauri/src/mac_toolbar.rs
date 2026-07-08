@@ -31,12 +31,21 @@ struct ToolbarPayload {
 const ITEMS: &[(&str, &str, &str)] = &[
     ("add-slide", "Add Slide", "plus.rectangle"),
     ("add-build", "Add Build", "plus.square.on.square"),
-    ("present", "Present", "play.fill"),
     ("save", "Save", "square.and.arrow.down"),
+    ("export", "Export", "square.and.arrow.up"),
+    ("present", "Present", "play.fill"),
 ];
 
 fn identifiers() -> Retained<NSArray<NSString>> {
-    let ids: Vec<Retained<NSString>> = ITEMS.iter().map(|(id, _, _)| NSString::from_str(id)).collect();
+    // Left group | flexible space | right group. Mirrors the HTML toolbar.
+    // "NSToolbarFlexibleSpaceItem" is the documented value of the framework's
+    // flexible-space identifier (avoids importing the extern constant).
+    let order = [
+        "add-slide", "add-build", "save",
+        "NSToolbarFlexibleSpaceItem",
+        "export", "present",
+    ];
+    let ids: Vec<Retained<NSString>> = order.iter().map(|id| NSString::from_str(id)).collect();
     let refs: Vec<&NSString> = ids.iter().map(|r| &**r).collect();
     NSArray::from_slice(&refs)
 }
@@ -82,28 +91,32 @@ define_class!(
             identifier: &NSString,
             _will_insert: bool,
         ) -> Option<Retained<NSToolbarItem>> {
+            // Built-in identifiers (flexible space) are provided by the system —
+            // only build our own custom items.
+            let (label, symbol) = match meta_for(identifier) {
+                Some(m) => m,
+                None => return None,
+            };
             // `self` is MainThreadOnly, so we're provably on the main thread.
             let mtm = self.mtm();
             let item = unsafe {
                 NSToolbarItem::initWithItemIdentifier(NSToolbarItem::alloc(mtm), identifier)
             };
-            if let Some((label, symbol)) = meta_for(identifier) {
-                let ns_label = NSString::from_str(label);
-                unsafe {
-                    item.setLabel(&ns_label);
-                    item.setPaletteLabel(&ns_label);
-                    if let Some(image) = NSImage::imageWithSystemSymbolName_accessibilityDescription(
-                        &NSString::from_str(symbol),
-                        Some(&ns_label),
-                    ) {
-                        item.setImage(Some(&image));
-                    }
-                    // Coerce &ToolbarDelegate → &AnyObject (deref chain) for the
-                    // target/action click callback.
-                    let target: &objc2::runtime::AnyObject = self;
-                    item.setTarget(Some(target));
-                    item.setAction(Some(sel!(onItem:)));
+            let ns_label = NSString::from_str(label);
+            unsafe {
+                item.setLabel(&ns_label);
+                item.setPaletteLabel(&ns_label);
+                if let Some(image) = NSImage::imageWithSystemSymbolName_accessibilityDescription(
+                    &NSString::from_str(symbol),
+                    Some(&ns_label),
+                ) {
+                    item.setImage(Some(&image));
                 }
+                // Coerce &ToolbarDelegate → &AnyObject (deref chain) for the
+                // target/action click callback.
+                let target: &objc2::runtime::AnyObject = self;
+                item.setTarget(Some(target));
+                item.setAction(Some(sel!(onItem:)));
             }
             Some(item)
         }

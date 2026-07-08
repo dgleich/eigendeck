@@ -9,6 +9,7 @@ function handlers(): ToolbarHandlers & { calls: string[] } {
     addBuild: () => calls.push('add-build'),
     present: () => calls.push('present'),
     save: () => calls.push('save'),
+    export: () => calls.push('export'),
   };
 }
 
@@ -16,7 +17,7 @@ describe('dispatchToolbarAction', () => {
   it('routes each known id to exactly its handler', () => {
     for (const [id, want] of [
       ['add-slide', 'add-slide'], ['add-build', 'add-build'],
-      ['present', 'present'], ['save', 'save'],
+      ['present', 'present'], ['save', 'save'], ['export', 'export'],
     ] as const) {
       const h = handlers();
       expect(dispatchToolbarAction(id, h)).toBe(true);

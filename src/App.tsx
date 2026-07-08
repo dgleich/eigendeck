@@ -1003,6 +1003,7 @@ function App() {
           addBuild: () => store.addBuildSlide(),
           present: () => void flushToSqlite().then(() => startPresenting()),
           save: () => void flushToSqlite().then(() => saveProject()),
+          export: () => void exportPresentation(),
         });
       }).then((u) => { unlisten = u; }),
     ).catch(() => {});

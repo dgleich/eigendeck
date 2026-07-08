@@ -297,23 +297,26 @@ fn set_window_document(
 
     #[cfg(target_os = "macos")]
     {
-        use objc2_app_kit::NSWindow;
-        use objc2_foundation::NSString;
-
-        let ns_win_ptr = window.ns_window().map_err(|e| e.to_string())?;
-        // Safety: Tauri owns a valid NSWindow for this label's lifetime.
-        let ns_win: &NSWindow = unsafe { &*(ns_win_ptr as *const NSWindow) };
-
-        // These are plain NSWindow property setters (like setLevel above).
-        match &path {
-            Some(p) => {
-                ns_win.setRepresentedFilename(&NSString::from_str(p));
-                ns_win.setTitle(&NSString::from_str(&document_title(p)));
+        // AppKit must be touched on the main thread; Tauri commands may run off
+        // it. Hopping explicitly is also the likely reason the edited dot
+        // (setDocumentEdited) wasn't updating.
+        let win = window.clone();
+        let _ = window.run_on_main_thread(move || {
+            use objc2_app_kit::NSWindow;
+            use objc2_foundation::NSString;
+            let Ok(ns_win_ptr) = win.ns_window() else { return };
+            // Safety: Tauri owns a valid NSWindow for this label's lifetime.
+            let ns_win: &NSWindow = unsafe { &*(ns_win_ptr as *const NSWindow) };
+            match &path {
+                Some(p) => {
+                    ns_win.setRepresentedFilename(&NSString::from_str(p));
+                    ns_win.setTitle(&NSString::from_str(&document_title(p)));
+                }
+                // Empty represented filename clears the proxy icon (unsaved deck).
+                None => ns_win.setRepresentedFilename(&NSString::from_str("")),
             }
-            // Empty represented filename clears the proxy icon (unsaved deck).
-            None => ns_win.setRepresentedFilename(&NSString::from_str("")),
-        }
-        ns_win.setDocumentEdited(dirty);
+            ns_win.setDocumentEdited(dirty);
+        });
     }
 
     #[cfg(not(target_os = "macos"))]
