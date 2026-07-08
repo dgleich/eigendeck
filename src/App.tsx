@@ -17,6 +17,7 @@ import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import { DebugMenu } from './debug';
 import { ToastHost } from './components/ToastHost';
 import { openSettingsWindow } from './lib/settingsWindow';
+import { nudgeDelta, zOrderDirection } from './lib/keyboardShortcuts';
 import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
 import { detachDelta, pasteElementDelta } from './lib/syncLink';
@@ -1072,16 +1073,44 @@ function App() {
           else if (newIds.length > 1) state.selectObject({ type: 'multi', ids: newIds });
         }
       }
-      // Arrow keys: navigate slides when no element is focused for editing
-      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
+      // Arrow keys: nudge the selected element(s) (1px / 10px with Shift), else
+      // navigate slides (Up/Down) when nothing on the canvas is selected.
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')
+          && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)
+          && !(e.target as HTMLElement).closest('[contenteditable]')) {
         const state = usePresentationStore.getState();
         const sel = state.selectedObject;
-        if (!sel || sel.type === 'slide') {
+        const ids = sel?.type === 'element' ? [sel.id] : sel?.type === 'multi' ? sel.ids : null;
+        const delta = nudgeDelta(e.key, e.shiftKey);
+        if (ids && delta) {
+          e.preventDefault();
+          state.moveElementsBy(ids, delta.dx, delta.dy);
+        } else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && (!sel || sel.type === 'slide')) {
           e.preventDefault();
           const idx = state.currentSlideIndex;
           const total = state.presentation.slides.length;
           if (e.key === 'ArrowUp' && idx > 0) state.selectSlide(idx - 1);
           if (e.key === 'ArrowDown' && idx < total - 1) state.selectSlide(idx + 1);
+        }
+      }
+      // Z-order: Cmd+] / Cmd+[ (Shift → to front/back). Selected element only.
+      if ((e.key === ']' || e.key === '[') && (e.ctrlKey || e.metaKey) && !inEditable
+          && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
+        const state = usePresentationStore.getState();
+        const sel = state.selectedObject;
+        const dir = zOrderDirection(e.key, e.shiftKey);
+        if (sel?.type === 'element' && dir) {
+          e.preventDefault();
+          state.moveElementZ(sel.id, dir);
+        }
+      }
+      // Escape: deselect back to the slide (when not editing text).
+      if (e.key === 'Escape' && !inEditable
+          && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
+        const state = usePresentationStore.getState();
+        if (state.selectedObject && state.selectedObject.type !== 'slide') {
+          e.preventDefault();
+          state.selectObject({ type: 'slide' });
         }
       }
       // Copy (Cmd+C) — only when not editing text
