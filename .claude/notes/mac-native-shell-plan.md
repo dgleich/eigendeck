@@ -20,6 +20,16 @@ memory) WITHOUT breaking Linux/Windows. Native bits sit behind
 
 ---
 
+## STATUS 2026-07-08 (branch feat/mac-native-shell, local)
+- D Settings window — DONE + unit + e2e (65b5ebf, 8ca7bc2)
+- E Keyboard shortcuts — DONE + unit + e2e (de770ab)
+- F Right-click targeting — DONE + unit + e2e (f5926a2)
+- C Inactive-window subtlety — DONE + unit (e25ef0d); visual = Mac check
+- A Proxy icon + filename — DONE, native authored + Rust tests (0e0c16a); Mac smoke §A
+- B Native NSToolbar — frontend bridge DONE + unit (4c6c019); NATIVE toolbar
+  specified in docs/mac-smoke.md §B for the Mac session (behind mac-toolbar feature)
+Mac checklist: docs/mac-smoke.md. All 1039 JS + Rust tests green; nothing pushed.
+
 ## Sequencing
 1. **D. Independent Settings window** (here) — highest value, well-understood.
 2. **E. Keyboard shortcuts** (here).
