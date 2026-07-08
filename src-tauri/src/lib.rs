@@ -319,6 +319,9 @@ fn set_window_document(
                 None => ns_win.setRepresentedURL(None),
             }
             ns_win.setDocumentEdited(dirty);
+            // Mirror the edited state onto the native toolbar's Save icon.
+            #[cfg(feature = "mac-toolbar")]
+            crate::mac_toolbar::set_save_dirty(dirty);
         });
     }
 
@@ -352,6 +355,36 @@ fn set_toolbar_fields(window: tauri::WebviewWindow, title: String, author: Strin
 #[tauri::command]
 fn native_toolbar_active() -> bool {
     cfg!(all(target_os = "macos", feature = "mac-toolbar"))
+}
+
+/// Toggle the native toolbar's compact view (labels off + smaller icons).
+/// Driven by the `compactToolbar` preference. no-op off the mac-toolbar build.
+#[tauri::command]
+fn set_toolbar_compact(window: tauri::WebviewWindow, compact: bool) -> Result<(), String> {
+    #[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
+    {
+        let _ = window.run_on_main_thread(move || crate::mac_toolbar::set_compact(compact));
+    }
+    #[cfg(not(all(target_os = "macos", feature = "mac-toolbar")))]
+    {
+        let _ = (&window, compact);
+    }
+    Ok(())
+}
+
+/// Show/hide the native toolbar (hidden on the welcome screen and while
+/// presenting). no-op off the mac-toolbar build.
+#[tauri::command]
+fn set_toolbar_visible(window: tauri::WebviewWindow, visible: bool) -> Result<(), String> {
+    #[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
+    {
+        let _ = window.run_on_main_thread(move || crate::mac_toolbar::set_visible(visible));
+    }
+    #[cfg(not(all(target_os = "macos", feature = "mac-toolbar")))]
+    {
+        let _ = (&window, visible);
+    }
+    Ok(())
 }
 
 /// Check if displays are mirrored and return info about available displays.
@@ -848,6 +881,8 @@ pub fn run() {
             set_window_document,
             set_toolbar_fields,
             native_toolbar_active,
+            set_toolbar_compact,
+            set_toolbar_visible,
             check_display_mirroring,
             disable_display_mirroring,
             enable_display_mirroring,

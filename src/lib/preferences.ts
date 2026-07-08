@@ -75,6 +75,11 @@ export interface PrefSchema {
    *  (Enforcement — a CSP connect-src lockdown + WebRTC neuter on the demo docs —
    *  is wired separately; this is the setting it reads.) */
   demoInternetAccess: boolean;
+  /** macOS only (native-toolbar build): compact toolbar view — hides the button
+   *  labels and shrinks the icons to reclaim vertical space. Default false
+   *  (labels shown). Ignored on non-mac / HTML-toolbar builds. Applied live via
+   *  the set_toolbar_compact command; no restart needed. */
+  compactToolbar: boolean;
 }
 
 export interface JupyterServerEntry {
@@ -107,6 +112,7 @@ const DEFAULTS: PrefSchema = {
   hiddenToolbarItems: [],
   tryProjectorMode: true,
   demoInternetAccess: true,
+  compactToolbar: false,
 };
 
 const KEY_PREFIX = 'eigendeck:pref:';

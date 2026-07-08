@@ -13,13 +13,13 @@
 //!
 //! SPIKE — behind the `mac-toolbar` cargo feature (off by default).
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 use objc2::rc::Retained;
 use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
-    NSFont, NSFontWeightRegular, NSImage, NSImageSymbolConfiguration, NSImageSymbolScale,
+    NSColor, NSFont, NSFontWeightRegular, NSImage, NSImageSymbolConfiguration, NSImageSymbolScale,
     NSTextAlignment, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow,
     NSWindowToolbarStyle,
 };
@@ -31,8 +31,10 @@ use tauri::{AppHandle, Emitter, Manager};
 const FIELD_WIDTH: f64 = 130.0;
 const FIELD_HEIGHT: f64 = 28.0;
 /// SF Symbol point size for the button icons. 18 clipped the taller glyphs
-/// (Export's up-arrow) against the button; 15 stays comfortably inside.
-const ICON_POINT_SIZE: f64 = 15.0;
+/// (Export's up-arrow) against the button; 15 stays comfortably inside. Compact
+/// mode (labels off) drops to a smaller glyph to reclaim vertical space.
+const ICON_POINT_SIZE_REGULAR: f64 = 15.0;
+const ICON_POINT_SIZE_COMPACT: f64 = 12.0;
 
 const TITLE_ID: &str = "title";
 const TITLE_WIDTH: f64 = 240.0;
@@ -82,11 +84,63 @@ fn meta_for(identifier: &NSString) -> Option<(&'static str, &'static str)> {
         .map(|(_, label, sym)| (*label, *sym))
 }
 
+/// Apply the visible chrome for a BUTTON item. Shared by the initial build
+/// (item_for) and the live toggles (set_compact / set_save_dirty) so all three
+/// produce identical styling.
+///
+/// - `compact`: hide the visible label and shrink the icon (paletteLabel + toolTip
+///   keep the name available for a11y/hover).
+/// - `dirty`: tint the glyph with the system accent color — used on the Save item
+///   to flag unsaved changes (mirrors the title-bar edited dot).
+fn style_button(item: &NSToolbarItem, label: &str, symbol: &str, compact: bool, dirty: bool) {
+    let ns_label = NSString::from_str(label);
+    // Expanded style ignores displayMode(IconOnly); an EMPTY visible label is
+    // what gives icon-only. Regular mode shows the label under the icon.
+    item.setLabel(&NSString::from_str(if compact { "" } else { label }));
+    item.setPaletteLabel(&ns_label);
+    item.setToolTip(Some(&ns_label));
+    if let Some(image) = NSImage::imageWithSystemSymbolName_accessibilityDescription(
+        &NSString::from_str(symbol),
+        Some(&ns_label),
+    ) {
+        let point = if compact { ICON_POINT_SIZE_COMPACT } else { ICON_POINT_SIZE_REGULAR };
+        let cfg = unsafe {
+            NSImageSymbolConfiguration::configurationWithPointSize_weight_scale(
+                point,
+                NSFontWeightRegular,
+                NSImageSymbolScale::Large,
+            )
+        };
+        // Accent-tint the dirty Save icon; otherwise leave it template (adapts to
+        // light/dark). Combine the size + color configs.
+        let cfg = if dirty {
+            let color = unsafe { NSColor::controlAccentColor() };
+            let color_cfg =
+                unsafe { NSImageSymbolConfiguration::configurationWithHierarchicalColor(&color) };
+            unsafe { cfg.configurationByApplyingConfiguration(&color_cfg) }
+        } else {
+            cfg
+        };
+        let sized = unsafe { image.imageWithSymbolConfiguration(&cfg) }.unwrap_or(image);
+        item.setImage(Some(&sized));
+    }
+    // Bordered → native toolbar-button chrome: hover highlight, pressed state,
+    // standard control sizing (macOS 11+).
+    item.setBordered(true);
+}
+
 struct Ivars {
     app: AppHandle,
     title_field: RefCell<Option<Retained<NSTextField>>>,
     author_field: RefCell<Option<Retained<NSTextField>>>,
     venue_field: RefCell<Option<Retained<NSTextField>>>,
+    /// Built BUTTON items, kept so the live toggles can re-style them in place.
+    buttons: RefCell<Vec<Retained<NSToolbarItem>>>,
+    /// Compact view (labels off + smaller icons). Read at build time; toggled live
+    /// by set_compact().
+    compact: Cell<bool>,
+    /// Whether the deck has unsaved changes — accent-tints the Save icon.
+    save_dirty: Cell<bool>,
 }
 
 define_class!(
@@ -175,41 +229,18 @@ define_class!(
                 match meta_for(identifier) {
                     None => None, // system-provided (flexible space)
                     Some((label, symbol)) => {
-                        let ns_label = NSString::from_str(label);
-                        // Expanded style ignores displayMode(IconOnly) and always
-                        // reserves a label row, so an EMPTY visible label is what
-                        // gives icon-only. paletteLabel (a11y/customization) +
-                        // toolTip (hover) keep the name available.
-                        item.setLabel(&NSString::from_str(""));
-                        item.setPaletteLabel(&ns_label);
-                        item.setToolTip(Some(&ns_label));
-                        if let Some(image) =
-                            NSImage::imageWithSystemSymbolName_accessibilityDescription(
-                                &NSString::from_str(symbol),
-                                Some(&ns_label),
-                            )
-                        {
-                            // Enlarge the SF Symbol — a bordered item otherwise
-                            // renders it at the small control size.
-                            let cfg = unsafe {
-                                NSImageSymbolConfiguration::configurationWithPointSize_weight_scale(
-                                    ICON_POINT_SIZE,
-                                    NSFontWeightRegular,
-                                    NSImageSymbolScale::Large,
-                                )
-                            };
-                            let sized = unsafe { image.imageWithSymbolConfiguration(&cfg) }
-                                .unwrap_or(image);
-                            item.setImage(Some(&sized));
-                        }
-                        // Bordered → native toolbar-button chrome: hover highlight,
-                        // pressed state, standard control sizing (macOS 11+).
-                        item.setBordered(true);
+                        let compact = self.ivars().compact.get();
+                        let dirty = id == "save" && self.ivars().save_dirty.get();
+                        style_button(&item, label, symbol, compact, dirty);
                         let target: &objc2::runtime::AnyObject = self;
                         unsafe {
                             item.setTarget(Some(target));
                             item.setAction(Some(sel!(onItem:)));
                         }
+                        // Remember the item so the live toggles can restyle it.
+                        let mut buttons = self.ivars().buttons.borrow_mut();
+                        buttons.retain(|it| it.itemIdentifier().to_string() != id);
+                        buttons.push(item.clone());
                         Some(item)
                     }
                 }
@@ -248,6 +279,9 @@ impl ToolbarDelegate {
             title_field: RefCell::new(None),
             author_field: RefCell::new(None),
             venue_field: RefCell::new(None),
+            buttons: RefCell::new(Vec::new()),
+            compact: Cell::new(false),
+            save_dirty: Cell::new(false),
         });
         unsafe { msg_send![super(this), init] }
     }
@@ -284,6 +318,54 @@ pub fn set_fields(title: &str, author: &str, venue: &str) {
     });
 }
 
+/// Re-apply styling to every built button from the delegate's current
+/// compact/dirty flags. Main thread.
+fn restyle_buttons(del: &ToolbarDelegate) {
+    let compact = del.ivars().compact.get();
+    let dirty = del.ivars().save_dirty.get();
+    for item in del.ivars().buttons.borrow().iter() {
+        let ident = item.itemIdentifier();
+        if let Some((label, symbol)) = meta_for(&ident) {
+            style_button(item, label, symbol, compact, ident.to_string() == "save" && dirty);
+        }
+    }
+}
+
+/// Toggle compact view (labels off + smaller icons) live. Main thread.
+pub fn set_compact(compact: bool) {
+    DELEGATE.with(|d| {
+        if let Some(del) = d.borrow().as_ref() {
+            del.ivars().compact.set(compact);
+            restyle_buttons(del);
+        }
+    });
+}
+
+/// Accent-tint the Save icon when the deck has unsaved changes. Main thread.
+pub fn set_save_dirty(dirty: bool) {
+    DELEGATE.with(|d| {
+        if let Some(del) = d.borrow().as_ref() {
+            del.ivars().save_dirty.set(dirty);
+            restyle_buttons(del);
+        }
+    });
+}
+
+// The toolbar itself, kept so we can show/hide it (welcome screen + present mode).
+thread_local! {
+    static TOOLBAR: RefCell<Option<Retained<NSToolbar>>> = const { RefCell::new(None) };
+}
+
+/// Show or hide the whole toolbar (hidden on the welcome screen and while
+/// presenting). Main thread.
+pub fn set_visible(visible: bool) {
+    TOOLBAR.with(|t| {
+        if let Some(tb) = t.borrow().as_ref() {
+            tb.setVisible(visible);
+        }
+    });
+}
+
 /// Install the native toolbar on the main window. Call from the Tauri setup hook.
 pub fn install(app: &AppHandle) {
     let Some(mtm) = MainThreadMarker::new() else { return };
@@ -312,5 +394,6 @@ pub fn install(app: &AppHandle) {
     // popover + drag + edited dot for free (driven by setRepresentedURL in lib.rs).
     ns_win.setToolbarStyle(NSWindowToolbarStyle::Expanded);
 
+    TOOLBAR.with(|t| *t.borrow_mut() = Some(toolbar));
     DELEGATE.with(|d| *d.borrow_mut() = Some(delegate));
 }

@@ -1030,6 +1030,24 @@ function App() {
       .then((v) => setNativeToolbar(!!v))
       .catch(() => {});
   }, []);
+  // Compact toolbar view (macOS native toolbar only): labels off + smaller icons.
+  // Driven by the compactToolbar preference; applied live (no restart).
+  const [compactToolbar] = usePreference('compactToolbar');
+  useEffect(() => {
+    if (!nativeToolbar) return;
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke('set_toolbar_compact', { compact: compactToolbar }))
+      .catch(() => {});
+  }, [nativeToolbar, compactToolbar]);
+  // Hide the native toolbar on the welcome screen (no project) and while
+  // presenting; show it in the editor. no-op off the native-toolbar build.
+  useEffect(() => {
+    if (!nativeToolbar) return;
+    const visible = !!projectPath && !isPresenting;
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke('set_toolbar_visible', { visible }))
+      .catch(() => {});
+  }, [nativeToolbar, projectPath, isPresenting]);
   // Receive edits made IN the toolbar fields:
   useEffect(() => {
     let unlisten: (() => void) | undefined;

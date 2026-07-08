@@ -51,6 +51,7 @@ export function SettingsPanel({ header }: { header?: React.ReactNode }) {
         {tab === 'ui' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <ShowHelpTextSetting />
+            <CompactToolbarSetting />
             <GridSpacingSetting />
             <ToolbarButtonsSetting />
           </div>
@@ -567,6 +568,39 @@ function ShowHelpTextSetting() {
             The grey paragraphs under inspector controls that explain what each
             option does. On by default; turn off for a denser inspector once
             you know your way around.
+          </div>
+        </div>
+      </label>
+    </div>
+  );
+}
+
+function CompactToolbarSetting() {
+  const [value, setValue] = usePreference('compactToolbar');
+  // macOS native-toolbar builds only — the setting drives the NSToolbar. Hide it
+  // everywhere else (there's nothing for it to affect).
+  const [native, setNative] = useState(false);
+  useEffect(() => {
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke<boolean>('native_toolbar_active'))
+      .then((v) => setNative(!!v))
+      .catch(() => {});
+  }, []);
+  if (!native) return null;
+  return (
+    <div>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={value}
+          onChange={(e) => setValue(e.target.checked)}
+          style={{ marginTop: 3 }} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Compact toolbar</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+            Hide the toolbar button labels and shrink the icons to reclaim vertical
+            space. Hover a button to see its name as a tooltip. Applies immediately —
+            no restart needed. (macOS only.)
           </div>
         </div>
       </label>
