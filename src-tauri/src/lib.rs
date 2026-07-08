@@ -263,6 +263,60 @@ fn set_window_above_menubar(app: tauri::AppHandle, label: String) -> Result<(), 
     Ok(())
 }
 
+/// The window title for a project path: the file name, or the full path when it
+/// has no file-name component. Pure so it's unit-testable without a live NSWindow.
+fn document_title(path: &str) -> String {
+    std::path::Path::new(path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(str::to_string)
+        .unwrap_or_else(|| path.to_string())
+}
+
+/// Set the window's macOS proxy icon (represented file), title, and edited dot
+/// from the current project path + dirty flag. This is what lets a user
+/// Cmd-click / drag the little document icon in the title bar. macOS only;
+/// no-op elsewhere. Called from the frontend on open / save / dirty change.
+#[tauri::command]
+fn set_window_document(
+    app: tauri::AppHandle,
+    label: String,
+    path: Option<String>,
+    dirty: bool,
+) -> Result<(), String> {
+    let window = app
+        .get_webview_window(&label)
+        .ok_or_else(|| format!("Window '{}' not found", label))?;
+
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::NSWindow;
+        use objc2_foundation::NSString;
+
+        let ns_win_ptr = window.ns_window().map_err(|e| e.to_string())?;
+        // Safety: Tauri owns a valid NSWindow for this label's lifetime.
+        let ns_win: &NSWindow = unsafe { &*(ns_win_ptr as *const NSWindow) };
+
+        // These are plain NSWindow property setters (like setLevel above).
+        match &path {
+            Some(p) => {
+                ns_win.setRepresentedFilename(&NSString::from_str(p));
+                ns_win.setTitle(&NSString::from_str(&document_title(p)));
+            }
+            // Empty represented filename clears the proxy icon (unsaved deck).
+            None => ns_win.setRepresentedFilename(&NSString::from_str("")),
+        }
+        ns_win.setDocumentEdited(dirty);
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (&window, &path, dirty);
+    }
+
+    Ok(())
+}
+
 /// Check if displays are mirrored and return info about available displays.
 #[tauri::command]
 fn check_display_mirroring() -> Result<serde_json::Value, String> {
@@ -754,6 +808,7 @@ pub fn run() {
             clip::clip_paste_asset,
             clip::clip_clear_internal,
             set_window_above_menubar,
+            set_window_document,
             check_display_mirroring,
             disable_display_mirroring,
             enable_display_mirroring,
@@ -1052,6 +1107,27 @@ mod resolve_read_tests {
         let r = resolve_and_read(messy.to_string_lossy().into_owned(), None).unwrap();
         assert_eq!(r.canonical_path, fs::canonicalize(&p).unwrap().to_string_lossy());
         let _ = fs::remove_file(&p);
+    }
+}
+
+#[cfg(test)]
+mod window_document_tests {
+    use super::document_title;
+
+    #[test]
+    fn uses_the_file_name() {
+        assert_eq!(document_title("/Users/dg/Talks/matrix.eigendeck"), "matrix.eigendeck");
+    }
+
+    #[test]
+    fn handles_a_bare_file_name() {
+        assert_eq!(document_title("deck.eigendeck"), "deck.eigendeck");
+    }
+
+    #[test]
+    fn falls_back_to_the_full_string_when_there_is_no_file_name() {
+        // Trailing-slash path has no file_name component.
+        assert_eq!(document_title("/"), "/");
     }
 }
 

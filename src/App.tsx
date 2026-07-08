@@ -567,7 +567,7 @@ export function relPath(projectPath: string | null, fullPath: string): string {
 }
 
 function App() {
-  const { isPresenting, showProperties, showHistory, projectPath } =
+  const { isPresenting, showProperties, showHistory, projectPath, isDirty } =
     usePresentationStore();
   const [sidebarWidth, setSidebarWidth] = useState(200);
   const resizeStartX = useRef(0);
@@ -759,6 +759,14 @@ function App() {
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
   }, [sidebarWidth]);
+
+  // Reflect the open file + dirty state onto the macOS title-bar proxy icon
+  // (drag icon + filename + edited dot). no-op off macOS. See set_window_document.
+  useEffect(() => {
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke('set_window_document', { label: 'main', path: projectPath, dirty: isDirty }))
+      .catch(() => {});
+  }, [projectPath, isDirty]);
 
   // Initialize: open in-memory DB, sync recent menu, restore window position
   useEffect(() => {
