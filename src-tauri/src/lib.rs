@@ -263,14 +263,17 @@ fn set_window_above_menubar(app: tauri::AppHandle, label: String) -> Result<(), 
     Ok(())
 }
 
-/// The window title for a project path: the file name, or the full path when it
-/// has no file-name component. Pure so it's unit-testable without a live NSWindow.
+/// The window title for a project file path: the file name with the `.eigendeck`
+/// extension dropped (matching the app's display convention), or the full path
+/// when it has no file-name component. Pure — unit-testable without a live
+/// NSWindow. NOTE: the represented FILE uses the full path (extension intact) so
+/// the proxy-icon drag resolves; only the visible title is de-extensioned.
 fn document_title(path: &str) -> String {
-    std::path::Path::new(path)
+    let name = std::path::Path::new(path)
         .file_name()
         .and_then(|n| n.to_str())
-        .map(str::to_string)
-        .unwrap_or_else(|| path.to_string())
+        .unwrap_or(path);
+    name.strip_suffix(".eigendeck").unwrap_or(name).to_string()
 }
 
 /// Set the window's macOS proxy icon (represented file), title, and edited dot
@@ -1115,13 +1118,19 @@ mod window_document_tests {
     use super::document_title;
 
     #[test]
-    fn uses_the_file_name() {
-        assert_eq!(document_title("/Users/dg/Talks/matrix.eigendeck"), "matrix.eigendeck");
+    fn uses_the_file_name_without_the_eigendeck_extension() {
+        assert_eq!(document_title("/Users/dg/Talks/matrix.eigendeck"), "matrix");
     }
 
     #[test]
     fn handles_a_bare_file_name() {
-        assert_eq!(document_title("deck.eigendeck"), "deck.eigendeck");
+        assert_eq!(document_title("deck.eigendeck"), "deck");
+    }
+
+    #[test]
+    fn keeps_a_name_that_is_not_an_eigendeck_file() {
+        // Only .eigendeck is stripped; other names are shown as-is.
+        assert_eq!(document_title("/Users/dg/notes.txt"), "notes.txt");
     }
 
     #[test]

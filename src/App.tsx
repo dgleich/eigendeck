@@ -763,9 +763,13 @@ function App() {
 
   // Reflect the open file + dirty state onto the macOS title-bar proxy icon
   // (drag icon + filename + edited dot). no-op off macOS. See set_window_document.
+  // projectPath is stored WITHOUT the .eigendeck extension (display convention),
+  // but the represented file must be the REAL on-disk path or the proxy icon
+  // drag fails with "document could not be found".
   useEffect(() => {
+    const realPath = projectPath ? `${projectPath}.eigendeck` : null;
     void import('@tauri-apps/api/core')
-      .then(({ invoke }) => invoke('set_window_document', { label: 'main', path: projectPath, dirty: isDirty }))
+      .then(({ invoke }) => invoke('set_window_document', { label: 'main', path: realPath, dirty: isDirty }))
       .catch(() => {});
   }, [projectPath, isDirty]);
 
