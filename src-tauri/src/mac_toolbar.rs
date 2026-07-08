@@ -23,16 +23,14 @@ use objc2_app_kit::{
     NSImage, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow,
     NSWindowTitleVisibility, NSWindowToolbarStyle,
 };
-use objc2_foundation::{NSArray, NSObjectProtocol, NSString};
+use objc2_foundation::{NSArray, NSObjectProtocol, NSSize, NSString};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
-/// Author/Venue field size (logical points). Both width and height are
-/// constrained; the toolbar centers the definite-size field vertically.
+/// Author/Venue toolbar-item size (logical points). The item is given this fixed
+/// size (setMinSize/setMaxSize) and the toolbar centers it vertically.
 const FIELD_WIDTH: f64 = 130.0;
 const FIELD_HEIGHT: f64 = 28.0;
-/// Empty space above the field (nudges the field down within its centered item).
-const FIELD_TOP_PAD: f64 = 8.0;
 
 const TITLE_ID: &str = "title";
 const AUTHOR_ID: &str = "author";
@@ -140,30 +138,16 @@ define_class!(
                     field.setAction(Some(action));
                 }
                 *slot.borrow_mut() = Some(field.clone());
-                // Auto Layout in a container: the field has a fixed width/height
-                // and is pinned to the container's BOTTOM, so FIELD_TOP_PAD of
-                // empty space sits above it → the field is nudged down within the
-                // (toolbar-centered) item.
-                let container: Retained<NSView> = unsafe { msg_send![NSView::alloc(mtm), init] };
-                container.setTranslatesAutoresizingMaskIntoConstraints(false);
-                field.setTranslatesAutoresizingMaskIntoConstraints(false);
-                let fv: &NSView = &field;
-                unsafe { container.addSubview(fv) };
-                field.widthAnchor().constraintEqualToConstant(FIELD_WIDTH).setActive(true);
-                field.heightAnchor().constraintEqualToConstant(FIELD_HEIGHT).setActive(true);
-                container.widthAnchor().constraintEqualToConstant(FIELD_WIDTH).setActive(true);
-                container
-                    .heightAnchor()
-                    .constraintEqualToConstant(FIELD_HEIGHT + FIELD_TOP_PAD)
-                    .setActive(true);
-                let cx = container.centerXAnchor();
-                field.centerXAnchor().constraintEqualToAnchor(&cx).setActive(true);
-                let cb = container.bottomAnchor();
-                field.bottomAnchor().constraintEqualToAnchor(&cb).setActive(true);
-                let cv: &NSView = &container;
-                item.setView(Some(cv));
-                // No item label — it renders UNDER the view and squishes it; the
-                // placeholder inside already labels the field.
+                // Give the ITEM a fixed size and let the toolbar center the field
+                // vertically — the idiomatic path (no container / manual padding).
+                #[allow(deprecated)]
+                {
+                    item.setMinSize(NSSize { width: FIELD_WIDTH, height: FIELD_HEIGHT });
+                    item.setMaxSize(NSSize { width: FIELD_WIDTH, height: FIELD_HEIGHT });
+                }
+                let view: &NSView = &field;
+                item.setView(Some(view));
+                // No item label — it renders under the view; the placeholder labels it.
                 item.setLabel(&NSString::from_str(""));
                 Some(item)
             } else {
@@ -181,6 +165,10 @@ define_class!(
                         {
                             item.setImage(Some(&image));
                         }
+                        // Bordered → native toolbar-button chrome: hover highlight,
+                        // pressed state, standard control sizing (macOS 11+). Without
+                        // this a toolbar item with an image is a passive icon.
+                        item.setBordered(true);
                         let target: &objc2::runtime::AnyObject = self;
                         unsafe {
                             item.setTarget(Some(target));
@@ -238,10 +226,15 @@ thread_local! {
     static DELEGATE: RefCell<Option<Retained<ToolbarDelegate>>> = const { RefCell::new(None) };
 }
 
-fn set_string(field: &RefCell<Option<Retained<NSTextField>>>, value: &str) {
+/// Set a field's text. `fit` sizes the view to its content — right for the
+/// unconstrained centered label, wrong for the fixed-size Author/Venue fields
+/// (it would fight the item's min/max size), so those pass false.
+fn set_string(field: &RefCell<Option<Retained<NSTextField>>>, value: &str, fit: bool) {
     if let Some(f) = field.borrow().as_ref() {
-        unsafe { f.setStringValue(&NSString::from_str(value)) };
-        f.sizeToFit();
+        f.setStringValue(&NSString::from_str(value));
+        if fit {
+            f.sizeToFit();
+        }
     }
 }
 
@@ -250,7 +243,7 @@ fn set_string(field: &RefCell<Option<Retained<NSTextField>>>, value: &str) {
 pub fn set_document_title(title: &str) {
     DELEGATE.with(|d| {
         if let Some(del) = d.borrow().as_ref() {
-            set_string(&del.ivars().title_field, title);
+            set_string(&del.ivars().title_field, title, true);
         }
     });
 }
@@ -259,8 +252,8 @@ pub fn set_document_title(title: &str) {
 pub fn set_fields(author: &str, venue: &str) {
     DELEGATE.with(|d| {
         if let Some(del) = d.borrow().as_ref() {
-            set_string(&del.ivars().author_field, author);
-            set_string(&del.ivars().venue_field, venue);
+            set_string(&del.ivars().author_field, author, false);
+            set_string(&del.ivars().venue_field, venue, false);
         }
     });
 }
