@@ -1010,6 +1010,28 @@ function App() {
     return () => unlisten?.();
   }, [startPresenting]);
 
+  // Native macOS toolbar Author/Venue fields ↔ config.author/venue (two-way).
+  // Push current values into the fields whenever they change:
+  const tbAuthor = usePresentationStore((s) => s.presentation.config.author || '');
+  const tbVenue = usePresentationStore((s) => s.presentation.config.venue || '');
+  useEffect(() => {
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke('set_toolbar_fields', { author: tbAuthor, venue: tbVenue }))
+      .catch(() => {});
+  }, [tbAuthor, tbVenue]);
+  // Receive edits made IN the toolbar fields:
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void import('@tauri-apps/api/event').then(({ listen }) =>
+      listen<{ id: string; value: string }>('toolbar:field', ({ payload }) => {
+        const cfg = usePresentationStore.getState();
+        if (payload.id === 'author') cfg.updateConfig({ author: payload.value });
+        else if (payload.id === 'venue') cfg.updateConfig({ venue: payload.value });
+      }).then((u) => { unlisten = u; }),
+    ).catch(() => {});
+    return () => unlisten?.();
+  }, []);
+
   // DEBUG: force the SINGLE-window live present, bypassing multi-monitor
   // detection entirely — the explicit counterpart to the 2-window test.
   const startPresentingSingle = useCallback(() => {

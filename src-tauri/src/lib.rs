@@ -331,6 +331,23 @@ fn set_window_document(
     Ok(())
 }
 
+/// Push the current author/venue into the native toolbar's text fields (macOS +
+/// mac-toolbar feature). no-op otherwise. Called from the frontend on config change.
+#[tauri::command]
+fn set_toolbar_fields(window: tauri::WebviewWindow, author: String, venue: String) -> Result<(), String> {
+    #[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
+    {
+        let _ = window.run_on_main_thread(move || {
+            crate::mac_toolbar::set_fields(&author, &venue);
+        });
+    }
+    #[cfg(not(all(target_os = "macos", feature = "mac-toolbar")))]
+    {
+        let _ = (&window, &author, &venue);
+    }
+    Ok(())
+}
+
 /// Check if displays are mirrored and return info about available displays.
 #[tauri::command]
 fn check_display_mirroring() -> Result<serde_json::Value, String> {
@@ -823,6 +840,7 @@ pub fn run() {
             clip::clip_clear_internal,
             set_window_above_menubar,
             set_window_document,
+            set_toolbar_fields,
             check_display_mirroring,
             disable_display_mirroring,
             enable_display_mirroring,
