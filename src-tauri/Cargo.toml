@@ -20,6 +20,11 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "eigendeck-cli"
 path = "src/cli.rs"
 
+[features]
+# Native macOS NSToolbar spike (src/mac_toolbar.rs). Off by default so the spike
+# can't break the default build; enable via `bash tools/mac-build.sh --toolbar`.
+mac-toolbar = []
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 # Download pdfium prebuilt dylib at build time (see build.rs).
@@ -56,5 +61,5 @@ arboard = { version = "3", default-features = false, features = ["image-data"] }
 core-graphics = "0.24"
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", features = ["NSString", "NSData", "NSArray"] }
-objc2-app-kit = { version = "0.3", features = ["NSAlert", "NSWindow", "NSResponder", "NSApplication", "NSPasteboard"] }
+objc2-app-kit = { version = "0.3", features = ["NSAlert", "NSWindow", "NSResponder", "NSApplication", "NSPasteboard", "NSToolbar", "NSToolbarItem", "NSImage"] }
 

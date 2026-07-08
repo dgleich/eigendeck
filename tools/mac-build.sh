@@ -26,6 +26,7 @@ source "$HOME/.cargo/env" 2>/dev/null || true
 cd "$(dirname "$0")/.."   # tools/ -> repo root
 
 release_mode=0
+toolbar=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --debug)
@@ -34,6 +35,12 @@ while [ $# -gt 0 ]; do
       ;;
     --release)
       release_mode=1
+      shift
+      ;;
+    --toolbar)
+      # Build the native macOS NSToolbar spike (src-tauri/src/mac_toolbar.rs),
+      # gated behind the `mac-toolbar` cargo feature. See docs/mac-smoke.md §B.
+      toolbar=1
       shift
       ;;
     --)
@@ -53,6 +60,10 @@ npm install
 tauri_args=()
 if [ "$release_mode" = "1" ]; then
   tauri_args+=(--release)
+fi
+if [ "$toolbar" = "1" ]; then
+  # tauri-cli forwards --features to cargo.
+  tauri_args+=(--features mac-toolbar)
 fi
 
 if [ $# -gt 0 ]; then

@@ -34,6 +34,8 @@ mod clip;
 mod debug;
 mod fscmds;
 mod llmtools;
+#[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
+mod mac_toolbar;
 mod pasteboard;
 mod pdf;
 use std::sync::Mutex;
@@ -268,6 +270,8 @@ fn set_window_above_menubar(app: tauri::AppHandle, label: String) -> Result<(), 
 /// when it has no file-name component. Pure — unit-testable without a live
 /// NSWindow. NOTE: the represented FILE uses the full path (extension intact) so
 /// the proxy-icon drag resolves; only the visible title is de-extensioned.
+// Called only from the macOS window block (+ its tests); unused on other targets.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 fn document_title(path: &str) -> String {
     let name = std::path::Path::new(path)
         .file_name()
@@ -906,6 +910,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
+            // Native macOS NSToolbar (spike, behind the mac-toolbar feature).
+            #[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
+            mac_toolbar::install(app.handle());
+
             // Check for --export CLI mode
             let args: Vec<String> = std::env::args().collect();
             if let Some(idx) = args.iter().position(|a| a == "--export") {
