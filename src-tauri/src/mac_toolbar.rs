@@ -91,34 +91,37 @@ define_class!(
             identifier: &NSString,
             _will_insert: bool,
         ) -> Option<Retained<NSToolbarItem>> {
-            // Built-in identifiers (flexible space) are provided by the system —
-            // only build our own custom items.
-            let (label, symbol) = match meta_for(identifier) {
-                Some(m) => m,
-                None => return None,
-            };
-            // `self` is MainThreadOnly, so we're provably on the main thread.
-            let mtm = self.mtm();
-            let item = unsafe {
-                NSToolbarItem::initWithItemIdentifier(NSToolbarItem::alloc(mtm), identifier)
-            };
-            let ns_label = NSString::from_str(label);
-            unsafe {
-                item.setLabel(&ns_label);
-                item.setPaletteLabel(&ns_label);
-                if let Some(image) = NSImage::imageWithSystemSymbolName_accessibilityDescription(
-                    &NSString::from_str(symbol),
-                    Some(&ns_label),
-                ) {
-                    item.setImage(Some(&image));
+            // Built-in identifiers (the flexible space) are provided by the
+            // system → return None for those. NOTE: a method_id method's raw
+            // return is RetainedReturnValue, so we can't `return None` early —
+            // the whole body must be one tail expression yielding the Option.
+            match meta_for(identifier) {
+                None => None,
+                Some((label, symbol)) => {
+                    // `self` is MainThreadOnly, so we're provably on the main thread.
+                    let mtm = self.mtm();
+                    let item = unsafe {
+                        NSToolbarItem::initWithItemIdentifier(NSToolbarItem::alloc(mtm), identifier)
+                    };
+                    let ns_label = NSString::from_str(label);
+                    unsafe {
+                        item.setLabel(&ns_label);
+                        item.setPaletteLabel(&ns_label);
+                        if let Some(image) = NSImage::imageWithSystemSymbolName_accessibilityDescription(
+                            &NSString::from_str(symbol),
+                            Some(&ns_label),
+                        ) {
+                            item.setImage(Some(&image));
+                        }
+                        // Coerce &ToolbarDelegate → &AnyObject (deref chain) for
+                        // the target/action click callback.
+                        let target: &objc2::runtime::AnyObject = self;
+                        item.setTarget(Some(target));
+                        item.setAction(Some(sel!(onItem:)));
+                    }
+                    Some(item)
                 }
-                // Coerce &ToolbarDelegate → &AnyObject (deref chain) for the
-                // target/action click callback.
-                let target: &objc2::runtime::AnyObject = self;
-                item.setTarget(Some(target));
-                item.setAction(Some(sel!(onItem:)));
             }
-            Some(item)
         }
     }
 
