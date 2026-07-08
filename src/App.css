@@ -442,10 +442,12 @@ body.window-inactive .welcome-root {
   justify-content: center;
   /* row-gap between wrapped rows; larger column-gap separates the groups. */
   gap: 6px 16px;
-  padding: 6px 12px;
+  padding: 3px 12px;
   /* Same native toolbar color as the top bar. */
   background: var(--toolbar-bg, #f3f3f3);
-  border-bottom: 1px solid var(--toolbar-border, #eee);
+  /* Contrasting hairline so the toolbar chrome reads as separate from the
+     slide canvas below (matches the native Mac toolbar's own separator). */
+  border-bottom: 1px solid var(--toolbar-separator, #c8c8c8);
   flex-shrink: 0;
   /* Wrap by GROUP, not by button: when the bar is too narrow, a whole group
      drops to the next row — buttons never split mid-group (#72). */
