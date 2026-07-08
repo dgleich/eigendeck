@@ -31,6 +31,8 @@ use tauri::{AppHandle, Emitter, Manager};
 /// constrained; the toolbar centers the definite-size field vertically.
 const FIELD_WIDTH: f64 = 130.0;
 const FIELD_HEIGHT: f64 = 28.0;
+/// Empty space above the field (nudges the field down within its centered item).
+const FIELD_TOP_PAD: f64 = 8.0;
 
 const TITLE_ID: &str = "title";
 const AUTHOR_ID: &str = "author";
@@ -138,15 +140,28 @@ define_class!(
                     field.setAction(Some(action));
                 }
                 *slot.borrow_mut() = Some(field.clone());
-                // Auto Layout: constrain WIDTH only (so the toolbar can't stretch
-                // it), keep the field's natural height, and let the toolbar center
-                // it vertically. This is the fix for both the stretch and the
-                // squished/top-aligned look.
+                // Auto Layout in a container: the field has a fixed width/height
+                // and is pinned to the container's BOTTOM, so FIELD_TOP_PAD of
+                // empty space sits above it → the field is nudged down within the
+                // (toolbar-centered) item.
+                let container: Retained<NSView> = unsafe { msg_send![NSView::alloc(mtm), init] };
+                container.setTranslatesAutoresizingMaskIntoConstraints(false);
                 field.setTranslatesAutoresizingMaskIntoConstraints(false);
+                let fv: &NSView = &field;
+                unsafe { container.addSubview(fv) };
                 field.widthAnchor().constraintEqualToConstant(FIELD_WIDTH).setActive(true);
                 field.heightAnchor().constraintEqualToConstant(FIELD_HEIGHT).setActive(true);
-                let view: &NSView = &field;
-                item.setView(Some(view));
+                container.widthAnchor().constraintEqualToConstant(FIELD_WIDTH).setActive(true);
+                container
+                    .heightAnchor()
+                    .constraintEqualToConstant(FIELD_HEIGHT + FIELD_TOP_PAD)
+                    .setActive(true);
+                let cx = container.centerXAnchor();
+                field.centerXAnchor().constraintEqualToAnchor(&cx).setActive(true);
+                let cb = container.bottomAnchor();
+                field.bottomAnchor().constraintEqualToAnchor(&cb).setActive(true);
+                let cv: &NSView = &container;
+                item.setView(Some(cv));
                 // No item label — it renders UNDER the view and squishes it; the
                 // placeholder inside already labels the field.
                 item.setLabel(&NSString::from_str(""));
