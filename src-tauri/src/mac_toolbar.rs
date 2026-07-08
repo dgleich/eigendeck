@@ -82,7 +82,8 @@ define_class!(
             identifier: &NSString,
             _will_insert: bool,
         ) -> Option<Retained<NSToolbarItem>> {
-            let mtm = MainThreadMarker::new()?;
+            // `self` is MainThreadOnly, so we're provably on the main thread.
+            let mtm = self.mtm();
             let item = unsafe {
                 NSToolbarItem::initWithItemIdentifier(NSToolbarItem::alloc(mtm), identifier)
             };
