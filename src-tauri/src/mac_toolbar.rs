@@ -1,33 +1,39 @@
-//! Native macOS NSToolbar for the main window (unified titlebar material). Each
-//! toolbar item posts a Rust→JS `toolbar:action` event; the frontend
-//! (`src/lib/toolbarActions.ts` `dispatchToolbarAction`) then runs the SAME
-//! action as the HTML toolbar button, so the two never drift.
+//! Native macOS NSToolbar for the main window (unified titlebar material),
+//! laid out to mirror the HTML toolbar: Add Slide / Add Build / Save on the
+//! left, a centered filename, then Export / Present on the right. The window's
+//! own title is hidden so the three zones lay out cleanly (flexible spaces on
+//! both sides of the centered item). Button items post a Rust→JS
+//! `toolbar:action` event; the frontend runs the same action as the HTML button.
 //!
-//! SPIKE — behind the `mac-toolbar` cargo feature (off by default). Authored in
-//! the Linux dev container, which has no macOS compiler, so a Mac build pass is
-//! expected: the objc2 `define_class!` details (ivars, method signatures,
-//! `target`/`action`, retaining the delegate, the exact `NSImage` /
-//! `setToolbarStyle` symbols) are the parts most likely to need a small tweak.
-//! Feature-gating means any such error can't break the default build. Build +
-//! iterate with `bash tools/mac-build.sh --toolbar`. See docs/mac-smoke.md §B.
+//! SPIKE — behind the `mac-toolbar` cargo feature (off by default). Authored
+//! without a macOS compiler, so a Mac build pass is expected. Build + iterate
+//! with `bash tools/mac-build.sh --toolbar`. See docs/mac-smoke.md §B.
+//!
+//! TODO (approach A, next): make the centered item nested (filename + editable
+//! presentation title) with a custom drag source, and add Author/Venue fields.
+
+use std::cell::RefCell;
 
 use objc2::rc::Retained;
 use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
-    NSImage, NSToolbar, NSToolbarDelegate, NSToolbarItem, NSWindow, NSWindowToolbarStyle,
+    NSImage, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow,
+    NSWindowTitleVisibility, NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSString};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
+
+const TITLE_ID: &str = "title";
+const FLEX_ID: &str = "NSToolbarFlexibleSpaceItem";
 
 #[derive(Clone, Serialize)]
 struct ToolbarPayload {
     id: String,
 }
 
-/// (identifier, visible label, SF Symbol name) per toolbar item. The identifier
-/// is exactly the id the frontend's dispatchToolbarAction expects.
+/// (identifier, visible label, SF Symbol name) per BUTTON item.
 const ITEMS: &[(&str, &str, &str)] = &[
     ("add-slide", "Add Slide", "plus.rectangle"),
     ("add-build", "Add Build", "plus.square.on.square"),
@@ -37,12 +43,10 @@ const ITEMS: &[(&str, &str, &str)] = &[
 ];
 
 fn identifiers() -> Retained<NSArray<NSString>> {
-    // Left group | flexible space | right group. Mirrors the HTML toolbar.
-    // "NSToolbarFlexibleSpaceItem" is the documented value of the framework's
-    // flexible-space identifier (avoids importing the extern constant).
+    // left group | flex | centered filename | flex | right group.
     let order = [
         "add-slide", "add-build", "save",
-        "NSToolbarFlexibleSpaceItem",
+        FLEX_ID, TITLE_ID, FLEX_ID,
         "export", "present",
     ];
     let ids: Vec<Retained<NSString>> = order.iter().map(|id| NSString::from_str(id)).collect();
@@ -60,6 +64,8 @@ fn meta_for(identifier: &NSString) -> Option<(&'static str, &'static str)> {
 
 struct Ivars {
     app: AppHandle,
+    /// The centered filename label, stored so set_document_title can update it.
+    title_field: RefCell<Option<Retained<NSTextField>>>,
 }
 
 define_class!(
@@ -91,35 +97,48 @@ define_class!(
             identifier: &NSString,
             _will_insert: bool,
         ) -> Option<Retained<NSToolbarItem>> {
-            // Built-in identifiers (the flexible space) are provided by the
-            // system → return None for those. NOTE: a method_id method's raw
-            // return is RetainedReturnValue, so we can't `return None` early —
-            // the whole body must be one tail expression yielding the Option.
-            match meta_for(identifier) {
-                None => None,
-                Some((label, symbol)) => {
-                    // `self` is MainThreadOnly, so we're provably on the main thread.
-                    let mtm = self.mtm();
-                    let item = unsafe {
-                        NSToolbarItem::initWithItemIdentifier(NSToolbarItem::alloc(mtm), identifier)
-                    };
-                    let ns_label = NSString::from_str(label);
-                    unsafe {
-                        item.setLabel(&ns_label);
-                        item.setPaletteLabel(&ns_label);
-                        if let Some(image) = NSImage::imageWithSystemSymbolName_accessibilityDescription(
-                            &NSString::from_str(symbol),
-                            Some(&ns_label),
-                        ) {
-                            item.setImage(Some(&image));
+            // NOTE: method_id's raw return is RetainedReturnValue, so no early
+            // `return` — the whole body is one tail expression yielding Option.
+            let mtm = self.mtm();
+            let id = identifier.to_string();
+            if id == TITLE_ID {
+                // Centered filename label. Starts empty; set_document_title fills it.
+                let item = unsafe {
+                    NSToolbarItem::initWithItemIdentifier(NSToolbarItem::alloc(mtm), identifier)
+                };
+                let field = unsafe { NSTextField::labelWithString(&NSString::from_str(""), mtm) };
+                *self.ivars().title_field.borrow_mut() = Some(field.clone());
+                let view: &NSView = &field;
+                unsafe { item.setView(Some(view)) };
+                Some(item)
+            } else {
+                match meta_for(identifier) {
+                    None => None, // built-in identifiers (flexible space) are system-provided
+                    Some((label, symbol)) => {
+                        let item = unsafe {
+                            NSToolbarItem::initWithItemIdentifier(
+                                NSToolbarItem::alloc(mtm),
+                                identifier,
+                            )
+                        };
+                        let ns_label = NSString::from_str(label);
+                        unsafe {
+                            item.setLabel(&ns_label);
+                            item.setPaletteLabel(&ns_label);
+                            if let Some(image) =
+                                NSImage::imageWithSystemSymbolName_accessibilityDescription(
+                                    &NSString::from_str(symbol),
+                                    Some(&ns_label),
+                                )
+                            {
+                                item.setImage(Some(&image));
+                            }
+                            let target: &objc2::runtime::AnyObject = self;
+                            item.setTarget(Some(target));
+                            item.setAction(Some(sel!(onItem:)));
                         }
-                        // Coerce &ToolbarDelegate → &AnyObject (deref chain) for
-                        // the target/action click callback.
-                        let target: &objc2::runtime::AnyObject = self;
-                        item.setTarget(Some(target));
-                        item.setAction(Some(sel!(onItem:)));
+                        Some(item)
                     }
-                    Some(item)
                 }
             }
         }
@@ -136,9 +155,32 @@ define_class!(
 
 impl ToolbarDelegate {
     fn new(mtm: MainThreadMarker, app: AppHandle) -> Retained<Self> {
-        let this = Self::alloc(mtm).set_ivars(Ivars { app });
+        let this = Self::alloc(mtm).set_ivars(Ivars {
+            app,
+            title_field: RefCell::new(None),
+        });
         unsafe { msg_send![super(this), init] }
     }
+}
+
+// The delegate is MainThreadOnly (so !Send/!Sync — can't be a Sync static). Keep
+// it in a main-thread thread-local: this both keeps it alive (NSToolbar's
+// delegate ref is weak) AND lets set_document_title reach its title field.
+thread_local! {
+    static DELEGATE: RefCell<Option<Retained<ToolbarDelegate>>> = const { RefCell::new(None) };
+}
+
+/// Update the centered filename label. Called (on the main thread) from
+/// set_window_document whenever the open file changes.
+pub fn set_document_title(title: &str) {
+    DELEGATE.with(|d| {
+        if let Some(del) = d.borrow().as_ref() {
+            if let Some(field) = del.ivars().title_field.borrow().as_ref() {
+                unsafe { field.setStringValue(&NSString::from_str(title)) };
+                field.sizeToFit();
+            }
+        }
+    });
 }
 
 /// Install the native toolbar on the main window. Call from the Tauri setup hook.
@@ -156,11 +198,11 @@ pub fn install(app: &AppHandle) {
     );
     let proto: &ProtocolObject<dyn NSToolbarDelegate> = ProtocolObject::from_ref(&*delegate);
     toolbar.setDelegate(Some(proto));
+    unsafe { toolbar.setCenteredItemIdentifier(Some(&NSString::from_str(TITLE_ID))) };
     ns_win.setToolbar(Some(&toolbar));
-    // Unified titlebar material (macOS 11+); keeps the title centered.
     ns_win.setToolbarStyle(NSWindowToolbarStyle::Unified);
-    // NSToolbar's delegate ref is weak and the class is MainThreadOnly (so it
-    // can't live in a Sync static). It's a per-app singleton on the main thread,
-    // so leak it to keep it alive for the process lifetime.
-    std::mem::forget(delegate);
+    // Hide the window's own title so the three toolbar zones lay out cleanly.
+    ns_win.setTitleVisibility(NSWindowTitleVisibility::Hidden);
+
+    DELEGATE.with(|d| *d.borrow_mut() = Some(delegate));
 }

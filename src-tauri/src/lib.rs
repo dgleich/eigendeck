@@ -311,6 +311,10 @@ fn set_window_document(
                 Some(p) => {
                     ns_win.setRepresentedFilename(&NSString::from_str(p));
                     ns_win.setTitle(&NSString::from_str(&document_title(p)));
+                    // The window title is hidden when the native toolbar is on, so
+                    // push the filename into the toolbar's centered label instead.
+                    #[cfg(feature = "mac-toolbar")]
+                    crate::mac_toolbar::set_document_title(&document_title(p));
                 }
                 // Empty represented filename clears the proxy icon (unsaved deck).
                 None => ns_win.setRepresentedFilename(&NSString::from_str("")),
