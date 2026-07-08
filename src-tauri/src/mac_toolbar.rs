@@ -20,8 +20,9 @@ use objc2::rc::Retained;
 use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
-    NSImage, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow,
-    NSWindowTitleVisibility, NSWindowToolbarStyle,
+    NSFontWeightRegular, NSImage, NSImageSymbolConfiguration, NSImageSymbolScale, NSTextField,
+    NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow, NSWindowTitleVisibility,
+    NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSSize, NSString};
 use serde::Serialize;
@@ -31,6 +32,9 @@ use tauri::{AppHandle, Emitter, Manager};
 /// size (setMinSize/setMaxSize) and the toolbar centers it vertically.
 const FIELD_WIDTH: f64 = 130.0;
 const FIELD_HEIGHT: f64 = 28.0;
+/// SF Symbol point size for the button icons (the real lever for icon size in a
+/// bordered toolbar item). Bump for larger icons.
+const ICON_POINT_SIZE: f64 = 18.0;
 
 const TITLE_ID: &str = "title";
 const AUTHOR_ID: &str = "author";
@@ -163,7 +167,19 @@ define_class!(
                                 Some(&ns_label),
                             )
                         {
-                            item.setImage(Some(&image));
+                            // Enlarge the SF Symbol — a bordered item otherwise
+                            // renders it at the small control size. Point size is
+                            // the real lever (ICON_POINT_SIZE).
+                            let cfg = unsafe {
+                                NSImageSymbolConfiguration::configurationWithPointSize_weight_scale(
+                                    ICON_POINT_SIZE,
+                                    NSFontWeightRegular,
+                                    NSImageSymbolScale::Large,
+                                )
+                            };
+                            let sized = unsafe { image.imageWithSymbolConfiguration(&cfg) }
+                                .unwrap_or(image);
+                            item.setImage(Some(&sized));
                         }
                         // Bordered → native toolbar-button chrome: hover highlight,
                         // pressed state, standard control sizing (macOS 11+). Without

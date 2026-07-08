@@ -61,5 +61,5 @@ arboard = { version = "3", default-features = false, features = ["image-data"] }
 core-graphics = "0.24"
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", features = ["NSString", "NSData", "NSArray", "NSGeometry"] }
-objc2-app-kit = { version = "0.3", features = ["NSAlert", "NSWindow", "NSResponder", "NSApplication", "NSPasteboard", "NSToolbar", "NSToolbarItem", "NSImage", "NSTextField", "NSControl", "NSView", "NSLayoutAnchor", "NSLayoutConstraint"] }
+objc2-app-kit = { version = "0.3", features = ["NSAlert", "NSWindow", "NSResponder", "NSApplication", "NSPasteboard", "NSToolbar", "NSToolbarItem", "NSImage", "NSImageSymbolConfiguration", "NSFont", "NSTextField", "NSControl", "NSView", "NSLayoutAnchor", "NSLayoutConstraint"] }
 
