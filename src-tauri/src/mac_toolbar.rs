@@ -124,10 +124,9 @@ fn style_button(item: &NSToolbarItem, label: &str, symbol: &str, compact: bool, 
             NSImageSymbolConfiguration::configurationWithPointSize_weight_scale(
                 point,
                 NSFontWeightRegular,
-                // Medium, NOT Large: a Large glyph is tall enough that AppKit sizes
-                // the item to the image and drops the label row entirely — which is
-                // why labels never rendered (#125). Medium leaves room for the label.
-                NSImageSymbolScale::Medium,
+                // Large — the label row is controlled by the toolbar displayMode, not
+                // image size (#125), so keep the bigger glyph.
+                NSImageSymbolScale::Large,
             )
         };
         // Accent-tint the dirty Save icon; otherwise leave it template (adapts to
