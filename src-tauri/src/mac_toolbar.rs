@@ -16,13 +16,13 @@
 use std::cell::{Cell, RefCell};
 
 use objc2::rc::Retained;
-use objc2::runtime::ProtocolObject;
+use objc2::runtime::{AnyObject, ProtocolObject};
 use objc2::{define_class, msg_send, sel, AnyThread, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
-    NSColor, NSCompositingOperation, NSFont, NSFontWeightRegular, NSImage,
-    NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSTextAlignment,
-    NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarDisplayMode, NSToolbarItem, NSView,
-    NSWindow, NSWindowToolbarStyle,
+    NSColor, NSCompositingOperation, NSEvent, NSFont, NSFontWeightRegular, NSImage,
+    NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSText, NSTextAlignment,
+    NSTextField, NSTextFieldCell, NSToolbar, NSToolbarDelegate, NSToolbarDisplayMode, NSToolbarItem,
+    NSView, NSWindow, NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use serde::Serialize;
@@ -70,7 +70,7 @@ const TITLE_WIDTH: f64 = 240.0;
 const TITLE_FONT_SIZE: f64 = 14.0;
 /// Fixed height (points) of the editable title field. A hair taller than the text
 /// so the editing focus ring has a little breathing room (bump for more space).
-const TITLE_FIELD_HEIGHT: f64 = 22.0;
+const TITLE_FIELD_HEIGHT: f64 = 30.0;
 const AUTHOR_ID: &str = "author";
 const VENUE_ID: &str = "venue";
 const JUPYTER_ID: &str = "jupyter";
@@ -151,6 +151,83 @@ fn nudge_image(src: &NSImage, dy: f64) -> Retained<NSImage> {
         out.unlockFocus();
     }
     out
+}
+
+/// Center `base` vertically around the given text height (top-align the extra
+/// space evenly). Used by CenteredCell so the title text sits mid-field.
+fn center_rect(base: NSRect, text_height: f64) -> NSRect {
+    let delta = base.size.height - text_height;
+    if delta > 0.0 {
+        NSRect::new(
+            NSPoint::new(base.origin.x, base.origin.y + (delta / 2.0).floor()),
+            NSSize::new(base.size.width, text_height),
+        )
+    } else {
+        base
+    }
+}
+
+define_class!(
+    // A single-line NSTextFieldCell that draws (and edits/selects) its text
+    // vertically centered instead of top-aligned — so a field taller than its text
+    // (for focus-ring breathing room) keeps the text mid-field.
+    #[unsafe(super(NSTextFieldCell))]
+    #[thread_kind = MainThreadOnly]
+    #[name = "EigendeckCenteredCell"]
+    struct CenteredCell;
+
+    unsafe impl NSObjectProtocol for CenteredCell {}
+
+    impl CenteredCell {
+        #[unsafe(method(drawingRectForBounds:))]
+        fn drawing_rect_for_bounds(&self, rect: NSRect) -> NSRect {
+            let base: NSRect = unsafe { msg_send![super(self), drawingRectForBounds: rect] };
+            let text: NSSize = unsafe { msg_send![self, cellSizeForBounds: rect] };
+            center_rect(base, text.height)
+        }
+
+        #[unsafe(method(editWithFrame:inView:editor:delegate:event:))]
+        fn edit_with_frame(
+            &self,
+            rect: NSRect,
+            view: &NSView,
+            editor: &NSText,
+            delegate: Option<&AnyObject>,
+            event: Option<&NSEvent>,
+        ) {
+            let base: NSRect = unsafe { msg_send![super(self), drawingRectForBounds: rect] };
+            let text: NSSize = unsafe { msg_send![self, cellSizeForBounds: rect] };
+            let r = center_rect(base, text.height);
+            unsafe {
+                msg_send![super(self), editWithFrame: r, inView: view, editor: editor, delegate: delegate, event: event]
+            }
+        }
+
+        #[unsafe(method(selectWithFrame:inView:editor:delegate:start:length:))]
+        fn select_with_frame(
+            &self,
+            rect: NSRect,
+            view: &NSView,
+            editor: &NSText,
+            delegate: Option<&AnyObject>,
+            start: isize,
+            length: isize,
+        ) {
+            let base: NSRect = unsafe { msg_send![super(self), drawingRectForBounds: rect] };
+            let text: NSSize = unsafe { msg_send![self, cellSizeForBounds: rect] };
+            let r = center_rect(base, text.height);
+            unsafe {
+                msg_send![super(self), selectWithFrame: r, inView: view, editor: editor, delegate: delegate, start: start, length: length]
+            }
+        }
+    }
+);
+
+impl CenteredCell {
+    fn make(mtm: MainThreadMarker) -> Retained<Self> {
+        let this = CenteredCell::alloc(mtm);
+        unsafe { msg_send![this, initTextCell: &*NSString::from_str("")] }
+    }
 }
 
 fn meta_for(identifier: &NSString) -> Option<(&'static str, &'static str)> {
@@ -308,8 +385,13 @@ define_class!(
                 // toolbar row (centeredItemIdentifier). Two-way synced to
                 // presentation.title (onTitleEdit → toolbar:field; set_fields pushes back).
                 let field = NSTextField::textFieldWithString(&NSString::from_str(""), mtm);
+                // Swap in a vertically-centering cell so the text sits mid-field
+                // even though the field is taller than the text (ring breathing room).
+                let cell = CenteredCell::make(mtm);
+                unsafe { field.setCell(Some(&cell)) };
                 field.setBezeled(false);
                 field.setDrawsBackground(false);
+                field.setEditable(true);
                 field.setFont(Some(&NSFont::boldSystemFontOfSize(TITLE_FONT_SIZE)));
                 field.setAlignment(NSTextAlignment::Center);
                 let target: &objc2::runtime::AnyObject = self;
