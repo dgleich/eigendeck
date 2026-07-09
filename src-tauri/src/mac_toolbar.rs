@@ -64,17 +64,32 @@ const ITEMS: &[(&str, &str, &str)] = &[
     ("present", "Present", "play.fill"),
 ];
 
-fn identifiers() -> Retained<NSArray<NSString>> {
-    // left group | flexible space | right group. The document title is the native
-    // centered title row (Expanded style), NOT a toolbar item.
-    let order = [
+// left group | flexible space | right group. The document title is the native
+// centered title row (Expanded style), NOT a toolbar item. The Jupyter item is
+// ALLOWED but not DEFAULT: it's inserted/removed live by set_jupyter() so it only
+// shows when the deck actually uses a Jupyter kernel (mirrors the HTML pill).
+fn build_ids(with_jupyter: bool) -> Retained<NSArray<NSString>> {
+    let mut order: Vec<&str> = vec![
         "add-slide", "add-build", "save",
         FLEX_ID, TITLE_ID, FLEX_ID,
-        AUTHOR_ID, VENUE_ID, JUPYTER_ID, "export", "present",
+        AUTHOR_ID, VENUE_ID,
     ];
+    if with_jupyter {
+        order.push(JUPYTER_ID);
+    }
+    order.push("export");
+    order.push("present");
     let ids: Vec<Retained<NSString>> = order.iter().map(|id| NSString::from_str(id)).collect();
     let refs: Vec<&NSString> = ids.iter().map(|r| &**r).collect();
     NSArray::from_slice(&refs)
+}
+
+fn default_identifiers() -> Retained<NSArray<NSString>> {
+    build_ids(false)
+}
+
+fn allowed_identifiers() -> Retained<NSArray<NSString>> {
+    build_ids(true)
 }
 
 fn meta_for(identifier: &NSString) -> Option<(&'static str, &'static str)> {
@@ -201,12 +216,12 @@ define_class!(
     unsafe impl NSToolbarDelegate for ToolbarDelegate {
         #[unsafe(method_id(toolbarDefaultItemIdentifiers:))]
         fn default_ids(&self, _t: &NSToolbar) -> Retained<NSArray<NSString>> {
-            identifiers()
+            default_identifiers()
         }
 
         #[unsafe(method_id(toolbarAllowedItemIdentifiers:))]
         fn allowed_ids(&self, _t: &NSToolbar) -> Retained<NSArray<NSString>> {
-            identifiers()
+            allowed_identifiers()
         }
 
         #[unsafe(method_id(toolbar:itemForItemIdentifier:willBeInsertedIntoToolbar:))]
@@ -468,14 +483,40 @@ pub fn set_save_dirty(dirty: bool) {
     });
 }
 
-/// Update the Jupyter server-status icon (health tint + tooltip). Main thread.
+/// Index of the item with the given identifier in the toolbar, if present.
+fn item_index(tb: &NSToolbar, id: &str) -> Option<usize> {
+    let items = tb.items();
+    (0..items.count()).find(|&i| items.objectAtIndex(i).itemIdentifier().to_string() == id)
+}
+
+/// Update the Jupyter server-status icon. status "gray" = the deck has no live
+/// notebooks → the item is REMOVED entirely (mirrors the HTML pill hiding). Any
+/// other status inserts it (before Export) if absent and tints it. Main thread.
 pub fn set_jupyter(status: &str, tooltip: &str) {
     DELEGATE.with(|d| {
-        if let Some(del) = d.borrow().as_ref() {
-            *del.ivars().jupyter_status.borrow_mut() = status.to_string();
-            *del.ivars().jupyter_tooltip.borrow_mut() = tooltip.to_string();
-            restyle_jupyter(del);
-        }
+        let Some(del) = d.borrow().as_ref().cloned() else { return };
+        *del.ivars().jupyter_status.borrow_mut() = status.to_string();
+        *del.ivars().jupyter_tooltip.borrow_mut() = tooltip.to_string();
+        let visible = status != "gray";
+        TOOLBAR.with(|t| {
+            let Some(tb) = t.borrow().as_ref().cloned() else { return };
+            match (visible, item_index(&tb, JUPYTER_ID)) {
+                // Show: insert before Export (item_for styles it from the status
+                // we just stored). Fall back to the end if Export isn't found.
+                (true, None) => {
+                    let idx = item_index(&tb, "export").unwrap_or_else(|| tb.items().count());
+                    tb.insertItemWithItemIdentifier_atIndex(&NSString::from_str(JUPYTER_ID), idx as isize);
+                }
+                // Already shown: just re-tint.
+                (true, Some(_)) => restyle_jupyter(&del),
+                // Hide: remove it and drop the stale ref.
+                (false, Some(i)) => {
+                    tb.removeItemAtIndex(i as isize);
+                    *del.ivars().jupyter_item.borrow_mut() = None;
+                }
+                (false, None) => {}
+            }
+        });
     });
 }
 
