@@ -240,11 +240,31 @@ fn search_toolbar_view(view: Retained<NSView>) -> Option<Retained<NSView>> {
 /// Find the NSToolbarView behind the window's native toolbar. It's a sibling of
 /// contentView under the window's private frame view, so climb to the root first.
 fn find_toolbar_background(ns_win: &NSWindow) -> Option<Retained<NSView>> {
-    let mut root = unsafe { ns_win.contentView() }?;
+    let Some(content) = (unsafe { ns_win.contentView() }) else {
+        eprintln!("[tbmenu] no contentView");
+        return None;
+    };
+    let mut root = content;
     while let Some(sv) = unsafe { root.superview() } {
         root = sv;
     }
-    search_toolbar_view(root)
+    let found = search_toolbar_view(root.clone());
+    if found.is_none() {
+        eprintln!("[tbmenu] NSToolbarView not found — dumping view tree:");
+        dump_view_tree(&root, 0);
+    }
+    found
+}
+
+/// TEMP diagnostics: print the class name of every view in the subtree so we can
+/// identify the real toolbar background class on this macOS version.
+fn dump_view_tree(view: &NSView, depth: usize) {
+    let name = view.class().name();
+    eprintln!("[tbmenu] {}{}", "  ".repeat(depth), name.to_str().unwrap_or("?"));
+    let subs = unsafe { view.subviews() };
+    for i in 0..subs.count() {
+        dump_view_tree(&subs.objectAtIndex(i), depth + 1);
+    }
 }
 
 /// Attach the right-click display menu to the toolbar BACKGROUND (the empty strip,
