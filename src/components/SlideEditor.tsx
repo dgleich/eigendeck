@@ -22,7 +22,7 @@ import { readTextFileNative } from '../lib/nativeFs';
 export const SLIDE_WIDTH = 1920;
 export const SLIDE_HEIGHT = 1080;
 /** Breathing room (px) reserved below the slide when fitting it to the canvas. */
-const CANVAS_GAP = 24;
+const CANVAS_GAP = 12;
 
 // Layout constants moved to PropertiesPanel
 
