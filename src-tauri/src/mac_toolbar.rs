@@ -21,7 +21,7 @@ use objc2::{define_class, msg_send, sel, AnyThread, DefinedClass, MainThreadMark
 use objc2_app_kit::{
     NSColor, NSCompositingOperation, NSFont, NSFontWeightRegular, NSImage,
     NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSTextAlignment,
-    NSTextField, NSTextFieldCell, NSToolbar, NSToolbarDelegate, NSToolbarDisplayMode, NSToolbarItem,
+    NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarDisplayMode, NSToolbarItem,
     NSView, NSWindow, NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
@@ -68,9 +68,6 @@ fn lead_gap_for(compact: bool) -> f64 {
 const TITLE_ID: &str = "title";
 const TITLE_WIDTH: f64 = 240.0;
 const TITLE_FONT_SIZE: f64 = 14.0;
-/// Fixed height (points) of the editable title field. A hair taller than the text
-/// so the editing focus ring has a little breathing room (bump for more space).
-const TITLE_FIELD_HEIGHT: f64 = 30.0;
 const AUTHOR_ID: &str = "author";
 const VENUE_ID: &str = "venue";
 const JUPYTER_ID: &str = "jupyter";
@@ -153,70 +150,24 @@ fn nudge_image(src: &NSImage, dy: f64) -> Retained<NSImage> {
     out
 }
 
-/// Center `base` vertically for a single line of `line_height`, honoring the
-/// control view's flippedness (NSTextField's is flipped → +y is down).
-fn center_rect(base: NSRect, line_height: f64, flipped: bool) -> NSRect {
-    let delta = base.size.height - line_height;
-    if delta <= 0.0 {
-        return base;
-    }
-    let half = (delta / 2.0).floor();
-    let y = if flipped { base.origin.y + half } else { base.origin.y + (delta - half) };
-    NSRect::new(NSPoint::new(base.origin.x, y), NSSize::new(base.size.width, line_height))
-}
-
-define_class!(
-    // A single-line NSTextFieldCell that draws its text vertically centered. Only
-    // drawingRectForBounds:/titleRectForBounds: are overridden — AppKit's default
-    // editWithFrame:/selectWithFrame: already call drawingRectForBounds: to place
-    // the field editor, so display and editing stay in sync (no jump on click).
-    #[unsafe(super(NSTextFieldCell))]
-    #[thread_kind = MainThreadOnly]
-    #[name = "EigendeckCenteredCell"]
-    struct CenteredCell;
-
-    unsafe impl NSObjectProtocol for CenteredCell {}
-
-    impl CenteredCell {
-        #[unsafe(method(drawingRectForBounds:))]
-        fn drawing_rect_for_bounds(&self, rect: NSRect) -> NSRect {
-            let base: NSRect = unsafe { msg_send![super(self), drawingRectForBounds: rect] };
-            center_rect(base, self.line_height(), self.control_view_is_flipped())
-        }
-
-        #[unsafe(method(titleRectForBounds:))]
-        fn title_rect_for_bounds(&self, rect: NSRect) -> NSRect {
-            let base: NSRect = unsafe { msg_send![super(self), titleRectForBounds: rect] };
-            center_rect(base, self.line_height(), self.control_view_is_flipped())
-        }
-    }
-);
-
-impl CenteredCell {
-    fn make(mtm: MainThreadMarker) -> Retained<Self> {
-        let this = CenteredCell::alloc(mtm);
-        unsafe { msg_send![this, initTextCell: &*NSString::from_str("")] }
-    }
-
-    /// Single-line text height from the cell font (glyph metric, no bezel inset —
-    /// unlike cellSizeForBounds:, which overstated it and killed the centering).
-    fn line_height(&self) -> f64 {
-        let font: Option<Retained<NSFont>> = unsafe { msg_send![self, font] };
-        let font =
-            font.unwrap_or_else(|| unsafe { NSFont::systemFontOfSize(NSFont::systemFontSize()) });
-        let ascender: f64 = unsafe { msg_send![&*font, ascender] };
-        let descender: f64 = unsafe { msg_send![&*font, descender] }; // negative
-        let leading: f64 = unsafe { msg_send![&*font, leading] };
-        (ascender - descender + leading).ceil()
-    }
-
-    fn control_view_is_flipped(&self) -> bool {
-        let view: Option<Retained<NSView>> = unsafe { msg_send![self, controlView] };
-        match view {
-            Some(v) => unsafe { msg_send![&*v, isFlipped] },
-            None => true,
-        }
-    }
+/// Wrap `field` in a container view and pin it leading/trailing + centerY with NO
+/// height constraint, so the field keeps its intrinsic (text) height and AppKit
+/// centers it vertically in the taller toolbar item — for both display and editing
+/// (the field editor uses the same frame, so no jump). Works for borderless and
+/// bezeled fields alike; the toolbar item's min/max size drives the outer height.
+fn centered_field_container(field: &NSTextField, width: f64, mtm: MainThreadMarker) -> Retained<NSView> {
+    let container = NSView::initWithFrame(
+        NSView::alloc(mtm),
+        NSRect::new(NSPoint::new(0.0, 0.0), NSSize { width, height: FIELD_HEIGHT }),
+    );
+    field.setTranslatesAutoresizingMaskIntoConstraints(false);
+    container.addSubview(field);
+    let leading = field.leadingAnchor().constraintEqualToAnchor(&container.leadingAnchor());
+    let trailing = field.trailingAnchor().constraintEqualToAnchor(&container.trailingAnchor());
+    let center_y = field.centerYAnchor().constraintEqualToAnchor(&container.centerYAnchor());
+    let refs: [&NSLayoutConstraint; 3] = [&leading, &trailing, &center_y];
+    NSLayoutConstraint::activateConstraints(&NSArray::from_slice(&refs));
+    container
 }
 
 fn meta_for(identifier: &NSString) -> Option<(&'static str, &'static str)> {
@@ -373,11 +324,10 @@ define_class!(
                 // Bold, borderless, editable presentation title — centered in the
                 // toolbar row (centeredItemIdentifier). Two-way synced to
                 // presentation.title (onTitleEdit → toolbar:field; set_fields pushes back).
+                // Bold, borderless, editable title. Wrapped in a centering container
+                // (intrinsic height + centerY) so the text sits mid-row and the focus
+                // ring centers with it — no custom cell, no jump on click.
                 let field = NSTextField::textFieldWithString(&NSString::from_str(""), mtm);
-                // Swap in a vertically-centering cell so the text sits mid-field
-                // even though the field is taller than the text (ring breathing room).
-                let cell = CenteredCell::make(mtm);
-                unsafe { field.setCell(Some(&cell)) };
                 field.setBezeled(false);
                 field.setDrawsBackground(false);
                 field.setEditable(true);
@@ -389,42 +339,13 @@ define_class!(
                     field.setAction(Some(sel!(onTitleEdit:)));
                 }
                 *self.ivars().title_field.borrow_mut() = Some(field.clone());
-                // A bare single-line NSTextField top-aligns its text when the item
-                // stretches it to a fixed height. Wrap it in a container and pin
-                // centerY (no height constraint → the field uses its intrinsic text
-                // height) so the text — and the focus ring — sit centered in the row.
-                let container = NSView::initWithFrame(
-                    NSView::alloc(mtm),
-                    NSRect::new(
-                        NSPoint::new(0.0, 0.0),
-                        NSSize { width: TITLE_WIDTH, height: FIELD_HEIGHT },
-                    ),
-                );
-                field.setTranslatesAutoresizingMaskIntoConstraints(false);
-                container.addSubview(&field);
-                let leading = field
-                    .leadingAnchor()
-                    .constraintEqualToAnchor(&container.leadingAnchor());
-                let trailing = field
-                    .trailingAnchor()
-                    .constraintEqualToAnchor(&container.trailingAnchor());
-                let center_y = field
-                    .centerYAnchor()
-                    .constraintEqualToAnchor(&container.centerYAnchor());
-                // Slightly taller than the text so the editing focus ring gets a
-                // couple pixels of breathing room (kept centered by center_y).
-                let height = field
-                    .heightAnchor()
-                    .constraintEqualToConstant(TITLE_FIELD_HEIGHT);
-                let refs: [&NSLayoutConstraint; 4] = [&leading, &trailing, &center_y, &height];
-                NSLayoutConstraint::activateConstraints(&NSArray::from_slice(&refs));
+                let container = centered_field_container(&field, TITLE_WIDTH, mtm);
                 #[allow(deprecated)]
                 {
                     item.setMinSize(NSSize { width: TITLE_WIDTH, height: FIELD_HEIGHT });
                     item.setMaxSize(NSSize { width: TITLE_WIDTH, height: FIELD_HEIGHT });
                 }
-                let view: &NSView = &container;
-                item.setView(Some(view));
+                item.setView(Some(&container));
                 item.setLabel(&NSString::from_str(""));
                 Some(item)
             } else if id == AUTHOR_ID || id == VENUE_ID {
@@ -434,12 +355,6 @@ define_class!(
                     ("Venue", sel!(onVenueEdit:), &self.ivars().venue_field)
                 };
                 let field = NSTextField::textFieldWithString(&NSString::from_str(""), mtm);
-                // Vertically-center the text in the bezel (bezeled fields otherwise
-                // sit a hair high here). Keep the box + editability.
-                let cell = CenteredCell::make(mtm);
-                unsafe { field.setCell(Some(&cell)) };
-                field.setBezeled(true);
-                field.setEditable(true);
                 field.setPlaceholderString(Some(&NSString::from_str(placeholder)));
                 let target: &objc2::runtime::AnyObject = self;
                 unsafe {
@@ -447,15 +362,15 @@ define_class!(
                     field.setAction(Some(action));
                 }
                 *slot.borrow_mut() = Some(field.clone());
-                // Give the ITEM a fixed size and let the toolbar center the field
-                // vertically — the idiomatic path (no container / manual padding).
+                // Same centering container as the title, so the bezel's text sits
+                // centered instead of high (the field uses its intrinsic height).
+                let container = centered_field_container(&field, FIELD_WIDTH, mtm);
                 #[allow(deprecated)]
                 {
                     item.setMinSize(NSSize { width: FIELD_WIDTH, height: FIELD_HEIGHT });
                     item.setMaxSize(NSSize { width: FIELD_WIDTH, height: FIELD_HEIGHT });
                 }
-                let view: &NSView = &field;
-                item.setView(Some(view));
+                item.setView(Some(&container));
                 item.setLabel(&NSString::from_str(""));
                 Some(item)
             } else if id == JUPYTER_ID {
