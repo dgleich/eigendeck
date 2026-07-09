@@ -62,7 +62,9 @@ const LEAD_GAP_COMPACT: f64 = 100.0;
 const LEAD_GAP_ID: &str = "lead-gap";
 
 fn lead_gap_for(compact: bool) -> f64 {
-    if compact { LEAD_GAP_COMPACT } else { LEAD_GAP_REGULAR }
+    // Never exactly 0: a zero-width toolbar view item makes NSToolbar log an
+    // "ambiguous/zero size" warning. 1pt reads as no gap.
+    (if compact { LEAD_GAP_COMPACT } else { LEAD_GAP_REGULAR }).max(1.0)
 }
 
 const TITLE_ID: &str = "title";
