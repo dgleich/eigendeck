@@ -19,9 +19,10 @@ use objc2::rc::Retained;
 use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
-    NSColor, NSFont, NSFontWeightRegular, NSImage, NSImageSymbolConfiguration, NSImageSymbolScale,
-    NSLayoutConstraint, NSTextAlignment, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem,
-    NSView, NSWindow, NSWindowToolbarStyle,
+    NSColor, NSControlStateValueOff, NSControlStateValueOn, NSFont, NSFontWeightRegular, NSImage,
+    NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSMenu, NSMenuItem,
+    NSTextAlignment, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow,
+    NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use serde::Serialize;
@@ -186,6 +187,33 @@ fn style_jupyter(item: &NSToolbarItem, status: &str, tooltip: &str, compact: boo
     item.setBordered(compact);
 }
 
+/// A Keynote-style right-click menu for the toolbar's non-button areas (title,
+/// Author, Venue): "Icon and Text" / "Icon Only" with a checkmark on the current
+/// mode. Selecting posts `toolbar:action` {id: "compact-on"|"compact-off"} so the
+/// frontend flips the `compactToolbar` preference (single source of truth — keeps
+/// the Settings checkbox in sync), which drives set_compact back here.
+fn build_display_menu(delegate: &ToolbarDelegate, compact: bool, mtm: MainThreadMarker) -> Retained<NSMenu> {
+    let menu = NSMenu::new(mtm);
+    menu.setAutoenablesItems(false);
+    let target: &objc2::runtime::AnyObject = delegate;
+    // (title, tag, checked-when). tag 0 = Icon and Text (not compact), 1 = Icon Only.
+    for (title, tag, checked) in [("Icon and Text", 0isize, !compact), ("Icon Only", 1isize, compact)] {
+        let item = unsafe {
+            NSMenuItem::initWithTitle_action_keyEquivalent(
+                NSMenuItem::alloc(mtm),
+                &NSString::from_str(title),
+                Some(sel!(onDisplayMode:)),
+                &NSString::from_str(""),
+            )
+        };
+        item.setTag(tag);
+        unsafe { item.setTarget(Some(target)) };
+        item.setState(if checked { NSControlStateValueOn } else { NSControlStateValueOff });
+        menu.addItem(&item);
+    }
+    menu
+}
+
 struct Ivars {
     app: AppHandle,
     title_field: RefCell<Option<Retained<NSTextField>>>,
@@ -276,6 +304,12 @@ define_class!(
                     .constraintEqualToAnchor(&container.centerYAnchor());
                 let refs: [&NSLayoutConstraint; 3] = [&leading, &trailing, &center_y];
                 NSLayoutConstraint::activateConstraints(&NSArray::from_slice(&refs));
+                // Right-click the title area → the Icon/Text display menu.
+                let menu = build_display_menu(self, self.ivars().compact.get(), mtm);
+                unsafe {
+                    container.setMenu(Some(&menu));
+                    field.setMenu(Some(&menu));
+                }
                 #[allow(deprecated)]
                 {
                     item.setMinSize(NSSize { width: TITLE_WIDTH, height: FIELD_HEIGHT });
@@ -299,6 +333,9 @@ define_class!(
                     field.setAction(Some(action));
                 }
                 *slot.borrow_mut() = Some(field.clone());
+                // Right-click the Author/Venue field → the Icon/Text display menu.
+                let menu = build_display_menu(self, self.ivars().compact.get(), mtm);
+                unsafe { field.setMenu(Some(&menu)) };
                 // Give the ITEM a fixed size and let the toolbar center the field
                 // vertically — the idiomatic path (no container / manual padding).
                 #[allow(deprecated)]
@@ -353,6 +390,15 @@ define_class!(
         fn on_item(&self, sender: &NSToolbarItem) {
             let id = sender.itemIdentifier().to_string();
             let _ = self.ivars().app.emit("toolbar:action", ActionPayload { id });
+        }
+
+        #[unsafe(method(onDisplayMode:))]
+        fn on_display_mode(&self, sender: &NSMenuItem) {
+            // tag 1 = "Icon Only" = compact. Route through the frontend so the
+            // compactToolbar preference (and the Settings checkbox) stays in sync;
+            // the pref change drives set_compact back here.
+            let id = if sender.tag() == 1 { "compact-on" } else { "compact-off" };
+            let _ = self.ivars().app.emit("toolbar:action", ActionPayload { id: id.to_string() });
         }
 
         #[unsafe(method(onTitleEdit:))]
