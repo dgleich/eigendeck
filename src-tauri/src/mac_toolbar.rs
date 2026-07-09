@@ -20,10 +20,10 @@ use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
     NSColor, NSFont, NSFontWeightRegular, NSImage, NSImageSymbolConfiguration, NSImageSymbolScale,
-    NSTextAlignment, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow,
-    NSWindowToolbarStyle,
+    NSLayoutConstraint, NSTextAlignment, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem,
+    NSView, NSWindow, NSWindowToolbarStyle,
 };
-use objc2_foundation::{NSArray, NSObjectProtocol, NSSize, NSString};
+use objc2_foundation::{NSArray, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -124,9 +124,11 @@ fn style_button(item: &NSToolbarItem, label: &str, symbol: &str, compact: bool, 
         let sized = unsafe { image.imageWithSymbolConfiguration(&cfg) }.unwrap_or(image);
         item.setImage(Some(&sized));
     }
-    // Bordered → native toolbar-button chrome: hover highlight, pressed state,
-    // standard control sizing (macOS 11+).
-    item.setBordered(true);
+    // Bordered and label-beneath are mutually exclusive on a plain NSToolbarItem:
+    // a bordered item is icon-only (capsule hover/press chrome, label in tooltip),
+    // a borderless item shows the icon with the label beneath (Keynote/Xcode look).
+    // So: compact → bordered (icon-only capsule), normal → borderless (icon+label).
+    item.setBordered(compact);
 }
 
 struct Ivars {
@@ -191,12 +193,38 @@ define_class!(
                     field.setAction(Some(sel!(onTitleEdit:)));
                 }
                 *self.ivars().title_field.borrow_mut() = Some(field.clone());
+                // A bare single-line NSTextField top-aligns its text when the item
+                // stretches it to a fixed height. Wrap it in a container and pin
+                // centerY (no height constraint → the field uses its intrinsic text
+                // height) so the text — and the focus ring — sit centered in the row.
+                let container = NSView::initWithFrame(
+                    NSView::alloc(mtm),
+                    NSRect::new(
+                        NSPoint::new(0.0, 0.0),
+                        NSSize { width: TITLE_WIDTH, height: FIELD_HEIGHT },
+                    ),
+                );
+                unsafe {
+                    field.setTranslatesAutoresizingMaskIntoConstraints(false);
+                    container.addSubview(&field);
+                    let leading = field
+                        .leadingAnchor()
+                        .constraintEqualToAnchor(&container.leadingAnchor());
+                    let trailing = field
+                        .trailingAnchor()
+                        .constraintEqualToAnchor(&container.trailingAnchor());
+                    let center_y = field
+                        .centerYAnchor()
+                        .constraintEqualToAnchor(&container.centerYAnchor());
+                    let refs: [&NSLayoutConstraint; 3] = [&leading, &trailing, &center_y];
+                    NSLayoutConstraint::activateConstraints(&NSArray::from_slice(&refs));
+                }
                 #[allow(deprecated)]
                 {
                     item.setMinSize(NSSize { width: TITLE_WIDTH, height: FIELD_HEIGHT });
                     item.setMaxSize(NSSize { width: TITLE_WIDTH, height: FIELD_HEIGHT });
                 }
-                let view: &NSView = &field;
+                let view: &NSView = &container;
                 item.setView(Some(view));
                 item.setLabel(&NSString::from_str(""));
                 Some(item)
