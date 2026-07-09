@@ -21,6 +21,8 @@ import { readTextFileNative } from '../lib/nativeFs';
 
 export const SLIDE_WIDTH = 1920;
 export const SLIDE_HEIGHT = 1080;
+/** Breathing room (px) reserved below the slide when fitting it to the canvas. */
+const CANVAS_GAP = 24;
 
 // Layout constants moved to PropertiesPanel
 
@@ -53,10 +55,16 @@ export function SlideEditor() {
   const fitScale = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
-    const w = el.clientWidth, h = el.clientHeight;
-    if (w <= 0 || h <= 0) return;
-    const padding = 32;
-    const next = Math.min((w - padding) / SLIDE_WIDTH, (h - padding) / SLIDE_HEIGHT, 1);
+    if (el.clientWidth <= 0 || el.clientHeight <= 0) return;
+    // Fit into the actual CONTENT box (clientWidth/Height include padding, which is
+    // now asymmetric + dynamic — the floating HUD sets a variable top padding), and
+    // reserve CANVAS_GAP below so the slide isn't scaled flush to the bottom edge.
+    const cs = getComputedStyle(el);
+    const availW = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const availH =
+      el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - CANVAS_GAP;
+    if (availW <= 0 || availH <= 0) return;
+    const next = Math.min(availW / SLIDE_WIDTH, availH / SLIDE_HEIGHT, 1);
     if (next > 0) setScale(next);
   }, []);
 
@@ -737,10 +745,10 @@ export function SlideEditor() {
           className="slide-canvas"
           style={{ width: SLIDE_WIDTH, height: SLIDE_HEIGHT, transform: `scale(${scale})`, transformOrigin: 'top center',
             // transform: scale() leaves the layout box at full 1080px, so the
-            // unscaled remainder shows as dead space below the slide. Collapse
-            // most of it with a negative bottom margin, but leave a small gap so
-            // the slide isn't jammed against the bottom edge.
-            marginBottom: 24 - SLIDE_HEIGHT * (1 - scale),
+            // unscaled remainder shows as dead space below the slide. Collapse it
+            // to the scaled height; the visible gap below comes from fitScale
+            // reserving CANVAS_GAP within the content box.
+            marginBottom: -(SLIDE_HEIGHT * (1 - scale)),
             // Exposed so in-canvas chrome (badges, lock buttons, notebook
             // controls) can counter-scale to a fixed on-screen size — the
             // canvas transform: scale() otherwise shrinks them with zoom.
