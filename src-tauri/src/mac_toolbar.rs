@@ -42,9 +42,9 @@ const ICON_POINT_SIZE_COMPACT: f64 = 12.0;
 ///   Export (square.and.arrow.up): arrow above the box → box sinks → nudge UP.
 ///   Save   (square.and.arrow.down): arrow below the box → box rides high → nudge DOWN.
 const EXPORT_NUDGE_REGULAR: f64 = 8.0;
-const EXPORT_NUDGE_COMPACT: f64 = 6.0;
-const SAVE_NUDGE_REGULAR: f64 = -8.0;
-const SAVE_NUDGE_COMPACT: f64 = -6.0;
+const EXPORT_NUDGE_COMPACT: f64 = 4.0;
+const SAVE_NUDGE_REGULAR: f64 = 8.0;
+const SAVE_NUDGE_COMPACT: f64 = 4.0;
 
 fn nudge_for(symbol: &str, compact: bool) -> f64 {
     match symbol {
@@ -52,6 +52,17 @@ fn nudge_for(symbol: &str, compact: bool) -> f64 {
         "square.and.arrow.down" => if compact { SAVE_NUDGE_COMPACT } else { SAVE_NUDGE_REGULAR },
         _ => 0.0,
     }
+}
+
+/// Width (points) of the invisible spacer between the left group (Add Slide / Add
+/// Build / Save) and the centered title, per mode. Bump COMPACT to push the left
+/// group further from the title in compact mode; REGULAR is normally 0.
+const LEAD_GAP_REGULAR: f64 = 0.0;
+const LEAD_GAP_COMPACT: f64 = 24.0;
+const LEAD_GAP_ID: &str = "lead-gap";
+
+fn lead_gap_for(compact: bool) -> f64 {
+    if compact { LEAD_GAP_COMPACT } else { LEAD_GAP_REGULAR }
 }
 
 const TITLE_ID: &str = "title";
@@ -88,7 +99,7 @@ const ITEMS: &[(&str, &str, &str)] = &[
 // shows when the deck actually uses a Jupyter kernel (mirrors the HTML pill).
 fn build_ids(with_jupyter: bool) -> Retained<NSArray<NSString>> {
     let mut order: Vec<&str> = vec![
-        "add-slide", "add-build", "save",
+        "add-slide", "add-build", "save", LEAD_GAP_ID,
         FLEX_ID, TITLE_ID, FLEX_ID,
         AUTHOR_ID, VENUE_ID,
     ];
@@ -252,6 +263,8 @@ struct Ivars {
     jupyter_item: RefCell<Option<Retained<NSToolbarItem>>>,
     jupyter_status: RefCell<String>,
     jupyter_tooltip: RefCell<String>,
+    /// Invisible leading spacer item (Save→title gap), resized per mode.
+    lead_gap_item: RefCell<Option<Retained<NSToolbarItem>>>,
 }
 
 define_class!(
@@ -375,6 +388,24 @@ define_class!(
                 }
                 *self.ivars().jupyter_item.borrow_mut() = Some(item.clone());
                 Some(item)
+            } else if id == LEAD_GAP_ID {
+                // Invisible fixed-width spacer between the left group and the title;
+                // width is per-mode and resized in place by restyle_lead_gap.
+                let w = lead_gap_for(self.ivars().compact.get());
+                let size = NSSize { width: w, height: FIELD_HEIGHT };
+                let view = NSView::initWithFrame(
+                    NSView::alloc(mtm),
+                    NSRect::new(NSPoint::new(0.0, 0.0), size),
+                );
+                item.setView(Some(&view));
+                #[allow(deprecated)]
+                {
+                    item.setMinSize(size);
+                    item.setMaxSize(size);
+                }
+                item.setLabel(&NSString::from_str(""));
+                *self.ivars().lead_gap_item.borrow_mut() = Some(item.clone());
+                Some(item)
             } else {
                 match meta_for(identifier) {
                     None => None, // system-provided (flexible space)
@@ -435,6 +466,7 @@ impl ToolbarDelegate {
             jupyter_item: RefCell::new(None),
             jupyter_status: RefCell::new("gray".to_string()),
             jupyter_tooltip: RefCell::new(String::new()),
+            lead_gap_item: RefCell::new(None),
         });
         unsafe { msg_send![super(this), init] }
     }
@@ -483,6 +515,22 @@ fn restyle_buttons(del: &ToolbarDelegate) {
         }
     }
     restyle_jupyter(del);
+    restyle_lead_gap(del);
+}
+
+/// Resize the leading spacer to the current mode's gap width, in place.
+fn restyle_lead_gap(del: &ToolbarDelegate) {
+    if let Some(item) = del.ivars().lead_gap_item.borrow().as_ref() {
+        let size = NSSize { width: lead_gap_for(del.ivars().compact.get()), height: FIELD_HEIGHT };
+        #[allow(deprecated)]
+        {
+            item.setMinSize(size);
+            item.setMaxSize(size);
+        }
+        if let Some(view) = unsafe { item.view() } {
+            view.setFrameSize(size);
+        }
+    }
 }
 
 /// Re-apply the Jupyter item's tint/label from the delegate's current state.
