@@ -16,10 +16,15 @@ import { hasEigendeckMarker } from '../lib/clipboard';
 import { handleSvgExternalRefs, invalidateRenderedAsset } from '../lib/assetRenderer';
 import type { SlideElement } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
+import { setContextTarget } from '../lib/contextTarget';
 import { readTextFileNative } from '../lib/nativeFs';
 
 export const SLIDE_WIDTH = 1920;
 export const SLIDE_HEIGHT = 1080;
+/** Extra room (px) reserved below the slide, ON TOP OF the canvas container's
+ *  bottom padding, when fitting. 0 = the bottom gap equals the left/right padding
+ *  (symmetric margins around the slide). */
+const CANVAS_GAP = 0;
 
 // Layout constants moved to PropertiesPanel
 
@@ -52,10 +57,16 @@ export function SlideEditor() {
   const fitScale = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
-    const w = el.clientWidth, h = el.clientHeight;
-    if (w <= 0 || h <= 0) return;
-    const padding = 32;
-    const next = Math.min((w - padding) / SLIDE_WIDTH, (h - padding) / SLIDE_HEIGHT, 1);
+    if (el.clientWidth <= 0 || el.clientHeight <= 0) return;
+    // Fit into the actual CONTENT box (clientWidth/Height include padding, which is
+    // now asymmetric + dynamic — the floating HUD sets a variable top padding), and
+    // reserve CANVAS_GAP below so the slide isn't scaled flush to the bottom edge.
+    const cs = getComputedStyle(el);
+    const availW = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const availH =
+      el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - CANVAS_GAP;
+    if (availW <= 0 || availH <= 0) return;
+    const next = Math.min(availW / SLIDE_WIDTH, availH / SLIDE_HEIGHT, 1);
     if (next > 0) setScale(next);
   }, []);
 
@@ -368,7 +379,8 @@ export function SlideEditor() {
     window.addEventListener('pointerup', handleUp);
   }, [scale, selectObject]);
 
-  // Context menu for canvas background
+  // Context menu for canvas background. (Per-element right-click is handled in
+  // DraggableBox, which stops propagation before this fires.)
   const handleCanvasContextMenu = useCallback((e: React.MouseEvent) => {
     if (e.target !== e.currentTarget) return;
     e.preventDefault();
@@ -390,6 +402,13 @@ export function SlideEditor() {
       }},
     ];
     window.dispatchEvent(new CustomEvent('show-context-menu', { detail: { x: e.clientX, y: e.clientY, items } }));
+  }, []);
+
+  // Clear the context-target highlight when any context menu closes.
+  useEffect(() => {
+    const clear = () => setContextTarget(null);
+    window.addEventListener('context-menu-closed', clear);
+    return () => window.removeEventListener('context-menu-closed', clear);
   }, []);
 
   // Drag-and-drop files onto canvas
@@ -727,6 +746,11 @@ export function SlideEditor() {
           ref={canvasRef}
           className="slide-canvas"
           style={{ width: SLIDE_WIDTH, height: SLIDE_HEIGHT, transform: `scale(${scale})`, transformOrigin: 'top center',
+            // transform: scale() leaves the layout box at full 1080px, so the
+            // unscaled remainder shows as dead space below the slide. Collapse it
+            // to the scaled height; the visible gap below comes from fitScale
+            // reserving CANVAS_GAP within the content box.
+            marginBottom: -(SLIDE_HEIGHT * (1 - scale)),
             // Exposed so in-canvas chrome (badges, lock buttons, notebook
             // controls) can counter-scale to a fixed on-screen size — the
             // canvas transform: scale() otherwise shrinks them with zoom.

@@ -16,7 +16,10 @@ import { ContextMenu } from './components/ContextMenu';
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import { DebugMenu } from './debug';
 import { ToastHost } from './components/ToastHost';
-import { SettingsModal } from './components/SettingsModal';
+import { openSettingsWindow } from './lib/settingsWindow';
+import { useAggregateServerHealth } from './lib/serverHealth';
+import { nudgeDelta, zOrderDirection } from './lib/keyboardShortcuts';
+import { dispatchToolbarAction } from './lib/toolbarActions';
 import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
 import { detachDelta, pasteElementDelta } from './lib/syncLink';
@@ -85,6 +88,7 @@ if (
     store: usePresentationStore,
     flush: flushToSqlite,
     save: saveProject,   // flush + atomic save-in-place to the open file
+    openSettings: () => openSettingsWindow(),  // opens the independent Settings window (E2E)
     // Interactive-HTML export builder (dialog-free) — lets E2E verify the real
     // invoke-backed export pipeline (notebook/preview/asset reads) end to end
     // without a native save dialog.
@@ -565,16 +569,31 @@ export function relPath(projectPath: string | null, fullPath: string): string {
 }
 
 function App() {
-  const { isPresenting, showProperties, showHistory, projectPath } =
+  const { isPresenting, showProperties, showHistory, projectPath, isDirty } =
     usePresentationStore();
   const [sidebarWidth, setSidebarWidth] = useState(200);
   const resizeStartX = useRef(0);
   const resizeStartW = useRef(0);
+  // The floating insert HUD overlays the canvas; publish its measured height as
+  // --insert-hud-h on .editor-area so the canvas top-padding tracks it (the slide
+  // clears the chips even when they wrap to 2-3 rows).
+  const editorAreaRef = useRef<HTMLDivElement>(null);
+  const insertHudRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const hud = insertHudRef.current;
+    const area = editorAreaRef.current;
+    if (!hud || !area) return;
+    const apply = () =>
+      area.style.setProperty('--insert-hud-h', `${hud.offsetTop + hud.offsetHeight}px`);
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(hud);
+    return () => ro.disconnect();
+  });
   const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[]; fromSlideIndex: number; fromSlideId: string } | { type: 'slide'; data: any } | null>(null);
   const [linkOverlayElementId, setLinkOverlayElementId] = useState<string | null>(null);
   const [promoteCandidates, setPromoteCandidates] = useState<{ elementId: string; slideNo: number; summary: string }[] | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuEntry[] } | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [multiMonitorPresenting, setMultiMonitorPresenting] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
@@ -758,6 +777,18 @@ function App() {
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
   }, [sidebarWidth]);
+
+  // Reflect the open file + dirty state onto the macOS title-bar proxy icon
+  // (drag icon + filename + edited dot). no-op off macOS. See set_window_document.
+  // projectPath is stored WITHOUT the .eigendeck extension (display convention),
+  // but the represented file must be the REAL on-disk path or the proxy icon
+  // drag fails with "document could not be found".
+  useEffect(() => {
+    const realPath = projectPath ? `${projectPath}.eigendeck` : null;
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke('set_window_document', { label: 'main', path: realPath, dirty: isDirty }))
+      .catch(() => {});
+  }, [projectPath, isDirty]);
 
   // Initialize: open in-memory DB, sync recent menu, restore window position
   useEffect(() => {
@@ -975,6 +1006,92 @@ function App() {
     state.setPresenting(true);
   }, []);
 
+  // Native macOS NSToolbar (behind the mac-toolbar cargo feature) posts
+  // `toolbar:action` events; route each to the SAME action as the HTML toolbar
+  // button, so the two toolbars stay in lock-step. Harmless off macOS (the event
+  // never fires). See src-tauri/src/mac_toolbar.rs + docs/mac-native-toolbar.md.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void import('@tauri-apps/api/event').then(({ listen }) =>
+      listen<{ id: string }>('toolbar:action', ({ payload }) => {
+        const store = usePresentationStore.getState();
+        // Jupyter status icon → open Settings (Jupyter servers). Not a standard
+        // insert/present action, so handle it before dispatchToolbarAction.
+        if (payload.id === 'jupyter') { void openSettingsWindow(); return; }
+        dispatchToolbarAction(payload.id, {
+          addSlide: () => store.addSlide(),
+          addBuild: () => store.addBuildSlide(),
+          present: () => void flushToSqlite().then(() => startPresenting()),
+          save: () => void flushToSqlite().then(() => saveProject()),
+          export: () => void exportPresentation(),
+        });
+      }).then((u) => { unlisten = u; }),
+    ).catch(() => {});
+    return () => unlisten?.();
+  }, [startPresenting]);
+
+  // Native macOS toolbar Title/Author/Venue fields ↔ store (two-way).
+  // Push current values into the fields whenever they change:
+  const tbTitle = usePresentationStore((s) => s.presentation.title || '');
+  const tbAuthor = usePresentationStore((s) => s.presentation.config.author || '');
+  const tbVenue = usePresentationStore((s) => s.presentation.config.venue || '');
+  useEffect(() => {
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke('set_toolbar_fields', { title: tbTitle, author: tbAuthor, venue: tbVenue }))
+      .catch(() => {});
+  }, [tbTitle, tbAuthor, tbVenue]);
+
+  // Native macOS toolbar Jupyter server-status icon — mirror the HTML pill's
+  // aggregate health (green/yellow/red, gray = no live notebooks). Pushed to the
+  // NSToolbar item; no-op off the native-toolbar build.
+  const { status: jupyterStatus, tooltip: jupyterTooltip } = useAggregateServerHealth();
+  useEffect(() => {
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke('set_toolbar_jupyter', { status: jupyterStatus, tooltip: jupyterTooltip }))
+      .catch(() => {});
+  }, [jupyterStatus, jupyterTooltip]);
+
+  // On macOS with the native toolbar (mac-toolbar build), hide the HTML toolbar —
+  // it duplicates the native one. False everywhere else (HTML toolbar stays).
+  const [nativeToolbar, setNativeToolbar] = useState(false);
+  useEffect(() => {
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke<boolean>('native_toolbar_active'))
+      .then((v) => setNativeToolbar(!!v))
+      .catch(() => {});
+  }, []);
+  // Compact toolbar view (macOS native toolbar only): labels off + smaller icons.
+  // Driven by the compactToolbar preference; applied live (no restart).
+  const [compactToolbar] = usePreference('compactToolbar');
+  useEffect(() => {
+    if (!nativeToolbar) return;
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke('set_toolbar_compact', { compact: compactToolbar }))
+      .catch(() => {});
+  }, [nativeToolbar, compactToolbar]);
+  // Hide the native toolbar on the welcome screen (no project) and while
+  // presenting; show it in the editor. no-op off the native-toolbar build.
+  useEffect(() => {
+    if (!nativeToolbar) return;
+    const visible = !!projectPath && !isPresenting;
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke('set_toolbar_visible', { visible }))
+      .catch(() => {});
+  }, [nativeToolbar, projectPath, isPresenting]);
+  // Receive edits made IN the toolbar fields:
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void import('@tauri-apps/api/event').then(({ listen }) =>
+      listen<{ id: string; value: string }>('toolbar:field', ({ payload }) => {
+        const s = usePresentationStore.getState();
+        if (payload.id === 'title') s.setTitle(payload.value);
+        else if (payload.id === 'author') s.updateConfig({ author: payload.value });
+        else if (payload.id === 'venue') s.updateConfig({ venue: payload.value });
+      }).then((u) => { unlisten = u; }),
+    ).catch(() => {});
+    return () => unlisten?.();
+  }, []);
+
   // DEBUG: force the SINGLE-window live present, bypassing multi-monitor
   // detection entirely — the explicit counterpart to the 2-window test.
   const startPresentingSingle = useCallback(() => {
@@ -1072,16 +1189,44 @@ function App() {
           else if (newIds.length > 1) state.selectObject({ type: 'multi', ids: newIds });
         }
       }
-      // Arrow keys: navigate slides when no element is focused for editing
-      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
+      // Arrow keys: nudge the selected element(s) (1px / 10px with Shift), else
+      // navigate slides (Up/Down) when nothing on the canvas is selected.
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')
+          && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)
+          && !(e.target as HTMLElement).closest('[contenteditable]')) {
         const state = usePresentationStore.getState();
         const sel = state.selectedObject;
-        if (!sel || sel.type === 'slide') {
+        const ids = sel?.type === 'element' ? [sel.id] : sel?.type === 'multi' ? sel.ids : null;
+        const delta = nudgeDelta(e.key, e.shiftKey);
+        if (ids && delta) {
+          e.preventDefault();
+          state.moveElementsBy(ids, delta.dx, delta.dy);
+        } else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && (!sel || sel.type === 'slide')) {
           e.preventDefault();
           const idx = state.currentSlideIndex;
           const total = state.presentation.slides.length;
           if (e.key === 'ArrowUp' && idx > 0) state.selectSlide(idx - 1);
           if (e.key === 'ArrowDown' && idx < total - 1) state.selectSlide(idx + 1);
+        }
+      }
+      // Z-order: Cmd+] / Cmd+[ (Shift → to front/back). Selected element only.
+      if ((e.key === ']' || e.key === '[') && (e.ctrlKey || e.metaKey) && !inEditable
+          && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
+        const state = usePresentationStore.getState();
+        const sel = state.selectedObject;
+        const dir = zOrderDirection(e.key, e.shiftKey);
+        if (sel?.type === 'element' && dir) {
+          e.preventDefault();
+          state.moveElementZ(sel.id, dir);
+        }
+      }
+      // Escape: deselect back to the slide (when not editing text).
+      if (e.key === 'Escape' && !inEditable
+          && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
+        const state = usePresentationStore.getState();
+        if (state.selectedObject && state.selectedObject.type !== 'slide') {
+          e.preventDefault();
+          state.selectObject({ type: 'slide' });
         }
       }
       // Copy (Cmd+C) — only when not editing text
@@ -1297,8 +1442,8 @@ function App() {
                 await saveProject();
                 await reinit();
                 break;
-              case 'open-settings':  // global watch lives in the main window's Settings
-                setSettingsOpen(true);
+              case 'open-settings':  // global watch lives in the app-wide Settings
+                void openSettingsWindow();
                 break;
             }
           } catch (err) { console.warn('[security-request]', e.payload?.action, err); }
@@ -1422,7 +1567,7 @@ function App() {
         })(); break;
         case 'debug-console': window.dispatchEvent(new CustomEvent('toggle-debug-console')); break;
         case 'settings':
-          setSettingsOpen(true);
+          void openSettingsWindow();
           break;
         case 'help-learning':
         case 'help-manual':
@@ -1513,9 +1658,9 @@ function App() {
   // No project open → welcome screen (issue #66). Editing only begins once a
   // deck is anchored on disk, so file-watching / linked assets work from the
   // start. Launching with a file arg sets projectPath before this renders.
-  // App-level Settings (⌘,) must work here too — the modal is mounted in this
-  // branch as well, else File → Settings flips state with nothing to render (#100).
-  if (!projectPath) return (<><ToastHost /><WelcomeWindow /><SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} /></>);
+  // App-level Settings (⌘,) opens its own window (openSettingsWindow), so it
+  // works from the Welcome screen too without mounting anything here (#62).
+  if (!projectPath) return (<><ToastHost /><WelcomeWindow /></>);
 
   const store = usePresentationStore.getState();
 
@@ -1555,18 +1700,18 @@ function App() {
   };
 
   return (
-    <div className="app">
+    <div className={`app${nativeToolbar ? ' native-toolbar' : ''}`}>
       <DebugMenu />
       <ToastHost />
       <BusyOverlay />
-      <Toolbar />
+      {!nativeToolbar && <Toolbar />}
       <div className="main-area">
         <div style={{ width: sidebarWidth, minWidth: 150, maxWidth: 400, flexShrink: 0 }}>
           <SlideSidebar />
         </div>
         <div className="sidebar-resize-handle" onPointerDown={handleResizeStart} />
-        <div className="editor-area">
-          <div className="editor-actions">
+        <div className="editor-area" ref={editorAreaRef}>
+          <div className="editor-actions" ref={insertHudRef}>
             {INSERT_GROUP_ORDER.map((group) => {
               const items = INSERT_ITEMS.filter(
                 (it) => it.group === group && !hiddenToolbarItems.includes(it.id));
@@ -1591,7 +1736,7 @@ function App() {
       <DebugConsole />
       {contextMenu && (
         <ContextMenu x={contextMenu.x} y={contextMenu.y} items={contextMenu.items}
-          onClose={() => setContextMenu(null)} />
+          onClose={() => { setContextMenu(null); window.dispatchEvent(new CustomEvent('context-menu-closed')); }} />
       )}
       {linkOverlayElementId && (
         <LinkOverlay
@@ -1606,7 +1751,6 @@ function App() {
           onCancel={() => setPromoteCandidates(null)}
         />
       )}
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       {videoModalOpen && (
         <div onClick={() => setVideoModalOpen(false)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

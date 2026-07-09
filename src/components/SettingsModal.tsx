@@ -15,9 +15,54 @@ import { INSERT_ITEMS, INSERT_GROUP_ORDER, type InsertGroup } from '../lib/inser
 
 type Tab = 'general' | 'security' | 'ui' | 'servers';
 
-export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+// The settings BODY (tabs + content), chrome-free so it can live either in the
+// legacy modal or the standalone Settings window (src/settings.tsx). `header`
+// renders a title row (the window uses it; the modal supplies its own with a
+// close button).
+export function SettingsPanel({ header }: { header?: React.ReactNode }) {
   const [tab, setTab] = useState<Tab>('general');
+  return (
+    <>
+      {header}
+      <div style={{
+        display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb',
+        padding: '0 18px',
+      }}>
+        <TabButton active={tab === 'general'} onClick={() => setTab('general')}>General</TabButton>
+        <TabButton active={tab === 'security'} onClick={() => setTab('security')}>Security</TabButton>
+        <TabButton active={tab === 'ui'} onClick={() => setTab('ui')}>UI &amp; Toolbar</TabButton>
+        <TabButton active={tab === 'servers'} onClick={() => setTab('servers')}>Jupyter servers</TabButton>
+      </div>
+      <div style={{ padding: '14px 18px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
+        {tab === 'general' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <AutoReloadAssetsSetting />
+            <DefaultNotebookEditableSetting />
+            <TryProjectorModeSetting />
+            <DefaultTextSizesSetting />
+            <MathPreambleSetting />
+          </div>
+        )}
+        {tab === 'security' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <DemoInternetSetting />
+          </div>
+        )}
+        {tab === 'ui' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <ShowHelpTextSetting />
+            <CompactToolbarSetting />
+            <GridSpacingSetting />
+            <ToolbarButtonsSetting />
+          </div>
+        )}
+        {tab === 'servers' && <JupyterServersSetting />}
+      </div>
+    </>
+  );
+}
 
+export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -41,57 +86,23 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
         style={{
           background: '#fff', borderRadius: 8,
           width: 640, maxWidth: '90vw',
-          // Fixed height so switching tabs never resizes the modal — the
-          // body scrolls instead of the dialog jumping. Capped to the
-          // viewport on short screens.
           height: 560, maxHeight: '85vh',
           boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
           display: 'flex', flexDirection: 'column',
         }}>
-        <div style={{
-          padding: '14px 18px', borderBottom: '1px solid #e5e7eb',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Settings</div>
-          <button onClick={onClose} title="Close"
-            style={{
-              padding: 0, width: 28, height: 28, fontSize: 18,
-              background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280',
-            }}>×</button>
-        </div>
-        <div style={{
-          display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb',
-          padding: '0 18px',
-        }}>
-          <TabButton active={tab === 'general'} onClick={() => setTab('general')}>General</TabButton>
-          <TabButton active={tab === 'security'} onClick={() => setTab('security')}>Security</TabButton>
-          <TabButton active={tab === 'ui'} onClick={() => setTab('ui')}>UI &amp; Toolbar</TabButton>
-          <TabButton active={tab === 'servers'} onClick={() => setTab('servers')}>Jupyter servers</TabButton>
-        </div>
-        <div style={{ padding: '14px 18px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
-          {tab === 'general' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <AutoReloadAssetsSetting />
-              <DefaultNotebookEditableSetting />
-              <TryProjectorModeSetting />
-              <DefaultTextSizesSetting />
-              <MathPreambleSetting />
-            </div>
-          )}
-          {tab === 'security' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <DemoInternetSetting />
-            </div>
-          )}
-          {tab === 'ui' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <ShowHelpTextSetting />
-              <GridSpacingSetting />
-              <ToolbarButtonsSetting />
-            </div>
-          )}
-          {tab === 'servers' && <JupyterServersSetting />}
-        </div>
+        <SettingsPanel header={
+          <div style={{
+            padding: '14px 18px', borderBottom: '1px solid #e5e7eb',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>Settings</div>
+            <button onClick={onClose} title="Close"
+              style={{
+                padding: 0, width: 28, height: 28, fontSize: 18,
+                background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280',
+              }}>×</button>
+          </div>
+        } />
       </div>
     </div>,
     document.body,
@@ -557,6 +568,39 @@ function ShowHelpTextSetting() {
             The grey paragraphs under inspector controls that explain what each
             option does. On by default; turn off for a denser inspector once
             you know your way around.
+          </div>
+        </div>
+      </label>
+    </div>
+  );
+}
+
+function CompactToolbarSetting() {
+  const [value, setValue] = usePreference('compactToolbar');
+  // macOS native-toolbar builds only — the setting drives the NSToolbar. Hide it
+  // everywhere else (there's nothing for it to affect).
+  const [native, setNative] = useState(false);
+  useEffect(() => {
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke<boolean>('native_toolbar_active'))
+      .then((v) => setNative(!!v))
+      .catch(() => {});
+  }, []);
+  if (!native) return null;
+  return (
+    <div>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={value}
+          onChange={(e) => setValue(e.target.checked)}
+          style={{ marginTop: 3 }} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Compact toolbar</div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+            Hide the toolbar button labels and shrink the icons to reclaim vertical
+            space. Hover a button to see its name as a tooltip. Applies immediately —
+            no restart needed. (macOS only.)
           </div>
         </div>
       </label>

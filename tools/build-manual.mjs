@@ -37,6 +37,7 @@ const TOC = [
     { file: 'assets.md', out: 'assets.html', title: 'Watched assets' },
     { file: 'sync-and-link.md', out: 'sync-and-link.html', title: 'Sync and link' },
     { file: 'clipboard.md', out: 'clipboard.html', title: 'Cut, copy, and paste' },
+    { file: 'keyboard-shortcuts.md', out: 'keyboard-shortcuts.html', title: 'Keyboard shortcuts' },
   ]},
   { section: 'Trust & safety', pages: [
     { file: 'security.md', out: 'security.html', title: 'Security & privacy' },

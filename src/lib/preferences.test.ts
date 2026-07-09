@@ -1,5 +1,19 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { effectiveAutoReload, getPreference, setPreference } from './preferences';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import {
+  effectiveAutoReload, getPreference, setPreference, initPrefSync, PREF_SYNC_EVENT,
+} from './preferences';
+
+// Mock the Tauri event module that setPreference/initPrefSync dynamically import,
+// so the cross-window bridge is observable without a real Tauri runtime.
+const emitMock = vi.fn((..._args: unknown[]) => Promise.resolve());
+let listenHandler: ((e: { payload: { key?: string } }) => void) | null = null;
+vi.mock('@tauri-apps/api/event', () => ({
+  emit: (...args: unknown[]) => emitMock(...args),
+  listen: (_name: string, handler: (e: { payload: { key?: string } }) => void) => {
+    listenHandler = handler;
+    return Promise.resolve(() => {});
+  },
+}));
 
 // Cascade is downward-only: any layer can refuse, no layer overrides
 // a refusal above. Per-asset and per-presentation can opt OUT but not
@@ -112,5 +126,40 @@ describe('gridSpacing preference', () => {
   it('round-trips a custom spacing', () => {
     setPreference('gridSpacing', 80);
     expect(getPreference('gridSpacing')).toBe(80);
+  });
+});
+
+// The Settings window (src/settings.tsx) and the main window are separate
+// webviews. localStorage is shared (same origin) but the DOM CHANGE_EVENT is
+// per-document, so setPreference broadcasts a Tauri event and initPrefSync()
+// re-dispatches it locally in every window. Without this, a pref changed in the
+// Settings window wouldn't update usePreference() in the main window.
+describe('cross-window pref sync (PREF_SYNC bridge)', () => {
+  beforeEach(() => { localStorage.clear(); emitMock.mockClear(); listenHandler = null; });
+
+  it('setPreference fires the local pref-changed DOM event (usePreference reacts)', () => {
+    const changed: string[] = [];
+    const h = (e: Event) => changed.push((e as CustomEvent).detail?.key);
+    window.addEventListener('eigendeck:pref-changed', h);
+    setPreference('gridSpacing', 55);
+    window.removeEventListener('eigendeck:pref-changed', h);
+    expect(changed).toContain('gridSpacing');
+  });
+
+  it('setPreference broadcasts PREF_SYNC to other windows with the key', async () => {
+    setPreference('gridSpacing', 60);
+    // the emit is behind a dynamic import().then — let the microtasks flush
+    await vi.waitFor(() => expect(emitMock).toHaveBeenCalledWith(PREF_SYNC_EVENT, { key: 'gridSpacing' }));
+  });
+
+  it('initPrefSync re-dispatches a received PREF_SYNC as a local pref-changed event', async () => {
+    initPrefSync();
+    await vi.waitFor(() => expect(listenHandler).not.toBeNull());
+    const changed: string[] = [];
+    const h = (e: Event) => changed.push((e as CustomEvent).detail?.key);
+    window.addEventListener('eigendeck:pref-changed', h);
+    listenHandler!({ payload: { key: 'showHelpText' } });
+    window.removeEventListener('eigendeck:pref-changed', h);
+    expect(changed).toEqual(['showHelpText']);
   });
 });

@@ -95,6 +95,9 @@ MANIFEST=(
   # asserts trust reaches + persists on the MAIN deck. Catches the trust-
   # persistence bug the seam-based probes structurally could not (seam discipline).
   "security-window-trust-probe.mjs|empty.eigendeck||$EMPTY"
+  "settings-window-probe.mjs|examples/intro-slide.eigendeck||"
+  "keyboard-shortcuts-probe.mjs|examples/intro-slide.eigendeck||"
+  "context-menu-target-probe.mjs|examples/intro-slide.eigendeck||"
   "demo-mount-gate-probe.mjs|empty.eigendeck||$EMPTY"
 
   # ── sync / link / promote round-trips (built fixture decks) ─────────────

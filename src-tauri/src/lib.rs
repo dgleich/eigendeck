@@ -34,6 +34,8 @@ mod clip;
 mod debug;
 mod fscmds;
 mod llmtools;
+#[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
+mod mac_toolbar;
 mod pasteboard;
 mod pdf;
 use std::sync::Mutex;
@@ -260,6 +262,147 @@ fn set_window_above_menubar(app: tauri::AppHandle, label: String) -> Result<(), 
     #[cfg(not(target_os = "macos"))]
     let _ = window;
 
+    Ok(())
+}
+
+/// The window title for a project file path: the file name with the `.eigendeck`
+/// extension dropped (matching the app's display convention), or the full path
+/// when it has no file-name component. Pure — unit-testable without a live
+/// NSWindow. NOTE: the represented FILE uses the full path (extension intact) so
+/// the proxy-icon drag resolves; only the visible title is de-extensioned.
+// Called only from the macOS window block (+ its tests); unused on other targets.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn document_title(path: &str) -> String {
+    let name = std::path::Path::new(path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(path);
+    name.strip_suffix(".eigendeck").unwrap_or(name).to_string()
+}
+
+/// Set the window's macOS proxy icon (represented file), title, and edited dot
+/// from the current project path + dirty flag. This is what lets a user
+/// Cmd-click / drag the little document icon in the title bar. macOS only;
+/// no-op elsewhere. Called from the frontend on open / save / dirty change.
+#[tauri::command]
+fn set_window_document(
+    app: tauri::AppHandle,
+    label: String,
+    path: Option<String>,
+    dirty: bool,
+) -> Result<(), String> {
+    let window = app
+        .get_webview_window(&label)
+        .ok_or_else(|| format!("Window '{}' not found", label))?;
+
+    #[cfg(target_os = "macos")]
+    {
+        // AppKit must be touched on the main thread; Tauri commands may run off
+        // it. Hopping explicitly is also the likely reason the edited dot
+        // (setDocumentEdited) wasn't updating.
+        let win = window.clone();
+        let _ = window.run_on_main_thread(move || {
+            use objc2_app_kit::NSWindow;
+            use objc2_foundation::{NSString, NSURL};
+            let Ok(ns_win_ptr) = win.ns_window() else { return };
+            // Safety: Tauri owns a valid NSWindow for this label's lifetime.
+            let ns_win: &NSWindow = unsafe { &*(ns_win_ptr as *const NSWindow) };
+            match &path {
+                Some(p) => {
+                    // representedURL (canonical) gives the centered native title's
+                    // proxy icon + path popover + drag-to-share for free.
+                    let url = NSURL::fileURLWithPath(&NSString::from_str(p));
+                    ns_win.setRepresentedURL(Some(&url));
+                    ns_win.setTitle(&NSString::from_str(&document_title(p)));
+                }
+                // Clear the proxy for an unsaved deck.
+                None => ns_win.setRepresentedURL(None),
+            }
+            ns_win.setDocumentEdited(dirty);
+            // Mirror the edited state onto the native toolbar's Save icon.
+            #[cfg(feature = "mac-toolbar")]
+            crate::mac_toolbar::set_save_dirty(dirty);
+        });
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (&window, &path, dirty);
+    }
+
+    Ok(())
+}
+
+/// Push the current author/venue into the native toolbar's text fields (macOS +
+/// mac-toolbar feature). no-op otherwise. Called from the frontend on config change.
+#[tauri::command]
+fn set_toolbar_fields(window: tauri::WebviewWindow, title: String, author: String, venue: String) -> Result<(), String> {
+    #[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
+    {
+        let _ = window.run_on_main_thread(move || {
+            crate::mac_toolbar::set_fields(&title, &author, &venue);
+        });
+    }
+    #[cfg(not(all(target_os = "macos", feature = "mac-toolbar")))]
+    {
+        let _ = (&window, &title, &author, &venue);
+    }
+    Ok(())
+}
+
+/// Whether the native macOS NSToolbar is active (macOS + mac-toolbar feature).
+/// The frontend hides its duplicated HTML toolbar row when true.
+#[tauri::command]
+fn native_toolbar_active() -> bool {
+    cfg!(all(target_os = "macos", feature = "mac-toolbar"))
+}
+
+/// Toggle the native toolbar's compact view (labels off + smaller icons).
+/// Driven by the `compactToolbar` preference. no-op off the mac-toolbar build.
+#[tauri::command]
+fn set_toolbar_compact(window: tauri::WebviewWindow, compact: bool) -> Result<(), String> {
+    #[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
+    {
+        let _ = window.run_on_main_thread(move || crate::mac_toolbar::set_compact(compact));
+    }
+    #[cfg(not(all(target_os = "macos", feature = "mac-toolbar")))]
+    {
+        let _ = (&window, compact);
+    }
+    Ok(())
+}
+
+/// Update the native toolbar's Jupyter server-status icon (health tint +
+/// tooltip). Mirrors the HTML ServerStatusPill. no-op off the mac-toolbar build.
+#[tauri::command]
+fn set_toolbar_jupyter(
+    window: tauri::WebviewWindow,
+    status: String,
+    tooltip: String,
+) -> Result<(), String> {
+    #[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
+    {
+        let _ = window.run_on_main_thread(move || crate::mac_toolbar::set_jupyter(&status, &tooltip));
+    }
+    #[cfg(not(all(target_os = "macos", feature = "mac-toolbar")))]
+    {
+        let _ = (&window, status, tooltip);
+    }
+    Ok(())
+}
+
+/// Show/hide the native toolbar (hidden on the welcome screen and while
+/// presenting). no-op off the mac-toolbar build.
+#[tauri::command]
+fn set_toolbar_visible(window: tauri::WebviewWindow, visible: bool) -> Result<(), String> {
+    #[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
+    {
+        let _ = window.run_on_main_thread(move || crate::mac_toolbar::set_visible(visible));
+    }
+    #[cfg(not(all(target_os = "macos", feature = "mac-toolbar")))]
+    {
+        let _ = (&window, visible);
+    }
     Ok(())
 }
 
@@ -754,6 +897,12 @@ pub fn run() {
             clip::clip_paste_asset,
             clip::clip_clear_internal,
             set_window_above_menubar,
+            set_window_document,
+            set_toolbar_fields,
+            native_toolbar_active,
+            set_toolbar_compact,
+            set_toolbar_visible,
+            set_toolbar_jupyter,
             check_display_mirroring,
             disable_display_mirroring,
             enable_display_mirroring,
@@ -848,6 +997,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
+            // Native macOS NSToolbar (spike, behind the mac-toolbar feature).
+            #[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
+            mac_toolbar::install(app.handle());
+
             // Check for --export CLI mode
             let args: Vec<String> = std::env::args().collect();
             if let Some(idx) = args.iter().position(|a| a == "--export") {
@@ -1052,6 +1205,33 @@ mod resolve_read_tests {
         let r = resolve_and_read(messy.to_string_lossy().into_owned(), None).unwrap();
         assert_eq!(r.canonical_path, fs::canonicalize(&p).unwrap().to_string_lossy());
         let _ = fs::remove_file(&p);
+    }
+}
+
+#[cfg(test)]
+mod window_document_tests {
+    use super::document_title;
+
+    #[test]
+    fn uses_the_file_name_without_the_eigendeck_extension() {
+        assert_eq!(document_title("/Users/dg/Talks/matrix.eigendeck"), "matrix");
+    }
+
+    #[test]
+    fn handles_a_bare_file_name() {
+        assert_eq!(document_title("deck.eigendeck"), "deck");
+    }
+
+    #[test]
+    fn keeps_a_name_that_is_not_an_eigendeck_file() {
+        // Only .eigendeck is stripped; other names are shown as-is.
+        assert_eq!(document_title("/Users/dg/notes.txt"), "notes.txt");
+    }
+
+    #[test]
+    fn falls_back_to_the_full_string_when_there_is_no_file_name() {
+        // Trailing-slash path has no file_name component.
+        assert_eq!(document_title("/"), "/");
     }
 }
 
