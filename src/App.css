@@ -451,12 +451,17 @@ body.window-inactive .welcome-root {
   justify-content: center;
   /* row-gap between wrapped rows; larger column-gap separates the groups. */
   gap: 6px 16px;
-  padding: 3px 12px;
-  /* Same native toolbar color as the top bar. */
-  background: var(--toolbar-bg, #f3f3f3);
-  /* Contrasting hairline so the toolbar chrome reads as separate from the
-     slide canvas below (matches the native Mac toolbar's own separator). */
-  border-bottom: 1px solid var(--toolbar-separator, #c8c8c8);
+  /* Floating panel: a centered, self-sized card hovering over the canvas rather
+     than a full-width bar welded to the toolbar. The editor-area backdrop shows
+     around it. max-width lets it wrap by group on narrow windows. */
+  align-self: center;
+  max-width: calc(100% - 24px);
+  margin: 10px auto;
+  padding: 6px 12px;
+  background: #ffffff;
+  border: 1px solid #d8dce1;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
   flex-shrink: 0;
   /* Wrap by GROUP, not by button: when the bar is too narrow, a whole group
      drops to the next row — buttons never split mid-group (#72). */
