@@ -21,8 +21,8 @@ use objc2::{define_class, msg_send, sel, AnyThread, DefinedClass, MainThreadMark
 use objc2_app_kit::{
     NSColor, NSCompositingOperation, NSFont, NSFontWeightRegular, NSImage,
     NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSTextAlignment,
-    NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarDisplayMode, NSToolbarItem, NSView,
-    NSWindow, NSWindowToolbarStyle,
+    NSTextField, NSTextFieldCell, NSToolbar, NSToolbarDelegate, NSToolbarDisplayMode, NSToolbarItem,
+    NSView, NSWindow, NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use serde::Serialize;
@@ -68,6 +68,8 @@ fn lead_gap_for(compact: bool) -> f64 {
 const TITLE_ID: &str = "title";
 const TITLE_WIDTH: f64 = 240.0;
 const TITLE_FONT_SIZE: f64 = 14.0;
+/// Breathing room (points) above AND below the title text, inside the focus ring.
+const TITLE_VPAD: f64 = 5.0;
 const AUTHOR_ID: &str = "author";
 const VENUE_ID: &str = "venue";
 const JUPYTER_ID: &str = "jupyter";
@@ -149,6 +151,51 @@ fn nudge_image(src: &NSImage, dy: f64) -> Retained<NSImage> {
     }
     out
 }
+struct CellIvars {
+    measuring: Cell<bool>,
+}
+
+define_class!(
+    // Vertically centers single-line text: measures the text's natural height via
+    // cellSizeForBounds: and shifts the drawing rect down by half the surplus. Only
+    // used for the title (which is deliberately taller than its text for ring room).
+    // Editing/selection route through drawingRectForBounds:, so the field editor
+    // lands in the same place (no jump on click).
+    #[unsafe(super(NSTextFieldCell))]
+    #[thread_kind = MainThreadOnly]
+    #[name = "EigendeckCenteredCell"]
+    #[ivars = CellIvars]
+    struct CenteredCell;
+
+    unsafe impl NSObjectProtocol for CenteredCell {}
+
+    impl CenteredCell {
+        #[unsafe(method(drawingRectForBounds:))]
+        fn drawing_rect_for_bounds(&self, bounds: NSRect) -> NSRect {
+            let mut r: NSRect = unsafe { msg_send![super(self), drawingRectForBounds: bounds] };
+            // cellSizeForBounds: calls back into drawingRectForBounds: — guard it.
+            if !self.ivars().measuring.get() {
+                self.ivars().measuring.set(true);
+                let text: NSSize = unsafe { msg_send![self, cellSizeForBounds: bounds] };
+                self.ivars().measuring.set(false);
+                let delta = r.size.height - text.height;
+                if delta > 0.0 {
+                    r.origin.y += (delta / 2.0).floor();
+                    r.size.height -= delta;
+                }
+            }
+            r
+        }
+    }
+);
+
+impl CenteredCell {
+    fn make(mtm: MainThreadMarker) -> Retained<Self> {
+        let this = Self::alloc(mtm).set_ivars(CellIvars { measuring: Cell::new(false) });
+        unsafe { msg_send![this, initTextCell: &*NSString::from_str("")] }
+    }
+}
+
 fn meta_for(identifier: &NSString) -> Option<(&'static str, &'static str)> {
     let id = identifier.to_string();
     ITEMS
@@ -305,10 +352,12 @@ define_class!(
                 // Bold, borderless, editable presentation title — centered in the
                 // toolbar row (centeredItemIdentifier). Two-way synced to
                 // presentation.title (onTitleEdit → toolbar:field; set_fields pushes back).
-                // Bold, borderless, editable title. Sized to the field's natural
-                // (single-line) height — NSToolbar centers view items in the row, so
-                // no stretching means the text (and focus ring) sit centered.
+                // Bold, borderless, editable title. Uses the centering cell (set
+                // FIRST — setCell replaces the cell wholesale) so the text stays
+                // centered inside a field made a touch taller than the text for
+                // focus-ring breathing room.
                 let field = NSTextField::textFieldWithString(&NSString::from_str(""), mtm);
+                unsafe { field.setCell(Some(&CenteredCell::make(mtm))) };
                 field.setBezeled(false);
                 field.setDrawsBackground(false);
                 field.setEditable(true);
@@ -327,7 +376,9 @@ define_class!(
                 field.setTranslatesAutoresizingMaskIntoConstraints(false);
                 unsafe {
                     field.widthAnchor().constraintEqualToConstant(TITLE_WIDTH).setActive(true);
-                    let h = field.intrinsicContentSize().height;
+                    // Taller than the text (by 2*TITLE_VPAD) for ring room; the
+                    // centering cell keeps the text centered within it.
+                    let h = field.intrinsicContentSize().height + 2.0 * TITLE_VPAD;
                     field.heightAnchor().constraintEqualToConstant(h).setActive(true);
                 }
                 let view: &NSView = &field;
