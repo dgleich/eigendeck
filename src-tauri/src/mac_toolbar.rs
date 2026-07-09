@@ -17,7 +17,7 @@ use std::cell::{Cell, RefCell};
 
 use objc2::rc::Retained;
 use objc2::runtime::ProtocolObject;
-use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
+use objc2::{define_class, msg_send, sel, AnyThread, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
     NSColor, NSCompositingOperation, NSFont, NSFontWeightRegular, NSImage,
     NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSTextAlignment,
@@ -101,6 +101,7 @@ fn allowed_identifiers() -> Retained<NSArray<NSString>> {
 /// Return a copy of `src` with `pad` points of transparent space added at the
 /// BOTTOM, which shifts the glyph upward when the toolbar centers it. Preserves
 /// template rendering (so it still tints for light/dark). Main thread (lockFocus).
+#[allow(deprecated)] // lockFocus/unlockFocus: fine for this small compositing use
 fn nudge_image_up(src: &NSImage, pad: f64) -> Retained<NSImage> {
     let s = src.size();
     let out = NSImage::initWithSize(
@@ -522,7 +523,7 @@ pub fn set_compact(compact: bool) {
                 } else {
                     NSToolbarDisplayMode::IconAndLabel
                 });
-                unsafe { tb.validateVisibleItems() };
+                tb.validateVisibleItems();
             }
         });
     });
