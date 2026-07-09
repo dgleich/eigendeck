@@ -248,11 +248,10 @@ fn find_toolbar_background(ns_win: &NSWindow) -> Option<Retained<NSView>> {
     while let Some(sv) = unsafe { root.superview() } {
         root = sv;
     }
-    let found = search_toolbar_view(root.clone());
-    if found.is_none() {
-        eprintln!("[tbmenu] NSToolbarView not found — dumping view tree:");
-        dump_view_tree(&root, 0);
-    }
+    eprintln!("[tbmenu] view tree from root {}:", root.class().name().to_str().unwrap_or("?"));
+    dump_view_tree(&root, 0);
+    let found = search_toolbar_view(root);
+    eprintln!("[tbmenu] matched: {:?}", found.as_ref().map(|v| v.class().name().to_str().unwrap_or("?").to_string()));
     found
 }
 
@@ -272,20 +271,36 @@ fn dump_view_tree(view: &NSView, depth: usize) {
 /// background view exists only after first layout, so this is idempotent and
 /// retried from each state push until it succeeds. Main thread.
 fn attach_toolbar_menu_once() {
-    let Some(mtm) = MainThreadMarker::new() else { return };
+    let Some(mtm) = MainThreadMarker::new() else {
+        eprintln!("[tbmenu] attach: not main thread");
+        return;
+    };
     DELEGATE.with(|d| {
-        let Some(del) = d.borrow().as_ref().cloned() else { return };
+        let Some(del) = d.borrow().as_ref().cloned() else {
+            eprintln!("[tbmenu] attach: no delegate");
+            return;
+        };
         if del.ivars().menu_attached.get() {
             return;
         }
-        let Some(win) = del.ivars().app.get_webview_window("main") else { return };
-        let Ok(ptr) = win.ns_window() else { return };
+        eprintln!("[tbmenu] attach: searching…");
+        let Some(win) = del.ivars().app.get_webview_window("main") else {
+            eprintln!("[tbmenu] attach: no window");
+            return;
+        };
+        let Ok(ptr) = win.ns_window() else {
+            eprintln!("[tbmenu] attach: no ns_window");
+            return;
+        };
         // Safety: Tauri owns a valid NSWindow for "main" for its lifetime.
         let ns_win: &NSWindow = unsafe { &*(ptr as *const NSWindow) };
         if let Some(tbview) = find_toolbar_background(ns_win) {
             let menu = build_display_menu(&del, del.ivars().compact.get(), mtm);
             unsafe { tbview.setMenu(Some(&menu)) };
             del.ivars().menu_attached.set(true);
+            eprintln!("[tbmenu] attach: ATTACHED");
+        } else {
+            eprintln!("[tbmenu] attach: not found this attempt");
         }
     });
 }
