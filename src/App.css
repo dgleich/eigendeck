@@ -443,6 +443,8 @@ body.window-inactive .welcome-root {
   flex-direction: column;
   overflow: hidden;
   background: #f0f0f0;
+  /* Anchor the floating insert HUD (absolutely positioned child). */
+  position: relative;
 }
 
 .editor-actions {
@@ -451,14 +453,19 @@ body.window-inactive .welcome-root {
   justify-content: center;
   /* row-gap between wrapped rows; larger column-gap separates the groups. */
   gap: 6px 16px;
-  /* Part of the canvas: same backdrop as .slide-canvas-container (#e8e8e8) so the
-     insert row and the slide surround read as one continuous area, with each
-     button its own floating chip on it (see .editor-actions button). Tight
-     padding keeps the vertical footprint minimal; stays IN FLOW so it never
-     covers the slide. */
-  background: #e8e8e8;
-  padding: 5px 12px;
-  flex-shrink: 0;
+  /* Floating HUD, part of the canvas: absolutely positioned over the top of the
+     canvas so the slide area is full-height and elements scroll/drag UNDER the
+     chips. The container is transparent and pointer-transparent — clicks in the
+     gaps pass through to the canvas; only the chips capture events (see
+     .editor-actions button). The canvas gets top padding (.slide-canvas-container)
+     so the slide clears the chips by default. */
+  position: absolute;
+  top: 4px;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  pointer-events: none;
+  padding: 0 12px;
   /* Wrap by GROUP, not by button: when the bar is too narrow, a whole group
      drops to the next row — buttons never split mid-group (#72). */
   flex-wrap: wrap;
@@ -480,6 +487,8 @@ body.window-inactive .welcome-root {
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     0 1px 2px rgba(0, 0, 0, 0.18);
   cursor: pointer;
+  /* Container is pointer-events:none (HUD pass-through); chips re-enable it. */
+  pointer-events: auto;
   font-size: 12px;
   color: #1a1a1a;
   white-space: nowrap;
@@ -626,9 +635,10 @@ body.window-inactive .welcome-root {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  /* Less top gap: the insert row already sits above on the same backdrop, so a
-     full 16px here doubled the space before the slide. */
-  padding: 4px 16px 16px;
+  /* Top padding clears the floating insert HUD so the slide isn't covered by
+     default; because the HUD overlays (absolute), elements still scroll/drag
+     under the chips. */
+  padding: 36px 16px 16px;
   overflow: auto;
   background: #e8e8e8;
 }
