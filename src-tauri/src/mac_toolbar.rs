@@ -19,9 +19,10 @@ use objc2::rc::Retained;
 use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
-    NSColor, NSFont, NSFontWeightRegular, NSImage, NSImageSymbolConfiguration, NSImageSymbolScale,
-    NSLayoutConstraint, NSTextAlignment, NSTextField, NSToolbar, NSToolbarDelegate,
-    NSToolbarDisplayMode, NSToolbarItem, NSView, NSWindow, NSWindowToolbarStyle,
+    NSColor, NSCompositingOperation, NSFont, NSFontWeightRegular, NSImage,
+    NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSTextAlignment,
+    NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarDisplayMode, NSToolbarItem, NSView,
+    NSWindow, NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use serde::Serialize;
@@ -35,6 +36,11 @@ const FIELD_HEIGHT: f64 = 28.0;
 /// mode (labels off) drops to a smaller glyph to reclaim vertical space.
 const ICON_POINT_SIZE_REGULAR: f64 = 15.0;
 const ICON_POINT_SIZE_COMPACT: f64 = 12.0;
+/// The Export glyph (`square.and.arrow.up`) has its arrow extending above the box,
+/// so centering the whole glyph sinks the box relative to the boxy neighbors
+/// (Jupyter, Present). Pad the bottom of its image by this many points so the box
+/// reads as vertically centered.
+const EXPORT_NUDGE: f64 = 3.0;
 
 const TITLE_ID: &str = "title";
 const TITLE_WIDTH: f64 = 240.0;
@@ -92,6 +98,31 @@ fn allowed_identifiers() -> Retained<NSArray<NSString>> {
     build_ids(true)
 }
 
+/// Return a copy of `src` with `pad` points of transparent space added at the
+/// BOTTOM, which shifts the glyph upward when the toolbar centers it. Preserves
+/// template rendering (so it still tints for light/dark). Main thread (lockFocus).
+fn nudge_image_up(src: &NSImage, pad: f64) -> Retained<NSImage> {
+    let s = src.size();
+    let out = NSImage::initWithSize(
+        NSImage::alloc(),
+        NSSize { width: s.width, height: s.height + pad },
+    );
+    out.setTemplate(src.isTemplate());
+    unsafe {
+        out.lockFocus();
+        // Non-flipped image space (origin bottom-left): drawing at y=pad leaves the
+        // pad as empty space at the BOTTOM, so the glyph sits in the upper region.
+        src.drawAtPoint_fromRect_operation_fraction(
+            NSPoint { x: 0.0, y: pad },
+            NSRect::new(NSPoint::new(0.0, 0.0), s),
+            NSCompositingOperation::SourceOver,
+            1.0,
+        );
+        out.unlockFocus();
+    }
+    out
+}
+
 fn meta_for(identifier: &NSString) -> Option<(&'static str, &'static str)> {
     let id = identifier.to_string();
     ITEMS
@@ -139,14 +170,13 @@ fn style_button(item: &NSToolbarItem, label: &str, symbol: &str, compact: bool, 
             cfg
         };
         let sized = image.imageWithSymbolConfiguration(&cfg).unwrap_or(image);
+        // Nudge the Export glyph up so its box aligns with the boxy neighbors.
+        let sized = if symbol == "square.and.arrow.up" {
+            nudge_image_up(&sized, EXPORT_NUDGE)
+        } else {
+            sized
+        };
         item.setImage(Some(&sized));
-        if let Some(img) = item.image() {
-            let sz = img.size();
-            eprintln!(
-                "[compact] styled {} compact={compact} imgH={:.1}",
-                item.itemIdentifier(), sz.height
-            );
-        }
     }
     // Always borderless: a BORDERED plain toolbar item renders icon-only (the label
     // is dropped for the capsule chrome). Borderless is what shows icon+label.
@@ -460,12 +490,8 @@ fn restyle_jupyter(del: &ToolbarDelegate) {
 /// setLabel/setImage relayout the items, and validateVisibleItems nudges a
 /// re-measure. Main thread.
 pub fn set_compact(compact: bool) {
-    eprintln!("[compact] set_compact({compact})");
     DELEGATE.with(|d| {
-        let Some(del) = d.borrow().as_ref().cloned() else {
-            eprintln!("[compact] no delegate");
-            return;
-        };
+        let Some(del) = d.borrow().as_ref().cloned() else { return };
         del.ivars().compact.set(compact);
 
         // Switch the window toolbar style (Expanded = tall w/ centered title row;
