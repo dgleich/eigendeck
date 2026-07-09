@@ -16,11 +16,11 @@
 use std::cell::{Cell, RefCell};
 
 use objc2::rc::Retained;
-use objc2::runtime::{AnyObject, ProtocolObject};
+use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, AnyThread, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
-    NSColor, NSCompositingOperation, NSEvent, NSFont, NSFontWeightRegular, NSImage,
-    NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSText, NSTextAlignment,
+    NSColor, NSCompositingOperation, NSFont, NSFontWeightRegular, NSImage,
+    NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSTextAlignment,
     NSTextField, NSTextFieldCell, NSToolbar, NSToolbarDelegate, NSToolbarDisplayMode, NSToolbarItem,
     NSView, NSWindow, NSWindowToolbarStyle,
 };
@@ -153,24 +153,23 @@ fn nudge_image(src: &NSImage, dy: f64) -> Retained<NSImage> {
     out
 }
 
-/// Center `base` vertically around the given text height (top-align the extra
-/// space evenly). Used by CenteredCell so the title text sits mid-field.
-fn center_rect(base: NSRect, text_height: f64) -> NSRect {
-    let delta = base.size.height - text_height;
-    if delta > 0.0 {
-        NSRect::new(
-            NSPoint::new(base.origin.x, base.origin.y + (delta / 2.0).floor()),
-            NSSize::new(base.size.width, text_height),
-        )
-    } else {
-        base
+/// Center `base` vertically for a single line of `line_height`, honoring the
+/// control view's flippedness (NSTextField's is flipped → +y is down).
+fn center_rect(base: NSRect, line_height: f64, flipped: bool) -> NSRect {
+    let delta = base.size.height - line_height;
+    if delta <= 0.0 {
+        return base;
     }
+    let half = (delta / 2.0).floor();
+    let y = if flipped { base.origin.y + half } else { base.origin.y + (delta - half) };
+    NSRect::new(NSPoint::new(base.origin.x, y), NSSize::new(base.size.width, line_height))
 }
 
 define_class!(
-    // A single-line NSTextFieldCell that draws (and edits/selects) its text
-    // vertically centered instead of top-aligned — so a field taller than its text
-    // (for focus-ring breathing room) keeps the text mid-field.
+    // A single-line NSTextFieldCell that draws its text vertically centered. Only
+    // drawingRectForBounds:/titleRectForBounds: are overridden — AppKit's default
+    // editWithFrame:/selectWithFrame: already call drawingRectForBounds: to place
+    // the field editor, so display and editing stay in sync (no jump on click).
     #[unsafe(super(NSTextFieldCell))]
     #[thread_kind = MainThreadOnly]
     #[name = "EigendeckCenteredCell"]
@@ -182,43 +181,13 @@ define_class!(
         #[unsafe(method(drawingRectForBounds:))]
         fn drawing_rect_for_bounds(&self, rect: NSRect) -> NSRect {
             let base: NSRect = unsafe { msg_send![super(self), drawingRectForBounds: rect] };
-            let text: NSSize = unsafe { msg_send![self, cellSizeForBounds: rect] };
-            center_rect(base, text.height)
+            center_rect(base, self.line_height(), self.control_view_is_flipped())
         }
 
-        #[unsafe(method(editWithFrame:inView:editor:delegate:event:))]
-        fn edit_with_frame(
-            &self,
-            rect: NSRect,
-            view: &NSView,
-            editor: &NSText,
-            delegate: Option<&AnyObject>,
-            event: Option<&NSEvent>,
-        ) {
-            let base: NSRect = unsafe { msg_send![super(self), drawingRectForBounds: rect] };
-            let text: NSSize = unsafe { msg_send![self, cellSizeForBounds: rect] };
-            let r = center_rect(base, text.height);
-            unsafe {
-                msg_send![super(self), editWithFrame: r, inView: view, editor: editor, delegate: delegate, event: event]
-            }
-        }
-
-        #[unsafe(method(selectWithFrame:inView:editor:delegate:start:length:))]
-        fn select_with_frame(
-            &self,
-            rect: NSRect,
-            view: &NSView,
-            editor: &NSText,
-            delegate: Option<&AnyObject>,
-            start: isize,
-            length: isize,
-        ) {
-            let base: NSRect = unsafe { msg_send![super(self), drawingRectForBounds: rect] };
-            let text: NSSize = unsafe { msg_send![self, cellSizeForBounds: rect] };
-            let r = center_rect(base, text.height);
-            unsafe {
-                msg_send![super(self), selectWithFrame: r, inView: view, editor: editor, delegate: delegate, start: start, length: length]
-            }
+        #[unsafe(method(titleRectForBounds:))]
+        fn title_rect_for_bounds(&self, rect: NSRect) -> NSRect {
+            let base: NSRect = unsafe { msg_send![super(self), titleRectForBounds: rect] };
+            center_rect(base, self.line_height(), self.control_view_is_flipped())
         }
     }
 );
@@ -227,6 +196,26 @@ impl CenteredCell {
     fn make(mtm: MainThreadMarker) -> Retained<Self> {
         let this = CenteredCell::alloc(mtm);
         unsafe { msg_send![this, initTextCell: &*NSString::from_str("")] }
+    }
+
+    /// Single-line text height from the cell font (glyph metric, no bezel inset —
+    /// unlike cellSizeForBounds:, which overstated it and killed the centering).
+    fn line_height(&self) -> f64 {
+        let font: Option<Retained<NSFont>> = unsafe { msg_send![self, font] };
+        let font =
+            font.unwrap_or_else(|| unsafe { NSFont::systemFontOfSize(NSFont::systemFontSize()) });
+        let ascender: f64 = unsafe { msg_send![&*font, ascender] };
+        let descender: f64 = unsafe { msg_send![&*font, descender] }; // negative
+        let leading: f64 = unsafe { msg_send![&*font, leading] };
+        (ascender - descender + leading).ceil()
+    }
+
+    fn control_view_is_flipped(&self) -> bool {
+        let view: Option<Retained<NSView>> = unsafe { msg_send![self, controlView] };
+        match view {
+            Some(v) => unsafe { msg_send![&*v, isFlipped] },
+            None => true,
+        }
     }
 }
 
