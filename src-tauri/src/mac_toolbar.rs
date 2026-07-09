@@ -16,13 +16,13 @@
 use std::cell::{Cell, RefCell};
 
 use objc2::rc::Retained;
-use objc2::runtime::ProtocolObject;
+use objc2::runtime::{AnyObject, ProtocolObject};
 use objc2::{define_class, msg_send, sel, AnyThread, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
     NSColor, NSCompositingOperation, NSFont, NSFontWeightRegular, NSImage,
-    NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSTextAlignment,
-    NSTextField, NSTextFieldCell, NSToolbar, NSToolbarDelegate, NSToolbarDisplayMode, NSToolbarItem,
-    NSView, NSWindow, NSWindowToolbarStyle,
+    NSEvent, NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSText,
+    NSTextAlignment, NSTextField, NSTextFieldCell, NSToolbar, NSToolbarDelegate,
+    NSToolbarDisplayMode, NSToolbarItem, NSView, NSWindow, NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use serde::Serialize;
@@ -183,6 +183,41 @@ define_class!(
                 }
             }
             r
+        }
+
+        // Route the field editor (edit + select) through the SAME centered rect as
+        // display, so the text doesn't jump when you click to edit.
+        #[unsafe(method(editWithFrame:inView:editor:delegate:event:))]
+        fn edit_with_frame(
+            &self,
+            frame: NSRect,
+            view: &NSView,
+            editor: &NSText,
+            delegate: Option<&AnyObject>,
+            event: Option<&NSEvent>,
+        ) {
+            let r: NSRect = unsafe { msg_send![self, drawingRectForBounds: frame] };
+            unsafe {
+                let _: () = msg_send![super(self),
+                    editWithFrame: r, inView: view, editor: editor, delegate: delegate, event: event];
+            }
+        }
+
+        #[unsafe(method(selectWithFrame:inView:editor:delegate:start:length:))]
+        fn select_with_frame(
+            &self,
+            frame: NSRect,
+            view: &NSView,
+            editor: &NSText,
+            delegate: Option<&AnyObject>,
+            start: isize,
+            length: isize,
+        ) {
+            let r: NSRect = unsafe { msg_send![self, drawingRectForBounds: frame] };
+            unsafe {
+                let _: () = msg_send![super(self),
+                    selectWithFrame: r, inView: view, editor: editor, delegate: delegate, start: start, length: length];
+            }
         }
     }
 );
