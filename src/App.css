@@ -451,18 +451,13 @@ body.window-inactive .welcome-root {
   justify-content: center;
   /* row-gap between wrapped rows; larger column-gap separates the groups. */
   gap: 6px 16px;
-  /* Floating panel: a compact centered card nestled just under the toolbar. It
-     stays IN FLOW (reserves its own row) so it never covers the slide — the
-     canvas starts below it. Tight top margin tucks it against the toolbar; a
-     slightly larger bottom margin gives the canvas breathing room. */
-  align-self: center;
-  max-width: calc(100% - 24px);
-  margin: 4px auto 8px;
-  padding: 4px 12px;
-  background: #ffffff;
-  border: 1px solid #d8dce1;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  /* No enclosing card: this row is transparent so the canvas backdrop reads
+     straight through, and each button is its own floating chip sitting ON that
+     backdrop (see .editor-actions button). Extra top padding gives the tools
+     some air below the toolbar; the row stays IN FLOW so it never covers the
+     slide. */
+  background: transparent;
+  padding: 14px 12px 10px;
   flex-shrink: 0;
   /* Wrap by GROUP, not by button: when the bar is too narrow, a whole group
      drops to the next row — buttons never split mid-group (#72). */
@@ -473,11 +468,13 @@ body.window-inactive .welcome-root {
 .tb-group { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
 
 .editor-actions button {
-  padding: 3px 8px;
-  /* White raised control on the native gray toolbar. */
-  border: 1px solid #c4c9ce;
-  border-radius: 4px;
+  padding: 5px 10px;
+  /* Individual floating chip on the canvas backdrop: subtle border + its own
+     drop shadow so each tool reads as a small raised box, no enclosing panel. */
+  border: 1px solid #d8dce1;
+  border-radius: 6px;
   background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
   cursor: pointer;
   font-size: 12px;
   color: #1a1a1a;
@@ -487,6 +484,7 @@ body.window-inactive .welcome-root {
 .editor-actions button:hover {
   background: #f0f1f3;
   border-color: #9aa1a8;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .editor-actions button:disabled {
