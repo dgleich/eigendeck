@@ -320,11 +320,15 @@ define_class!(
                     field.setAction(Some(sel!(onTitleEdit:)));
                 }
                 *self.ivars().title_field.borrow_mut() = Some(field.clone());
-                // Constraint-based sizing: pin the width, let autolayout use the
-                // field's natural height. No min/max stretching → text stays centered.
+                // Pin width AND intrinsic height. Height is required so the toolbar
+                // can't stretch the field taller than its text (a single-line field
+                // would then top-align). Intrinsic height reflects the bold 14pt font
+                // set above.
                 field.setTranslatesAutoresizingMaskIntoConstraints(false);
                 unsafe {
                     field.widthAnchor().constraintEqualToConstant(TITLE_WIDTH).setActive(true);
+                    let h = field.intrinsicContentSize().height;
+                    field.heightAnchor().constraintEqualToConstant(h).setActive(true);
                 }
                 let view: &NSView = &field;
                 item.setView(Some(view));
@@ -349,6 +353,8 @@ define_class!(
                 field.setTranslatesAutoresizingMaskIntoConstraints(false);
                 unsafe {
                     field.widthAnchor().constraintEqualToConstant(FIELD_WIDTH).setActive(true);
+                    let h = field.intrinsicContentSize().height;
+                    field.heightAnchor().constraintEqualToConstant(h).setActive(true);
                 }
                 let view: &NSView = &field;
                 item.setView(Some(view));
@@ -383,7 +389,8 @@ define_class!(
                     .constraintEqualToConstant(lead_gap_for(self.ivars().compact.get()));
                 unsafe {
                     width.setActive(true);
-                    view.heightAnchor().constraintEqualToConstant(FIELD_HEIGHT).setActive(true);
+                    // Only width matters; keep height minimal so it never props the row up.
+                    view.heightAnchor().constraintEqualToConstant(1.0).setActive(true);
                 }
                 item.setView(Some(&view));
                 item.setLabel(&NSString::from_str(""));
