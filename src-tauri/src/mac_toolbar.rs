@@ -20,8 +20,8 @@ use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
     NSColor, NSFont, NSFontWeightRegular, NSImage, NSImageSymbolConfiguration, NSImageSymbolScale,
-    NSLayoutConstraint, NSTextAlignment, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem,
-    NSView, NSWindow, NSWindowToolbarStyle,
+    NSLayoutConstraint, NSTextAlignment, NSTextField, NSToolbar, NSToolbarDelegate,
+    NSToolbarDisplayMode, NSToolbarItem, NSView, NSWindow, NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use serde::Serialize;
@@ -487,9 +487,16 @@ pub fn set_compact(compact: bool) {
         // Restyle the existing items in place (label text + image size).
         restyle_buttons(&del);
 
-        // Nudge the toolbar to re-measure now labels/images changed.
+        // THE label-row toggle: displayMode. UnifiedCompact forces the toolbar to
+        // IconOnly and switching back to Expanded does NOT restore it — so set it
+        // explicitly. IconAndLabel turns the label row back on (#125).
         TOOLBAR.with(|t| {
             if let Some(tb) = t.borrow().as_ref() {
+                tb.setDisplayMode(if compact {
+                    NSToolbarDisplayMode::IconOnly
+                } else {
+                    NSToolbarDisplayMode::IconAndLabel
+                });
                 unsafe { tb.validateVisibleItems() };
             }
         });
@@ -585,6 +592,8 @@ pub fn install(app: &AppHandle) {
     // toolbar items on the row below. The native title provides the proxy path
     // popover + drag + edited dot for free (driven by setRepresentedURL in lib.rs).
     ns_win.setToolbarStyle(NSWindowToolbarStyle::Expanded);
+    // Label row on by default (the label-row toggle set_compact drives). See #125.
+    toolbar.setDisplayMode(NSToolbarDisplayMode::IconAndLabel);
 
     TOOLBAR.with(|t| *t.borrow_mut() = Some(toolbar));
     DELEGATE.with(|d| *d.borrow_mut() = Some(delegate));
