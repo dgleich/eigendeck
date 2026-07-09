@@ -41,6 +41,7 @@ const TITLE_WIDTH: f64 = 240.0;
 const TITLE_FONT_SIZE: f64 = 14.0;
 const AUTHOR_ID: &str = "author";
 const VENUE_ID: &str = "venue";
+const JUPYTER_ID: &str = "jupyter";
 const FLEX_ID: &str = "NSToolbarFlexibleSpaceItem";
 
 #[derive(Clone, Serialize)]
@@ -69,7 +70,7 @@ fn identifiers() -> Retained<NSArray<NSString>> {
     let order = [
         "add-slide", "add-build", "save",
         FLEX_ID, TITLE_ID, FLEX_ID,
-        AUTHOR_ID, VENUE_ID, "export", "present",
+        AUTHOR_ID, VENUE_ID, JUPYTER_ID, "export", "present",
     ];
     let ids: Vec<Retained<NSString>> = order.iter().map(|id| NSString::from_str(id)).collect();
     let refs: Vec<&NSString> = ids.iter().map(|r| &**r).collect();
@@ -114,20 +115,59 @@ fn style_button(item: &NSToolbarItem, label: &str, symbol: &str, compact: bool, 
         // Accent-tint the dirty Save icon; otherwise leave it template (adapts to
         // light/dark). Combine the size + color configs.
         let cfg = if dirty {
-            let color = unsafe { NSColor::controlAccentColor() };
-            let color_cfg =
-                unsafe { NSImageSymbolConfiguration::configurationWithHierarchicalColor(&color) };
-            unsafe { cfg.configurationByApplyingConfiguration(&color_cfg) }
+            let color = NSColor::controlAccentColor();
+            let color_cfg = NSImageSymbolConfiguration::configurationWithHierarchicalColor(&color);
+            cfg.configurationByApplyingConfiguration(&color_cfg)
         } else {
             cfg
         };
-        let sized = unsafe { image.imageWithSymbolConfiguration(&cfg) }.unwrap_or(image);
+        let sized = image.imageWithSymbolConfiguration(&cfg).unwrap_or(image);
         item.setImage(Some(&sized));
     }
     // Bordered and label-beneath are mutually exclusive on a plain NSToolbarItem:
     // a bordered item is icon-only (capsule hover/press chrome, label in tooltip),
     // a borderless item shows the icon with the label beneath (Keynote/Xcode look).
     // So: compact → bordered (icon-only capsule), normal → borderless (icon+label).
+    item.setBordered(compact);
+}
+
+/// Map the aggregate Jupyter-health status to a system color for the icon tint.
+fn jupyter_color(status: &str) -> Retained<NSColor> {
+    match status {
+        "green" => NSColor::systemGreenColor(),
+        "yellow" => NSColor::systemYellowColor(),
+        "red" => NSColor::systemRedColor(),
+        _ => NSColor::systemGrayColor(),
+    }
+}
+
+/// Style the Jupyter server-status item: a `server.rack` glyph tinted by the
+/// aggregate health (green/yellow/red, gray = nothing to report). Mirrors the
+/// HTML ServerStatusPill. Follows the same compact bordered/label rules as the
+/// other buttons.
+fn style_jupyter(item: &NSToolbarItem, status: &str, tooltip: &str, compact: bool) {
+    let ns_label = NSString::from_str("Jupyter servers");
+    item.setLabel(&NSString::from_str(if compact { "" } else { "Jupyter" }));
+    item.setPaletteLabel(&ns_label);
+    item.setToolTip(Some(&NSString::from_str(tooltip)));
+    if let Some(image) = NSImage::imageWithSystemSymbolName_accessibilityDescription(
+        &NSString::from_str("server.rack"),
+        Some(&ns_label),
+    ) {
+        let point = if compact { ICON_POINT_SIZE_COMPACT } else { ICON_POINT_SIZE_REGULAR };
+        let size_cfg = unsafe {
+            NSImageSymbolConfiguration::configurationWithPointSize_weight_scale(
+                point,
+                NSFontWeightRegular,
+                NSImageSymbolScale::Large,
+            )
+        };
+        let color_cfg =
+            NSImageSymbolConfiguration::configurationWithHierarchicalColor(&jupyter_color(status));
+        let cfg = size_cfg.configurationByApplyingConfiguration(&color_cfg);
+        let sized = image.imageWithSymbolConfiguration(&cfg).unwrap_or(image);
+        item.setImage(Some(&sized));
+    }
     item.setBordered(compact);
 }
 
@@ -143,6 +183,10 @@ struct Ivars {
     compact: Cell<bool>,
     /// Whether the deck has unsaved changes — accent-tints the Save icon.
     save_dirty: Cell<bool>,
+    /// Jupyter server-status item + its current health/tooltip (pushed from JS).
+    jupyter_item: RefCell<Option<Retained<NSToolbarItem>>>,
+    jupyter_status: RefCell<String>,
+    jupyter_tooltip: RefCell<String>,
 }
 
 define_class!(
@@ -204,21 +248,19 @@ define_class!(
                         NSSize { width: TITLE_WIDTH, height: FIELD_HEIGHT },
                     ),
                 );
-                unsafe {
-                    field.setTranslatesAutoresizingMaskIntoConstraints(false);
-                    container.addSubview(&field);
-                    let leading = field
-                        .leadingAnchor()
-                        .constraintEqualToAnchor(&container.leadingAnchor());
-                    let trailing = field
-                        .trailingAnchor()
-                        .constraintEqualToAnchor(&container.trailingAnchor());
-                    let center_y = field
-                        .centerYAnchor()
-                        .constraintEqualToAnchor(&container.centerYAnchor());
-                    let refs: [&NSLayoutConstraint; 3] = [&leading, &trailing, &center_y];
-                    NSLayoutConstraint::activateConstraints(&NSArray::from_slice(&refs));
-                }
+                field.setTranslatesAutoresizingMaskIntoConstraints(false);
+                container.addSubview(&field);
+                let leading = field
+                    .leadingAnchor()
+                    .constraintEqualToAnchor(&container.leadingAnchor());
+                let trailing = field
+                    .trailingAnchor()
+                    .constraintEqualToAnchor(&container.trailingAnchor());
+                let center_y = field
+                    .centerYAnchor()
+                    .constraintEqualToAnchor(&container.centerYAnchor());
+                let refs: [&NSLayoutConstraint; 3] = [&leading, &trailing, &center_y];
+                NSLayoutConstraint::activateConstraints(&NSArray::from_slice(&refs));
                 #[allow(deprecated)]
                 {
                     item.setMinSize(NSSize { width: TITLE_WIDTH, height: FIELD_HEIGHT });
@@ -252,6 +294,21 @@ define_class!(
                 let view: &NSView = &field;
                 item.setView(Some(view));
                 item.setLabel(&NSString::from_str(""));
+                Some(item)
+            } else if id == JUPYTER_ID {
+                let compact = self.ivars().compact.get();
+                style_jupyter(
+                    &item,
+                    &self.ivars().jupyter_status.borrow(),
+                    &self.ivars().jupyter_tooltip.borrow(),
+                    compact,
+                );
+                let target: &objc2::runtime::AnyObject = self;
+                unsafe {
+                    item.setTarget(Some(target));
+                    item.setAction(Some(sel!(onItem:)));
+                }
+                *self.ivars().jupyter_item.borrow_mut() = Some(item.clone());
                 Some(item)
             } else {
                 match meta_for(identifier) {
@@ -310,6 +367,9 @@ impl ToolbarDelegate {
             buttons: RefCell::new(Vec::new()),
             compact: Cell::new(false),
             save_dirty: Cell::new(false),
+            jupyter_item: RefCell::new(None),
+            jupyter_status: RefCell::new("gray".to_string()),
+            jupyter_tooltip: RefCell::new(String::new()),
         });
         unsafe { msg_send![super(this), init] }
     }
@@ -357,6 +417,19 @@ fn restyle_buttons(del: &ToolbarDelegate) {
             style_button(item, label, symbol, compact, ident.to_string() == "save" && dirty);
         }
     }
+    restyle_jupyter(del);
+}
+
+/// Re-apply the Jupyter item's tint/label from the delegate's current state.
+fn restyle_jupyter(del: &ToolbarDelegate) {
+    if let Some(item) = del.ivars().jupyter_item.borrow().as_ref() {
+        style_jupyter(
+            item,
+            &del.ivars().jupyter_status.borrow(),
+            &del.ivars().jupyter_tooltip.borrow(),
+            del.ivars().compact.get(),
+        );
+    }
 }
 
 /// Toggle compact view live. Compact = labels off + smaller icons AND a shorter
@@ -391,6 +464,17 @@ pub fn set_save_dirty(dirty: bool) {
         if let Some(del) = d.borrow().as_ref() {
             del.ivars().save_dirty.set(dirty);
             restyle_buttons(del);
+        }
+    });
+}
+
+/// Update the Jupyter server-status icon (health tint + tooltip). Main thread.
+pub fn set_jupyter(status: &str, tooltip: &str) {
+    DELEGATE.with(|d| {
+        if let Some(del) = d.borrow().as_ref() {
+            *del.ivars().jupyter_status.borrow_mut() = status.to_string();
+            *del.ivars().jupyter_tooltip.borrow_mut() = tooltip.to_string();
+            restyle_jupyter(del);
         }
     });
 }

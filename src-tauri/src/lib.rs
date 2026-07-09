@@ -311,7 +311,7 @@ fn set_window_document(
                 Some(p) => {
                     // representedURL (canonical) gives the centered native title's
                     // proxy icon + path popover + drag-to-share for free.
-                    let url = unsafe { NSURL::fileURLWithPath(&NSString::from_str(p)) };
+                    let url = NSURL::fileURLWithPath(&NSString::from_str(p));
                     ns_win.setRepresentedURL(Some(&url));
                     ns_win.setTitle(&NSString::from_str(&document_title(p)));
                 }
@@ -368,6 +368,25 @@ fn set_toolbar_compact(window: tauri::WebviewWindow, compact: bool) -> Result<()
     #[cfg(not(all(target_os = "macos", feature = "mac-toolbar")))]
     {
         let _ = (&window, compact);
+    }
+    Ok(())
+}
+
+/// Update the native toolbar's Jupyter server-status icon (health tint +
+/// tooltip). Mirrors the HTML ServerStatusPill. no-op off the mac-toolbar build.
+#[tauri::command]
+fn set_toolbar_jupyter(
+    window: tauri::WebviewWindow,
+    status: String,
+    tooltip: String,
+) -> Result<(), String> {
+    #[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
+    {
+        let _ = window.run_on_main_thread(move || crate::mac_toolbar::set_jupyter(&status, &tooltip));
+    }
+    #[cfg(not(all(target_os = "macos", feature = "mac-toolbar")))]
+    {
+        let _ = (&window, status, tooltip);
     }
     Ok(())
 }
@@ -883,6 +902,7 @@ pub fn run() {
             native_toolbar_active,
             set_toolbar_compact,
             set_toolbar_visible,
+            set_toolbar_jupyter,
             check_display_mirroring,
             disable_display_mirroring,
             enable_display_mirroring,

@@ -17,6 +17,7 @@ import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import { DebugMenu } from './debug';
 import { ToastHost } from './components/ToastHost';
 import { openSettingsWindow } from './lib/settingsWindow';
+import { useAggregateServerHealth } from './lib/serverHealth';
 import { nudgeDelta, zOrderDirection } from './lib/keyboardShortcuts';
 import { dispatchToolbarAction } from './lib/toolbarActions';
 import { CollisionDialog } from './components/CollisionDialog';
@@ -1014,6 +1015,9 @@ function App() {
     void import('@tauri-apps/api/event').then(({ listen }) =>
       listen<{ id: string }>('toolbar:action', ({ payload }) => {
         const store = usePresentationStore.getState();
+        // Jupyter status icon → open Settings (Jupyter servers). Not a standard
+        // insert/present action, so handle it before dispatchToolbarAction.
+        if (payload.id === 'jupyter') { void openSettingsWindow(); return; }
         dispatchToolbarAction(payload.id, {
           addSlide: () => store.addSlide(),
           addBuild: () => store.addBuildSlide(),
@@ -1036,6 +1040,16 @@ function App() {
       .then(({ invoke }) => invoke('set_toolbar_fields', { title: tbTitle, author: tbAuthor, venue: tbVenue }))
       .catch(() => {});
   }, [tbTitle, tbAuthor, tbVenue]);
+
+  // Native macOS toolbar Jupyter server-status icon — mirror the HTML pill's
+  // aggregate health (green/yellow/red, gray = no live notebooks). Pushed to the
+  // NSToolbar item; no-op off the native-toolbar build.
+  const { status: jupyterStatus, tooltip: jupyterTooltip } = useAggregateServerHealth();
+  useEffect(() => {
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke('set_toolbar_jupyter', { status: jupyterStatus, tooltip: jupyterTooltip }))
+      .catch(() => {});
+  }, [jupyterStatus, jupyterTooltip]);
 
   // On macOS with the native toolbar (mac-toolbar build), hide the HTML toolbar —
   // it duplicates the native one. False everywhere else (HTML toolbar stays).
