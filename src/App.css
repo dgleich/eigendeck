@@ -635,10 +635,10 @@ body.window-inactive .welcome-root {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  /* Top padding clears the floating insert HUD so the slide isn't covered by
-     default; because the HUD overlays (absolute), elements still scroll/drag
-     under the chips. */
-  padding: 36px 16px 16px;
+  /* Top padding tracks the floating insert HUD's measured height (--insert-hud-h,
+     set in App.tsx) so the slide clears the chips even when they wrap to 2-3 rows.
+     Because the HUD overlays (absolute), elements still scroll/drag under it. */
+  padding: calc(var(--insert-hud-h, 32px) + 6px) 16px 16px;
   overflow: auto;
   background: #e8e8e8;
 }

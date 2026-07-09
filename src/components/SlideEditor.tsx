@@ -736,6 +736,10 @@ export function SlideEditor() {
           ref={canvasRef}
           className="slide-canvas"
           style={{ width: SLIDE_WIDTH, height: SLIDE_HEIGHT, transform: `scale(${scale})`, transformOrigin: 'top center',
+            // transform: scale() leaves the layout box at full 1080px, so the
+            // unscaled remainder shows as dead space below the slide. Collapse it
+            // with a negative bottom margin equal to the scaled-away height.
+            marginBottom: -(SLIDE_HEIGHT * (1 - scale)),
             // Exposed so in-canvas chrome (badges, lock buttons, notebook
             // controls) can counter-scale to a fixed on-screen size — the
             // canvas transform: scale() otherwise shrinks them with zoom.

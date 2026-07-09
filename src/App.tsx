@@ -573,6 +573,22 @@ function App() {
   const [sidebarWidth, setSidebarWidth] = useState(200);
   const resizeStartX = useRef(0);
   const resizeStartW = useRef(0);
+  // The floating insert HUD overlays the canvas; publish its measured height as
+  // --insert-hud-h on .editor-area so the canvas top-padding tracks it (the slide
+  // clears the chips even when they wrap to 2-3 rows).
+  const editorAreaRef = useRef<HTMLDivElement>(null);
+  const insertHudRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const hud = insertHudRef.current;
+    const area = editorAreaRef.current;
+    if (!hud || !area) return;
+    const apply = () =>
+      area.style.setProperty('--insert-hud-h', `${hud.offsetTop + hud.offsetHeight}px`);
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(hud);
+    return () => ro.disconnect();
+  });
   const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[]; fromSlideIndex: number; fromSlideId: string } | { type: 'slide'; data: any } | null>(null);
   const [linkOverlayElementId, setLinkOverlayElementId] = useState<string | null>(null);
   const [promoteCandidates, setPromoteCandidates] = useState<{ elementId: string; slideNo: number; summary: string }[] | null>(null);
@@ -1680,8 +1696,8 @@ function App() {
           <SlideSidebar />
         </div>
         <div className="sidebar-resize-handle" onPointerDown={handleResizeStart} />
-        <div className="editor-area">
-          <div className="editor-actions">
+        <div className="editor-area" ref={editorAreaRef}>
+          <div className="editor-actions" ref={insertHudRef}>
             {INSERT_GROUP_ORDER.map((group) => {
               const items = INSERT_ITEMS.filter(
                 (it) => it.group === group && !hiddenToolbarItems.includes(it.id));
