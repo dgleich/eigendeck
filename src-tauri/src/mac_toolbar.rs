@@ -20,8 +20,9 @@ use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, AnyThread, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
     NSColor, NSCompositingOperation, NSFont, NSFontWeightRegular, NSImage,
-    NSImageSymbolConfiguration, NSImageSymbolScale, NSTextAlignment, NSTextField, NSToolbar,
-    NSToolbarDelegate, NSToolbarDisplayMode, NSToolbarItem, NSView, NSWindow, NSWindowToolbarStyle,
+    NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSTextAlignment,
+    NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarDisplayMode, NSToolbarItem, NSView,
+    NSWindow, NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use serde::Serialize;
@@ -261,8 +262,10 @@ struct Ivars {
     jupyter_item: RefCell<Option<Retained<NSToolbarItem>>>,
     jupyter_status: RefCell<String>,
     jupyter_tooltip: RefCell<String>,
-    /// Invisible leading spacer item (Save→title gap), resized per mode.
+    /// Invisible leading spacer item (Save→title gap) + its width constraint, whose
+    /// constant is updated per mode.
     lead_gap_item: RefCell<Option<Retained<NSToolbarItem>>>,
+    lead_gap_width: RefCell<Option<Retained<NSLayoutConstraint>>>,
 }
 
 define_class!(
@@ -317,11 +320,11 @@ define_class!(
                     field.setAction(Some(sel!(onTitleEdit:)));
                 }
                 *self.ivars().title_field.borrow_mut() = Some(field.clone());
-                let fit = field.fittingSize();
-                #[allow(deprecated)]
-                {
-                    item.setMinSize(NSSize { width: TITLE_WIDTH, height: fit.height });
-                    item.setMaxSize(NSSize { width: TITLE_WIDTH, height: fit.height });
+                // Constraint-based sizing: pin the width, let autolayout use the
+                // field's natural height. No min/max stretching → text stays centered.
+                field.setTranslatesAutoresizingMaskIntoConstraints(false);
+                unsafe {
+                    field.widthAnchor().constraintEqualToConstant(TITLE_WIDTH).setActive(true);
                 }
                 let view: &NSView = &field;
                 item.setView(Some(view));
@@ -343,11 +346,9 @@ define_class!(
                     field.setAction(Some(action));
                 }
                 *slot.borrow_mut() = Some(field.clone());
-                let fit = field.fittingSize();
-                #[allow(deprecated)]
-                {
-                    item.setMinSize(NSSize { width: FIELD_WIDTH, height: fit.height });
-                    item.setMaxSize(NSSize { width: FIELD_WIDTH, height: fit.height });
+                field.setTranslatesAutoresizingMaskIntoConstraints(false);
+                unsafe {
+                    field.widthAnchor().constraintEqualToConstant(FIELD_WIDTH).setActive(true);
                 }
                 let view: &NSView = &field;
                 item.setView(Some(view));
@@ -369,22 +370,25 @@ define_class!(
                 *self.ivars().jupyter_item.borrow_mut() = Some(item.clone());
                 Some(item)
             } else if id == LEAD_GAP_ID {
-                // Invisible fixed-width spacer between the left group and the title;
-                // width is per-mode and resized in place by restyle_lead_gap.
-                let w = lead_gap_for(self.ivars().compact.get());
-                let size = NSSize { width: w, height: FIELD_HEIGHT };
+                // Invisible spacer between the left group and the title. An empty
+                // NSView has no intrinsic size, so pin both width (per-mode, kept for
+                // restyle_lead_gap to update its constant) and height via constraints.
                 let view = NSView::initWithFrame(
                     NSView::alloc(mtm),
-                    NSRect::new(NSPoint::new(0.0, 0.0), size),
+                    NSRect::new(NSPoint::new(0.0, 0.0), NSSize { width: 0.0, height: FIELD_HEIGHT }),
                 );
-                item.setView(Some(&view));
-                #[allow(deprecated)]
-                {
-                    item.setMinSize(size);
-                    item.setMaxSize(size);
+                view.setTranslatesAutoresizingMaskIntoConstraints(false);
+                let width = view
+                    .widthAnchor()
+                    .constraintEqualToConstant(lead_gap_for(self.ivars().compact.get()));
+                unsafe {
+                    width.setActive(true);
+                    view.heightAnchor().constraintEqualToConstant(FIELD_HEIGHT).setActive(true);
                 }
+                item.setView(Some(&view));
                 item.setLabel(&NSString::from_str(""));
                 *self.ivars().lead_gap_item.borrow_mut() = Some(item.clone());
+                *self.ivars().lead_gap_width.borrow_mut() = Some(width);
                 Some(item)
             } else {
                 match meta_for(identifier) {
@@ -447,6 +451,7 @@ impl ToolbarDelegate {
             jupyter_status: RefCell::new("gray".to_string()),
             jupyter_tooltip: RefCell::new(String::new()),
             lead_gap_item: RefCell::new(None),
+            lead_gap_width: RefCell::new(None),
         });
         unsafe { msg_send![super(this), init] }
     }
@@ -498,18 +503,11 @@ fn restyle_buttons(del: &ToolbarDelegate) {
     restyle_lead_gap(del);
 }
 
-/// Resize the leading spacer to the current mode's gap width, in place.
+/// Resize the leading spacer to the current mode's gap width by updating its width
+/// constraint's constant (relayouts properly). In place.
 fn restyle_lead_gap(del: &ToolbarDelegate) {
-    if let Some(item) = del.ivars().lead_gap_item.borrow().as_ref() {
-        let size = NSSize { width: lead_gap_for(del.ivars().compact.get()), height: FIELD_HEIGHT };
-        #[allow(deprecated)]
-        {
-            item.setMinSize(size);
-            item.setMaxSize(size);
-        }
-        if let Some(view) = unsafe { item.view() } {
-            view.setFrameSize(size);
-        }
+    if let Some(width) = del.ivars().lead_gap_width.borrow().as_ref() {
+        width.setConstant(lead_gap_for(del.ivars().compact.get()));
     }
 }
 
