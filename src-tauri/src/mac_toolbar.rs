@@ -445,6 +445,12 @@ define_class!(
                     ("Venue", sel!(onVenueEdit:), &self.ivars().venue_field)
                 };
                 let field = NSTextField::textFieldWithString(&NSString::from_str(""), mtm);
+                // Vertically-center the text in the bezel (bezeled fields otherwise
+                // sit a hair high here). Keep the box + editability.
+                let cell = CenteredCell::make(mtm);
+                unsafe { field.setCell(Some(&cell)) };
+                field.setBezeled(true);
+                field.setEditable(true);
                 field.setPlaceholderString(Some(&NSString::from_str(placeholder)));
                 let target: &objc2::runtime::AnyObject = self;
                 unsafe {
