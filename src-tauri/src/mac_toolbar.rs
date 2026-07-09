@@ -58,7 +58,7 @@ fn nudge_for(symbol: &str, compact: bool) -> f64 {
 /// Build / Save) and the centered title, per mode. Bump COMPACT to push the left
 /// group further from the title in compact mode; REGULAR is normally 0.
 const LEAD_GAP_REGULAR: f64 = 0.0;
-const LEAD_GAP_COMPACT: f64 = 24.0;
+const LEAD_GAP_COMPACT: f64 = 100.0;
 const LEAD_GAP_ID: &str = "lead-gap";
 
 fn lead_gap_for(compact: bool) -> f64 {
@@ -68,6 +68,9 @@ fn lead_gap_for(compact: bool) -> f64 {
 const TITLE_ID: &str = "title";
 const TITLE_WIDTH: f64 = 240.0;
 const TITLE_FONT_SIZE: f64 = 14.0;
+/// Fixed height (points) of the editable title field. A hair taller than the text
+/// so the editing focus ring has a little breathing room (bump for more space).
+const TITLE_FIELD_HEIGHT: f64 = 22.0;
 const AUTHOR_ID: &str = "author";
 const VENUE_ID: &str = "venue";
 const JUPYTER_ID: &str = "jupyter";
@@ -337,7 +340,12 @@ define_class!(
                 let center_y = field
                     .centerYAnchor()
                     .constraintEqualToAnchor(&container.centerYAnchor());
-                let refs: [&NSLayoutConstraint; 3] = [&leading, &trailing, &center_y];
+                // Slightly taller than the text so the editing focus ring gets a
+                // couple pixels of breathing room (kept centered by center_y).
+                let height = field
+                    .heightAnchor()
+                    .constraintEqualToConstant(TITLE_FIELD_HEIGHT);
+                let refs: [&NSLayoutConstraint; 4] = [&leading, &trailing, &center_y, &height];
                 NSLayoutConstraint::activateConstraints(&NSArray::from_slice(&refs));
                 #[allow(deprecated)]
                 {
