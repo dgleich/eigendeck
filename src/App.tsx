@@ -34,7 +34,7 @@ import { PromoteChooser } from './components/PromoteChooser';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement } from './types/presentation';
 import type { SlideElement } from './types/presentation';
-import { usePreference, getPreference, setPreference } from './lib/preferences';
+import { usePreference, getPreference } from './lib/preferences';
 import { INSERT_ITEMS, INSERT_GROUP_ORDER } from './lib/insertItems';
 import {
   saveProject,
@@ -1018,10 +1018,6 @@ function App() {
         // Jupyter status icon → open Settings (Jupyter servers). Not a standard
         // insert/present action, so handle it before dispatchToolbarAction.
         if (payload.id === 'jupyter') { void openSettingsWindow(); return; }
-        // Right-click display-mode menu → flip the compactToolbar preference
-        // (single source of truth; drives set_toolbar_compact + Settings checkbox).
-        if (payload.id === 'compact-on') { setPreference('compactToolbar', true); return; }
-        if (payload.id === 'compact-off') { setPreference('compactToolbar', false); return; }
         dispatchToolbarAction(payload.id, {
           addSlide: () => store.addSlide(),
           addBuild: () => store.addBuildSlide(),

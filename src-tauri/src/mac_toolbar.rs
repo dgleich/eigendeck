@@ -19,10 +19,9 @@ use objc2::rc::Retained;
 use objc2::runtime::ProtocolObject;
 use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
-    NSColor, NSControlStateValueOff, NSControlStateValueOn, NSFont, NSFontWeightRegular, NSImage,
-    NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSMenu, NSMenuItem,
-    NSTextAlignment, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem, NSView, NSWindow,
-    NSWindowToolbarStyle,
+    NSColor, NSFont, NSFontWeightRegular, NSImage, NSImageSymbolConfiguration, NSImageSymbolScale,
+    NSLayoutConstraint, NSTextAlignment, NSTextField, NSToolbar, NSToolbarDelegate, NSToolbarItem,
+    NSView, NSWindow, NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use serde::Serialize;
@@ -187,103 +186,6 @@ fn style_jupyter(item: &NSToolbarItem, status: &str, tooltip: &str, compact: boo
     item.setBordered(compact);
 }
 
-/// A Keynote-style right-click menu for the toolbar's non-button areas (title,
-/// Author, Venue): "Icon and Text" / "Icon Only" with a checkmark on the current
-/// mode. Selecting posts `toolbar:action` {id: "compact-on"|"compact-off"} so the
-/// frontend flips the `compactToolbar` preference (single source of truth — keeps
-/// the Settings checkbox in sync), which drives set_compact back here.
-fn build_display_menu(delegate: &ToolbarDelegate, compact: bool, mtm: MainThreadMarker) -> Retained<NSMenu> {
-    let menu = NSMenu::new(mtm);
-    menu.setAutoenablesItems(false);
-    let target: &objc2::runtime::AnyObject = delegate;
-    // (title, tag, checked-when). tag 0 = Icon and Text (not compact), 1 = Icon Only.
-    for (title, tag, checked) in [("Icon and Text", 0isize, !compact), ("Icon Only", 1isize, compact)] {
-        let item = unsafe {
-            NSMenuItem::initWithTitle_action_keyEquivalent(
-                NSMenuItem::alloc(mtm),
-                &NSString::from_str(title),
-                Some(sel!(onDisplayMode:)),
-                &NSString::from_str(""),
-            )
-        };
-        item.setTag(tag);
-        unsafe { item.setTarget(Some(target)) };
-        item.setState(if checked { NSControlStateValueOn } else { NSControlStateValueOff });
-        menu.addItem(&item);
-    }
-    menu
-}
-
-/// True if the view's runtime Obj-C class is the (private) toolbar background view.
-/// Matched by class NAME only — we never call private API on it, just setMenu:.
-fn is_toolbar_view(view: &NSView) -> bool {
-    let name = view.class().name();
-    let s = name.to_str().unwrap_or("");
-    s == "NSToolbarView" || s == "NSToolbarItemViewer" || s == "_NSToolbarViewClipView"
-}
-
-/// Depth-first search for the toolbar background view (owned Retained in/out so
-/// no manual retain is needed).
-fn search_toolbar_view(view: Retained<NSView>) -> Option<Retained<NSView>> {
-    if is_toolbar_view(&view) {
-        return Some(view);
-    }
-    let subs = unsafe { view.subviews() };
-    for i in 0..subs.count() {
-        if let Some(found) = search_toolbar_view(subs.objectAtIndex(i)) {
-            return Some(found);
-        }
-    }
-    None
-}
-
-/// Find the NSToolbarView behind the window's native toolbar. It's a sibling of
-/// contentView under the window's private frame view, so climb to the root first.
-fn find_toolbar_background(ns_win: &NSWindow) -> Option<Retained<NSView>> {
-    let content = unsafe { ns_win.contentView() }?;
-    let mut root = content;
-    while let Some(sv) = unsafe { root.superview() } {
-        root = sv;
-    }
-    search_toolbar_view(root)
-}
-
-/// Set `menu` on a view AND every descendant. Right-clicks are hit-tested to the
-/// deepest view (each item's NSToolbarItemViewer, the _NSToolbarFlexibleSpace in
-/// the gaps, etc.) and menuForEvent: does NOT bubble to the NSToolbarView's menu —
-/// so to get a Keynote-style right-click anywhere on the strip we set it on all of
-/// them.
-fn set_menu_recursive(view: &NSView, menu: &NSMenu) {
-    unsafe { view.setMenu(Some(menu)) };
-    let subs = unsafe { view.subviews() };
-    for i in 0..subs.count() {
-        set_menu_recursive(&subs.objectAtIndex(i), menu);
-    }
-}
-
-/// Attach the right-click display menu to the toolbar BACKGROUND (the empty strip,
-/// Keynote-style) — the item views already carry the same menu as a fallback. The
-/// background view exists only after first layout, so this is idempotent and
-/// retried from each state push until it succeeds. Main thread.
-fn attach_toolbar_menu_once() {
-    let Some(mtm) = MainThreadMarker::new() else { return };
-    DELEGATE.with(|d| {
-        let Some(del) = d.borrow().as_ref().cloned() else { return };
-        if del.ivars().menu_attached.get() {
-            return;
-        }
-        let Some(win) = del.ivars().app.get_webview_window("main") else { return };
-        let Ok(ptr) = win.ns_window() else { return };
-        // Safety: Tauri owns a valid NSWindow for "main" for its lifetime.
-        let ns_win: &NSWindow = unsafe { &*(ptr as *const NSWindow) };
-        if let Some(tbview) = find_toolbar_background(ns_win) {
-            let menu = build_display_menu(&del, del.ivars().compact.get(), mtm);
-            set_menu_recursive(&tbview, &menu);
-            del.ivars().menu_attached.set(true);
-        }
-    });
-}
-
 struct Ivars {
     app: AppHandle,
     title_field: RefCell<Option<Retained<NSTextField>>>,
@@ -300,10 +202,6 @@ struct Ivars {
     jupyter_item: RefCell<Option<Retained<NSToolbarItem>>>,
     jupyter_status: RefCell<String>,
     jupyter_tooltip: RefCell<String>,
-    /// Whether the right-click display menu has been attached to the toolbar
-    /// background view yet (that private view exists only after first layout, so
-    /// we attach lazily on the first state push and retry until it's found).
-    menu_attached: Cell<bool>,
 }
 
 define_class!(
@@ -378,12 +276,6 @@ define_class!(
                     .constraintEqualToAnchor(&container.centerYAnchor());
                 let refs: [&NSLayoutConstraint; 3] = [&leading, &trailing, &center_y];
                 NSLayoutConstraint::activateConstraints(&NSArray::from_slice(&refs));
-                // Right-click the title area → the Icon/Text display menu.
-                let menu = build_display_menu(self, self.ivars().compact.get(), mtm);
-                unsafe {
-                    container.setMenu(Some(&menu));
-                    field.setMenu(Some(&menu));
-                }
                 #[allow(deprecated)]
                 {
                     item.setMinSize(NSSize { width: TITLE_WIDTH, height: FIELD_HEIGHT });
@@ -407,9 +299,6 @@ define_class!(
                     field.setAction(Some(action));
                 }
                 *slot.borrow_mut() = Some(field.clone());
-                // Right-click the Author/Venue field → the Icon/Text display menu.
-                let menu = build_display_menu(self, self.ivars().compact.get(), mtm);
-                unsafe { field.setMenu(Some(&menu)) };
                 // Give the ITEM a fixed size and let the toolbar center the field
                 // vertically — the idiomatic path (no container / manual padding).
                 #[allow(deprecated)]
@@ -442,6 +331,7 @@ define_class!(
                     Some((label, symbol)) => {
                         let compact = self.ivars().compact.get();
                         let dirty = id == "save" && self.ivars().save_dirty.get();
+                        eprintln!("[compact] item_for {id} compact={compact}");
                         style_button(&item, label, symbol, compact, dirty);
                         let target: &objc2::runtime::AnyObject = self;
                         unsafe {
@@ -464,15 +354,6 @@ define_class!(
         fn on_item(&self, sender: &NSToolbarItem) {
             let id = sender.itemIdentifier().to_string();
             let _ = self.ivars().app.emit("toolbar:action", ActionPayload { id });
-        }
-
-        #[unsafe(method(onDisplayMode:))]
-        fn on_display_mode(&self, sender: &NSMenuItem) {
-            // tag 1 = "Icon Only" = compact. Route through the frontend so the
-            // compactToolbar preference (and the Settings checkbox) stays in sync;
-            // the pref change drives set_compact back here.
-            let id = if sender.tag() == 1 { "compact-on" } else { "compact-off" };
-            let _ = self.ivars().app.emit("toolbar:action", ActionPayload { id: id.to_string() });
         }
 
         #[unsafe(method(onTitleEdit:))]
@@ -505,7 +386,6 @@ impl ToolbarDelegate {
             jupyter_item: RefCell::new(None),
             jupyter_status: RefCell::new("gray".to_string()),
             jupyter_tooltip: RefCell::new(String::new()),
-            menu_attached: Cell::new(false),
         });
         unsafe { msg_send![super(this), init] }
     }
@@ -540,9 +420,6 @@ pub fn set_fields(title: &str, author: &str, venue: &str) {
             set_string(&del.ivars().venue_field, venue);
         }
     });
-    // First push after the deck loads is reliably after first layout — a good
-    // moment to (lazily) attach the toolbar-background right-click menu.
-    attach_toolbar_menu_once();
 }
 
 /// Re-apply styling to every built button from the delegate's current
@@ -577,8 +454,12 @@ fn restyle_jupyter(del: &ToolbarDelegate) {
 /// title inline). Labels-off alone can't reclaim height because Expanded always
 /// reserves the label row. Main thread.
 pub fn set_compact(compact: bool) {
+    eprintln!("[compact] set_compact({compact})");
     DELEGATE.with(|d| {
-        let Some(del) = d.borrow().as_ref().cloned() else { return };
+        let Some(del) = d.borrow().as_ref().cloned() else {
+            eprintln!("[compact] no delegate");
+            return;
+        };
 
         // Snapshot the editable field values — the rebuild below recreates the
         // fields empty (item_for makes fresh NSTextFields), so we restore after.
@@ -602,8 +483,11 @@ pub fn set_compact(compact: bool) {
         TOOLBAR.with(|t| {
             if let Some(tb) = t.borrow().as_ref() {
                 let empty: Retained<NSArray<NSString>> = NSArray::from_slice(&[]);
+                eprintln!("[compact] before empty: {} items", tb.items().count());
                 tb.setItemIdentifiers(&empty);
+                eprintln!("[compact] after empty: {} items", tb.items().count());
                 tb.setItemIdentifiers(&build_ids(with_jupyter));
+                eprintln!("[compact] after refill: {} items", tb.items().count());
             }
         });
 
@@ -622,12 +506,7 @@ pub fn set_compact(compact: bool) {
 
         // Restore the field values into the freshly-created fields.
         set_fields(&title, &author, &venue);
-
-        // The style switch can swap the toolbar container, so re-attach the
-        // background menu (set_fields already tried, but with the pre-rebuild flag).
-        del.ivars().menu_attached.set(false);
     });
-    attach_toolbar_menu_once();
 }
 
 /// Accent-tint the Save icon when the deck has unsaved changes. Main thread.
@@ -663,8 +542,6 @@ pub fn set_jupyter(status: &str, tooltip: &str) {
                 (true, None) => {
                     let idx = item_index(&tb, "export").unwrap_or_else(|| tb.items().count());
                     tb.insertItemWithItemIdentifier_atIndex(&NSString::from_str(JUPYTER_ID), idx as isize);
-                    // New viewer subtree → re-apply the right-click menu.
-                    del.ivars().menu_attached.set(false);
                 }
                 // Already shown: just re-tint.
                 (true, Some(_)) => restyle_jupyter(&del),
@@ -677,8 +554,6 @@ pub fn set_jupyter(status: &str, tooltip: &str) {
             }
         });
     });
-    // Also a good post-layout moment to (lazily) attach the background menu.
-    attach_toolbar_menu_once();
 }
 
 // The toolbar itself, kept so we can show/hide it (welcome screen + present mode).
