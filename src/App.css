@@ -443,6 +443,8 @@ body.window-inactive .welcome-root {
   flex-direction: column;
   overflow: hidden;
   background: #f0f0f0;
+  /* Anchor the floating insert panel (absolutely positioned child). */
+  position: relative;
 }
 
 .editor-actions {
@@ -451,18 +453,20 @@ body.window-inactive .welcome-root {
   justify-content: center;
   /* row-gap between wrapped rows; larger column-gap separates the groups. */
   gap: 6px 16px;
-  /* Floating panel: a centered, self-sized card hovering over the canvas rather
-     than a full-width bar welded to the toolbar. The editor-area backdrop shows
-     around it. max-width lets it wrap by group on narrow windows. */
-  align-self: center;
+  /* Floating panel: a centered, self-sized card that OVERLAYS the top of the
+     canvas (absolute) so it consumes no layout height — the slide gets the full
+     editor area. max-width lets it wrap by group on narrow windows. */
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
   max-width: calc(100% - 24px);
-  margin: 10px auto;
-  padding: 6px 12px;
+  padding: 5px 12px;
   background: #ffffff;
   border: 1px solid #d8dce1;
   border-radius: 10px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
-  flex-shrink: 0;
   /* Wrap by GROUP, not by button: when the bar is too narrow, a whole group
      drops to the next row — buttons never split mid-group (#72). */
   flex-wrap: wrap;
