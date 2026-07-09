@@ -110,8 +110,8 @@ fn meta_for(identifier: &NSString) -> Option<(&'static str, &'static str)> {
 ///   to flag unsaved changes (mirrors the title-bar edited dot).
 fn style_button(item: &NSToolbarItem, label: &str, symbol: &str, compact: bool, dirty: bool) {
     let ns_label = NSString::from_str(label);
-    // Expanded style ignores displayMode(IconOnly); an EMPTY visible label is
-    // what gives icon-only. Regular mode shows the label under the icon.
+    // Normal mode shows the label under the icon; compact clears the text (icon
+    // only). paletteLabel + toolTip keep the name available regardless.
     item.setLabel(&NSString::from_str(if compact { "" } else { label }));
     item.setPaletteLabel(&ns_label);
     item.setToolTip(Some(&ns_label));
@@ -124,7 +124,10 @@ fn style_button(item: &NSToolbarItem, label: &str, symbol: &str, compact: bool, 
             NSImageSymbolConfiguration::configurationWithPointSize_weight_scale(
                 point,
                 NSFontWeightRegular,
-                NSImageSymbolScale::Large,
+                // Medium, NOT Large: a Large glyph is tall enough that AppKit sizes
+                // the item to the image and drops the label row entirely — which is
+                // why labels never rendered (#125). Medium leaves room for the label.
+                NSImageSymbolScale::Medium,
             )
         };
         // Accent-tint the dirty Save icon; otherwise leave it template (adapts to
@@ -138,12 +141,17 @@ fn style_button(item: &NSToolbarItem, label: &str, symbol: &str, compact: bool, 
         };
         let sized = image.imageWithSymbolConfiguration(&cfg).unwrap_or(image);
         item.setImage(Some(&sized));
+        if let Some(img) = item.image() {
+            let sz = img.size();
+            eprintln!(
+                "[compact] styled {} compact={compact} imgH={:.1}",
+                item.itemIdentifier(), sz.height
+            );
+        }
     }
-    // Bordered and label-beneath are mutually exclusive on a plain NSToolbarItem:
-    // a bordered item is icon-only (capsule hover/press chrome, label in tooltip),
-    // a borderless item shows the icon with the label beneath (Keynote/Xcode look).
-    // So: compact → bordered (icon-only capsule), normal → borderless (icon+label).
-    item.setBordered(compact);
+    // Always borderless: a BORDERED plain toolbar item renders icon-only (the label
+    // is dropped for the capsule chrome). Borderless is what shows icon+label.
+    item.setBordered(false);
 }
 
 /// Map the aggregate Jupyter-health status to a system color for the icon tint.
@@ -331,7 +339,6 @@ define_class!(
                     Some((label, symbol)) => {
                         let compact = self.ivars().compact.get();
                         let dirty = id == "save" && self.ivars().save_dirty.get();
-                        eprintln!("[compact] item_for {id} compact={compact}");
                         style_button(&item, label, symbol, compact, dirty);
                         let target: &objc2::runtime::AnyObject = self;
                         unsafe {
@@ -448,11 +455,11 @@ fn restyle_jupyter(del: &ToolbarDelegate) {
     }
 }
 
-/// Toggle compact view live. Compact = labels off + smaller icons AND a shorter
-/// toolbar: switch the window's toolbar style from Expanded (a dedicated centered
-/// title row PLUS a per-item label row — tall) to UnifiedCompact (one short row,
-/// title inline). Labels-off alone can't reclaim height because Expanded always
-/// reserves the label row. Main thread.
+/// Toggle compact view live, IN PLACE (no item rebuild). Compact = labels off +
+/// smaller icons via a shorter toolbar style (UnifiedCompact vs Expanded). We
+/// restyle the existing items (label/image) and switch the window toolbar style;
+/// setLabel/setImage relayout the items, and validateVisibleItems nudges a
+/// re-measure. Main thread.
 pub fn set_compact(compact: bool) {
     eprintln!("[compact] set_compact({compact})");
     DELEGATE.with(|d| {
@@ -460,24 +467,10 @@ pub fn set_compact(compact: bool) {
             eprintln!("[compact] no delegate");
             return;
         };
-
-        // Snapshot the editable field values — the rebuild below recreates the
-        // fields empty (item_for makes fresh NSTextFields), so we restore after.
-        let read = |slot: &RefCell<Option<Retained<NSTextField>>>| {
-            slot.borrow().as_ref().map(|f| f.stringValue().to_string()).unwrap_or_default()
-        };
-        let title = read(&del.ivars().title_field);
-        let author = read(&del.ivars().author_field);
-        let venue = read(&del.ivars().venue_field);
-
-        // Flip the flag first so item_for builds each item in the new mode.
         del.ivars().compact.set(compact);
 
-        // Set the toolbar STYLE first, THEN rebuild the items — item_for builds
-        // each item in whatever layout the toolbar is currently in, so if we
-        // rebuilt while still UnifiedCompact the label row never came back on the
-        // way to Expanded (that was #125). Switching the style first means item_for
-        // builds the items in the target (Expanded) layout, so labels reappear.
+        // Switch the window toolbar style (Expanded = tall w/ centered title row;
+        // UnifiedCompact = short single row).
         if let Some(win) = del.ivars().app.get_webview_window("main") {
             if let Ok(ptr) = win.ns_window() {
                 // Safety: Tauri owns a valid NSWindow for "main" for its lifetime.
@@ -491,20 +484,15 @@ pub fn set_compact(compact: bool) {
             }
         }
 
-        // Rebuild the items (empty→refill forces item_for to run fresh for each,
-        // now under the just-set style). Keep the Jupyter item iff it's live.
-        let with_jupyter = del.ivars().jupyter_item.borrow().is_some()
-            || del.ivars().jupyter_status.borrow().as_str() != "gray";
+        // Restyle the existing items in place (label text + image size).
+        restyle_buttons(&del);
+
+        // Nudge the toolbar to re-measure now labels/images changed.
         TOOLBAR.with(|t| {
             if let Some(tb) = t.borrow().as_ref() {
-                let empty: Retained<NSArray<NSString>> = NSArray::from_slice(&[]);
-                tb.setItemIdentifiers(&empty);
-                tb.setItemIdentifiers(&build_ids(with_jupyter));
+                unsafe { tb.validateVisibleItems() };
             }
         });
-
-        // Restore the field values into the freshly-created fields.
-        set_fields(&title, &author, &venue);
     });
 }
 
