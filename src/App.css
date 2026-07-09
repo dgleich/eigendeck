@@ -620,7 +620,9 @@ body.window-inactive .welcome-root {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 16px;
+  /* Less top gap: the insert row already sits above on the same backdrop, so a
+     full 16px here doubled the space before the slide. */
+  padding: 4px 16px 16px;
   overflow: auto;
   background: #e8e8e8;
 }
