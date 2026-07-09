@@ -36,11 +36,23 @@ const FIELD_HEIGHT: f64 = 28.0;
 /// mode (labels off) drops to a smaller glyph to reclaim vertical space.
 const ICON_POINT_SIZE_REGULAR: f64 = 15.0;
 const ICON_POINT_SIZE_COMPACT: f64 = 12.0;
-/// The Export glyph (`square.and.arrow.up`) has its arrow extending above the box,
-/// so centering the whole glyph sinks the box relative to the boxy neighbors
-/// (Jupyter, Present). Pad the bottom of its image by this many points so the box
-/// reads as vertically centered.
-const EXPORT_NUDGE: f64 = 3.0;
+/// Per-glyph vertical nudge (points) so off-balance SF Symbols read as centered
+/// against the boxy neighbors (Jupyter, Present). POSITIVE = up, NEGATIVE = down.
+/// Separate values for normal vs compact since the glyph is smaller in compact.
+///   Export (square.and.arrow.up): arrow above the box → box sinks → nudge UP.
+///   Save   (square.and.arrow.down): arrow below the box → box rides high → nudge DOWN.
+const EXPORT_NUDGE_REGULAR: f64 = 8.0;
+const EXPORT_NUDGE_COMPACT: f64 = 6.0;
+const SAVE_NUDGE_REGULAR: f64 = -8.0;
+const SAVE_NUDGE_COMPACT: f64 = -6.0;
+
+fn nudge_for(symbol: &str, compact: bool) -> f64 {
+    match symbol {
+        "square.and.arrow.up" => if compact { EXPORT_NUDGE_COMPACT } else { EXPORT_NUDGE_REGULAR },
+        "square.and.arrow.down" => if compact { SAVE_NUDGE_COMPACT } else { SAVE_NUDGE_REGULAR },
+        _ => 0.0,
+    }
+}
 
 const TITLE_ID: &str = "title";
 const TITLE_WIDTH: f64 = 240.0;
@@ -98,23 +110,26 @@ fn allowed_identifiers() -> Retained<NSArray<NSString>> {
     build_ids(true)
 }
 
-/// Return a copy of `src` with `pad` points of transparent space added at the
-/// BOTTOM, which shifts the glyph upward when the toolbar centers it. Preserves
-/// template rendering (so it still tints for light/dark). Main thread (lockFocus).
+/// Return a copy of `src` grown by |dy| points of transparent space so the glyph
+/// shifts when the toolbar centers it. dy > 0 pads the BOTTOM (glyph moves UP);
+/// dy < 0 pads the TOP (glyph moves DOWN). Preserves template rendering (so it
+/// still tints for light/dark). Main thread (lockFocus).
 #[allow(deprecated)] // lockFocus/unlockFocus: fine for this small compositing use
-fn nudge_image_up(src: &NSImage, pad: f64) -> Retained<NSImage> {
+fn nudge_image(src: &NSImage, dy: f64) -> Retained<NSImage> {
     let s = src.size();
+    let extra = dy.abs();
     let out = NSImage::initWithSize(
         NSImage::alloc(),
-        NSSize { width: s.width, height: s.height + pad },
+        NSSize { width: s.width, height: s.height + extra },
     );
     out.setTemplate(src.isTemplate());
+    // Non-flipped image space (origin bottom-left). Up: draw high (pad at bottom).
+    // Down: draw at 0 (pad at top).
+    let draw_y = if dy >= 0.0 { extra } else { 0.0 };
     unsafe {
         out.lockFocus();
-        // Non-flipped image space (origin bottom-left): drawing at y=pad leaves the
-        // pad as empty space at the BOTTOM, so the glyph sits in the upper region.
         src.drawAtPoint_fromRect_operation_fraction(
-            NSPoint { x: 0.0, y: pad },
+            NSPoint { x: 0.0, y: draw_y },
             NSRect::new(NSPoint::new(0.0, 0.0), s),
             NSCompositingOperation::SourceOver,
             1.0,
@@ -171,12 +186,9 @@ fn style_button(item: &NSToolbarItem, label: &str, symbol: &str, compact: bool, 
             cfg
         };
         let sized = image.imageWithSymbolConfiguration(&cfg).unwrap_or(image);
-        // Nudge the Export glyph up so its box aligns with the boxy neighbors.
-        let sized = if symbol == "square.and.arrow.up" {
-            nudge_image_up(&sized, EXPORT_NUDGE)
-        } else {
-            sized
-        };
+        // Nudge off-balance glyphs (Export up, Save down) so their boxes align.
+        let dy = nudge_for(symbol, compact);
+        let sized = if dy != 0.0 { nudge_image(&sized, dy) } else { sized };
         item.setImage(Some(&sized));
     }
     // Always borderless: a BORDERED plain toolbar item renders icon-only (the label
