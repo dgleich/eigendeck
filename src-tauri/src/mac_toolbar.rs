@@ -214,6 +214,62 @@ fn build_display_menu(delegate: &ToolbarDelegate, compact: bool, mtm: MainThread
     menu
 }
 
+/// True if the view's runtime Obj-C class is the (private) toolbar background view.
+/// Matched by class NAME only — we never call private API on it, just setMenu:.
+fn is_toolbar_view(view: &NSView) -> bool {
+    let name = view.class().name();
+    let s = name.to_str().unwrap_or("");
+    s == "NSToolbarView" || s == "NSToolbarItemViewer" || s == "_NSToolbarViewClipView"
+}
+
+/// Depth-first search for the toolbar background view (owned Retained in/out so
+/// no manual retain is needed).
+fn search_toolbar_view(view: Retained<NSView>) -> Option<Retained<NSView>> {
+    if is_toolbar_view(&view) {
+        return Some(view);
+    }
+    let subs = unsafe { view.subviews() };
+    for i in 0..subs.count() {
+        if let Some(found) = search_toolbar_view(subs.objectAtIndex(i)) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+/// Find the NSToolbarView behind the window's native toolbar. It's a sibling of
+/// contentView under the window's private frame view, so climb to the root first.
+fn find_toolbar_background(ns_win: &NSWindow) -> Option<Retained<NSView>> {
+    let mut root = unsafe { ns_win.contentView() }?;
+    while let Some(sv) = unsafe { root.superview() } {
+        root = sv;
+    }
+    search_toolbar_view(root)
+}
+
+/// Attach the right-click display menu to the toolbar BACKGROUND (the empty strip,
+/// Keynote-style) — the item views already carry the same menu as a fallback. The
+/// background view exists only after first layout, so this is idempotent and
+/// retried from each state push until it succeeds. Main thread.
+fn attach_toolbar_menu_once() {
+    let Some(mtm) = MainThreadMarker::new() else { return };
+    DELEGATE.with(|d| {
+        let Some(del) = d.borrow().as_ref().cloned() else { return };
+        if del.ivars().menu_attached.get() {
+            return;
+        }
+        let Some(win) = del.ivars().app.get_webview_window("main") else { return };
+        let Ok(ptr) = win.ns_window() else { return };
+        // Safety: Tauri owns a valid NSWindow for "main" for its lifetime.
+        let ns_win: &NSWindow = unsafe { &*(ptr as *const NSWindow) };
+        if let Some(tbview) = find_toolbar_background(ns_win) {
+            let menu = build_display_menu(&del, del.ivars().compact.get(), mtm);
+            unsafe { tbview.setMenu(Some(&menu)) };
+            del.ivars().menu_attached.set(true);
+        }
+    });
+}
+
 struct Ivars {
     app: AppHandle,
     title_field: RefCell<Option<Retained<NSTextField>>>,
@@ -230,6 +286,10 @@ struct Ivars {
     jupyter_item: RefCell<Option<Retained<NSToolbarItem>>>,
     jupyter_status: RefCell<String>,
     jupyter_tooltip: RefCell<String>,
+    /// Whether the right-click display menu has been attached to the toolbar
+    /// background view yet (that private view exists only after first layout, so
+    /// we attach lazily on the first state push and retry until it's found).
+    menu_attached: Cell<bool>,
 }
 
 define_class!(
@@ -431,6 +491,7 @@ impl ToolbarDelegate {
             jupyter_item: RefCell::new(None),
             jupyter_status: RefCell::new("gray".to_string()),
             jupyter_tooltip: RefCell::new(String::new()),
+            menu_attached: Cell::new(false),
         });
         unsafe { msg_send![super(this), init] }
     }
@@ -465,6 +526,9 @@ pub fn set_fields(title: &str, author: &str, venue: &str) {
             set_string(&del.ivars().venue_field, venue);
         }
     });
+    // First push after the deck loads is reliably after first layout — a good
+    // moment to (lazily) attach the toolbar-background right-click menu.
+    attach_toolbar_menu_once();
 }
 
 /// Re-apply styling to every built button from the delegate's current
@@ -544,7 +608,12 @@ pub fn set_compact(compact: bool) {
 
         // Restore the field values into the freshly-created fields.
         set_fields(&title, &author, &venue);
+
+        // The style switch can swap the toolbar container, so re-attach the
+        // background menu (set_fields already tried, but with the pre-rebuild flag).
+        del.ivars().menu_attached.set(false);
     });
+    attach_toolbar_menu_once();
 }
 
 /// Accent-tint the Save icon when the deck has unsaved changes. Main thread.
@@ -592,6 +661,8 @@ pub fn set_jupyter(status: &str, tooltip: &str) {
             }
         });
     });
+    // Also a good post-layout moment to (lazily) attach the background menu.
+    attach_toolbar_menu_once();
 }
 
 // The toolbar itself, kept so we can show/hide it (welcome screen + present mode).
