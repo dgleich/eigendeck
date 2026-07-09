@@ -20,12 +20,9 @@ initRuntime();
 function SettingsRoot(): React.ReactElement {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <SettingsPanel header={
-        <div style={{
-          padding: '14px 18px', borderBottom: '1px solid #e5e7eb',
-          fontSize: 15, fontWeight: 600,
-        }}>Settings</div>
-      } />
+      {/* No in-window "Settings" heading — the native window title says it. The
+          tab bar sits at the top with a little breathing room. */}
+      <SettingsPanel header={<div style={{ height: 10 }} />} />
     </div>
   );
 }

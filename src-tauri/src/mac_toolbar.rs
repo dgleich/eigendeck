@@ -454,22 +454,50 @@ fn restyle_jupyter(del: &ToolbarDelegate) {
 /// reserves the label row. Main thread.
 pub fn set_compact(compact: bool) {
     DELEGATE.with(|d| {
-        if let Some(del) = d.borrow().as_ref() {
-            del.ivars().compact.set(compact);
-            restyle_buttons(del);
-            if let Some(win) = del.ivars().app.get_webview_window("main") {
-                if let Ok(ptr) = win.ns_window() {
-                    // Safety: Tauri owns a valid NSWindow for "main" for its lifetime.
-                    let ns_win: &NSWindow = unsafe { &*(ptr as *const NSWindow) };
-                    let style = if compact {
-                        NSWindowToolbarStyle::UnifiedCompact
-                    } else {
-                        NSWindowToolbarStyle::Expanded
-                    };
-                    ns_win.setToolbarStyle(style);
-                }
+        let Some(del) = d.borrow().as_ref().cloned() else { return };
+
+        // Snapshot the editable field values — the rebuild below recreates the
+        // fields empty (item_for makes fresh NSTextFields), so we restore after.
+        let read = |slot: &RefCell<Option<Retained<NSTextField>>>| {
+            slot.borrow().as_ref().map(|f| f.stringValue().to_string()).unwrap_or_default()
+        };
+        let title = read(&del.ivars().title_field);
+        let author = read(&del.ivars().author_field);
+        let venue = read(&del.ivars().venue_field);
+
+        // Flip the flag first so item_for builds each item in the new mode.
+        del.ivars().compact.set(compact);
+
+        // Rebuild the toolbar rather than mutating items in place: an in-place
+        // setLabel/setBordered doesn't relayout the label row (that was #125 —
+        // turning compact OFF left the labels hidden). Setting the identifiers to
+        // empty then back forces the delegate to rebuild every item fresh. Keep
+        // the Jupyter item iff it's currently live.
+        let with_jupyter = del.ivars().jupyter_item.borrow().is_some()
+            || del.ivars().jupyter_status.borrow().as_str() != "gray";
+        TOOLBAR.with(|t| {
+            if let Some(tb) = t.borrow().as_ref() {
+                let empty: Retained<NSArray<NSString>> = NSArray::from_slice(&[]);
+                tb.setItemIdentifiers(&empty);
+                tb.setItemIdentifiers(&build_ids(with_jupyter));
+            }
+        });
+
+        if let Some(win) = del.ivars().app.get_webview_window("main") {
+            if let Ok(ptr) = win.ns_window() {
+                // Safety: Tauri owns a valid NSWindow for "main" for its lifetime.
+                let ns_win: &NSWindow = unsafe { &*(ptr as *const NSWindow) };
+                let style = if compact {
+                    NSWindowToolbarStyle::UnifiedCompact
+                } else {
+                    NSWindowToolbarStyle::Expanded
+                };
+                ns_win.setToolbarStyle(style);
             }
         }
+
+        // Restore the field values into the freshly-created fields.
+        set_fields(&title, &author, &venue);
     });
 }
 
