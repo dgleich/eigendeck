@@ -240,29 +240,24 @@ fn search_toolbar_view(view: Retained<NSView>) -> Option<Retained<NSView>> {
 /// Find the NSToolbarView behind the window's native toolbar. It's a sibling of
 /// contentView under the window's private frame view, so climb to the root first.
 fn find_toolbar_background(ns_win: &NSWindow) -> Option<Retained<NSView>> {
-    let Some(content) = (unsafe { ns_win.contentView() }) else {
-        eprintln!("[tbmenu] no contentView");
-        return None;
-    };
+    let content = unsafe { ns_win.contentView() }?;
     let mut root = content;
     while let Some(sv) = unsafe { root.superview() } {
         root = sv;
     }
-    eprintln!("[tbmenu] view tree from root {}:", root.class().name().to_str().unwrap_or("?"));
-    dump_view_tree(&root, 0);
-    let found = search_toolbar_view(root);
-    eprintln!("[tbmenu] matched: {:?}", found.as_ref().map(|v| v.class().name().to_str().unwrap_or("?").to_string()));
-    found
+    search_toolbar_view(root)
 }
 
-/// TEMP diagnostics: print the class name of every view in the subtree so we can
-/// identify the real toolbar background class on this macOS version.
-fn dump_view_tree(view: &NSView, depth: usize) {
-    let name = view.class().name();
-    eprintln!("[tbmenu] {}{}", "  ".repeat(depth), name.to_str().unwrap_or("?"));
+/// Set `menu` on a view AND every descendant. Right-clicks are hit-tested to the
+/// deepest view (each item's NSToolbarItemViewer, the _NSToolbarFlexibleSpace in
+/// the gaps, etc.) and menuForEvent: does NOT bubble to the NSToolbarView's menu —
+/// so to get a Keynote-style right-click anywhere on the strip we set it on all of
+/// them.
+fn set_menu_recursive(view: &NSView, menu: &NSMenu) {
+    unsafe { view.setMenu(Some(menu)) };
     let subs = unsafe { view.subviews() };
     for i in 0..subs.count() {
-        dump_view_tree(&subs.objectAtIndex(i), depth + 1);
+        set_menu_recursive(&subs.objectAtIndex(i), menu);
     }
 }
 
@@ -271,36 +266,20 @@ fn dump_view_tree(view: &NSView, depth: usize) {
 /// background view exists only after first layout, so this is idempotent and
 /// retried from each state push until it succeeds. Main thread.
 fn attach_toolbar_menu_once() {
-    let Some(mtm) = MainThreadMarker::new() else {
-        eprintln!("[tbmenu] attach: not main thread");
-        return;
-    };
+    let Some(mtm) = MainThreadMarker::new() else { return };
     DELEGATE.with(|d| {
-        let Some(del) = d.borrow().as_ref().cloned() else {
-            eprintln!("[tbmenu] attach: no delegate");
-            return;
-        };
+        let Some(del) = d.borrow().as_ref().cloned() else { return };
         if del.ivars().menu_attached.get() {
             return;
         }
-        eprintln!("[tbmenu] attach: searching…");
-        let Some(win) = del.ivars().app.get_webview_window("main") else {
-            eprintln!("[tbmenu] attach: no window");
-            return;
-        };
-        let Ok(ptr) = win.ns_window() else {
-            eprintln!("[tbmenu] attach: no ns_window");
-            return;
-        };
+        let Some(win) = del.ivars().app.get_webview_window("main") else { return };
+        let Ok(ptr) = win.ns_window() else { return };
         // Safety: Tauri owns a valid NSWindow for "main" for its lifetime.
         let ns_win: &NSWindow = unsafe { &*(ptr as *const NSWindow) };
         if let Some(tbview) = find_toolbar_background(ns_win) {
             let menu = build_display_menu(&del, del.ivars().compact.get(), mtm);
-            unsafe { tbview.setMenu(Some(&menu)) };
+            set_menu_recursive(&tbview, &menu);
             del.ivars().menu_attached.set(true);
-            eprintln!("[tbmenu] attach: ATTACHED");
-        } else {
-            eprintln!("[tbmenu] attach: not found this attempt");
         }
     });
 }
@@ -684,6 +663,8 @@ pub fn set_jupyter(status: &str, tooltip: &str) {
                 (true, None) => {
                     let idx = item_index(&tb, "export").unwrap_or_else(|| tb.items().count());
                     tb.insertItemWithItemIdentifier_atIndex(&NSString::from_str(JUPYTER_ID), idx as isize);
+                    // New viewer subtree → re-apply the right-click menu.
+                    del.ivars().menu_attached.set(false);
                 }
                 // Already shown: just re-tint.
                 (true, Some(_)) => restyle_jupyter(&del),
