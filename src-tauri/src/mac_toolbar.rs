@@ -473,24 +473,11 @@ pub fn set_compact(compact: bool) {
         // Flip the flag first so item_for builds each item in the new mode.
         del.ivars().compact.set(compact);
 
-        // Rebuild the toolbar rather than mutating items in place: an in-place
-        // setLabel/setBordered doesn't relayout the label row (that was #125 —
-        // turning compact OFF left the labels hidden). Setting the identifiers to
-        // empty then back forces the delegate to rebuild every item fresh. Keep
-        // the Jupyter item iff it's currently live.
-        let with_jupyter = del.ivars().jupyter_item.borrow().is_some()
-            || del.ivars().jupyter_status.borrow().as_str() != "gray";
-        TOOLBAR.with(|t| {
-            if let Some(tb) = t.borrow().as_ref() {
-                let empty: Retained<NSArray<NSString>> = NSArray::from_slice(&[]);
-                eprintln!("[compact] before empty: {} items", tb.items().count());
-                tb.setItemIdentifiers(&empty);
-                eprintln!("[compact] after empty: {} items", tb.items().count());
-                tb.setItemIdentifiers(&build_ids(with_jupyter));
-                eprintln!("[compact] after refill: {} items", tb.items().count());
-            }
-        });
-
+        // Set the toolbar STYLE first, THEN rebuild the items — item_for builds
+        // each item in whatever layout the toolbar is currently in, so if we
+        // rebuilt while still UnifiedCompact the label row never came back on the
+        // way to Expanded (that was #125). Switching the style first means item_for
+        // builds the items in the target (Expanded) layout, so labels reappear.
         if let Some(win) = del.ivars().app.get_webview_window("main") {
             if let Ok(ptr) = win.ns_window() {
                 // Safety: Tauri owns a valid NSWindow for "main" for its lifetime.
@@ -503,6 +490,18 @@ pub fn set_compact(compact: bool) {
                 ns_win.setToolbarStyle(style);
             }
         }
+
+        // Rebuild the items (empty→refill forces item_for to run fresh for each,
+        // now under the just-set style). Keep the Jupyter item iff it's live.
+        let with_jupyter = del.ivars().jupyter_item.borrow().is_some()
+            || del.ivars().jupyter_status.borrow().as_str() != "gray";
+        TOOLBAR.with(|t| {
+            if let Some(tb) = t.borrow().as_ref() {
+                let empty: Retained<NSArray<NSString>> = NSArray::from_slice(&[]);
+                tb.setItemIdentifiers(&empty);
+                tb.setItemIdentifiers(&build_ids(with_jupyter));
+            }
+        });
 
         // Restore the field values into the freshly-created fields.
         set_fields(&title, &author, &venue);
