@@ -382,7 +382,6 @@ fn set_toolbar_jupyter(
 ) -> Result<(), String> {
     #[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
     {
-        eprintln!("[jupyter] cmd set_toolbar_jupyter status={status}");
         let _ = window.run_on_main_thread(move || crate::mac_toolbar::set_jupyter(&status, &tooltip));
     }
     #[cfg(not(all(target_os = "macos", feature = "mac-toolbar")))]

@@ -499,20 +499,13 @@ pub fn set_jupyter(status: &str, tooltip: &str) {
         *del.ivars().jupyter_tooltip.borrow_mut() = tooltip.to_string();
         let visible = status != "gray";
         TOOLBAR.with(|t| {
-            let Some(tb) = t.borrow().as_ref().cloned() else {
-                eprintln!("[jupyter] set_jupyter status={status} but no TOOLBAR");
-                return;
-            };
-            let present = item_index(&tb, JUPYTER_ID);
-            eprintln!("[jupyter] set_jupyter status={status} visible={visible} present={present:?} items={}", tb.items().count());
-            match (visible, present) {
+            let Some(tb) = t.borrow().as_ref().cloned() else { return };
+            match (visible, item_index(&tb, JUPYTER_ID)) {
                 // Show: insert before Export (item_for styles it from the status
                 // we just stored). Fall back to the end if Export isn't found.
                 (true, None) => {
                     let idx = item_index(&tb, "export").unwrap_or_else(|| tb.items().count());
-                    eprintln!("[jupyter] inserting at idx={idx}");
                     tb.insertItemWithItemIdentifier_atIndex(&NSString::from_str(JUPYTER_ID), idx as isize);
-                    eprintln!("[jupyter] after insert items={} present={:?}", tb.items().count(), item_index(&tb, JUPYTER_ID));
                 }
                 // Already shown: just re-tint.
                 (true, Some(_)) => restyle_jupyter(&del),
