@@ -21,8 +21,10 @@ import { readTextFileNative } from '../lib/nativeFs';
 
 export const SLIDE_WIDTH = 1920;
 export const SLIDE_HEIGHT = 1080;
-/** Breathing room (px) reserved below the slide when fitting it to the canvas. */
-const CANVAS_GAP = 8;
+/** Extra room (px) reserved below the slide, ON TOP OF the canvas container's
+ *  bottom padding, when fitting. 0 = the bottom gap equals the left/right padding
+ *  (symmetric margins around the slide). */
+const CANVAS_GAP = 0;
 
 // Layout constants moved to PropertiesPanel
 
