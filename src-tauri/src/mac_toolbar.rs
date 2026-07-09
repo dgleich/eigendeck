@@ -139,16 +139,14 @@ fn nudge_image(src: &NSImage, dy: f64) -> Retained<NSImage> {
     // Non-flipped image space (origin bottom-left). Up: draw high (pad at bottom).
     // Down: draw at 0 (pad at top).
     let draw_y = if dy >= 0.0 { extra } else { 0.0 };
-    unsafe {
-        out.lockFocus();
-        src.drawAtPoint_fromRect_operation_fraction(
-            NSPoint { x: 0.0, y: draw_y },
-            NSRect::new(NSPoint::new(0.0, 0.0), s),
-            NSCompositingOperation::SourceOver,
-            1.0,
-        );
-        out.unlockFocus();
-    }
+    out.lockFocus();
+    src.drawAtPoint_fromRect_operation_fraction(
+        NSPoint { x: 0.0, y: draw_y },
+        NSRect::new(NSPoint::new(0.0, 0.0), s),
+        NSCompositingOperation::SourceOver,
+        1.0,
+    );
+    out.unlockFocus();
     out
 }
 struct CellIvars {
@@ -192,7 +190,7 @@ define_class!(
 impl CenteredCell {
     fn make(mtm: MainThreadMarker) -> Retained<Self> {
         let this = Self::alloc(mtm).set_ivars(CellIvars { measuring: Cell::new(false) });
-        unsafe { msg_send![this, initTextCell: &*NSString::from_str("")] }
+        unsafe { msg_send![super(this), initTextCell: &*NSString::from_str("")] }
     }
 }
 
@@ -357,7 +355,7 @@ define_class!(
                 // centered inside a field made a touch taller than the text for
                 // focus-ring breathing room.
                 let field = NSTextField::textFieldWithString(&NSString::from_str(""), mtm);
-                unsafe { field.setCell(Some(&CenteredCell::make(mtm))) };
+                field.setCell(Some(&CenteredCell::make(mtm)));
                 field.setBezeled(false);
                 field.setDrawsBackground(false);
                 field.setEditable(true);
@@ -374,13 +372,11 @@ define_class!(
                 // would then top-align). Intrinsic height reflects the bold 14pt font
                 // set above.
                 field.setTranslatesAutoresizingMaskIntoConstraints(false);
-                unsafe {
-                    field.widthAnchor().constraintEqualToConstant(TITLE_WIDTH).setActive(true);
-                    // Taller than the text (by 2*TITLE_VPAD) for ring room; the
-                    // centering cell keeps the text centered within it.
-                    let h = field.intrinsicContentSize().height + 2.0 * TITLE_VPAD;
-                    field.heightAnchor().constraintEqualToConstant(h).setActive(true);
-                }
+                field.widthAnchor().constraintEqualToConstant(TITLE_WIDTH).setActive(true);
+                // Taller than the text (by 2*TITLE_VPAD) for ring room; the centering
+                // cell keeps the text centered within it.
+                let h = field.intrinsicContentSize().height + 2.0 * TITLE_VPAD;
+                field.heightAnchor().constraintEqualToConstant(h).setActive(true);
                 let view: &NSView = &field;
                 item.setView(Some(view));
                 item.setLabel(&NSString::from_str(""));
@@ -402,11 +398,9 @@ define_class!(
                 }
                 *slot.borrow_mut() = Some(field.clone());
                 field.setTranslatesAutoresizingMaskIntoConstraints(false);
-                unsafe {
-                    field.widthAnchor().constraintEqualToConstant(FIELD_WIDTH).setActive(true);
-                    let h = field.intrinsicContentSize().height;
-                    field.heightAnchor().constraintEqualToConstant(h).setActive(true);
-                }
+                field.widthAnchor().constraintEqualToConstant(FIELD_WIDTH).setActive(true);
+                let h = field.intrinsicContentSize().height;
+                field.heightAnchor().constraintEqualToConstant(h).setActive(true);
                 let view: &NSView = &field;
                 item.setView(Some(view));
                 item.setLabel(&NSString::from_str(""));
@@ -438,11 +432,9 @@ define_class!(
                 let width = view
                     .widthAnchor()
                     .constraintEqualToConstant(lead_gap_for(self.ivars().compact.get()));
-                unsafe {
-                    width.setActive(true);
-                    // Only width matters; keep height minimal so it never props the row up.
-                    view.heightAnchor().constraintEqualToConstant(1.0).setActive(true);
-                }
+                width.setActive(true);
+                // Only width matters; keep height minimal so it never props the row up.
+                view.heightAnchor().constraintEqualToConstant(1.0).setActive(true);
                 item.setView(Some(&view));
                 item.setLabel(&NSString::from_str(""));
                 *self.ivars().lead_gap_item.borrow_mut() = Some(item.clone());
