@@ -3,7 +3,7 @@
 Engineering notes for `src-tauri/src/mac_toolbar.rs` (the native `NSToolbar` on the
 main window, behind the `mac-toolbar` cargo feature). Written after a long round of
 AppKit/objc2 fights so we don't relearn them. Tool-neutral; see also
-[`MAC-BUILD.md`](MAC-BUILD.md) and [`mac-smoke.md`](mac-smoke.md).
+[`MAC-BUILD.md`](MAC-BUILD.md).
 
 **Constraint that shapes everything:** the `#[cfg(target_os = "macos")]` +
 `feature = "mac-toolbar"` code does **not** compile on the Linux dev container
@@ -140,8 +140,22 @@ doesn't trip it.
 
 ## Verifying
 
-The Rust logic that has automated coverage is the cross-platform bits in `lib.rs`
-(`document_title`); everything visual is the `mac-smoke.md` checklist on a Mac.
+The only automated coverage is the cross-platform Rust in `lib.rs` —
+`set_window_document`'s `document_title` helper (`cd src-tauri && cargo test --lib
+window_document`). Everything visual is a manual pass on a Mac (`bash
+tools/mac-build.sh --toolbar`):
+
+**Proxy icon + title bar** (`set_window_document`):
+1. Open a saved `.eigendeck` → title bar shows the file name + document (proxy)
+   icon; ⌘-click the title → path popover; drag the proxy → drags the real file.
+2. Edit → the close-button/title edited dot appears; ⌘S clears it.
+3. A new unsaved deck shows no proxy icon; the title stays centered.
+
+**Toolbar**: buttons perform their action (Add Slide / Add Build / Save / Export /
+Present); title + Author/Venue text is vertically centered and doesn't jump on
+click; compact toggle flips labels/size and restores labels on the way back;
+Jupyter item appears only for decks that use a kernel, tinted by health.
+
 When something won't center/lay-out, the fastest debug is a one-run `eprintln!` of
 the actual geometry (`intrinsicContentSize`, `cellSize`, `cellSizeForBounds:`,
 super's `drawingRectForBounds:`, `isFlipped`) rather than guessing metrics.

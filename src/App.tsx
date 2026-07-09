@@ -1009,7 +1009,7 @@ function App() {
   // Native macOS NSToolbar (behind the mac-toolbar cargo feature) posts
   // `toolbar:action` events; route each to the SAME action as the HTML toolbar
   // button, so the two toolbars stay in lock-step. Harmless off macOS (the event
-  // never fires). See src-tauri/src/mac_toolbar.rs + docs/mac-smoke.md §B.
+  // never fires). See src-tauri/src/mac_toolbar.rs + docs/mac-native-toolbar.md.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     void import('@tauri-apps/api/event').then(({ listen }) =>
