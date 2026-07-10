@@ -25,6 +25,7 @@ import { createPortal } from 'react-dom';
 import { usePresentationStore } from '../store/presentation';
 import { usePreference, type JupyterServerEntry } from '../lib/preferences';
 import { findServerForKernel } from '../lib/notebookKernel';
+import { deckExternalKernels } from '../lib/serverHealth';
 
 const STALE_MS = 30 * 60 * 1000;
 
@@ -53,31 +54,11 @@ export function ServerStatusPill() {
   const pillRef = useRef<HTMLDivElement>(null);
   const [anchor, setAnchor] = useState<{ left: number; top: number } | null>(null);
 
-  // Collect the unique kernel names needed by notebook elements in
-  // the deck. For each, do the registry lookup so we can flag
-  // missing matches. Note: when an element omits kernelName, we
-  // delegate to the parser-derived metadata via the resolver path;
-  // for the topbar's aggregate health, we use the element-level
-  // value if present and fall back to the deck-level default or
-  // 'python3'. We deliberately don't parse every notebook here —
-  // that'd be expensive on every render. (Per-element resolution
-  // happens lazily inside NotebookContent.)
-  const deckKernels = useMemo(() => {
-    const names = new Set<string>();
-    for (const slide of slides) {
-      for (const el of slide.elements) {
-        if (el.type !== 'notebook') continue;
-        if (el.kernel?.kind === 'lite') continue;
-        const name =
-          (el.kernel?.kind === 'external' ? el.kernel.kernelName : undefined)
-          ?? (config?.notebookKernel?.kind === 'external'
-              ? config.notebookKernel.kernelName : undefined)
-          ?? 'python3';
-        names.add(name);
-      }
-    }
-    return [...names];
-  }, [slides, config]);
+  // Unique kernel names the deck's notebooks need, then a registry lookup per
+  // kernel so we can flag missing matches. Per-element resolution (parsing each
+  // notebook for its declared kernel) happens lazily inside NotebookContent;
+  // here we use the element-level value, then the deck default, then 'python3'.
+  const deckKernels = useMemo(() => deckExternalKernels(slides, config), [slides, config]);
 
   const requirements: DeckRequirement[] = useMemo(() => {
     return deckKernels.map((kernelName) => ({

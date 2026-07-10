@@ -560,7 +560,12 @@ thread_local! {
 
 fn set_string(field: &RefCell<Option<Retained<NSTextField>>>, value: &str) {
     if let Some(f) = field.borrow().as_ref() {
-        f.setStringValue(&NSString::from_str(value));
+        // Skip if unchanged: a field edit echoes back through the store (onEdit →
+        // toolbar:field → store → set_toolbar_fields → here), and re-setting the
+        // same value while the field is first responder would reset the caret.
+        if f.stringValue().to_string() != value {
+            f.setStringValue(&NSString::from_str(value));
+        }
     }
 }
 

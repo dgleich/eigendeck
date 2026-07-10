@@ -11,10 +11,32 @@ import { useMemo } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import { usePreference } from './preferences';
 import { findServerForKernel } from './notebookKernel';
+import type { Slide, PresentationConfig } from '../types/presentation';
 
 export type ServerHealth = 'green' | 'yellow' | 'red' | 'gray';
 
 const STALE_MS = 30 * 60 * 1000;
+
+// Unique external kernel names the deck's notebooks need. Lite/pyodide
+// notebooks need no server and are skipped; a notebook with no kernelName
+// falls back to the deck default, then 'python3'. Shared by ServerStatusPill
+// (the HTML topbar) and useAggregateServerHealth (the native toolbar icon) so
+// the two surfaces can't drift.
+export function deckExternalKernels(slides: Slide[], config: PresentationConfig | undefined): string[] {
+  const names = new Set<string>();
+  for (const slide of slides) {
+    for (const el of slide.elements) {
+      if (el.type !== 'notebook') continue;
+      if (el.kernel?.kind === 'lite') continue;
+      const name =
+        (el.kernel?.kind === 'external' ? el.kernel.kernelName : undefined)
+        ?? (config?.notebookKernel?.kind === 'external' ? config.notebookKernel.kernelName : undefined)
+        ?? 'python3';
+      names.add(name);
+    }
+  }
+  return [...names];
+}
 
 export function useAggregateServerHealth(): { status: ServerHealth; tooltip: string } {
   const isPresenting = usePresentationStore((s) => s.isPresenting);
@@ -23,21 +45,7 @@ export function useAggregateServerHealth(): { status: ServerHealth; tooltip: str
   const [servers] = usePreference('jupyterServers');
 
   return useMemo(() => {
-    // Unique external kernel names the deck's notebooks need (lite/pyodide
-    // notebooks need no server). Mirrors ServerStatusPill.deckKernels.
-    const names = new Set<string>();
-    for (const slide of slides) {
-      for (const el of slide.elements) {
-        if (el.type !== 'notebook') continue;
-        if (el.kernel?.kind === 'lite') continue;
-        const name =
-          (el.kernel?.kind === 'external' ? el.kernel.kernelName : undefined)
-          ?? (config?.notebookKernel?.kind === 'external' ? config.notebookKernel.kernelName : undefined)
-          ?? 'python3';
-        names.add(name);
-      }
-    }
-    const deckKernels = [...names];
+    const deckKernels = deckExternalKernels(slides, config);
 
     if (isPresenting || deckKernels.length === 0) {
       return { status: 'gray' as const, tooltip: 'Jupyter: no live notebooks in this deck' };

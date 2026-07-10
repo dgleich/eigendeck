@@ -18,6 +18,7 @@ import { DebugMenu } from './debug';
 import { ToastHost } from './components/ToastHost';
 import { openSettingsWindow } from './lib/settingsWindow';
 import { useAggregateServerHealth } from './lib/serverHealth';
+import { invokeSafe } from './lib/tauriInvoke';
 import { nudgeDelta, zOrderDirection } from './lib/keyboardShortcuts';
 import { dispatchToolbarAction } from './lib/toolbarActions';
 import { CollisionDialog } from './components/CollisionDialog';
@@ -785,9 +786,7 @@ function App() {
   // drag fails with "document could not be found".
   useEffect(() => {
     const realPath = projectPath ? `${projectPath}.eigendeck` : null;
-    void import('@tauri-apps/api/core')
-      .then(({ invoke }) => invoke('set_window_document', { label: 'main', path: realPath, dirty: isDirty }))
-      .catch(() => {});
+    void invokeSafe('set_window_document', { label: 'main', path: realPath, dirty: isDirty });
   }, [projectPath, isDirty]);
 
   // Initialize: open in-memory DB, sync recent menu, restore window position
@@ -1020,19 +1019,14 @@ function App() {
     document.title = `${tbTitle}${isDirty ? ' *' : ''} — Eigendeck`;
   }, [tbTitle, isDirty]);
   useEffect(() => {
-    void import('@tauri-apps/api/core')
-      .then(({ invoke }) => invoke('set_toolbar_fields', { title: tbTitle, author: tbAuthor, venue: tbVenue }))
-      .catch(() => {});
+    void invokeSafe('set_toolbar_fields', { title: tbTitle, author: tbAuthor, venue: tbVenue });
   }, [tbTitle, tbAuthor, tbVenue]);
 
   // On macOS with the native toolbar (mac-toolbar build), hide the HTML toolbar —
   // it duplicates the native one. False everywhere else (HTML toolbar stays).
   const [nativeToolbar, setNativeToolbar] = useState(false);
   useEffect(() => {
-    void import('@tauri-apps/api/core')
-      .then(({ invoke }) => invoke<boolean>('native_toolbar_active'))
-      .then((v) => setNativeToolbar(!!v))
-      .catch(() => {});
+    void invokeSafe<boolean>('native_toolbar_active').then((v) => setNativeToolbar(!!v));
   }, []);
 
   // Native macOS toolbar Jupyter server-status icon — mirror the HTML pill's
@@ -1041,27 +1035,20 @@ function App() {
   const { status: jupyterStatus, tooltip: jupyterTooltip } = useAggregateServerHealth();
   useEffect(() => {
     if (!nativeToolbar) return;
-    void import('@tauri-apps/api/core')
-      .then(({ invoke }) => invoke('set_toolbar_jupyter', { status: jupyterStatus, tooltip: jupyterTooltip }))
-      .catch(() => {});
+    void invokeSafe('set_toolbar_jupyter', { status: jupyterStatus, tooltip: jupyterTooltip });
   }, [nativeToolbar, jupyterStatus, jupyterTooltip]);
   // Compact toolbar view (macOS native toolbar only): labels off + smaller icons.
   // Driven by the compactToolbar preference; applied live (no restart).
   const [compactToolbar] = usePreference('compactToolbar');
   useEffect(() => {
     if (!nativeToolbar) return;
-    void import('@tauri-apps/api/core')
-      .then(({ invoke }) => invoke('set_toolbar_compact', { compact: compactToolbar }))
-      .catch(() => {});
+    void invokeSafe('set_toolbar_compact', { compact: compactToolbar });
   }, [nativeToolbar, compactToolbar]);
   // Hide the native toolbar on the welcome screen (no project) and while
   // presenting; show it in the editor. no-op off the native-toolbar build.
   useEffect(() => {
     if (!nativeToolbar) return;
-    const visible = !!projectPath && !isPresenting;
-    void import('@tauri-apps/api/core')
-      .then(({ invoke }) => invoke('set_toolbar_visible', { visible }))
-      .catch(() => {});
+    void invokeSafe('set_toolbar_visible', { visible: !!projectPath && !isPresenting });
   }, [nativeToolbar, projectPath, isPresenting]);
   // Receive edits made IN the toolbar fields:
   useEffect(() => {
