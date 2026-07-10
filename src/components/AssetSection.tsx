@@ -13,6 +13,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, getDeckToken } from '../store/presentation';
 import { HelpText } from './HelpText';
 import { invalidateRenderedAsset } from '../lib/assetRenderer';
+import { isNotebookFile } from '../lib/assetCache';
 import { storeAssetRaw, approveExternalAbsPath } from '../lib/assetInsert';
 import { dirname, resolvePosixPath, gatedExternalRead } from '../lib/watcherRegistry';
 import { showToast } from '../lib/toasts';
@@ -605,6 +606,24 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
               background: reloading ? '#eee' : '#fff',
             }}>
             {reloading ? 'Reloading…' : 'Reload from disk now'}
+          </button>
+        )}
+        {/* Discard Changes (#121): drop the run-cell overlay and re-render the
+            notebook as stored in the deck. Unlike Reload Now this reads no disk
+            and isn't trust-gated, so it always works — even on an untrusted
+            deck, or when the on-disk .ipynb is unchanged. */}
+        {elementId && isNotebookFile(meta.path ?? '', meta.mime_type ?? undefined) && (
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('eigendeck:discard-overlay', { detail: { assetId: meta.asset_id } }));
+              showToast({ kind: 'info', ttl: 4000, message: 'Discarded notebook changes — reverted to the deck copy.' });
+            }}
+            title="Drop in-app cell edits and run outputs; re-render the notebook as stored in the deck. Reads no disk and works on untrusted decks."
+            style={{
+              padding: '4px 10px', fontSize: 12,
+              border: '1px solid #ccc', borderRadius: 3, cursor: 'pointer', background: '#fff',
+            }}>
+            Discard Changes
           </button>
         )}
         {/* "Resize to image" only makes sense for raster / SVG assets

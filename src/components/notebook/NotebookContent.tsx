@@ -260,6 +260,20 @@ function ExternalKernelBody({
     if (overlaySourceChanged(prev, element.id, sig)) clearOverlay();
   }, [notebook, element.id, clearOverlay]);
 
+  // Trust-independent "Discard Changes" (#121): the asset inspector fires this
+  // to drop the run-cell overlay and re-render the notebook as stored in the
+  // deck. No disk read, no trust gate (unlike Reload Now) — ov.clear() re-merges
+  // against the embedded .ipynb bytes every untrusted deck already renders.
+  useEffect(() => {
+    if (!element.assetId) return;
+    const assetId = element.assetId;
+    const handler = (e: Event) => {
+      if ((e as CustomEvent).detail?.assetId === assetId) clearOverlay();
+    };
+    window.addEventListener('eigendeck:discard-overlay', handler);
+    return () => window.removeEventListener('eigendeck:discard-overlay', handler);
+  }, [element.assetId, clearOverlay]);
+
   // Transient running status, keyed by cell key.
   const [running, setRunning] = useState<Map<string, RunningState>>(new Map());
   const setRun = useCallback((key: string, s: RunningState | null) => {
