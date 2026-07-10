@@ -42,12 +42,12 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "resources/pdfium/*",
-      "resources/llm-tools/*",
-      "Credits.html",
-      "icons/document/eigendeck-doc.icns"
-    ],
+    "resources": {
+      "resources/pdfium/*": "resources/pdfium/",
+      "resources/llm-tools/*": "resources/llm-tools/",
+      "Credits.html": "Credits.html",
+      "icons/document/eigendeck-doc.icns": "eigendeck-doc.icns"
+    },
     "fileAssociations": [
       {
         "ext": [
