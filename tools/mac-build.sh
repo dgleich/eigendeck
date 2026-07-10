@@ -38,8 +38,8 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     --toolbar)
-      # Build the native macOS NSToolbar spike (src-tauri/src/mac_toolbar.rs),
-      # gated behind the `mac-toolbar` cargo feature. See docs/mac-native-toolbar.md.
+      # NSToolbar is now a DEFAULT feature (on for a normal build), so this flag is
+      # redundant — kept for back-compat. See docs/mac-native-toolbar.md.
       toolbar=1
       shift
       ;;

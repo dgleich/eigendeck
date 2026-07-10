@@ -21,8 +21,11 @@ name = "eigendeck-cli"
 path = "src/cli.rs"
 
 [features]
-# Native macOS NSToolbar spike (src/mac_toolbar.rs). Off by default so the spike
-# can't break the default build; enable via `bash tools/mac-build.sh --toolbar`.
+# Native macOS NSToolbar (src/mac_toolbar.rs). ON by default so a normal
+# `tauri build` / `tauri dev` includes it; the code is also `cfg(target_os =
+# "macos")`-gated, so enabling it on other platforms is inert. Build without it
+# via `--no-default-features` if ever needed.
+default = ["mac-toolbar"]
 mac-toolbar = []
 
 [build-dependencies]

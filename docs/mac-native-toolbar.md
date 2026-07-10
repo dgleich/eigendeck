@@ -1,8 +1,11 @@
 # Native macOS NSToolbar — implementation notes
 
 Engineering notes for `src-tauri/src/mac_toolbar.rs` (the native `NSToolbar` on the
-main window, behind the `mac-toolbar` cargo feature). Written after a long round of
-AppKit/objc2 fights so we don't relearn them. Tool-neutral; see also
+main window). It's a **default cargo feature** (`mac-toolbar`) now, so a normal
+`tauri build` / `tauri dev` on macOS includes it; the code is also
+`cfg(target_os = "macos")`-gated so it's inert elsewhere. Build without it via
+`--no-default-features`. Written after a long round of AppKit/objc2 fights so we
+don't relearn them. Tool-neutral; see also
 [`MAC-BUILD.md`](MAC-BUILD.md).
 
 **Constraint that shapes everything:** the `#[cfg(target_os = "macos")]` +
