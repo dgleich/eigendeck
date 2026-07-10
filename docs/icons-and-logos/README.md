@@ -55,27 +55,35 @@ convention: simplified art in 16/32 pt, detailed in 128 pt+). See
 `previews/doc-icon-slots.png` for the split rendered at every native size, and
 `previews/doc-icon-hero.png` for the 1024 large master.
 
-### Build
+### Build — two steps, split by machine
 
+The **iconset is pre-rendered and committed** (`src-tauri/icons/document/
+eigendeck-doc.iconset`), so the Mac step needs no Python.
+
+**On your Mac (no venv, no brew):**
 ```bash
-# one-time: renderer
-uv venv venv-icons && uv pip install --python venv-icons cairosvg pillow
+bash tools/make-doc-icns.sh     # iconutil: iconset -> eigendeck-doc.icns
+```
+`iconutil` is a built-in macOS tool. That's the whole Mac loop.
 
-# one-time on a Mac: extract Apple's document template (Apple art, git-ignored)
+**Regenerate the iconset from the SVG masters** (only when the proxy art or the
+mark changes) — this is the Python step, run on Linux / CI:
+```bash
+uv venv venv-icons && uv pip install --python venv-icons cairosvg pillow
+python tools/build_doc_icon.py --preview     # rewrites the committed .iconset + previews
+```
+Then run `make-doc-icns.sh` on the Mac to refresh the `.icns`.
+
+Masters: `proxy-icon.svg` (small slots) and `logo-icon-light.svg` (mark). The
+Apple `GenericDocumentIcon` template is **not** committed (Apple's art); extract
+it once with:
+```bash
 iconutil -c iconset \
   /System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/GenericDocumentIcon.icns \
   -o gitignore/generic-document-icon/GenericDocumentIcon.iconset
-
-# build (writes src-tauri/icons/document/eigendeck-doc.{iconset,icns})
-python tools/build_doc_icon.py            # add --preview to refresh the previews here
 ```
-
-`iconutil` (iconset → `.icns`) is macOS-only, so the final `.icns` is produced
-on a Mac. On Linux the script still writes the 10-slot `.iconset`.
-
-Masters live here: `proxy-icon.svg` (small) and `logo-icon-light.svg` (mark).
-The Apple template is **not** committed (it's Apple's art); extract it once with
-the command above.
+(The composited page art does ship inside the generated `.icns` — that's what
+Apple's document template is for.)
 
 ## ⚠ Known issue
 
