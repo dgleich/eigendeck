@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Merged into the generated Info.plist by tauri-bundler on macOS builds. We declare
+  the .eigendeck document type here (instead of relying on the `fileAssociations`
+  autogeneration) so we can point it at a custom icon via CFBundleTypeIconFile —
+  Tauri's fileAssociations has no icon field. The icon file itself (eigendeck-doc.icns)
+  ships via bundle.resources. See docs/mac-native-toolbar.md / issue #130.
+  (fileAssociations in tauri.conf.json still drives the Linux/Windows associations.)
+-->
+<plist version="1.0">
+<dict>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Eigendeck Presentation</string>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>eigendeck</string>
+      </array>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>CFBundleTypeIconFile</key>
+      <string>eigendeck-doc</string>
+      <key>LSHandlerRank</key>
+      <string>Owner</string>
+    </dict>
+  </array>
+</dict>
+</plist>
