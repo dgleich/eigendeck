@@ -805,17 +805,27 @@ function App() {
       } catch (e) { console.error('[boot] take_launch_file failed:', e); }
     }).catch((e) => { console.error('[boot] tauri core import failed:', e); });
     syncRecentMenu();
-    // Restore saved window position/size
+    // Restore saved window position/size, THEN show the window. The main window
+    // is created hidden (visible:false in tauri.conf) so the user never sees it
+    // at the default spot before this repositions it — that was a visible jump
+    // on launch. Always show in the finally, even with no saved bounds or an
+    // error, so the window can't get stuck invisible.
     (async () => {
+      let win: import('@tauri-apps/api/window').Window | null = null;
       try {
-        const saved = localStorage.getItem('eigendeck-window-bounds');
-        if (!saved) return;
-        const { x, y, width, height } = JSON.parse(saved);
         const { getCurrentWindow } = await import('@tauri-apps/api/window');
-        const win = getCurrentWindow();
-        await win.setPosition(new (await import('@tauri-apps/api/dpi')).LogicalPosition(x, y));
-        await win.setSize(new (await import('@tauri-apps/api/dpi')).LogicalSize(width, height));
+        win = getCurrentWindow();
+        const saved = localStorage.getItem('eigendeck-window-bounds');
+        if (saved) {
+          const { x, y, width, height } = JSON.parse(saved);
+          const { LogicalPosition, LogicalSize } = await import('@tauri-apps/api/dpi');
+          await win.setPosition(new LogicalPosition(x, y));
+          await win.setSize(new LogicalSize(width, height));
+        }
       } catch { /* not in Tauri or invalid saved data */ }
+      finally {
+        try { await win?.show(); } catch { /* not in Tauri */ }
+      }
     })();
   }, []);
 
