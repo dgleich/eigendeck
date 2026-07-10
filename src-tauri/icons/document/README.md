@@ -27,6 +27,11 @@ python tools/build_doc_icns.py src-tauri/icons/document/eigendeck-doc.svg \
 # on macOS this also runs iconutil and writes eigendeck-doc.icns
 ```
 
-The generated `.icns` is a build artifact (gitignored); commit only the sources
-above. See #130 for hooking it up via `bundle.resources` + Info.plist
-(`CFBundleTypeIconFile`).
+**Commit the built `eigendeck-doc.icns`** alongside these sources (like
+`icons/icon.icns`) — it's referenced from `tauri.conf.json` `bundle.resources`, so
+the bundle needs it present. Rebuild + recommit when the SVG changes.
+
+Remaining wiring (see #130): the doc icon still needs `CFBundleTypeIconFile` set
+for the `.eigendeck` type. Tauri generates `CFBundleDocumentTypes` from
+`fileAssociations` (no icon field), so this needs a custom `Info.plist` or a
+post-build `PlistBuddy` patch — verify on a Mac `tauri build`.
