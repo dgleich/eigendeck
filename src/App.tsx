@@ -596,6 +596,10 @@ function App() {
   const [promoteCandidates, setPromoteCandidates] = useState<{ elementId: string; slideNo: number; summary: string }[] | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuEntry[] } | null>(null);
   const [multiMonitorPresenting, setMultiMonitorPresenting] = useState(false);
+  // False until the boot-time launch-file check resolves. Gates the welcome
+  // screen so a file-launch (double-click / open-with) goes straight to the
+  // editor without flashing the intro screen first (see the init effect).
+  const [launchChecked, setLaunchChecked] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
   // Which "+ Insert" buttons are hidden from the editor toolbar. The
@@ -803,7 +807,13 @@ function App() {
         const path = await invoke<string | null>('take_launch_file');
         if (path) await openRecentProject(path);
       } catch (e) { console.error('[boot] take_launch_file failed:', e); }
-    }).catch((e) => { console.error('[boot] tauri core import failed:', e); });
+    })
+      .catch((e) => { console.error('[boot] tauri core import failed:', e); })
+      // Only after the launch-file check resolves do we know whether to show the
+      // intro screen. Launched WITH a path → openRecentProject set projectPath
+      // above, so the editor renders and the welcome screen never flashes.
+      // Launched WITHOUT one (or on the web) → welcome screen.
+      .finally(() => setLaunchChecked(true));
     syncRecentMenu();
     // Restore saved window position/size, THEN show the window. The main window
     // is created hidden (visible:false in tauri.conf) so the user never sees it
@@ -1642,7 +1652,13 @@ function App() {
   // start. Launching with a file arg sets projectPath before this renders.
   // App-level Settings (⌘,) opens its own window (openSettingsWindow), so it
   // works from the Welcome screen too without mounting anything here (#62).
-  if (!projectPath) return (<><ToastHost /><WelcomeWindow /></>);
+  if (!projectPath) {
+    // Still resolving the launch-file check → render nothing but the toast host,
+    // so a file-launch lands straight in the editor instead of flashing the
+    // welcome screen for a frame before the deck opens.
+    if (!launchChecked) return <ToastHost />;
+    return (<><ToastHost /><WelcomeWindow /></>);
+  }
 
   const store = usePresentationStore.getState();
 
