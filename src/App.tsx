@@ -20,6 +20,7 @@ import { openSettingsWindow } from './lib/settingsWindow';
 import { useAggregateServerHealth } from './lib/serverHealth';
 import { invokeSafe } from './lib/tauriInvoke';
 import { flushAllOverlays } from './lib/overlayFlushRegistry';
+import { useEscapeKey } from './lib/useEscapeKey';
 import { nudgeDelta, zOrderDirection } from './lib/keyboardShortcuts';
 import { dispatchToolbarAction } from './lib/toolbarActions';
 import { CollisionDialog } from './components/CollisionDialog';
@@ -603,6 +604,8 @@ function App() {
   const [launchChecked, setLaunchChecked] = useState(false);
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
+  // Escape closes the video insert modal (in-app modal, no native Esc) — #120.
+  useEscapeKey(videoModalOpen, () => setVideoModalOpen(false));
   // Which "+ Insert" buttons are hidden from the editor toolbar. The
   // Insert menu (native) always lists everything; this only declutters
   // the toolbar. See src/lib/insertItems.ts + Settings → Toolbar buttons.
