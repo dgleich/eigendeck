@@ -19,6 +19,7 @@ import { ToastHost } from './components/ToastHost';
 import { openSettingsWindow } from './lib/settingsWindow';
 import { useAggregateServerHealth } from './lib/serverHealth';
 import { invokeSafe } from './lib/tauriInvoke';
+import { flushAllOverlays } from './lib/overlayFlushRegistry';
 import { nudgeDelta, zOrderDirection } from './lib/keyboardShortcuts';
 import { dispatchToolbarAction } from './lib/toolbarActions';
 import { CollisionDialog } from './components/CollisionDialog';
@@ -896,8 +897,13 @@ function App() {
           try {
             const state = usePresentationStore.getState();
             if (!state.isDirty) {
-              // Clean — quit immediately.
+              // Clean — quit immediately. But a notebook run/edit can leave a
+              // pending overlay that didn't mark the deck dirty, so force any
+              // overlays to disk before we tear down the webview (#123). The
+              // dirty branches flush via the save path (flushToSqlite); discard
+              // deliberately does not.
               closingRef.current = true;
+              await flushAllOverlays();
               const { invoke } = await import('@tauri-apps/api/core');
               await invoke('force_quit');
               return;

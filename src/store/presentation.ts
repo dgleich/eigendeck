@@ -12,6 +12,7 @@ import {
   pruneOrphanedGroups,
 } from '../lib/syncLink';
 import { runFreeHook, runResyncHook, runMergeHook } from '../lib/elementLifecycle';
+import { flushAllOverlays } from '../lib/overlayFlushRegistry';
 
 export type SelectedObject =
   | { type: 'slide' }
@@ -1047,6 +1048,11 @@ export function markPresentationDirty() {
 export async function flushToSqlite(): Promise<void> {
   if (!sqliteDbPath) return;
   if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+
+  // Force any pending notebook overlays to disk as part of the same save, so a
+  // deck saved/autosaved within the overlay's 800ms debounce can't drop it
+  // (#123). No-op when no overlay changed.
+  await flushAllOverlays();
 
   try {
     const { invoke } = await import('@tauri-apps/api/core');

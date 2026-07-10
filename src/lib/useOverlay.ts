@@ -15,6 +15,7 @@
 // The .ipynb asset is never touched here. "Recorder, not editor."
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { registerOverlayFlush } from './overlayFlushRegistry';
 import { invoke } from '@tauri-apps/api/core';
 import {
   Overlay, emptyOverlay, isOverlayEmpty, parseOverlay, serializeOverlay,
@@ -286,6 +287,10 @@ export function useOverlay(elementId: string): UseOverlayResult {
   useEffect(() => {
     return () => { void flushNow(); };
   }, [flushNow]);
+
+  // Register with the global registry so the deck save / close-quit path can
+  // FORCE this overlay to disk without waiting on the debounce (#123).
+  useEffect(() => registerOverlayFlush(flushNow), [flushNow]);
 
   // --- mutators -----------------------------------------------------
   // All mutations go through applyOverlay so the in-session cache stays
