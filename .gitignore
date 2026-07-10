@@ -79,3 +79,6 @@ spike-tools/nohup.out
 
 # Vitest coverage reports
 coverage/
+
+# Built .eigendeck document icon (build from icons/document/ sources)
+src-tauri/icons/document/*.icns

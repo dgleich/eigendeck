@@ -1,0 +1,57 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6eed9"/>
+      <stop offset="0.55" stop-color="#ecdfbd"/>
+      <stop offset="1" stop-color="#ddcb9d"/>
+    </linearGradient>
+    <linearGradient id="badgeGrad" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#57abd9"/>
+      <stop offset="0.5" stop-color="#2b86b7"/>
+      <stop offset="1" stop-color="#1d6491"/>
+    </linearGradient>
+    <clipPath id="pageClip"><path d="M 190,64 H 672 L 862,254 V 932 Q 862,960 834,960 H 190 Q 162,960 162,932 V 92 Q 162,64 190,64 Z"/></clipPath>
+    <clipPath id="badgeClip"><rect x="110" y="620" width="380" height="307" rx="66"/></clipPath>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+    <filter id="soft18" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <style>
+    .text { font-family: "PT Sans", "PTSans", Arial, Helvetica, sans-serif; font-weight: 700; }
+  </style>
+  <rect x="182" y="34" width="700" height="896" rx="28"
+    fill="#d8c596" stroke="#333" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M 190,64 H 672 L 862,254 V 932 Q 862,960 834,960 H 190 Q 162,960 162,932 V 92 Q 162,64 190,64 Z"
+    fill="url(#bodyGrad)" stroke="#333" stroke-width="16"
+    stroke-linecap="round" stroke-linejoin="round"/>
+  <g clip-path="url(#pageClip)">
+    <path d="M 672,64 L 862,254" stroke="#8a774e" stroke-width="30"
+      opacity="0.4" filter="url(#soft)" fill="none" transform="translate(-12,12)"/>
+    <rect x="150" y="52" width="724" height="30" fill="#fffaf0" opacity="0.7" filter="url(#soft)"/>
+    <rect x="150" y="64" width="26" height="896" fill="#8a774e" opacity="0.22" filter="url(#soft)"/>
+    <rect x="848" y="64" width="26" height="896" fill="#8a774e" opacity="0.22" filter="url(#soft)"/>
+  </g>
+  <path d="M 672,64 V 226 Q 672,254 700,254 H 862 Z"
+    fill="#e2d2aa" stroke="#333" stroke-width="16"
+    stroke-linecap="round" stroke-linejoin="round"/>
+  <g transform="translate(0,-6)"><g transform="translate(322.81,630.00) scale(5.21217)"><path d="M 54.78,-5.17 L 33.41,-61.08 L 11.92,-5.17 L 19.92,-5.17 L 19.92,-0.00 L -0.59,-0.00 L -0.59,-5.17 L 5.81,-5.17 L 31.78,-72.91 L 39.98,-72.91 L 66.02,-5.17 L 73.19,-5.17 L 73.19,-0.00 L 46.69,-0.00 L 46.69,-5.17 L 54.78,-5.17 Z" fill="#fffaf0"/></g></g>
+  <g transform="translate(0,6)"><g transform="translate(322.81,630.00) scale(5.21217)"><path d="M 54.78,-5.17 L 33.41,-61.08 L 11.92,-5.17 L 19.92,-5.17 L 19.92,-0.00 L -0.59,-0.00 L -0.59,-5.17 L 5.81,-5.17 L 31.78,-72.91 L 39.98,-72.91 L 66.02,-5.17 L 73.19,-5.17 L 73.19,-0.00 L 46.69,-0.00 L 46.69,-5.17 L 54.78,-5.17 Z" fill="#a8946a"/></g></g>
+  <g transform="translate(0,0)"><g transform="translate(322.81,630.00) scale(5.21217)"><path d="M 54.78,-5.17 L 33.41,-61.08 L 11.92,-5.17 L 19.92,-5.17 L 19.92,-0.00 L -0.59,-0.00 L -0.59,-5.17 L 5.81,-5.17 L 31.78,-72.91 L 39.98,-72.91 L 66.02,-5.17 L 73.19,-5.17 L 73.19,-0.00 L 46.69,-0.00 L 46.69,-5.17 L 54.78,-5.17 Z" fill="#e9dcba"/></g></g>
+  <rect x="110" y="636" width="380" height="307" rx="66"
+    fill="#000" opacity="0.32" filter="url(#soft18)"/>
+  <rect x="110" y="620" width="380" height="307" rx="66" fill="url(#badgeGrad)"/>
+  <g clip-path="url(#badgeClip)">
+    <rect x="96" y="608" width="410" height="26" rx="13" fill="#ffffff" opacity="0.55" filter="url(#soft)"/>
+  </g>
+  <text x="175" y="856" class="text" style="font-size:210px; fill:#14506f"
+    transform="translate(0,6)">&#955;</text>
+  <g transform="translate(175,850)"><path d="M 50.66,-104.61 L 44.30,-121.83 Q 41.44,-129.71 37.57,-132.56 Q 33.73,-135.45 24.08,-135.45 L 12.60,-135.45 L 12.60,-159.57 L 33.83,-159.57 Q 52.50,-159.57 62.61,-151.66 Q 72.71,-143.75 79.67,-125.11 L 126.62,-0.00 L 89.94,-0.00 L 67.07,-60.31 L 42.95,-0.00 L 6.27,-0.00 L 50.66,-104.61 Z" fill="#fff"/></g>
+  <g clip-path="url(#badgeClip)">
+    <line x1="341" y1="835" x2="433" y2="835" stroke="#cfeaff"
+      stroke-width="52" stroke-linecap="round" opacity="0.6" filter="url(#soft)"/>
+  </g>
+  <line x1="337" y1="835" x2="437" y2="835" stroke="#fff" stroke-width="30" stroke-linecap="round"/>
+</svg>
