@@ -122,6 +122,10 @@ MANIFEST=(
   "copypaste-reload.mjs|copypaste.eigendeck||python3 $EXFIX/make_e2e_decks.py copypaste \$DECKDIR/d.json; import_json \$DECKDIR/d.json"
   "export-notebook-probe.mjs|export.eigendeck||python3 $EXFIX/make_e2e_decks.py export \$DECKDIR/d.json; import_json \$DECKDIR/d.json"
   "export-image-deck-probe.mjs|examples/intro-slide.eigendeck||"
+  # #123: a committed source edit must survive a deck save WITHIN the overlay's
+  # 800ms flush debounce + a hard close (regression guard for the data-loss race;
+  # kernel-free — edits + blurs to commit, never runs a cell).
+  "nb-overlay-save-flush-probe.mjs|saveflush.eigendeck||python3 $EXFIX/make_live_nb_deck.py \$DECKDIR/saveflush.json; import_json \$DECKDIR/saveflush.json"
   # notebook-watch-takecontrol is NOT gated — see e2e/README.md "Not yet gated"
   # (real fs-watch depends on the per-user auto-reload preference run-probe wipes).
   # nb-live-run-persist is NOT gated — needs a REAL jupyter server (uv + network

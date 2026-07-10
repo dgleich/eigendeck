@@ -63,6 +63,13 @@ These live in `e2e/` but are NOT in `run-all.sh`, by design:
   measurement reads `null` (the glyph Range rect isn't resolvable), so it can't
   gate. The text-render path is covered deterministically by the
   `buildTextElementSvgMarkup` unit test (`src/components/TextElementSvg.test.ts`).
+- **nb-overlay-save-flush-probe.mjs** — #123 regression guard: commits a notebook
+  source edit (edit + blur), then saves the deck *within* the overlay's 800ms
+  flush debounce and hard-closes (no graceful unmount), and asserts on reopen
+  that the edit persisted. Discriminating by construction — passes with the
+  save-path force-flush (`src/lib/overlayFlushRegistry`, called from
+  `flushToSqlite` + the clean-quit handler), fails without it. Kernel-free (edits
+  + blurs, never runs a cell), so it's in the gated `run-all.sh` set.
 - **nb-live-run-persist.mjs** — the only probe that boots a REAL Jupyter kernel
   and runs a cell. Proves the live path unit/overlay tests can't: edit a cell's
   source in-app (CodeMirror), run it against an external `python3` kernel, and
