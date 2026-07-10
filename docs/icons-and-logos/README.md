@@ -37,16 +37,45 @@ The mark has two masters. Pick by background, don't recolor by hand:
   `tools/build_doc_icns.py` renders an SVG to the ten `.iconset` slots and (on
   macOS) runs `iconutil`. See the doc-icon plan below.
 
-## Document-icon plan (#130 / QuickLook fallback #131)
+## Document icon — two-master build (#130 / QuickLook fallback #131)
 
-The `.eigendeck` document icon uses **two masters at different sizes** (macOS
-picks per slot):
-- **High-res slots (128 / 256 / 512 + @2x): the bare mark on a white page.**
-  Built by compositing `logo-icon-light.svg` onto a rounded page with a folded
-  corner (the composite generator; not the cream tile). This is also the
-  QuickLook thumbnail fallback for GUI-less files (see #131).
-- **Low-res slots (16 / 32 + @2x): the simplified `proxy-icon` art**, which is
-  drawn to read at small sizes.
+macOS shows one `.icns` everywhere a `.eigendeck` appears and picks the size
+slot that matches the display. We author **two masters** and let the OS switch:
+
+- **16 & 32 pt slots (px 16/32/64): the `proxy-icon` art**, drawn to still read
+  at title-bar / list-view size. Shown in the title-bar proxy, Finder list &
+  column views, small icon view.
+- **128 pt+ slots (px 128/256/512/1024): the `logo-icon-light` mark composited
+  onto Apple's `GenericDocumentIcon` template**, so the document looks native at
+  large sizes (Finder icon view, Get Info, gallery). This is also the QuickLook
+  thumbnail fallback for GUI-less files with no baked slide (#131).
+
+The crossover is `SMALL_SLOTS_PT = {16, 32}` in the build script (Apple's own
+convention: simplified art in 16/32 pt, detailed in 128 pt+). See
+`previews/doc-icon-slots.png` for the split rendered at every native size, and
+`previews/doc-icon-hero.png` for the 1024 large master.
+
+### Build
+
+```bash
+# one-time: renderer
+uv venv venv-icons && uv pip install --python venv-icons cairosvg pillow
+
+# one-time on a Mac: extract Apple's document template (Apple art, git-ignored)
+iconutil -c iconset \
+  /System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/GenericDocumentIcon.icns \
+  -o gitignore/generic-document-icon/GenericDocumentIcon.iconset
+
+# build (writes src-tauri/icons/document/eigendeck-doc.{iconset,icns})
+python tools/build_doc_icon.py            # add --preview to refresh the previews here
+```
+
+`iconutil` (iconset → `.icns`) is macOS-only, so the final `.icns` is produced
+on a Mac. On Linux the script still writes the 10-slot `.iconset`.
+
+Masters live here: `proxy-icon.svg` (small) and `logo-icon-light.svg` (mark).
+The Apple template is **not** committed (it's Apple's art); extract it once with
+the command above.
 
 ## ⚠ Known issue
 
