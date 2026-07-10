@@ -11,8 +11,12 @@ export function applyWindowFocus(focused: boolean): void {
   document.body.classList.toggle('window-inactive', !focused);
 }
 
-/** Wire this window's focus changes to the body class. No-op outside Tauri. */
+/** Wire this window's focus changes to the body class. Tauri's onFocusChanged is
+ *  authoritative; DOM focus/blur is the fallback (covers plain-browser / dev). */
 export function initWindowFocus(): void {
+  window.addEventListener('focus', () => applyWindowFocus(true));
+  window.addEventListener('blur', () => applyWindowFocus(false));
+  applyWindowFocus(typeof document !== 'undefined' ? document.hasFocus() : true);
   try {
     const w = getCurrentWindow();
     void w.isFocused().then(applyWindowFocus).catch(() => {});

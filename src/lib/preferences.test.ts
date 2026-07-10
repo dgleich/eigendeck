@@ -6,13 +6,18 @@ import {
 // Mock the Tauri event module that setPreference/initPrefSync dynamically import,
 // so the cross-window bridge is observable without a real Tauri runtime.
 const emitMock = vi.fn((..._args: unknown[]) => Promise.resolve());
-let listenHandler: ((e: { payload: { key?: string } }) => void) | null = null;
+let listenHandler: ((e: { payload: { key?: string; origin?: string } }) => void) | null = null;
 vi.mock('@tauri-apps/api/event', () => ({
   emit: (...args: unknown[]) => emitMock(...args),
-  listen: (_name: string, handler: (e: { payload: { key?: string } }) => void) => {
+  listen: (_name: string, handler: (e: { payload: { key?: string; origin?: string } }) => void) => {
     listenHandler = handler;
     return Promise.resolve(() => {});
   },
+}));
+// setPreference/initPrefSync tag the sync event with the origin window label so a
+// window can ignore its own echo; mock the window so that label is deterministic.
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: () => ({ label: 'main' }),
 }));
 
 // Cascade is downward-only: any layer can refuse, no layer overrides
@@ -146,20 +151,32 @@ describe('cross-window pref sync (PREF_SYNC bridge)', () => {
     expect(changed).toContain('gridSpacing');
   });
 
-  it('setPreference broadcasts PREF_SYNC to other windows with the key', async () => {
+  it('setPreference broadcasts PREF_SYNC to other windows with the key + origin', async () => {
     setPreference('gridSpacing', 60);
     // the emit is behind a dynamic import().then — let the microtasks flush
-    await vi.waitFor(() => expect(emitMock).toHaveBeenCalledWith(PREF_SYNC_EVENT, { key: 'gridSpacing' }));
+    await vi.waitFor(() =>
+      expect(emitMock).toHaveBeenCalledWith(PREF_SYNC_EVENT, { key: 'gridSpacing', origin: 'main' }));
   });
 
-  it('initPrefSync re-dispatches a received PREF_SYNC as a local pref-changed event', async () => {
+  it('initPrefSync re-dispatches a PREF_SYNC from ANOTHER window as a local event', async () => {
     initPrefSync();
     await vi.waitFor(() => expect(listenHandler).not.toBeNull());
     const changed: string[] = [];
     const h = (e: Event) => changed.push((e as CustomEvent).detail?.key);
     window.addEventListener('eigendeck:pref-changed', h);
-    listenHandler!({ payload: { key: 'showHelpText' } });
+    listenHandler!({ payload: { key: 'showHelpText', origin: 'settings' } });
     window.removeEventListener('eigendeck:pref-changed', h);
     expect(changed).toEqual(['showHelpText']);
+  });
+
+  it('initPrefSync ignores its OWN echo (origin === this window)', async () => {
+    initPrefSync();
+    await vi.waitFor(() => expect(listenHandler).not.toBeNull());
+    const changed: string[] = [];
+    const h = (e: Event) => changed.push((e as CustomEvent).detail?.key);
+    window.addEventListener('eigendeck:pref-changed', h);
+    listenHandler!({ payload: { key: 'showHelpText', origin: 'main' } });
+    window.removeEventListener('eigendeck:pref-changed', h);
+    expect(changed).toEqual([]);
   });
 });

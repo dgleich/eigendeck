@@ -139,23 +139,33 @@ export function setPreference<K extends keyof PrefSchema>(key: K, value: PrefSch
   try {
     localStorage.setItem(KEY_PREFIX + key, JSON.stringify(value));
     window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: { key } }));
-    // Notify other webview windows (best-effort; no-op outside Tauri).
-    void import('@tauri-apps/api/event')
-      .then(({ emit }) => emit(PREF_SYNC_EVENT, { key }))
+    // Notify OTHER webview windows (best-effort; no-op outside Tauri). Tag the
+    // origin window so it can ignore its own echo — Tauri's emit() delivers back
+    // to the sender too, and we already dispatched CHANGE_EVENT locally above.
+    void import('@tauri-apps/api/window')
+      .then(({ getCurrentWindow }) => {
+        const origin = getCurrentWindow().label;
+        return import('@tauri-apps/api/event').then(({ emit }) => emit(PREF_SYNC_EVENT, { key, origin }));
+      })
       .catch(() => {});
   } catch (e) {
     console.warn(`[prefs] setPreference(${key}) failed:`, e);
   }
 }
 
-/** Re-dispatch the local CHANGE_EVENT when another window changes a pref.
+/** Re-dispatch the local CHANGE_EVENT when ANOTHER window changes a pref.
  *  Called once per window from initRuntime(). Guarded for non-Tauri contexts. */
 export function initPrefSync(): void {
-  void import('@tauri-apps/api/event')
-    .then(({ listen }) =>
-      listen<{ key?: string }>(PREF_SYNC_EVENT, (e) => {
-        window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: { key: e.payload?.key } }));
-      }))
+  void import('@tauri-apps/api/window')
+    .then(({ getCurrentWindow }) => {
+      const self = getCurrentWindow().label;
+      return import('@tauri-apps/api/event').then(({ listen }) =>
+        listen<{ key?: string; origin?: string }>(PREF_SYNC_EVENT, (e) => {
+          // Ignore our own echo — setPreference already dispatched CHANGE_EVENT here.
+          if (e.payload?.origin === self) return;
+          window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: { key: e.payload?.key } }));
+        }));
+    })
     .catch(() => {});
 }
 

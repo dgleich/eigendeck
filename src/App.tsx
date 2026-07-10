@@ -589,7 +589,7 @@ function App() {
     const ro = new ResizeObserver(apply);
     ro.observe(hud);
     return () => ro.disconnect();
-  });
+  }, []);
   const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[]; fromSlideIndex: number; fromSlideId: string } | { type: 'slide'; data: any } | null>(null);
   const [linkOverlayElementId, setLinkOverlayElementId] = useState<string | null>(null);
   const [promoteCandidates, setPromoteCandidates] = useState<{ elementId: string; slideNo: number; summary: string }[] | null>(null);
@@ -822,29 +822,8 @@ function App() {
 
   // SQLite DB is closed from Rust via on_window_event(Destroyed) — no JS handler needed.
 
-  // Active/inactive toolbar tint (matches macOS chrome). Toggle `window-inactive`
-  // on <body>; CSS swaps --toolbar-bg → --toolbar-bg-inactive. Tauri's
-  // onFocusChanged is authoritative; DOM focus/blur is a fallback.
-  useEffect(() => {
-    const setActive = (active: boolean) =>
-      document.body.classList.toggle('window-inactive', !active);
-    setActive(typeof document !== 'undefined' ? document.hasFocus() : true);
-    let unlisten: (() => void) | undefined;
-    import('@tauri-apps/api/window')
-      .then(({ getCurrentWindow }) =>
-        getCurrentWindow().onFocusChanged(({ payload }) => setActive(payload)))
-      .then((u) => { unlisten = u; })
-      .catch(() => { /* not in Tauri */ });
-    const onFocus = () => setActive(true);
-    const onBlur = () => setActive(false);
-    window.addEventListener('focus', onFocus);
-    window.addEventListener('blur', onBlur);
-    return () => {
-      unlisten?.();
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('blur', onBlur);
-    };
-  }, []);
+  // (Active/inactive window tint lives in src/lib/windowFocus.ts, wired centrally
+  // by initRuntime so it runs in every window — not duplicated here.)
 
   // Save window position/size on move/resize (debounced)
   useEffect(() => {
@@ -1035,21 +1014,16 @@ function App() {
   const tbTitle = usePresentationStore((s) => s.presentation.title || '');
   const tbAuthor = usePresentationStore((s) => s.presentation.config.author || '');
   const tbVenue = usePresentationStore((s) => s.presentation.config.venue || '');
+  // Window/document title tracks the deck + dirty state. Set here (not in the HTML
+  // Toolbar) so it stays correct when that toolbar is hidden on native builds.
+  useEffect(() => {
+    document.title = `${tbTitle}${isDirty ? ' *' : ''} — Eigendeck`;
+  }, [tbTitle, isDirty]);
   useEffect(() => {
     void import('@tauri-apps/api/core')
       .then(({ invoke }) => invoke('set_toolbar_fields', { title: tbTitle, author: tbAuthor, venue: tbVenue }))
       .catch(() => {});
   }, [tbTitle, tbAuthor, tbVenue]);
-
-  // Native macOS toolbar Jupyter server-status icon — mirror the HTML pill's
-  // aggregate health (green/yellow/red, gray = no live notebooks). Pushed to the
-  // NSToolbar item; no-op off the native-toolbar build.
-  const { status: jupyterStatus, tooltip: jupyterTooltip } = useAggregateServerHealth();
-  useEffect(() => {
-    void import('@tauri-apps/api/core')
-      .then(({ invoke }) => invoke('set_toolbar_jupyter', { status: jupyterStatus, tooltip: jupyterTooltip }))
-      .catch(() => {});
-  }, [jupyterStatus, jupyterTooltip]);
 
   // On macOS with the native toolbar (mac-toolbar build), hide the HTML toolbar —
   // it duplicates the native one. False everywhere else (HTML toolbar stays).
@@ -1060,6 +1034,17 @@ function App() {
       .then((v) => setNativeToolbar(!!v))
       .catch(() => {});
   }, []);
+
+  // Native macOS toolbar Jupyter server-status icon — mirror the HTML pill's
+  // aggregate health (green/yellow/red, gray = no live notebooks). Pushed to the
+  // NSToolbar item; skipped off the native-toolbar build.
+  const { status: jupyterStatus, tooltip: jupyterTooltip } = useAggregateServerHealth();
+  useEffect(() => {
+    if (!nativeToolbar) return;
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke('set_toolbar_jupyter', { status: jupyterStatus, tooltip: jupyterTooltip }))
+      .catch(() => {});
+  }, [nativeToolbar, jupyterStatus, jupyterTooltip]);
   // Compact toolbar view (macOS native toolbar only): labels off + smaller icons.
   // Driven by the compactToolbar preference; applied live (no restart).
   const [compactToolbar] = usePreference('compactToolbar');

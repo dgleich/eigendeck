@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
 import {
   saveProject,
@@ -13,11 +13,8 @@ export function Toolbar() {
   const [titleDraft, setTitleDraft] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  // Update window title
-  useEffect(() => {
-    const dirty = isDirty ? ' *' : '';
-    document.title = `${presentation.title}${dirty} — Eigendeck`;
-  }, [presentation.title, isDirty]);
+  // (document.title is set centrally in App.tsx so it tracks the deck even when
+  // this HTML toolbar is hidden on the native-toolbar build.)
 
   const startEditingTitle = () => {
     setTitleDraft(presentation.title);
