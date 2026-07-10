@@ -750,6 +750,11 @@ pub fn install(app: &AppHandle) {
     ns_win.setToolbarStyle(NSWindowToolbarStyle::Expanded);
     // Label row on by default (the label-row toggle set_compact drives). See #125.
     toolbar.setDisplayMode(NSToolbarDisplayMode::IconAndLabel);
+    // Start hidden. The window boots into the welcome/startup screen (no project),
+    // which has no toolbar; the frontend calls set_toolbar_visible(true) once a
+    // deck is open. Installing visible flashed the empty toolbar for a frame
+    // before React mounted and hid it.
+    toolbar.setVisible(false);
 
     TOOLBAR.with(|t| *t.borrow_mut() = Some(toolbar));
     DELEGATE.with(|d| *d.borrow_mut() = Some(delegate));
