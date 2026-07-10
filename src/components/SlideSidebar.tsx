@@ -96,7 +96,18 @@ export function SlideSidebar() {
                 const sel = usePresentationStore.getState().selectedObject;
                 if (sel && sel.type !== 'slide') return;
                 e.preventDefault(); e.stopPropagation();
-                if (presentation.slides.length > 1) deleteSlide(index);
+                if (presentation.slides.length > 1) {
+                  deleteSlide(index);
+                  // The deleted thumbnail's DOM focus falls to <body>, and
+                  // currentSlideIndex often doesn't change, so the focus effect
+                  // above won't re-fire. Re-focus the neighbour thumbnail once
+                  // the list re-renders so repeated Delete keeps working (#124).
+                  requestAnimationFrame(() => {
+                    const thumbs = containerRef.current?.querySelectorAll('.slide-thumbnail');
+                    const newIdx = usePresentationStore.getState().currentSlideIndex;
+                    (thumbs?.[newIdx] as HTMLElement | undefined)?.focus();
+                  });
+                }
               }
             }}
             onContextMenu={(e) => {

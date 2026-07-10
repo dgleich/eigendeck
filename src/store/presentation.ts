@@ -236,6 +236,9 @@ export const usePresentationStore = create<PresentationState>()(
           return {
             presentation: { ...state.presentation, slides },
             currentSlideIndex: newIndex,
+            // Land the selection squarely on the neighbour slide, so it's clear
+            // what's selected and a repeated Delete has a slide to act on (#124).
+            selectedObject: { type: 'slide' },
             isDirty: true,
           };
         }),

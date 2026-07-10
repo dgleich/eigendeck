@@ -47,6 +47,18 @@ describe('presentation store', () => {
     expect(usePresentationStore.getState().presentation.slides).toHaveLength(1);
   });
 
+  it('resets the selection to the neighbour slide after delete (#124)', () => {
+    const store = usePresentationStore.getState();
+    store.addSlide(); store.addSlide();
+    // Simulate having an element selected (as after clicking on the canvas):
+    usePresentationStore.setState({ selectedObject: { type: 'element', id: 'x' } });
+    usePresentationStore.getState().deleteSlide(1);
+    const state = usePresentationStore.getState();
+    // Selection lands back on a slide so a repeated Delete has a target.
+    expect(state.selectedObject).toEqual({ type: 'slide' });
+    expect(state.currentSlideIndex).toBe(1);
+  });
+
   it('duplicates a slide with new element IDs', () => {
     usePresentationStore.getState().duplicateSlide(0);
     const state = usePresentationStore.getState();
