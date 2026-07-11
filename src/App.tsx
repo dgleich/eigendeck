@@ -1038,6 +1038,13 @@ function App() {
   // never fires). See src-tauri/src/mac_toolbar.rs + docs/mac-native-toolbar.md.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
+    // `cancelled` closes the async-registration race: this effect re-runs when
+    // `startPresenting` settles after mount, and `listen()` resolves a tick LATER.
+    // Without this guard the cleanup fires while `unlisten` is still undefined, so
+    // the first listener is never removed and a second registers — every native
+    // "Add Slide" click then fired addSlide TWICE (two slides). Now a cleanup that
+    // beats the resolve marks it cancelled, and the late resolve unlistens itself.
+    let cancelled = false;
     void import('@tauri-apps/api/event').then(({ listen }) =>
       listen<{ id: string }>('toolbar:action', ({ payload }) => {
         const store = usePresentationStore.getState();
@@ -1051,9 +1058,9 @@ function App() {
           save: () => void flushToSqlite().then(() => saveProject()),
           export: () => void exportPresentation(),
         });
-      }).then((u) => { unlisten = u; }),
+      }).then((u) => { if (cancelled) u(); else unlisten = u; }),
     ).catch(() => {});
-    return () => unlisten?.();
+    return () => { cancelled = true; unlisten?.(); };
   }, [startPresenting]);
 
   // Native macOS toolbar Title/Author/Venue fields ↔ store (two-way).
