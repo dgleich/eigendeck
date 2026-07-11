@@ -170,3 +170,58 @@ probably the right initial constraint).
 - `src/lib/watcherRegistry.ts` — already keyed by `projectId` (multi-doc-ready)
 - `src/components/SlideElementRenderer.tsx:317` — sandboxed demo iframes
 - `src/lib/mathjaxRenderer.ts` — iframe-pool math rendering (sidesteps singleton)
+
+---
+
+## Welcome-window split — locked design (2026-07-10), DEFERRED into this arc
+
+Explored splitting the welcome/startup screen (#66's `WelcomeWindow`) out of the
+single window as an independently-shippable "front half" of this multi-doc effort.
+Design got locked; then **paused** on the realization that it costs ~80% of the full
+multi-window engineering for ~20% of the value.
+
+**Why it's not a cheap standalone slice.** The expensive part is NOT the SQLite
+connection pool — it's de-coupling the backend from the `"main" == editor`
+assumption and building the window lifecycle (create/focus/close/quit, menu → focused
+window, open-with-file → new window, per-window save/close). That rewiring is
+identical with or without the pool. The pool is the *only* extra piece, and it's the
+sole thing standing between "one document window" and "N document windows." So the
+split would deliver a nicer welcome screen while still capping at one open document.
+Decision: fold it into the real multi-document effort, don't ship it alone.
+
+**The locked model (build this when the arc runs):**
+- There is **no UX "main" window.** `"main"` is only Tauri's auto-created window
+  label. Attach that label to the **welcome** window (the one thing that lives for
+  the whole app session); every document is a uniform dynamically-created
+  `"doc-<id>"` window (key it by the `_meta` `projectId`, per Open questions above).
+- **Launch, no file → welcome window** (own window: small, fixed-size, no toolbar,
+  no bounds-restore → nothing to flash/jump).
+- **Pick a deck in welcome → welcome HIDES (not minimized — fully hidden, user
+  doesn't want to see it lingering), a `doc-<id>` window opens** with the editor +
+  native toolbar (toolbar installs visible from frame one; retires the
+  install-hidden stopgap `bb30b82`).
+- **File ▸ New ▸ Presentation → a brand-new separate document window.**
+- **Welcome is the persistent anchor**, re-summonable via `Window ▸ Welcome to
+  Eigendeck` (and the Dock icon / relaunch).
+- **Launch WITH a file (double-click / open-with) → skip welcome entirely, open a
+  document window directly.** (This is the flash the reverted `launchChecked`
+  stopgap was targeting; the window split fixes it structurally instead.)
+- **Quit rule (this branch's single-DB cap):** closing a document window **quits
+  outright** (after the unsaved-changes check). Opening a second deck (from welcome
+  or File ▸ New) while one is open **first fires the close/unsaved-changes workflow**
+  on the current doc, then opens the new window — because the single global
+  connection allows only one open DB. When the pool lands, delete that cap and both
+  the quit rule and the "close-first" handoff relax into true simultaneous docs.
+
+**Backend touch-points that must move off the hard-coded `"main"` (all in `lib.rs`):**
+`tauri_plugin_single_instance` handler (`open-file` → new doc window, not "main"),
+`RunEvent::Opened` (same), the menu handler (dispatch to focused window), the
+`CloseRequested`/`Destroyed` close-db+quit logic (per-doc-window), and the frontend
+`check-close` / `open-file` listeners in `App.tsx`.
+
+**Already-shipped launch stopgaps on main (independent of this split):**
+- `bb30b82` mac toolbar installs hidden (no empty-toolbar flash before welcome)
+- `bd5597c` main window created hidden, restores bounds, then shows (no position jump)
+- REVERTED (not shipped): the `launchChecked` gate that suppressed the welcome-screen
+  flash on a file-launch. Re-appliable as a ~10-line standalone fix if the structural
+  window split stays deferred and that flash still bugs.
