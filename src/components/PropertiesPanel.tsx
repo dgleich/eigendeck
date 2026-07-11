@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
-import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, parsePalette, textPresetBoxCss, type NamedSize } from '../types/presentation';
-import { BUILT_IN_THEMES } from '../lib/themes';
+import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, parsePalette, textPresetBoxCss, mixHex, type NamedSize } from '../types/presentation';
+import { BUILT_IN_THEMES, resolveTheme } from '../lib/themes';
 import { extractDemoPieceNames } from '../lib/demoPieces';
 import { FONT_PACKAGES } from '../lib/fonts';
 import { listMonoEligible } from '../lib/notebookFonts';
@@ -61,7 +61,9 @@ export function PropertiesPanel() {
     freeElement, unlinkElement,
   } = usePresentationStore();
 
-  const [padLinked, setPadLinked] = useState(true);
+  // Padding sides start UNLINKED — most text elements have different top/bottom
+  // vs left/right padding, so linked-by-default fought the common case.
+  const [padLinked, setPadLinked] = useState(false);
 
   const slide = presentation.slides[currentSlideIndex];
   if (!slide) return null;
@@ -494,19 +496,34 @@ export function PropertiesPanel() {
                 <PropSection label="Background">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <button className={`prop-zbtn ${!selectedEl.backgroundColor ? 'active' : ''}`} style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
-                        onClick={() => updateElement(selectedEl.id, { backgroundColor: undefined, backgroundOpacity: undefined, boxShadow: undefined } as any)}>None</button>
+                      <button className={`prop-zbtn ${!selectedEl.backgroundColor && !selectedEl.boxTint ? 'active' : ''}`} style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
+                        onClick={() => updateElement(selectedEl.id, { backgroundColor: undefined, backgroundOpacity: undefined, boxTint: undefined, boxShadow: undefined } as any)}>None</button>
+                      {/* Themed tint (#132 card): a per-theme accent wash that adapts to
+                          each slide's theme. The swatch previews the current slide's tint;
+                          the corner mark flags it as the "themed" (not fixed) choice. */}
+                      {(() => {
+                        const th = resolveTheme(presentation.theme, slide.theme);
+                        const tint = mixHex(th.background, th.accent, 0.15);
+                        return (
+                          <button key="__tint" title="Themed tint — a themed accent wash that stays colored and contrasting on any theme (for cards)"
+                            className={`prop-color-swatch ${selectedEl.boxTint ? 'active' : ''}`}
+                            style={{ background: tint, backgroundImage: 'linear-gradient(135deg, transparent 60%, rgba(0,0,0,0.4) 60%)' }}
+                            onClick={() => updateElement(selectedEl.id, { boxTint: 'accent', backgroundColor: undefined, backgroundOpacity: undefined } as any)} />
+                        );
+                      })()}
                       {TEXT_BG_COLORS.map((c) => (
-                        <button key={c} className={`prop-color-swatch ${selectedEl.backgroundColor === c ? 'active' : ''}`}
-                          style={{ background: c }} onClick={() => updateElement(selectedEl.id, { backgroundColor: c } as any)} />
+                        <button key={c} className={`prop-color-swatch ${selectedEl.backgroundColor === c && !selectedEl.boxTint ? 'active' : ''}`}
+                          style={{ background: c }} onClick={() => updateElement(selectedEl.id, { backgroundColor: c, boxTint: undefined } as any)} />
                       ))}
                       <input type="color" title="Custom colour"
                         value={selectedEl.backgroundColor && /^#[0-9a-fA-F]{6}$/.test(selectedEl.backgroundColor) ? selectedEl.backgroundColor : '#000000'}
-                        onChange={(e) => updateElement(selectedEl.id, { backgroundColor: e.target.value } as any)}
+                        onChange={(e) => updateElement(selectedEl.id, { backgroundColor: e.target.value, boxTint: undefined } as any)}
                         style={{ width: 24, height: 24, padding: 0, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }} />
                     </div>
-                    {selectedEl.backgroundColor && (
+                    {(selectedEl.backgroundColor || selectedEl.boxTint) && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
+                        {/* Opacity applies to a fixed fill only (the themed tint is opaque). */}
+                        {selectedEl.backgroundColor && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 12, color: '#374151' }}>Opacity</span>
                           <input type="range" min={0} max={1} step={0.05} value={selectedEl.backgroundOpacity ?? 1}
@@ -522,6 +539,7 @@ export function PropertiesPanel() {
                             }} />
                           <span style={{ fontSize: 11, color: '#9ca3af' }}>%</span>
                         </div>
+                        )}
                         <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 7 }}>
                           <input type="checkbox" checked={!!selectedEl.boxShadow}
                             onChange={(e) => updateElement(selectedEl.id, { boxShadow: e.target.checked || undefined } as any)} />
