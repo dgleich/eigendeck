@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mixHex, textBackgroundResolved, textBoxShadowCss } from './textStyle.mjs';
+import { mixHex, textBackgroundResolved, textBoxShadowCss, TINT_STRENGTH } from './textStyle.mjs';
 
 describe('mixHex', () => {
   it('mixes two hex colors by t', () => {
@@ -25,7 +25,7 @@ describe('textBackgroundResolved (#132 boxTint)', () => {
 
   it('tints toward a given hex boxTint', () => {
     expect(textBackgroundResolved({ boxTint: '#ff0000' }, { background: '#ffffff' }))
-      .toBe(mixHex('#ffffff', '#ff0000', 0.15));
+      .toBe(mixHex('#ffffff', '#ff0000', TINT_STRENGTH));
   });
 
   it('adapts to the theme background (dark theme lifts, not greys)', () => {

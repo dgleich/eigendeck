@@ -35,15 +35,20 @@ export function mixHex(a, b, t) {
   return '#' + [m(0), m(2), m(4)].map((v) => v.toString(16).padStart(2, '0')).join('');
 }
 
+/** How far a themed tint (#132 "card") mixes its base color into the slide
+ *  background. Small enough that body text stays readable, large enough to read
+ *  as a real color on any theme. */
+export const TINT_STRENGTH = 0.2;
+
 /** Effective text-element background, honoring a themed tint (#132 "card"): when
  *  `el.boxTint` is set, tint the slide theme's background toward the tint base
- *  ('accent' → theme.accent, else the given hex) by ~15% so the fill stays
- *  colored AND contrasting on ANY theme; otherwise the fixed backgroundColor.
- *  `theme` is the resolved ThemeColors ({ background, accent, ... }). */
+ *  ('accent' → theme.accent, else the given hex) by TINT_STRENGTH so the fill
+ *  stays colored AND contrasting on ANY theme; otherwise the fixed
+ *  backgroundColor. `theme` is the resolved ThemeColors ({ background, accent }). */
 export function textBackgroundResolved(el, theme) {
   if (el && el.boxTint && theme) {
     const base = el.boxTint === 'accent' ? (theme.accent || '#3b82f6') : el.boxTint;
-    return mixHex(theme.background || '#ffffff', base, 0.15);
+    return mixHex(theme.background || '#ffffff', base, TINT_STRENGTH);
   }
   return textBackgroundCss(el);
 }
