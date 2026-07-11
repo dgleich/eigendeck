@@ -320,6 +320,17 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
   eigendeck-cli /tmp/font-lato.eigendeck import json e2e/fixtures/font-lato-deck.json
   PROBE=e2e/font-default-probe.mjs E2E_DECK=/tmp/font-lato.eigendeck E2E_EXPECT="Lato" bash e2e/run-probe.sh
   ```
+- **color-control-probe.mjs** — the unified `<ColorControl>` (#132 M2) driving the
+  REAL inspector: picking the accent tint in Text Color writes the live token
+  (`color:'accent'`), picking a fill tint on a cover writes `boxTint`, and the deck
+  `customPalette` swatch now appears on the Background control (was missing). Asserts
+  the click→store-write chain in WebKit and screenshots the inspector. jsdom
+  characterization: `src/components/PropertiesPanel.colorControls.test.tsx`. Run:
+  ```bash
+  eigendeck-cli /tmp/ctrl.eigendeck import json e2e/fixtures/color-control-deck.json
+  PROBE=e2e/color-control-probe.mjs E2E_DECK=/tmp/ctrl.eigendeck \
+    PROBE_OUT=gitignore/color-control-e2e bash e2e/run-probe.sh   # -> CTRL_PASS
+  ```
 - **overflow-hunt.mjs** — audit (not pass/fail): walks a deck and reports text
   elements whose content overflows its box (surfaced the #95 cut-off risk).
 - **deck-demos-render-probe.mjs** — opens a deck and asserts every demo /

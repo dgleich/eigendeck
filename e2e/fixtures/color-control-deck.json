@@ -1,0 +1,9 @@
+{
+  "title": "Color control smoke",
+  "theme": "white",
+  "slides": [{ "id": "s1", "layout": "default", "notes": "", "elements": [
+    { "id": "txt", "type": "text", "preset": "body", "html": "Pick a color", "position": { "x": 200, "y": 200, "width": 700, "height": 150 } },
+    { "id": "cov", "type": "cover", "position": { "x": 950, "y": 200, "width": 500, "height": 320 } }
+  ] }],
+  "config": { "width": 1920, "height": 1080, "customPalette": ["#ff00ff"] }
+}
