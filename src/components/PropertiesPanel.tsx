@@ -24,12 +24,23 @@ const TEXT_BG_COLORS = [
   '#ffffff', '#f3f4f6', '#d1d5db', '#9ca3af', '#374151', '#000000',
   // soft tints + highlighter
   '#fee2e2', '#ffedd5', '#fef9c3', '#fff3b0', '#dcfce7', '#ccfbf1',
-  '#cffafe', '#dbeafe', '#e0e7ff', '#ede9fe', '#fae8ff', '#fce7f3',
   // medium tints
   '#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#7dd3fc',
   '#93c5fd', '#a5b4fc', '#c4b5fd', '#f0abfc', '#f9a8d4',
   // deep / saturated
   '#b91c1c', '#15803d', '#1d4ed8', '#6d28d9',
+];
+
+// Themed tint bases (#132): 'accent' follows the slide theme; the rest are
+// semantic (alert red, example green, amber, purple). Each renders as a wash
+// RELATIVE to the slide background, so it stays colored + contrasting on ANY
+// theme (unlike a fixed color, which is grey/wrong on some themes).
+const TINT_SWATCHES: { base: string; title: string }[] = [
+  { base: 'accent', title: 'Theme accent tint (adapts to each slide theme)' },
+  { base: '#dc2626', title: 'Red tint (alert)' },
+  { base: '#16a34a', title: 'Green tint (example)' },
+  { base: '#d97706', title: 'Amber tint' },
+  { base: '#7c3aed', title: 'Purple tint' },
 ];
 
 const TEXT_COLORS = [
@@ -498,18 +509,20 @@ export function PropertiesPanel() {
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                       <button className={`prop-zbtn ${!selectedEl.backgroundColor && !selectedEl.boxTint ? 'active' : ''}`} style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
                         onClick={() => updateElement(selectedEl.id, { backgroundColor: undefined, backgroundOpacity: undefined, boxTint: undefined, boxShadow: undefined } as any)}>None</button>
-                      {/* Themed tint (#132 card): a per-theme accent wash that adapts to
-                          each slide's theme. The swatch previews the current slide's tint;
-                          the corner mark flags it as the "themed" (not fixed) choice. */}
+                      {/* Themed tints (#132 card): each previews the current slide's wash
+                          (base color mixed into the theme background); the corner mark
+                          flags them as "themed" (adapt per theme) vs the fixed swatches. */}
                       {(() => {
                         const th = resolveTheme(presentation.theme, slide.theme);
-                        const tint = mixHex(th.background, th.accent, 0.15);
-                        return (
-                          <button key="__tint" title="Themed tint — a themed accent wash that stays colored and contrasting on any theme (for cards)"
-                            className={`prop-color-swatch ${selectedEl.boxTint ? 'active' : ''}`}
-                            style={{ background: tint, backgroundImage: 'linear-gradient(135deg, transparent 60%, rgba(0,0,0,0.4) 60%)' }}
-                            onClick={() => updateElement(selectedEl.id, { boxTint: 'accent', backgroundColor: undefined, backgroundOpacity: undefined } as any)} />
-                        );
+                        return TINT_SWATCHES.map(({ base, title }) => {
+                          const src = base === 'accent' ? th.accent : base;
+                          return (
+                            <button key={`tint-${base}`} title={title}
+                              className={`prop-color-swatch ${selectedEl.boxTint === base ? 'active' : ''}`}
+                              style={{ background: mixHex(th.background, src, 0.15), backgroundImage: 'linear-gradient(135deg, transparent 60%, rgba(0,0,0,0.4) 60%)' }}
+                              onClick={() => updateElement(selectedEl.id, { boxTint: base, backgroundColor: undefined, backgroundOpacity: undefined } as any)} />
+                          );
+                        });
                       })()}
                       {TEXT_BG_COLORS.map((c) => (
                         <button key={c} className={`prop-color-swatch ${selectedEl.backgroundColor === c && !selectedEl.boxTint ? 'active' : ''}`}
