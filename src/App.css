@@ -474,12 +474,16 @@ body.window-inactive .welcome-root {
 /* Each insert group stays on one line and moves as a unit. */
 .tb-group { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
 
-.editor-actions button {
+/* Eigendeck chip button — the small raised control shared by the floating
+   insert HUD AND the inspector (.prop-zbtn), so every in-webview button reads
+   the same: near-white top→bottom gradient + a top-edge highlight and soft drop
+   shadow, so each reads as a raised control (a restrained macOS-toolbar look)
+   rather than a flat white sticker — on any backdrop (the #e8e8e8 canvas or the
+   inspector panel). One source of truth; extend this selector list to bring
+   more buttons into the family. */
+.editor-actions button,
+.prop-zbtn {
   padding: 3px 8px;
-  /* Individual floating chip on the canvas backdrop: near-white with a faint
-     top→bottom gradient + a top-edge highlight so each tool reads as a small
-     raised control (a restrained macOS-toolbar look) rather than a flat white
-     sticker against the #e8e8e8 canvas. No enclosing panel. */
   border: 1px solid #d8dce1;
   border-radius: 5px;
   background: linear-gradient(#fbfbfc, #f4f5f6);
@@ -487,14 +491,12 @@ body.window-inactive .welcome-root {
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     0 1px 2px rgba(0, 0, 0, 0.18);
   cursor: pointer;
-  /* Container is pointer-events:none (HUD pass-through); chips re-enable it. */
-  pointer-events: auto;
   font-size: 12px;
   color: #1a1a1a;
-  white-space: nowrap;
 }
 
-.editor-actions button:hover {
+.editor-actions button:hover,
+.prop-zbtn:hover {
   background: linear-gradient(#f4f5f7, #eceef1);
   border-color: #9aa1a8;
   box-shadow:
@@ -502,9 +504,17 @@ body.window-inactive .welcome-root {
     0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-.editor-actions button:disabled {
+.editor-actions button:disabled,
+.prop-zbtn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* Insert-HUD chips sit in a pointer-events:none pass-through container (so the
+   canvas stays interactive between them) and must not wrap. */
+.editor-actions button {
+  pointer-events: auto;
+  white-space: nowrap;
 }
 
 .demo-label {
@@ -1605,19 +1615,8 @@ body.window-inactive .speaker-panel {
   transform: scale(1.15);
 }
 
-.prop-zbtn {
-  padding: 2px 6px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 12px;
-  color: #1a1a1a;
-}
-
-.prop-zbtn:hover {
-  background: #eee;
-}
+/* .prop-zbtn shares the chip style defined with `.editor-actions button` above
+   (near the insert HUD), so the inspector buttons match the floating toolbar. */
 
 /* ============================================
    Present mode — custom renderer, no reveal.js

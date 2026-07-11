@@ -599,12 +599,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
       {/* Actions row */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {meta.external_path && projectPath && (
-          <button onClick={reloadNow} disabled={reloading}
-            style={{
-              padding: '4px 10px', fontSize: 12,
-              border: '1px solid #ccc', borderRadius: 3, cursor: 'pointer',
-              background: reloading ? '#eee' : '#fff',
-            }}>
+          <button className="prop-zbtn" onClick={reloadNow} disabled={reloading}>
             {reloading ? 'Reloading…' : 'Reload from disk now'}
           </button>
         )}
@@ -619,10 +614,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
               showToast({ kind: 'info', ttl: 4000, message: 'Discarded notebook changes — reverted to the deck copy.' });
             }}
             title="Drop in-app cell edits and run outputs; re-render the notebook as stored in the deck. Reads no disk and works on untrusted decks."
-            style={{
-              padding: '4px 10px', fontSize: 12,
-              border: '1px solid #ccc', borderRadius: 3, cursor: 'pointer', background: '#fff',
-            }}>
+            className="prop-zbtn">
             Discard Changes
           </button>
         )}
@@ -633,11 +625,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
         {elementId && (meta.mime_type ?? '').startsWith('image/') && (
           <button onClick={() => { void resizeToAsset(); }}
             title="Resize the bounding box to wrap the image exactly. The image stays in place."
-            style={{
-              padding: '4px 10px', fontSize: 12,
-              border: '1px solid #ccc', borderRadius: 3, cursor: 'pointer',
-              background: '#fff',
-            }}>
+            className="prop-zbtn">
             Resize to image
           </button>
         )}
