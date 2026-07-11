@@ -592,7 +592,12 @@ function App() {
     const ro = new ResizeObserver(apply);
     ro.observe(hud);
     return () => ro.disconnect();
-  }, []);
+    // Depend on projectPath: the editor-area (and the HUD) only mount once a deck
+    // is open, AFTER App first mounts (welcome/launch gate). With [] deps this
+    // ran while both refs were still null, so --insert-hud-h was never set and
+    // the canvas kept the 38px fallback — the HUD's wrapped rows then overlapped
+    // the slide. Re-running when the editor mounts wires up the observer.
+  }, [projectPath]);
   const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[]; fromSlideIndex: number; fromSlideId: string } | { type: 'slide'; data: any } | null>(null);
   const [linkOverlayElementId, setLinkOverlayElementId] = useState<string | null>(null);
   const [promoteCandidates, setPromoteCandidates] = useState<{ elementId: string; slideNo: number; summary: string }[] | null>(null);
