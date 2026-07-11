@@ -170,22 +170,8 @@ body.window-inactive .welcome-root {
   font-size: 12px;
 }
 
-.toolbar button {
-  padding: 4px 12px;
-  /* White raised control on the native gray toolbar — pops against the bar
-     (the inverse of a gray chip on white). */
-  border: 1px solid #c4c9ce;
-  border-radius: 4px;
-  background: #ffffff;
-  cursor: pointer;
-  font-size: 13px;
-  color: #1a1a1a;
-}
-
-.toolbar button:hover {
-  background: #f0f1f3;
-  border-color: #9aa1a8;
-}
+/* Top-toolbar buttons share the chip style (defined with .editor-actions button
+   below); this only sets the top-bar's slightly larger size. */
 
 .meta-input {
   width: 100px;
@@ -271,10 +257,14 @@ body.window-inactive .welcome-root {
   background: #2563eb !important;
   color: #fff !important;
   border-color: #1d4ed8 !important;
+  /* Solid primary CTA: drop the chip's white top-highlight (reads wrong on the
+     blue), keep a plain soft shadow. */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
 }
 
 .btn-present:hover {
   background: #1d4ed8 !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.28) !important;
 }
 
 /* Main area */
@@ -482,7 +472,8 @@ body.window-inactive .welcome-root {
    inspector panel). One source of truth; extend this selector list to bring
    more buttons into the family. */
 .editor-actions button,
-.prop-zbtn {
+.prop-zbtn,
+.toolbar button {
   padding: 3px 8px;
   border: 1px solid #d8dce1;
   border-radius: 5px;
@@ -496,7 +487,8 @@ body.window-inactive .welcome-root {
 }
 
 .editor-actions button:hover,
-.prop-zbtn:hover {
+.prop-zbtn:hover,
+.toolbar button:hover {
   background: linear-gradient(#f4f5f7, #eceef1);
   border-color: #9aa1a8;
   box-shadow:
@@ -505,7 +497,8 @@ body.window-inactive .welcome-root {
 }
 
 .editor-actions button:disabled,
-.prop-zbtn:disabled {
+.prop-zbtn:disabled,
+.toolbar button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -533,6 +526,12 @@ body.window-inactive .welcome-root {
 .editor-actions button {
   pointer-events: auto;
   white-space: nowrap;
+}
+
+/* Top toolbar: same chip, a touch larger for the top bar. */
+.toolbar button {
+  padding: 4px 12px;
+  font-size: 13px;
 }
 
 .demo-label {
