@@ -1152,7 +1152,12 @@ body.window-inactive .speaker-panel {
 
 .el-text ul,
 .el-text ol {
-  padding-left: 0;
+  /* Left gutter so the marker sits OUTSIDE the inline flow. With an inline
+     ::before marker, WebKit drew the caret at the content origin — LEFT of the
+     marker — on an empty <li> (#9). An absolute, gutter-positioned marker
+     (right:100% → its right edge at the text's left edge) keeps the caret to
+     its right. Kept in lock-step with the export CSS in lib/exportCore.mjs. */
+  padding-left: 1.5em;
   margin: 0;
   list-style-type: none;
 }
@@ -1164,15 +1169,22 @@ body.window-inactive .speaker-panel {
 
 .el-text li {
   margin-bottom: 0.15em;
+  position: relative;
 }
 
 .el-text ul li::before {
   content: '- ';
+  position: absolute;
+  right: 100%;
+  white-space: pre;
 }
 
 .el-text ol li::before {
   counter-increment: ol-counter;
   content: counter(ol-counter) '. ';
+  position: absolute;
+  right: 100%;
+  white-space: pre;
 }
 
 /* Prevent WebKit from adding any styles when contentEditable activates */
