@@ -1,0 +1,27 @@
+{
+  "title": "Card render smoke",
+  "theme": "white",
+  "slides": [
+    {
+      "id": "s-white",
+      "layout": "default",
+      "notes": "",
+      "theme": "white",
+      "elements": [
+        { "id": "titleW", "type": "text", "preset": "title", "html": "White theme card", "position": { "x": 80, "y": 40, "width": 1760, "height": 150 } },
+        { "id": "cardW", "type": "text", "preset": "body", "html": "<div>TITLE</div><div>Card contents</div>", "boxTint": "accent", "borderRadius": 30, "boxShadow": true, "position": { "x": 660, "y": 410, "width": 600, "height": 260 } }
+      ]
+    },
+    {
+      "id": "s-dark",
+      "layout": "default",
+      "notes": "",
+      "theme": "dark",
+      "elements": [
+        { "id": "titleD", "type": "text", "preset": "title", "html": "Dark theme card", "position": { "x": 80, "y": 40, "width": 1760, "height": 150 } },
+        { "id": "cardD", "type": "text", "preset": "body", "html": "<div>TITLE</div><div>Card contents</div>", "boxTint": "accent", "borderRadius": 30, "boxShadow": true, "position": { "x": 660, "y": 410, "width": 600, "height": 260 } }
+      ]
+    }
+  ],
+  "config": { "width": 1920, "height": 1080, "author": "e2e", "defaultTitleFont": "ptsans", "defaultBodyFont": "ptsans" }
+}

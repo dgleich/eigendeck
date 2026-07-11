@@ -780,6 +780,7 @@ export function SlideEditor() {
           {slide.elements.map((el, idx) => {
             const isSelected = selectedObject?.type === 'element' && selectedObject.id === el.id
               || selectedObject?.type === 'multi' && selectedObject.ids.includes(el.id);
+            const slideTheme = resolveTheme(presentation.theme, slide.theme);
             return (
               <SlideElementRenderer
                 key={el.id}
@@ -788,7 +789,8 @@ export function SlideEditor() {
                 scale={scale}
                 projectPath={projectPath}
                 isSelected={isSelected}
-                slideBackground={resolveTheme(presentation.theme, slide.theme).background}
+                slideBackground={slideTheme.background}
+                theme={slideTheme}
                 onUpdate={(changes) => updateElement(el.id, changes)}
                 onDelete={() => deleteElement(el.id)}
                 onSelect={(e) => {

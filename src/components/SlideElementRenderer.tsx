@@ -20,8 +20,9 @@ import { NotebookBox } from './NotebookBox';
 import { useImageSrc } from '../lib/imageSrc';
 import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
+import type { ThemeColors } from '../lib/themes';
 
-import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundResolved, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset, resolveMonoFontPackage } from '../lib/fonts';
 import { buildTextElementSvgMarkup } from './TextElementSvg';
 import { TextFormatToolbar } from './TextFormatToolbar';
@@ -40,6 +41,8 @@ interface Props {
   isSelected: boolean;
   /** Resolved slide background — a cover with no explicit color matches it. */
   slideBackground?: string;
+  /** Resolved slide theme — a themed Card fill (boxTint) resolves against it. */
+  theme?: ThemeColors;
   onUpdate: (changes: Partial<SlideElement>) => void;
   onDelete: () => void;
   onSelect: (e?: { shiftKey: boolean }) => void;
@@ -75,7 +78,7 @@ export function InteractLockBar({ scale, onLock, children }: {
 }
 
 export function SlideElementRenderer({
-  element, zIndex, scale, projectPath, isSelected, slideBackground, onUpdate, onDelete, onSelect,
+  element, zIndex, scale, projectPath, isSelected, slideBackground, theme, onUpdate, onDelete, onSelect,
 }: Props) {
   switch (element.type) {
     case 'text':
@@ -84,7 +87,7 @@ export function SlideElementRenderer({
           element={element} zIndex={zIndex} scale={scale}
           className={`el-text el-preset-${element.preset}`}
           isSelected={isSelected}
-          boxStyle={{ backgroundColor: textBackgroundCss(element), boxShadow: textBoxShadowCss(element), borderRadius: element.borderRadius || undefined }}
+          boxStyle={{ backgroundColor: textBackgroundResolved(element, theme), boxShadow: textBoxShadowCss(element), borderRadius: element.borderRadius || undefined }}
           rotation={element.rotation}
           dataValign={element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined)}
           onEdit={() => {

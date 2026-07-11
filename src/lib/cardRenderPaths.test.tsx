@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { TextElementSvg } from '../components/TextElementSvg';
+import { SlideElementRenderer } from '../components/SlideElementRenderer';
 // @ts-ignore — pure JS module shared with the CLI tool
 import { buildExportHtml } from './exportCore.mjs';
 import { buildPrintSlideHtml } from './printSlideHtml';
@@ -63,9 +64,37 @@ describe('Card (#132) renders across all render paths', () => {
         expect(expectShadow).toBeTruthy();
       });
 
-      // Paths #1 editor, #2 present/projector, #7 sidebar thumbnail all converge
-      // on the TextElementSvg wrapper — one render guards all three.
-      it('editor / present / thumbnail (TextElementSvg wrapper)', () => {
+      // Path #1 EDITOR canvas: the live editor renders <TextContent> inside a
+      // <DraggableBox>, so the box FILL comes from DraggableBox.boxStyle — a
+      // SEPARATE emitter from TextElementSvg. It must resolve the tint against the
+      // theme too (regression guard: it used the tint-blind textBackgroundCss, so
+      // a tint-only Card showed NO fill in the editor while present/export were fine).
+      it('editor canvas (SlideElementRenderer / DraggableBox box fill)', () => {
+        const noop = () => {};
+        const { container } = render(
+          <SlideElementRenderer
+            element={card()}
+            zIndex={1}
+            scale={1}
+            projectPath={null}
+            isSelected={false}
+            slideBackground={theme.background}
+            theme={theme}
+            onUpdate={noop}
+            onDelete={noop}
+            onSelect={noop}
+          />,
+        );
+        const box = container.querySelector('.el-text') as HTMLElement;
+        expect(box).toBeTruthy();
+        expect(box.style.backgroundColor.toLowerCase()).toBe(hexToRgb(expectTint).toLowerCase());
+        expect(box.style.borderRadius).toBe('30px');
+        expect(box.style.boxShadow).toBeTruthy();
+      });
+
+      // Paths #2 present/projector and #7 sidebar thumbnail converge on the
+      // TextElementSvg wrapper.
+      it('present / thumbnail (TextElementSvg wrapper)', () => {
         const { container } = render(
           <TextElementSvg
             element={card()}

@@ -282,6 +282,20 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
   CLIPPED in present mode (rendered box computes `overflow:hidden` AND content
   genuinely exceeds the box). The deterministic markup guard is the
   `buildTextElementSvgMarkup` unit test (`src/components/TextElementSvg.test.ts`).
+- **card-render-probe.mjs** — Card (#132) render smoke: a themed Card fill
+  (`boxTint` + `borderRadius` + `boxShadow`) must render its RESOLVED tint in the
+  real WebKit webview across editor (#1), sidebar thumbnail (#7), present (#2), and
+  the real `exportHtml()` pipeline (#4), on a light AND a dark theme
+  (`e2e/fixtures/card-deck.json`). Computes the expected tint from the app's own
+  `textBackgroundResolved`, asserts computed `background-color` per path, and drops
+  editor/present PNGs to `PROBE_OUT`. Caught the editor dropping the tint (it used
+  the tint-blind `textBackgroundCss`); the deterministic markup guard is
+  `src/lib/cardRenderPaths.test.tsx`. Run:
+  ```bash
+  /tmp/el-target/debug/eigendeck-cli /tmp/card.eigendeck import json e2e/fixtures/card-deck.json
+  PROBE=e2e/card-render-probe.mjs E2E_DECK=/tmp/card.eigendeck \
+    PROBE_OUT=gitignore/card-e2e bash e2e/run-probe.sh   # -> CARD_PASS
+  ```
 - **overflow-hunt.mjs** — audit (not pass/fail): walks a deck and reports text
   elements whose content overflows its box (surfaced the #95 cut-off risk).
 - **deck-demos-render-probe.mjs** — opens a deck and asserts every demo /
