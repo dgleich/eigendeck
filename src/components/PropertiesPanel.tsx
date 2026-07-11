@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
-import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, parsePalette, textPresetBoxCss, mixHex, TINT_STRENGTH, type NamedSize } from '../types/presentation';
+import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, parsePalette, textPresetBoxCss, textBackgroundResolved, type NamedSize } from '../types/presentation';
 import { BUILT_IN_THEMES, resolveTheme } from '../lib/themes';
 import { extractDemoPieceNames } from '../lib/demoPieces';
 import { FONT_PACKAGES } from '../lib/fonts';
@@ -514,15 +514,12 @@ export function PropertiesPanel() {
                           flags them as "themed" (adapt per theme) vs the fixed swatches. */}
                       {(() => {
                         const th = resolveTheme(presentation.theme, slide.theme);
-                        return TINT_SWATCHES.map(({ base, title }) => {
-                          const src = base === 'accent' ? th.accent : base;
-                          return (
-                            <button key={`tint-${base}`} title={title}
-                              className={`prop-color-swatch ${selectedEl.boxTint === base ? 'active' : ''}`}
-                              style={{ background: mixHex(th.background, src, TINT_STRENGTH), backgroundImage: 'linear-gradient(135deg, transparent 60%, rgba(0,0,0,0.4) 60%)' }}
-                              onClick={() => updateElement(selectedEl.id, { boxTint: base, backgroundColor: undefined, backgroundOpacity: undefined } as any)} />
-                          );
-                        });
+                        return TINT_SWATCHES.map(({ base, title }) => (
+                          <button key={`tint-${base}`} title={title}
+                            className={`prop-color-swatch ${selectedEl.boxTint === base ? 'active' : ''}`}
+                            style={{ background: textBackgroundResolved({ boxTint: base }, th), backgroundImage: 'linear-gradient(135deg, transparent 60%, rgba(0,0,0,0.4) 60%)' }}
+                            onClick={() => updateElement(selectedEl.id, { boxTint: base, backgroundColor: undefined, backgroundOpacity: undefined } as any)} />
+                        ));
                       })()}
                       {TEXT_BG_COLORS.map((c) => (
                         <button key={c} className={`prop-color-swatch ${selectedEl.backgroundColor === c && !selectedEl.boxTint ? 'active' : ''}`}
