@@ -14,7 +14,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { TextElement, Slide, PresentationConfig } from '../types/presentation';
-import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundCss, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundResolved, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { applyCodeFont } from '../lib/textStyle.mjs';
 import { fontForPreset, fontFamilyForPreset, resolveMonoFontPackage } from '../lib/fonts';
@@ -186,7 +186,7 @@ export function TextElementSvg({
       style={{
         position: 'absolute', left: element.position.x, top: element.position.y,
         width: element.position.width, height: element.position.height,
-        backgroundColor: textBackgroundCss(element),
+        backgroundColor: textBackgroundResolved(element, theme),
         boxShadow: textBoxShadowCss(element),
         ...(element.borderRadius ? { borderRadius: element.borderRadius } : {}),
         ...(element.rotation ? { transform: `rotate(${element.rotation}deg)` } : {}),

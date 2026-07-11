@@ -13,7 +13,7 @@
 // export marks it as eigendeck-origin — neither concern belongs here).
 
 import { textPresetBoxCss } from './textBox.mjs';
-import { textBackgroundCss, textBoxShadowCss, textShadowCss } from './textStyle.mjs';
+import { textBackgroundResolved, textBoxShadowCss, textShadowCss } from './textStyle.mjs';
 import { TEXT_PRESET_STYLES } from './textPresets.mjs';
 
 /**
@@ -27,7 +27,7 @@ import { TEXT_PRESET_STYLES } from './textPresets.mjs';
  * @param o.len    (px:number) => string  length formatter, e.g. n=>`${n}px` or px2in
  * @param o.fsize  (px:number) => string  font-size formatter, e.g. n=>`${n}px` or px2pt
  */
-export function textElementHtml(el, { color, fontFamily, fontSize, content, len, fsize }) {
+export function textElementHtml(el, { color, fontFamily, fontSize, content, len, fsize, theme }) {
   const ps = TEXT_PRESET_STYLES[el.preset] || TEXT_PRESET_STYLES.body;
   const p = el.position;
   const box = textPresetBoxCss(el.preset);
@@ -40,7 +40,7 @@ export function textElementHtml(el, { color, fontFamily, fontSize, content, len,
     ? `${len(el.padding.top)} ${len(el.padding.right)} ${len(el.padding.bottom)} ${len(el.padding.left)}`
     : `${len(box.padY)} ${len(box.padX)}`;
 
-  const bg = textBackgroundCss(el);
+  const bg = textBackgroundResolved(el, theme);   // theme-aware (boxTint) fill; falls back to the fixed color
   const sh = textBoxShadowCss(el);
   const fx = textShadowCss(el, color);
   const rot = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';

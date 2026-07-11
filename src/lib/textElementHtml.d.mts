@@ -7,6 +7,7 @@ interface TextEl {
   rotation?: number;
   backgroundColor?: string;
   backgroundOpacity?: number;
+  boxTint?: string;
   boxShadow?: boolean;
   textEffect?: 'shadow' | 'glow';
 }
@@ -20,5 +21,7 @@ export function textElementHtml(
     content: string;
     len: (px: number) => string;
     fsize: (px: number) => string;
+    /** Resolved slide ThemeColors — enables the boxTint themed fill. */
+    theme?: { background?: string; accent?: string };
   },
 ): string;

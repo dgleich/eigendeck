@@ -9,7 +9,7 @@ export { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
 import { buildEmbedSrc, DEMO_SANDBOX } from './videoEmbedParse.mjs';
 import { themeColorsByName, themeColorForPreset } from './themeColors.mjs';
 import { effectiveFontSize } from './textSizes.mjs';
-import { textBackgroundCss, textBoxShadowCss, applyCodeFont } from './textStyle.mjs';
+import { textBackgroundResolved, textBoxShadowCss, applyCodeFont } from './textStyle.mjs';
 import { TEXT_PRESET_STYLES } from './textPresets.mjs';
 import { textElementHtml } from './textElementHtml.mjs';
 
@@ -258,7 +258,7 @@ export async function buildExportHtml(opts) {
           // We just wrap it in a positioned div.
           if (renderTextElement) {
             const svgMarkup = await renderTextElement(el, slide);
-            const bg = textBackgroundCss(el);
+            const bg = textBackgroundResolved(el, themeColorsByName(presentation.theme, slide && slide.theme));
             const sh = textBoxShadowCss(el);
             const rot = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
             const rad = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
@@ -291,6 +291,7 @@ export async function buildExportHtml(opts) {
             content: applyCodeFont(textHtml, resolveMonoFontPackage((presentation.config || {}).defaultMonoFont).family),
             len: (n) => `${n}px`,
             fsize: (n) => `${n}px`,
+            theme: themeColorsByName(presentation.theme, slide && slide.theme),
           });
           break;
         }

@@ -32,6 +32,7 @@ export const INSERT_ITEMS: InsertItem[] = [
   { id: 'textbox',  label: 'Text',     tooltip: 'Add text box',                                     group: 'text' },
   { id: 'note',     label: 'Note',     tooltip: 'Add annotation (small, blue, italic)',             group: 'text' },
   { id: 'footnote', label: 'Footnote', tooltip: 'Add footnote (small, grey, narrow)',               group: 'text' },
+  { id: 'card',     label: 'Card',     tooltip: 'Add a titled card (rounded, shadowed, themed tint)', group: 'text' },
   // objects
   { id: 'arrow',    label: 'Arrow',    tooltip: 'Add arrow',                                        group: 'objects' },
   { id: 'cover',    label: 'Cover',    tooltip: 'Add cover-up rectangle (white)',                   group: 'objects' },

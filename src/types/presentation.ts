@@ -11,7 +11,7 @@ export { DEFAULT_TEXT_SIZES, resolveNamedSize, effectiveTextPresetSize, effectiv
 // Text inner-box layout (line-height + padding), shared with the static exports.
 export { textPresetBoxCss, textPaddingCss } from '../lib/textBox.mjs';
 // Text visual-style helpers (fill / effect / box-shadow), shared with the exports.
-export { textBackgroundCss, textEffectCss, textShadowCss, textBoxShadowCss } from '../lib/textStyle.mjs';
+export { textBackgroundCss, textBackgroundResolved, mixHex, textEffectCss, textShadowCss, textBoxShadowCss } from '../lib/textStyle.mjs';
 // Per-preset style table (label/size/font/weight/style/color), shared with the exports.
 export { TEXT_PRESET_STYLES } from '../lib/textPresets.mjs';
 export type { TextPresetStyle } from '../lib/textPresets.mjs';
@@ -78,6 +78,13 @@ export interface TextElement extends BaseElement {
   /** Opacity of backgroundColor, 0–1 (default 1). Lets text sit on a
    *  translucent panel without fading the text itself. */
   backgroundOpacity?: number;
+  /** Themed box fill (#132 "card"): tint the fill RELATIVE TO THE SLIDE THEME
+   *  instead of a fixed color. 'accent' mixes the theme's accent into the slide
+   *  background (~15%), so a card stays colored AND contrasting on ANY theme; a
+   *  hex value tints that color instead. Takes precedence over backgroundColor
+   *  when set. Pairs with boxShadow + borderRadius for a Beamer-block look.
+   *  Resolved per-theme at render (textBackgroundResolved). */
+  boxTint?: string;
   /** Optional text decoration for legibility over busy backgrounds (#73):
    *  'shadow' = a soft drop shadow; 'glow' = a high-contrast halo (color is
    *  auto-chosen opposite the text luminance). Unset = none. */

@@ -63,6 +63,7 @@ export function buildPrintSlideHtml(
         content: markAsEigendeck(mathHtmlByKey?.get(`${slide.id}:${el.id}`) ?? el.html ?? ''),
         len: px2in,
         fsize: px2pt,
+        theme,
       });
     } else if (el.type === 'image') {
       const src = imageCache.get(el.assetId);

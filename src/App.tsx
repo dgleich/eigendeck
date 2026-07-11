@@ -751,6 +751,20 @@ function App() {
       case 'textbox': store.addElement(createTextElement('textbox')); break;
       case 'note': store.addElement(createTextElement('annotation')); break;
       case 'footnote': store.addElement(createTextElement('footnote')); break;
+      case 'card': {
+        // A "card" is just a text element (no new type): a bold, all-caps-spaced
+        // title line + a body line, in a rounded, shadowed box whose fill is a
+        // theme-relative accent tint (boxTint). #132.
+        const el = createTextElement('body', { x: 660, y: 410, width: 600, height: 260 });
+        store.addElement({
+          ...el,
+          html: '<div style="font-weight:700;text-transform:uppercase;letter-spacing:0.08em">Title</div><div>Card contents</div>',
+          boxTint: 'accent',
+          borderRadius: 30,
+          boxShadow: true,
+        });
+        break;
+      }
       case 'hype': store.addElement(createTextElement('hype')); break;
       case 'arrow':
         store.addElement({ id: crypto.randomUUID(), type: 'arrow', x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: '#2563eb', strokeWidth: 4, headSize: 16 });

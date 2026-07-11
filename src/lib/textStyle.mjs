@@ -26,6 +26,28 @@ export function textBackgroundCss(el) {
   return el.backgroundColor; // non-hex color: opacity not applied
 }
 
+/** Mix two #rrggbb colors: result = a*(1-t) + b*t. Falls back to `a` on bad input. */
+export function mixHex(a, b, t) {
+  const pa = (a || '').replace('#', ''), pb = (b || '').replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(pa) || !/^[0-9a-fA-F]{6}$/.test(pb)) return a;
+  const ch = (h, i) => parseInt(h.slice(i, i + 2), 16);
+  const m = (i) => Math.round(ch(pa, i) * (1 - t) + ch(pb, i) * t);
+  return '#' + [m(0), m(2), m(4)].map((v) => v.toString(16).padStart(2, '0')).join('');
+}
+
+/** Effective text-element background, honoring a themed tint (#132 "card"): when
+ *  `el.boxTint` is set, tint the slide theme's background toward the tint base
+ *  ('accent' → theme.accent, else the given hex) by ~15% so the fill stays
+ *  colored AND contrasting on ANY theme; otherwise the fixed backgroundColor.
+ *  `theme` is the resolved ThemeColors ({ background, accent, ... }). */
+export function textBackgroundResolved(el, theme) {
+  if (el && el.boxTint && theme) {
+    const base = el.boxTint === 'accent' ? (theme.accent || '#3b82f6') : el.boxTint;
+    return mixHex(theme.background || '#ffffff', base, 0.15);
+  }
+  return textBackgroundCss(el);
+}
+
 /** Text legibility effect (#73): drop shadow or high-contrast glow. */
 export function textEffectCss(effect, color) {
   if (effect === 'shadow') return '0 2px 4px rgba(0,0,0,0.45)';
@@ -43,7 +65,7 @@ export function textShadowCss(el, color) {
 
 /** Box-shadow for the text BOX panel (the boxShadow toggle + a background). */
 export function textBoxShadowCss(el) {
-  return el && el.boxShadow && el.backgroundColor ? '0 4px 14px rgba(0,0,0,0.28)' : undefined;
+  return el && el.boxShadow && (el.backgroundColor || el.boxTint) ? '0 4px 14px rgba(0,0,0,0.28)' : undefined;
 }
 
 /** Give `<code>` runs the deck's mono family by splicing font-family into each
