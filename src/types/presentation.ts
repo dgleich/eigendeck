@@ -480,6 +480,10 @@ export function createDefaultPresentation(): Presentation {
       showSlideNumber: true,
       author: '',
       venue: '',
+      // New decks STORE their font (Lato) rather than leaning on the global
+      // default, so their look is stable if the default ever changes again.
+      defaultTitleFont: 'lato',
+      defaultBodyFont: 'lato',
     },
   };
 }
