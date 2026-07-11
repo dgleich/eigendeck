@@ -1060,6 +1060,19 @@ export function presentationRows(p: Pick<Presentation, 'title' | 'theme' | 'conf
   };
 }
 
+/** Persisted per-slide metadata — the SINGLE SOURCE for both the slide flush write
+ *  and the slide change-detector (same rationale as presentationRows). `notes` and
+ *  `groupId` are columns; the rest ride in the slide `config` JSON. Add a new
+ *  per-slide override HERE, once, and both the write and the dirty-diff pick it up. */
+export function slideMeta(s: Slide): { notes: string; groupId: string; config: Record<string, string> } {
+  const config: Record<string, string> = {};
+  if (s.theme) config.theme = s.theme;
+  if (s.titleFont) config.titleFont = s.titleFont;
+  if (s.bodyFont) config.bodyFont = s.bodyFont;
+  if (s.hypeFont) config.hypeFont = s.hypeFont;
+  return { notes: s.notes || '', groupId: s.groupId || '', config };
+}
+
 /** Force an immediate flush (called on explicit save, pointerup, text commit) */
 export async function flushToSqlite(): Promise<void> {
   if (!sqliteDbPath) return;
@@ -1214,17 +1227,13 @@ export async function flushToSqlite(): Promise<void> {
       const idx = state.presentation.slides.findIndex((s) => s.id === slideId);
       const slide = state.presentation.slides[idx];
       if (slide) {
-        const cfg: Record<string, string> = {};
-        if (slide.theme)     cfg.theme     = slide.theme;
-        if (slide.titleFont) cfg.titleFont = slide.titleFont;
-        if (slide.bodyFont)  cfg.bodyFont  = slide.bodyFont;
-        if (slide.hypeFont)  cfg.hypeFont  = slide.hypeFont;
-        const config = Object.keys(cfg).length === 0 ? '' : JSON.stringify(cfg);
+        const m = slideMeta(slide);
+        const config = Object.keys(m.config).length === 0 ? '' : JSON.stringify(m.config);
         await invoke('db_update_slide', {
           slideId,
           position: idx,
-          notes: slide.notes || null,
-          groupId: slide.groupId || null,
+          notes: m.notes || null,
+          groupId: m.groupId || null,
           config,
         });
       }
@@ -1562,13 +1571,10 @@ usePresentationStore.subscribe((state) => {
     const ps = prev.slides.find((s) => s.id === cs.id);
     if (!ps) continue;
 
-    // Slide metadata (notes, groupId, theme, per-preset font overrides).
-    // Any of these → flush dirty so the slides.config JSON gets rewritten.
-    if (ps.notes !== cs.notes || ps.groupId !== cs.groupId
-      || ps.theme !== cs.theme
-      || ps.titleFont !== cs.titleFont
-      || ps.bodyFont !== cs.bodyFont
-      || ps.hypeFont !== cs.hypeFont) {
+    // Slide metadata (notes, groupId, theme, per-preset font overrides): diff the
+    // SAME shape the flush writes (slideMeta) so a new override can't be written but
+    // not change-detected. Any change → flush dirty so slides.config gets rewritten.
+    if (JSON.stringify(slideMeta(ps)) !== JSON.stringify(slideMeta(cs))) {
       markSlideDirty(cs.id);
     }
 

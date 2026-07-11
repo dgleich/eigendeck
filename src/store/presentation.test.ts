@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { usePresentationStore, presentationRows } from './presentation';
+import { usePresentationStore, presentationRows, slideMeta } from './presentation';
 import { createDefaultPresentation } from '../types/presentation';
 
 // Contract guard for the "persisted-but-not-change-detected" bug class (the deck
@@ -21,6 +21,24 @@ describe('presentationRows — flush/diff single source', () => {
     expect(ser({ ...base, title: 'X' })).not.toBe(b);
     expect(ser({ ...base, theme: 'dark' })).not.toBe(b);          // the bug that got through
     expect(ser({ ...base, config: { ...base.config, author: 'B' } })).not.toBe(b);
+  });
+});
+
+describe('slideMeta — slide flush/diff single source', () => {
+  type S = Parameters<typeof slideMeta>[0];
+  const slide = { id: 's1', notes: 'n', groupId: 'g', theme: 'dark', titleFont: 'lato', bodyFont: 'lato', hypeFont: 'shantell', elements: [] } as S;
+  const ser = (s: S) => JSON.stringify(slideMeta(s));
+  it('captures every persisted per-slide override', () => {
+    const m = slideMeta(slide);
+    expect(m.notes).toBe('n');
+    expect(m.groupId).toBe('g');
+    expect(m.config).toEqual({ theme: 'dark', titleFont: 'lato', bodyFont: 'lato', hypeFont: 'shantell' });
+  });
+  it('a change to ANY persisted slide field changes the serialization', () => {
+    const b = ser(slide);
+    for (const patch of [{ notes: 'x' }, { groupId: 'h' }, { theme: 'black' }, { titleFont: 'ptsans' }, { bodyFont: 'ptsans' }, { hypeFont: 'lato' }]) {
+      expect(ser({ ...slide, ...patch } as S)).not.toBe(b);
+    }
   });
 });
 
