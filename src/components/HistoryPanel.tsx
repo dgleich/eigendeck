@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, flushToSqlite } from '../store/presentation';
 import { sanitizeRichText } from '../lib/sanitizeRichText';
+import { askConfirm } from '../lib/confirmDialog';
 import type { Presentation } from '../types/presentation';
 
 interface HistoryEntry {
@@ -178,7 +179,7 @@ export function HistoryPanel() {
           <button
             className="history-restore-btn"
             onClick={async () => {
-              if (previewData && confirm('Restore presentation to this point in time? Current state will be saved first.')) {
+              if (previewData && await askConfirm('Restore presentation to this point in time? Current state will be saved first.')) {
                 // Flush current state to SQLite so it's preserved in history
                 await flushToSqlite();
                 setPresentation(previewData);

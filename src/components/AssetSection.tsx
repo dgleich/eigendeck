@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, getDeckToken } from '../store/presentation';
+import { askConfirm } from '../lib/confirmDialog';
 import { HelpText } from './HelpText';
 import { invalidateRenderedAsset } from '../lib/assetRenderer';
 import { isNotebookFile } from '../lib/assetCache';
@@ -392,7 +393,7 @@ export function AssetSection({ assetId, elementId }: { assetId: string; elementI
       const where = slideCount === 1
         ? 'on this slide'
         : `across ${slideCount} slides`;
-      const ok = confirm(
+      const ok = await askConfirm(
         `Restore ${fileName} to the version from ${when}? This will affect all ${usageCount} copies of this image ${where}.`,
       );
       if (!ok) return;

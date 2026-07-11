@@ -36,6 +36,7 @@ import { isOverlayEmpty, serializeOverlay, summarizeOverlay } from './lib/notebo
 import { PromoteChooser } from './components/PromoteChooser';
 import { usePresentationStore } from './store/presentation';
 import { createTextElement, boxShadowExtents } from './types/presentation';
+import { askConfirm } from './lib/confirmDialog';
 import type { SlideElement } from './types/presentation';
 import { usePreference, getPreference } from './lib/preferences';
 import { INSERT_ITEMS, INSERT_GROUP_ORDER } from './lib/insertItems';
@@ -1552,7 +1553,7 @@ function App() {
         }
         // No conflict: master = the sole recording's holder (so it's kept), else the clicked one.
         const masterId = withRec.length === 1 ? withRec[0].elementId : id;
-        if (confirm('Promote this animation link to a sync?\n\nThe linked copies become one element (same position and content). This is hard to undo.')) {
+        if (await askConfirm('Promote this animation link to a sync?\n\nThe linked copies become one element (same position and content). This is hard to undo.')) {
           usePresentationStore.getState().promoteToSync(masterId);
         }
       })();

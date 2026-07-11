@@ -3,6 +3,7 @@ import { usePresentationStore } from '../store/presentation';
 import { getSlideNumber, isGroupChild } from '../types/presentation';
 import type { MenuEntry } from './ContextMenu';
 import { SlideThumbnail } from './SlideThumbnail';
+import { askConfirm } from '../lib/confirmDialog';
 
 const THUMB_WIDTH = 166;
 
@@ -135,7 +136,7 @@ export function SlideSidebar() {
             <SlideThumbnail presentation={presentation} slide={slide} width={THUMB_WIDTH} />
             <div className="slide-actions">
               <button onClick={(e) => { e.stopPropagation(); duplicateSlide(index); }} title="Duplicate">D</button>
-              <button onClick={(e) => { e.stopPropagation(); if (presentation.slides.length > 1 && confirm('Delete this slide?')) deleteSlide(index); }} title="Delete">X</button>
+              <button onClick={async (e) => { e.stopPropagation(); if (presentation.slides.length > 1 && await askConfirm('Delete this slide?')) deleteSlide(index); }} title="Delete">X</button>
             </div>
           </div>
           );

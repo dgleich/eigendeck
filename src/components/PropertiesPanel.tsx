@@ -11,6 +11,7 @@ import { HelpText } from './HelpText';
 import { usePreference } from '../lib/preferences';
 import { OVERRIDDEN_DIM, overriddenLabel } from '../lib/overriddenStyle';
 import { ColorControl } from './ColorControl';
+import { askConfirm } from '../lib/confirmDialog';
 import { TEXT_PALETTE, FILL_PALETTE, ARROW_PALETTE } from '../lib/colorPalettes';
 
 /** Strip per-run inline text colors (the format toolbar's foreColor produces
@@ -1287,8 +1288,8 @@ function PreambleField({
     const sep = value && !value.endsWith('\n') ? '\n' : '';
     onChange(globalPreamble + (globalPreamble.endsWith('\n') ? '' : '\n') + sep + value);
   };
-  const replaceWithGlobal = () => {
-    if (value && !confirm('Replace this presentation\'s preamble with the global preamble? Current text will be lost.')) return;
+  const replaceWithGlobal = async () => {
+    if (value && !(await askConfirm('Replace this presentation\'s preamble with the global preamble? Current text will be lost.'))) return;
     onChange(globalPreamble);
   };
   return (

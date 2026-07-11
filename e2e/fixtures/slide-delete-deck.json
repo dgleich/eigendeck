@@ -1,0 +1,10 @@
+{
+  "title": "Slide delete confirm",
+  "theme": "white",
+  "slides": [
+    { "id": "a", "layout": "default", "notes": "", "elements": [{ "id": "ta", "type": "text", "preset": "title", "html": "One", "position": { "x": 80, "y": 80, "width": 800, "height": 120 } }] },
+    { "id": "b", "layout": "default", "notes": "", "elements": [{ "id": "tb", "type": "text", "preset": "title", "html": "Two", "position": { "x": 80, "y": 80, "width": 800, "height": 120 } }] },
+    { "id": "c", "layout": "default", "notes": "", "elements": [{ "id": "tc", "type": "text", "preset": "title", "html": "Three", "position": { "x": 80, "y": 80, "width": 800, "height": 120 } }] }
+  ],
+  "config": { "width": 1920, "height": 1080 }
+}

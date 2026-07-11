@@ -340,6 +340,14 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
   eigendeck-cli /tmp/cover.eigendeck import json e2e/fixtures/cover-card-deck.json
   PROBE=e2e/cover-card-probe.mjs E2E_DECK=/tmp/cover.eigendeck bash e2e/run-probe.sh   # -> COVER_PASS
   ```
+- **slide-delete-probe.mjs** — the sidebar "X" must CONFIRM before deleting a slide
+  (the raw `window.confirm()` returned a truthy Promise under Tauri, so it deleted then
+  showed the dialog). Drives the confirm via the `window.__eigendeckConfirm` one-shot:
+  Cancel keeps all 3 slides, Confirm drops to 2. Run:
+  ```bash
+  eigendeck-cli /tmp/slidedel.eigendeck import json e2e/fixtures/slide-delete-deck.json
+  PROBE=e2e/slide-delete-probe.mjs E2E_DECK=/tmp/slidedel.eigendeck bash e2e/run-probe.sh   # -> SLIDEDEL_PASS
+  ```
 - **overflow-hunt.mjs** — audit (not pass/fail): walks a deck and reports text
   elements whose content overflows its box (surfaced the #95 cut-off risk).
 - **deck-demos-render-probe.mjs** — opens a deck and asserts every demo /
