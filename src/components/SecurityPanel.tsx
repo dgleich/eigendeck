@@ -220,7 +220,7 @@ export function SecurityWindowApp(): React.ReactElement {
               {/* Deck-level action bar. Stop-trusting is deliberately separate from per-file
                   revoke, and guards on a native confirm (see doRevoke). */}
               <div style={{ borderTop: '1px solid #eee', marginTop: 16, paddingTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
-                {report.trusted && <button onClick={doRevoke} disabled={busy} style={dangerBtn}>Stop trusting this deck</button>}
+                {report.trusted && <button onClick={doRevoke} disabled={busy} className="chip-btn danger" style={dangerBtn}>Stop trusting this deck</button>}
                 <span style={{ flex: 1 }} />
                 <button onClick={() => { void import('@tauri-apps/plugin-opener').then((m) => m.openUrl('https://eigendeck.dev/manual/security')).catch(() => {}); }}
                   style={{ border: 'none', background: 'none', color: '#2563eb', fontSize: 11, cursor: 'pointer' }}>
@@ -391,11 +391,11 @@ function StatusBand({ kase, report, busy, onTrust, onReconfirm, onWatchDeck, onO
     case 'B1':
       return box('#f8fafc', '#e5e7eb', '#374151',
         <><b>File watching is off for all decks.</b> You turned off <i>Watch source files</i> in Settings, so linked files never update live. Every deck stays a self-contained copy.</>,
-        <button onClick={onOpenSettings} style={secondaryBtn}>Open Settings…</button>);
+        <button onClick={onOpenSettings} className="chip-btn" style={secondaryBtn}>Open Settings…</button>);
     case 'B2':
       return box('#f8fafc', '#e5e7eb', '#374151',
         <><b>File watching is off for this deck.</b> You turned it off for this presentation, so its linked files never update live. It stays a self-contained copy. Other decks are unaffected.</>,
-        <button onClick={onWatchDeck} disabled={busy} style={secondaryBtn}>Watch files for this deck</button>);
+        <button onClick={onWatchDeck} disabled={busy} className="chip-btn" style={secondaryBtn}>Watch files for this deck</button>);
     case 'C':
       return box('#ecfdf5', '#a7f3d0', '#065f46',
         <><b>You created this deck, so it's trusted.</b> Its linked files are watched by default.{trustedAt ? ` Trusted ${fmtWhen(trustedAt)}, created here.` : ''}</>);
@@ -405,11 +405,11 @@ function StatusBand({ kase, report, busy, onTrust, onReconfirm, onWatchDeck, onO
     case 'E':
       return box('#fffbeb', '#fde68a', '#92400e',
         <><b>This deck isn't trusted.</b> You got it from somewhere else. It displays right now, using copies embedded in the deck. Its {counts.total} link{counts.total === 1 ? '' : 's'} to files on your computer stay off until you trust it. Trusting reads nothing by itself. You then choose which files to watch.</>,
-        <button onClick={onTrust} disabled={busy} style={primaryBtn}>Trust this deck</button>);
+        <button onClick={onTrust} disabled={busy} className="chip-btn primary" style={primaryBtn}>Trust this deck</button>);
     case 'F':
       return box('#fffbeb', '#fde68a', '#92400e',
         <><b>This deck's trust expired.</b>{trustedAt ? ` You trusted it ${fmtWhen(trustedAt)},` : ' You trusted it earlier,'} but it's been dormant about 30 days, so watching is paused. Your {counts.approved} previous approval{counts.approved === 1 ? '' : 's'} {counts.approved === 1 ? 'is' : 'are'} remembered. Re-confirm to resume.</>,
-        <button onClick={onReconfirm} disabled={busy} style={primaryBtn}>Re-confirm to resume watching</button>);
+        <button onClick={onReconfirm} disabled={busy} className="chip-btn primary" style={primaryBtn}>Re-confirm to resume watching</button>);
   }
 }
 
@@ -502,7 +502,7 @@ function GroupedRows({ report, canAct, busy, onApprove, onApproveDir, onRevokeAp
               </span>
               <span style={{ flex: 1 }} />
               {canAct && eligibleHere.length > 0 && dir && (
-                <button onClick={() => onApproveDir(dir)} disabled={busy} style={smallBtn}>
+                <button onClick={() => onApproveDir(dir)} disabled={busy} className="chip-btn primary" style={smallBtn}>
                   Approve all {eligibleHere.length} file{eligibleHere.length === 1 ? '' : 's'} in <span style={{ fontFamily: 'monospace' }}>{dir}</span>
                 </button>
               )}
@@ -548,11 +548,11 @@ function Row({ r, canAct, trusted, busy, onApprove, onRevokeApproval }: {
         {r.state === 'missing' && <span style={{ fontSize: 11, color: st.color }}>Source file not found on disk. Eigendeck is showing the last saved copy.</span>}
         <span style={{ flex: 1 }} />
         {r.state === 'approved' && canAct && (
-          <button onClick={() => onRevokeApproval(r.assetId)} disabled={busy} style={ghostBtn}>Revoke approval</button>
+          <button onClick={() => onRevokeApproval(r.assetId)} disabled={busy} className="chip-btn danger" style={ghostBtn}>Revoke approval</button>
         )}
         {r.state === 'eligible' && (
           canAct
-            ? <button onClick={() => onApprove(r.assetId, r.referencePath)} disabled={busy} style={smallBtn}>Approve</button>
+            ? <button onClick={() => onApprove(r.assetId, r.referencePath)} disabled={busy} className="chip-btn primary" style={smallBtn}>Approve</button>
             : trusted
               ? <span style={{ fontSize: 11, ...overriddenLabel }}>watching is off</span>
               : <span style={{ fontSize: 11, color: '#999' }}>trust the deck first</span>
@@ -562,8 +562,10 @@ function Row({ r, canAct, trusted, busy, onApprove, onRevokeApproval }: {
   );
 }
 
-const primaryBtn: React.CSSProperties = { padding: '7px 14px', fontSize: 13, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' };
-const secondaryBtn: React.CSSProperties = { padding: '5px 12px', fontSize: 12, background: '#fff', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' };
-const smallBtn: React.CSSProperties = { padding: '3px 10px', fontSize: 11, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 3, cursor: 'pointer', textAlign: 'left' };
-const ghostBtn: React.CSSProperties = { padding: '3px 10px', fontSize: 11, background: '#fff', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 3, cursor: 'pointer' };
-const dangerBtn: React.CSSProperties = { padding: '5px 12px', fontSize: 12, background: '#fff', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' };
+// Size-only overrides layered on the shared chip classes (chip.css). Visual
+// look (bg/border/shadow) comes from `.chip-btn` (+ .primary / .danger).
+const primaryBtn: React.CSSProperties = { padding: '7px 14px', fontSize: 13 };
+const secondaryBtn: React.CSSProperties = { padding: '5px 12px', fontSize: 12 };
+const smallBtn: React.CSSProperties = { padding: '3px 10px', fontSize: 11, textAlign: 'left' };
+const ghostBtn: React.CSSProperties = { padding: '3px 10px', fontSize: 11 };
+const dangerBtn: React.CSSProperties = { padding: '5px 12px', fontSize: 12 };

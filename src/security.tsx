@@ -15,6 +15,7 @@ import type { Presentation } from './types/presentation';
 import { usePresentationStore } from './store/presentation';
 import { SecurityWindowApp } from './components/SecurityPanel';
 import { initRuntime } from './lib/runtime';
+import './styles/chip.css';
 
 initRuntime();
 

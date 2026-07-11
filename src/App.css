@@ -1,3 +1,7 @@
+/* Shared chip button style (also imported directly by the other webview
+   windows, e.g. security.tsx). @import must precede all rules. */
+@import './styles/chip.css';
+
 /* @font-face declarations for all bundled font packages are injected at
    runtime by injectFontFaces() in src/lib/fonts.ts (called from main.tsx).
    See src/lib/fonts.ts FONT_PACKAGES for the list. */
@@ -464,75 +468,9 @@ body.window-inactive .welcome-root {
 /* Each insert group stays on one line and moves as a unit. */
 .tb-group { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
 
-/* Eigendeck chip button — the small raised control shared by the floating
-   insert HUD AND the inspector (.prop-zbtn), so every in-webview button reads
-   the same: near-white top→bottom gradient + a top-edge highlight and soft drop
-   shadow, so each reads as a raised control (a restrained macOS-toolbar look)
-   rather than a flat white sticker — on any backdrop (the #e8e8e8 canvas or the
-   inspector panel). One source of truth; extend this selector list to bring
-   more buttons into the family. */
-.editor-actions button,
-.prop-zbtn,
-.toolbar button {
-  padding: 3px 8px;
-  border: 1px solid #d8dce1;
-  border-radius: 5px;
-  background: linear-gradient(#fbfbfc, #f4f5f6);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 1px 2px rgba(0, 0, 0, 0.18);
-  cursor: pointer;
-  font-size: 12px;
-  color: #1a1a1a;
-}
-
-.editor-actions button:hover,
-.prop-zbtn:hover,
-.toolbar button:hover {
-  background: linear-gradient(#f4f5f7, #eceef1);
-  border-color: #9aa1a8;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.editor-actions button:disabled,
-.prop-zbtn:disabled,
-.toolbar button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* Selected/active chip: a flat blue fill with a matching border and a subtle
-   INSET shadow (pressed), NOT the raised top-highlight — that light highlight +
-   gray border read wrong over the blue. */
-.editor-actions button.active,
-.prop-zbtn.active {
-  background: #3b82f6;
-  border-color: #2563eb;
-  color: #fff;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);
-}
-
-.editor-actions button.active:hover,
-.prop-zbtn.active:hover {
-  background: #2f74ea;
-  border-color: #1d4ed8;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.22);
-}
-
-/* Insert-HUD chips sit in a pointer-events:none pass-through container (so the
-   canvas stays interactive between them) and must not wrap. */
-.editor-actions button {
-  pointer-events: auto;
-  white-space: nowrap;
-}
-
-/* Top toolbar: same chip, a touch larger for the top bar. */
-.toolbar button {
-  padding: 4px 12px;
-  font-size: 13px;
-}
+/* The chip button style (.chip-btn, .prop-zbtn, .editor-actions button,
+   .toolbar button) lives in src/styles/chip.css, @imported at the top of this
+   file so it's shared with the other webview windows. */
 
 .demo-label {
   font-size: 12px;

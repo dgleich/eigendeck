@@ -1,0 +1,100 @@
+/* Eigendeck chip button — ONE source of truth, shared across every webview
+   window (main app, presenter, security, settings). Every in-webview button
+   reads the same: a small raised control with a near-white top→bottom gradient,
+   a top-edge highlight and a soft drop shadow, on any backdrop.
+
+   Apply via the generic `.chip-btn` class, or one of the existing aliases
+   (`.prop-zbtn` inspector, `.editor-actions button` insert HUD, `.toolbar
+   button` top bar). Add `.active` for a selected/pressed state. */
+.chip-btn,
+.editor-actions button,
+.prop-zbtn,
+.toolbar button {
+  padding: 3px 8px;
+  border: 1px solid #d8dce1;
+  border-radius: 5px;
+  background: linear-gradient(#fbfbfc, #f4f5f6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  font-size: 12px;
+  color: #1a1a1a;
+}
+
+.chip-btn:hover,
+.editor-actions button:hover,
+.prop-zbtn:hover,
+.toolbar button:hover {
+  background: linear-gradient(#f4f5f7, #eceef1);
+  border-color: #9aa1a8;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.chip-btn:disabled,
+.editor-actions button:disabled,
+.prop-zbtn:disabled,
+.toolbar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Selected/active chip: a flat blue fill with a matching border and a subtle
+   INSET shadow (pressed), NOT the raised top-highlight — that light highlight +
+   gray border read wrong over the blue. */
+.chip-btn.active,
+.editor-actions button.active,
+.prop-zbtn.active {
+  background: #3b82f6;
+  border-color: #2563eb;
+  color: #fff;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+.chip-btn.active:hover,
+.editor-actions button.active:hover,
+.prop-zbtn.active:hover {
+  background: #2f74ea;
+  border-color: #1d4ed8;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
+/* Primary-CTA chip — solid blue, for affirmative actions (Trust, Approve). */
+.chip-btn.primary {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.chip-btn.primary:hover {
+  background: #1d4ed8;
+  border-color: #1e40af;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+}
+
+/* Danger chip — red outline, for destructive actions (Stop trusting, Revoke). */
+.chip-btn.danger {
+  background: linear-gradient(#fff, #fdf1f1);
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+.chip-btn.danger:hover {
+  background: linear-gradient(#fff, #fbe4e4);
+  border-color: #f87171;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+/* Insert-HUD chips sit in a pointer-events:none pass-through container (so the
+   canvas stays interactive between them) and must not wrap. */
+.editor-actions button {
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+/* Top toolbar: same chip, a touch larger for the top bar. */
+.toolbar button {
+  padding: 4px 12px;
+  font-size: 13px;
+}
