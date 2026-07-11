@@ -1044,6 +1044,22 @@ export function markPresentationDirty() {
   scheduleFlush();
 }
 
+/** The presentation-level rows written to the `presentation` KV table. SINGLE
+ *  SOURCE for both the flush (which writes them) and the change-detector (which
+ *  diffs them) — deriving both from here is what stops a field from being
+ *  persisted-but-not-detected, or detected-but-not-written, ever again (the deck
+ *  `theme` bug: it was in the model + stored as a row, but missing from BOTH the
+ *  flush and the diff, so it silently never saved). Add a new standalone row HERE,
+ *  once, and both paths pick it up. `config` is the catch-all JSON blob, so most
+ *  new presentation fields ride along inside it automatically. */
+export function presentationRows(p: Pick<Presentation, 'title' | 'theme' | 'config'>): Record<string, string> {
+  return {
+    title: p.title,
+    theme: p.theme,
+    config: JSON.stringify(p.config),
+  };
+}
+
 /** Force an immediate flush (called on explicit save, pointerup, text commit) */
 export async function flushToSqlite(): Promise<void> {
   if (!sqliteDbPath) return;
@@ -1161,9 +1177,9 @@ export async function flushToSqlite(): Promise<void> {
 
     // Incremental: only write dirty items
     if (dirtyPresentation) {
-      await invoke('db_update_presentation', { key: 'title', value: state.presentation.title });
-      await invoke('db_update_presentation', { key: 'theme', value: state.presentation.theme });
-      await invoke('db_update_presentation', { key: 'config', value: JSON.stringify(state.presentation.config) });
+      for (const [key, value] of Object.entries(presentationRows(state.presentation))) {
+        await invoke('db_update_presentation', { key, value });
+      }
       dirtyPresentation = false;
     }
 
@@ -1484,10 +1500,10 @@ usePresentationStore.subscribe((state) => {
   const prev = prevPresentation;
   prevPresentation = curr;
 
-  // Detect presentation metadata changes (title, DECK theme, config). The deck
-  // theme is its own `presentation` row — without this diff a setTheme() never
-  // marked the presentation dirty, so the theme change was lost on reopen.
-  if (prev.title !== curr.title || prev.theme !== curr.theme || JSON.stringify(prev.config) !== JSON.stringify(curr.config)) {
+  // Detect presentation metadata changes by diffing the SAME rows the flush writes
+  // (presentationRows) — so every persisted row is automatically change-detected;
+  // they can't drift apart (that's how the deck theme silently stopped saving).
+  if (JSON.stringify(presentationRows(prev)) !== JSON.stringify(presentationRows(curr))) {
     markPresentationDirty();
   }
 

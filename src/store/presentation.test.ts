@@ -1,6 +1,28 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { usePresentationStore } from './presentation';
+import { usePresentationStore, presentationRows } from './presentation';
 import { createDefaultPresentation } from '../types/presentation';
+
+// Contract guard for the "persisted-but-not-change-detected" bug class (the deck
+// theme silently stopped saving because the flush and the change-detector were two
+// hand-lists that drifted). Both now derive from presentationRows, so: (a) the row
+// set is pinned to the DB's canonical keys, and (b) mutating ANY persisted row is
+// detected (a different serialization) — which is exactly what marks the deck dirty.
+describe('presentationRows — flush/diff single source', () => {
+  type Meta = Parameters<typeof presentationRows>[0];
+  const base: Meta = { title: 'T', theme: 'white', config: { author: 'A', width: 1920 } as Meta['config'] };
+  const ser = (p: Meta) => JSON.stringify(presentationRows(p));
+  it('emits exactly the canonical presentation KV rows', () => {
+    expect(Object.keys(presentationRows(base)).sort()).toEqual(['config', 'theme', 'title']);
+    expect(presentationRows(base).theme).toBe('white');
+    expect(presentationRows(base).config).toBe(JSON.stringify(base.config));
+  });
+  it('a change to ANY persisted row changes the serialization (so the diff catches it)', () => {
+    const b = ser(base);
+    expect(ser({ ...base, title: 'X' })).not.toBe(b);
+    expect(ser({ ...base, theme: 'dark' })).not.toBe(b);          // the bug that got through
+    expect(ser({ ...base, config: { ...base.config, author: 'B' } })).not.toBe(b);
+  });
+});
 
 describe('presentation store', () => {
   beforeEach(() => {
