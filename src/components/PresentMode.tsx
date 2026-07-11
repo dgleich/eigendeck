@@ -63,6 +63,14 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
   const slideW = presentation.config.width;
   const slideH = presentation.config.height;
 
+  // Black out the page root + lock scroll while the present overlay is mounted, so
+  // no light editor UI can peek behind it (e.g. a bottom sliver when macOS overlay
+  // scrollbars retract as the cursor leaves the window).
+  useEffect(() => {
+    document.body.classList.add('presenting');
+    return () => document.body.classList.remove('presenting');
+  }, []);
+
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;

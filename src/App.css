@@ -1567,15 +1567,22 @@ body.window-inactive .speaker-panel {
    ============================================ */
 .present-mode {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  /* Pin to the REAL viewport edges (not 100vw/100vh — which rounds and, on macOS,
+     mismatches when overlay scrollbars retract as the cursor leaves the window,
+     leaving a grey sliver of the app root peeking at the bottom, #<white-bar>). */
+  inset: 0;
   z-index: 1000;
   background: #000;
   display: flex;
   flex-direction: column;
   cursor: none;
+}
+
+/* Belt-and-suspenders: while presenting, black out the page root + kill any
+   scrollbar, so nothing of the light editor UI can ever peek behind the overlay. */
+body.presenting {
+  background: #000;
+  overflow: hidden;
 }
 
 .present-mode:hover {

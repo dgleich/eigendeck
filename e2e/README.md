@@ -348,6 +348,15 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
   eigendeck-cli /tmp/slidedel.eigendeck import json e2e/fixtures/slide-delete-deck.json
   PROBE=e2e/slide-delete-probe.mjs E2E_DECK=/tmp/slidedel.eigendeck bash e2e/run-probe.sh   # -> SLIDEDEL_PASS
   ```
+- **present-cover-probe.mjs** — present mode must black out the page root so no light
+  editor UI peeks behind the overlay (#133: a grey/white sliver at the bottom on dark
+  slides when the cursor left the window and macOS overlay scrollbars retracted).
+  Asserts `body.presenting` (bg `#000`, `overflow:hidden`) + the `.present-mode` overlay
+  reaches the viewport edges, and that it's cleaned up on exit. Run:
+  ```bash
+  eigendeck-cli /tmp/slidedel.eigendeck import json e2e/fixtures/slide-delete-deck.json
+  PROBE=e2e/present-cover-probe.mjs E2E_DECK=/tmp/slidedel.eigendeck bash e2e/run-probe.sh   # -> PRESENTCOVER_PASS
+  ```
 - **overflow-hunt.mjs** — audit (not pass/fail): walks a deck and reports text
   elements whose content overflows its box (surfaced the #95 cut-off risk).
 - **deck-demos-render-probe.mjs** — opens a deck and asserts every demo /
