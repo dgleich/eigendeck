@@ -98,6 +98,21 @@ export function textBoxShadowCss(el) {
   return el && el.boxShadow && (el.backgroundColor || el.boxTint) ? '0 4px 14px rgba(0,0,0,0.28)' : undefined;
 }
 
+/** How far (px, per side) a card's box shadow paints OUTSIDE its box — so a cover
+ *  mask sized to the card can be grown to hide the shadow too. Derived from the
+ *  actual shadow (offset-x, offset-y, blur), so it tracks if the shadow changes.
+ *  All zero when the element has no box shadow. A shadow at offset (ox,oy) blurred
+ *  by `b` reaches `b∓ox` left/right and `b∓oy` top/bottom past the box edge. */
+export function boxShadowExtents(el) {
+  const sh = textBoxShadowCss(el);
+  if (!sh) return { left: 0, right: 0, top: 0, bottom: 0 };
+  const [ox = 0, oy = 0, b = 0] = sh.split(/\s+/).map((t) => parseFloat(t) || 0);
+  return {
+    left: Math.max(0, b - ox), right: Math.max(0, b + ox),
+    top: Math.max(0, b - oy), bottom: Math.max(0, b + oy),
+  };
+}
+
 /** Give `<code>` runs the deck's mono family by splicing font-family into each
  *  code tag's style. No-op when `mono` is empty. Shared by the live render
  *  (TextElementSvg) and the HTML export (exportCore). */

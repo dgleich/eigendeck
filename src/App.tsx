@@ -35,7 +35,7 @@ import { loadOverlayFor } from './lib/useOverlay';
 import { isOverlayEmpty, serializeOverlay, summarizeOverlay } from './lib/notebookOverlay';
 import { PromoteChooser } from './components/PromoteChooser';
 import { usePresentationStore } from './store/presentation';
-import { createTextElement } from './types/presentation';
+import { createTextElement, boxShadowExtents } from './types/presentation';
 import type { SlideElement } from './types/presentation';
 import { usePreference, getPreference } from './lib/preferences';
 import { INSERT_ITEMS, INSERT_GROUP_ORDER } from './lib/insertItems';
@@ -775,7 +775,16 @@ function App() {
         let pos = { x: 200, y: 320, width: 600, height: 400 };
         if (sel?.type === 'element') {
           const el = slide.elements.find((e) => e.id === sel.id);
-          if (el) pos = { ...el.position };
+          if (el) {
+            // Grow the mask past a card's box shadow so covering the card also hides
+            // its shadow (a shadow paints outside the element box).
+            const s = boxShadowExtents(el as { boxShadow?: boolean; backgroundColor?: string; boxTint?: string });
+            pos = {
+              x: el.position.x - s.left, y: el.position.y - s.top,
+              width: el.position.width + s.left + s.right,
+              height: el.position.height + s.top + s.bottom,
+            };
+          }
         }
         store.addElement({ id: crypto.randomUUID(), type: 'cover' as any, position: pos });
         break;

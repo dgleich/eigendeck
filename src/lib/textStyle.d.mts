@@ -6,4 +6,5 @@ export function resolveColor(color: string | undefined, theme: { accent?: string
 export function textEffectCss(effect: 'shadow' | 'glow' | undefined, color: string): string | undefined;
 export function textShadowCss(el: { textEffect?: 'shadow' | 'glow' }, color: string): string | undefined;
 export function textBoxShadowCss(el: { boxShadow?: boolean; backgroundColor?: string; boxTint?: string }): string | undefined;
+export function boxShadowExtents(el: { boxShadow?: boolean; backgroundColor?: string; boxTint?: string } | null | undefined): { left: number; right: number; top: number; bottom: number };
 export function applyCodeFont(html: string, mono: string | undefined): string;

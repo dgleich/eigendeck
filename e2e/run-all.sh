@@ -155,6 +155,7 @@ MANIFEST=(
   "font-default-probe.mjs|font-ptsans.eigendeck|E2E_EXPECT=ptsans|import_json \$ROOT/e2e/fixtures/font-ptsans-deck.json"
   "font-default-probe.mjs|font-lato.eigendeck|E2E_EXPECT=lato|import_json \$ROOT/e2e/fixtures/font-lato-deck.json"
   "color-control-probe.mjs|ctrl.eigendeck||import_json \$ROOT/e2e/fixtures/color-control-deck.json"
+  "cover-card-probe.mjs|cover.eigendeck||import_json \$ROOT/e2e/fixtures/cover-card-deck.json"
 )
 
 pass=0; fail=0; failed=()

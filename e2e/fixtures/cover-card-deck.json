@@ -1,0 +1,9 @@
+{
+  "title": "Cover a card",
+  "theme": "white",
+  "slides": [{ "id": "s1", "layout": "default", "notes": "", "elements": [
+    { "id": "card", "type": "text", "preset": "body", "html": "Card", "boxTint": "accent", "boxShadow": true, "borderRadius": 30, "position": { "x": 660, "y": 410, "width": 600, "height": 260 } },
+    { "id": "plain", "type": "text", "preset": "body", "html": "Plain", "backgroundColor": "#eeeeee", "position": { "x": 100, "y": 100, "width": 400, "height": 200 } }
+  ] }],
+  "config": { "width": 1920, "height": 1080, "defaultTitleFont": "ptsans", "defaultBodyFont": "ptsans" }
+}

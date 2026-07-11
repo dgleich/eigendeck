@@ -331,6 +331,15 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
   PROBE=e2e/color-control-probe.mjs E2E_DECK=/tmp/ctrl.eigendeck \
     PROBE_OUT=gitignore/color-control-e2e bash e2e/run-probe.sh   # -> CTRL_PASS
   ```
+- **cover-card-probe.mjs** — inserting a Cover over a selected **card** (text with a
+  box shadow) grows the mask past the shadow so it's hidden too; over a **shadowless**
+  box it matches the bounds exactly. Drives the real insert HUD, asserts the new cover's
+  position (`App.tsx` runInsert 'cover' + `boxShadowExtents`). Extent math unit:
+  `src/lib/textStyle.test.mjs`. Run:
+  ```bash
+  eigendeck-cli /tmp/cover.eigendeck import json e2e/fixtures/cover-card-deck.json
+  PROBE=e2e/cover-card-probe.mjs E2E_DECK=/tmp/cover.eigendeck bash e2e/run-probe.sh   # -> COVER_PASS
+  ```
 - **overflow-hunt.mjs** — audit (not pass/fail): walks a deck and reports text
   elements whose content overflows its box (surfaced the #95 cut-off risk).
 - **deck-demos-render-probe.mjs** — opens a deck and asserts every demo /

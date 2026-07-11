@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mixHex, textBackgroundResolved, textBoxShadowCss, TINT_STRENGTH, resolveColor } from './textStyle.mjs';
+import { mixHex, textBackgroundResolved, textBoxShadowCss, TINT_STRENGTH, resolveColor, boxShadowExtents } from './textStyle.mjs';
 
 describe('mixHex', () => {
   it('mixes two hex colors by t', () => {
@@ -55,6 +55,18 @@ describe('resolveColor (#132 accent token)', () => {
   });
   it('a literal color passes through untouched', () => {
     expect(resolveColor('#ff0000', theme, '#222222')).toBe('#ff0000');
+  });
+});
+
+describe('boxShadowExtents (cover grows past a card shadow)', () => {
+  it('is all-zero when the element has no box shadow', () => {
+    expect(boxShadowExtents({})).toEqual({ left: 0, right: 0, top: 0, bottom: 0 });
+    expect(boxShadowExtents({ boxShadow: true })).toEqual({ left: 0, right: 0, top: 0, bottom: 0 }); // no fill → no shadow
+  });
+  it('matches the shadow (0 4px 14px) extent per side for a card', () => {
+    // ox=0, oy=4, blur=14 → left/right = 14, top = 14-4 = 10, bottom = 14+4 = 18
+    expect(boxShadowExtents({ boxShadow: true, boxTint: 'accent' })).toEqual({ left: 14, right: 14, top: 10, bottom: 18 });
+    expect(boxShadowExtents({ boxShadow: true, backgroundColor: '#eee' })).toEqual({ left: 14, right: 14, top: 10, bottom: 18 });
   });
 });
 
