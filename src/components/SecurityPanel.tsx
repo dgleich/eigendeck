@@ -501,9 +501,21 @@ function GroupedRows({ report, canAct, busy, onApprove, onApproveDir, onRevokeAp
                 {dir || 'Unresolved links'}{outside ? '  (outside the deck folder)' : ''}
               </span>
               <span style={{ flex: 1 }} />
-              {canAct && eligibleHere.length > 0 && dir && (
-                <button onClick={() => onApproveDir(dir)} disabled={busy} className="chip-btn primary" style={smallBtn}>
-                  Approve all {eligibleHere.length} file{eligibleHere.length === 1 ? '' : 's'} in <span style={{ fontFamily: 'monospace' }}>{dir}</span>
+              {/* Batch approve — only when there's more than one eligible file
+                  (a single file's own Approve button already covers it). Kept
+                  deliberately subtle so it blends into the folder band (amber on
+                  the outside-the-deck warning band, gray otherwise) rather than
+                  competing with the per-file Approve chips. */}
+              {canAct && eligibleHere.length > 1 && dir && (
+                <button onClick={() => onApproveDir(dir)} disabled={busy}
+                  title={`Approve all ${eligibleHere.length} eligible files in this folder at once`}
+                  style={{
+                    padding: '2px 8px', fontSize: 11, cursor: 'pointer', borderRadius: 4,
+                    background: 'transparent',
+                    border: '1px solid ' + (outside ? '#fcd34d' : '#e5e7eb'),
+                    color: outside ? '#92400e' : '#6b7280',
+                  }}>
+                  Approve all {eligibleHere.length} files
                 </button>
               )}
             </div>
@@ -525,17 +537,16 @@ function Row({ r, canAct, trusted, busy, onApprove, onRevokeApproval }: {
   return (
     <div style={{ border: '1px solid #f1f5f9', borderRadius: 5, padding: '8px 10px', background: '#fff' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-        <span style={{ fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>{r.referencePath}</span>
+        {/* Show the real on-disk file name (the group header already carries the
+            real folder). The authored `referencePath` is an internal relative
+            reference (e.g. ../examples-demos/…) — not what the user is approving
+            on their computer, so we don't surface it. Falls back to the
+            reference for unresolved rows (no resolved path). */}
+        <span style={{ fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>
+          {r.resolvedPath ? (r.resolvedPath.split('/').pop() || r.resolvedPath) : r.referencePath}
+        </span>
         <span style={{ flexShrink: 0, fontSize: 11, padding: '2px 8px', borderRadius: 10, color: st.color, background: st.bg }}>{st.label}</span>
       </div>
-      {/* Show the real target ONLY when it isn't just the authored reference resolved
-          in place, i.e. a symlink or ../ traversal points somewhere unexpected. A normal
-          in-folder link (resolved = deck dir + reference) needs no second line. */}
-      {r.resolvedPath && r.resolvedPath !== r.referencePath && !r.resolvedPath.endsWith('/' + r.referencePath) && (
-        <div style={{ fontFamily: 'monospace', fontSize: 11, color: r.state === 'forbidden' ? '#991b1b' : '#888', wordBreak: 'break-all', marginTop: 3 }}>
-          → {r.resolvedPath}
-        </div>
-      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5 }}>
         <span style={{ fontSize: 11, color: '#999', display: 'inline-flex', alignItems: 'center' }}>
           {r.usage}

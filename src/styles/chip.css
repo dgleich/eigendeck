@@ -61,17 +61,17 @@
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.22);
 }
 
-/* Primary-CTA chip — solid blue, for affirmative actions (Trust, Approve). */
+/* Affirmative chip — a slight BLUE tint (mirrors .danger's slight red), for
+   affirmative actions (Trust, Approve). A restrained accent, not a loud fill. */
 .chip-btn.primary {
-  background: #2563eb;
-  border-color: #1d4ed8;
-  color: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(#fff, #eef4ff);
+  border-color: #93c5fd;
+  color: #1d4ed8;
 }
 .chip-btn.primary:hover {
-  background: #1d4ed8;
-  border-color: #1e40af;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  background: linear-gradient(#fff, #e2ecff);
+  border-color: #60a5fa;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
 }
 
 /* Danger chip — red outline, for destructive actions (Stop trusting, Revoke). */
