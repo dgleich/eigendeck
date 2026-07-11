@@ -456,7 +456,7 @@ export function PropertiesPanel() {
                       const current = selectedEl.verticalAlign || (selectedEl.preset === 'title' || selectedEl.preset === 'footnote' ? 'bottom' : 'top');
                       return (
                         <button key={va} className={`prop-zbtn ${current === va ? 'active' : ''}`}
-                          style={{ fontSize: 11, width: 'auto', padding: '2px 6px', background: current === va ? '#3b82f6' : undefined, color: current === va ? '#fff' : undefined }}
+                          style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
                           onClick={() => updateElement(selectedEl.id, { verticalAlign: va } as any)}>
                           {va.charAt(0).toUpperCase() + va.slice(1)}
                         </button>
@@ -466,8 +466,7 @@ export function PropertiesPanel() {
                 </PropSection>
                 <PropSection label="Text Color">
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 6px',
-                      background: !selectedEl.color ? '#3b82f6' : undefined, color: !selectedEl.color ? '#fff' : undefined }}
+                    <button className={`prop-zbtn ${!selectedEl.color ? 'active' : ''}`} style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
                       title="Use the theme's default text color"
                       onClick={() => updateElement(selectedEl.id, { color: undefined } as any)}>Auto</button>
                     {/* Deck palette first (ringed), then the built-in text colors. */}
@@ -495,8 +494,7 @@ export function PropertiesPanel() {
                 <PropSection label="Background">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 6px',
-                        background: !selectedEl.backgroundColor ? '#3b82f6' : undefined, color: !selectedEl.backgroundColor ? '#fff' : undefined }}
+                      <button className={`prop-zbtn ${!selectedEl.backgroundColor ? 'active' : ''}`} style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
                         onClick={() => updateElement(selectedEl.id, { backgroundColor: undefined, backgroundOpacity: undefined, boxShadow: undefined } as any)}>None</button>
                       {TEXT_BG_COLORS.map((c) => (
                         <button key={c} className={`prop-color-swatch ${selectedEl.backgroundColor === c ? 'active' : ''}`}
@@ -549,9 +547,8 @@ export function PropertiesPanel() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: 12, color: '#374151' }}>Padding</span>
-                        <button className="prop-zbtn"
-                          style={{ fontSize: 11, width: 'auto', padding: '3px 10px',
-                            background: padLinked ? '#3b82f6' : undefined, color: padLinked ? '#fff' : undefined }}
+                        <button className={`prop-zbtn ${padLinked ? 'active' : ''}`}
+                          style={{ fontSize: 11, width: 'auto', padding: '3px 10px' }}
                           title="Link: edit all four sides together"
                           onClick={() => setPadLinked(!padLinked)}>
                           Link
@@ -587,9 +584,8 @@ export function PropertiesPanel() {
                     {([['none', 'None'], ['shadow', 'Shadow'], ['glow', 'Glow']] as const).map(([val, label]) => {
                       const active = (selectedEl.textEffect ?? 'none') === val;
                       return (
-                        <button key={val} className="prop-zbtn"
-                          style={{ fontSize: 11, width: 'auto', padding: '3px 10px',
-                            background: active ? '#3b82f6' : undefined, color: active ? '#fff' : undefined }}
+                        <button key={val} className={`prop-zbtn ${active ? 'active' : ''}`}
+                          style={{ fontSize: 11, width: 'auto', padding: '3px 10px' }}
                           onClick={() => updateElement(selectedEl.id, { textEffect: val === 'none' ? undefined : val } as any)}>
                           {label}
                         </button>
@@ -710,8 +706,8 @@ export function PropertiesPanel() {
                     {([['thin', 2, 10], ['normal', 4, 16], ['thick', 8, 26], ['super thick', 14, 40], ['really big', 22, 60]] as const).map(([lbl, sw, hs]) => {
                       const active = (selectedEl.strokeWidth || 4) === sw && (selectedEl.headSize || 16) === hs;
                       return (
-                        <button key={lbl} className="prop-zbtn"
-                          style={{ fontSize: 11, width: 'auto', padding: '3px 8px', background: active ? '#3b82f6' : undefined, color: active ? '#fff' : undefined }}
+                        <button key={lbl} className={`prop-zbtn ${active ? 'active' : ''}`}
+                          style={{ fontSize: 11, width: 'auto', padding: '3px 8px' }}
                           onClick={() => updateElement(selectedEl.id, { strokeWidth: sw, headSize: hs } as any)}>{lbl}</button>
                       );
                     })}
@@ -722,8 +718,8 @@ export function PropertiesPanel() {
                     {([['end', 'End'], ['start', 'Start'], ['both', 'Both'], ['none', 'None']] as const).map(([val, lbl]) => {
                       const active = (selectedEl.heads ?? 'end') === val;
                       return (
-                        <button key={val} className="prop-zbtn"
-                          style={{ fontSize: 11, width: 'auto', padding: '3px 10px', background: active ? '#3b82f6' : undefined, color: active ? '#fff' : undefined }}
+                        <button key={val} className={`prop-zbtn ${active ? 'active' : ''}`}
+                          style={{ fontSize: 11, width: 'auto', padding: '3px 10px' }}
                           onClick={() => updateElement(selectedEl.id, { heads: val } as any)}>{lbl}</button>
                       );
                     })}
@@ -754,8 +750,7 @@ export function PropertiesPanel() {
                 {/* A cover is a reveal mask. With no color it matches the slide
                     background (so it's invisible until you want to tint it). */}
                 <div className="prop-color-row">
-                  <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '1px 6px',
-                    background: !selectedEl.color ? '#3b82f6' : undefined, color: !selectedEl.color ? '#fff' : undefined }}
+                  <button className={`prop-zbtn ${!selectedEl.color ? 'active' : ''}`} style={{ fontSize: 11, width: 'auto', padding: '1px 6px' }}
                     onClick={() => updateElement(selectedEl.id, { color: undefined } as any)}
                     title="Match the slide background (invisible mask)">Match</button>
                   {TEXT_BG_COLORS.map((c) => (
