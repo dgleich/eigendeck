@@ -6,7 +6,10 @@
 // Set E2E_EXPECT to the font family the opened deck should render (substring match
 // on the computed font-family). Unit coverage: fonts.test.ts + the render snapshots.
 const BASE = 'http://127.0.0.1:4444', APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
-const EXPECT = process.env.E2E_EXPECT || 'Lato';
+// Accept either a font id (spaceless — friendly to the gated MANIFEST's env
+// splitting) or a family substring directly.
+const FAMILY = { ptsans: 'PT Sans', lato: 'Lato' };
+const EXPECT = FAMILY[process.env.E2E_EXPECT] || process.env.E2E_EXPECT || 'Lato';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function post(p, b) { const r = await fetch(BASE + p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); const t = await r.text(); try { return JSON.parse(t); } catch { return t; } }
 async function exec(sid, s) { return (await post(`/session/${sid}/execute/sync`, { script: s, args: [] }))?.value; }

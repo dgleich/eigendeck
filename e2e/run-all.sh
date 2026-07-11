@@ -147,6 +147,13 @@ MANIFEST=(
   "deck-demos-render-probe.mjs|examples/magnetic-powers.eigendeck||"
   "deck-demos-render-probe.mjs|examples/local-networks.eigendeck||"
   "deck-demos-render-probe.mjs|hp.eigendeck|E2E_EXPECT=FORCE-GRAPH-OK,BAR-CHART-2-OK|python3 $EXFIX/make_e2e_decks.py hyphenpiece \$DECKDIR/hp.json; import_json \$DECKDIR/hp.json"
+
+  # ── visual: themed Card fill (#132), the live 'accent' color token + cover
+  #    tint (re-adapts on theme change), and font-resolution priority ──────────
+  "card-render-probe.mjs|card.eigendeck||import_json \$ROOT/e2e/fixtures/card-deck.json"
+  "color-token-probe.mjs|token.eigendeck||import_json \$ROOT/e2e/fixtures/color-token-deck.json"
+  "font-default-probe.mjs|font-ptsans.eigendeck|E2E_EXPECT=ptsans|import_json \$ROOT/e2e/fixtures/font-ptsans-deck.json"
+  "font-default-probe.mjs|font-lato.eigendeck|E2E_EXPECT=lato|import_json \$ROOT/e2e/fixtures/font-lato-deck.json"
 )
 
 pass=0; fail=0; failed=()
