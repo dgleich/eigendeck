@@ -10,7 +10,7 @@
 // Actions that must persist to the deck file (trust, watch-this-deck) or open the main
 // window's Settings are routed to the main window by event (its store is the live deck).
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Fragment } from 'react';
 import { emit } from '@tauri-apps/api/event';
 import { usePresentationStore, getDeckToken } from '../store/presentation';
 import {
@@ -471,6 +471,20 @@ function InfoTip({ text }: { text: string }): React.ReactElement {
   );
 }
 
+// Render a path so it wraps at '/' separators (a <wbr> after each slash) rather
+// than mid-segment. Pair with `overflow-wrap: anywhere` so an over-long single
+// segment can still break as a last resort.
+function PathText({ path }: { path: string }): React.ReactElement {
+  const segs = path.split('/');
+  return (
+    <>
+      {segs.map((seg, i) => (
+        <Fragment key={i}>{i > 0 ? <>/<wbr /></> : null}{seg}</Fragment>
+      ))}
+    </>
+  );
+}
+
 function GroupedRows({ report, canAct, busy, onApprove, onApproveDir, onRevokeApproval }: {
   report: DeckSecurityReport; canAct: boolean; busy: boolean;
   onApprove: (assetId: string, ref: string) => void; onApproveDir: (dir: string) => void; onRevokeApproval: (assetId: string) => void;
@@ -497,8 +511,14 @@ function GroupedRows({ report, canAct, busy, onApprove, onApproveDir, onRevokeAp
             borderRadius: 6, padding: 8,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span style={{ fontFamily: 'monospace', fontSize: 11, color: outside ? '#92400e' : '#6b7280', wordBreak: 'break-all' }}>
-                {dir || 'Unresolved links'}{outside ? '  (outside the deck folder)' : ''}
+              {/* The folder is the headline (bigger). Its files are listed under
+                  it as descendants (↳ + filename) so the full path isn't repeated
+                  per row. */}
+              <span style={{ fontSize: 13, fontWeight: 600, color: outside ? '#92400e' : '#374151', overflowWrap: 'anywhere' }}>
+                <span style={{ fontFamily: 'monospace' }}><PathText path={dir || 'Unresolved links'} /></span>
+                {outside && (
+                  <span style={{ fontWeight: 400, fontStyle: 'italic', fontSize: 12, whiteSpace: 'nowrap' }}> · outside the deck folder</span>
+                )}
               </span>
               <span style={{ flex: 1 }} />
               {/* Batch approve — only when there's more than one eligible file
@@ -520,7 +540,7 @@ function GroupedRows({ report, canAct, busy, onApprove, onApproveDir, onRevokeAp
               )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {rows.map((r) => <Row key={r.assetId} r={r} canAct={canAct} trusted={!!report.trusted} busy={busy} onApprove={onApprove} onRevokeApproval={onRevokeApproval} />)}
+              {rows.map((r) => <Row key={r.assetId} r={r} outside={outside} canAct={canAct} trusted={!!report.trusted} busy={busy} onApprove={onApprove} onRevokeApproval={onRevokeApproval} />)}
             </div>
           </div>
         );
@@ -529,21 +549,28 @@ function GroupedRows({ report, canAct, busy, onApprove, onApproveDir, onRevokeAp
   );
 }
 
-function Row({ r, canAct, trusted, busy, onApprove, onRevokeApproval }: {
-  r: ExternalPathRow; canAct: boolean; trusted: boolean; busy: boolean;
+function Row({ r, outside, canAct, trusted, busy, onApprove, onRevokeApproval }: {
+  r: ExternalPathRow; outside: boolean; canAct: boolean; trusted: boolean; busy: boolean;
   onApprove: (assetId: string, ref: string) => void; onRevokeApproval: (assetId: string) => void;
 }): React.ReactElement {
   const st = STATE_STYLE[r.state];
   return (
-    <div style={{ border: '1px solid #f1f5f9', borderRadius: 5, padding: '8px 10px', background: '#fff' }}>
+    // No stark white card — a subtle tint that sits gently on the folder band
+    // (a touch warmer than the amber warning band, near-transparent otherwise)
+    // so the list reads calmly instead of as high-contrast white boxes.
+    <div style={{
+      border: '1px solid ' + (outside ? '#fbe6b3' : '#eef0f2'),
+      borderRadius: 5, padding: '8px 10px',
+      background: outside ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.015)',
+    }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-        {/* Show the real on-disk file name (the group header already carries the
-            real folder). The authored `referencePath` is an internal relative
-            reference (e.g. ../examples-demos/…) — not what the user is approving
-            on their computer, so we don't surface it. Falls back to the
-            reference for unresolved rows (no resolved path). */}
-        <span style={{ fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>
-          {r.resolvedPath ? (r.resolvedPath.split('/').pop() || r.resolvedPath) : r.referencePath}
+        {/* Just the file name, as a child of the folder headline above (↳). The
+            folder already carries the full real path, so we don't repeat it; the
+            authored ../-relative referencePath is never surfaced. Unresolved rows
+            (no resolved path) fall back to the reference. */}
+        <span style={{ fontFamily: 'monospace', fontSize: 11.5, overflowWrap: 'anywhere', color: '#374151' }}>
+          <span style={{ color: '#9ca3af', marginRight: 5, fontFamily: 'system-ui' }}>↳</span>
+          <PathText path={r.resolvedPath ? (r.resolvedPath.split('/').pop() || r.resolvedPath) : r.referencePath} />
         </span>
         <span style={{ flexShrink: 0, fontSize: 11, padding: '2px 8px', borderRadius: 10, color: st.color, background: st.bg }}>{st.label}</span>
       </div>
