@@ -1277,22 +1277,11 @@ body.window-inactive .speaker-panel {
   border: 1px solid #ccc;
   border-radius: 6px;
   padding: 6px;
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
+  /* Holds the shared <ColorControl> (a .prop-color-row flex); the fixed width
+     lets its swatches wrap at ~7 per row. (Swatch styling is .prop-color-swatch,
+     unified with the inspector — the old .tf-color-swatch class was retired.) */
+  width: 178px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.tf-color-swatch {
-  width: 20px;
-  height: 20px;
-  border-radius: 3px;
-  cursor: pointer;
-  padding: 0;
-}
-
-.tf-color-swatch:hover {
-  transform: scale(1.15);
 }
 
 /* ============================================

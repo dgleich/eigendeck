@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
-import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, parsePalette, textPresetBoxCss, textBackgroundResolved, type NamedSize } from '../types/presentation';
+import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, parsePalette, textPresetBoxCss, type NamedSize } from '../types/presentation';
 import { BUILT_IN_THEMES, resolveTheme } from '../lib/themes';
 import { extractDemoPieceNames } from '../lib/demoPieces';
 import { FONT_PACKAGES } from '../lib/fonts';
@@ -10,44 +10,8 @@ import { AssetSection } from './AssetSection';
 import { HelpText } from './HelpText';
 import { usePreference } from '../lib/preferences';
 import { OVERRIDDEN_DIM, overriddenLabel } from '../lib/overriddenStyle';
-
-const ARROW_COLORS = [
-  '#e53e3e', '#dc2626', '#ea580c', '#16a34a',
-  '#2563eb', '#9333ea', '#222222', '#6b7280',
-];
-
-// Fill palette for panels/masks — text-box backgrounds AND cover rectangles.
-// Organized in bands: neutrals, soft tints (legible panels over busy slides),
-// medium tints, then a few deep saturated fills. The swatch row wraps.
-const TEXT_BG_COLORS = [
-  // neutrals
-  '#ffffff', '#f3f4f6', '#d1d5db', '#9ca3af', '#374151', '#000000',
-  // soft tints + highlighter
-  '#fee2e2', '#ffedd5', '#fef9c3', '#fff3b0', '#dcfce7', '#ccfbf1',
-  // medium tints
-  '#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#7dd3fc',
-  '#93c5fd', '#a5b4fc', '#c4b5fd', '#f0abfc', '#f9a8d4',
-  // deep / saturated
-  '#b91c1c', '#15803d', '#1d4ed8', '#6d28d9',
-];
-
-// Themed tint bases (#132): 'accent' follows the slide theme; the rest are
-// semantic (alert red, example green, amber, purple). Each renders as a wash
-// RELATIVE to the slide background, so it stays colored + contrasting on ANY
-// theme (unlike a fixed color, which is grey/wrong on some themes).
-const TINT_SWATCHES: { base: string; title: string }[] = [
-  { base: 'accent', title: 'Theme accent tint (adapts to each slide theme)' },
-  { base: '#dc2626', title: 'Red tint (alert)' },
-  { base: '#16a34a', title: 'Green tint (example)' },
-  { base: '#d97706', title: 'Amber tint' },
-  { base: '#7c3aed', title: 'Purple tint' },
-];
-
-const TEXT_COLORS = [
-  '#1a1a1a', '#6b7280', '#9ca3af', '#ffffff',
-  '#dc2626', '#ea580c', '#16a34a', '#0d9488',
-  '#2563eb', '#9333ea',
-];
+import { ColorControl } from './ColorControl';
+import { TEXT_PALETTE, FILL_PALETTE, ARROW_PALETTE } from '../lib/colorPalettes';
 
 /** Strip per-run inline text colors (the format toolbar's foreColor produces
  *  `<span style="color:…">` / `<font color>`) so the element-level Text Color
@@ -479,24 +443,18 @@ export function PropertiesPanel() {
                 </PropSection>
                 <PropSection label="Text Color">
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <button className={`prop-zbtn ${!selectedEl.color ? 'active' : ''}`} style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
-                      title="Use the theme's default text color"
-                      onClick={() => updateElement(selectedEl.id, { color: undefined } as any)}>Auto</button>
-                    {/* Deck palette first (ringed), then the built-in text colors. */}
-                    {(presentation.config.customPalette ?? []).map((c) => (
-                      <button key={`cp-${c}`} className={`prop-color-swatch ${selectedEl.color === c ? 'active' : ''}`}
-                        style={{ background: c, boxShadow: '0 0 0 1px #94a3b8 inset' }} title={`Deck palette ${c}`}
-                        onClick={() => updateElement(selectedEl.id, { color: c } as any)} />
-                    ))}
-                    {TEXT_COLORS.map((c) => (
-                      <button key={c} className={`prop-color-swatch ${selectedEl.color === c ? 'active' : ''}`}
-                        style={{ background: c, border: c === '#ffffff' ? '1px solid #ccc' : undefined }}
-                        onClick={() => updateElement(selectedEl.id, { color: c } as any)} />
-                    ))}
-                    <input type="color" title="Custom colour"
-                      value={selectedEl.color && /^#[0-9a-fA-F]{6}$/.test(selectedEl.color) ? selectedEl.color : '#000000'}
-                      onChange={(e) => updateElement(selectedEl.id, { color: e.target.value } as any)}
-                      style={{ width: 24, height: 24, padding: 0, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }} />
+                    <ColorControl
+                      value={selectedEl.color === 'accent' ? undefined : selectedEl.color}
+                      activeTint={selectedEl.color === 'accent' ? 'accent' : undefined}
+                      palette={TEXT_PALETTE}
+                      customPalette={presentation.config.customPalette}
+                      allowNone noneLabel="Auto"
+                      allowCustom
+                      tint={{ kind: 'accent', theme: resolveTheme(presentation.theme, slide.theme) }}
+                      onNone={() => updateElement(selectedEl.id, { color: undefined } as any)}
+                      onColor={(c) => updateElement(selectedEl.id, { color: c } as any)}
+                      onTint={() => updateElement(selectedEl.id, { color: 'accent' } as any)}
+                    />
                     <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
                       title="Remove per-word inline colors set with the format toolbar, so the whole element uses the Text Color above"
                       onClick={() => updateElement(selectedEl.id, { html: stripInlineTextColors(selectedEl.html) } as any)}>
@@ -506,30 +464,18 @@ export function PropertiesPanel() {
                 </PropSection>
                 <PropSection label="Background">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <button className={`prop-zbtn ${!selectedEl.backgroundColor && !selectedEl.boxTint ? 'active' : ''}`} style={{ fontSize: 11, width: 'auto', padding: '2px 6px' }}
-                        onClick={() => updateElement(selectedEl.id, { backgroundColor: undefined, backgroundOpacity: undefined, boxTint: undefined, boxShadow: undefined } as any)}>None</button>
-                      {/* Themed tints (#132 card): each previews the current slide's wash
-                          (base color mixed into the theme background); the corner mark
-                          flags them as "themed" (adapt per theme) vs the fixed swatches. */}
-                      {(() => {
-                        const th = resolveTheme(presentation.theme, slide.theme);
-                        return TINT_SWATCHES.map(({ base, title }) => (
-                          <button key={`tint-${base}`} title={title}
-                            className={`prop-color-swatch ${selectedEl.boxTint === base ? 'active' : ''}`}
-                            style={{ background: textBackgroundResolved({ boxTint: base }, th), backgroundImage: 'linear-gradient(135deg, transparent 60%, rgba(0,0,0,0.4) 60%)' }}
-                            onClick={() => updateElement(selectedEl.id, { boxTint: base, backgroundColor: undefined, backgroundOpacity: undefined } as any)} />
-                        ));
-                      })()}
-                      {TEXT_BG_COLORS.map((c) => (
-                        <button key={c} className={`prop-color-swatch ${selectedEl.backgroundColor === c && !selectedEl.boxTint ? 'active' : ''}`}
-                          style={{ background: c }} onClick={() => updateElement(selectedEl.id, { backgroundColor: c, boxTint: undefined } as any)} />
-                      ))}
-                      <input type="color" title="Custom colour"
-                        value={selectedEl.backgroundColor && /^#[0-9a-fA-F]{6}$/.test(selectedEl.backgroundColor) ? selectedEl.backgroundColor : '#000000'}
-                        onChange={(e) => updateElement(selectedEl.id, { backgroundColor: e.target.value, boxTint: undefined } as any)}
-                        style={{ width: 24, height: 24, padding: 0, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }} />
-                    </div>
+                    <ColorControl
+                      value={selectedEl.boxTint ? undefined : selectedEl.backgroundColor}
+                      activeTint={selectedEl.boxTint}
+                      palette={FILL_PALETTE}
+                      customPalette={presentation.config.customPalette}
+                      allowNone noneLabel="None"
+                      allowCustom
+                      tint={{ kind: 'fill', theme: resolveTheme(presentation.theme, slide.theme) }}
+                      onNone={() => updateElement(selectedEl.id, { backgroundColor: undefined, backgroundOpacity: undefined, boxTint: undefined, boxShadow: undefined } as any)}
+                      onColor={(c) => updateElement(selectedEl.id, { backgroundColor: c, boxTint: undefined } as any)}
+                      onTint={(base) => updateElement(selectedEl.id, { boxTint: base, backgroundColor: undefined, backgroundOpacity: undefined } as any)}
+                    />
                     {(selectedEl.backgroundColor || selectedEl.boxTint) && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
                         {/* Opacity applies to a fixed fill only (the themed tint is opaque). */}
@@ -722,12 +668,16 @@ export function PropertiesPanel() {
             {selectedEl.type === 'arrow' && (
               <>
                 <PropSection label="Color">
-                  <div className="prop-color-row">
-                    {ARROW_COLORS.map((c) => (
-                      <button key={c} className={`prop-color-swatch ${selectedEl.color === c ? 'active' : ''}`}
-                        style={{ background: c }} onClick={() => updateElement(selectedEl.id, { color: c } as any)} />
-                    ))}
-                  </div>
+                  <ColorControl
+                    value={selectedEl.color === 'accent' ? undefined : selectedEl.color}
+                    activeTint={selectedEl.color === 'accent' ? 'accent' : undefined}
+                    palette={ARROW_PALETTE}
+                    customPalette={presentation.config.customPalette}
+                    allowCustom
+                    tint={{ kind: 'accent', theme: resolveTheme(presentation.theme, slide.theme) }}
+                    onColor={(c) => updateElement(selectedEl.id, { color: c } as any)}
+                    onTint={() => updateElement(selectedEl.id, { color: 'accent' } as any)}
+                  />
                 </PropSection>
                 <PropSection label="Size">
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -775,22 +725,20 @@ export function PropertiesPanel() {
 
             {selectedEl.type === 'cover' && (
               <PropSection label="Color">
-                {/* A cover is a reveal mask. With no color it matches the slide
-                    background (so it's invisible until you want to tint it). */}
-                <div className="prop-color-row">
-                  <button className={`prop-zbtn ${!selectedEl.color ? 'active' : ''}`} style={{ fontSize: 11, width: 'auto', padding: '1px 6px' }}
-                    onClick={() => updateElement(selectedEl.id, { color: undefined } as any)}
-                    title="Match the slide background (invisible mask)">Match</button>
-                  {TEXT_BG_COLORS.map((c) => (
-                    <button key={c} className={`prop-color-swatch ${selectedEl.color === c ? 'active' : ''}`}
-                      style={{ background: c, border: c === '#ffffff' ? '1px solid #ccc' : undefined }}
-                      onClick={() => updateElement(selectedEl.id, { color: c } as any)} />
-                  ))}
-                  <input type="color" title="Custom colour"
-                    value={selectedEl.color && /^#[0-9a-fA-F]{6}$/.test(selectedEl.color) ? selectedEl.color : '#ffffff'}
-                    onChange={(e) => updateElement(selectedEl.id, { color: e.target.value } as any)}
-                    style={{ width: 24, height: 24, padding: 0, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }} />
-                </div>
+                {/* A cover is a reveal mask. "Match" (no fill) matches the slide
+                    background; a themed tint keeps a colored mask on-theme (#132). */}
+                <ColorControl
+                  value={selectedEl.boxTint ? undefined : selectedEl.color}
+                  activeTint={selectedEl.boxTint}
+                  palette={FILL_PALETTE}
+                  customPalette={presentation.config.customPalette}
+                  allowNone noneLabel="Match"
+                  allowCustom
+                  tint={{ kind: 'fill', theme: resolveTheme(presentation.theme, slide.theme) }}
+                  onNone={() => updateElement(selectedEl.id, { color: undefined, boxTint: undefined } as any)}
+                  onColor={(c) => updateElement(selectedEl.id, { color: c, boxTint: undefined } as any)}
+                  onTint={(base) => updateElement(selectedEl.id, { boxTint: base, color: undefined } as any)}
+                />
               </PropSection>
             )}
 

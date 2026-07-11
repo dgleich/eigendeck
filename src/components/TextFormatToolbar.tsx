@@ -1,25 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { usePresentationStore } from '../store/presentation';
-
-const COLORS = [
-  { color: '#222222', label: 'Black' },
-  { color: '#6b7280', label: 'Grey' },
-  { color: '#9ca3af', label: 'Medium Grey' },
-  { color: '#d1d5db', label: 'Light Grey' },
-  { color: '#16a34a', label: 'Green' },
-  { color: '#86efac', label: 'Light Green' },
-  { color: '#0d9488', label: 'Teal' },
-  { color: '#5eead4', label: 'Light Teal' },
-  { color: '#2563eb', label: 'Blue' },
-  { color: '#93c5fd', label: 'Light Blue' },
-  { color: '#dc2626', label: 'Red' },
-  { color: '#fca5a5', label: 'Light Red' },
-  { color: '#ea580c', label: 'Orange' },
-  { color: '#fdba74', label: 'Light Orange' },
-  { color: '#9333ea', label: 'Purple' },
-  { color: '#c4b5fd', label: 'Light Purple' },
-  { color: '#ffffff', label: 'White' },
-];
+import { ColorControl } from './ColorControl';
+import { TEXT_PALETTE } from '../lib/colorPalettes';
 
 interface Props {
   onClose: () => void;
@@ -84,29 +66,12 @@ export function TextFormatToolbar(_props: Props) {
         </button>
         {colorOpen && (
           <div className="tf-color-dropdown">
-            {customPalette && customPalette.length > 0 && (
-              <>
-                {customPalette.map((c) => (
-                  <button
-                    key={'custom-' + c}
-                    className="tf-color-swatch"
-                    style={{ background: c, border: '1px solid #94a3b8', boxShadow: '0 0 0 1px #fff inset' }}
-                    title={`Deck palette ${c}`}
-                    onClick={() => { exec('foreColor', c); setLastColor(c); setColorOpen(false); }}
-                  />
-                ))}
-                <div style={{ gridColumn: '1 / -1', height: 0, borderTop: '1px solid #e5e7eb', margin: '2px 0' }} />
-              </>
-            )}
-            {COLORS.map((c) => (
-              <button
-                key={c.color}
-                className="tf-color-swatch"
-                style={{ background: c.color, border: c.color === '#ffffff' ? '1px solid #ccc' : '1px solid transparent' }}
-                title={c.label}
-                onClick={() => { exec('foreColor', c.color); setLastColor(c.color); setColorOpen(false); }}
-              />
-            ))}
+            <ColorControl
+              value={lastColor}
+              palette={TEXT_PALETTE}
+              customPalette={customPalette}
+              onColor={(c) => { exec('foreColor', c); setLastColor(c); setColorOpen(false); }}
+            />
           </div>
         )}
       </div>

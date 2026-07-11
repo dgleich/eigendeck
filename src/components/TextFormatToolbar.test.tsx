@@ -21,7 +21,7 @@ function openDropdown(container: HTMLElement) {
   fireEvent.click(container.querySelector('button[title="Text color"]') as HTMLButtonElement);
 }
 const dropdownSwatches = (container: HTMLElement) =>
-  [...container.querySelectorAll('.tf-color-dropdown button.tf-color-swatch')] as HTMLButtonElement[];
+  [...container.querySelectorAll('.tf-color-dropdown button.prop-color-swatch')] as HTMLButtonElement[];
 
 beforeEach(() => {
   cleanup();

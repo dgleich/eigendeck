@@ -76,14 +76,24 @@ describe('[characterize] Text Color (element.color)', () => {
     expect(curEl().color).toBe('#abcdef');
   });
 
-  it('offers exactly TEXT_COLORS, each writing element.color', () => {
+  it('offers exactly TEXT_PALETTE (17), each writing element.color', () => {
     seed(TEXT());
     const { container } = render(<PropertiesPanel />);
-    expect(paletteWrites(container, 'Text Color', 'color')).toEqual([
-      '#1a1a1a', '#6b7280', '#9ca3af', '#ffffff',
-      '#dc2626', '#ea580c', '#16a34a', '#0d9488',
-      '#2563eb', '#9333ea',
+    // swatch[0] is the accent tint (writes the token, tested below) — skip it.
+    expect(paletteWrites(container, 'Text Color', 'color', 1)).toEqual([
+      '#222222', '#6b7280', '#9ca3af', '#d1d5db', '#16a34a', '#86efac',
+      '#0d9488', '#5eead4', '#2563eb', '#93c5fd', '#dc2626', '#fca5a5',
+      '#ea580c', '#fdba74', '#9333ea', '#c4b5fd', '#ffffff',
     ]);
+  });
+
+  it('the accent tint writes the live color token (color="accent")', () => {
+    seed(TEXT());
+    const { container } = render(<PropertiesPanel />);
+    const accent = [...section(container, 'Text Color').querySelectorAll('button.prop-color-swatch')]
+      .find((x) => x.getAttribute('title')?.startsWith('Theme accent')) as HTMLButtonElement;
+    accent.click();
+    expect(curEl().color).toBe('accent');
   });
 
   it('shows deck customPalette swatches first (writing color)', () => {
@@ -149,40 +159,71 @@ describe('[characterize] Text Background (backgroundColor xor boxTint)', () => {
     expect(curEl().backgroundColor).toBe('#abcdef');
     expect(curEl().boxTint).toBeUndefined();
   });
+
+  it('deck customPalette swatch writes backgroundColor (new affordance)', () => {
+    seed(TEXT(), { customPalette: ['#ff00ff'] });
+    const { container } = render(<PropertiesPanel />);
+    swatches(section(container, 'Background'))[0].click();
+    expect(curEl().backgroundColor).toBe('#ff00ff');
+    expect(curEl().boxTint).toBeUndefined();
+  });
 });
 
 describe('[characterize] Arrow Color (element.color)', () => {
-  it('offers exactly ARROW_COLORS, each writing element.color', () => {
+  it('offers exactly ARROW_PALETTE (8), each writing element.color', () => {
     seed(ARROW());
     const { container } = render(<PropertiesPanel />);
-    expect(paletteWrites(container, 'Color', 'color')).toEqual([
+    // swatch[0] is the accent tint — skip it.
+    expect(paletteWrites(container, 'Color', 'color', 1)).toEqual([
       '#e53e3e', '#dc2626', '#ea580c', '#16a34a',
       '#2563eb', '#9333ea', '#222222', '#6b7280',
     ]);
   });
+
+  it('accent tint → color="accent"; custom hex → color (new affordances)', () => {
+    seed(ARROW());
+    const { container } = render(<PropertiesPanel />);
+    const accent = swatches(section(container, 'Color'))[0]; // the lone accent tint
+    accent.click();
+    expect(curEl().color).toBe('accent');
+    fireEvent.change(colorInput(section(container, 'Color')), { target: { value: '#abcdef' } });
+    expect(curEl().color).toBe('#abcdef');
+  });
 });
 
-describe('[characterize] Cover Color (element.color)', () => {
-  it('"Match" clears color; custom writes color', () => {
-    seed({ ...COVER(), color: '#123456' } as SlideElement);
+describe('[characterize] Cover Color (element.color xor boxTint)', () => {
+  it('"Match" clears BOTH color and boxTint; custom writes color', () => {
+    seed({ ...COVER(), boxTint: 'accent' } as SlideElement);
     const { container } = render(<PropertiesPanel />);
     const sec = section(container, 'Color');
     chip(sec, 'Match').click();
     expect(curEl().color).toBeUndefined();
+    expect(curEl().boxTint).toBeUndefined();
     const inp = colorInput(sec);
     fireEvent.change(inp, { target: { value: '#abcdef' } });
     expect(curEl().color).toBe('#abcdef');
   });
 
-  it('offers exactly TEXT_BG_COLORS (reused), each writing element.color', () => {
+  it('offers exactly FILL_PALETTE (26), each writing element.color', () => {
     seed(COVER());
     const { container } = render(<PropertiesPanel />);
-    expect(paletteWrites(container, 'Color', 'color')).toEqual([
+    // First 5 swatches are the fill tints (write boxTint, tested below); skip them.
+    expect(paletteWrites(container, 'Color', 'color', 5)).toEqual([
       '#ffffff', '#f3f4f6', '#d1d5db', '#9ca3af', '#374151', '#000000',
       '#fee2e2', '#ffedd5', '#fef9c3', '#fff3b0', '#dcfce7', '#ccfbf1',
       '#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#7dd3fc',
       '#93c5fd', '#a5b4fc', '#c4b5fd', '#f0abfc', '#f9a8d4',
       '#b91c1c', '#15803d', '#1d4ed8', '#6d28d9',
     ]);
+  });
+
+  it('a fill tint sets boxTint + clears color (new affordance)', () => {
+    seed({ ...COVER(), color: '#123456' } as SlideElement);
+    const { container } = render(<PropertiesPanel />);
+    const accent = [...section(container, 'Color').querySelectorAll('button.prop-color-swatch')]
+      .find((x) => x.getAttribute('title')?.startsWith('Theme accent')) as HTMLButtonElement;
+    accent.click();
+    expect(curEl().boxTint).toBe('accent');
+    expect(curEl().color).toBeUndefined();
   });
 });
