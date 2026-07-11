@@ -357,6 +357,15 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
   eigendeck-cli /tmp/slidedel.eigendeck import json e2e/fixtures/slide-delete-deck.json
   PROBE=e2e/present-cover-probe.mjs E2E_DECK=/tmp/slidedel.eigendeck bash e2e/run-probe.sh   # -> PRESENTCOVER_PASS
   ```
+- **theme-persist-probe.mjs** — switching the DECK theme must COMMIT to the saved
+  `.eigendeck`. The flush wrote `title`+`config` but not the `theme` row, and the
+  change-detector ignored deck-theme changes, so a `setTheme()` was lost on reopen.
+  Drives `setTheme('dark')` + `save()` via the seam, then inspects the saved file's
+  `presentation.theme` row (white → dark). Run:
+  ```bash
+  eigendeck-cli /tmp/themesave.eigendeck import json e2e/fixtures/slide-delete-deck.json
+  PROBE=e2e/theme-persist-probe.mjs E2E_DECK=/tmp/themesave.eigendeck bash e2e/run-probe.sh   # -> THEMESAVE_PASS
+  ```
 - **overflow-hunt.mjs** — audit (not pass/fail): walks a deck and reports text
   elements whose content overflows its box (surfaced the #95 cut-off risk).
 - **deck-demos-render-probe.mjs** — opens a deck and asserts every demo /

@@ -1162,6 +1162,7 @@ export async function flushToSqlite(): Promise<void> {
     // Incremental: only write dirty items
     if (dirtyPresentation) {
       await invoke('db_update_presentation', { key: 'title', value: state.presentation.title });
+      await invoke('db_update_presentation', { key: 'theme', value: state.presentation.theme });
       await invoke('db_update_presentation', { key: 'config', value: JSON.stringify(state.presentation.config) });
       dirtyPresentation = false;
     }
@@ -1483,8 +1484,10 @@ usePresentationStore.subscribe((state) => {
   const prev = prevPresentation;
   prevPresentation = curr;
 
-  // Detect presentation metadata changes
-  if (prev.title !== curr.title || JSON.stringify(prev.config) !== JSON.stringify(curr.config)) {
+  // Detect presentation metadata changes (title, DECK theme, config). The deck
+  // theme is its own `presentation` row — without this diff a setTheme() never
+  // marked the presentation dirty, so the theme change was lost on reopen.
+  if (prev.title !== curr.title || prev.theme !== curr.theme || JSON.stringify(prev.config) !== JSON.stringify(curr.config)) {
     markPresentationDirty();
   }
 
