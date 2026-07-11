@@ -78,7 +78,7 @@ my-presentation/
 - `defaultMonoFont`: optional default monospace font package id, used by notebook code cells. Falls back to `"source-code"` (Source Code Pro, bundled). Notebook prose cells use the body font; only code cells / outputs use this.
 - `textSizes`: optional partial map overriding the deck's named type scale. Keys: `"footnote"` (default 24), `"note"` (32), `"body"` (48), `"title"` (72), `"hype"` (96). Values in slide-pixels. Absent keys fall back to the defaults. Used by every element that picks a size by name (notebook `fontSizeName`, and — as text presets are retrofitted — text element sizes).
 - `autoReloadAssets`: optional per-presentation override for the file-watching auto-reload behavior. `"on"` or `"off"` overrides the global preference; absent means follow the global. Per-asset overrides in `assets.auto_reload` still win.
-- `customPalette`: optional array of `#rrggbb` hex strings — a per-presentation color palette (e.g. brand colors) shown as an extra swatch row in the text-color toolbar. Edited in the Deck inspector ("Color Palette"). Purely an editing affordance; chosen colors are written inline into element HTML like any other text color.
+- `customPalette`: optional array of `#rrggbb` hex strings — a per-presentation color palette (e.g. brand colors) shown as a leading swatch row on **every** color control (the shared `<ColorControl>`: the inline text toolbar plus the inspector text-color / background / arrow / cover pickers). Edited in the Deck inspector ("Color Palette"). Purely an editing affordance; a chosen color is written to the same field as any other swatch (inline HTML for the toolbar, `color`/`backgroundColor` for the inspector).
 - `deckToken`: **app-managed — do NOT author or copy this.** A random deck-identity token the app stamps when it *creates* a deck (File → New / scratch); it keys the per-machine asset-security trust ledger (`docs/ASSETS-SECURITY.md`). Setting or copying it in JSON does not grant trust (trust lives in the app-side ledger, not the deck), and inventing one only muddies identity. Leave it absent; the app fills it in.
 
 ## Slide Structure
@@ -147,7 +147,7 @@ Defaults sit on the **30px** alignment grid with a 60px (2-cell) outer margin.
 - `fontSizeName`: one of `"footnote"`, `"note"`, `"body"` — picks a named size from the deck's type scale, overriding the preset's default size. `"title"` and `"hype"` are intentionally excluded; the numeric `fontSize` covers those cases.
 - `fontSize`: number (in slide units, 1920×1080 coordinate space). Beats `fontSizeName` when both set.
 - `fontFamily`: string (e.g., `"'PT Sans Narrow', sans-serif"`)
-- `color`: string (CSS color, e.g., `"#dc2626"`)
+- `color`: string (CSS color, e.g., `"#dc2626"`) — or the special **`"accent"`** token (#132), a **live theme-relative** foreground: it resolves to the slide theme's accent at render and re-adapts if the theme changes (unlike a baked hex). Also valid on `arrow` `color`. Absent = the preset's theme default.
 - `verticalAlign`: `"top"` | `"middle"` | `"bottom"` — vertical text alignment within the box. Title and footnote default to `"bottom"`.
 - `backgroundColor`: string (CSS color) — fill behind the text box (e.g., a caption panel over a busy background). Absent = transparent.
 - `backgroundOpacity`: number 0–1 (default 1) — opacity applied to `backgroundColor` (combined into rgba at render, so the text itself isn't faded).
@@ -217,7 +217,8 @@ Defaults sit on the **30px** alignment grid with a 60px (2-cell) outer margin.
 
 A plain rectangle used to cover/hide other elements. Shows as a dashed outline in the editor, solid in presenter/export.
 
-- `color`: optional CSS color (default white)
+- `color`: optional CSS color. Absent = **matches the slide background** (an invisible reveal mask).
+- `boxTint`: string — a **theme-relative** fill (#132), same tokens as text `boxTint` (`"accent"` or a hex base, resolved as a wash against the slide theme). Takes precedence over `color`, so a colored mask stays on-theme across white/dark/colored themes.
 
 ### Arrow Element
 
