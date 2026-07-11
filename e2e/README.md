@@ -296,6 +296,20 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
   PROBE=e2e/card-render-probe.mjs E2E_DECK=/tmp/card.eigendeck \
     PROBE_OUT=gitignore/card-e2e bash e2e/run-probe.sh   # -> CARD_PASS
   ```
+- **color-token-probe.mjs** — live theme-relative color token (#132 follow-up): a
+  foreground `color:'accent'` (text + arrow) and a cover `boxTint:'accent'` render as
+  the slide theme's accent/wash in the REAL app AND **re-adapt when the theme changes
+  at runtime** (`e2e/fixtures/color-token-deck.json`). Presents the slide, asserts
+  text color / arrow stroke / cover fill follow the white accent, switches the slide
+  to `dark` via the store seam, and asserts all three re-adapt to the dark accent
+  (the live-token property a unit test can't prove); then the real `exportHtml()`
+  carries the now-dark accent. Screenshots each theme. Static resolution is pinned by
+  `src/lib/colorTokenRenderPaths.test.tsx`. Run:
+  ```bash
+  /tmp/el-target/debug/eigendeck-cli /tmp/token.eigendeck import json e2e/fixtures/color-token-deck.json
+  PROBE=e2e/color-token-probe.mjs E2E_DECK=/tmp/token.eigendeck \
+    PROBE_OUT=gitignore/color-token-e2e bash e2e/run-probe.sh   # -> TOKEN_PASS
+  ```
 - **overflow-hunt.mjs** — audit (not pass/fail): walks a deck and reports text
   elements whose content overflows its box (surfaced the #95 cut-off risk).
 - **deck-demos-render-probe.mjs** — opens a deck and asserts every demo /

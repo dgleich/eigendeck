@@ -1,0 +1,17 @@
+{
+  "title": "Color token smoke",
+  "theme": "white",
+  "slides": [
+    {
+      "id": "s1",
+      "layout": "default",
+      "notes": "",
+      "elements": [
+        { "id": "txt", "type": "text", "preset": "body", "html": "Accent text", "color": "accent", "position": { "x": 200, "y": 200, "width": 700, "height": 150 } },
+        { "id": "arr", "type": "arrow", "x1": 200, "y1": 520, "x2": 720, "y2": 540, "color": "accent", "strokeWidth": 8, "headSize": 24, "heads": "end", "position": { "x": 0, "y": 0, "width": 0, "height": 0 } },
+        { "id": "cov", "type": "cover", "boxTint": "accent", "position": { "x": 950, "y": 200, "width": 520, "height": 320 } }
+      ]
+    }
+  ],
+  "config": { "width": 1920, "height": 1080, "defaultTitleFont": "ptsans", "defaultBodyFont": "ptsans" }
+}
