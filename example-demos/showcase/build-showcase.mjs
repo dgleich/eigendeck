@@ -217,7 +217,10 @@ slides[1].elements.push(
 const deck = {
   title: 'Eigendeck — Showcase',
   theme: 'white',
-  config: { width: 1920, height: 1080, author: 'David F. Gleich', venue: 'Eigendeck Showcase', showSlideNumber: true, defaultMonoFont: 'source-code' },
+  // Store the deck's fonts explicitly (don't rely on the app default, which changed
+  // from PT Sans → Lato): the showcase is designed around PT Sans. `import json`
+  // writes config verbatim, so this is what pins the deck's look.
+  config: { width: 1920, height: 1080, author: 'David F. Gleich', venue: 'Eigendeck Showcase', showSlideNumber: true, defaultTitleFont: 'ptsans', defaultBodyFont: 'ptsans', defaultMonoFont: 'source-code' },
   slides,
   assets,
 };
