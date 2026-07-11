@@ -5,10 +5,11 @@
 # Flags (order-independent, but must come before any --- app argv):
 #   --debug    enable Debug menu (sets EIGENDECK_DEBUG=1)
 #   --webview-toolbar
-#              build WITHOUT the native NSToolbar (--no-default-features drops
-#              the default `mac-toolbar` feature), so the cross-platform HTML
-#              top toolbar renders inside the webview instead. Use this to see /
-#              work on the web-view toolbar on macOS.
+#              suppress the native NSToolbar at runtime (sets
+#              EIGENDECK_WEBVIEW_TOOLBAR=1) so the cross-platform HTML top toolbar
+#              renders inside the webview instead. Use this to see / work on the
+#              web-view toolbar on macOS. (Runtime, not a rebuild — the
+#              mac-toolbar feature stays compiled in.)
 #   --release  build Rust in release profile (--release passed to cargo
 #              through tauri dev). Use this for perf testing: dev profile
 #              leaves the image crate's PNG encode + Triangle resize
@@ -33,7 +34,6 @@ cd "$(dirname "$0")/.."   # tools/ -> repo root
 
 release_mode=0
 toolbar=0
-webview_toolbar=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --debug)
@@ -51,9 +51,9 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     --webview-toolbar)
-      # Drop the default mac-toolbar feature → no native NSToolbar → the HTML
-      # web-view toolbar renders instead.
-      webview_toolbar=1
+      # Suppress the native NSToolbar at runtime → the HTML web-view toolbar
+      # renders instead (native_toolbar_active() returns false; install skipped).
+      export EIGENDECK_WEBVIEW_TOOLBAR=1
       shift
       ;;
     --)
@@ -74,15 +74,8 @@ tauri_args=()
 if [ "$release_mode" = "1" ]; then
   tauri_args+=(--release)
 fi
-if [ "$webview_toolbar" = "1" ]; then
-  # tauri-cli forwards --no-default-features to cargo → drops `mac-toolbar`,
-  # so native_toolbar_active is false and the HTML <Toolbar/> renders.
-  tauri_args+=(--no-default-features)
-  if [ "$toolbar" = "1" ]; then
-    echo "note: --webview-toolbar overrides --toolbar (building WITHOUT the native NSToolbar)" >&2
-  fi
-elif [ "$toolbar" = "1" ]; then
-  # tauri-cli forwards --features to cargo.
+if [ "$toolbar" = "1" ]; then
+  # tauri-cli forwards --features to cargo. (Redundant: mac-toolbar is default.)
   tauri_args+=(--features mac-toolbar)
 fi
 

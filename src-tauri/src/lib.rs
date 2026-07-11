@@ -350,11 +350,20 @@ fn set_toolbar_fields(window: tauri::WebviewWindow, title: String, author: Strin
     Ok(())
 }
 
-/// Whether the native macOS NSToolbar is active (macOS + mac-toolbar feature).
-/// The frontend hides its duplicated HTML toolbar row when true.
+/// Runtime override: `EIGENDECK_WEBVIEW_TOOLBAR=1` suppresses the native NSToolbar
+/// so the cross-platform HTML toolbar renders instead — for seeing/working on the
+/// web-view toolbar on macOS (`mac-build.sh --webview-toolbar`). The mac-toolbar
+/// feature stays compiled in; this only skips install() and reports it inactive.
+fn webview_toolbar_forced() -> bool {
+    std::env::var_os("EIGENDECK_WEBVIEW_TOOLBAR").is_some()
+}
+
+/// Whether the native macOS NSToolbar is active (macOS + mac-toolbar feature, and
+/// not runtime-suppressed). The frontend hides its duplicated HTML toolbar row
+/// when true.
 #[tauri::command]
 fn native_toolbar_active() -> bool {
-    cfg!(all(target_os = "macos", feature = "mac-toolbar"))
+    cfg!(all(target_os = "macos", feature = "mac-toolbar")) && !webview_toolbar_forced()
 }
 
 /// Toggle the native toolbar's compact view (labels off + smaller icons).
@@ -997,9 +1006,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
-            // Native macOS NSToolbar (spike, behind the mac-toolbar feature).
+            // Native macOS NSToolbar (behind the mac-toolbar feature). Skipped
+            // when EIGENDECK_WEBVIEW_TOOLBAR=1 forces the HTML toolbar instead.
             #[cfg(all(target_os = "macos", feature = "mac-toolbar"))]
-            mac_toolbar::install(app.handle());
+            if !webview_toolbar_forced() {
+                mac_toolbar::install(app.handle());
+            }
 
             // Check for --export CLI mode
             let args: Vec<String> = std::env::args().collect();
