@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { fontForNotebookProse, fontForNotebookCode } from './notebookFonts';
 
 describe('fontForNotebookProse', () => {
-  it('walks slide → config → ptsans default', () => {
-    expect(fontForNotebookProse(null, null).id).toBe('ptsans');
+  it('walks slide → config → default (lato)', () => {
+    expect(fontForNotebookProse(null, null).id).toBe('lato');
     expect(fontForNotebookProse(null, { defaultBodyFont: 'libertinus' }).id).toBe('libertinus');
     expect(fontForNotebookProse({ bodyFont: 'lm-sans' }, { defaultBodyFont: 'libertinus' }).id).toBe('lm-sans');
   });

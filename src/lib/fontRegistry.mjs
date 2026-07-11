@@ -159,7 +159,9 @@ export const FONT_PACKAGE_MAP = Object.fromEntries(
   FONT_PACKAGES.map((p) => [p.id, p])
 );
 
-export const DEFAULT_FONT_ID = 'ptsans';
+// Default text font for title + body (and the fallback everywhere): Lato, which
+// ships a matching MathJax pack (mathjax-lato) so math pairs cleanly with body.
+export const DEFAULT_FONT_ID = 'lato';
 
 /**
  * Separate registry for code-cell-only fonts. The Default Mono Font
@@ -401,10 +403,10 @@ export function allFontFacesCSS() {
 
 /**
  * List all font package ids actually used in a presentation
- * (presentation defaults + per-slide overrides + 'ptsans' fallback).
+ * (presentation defaults + per-slide overrides + the DEFAULT_FONT_ID fallback).
  */
 export function collectUsedFontIds(presentation) {
-  const ids = new Set(['ptsans']);
+  const ids = new Set([DEFAULT_FONT_ID]);
   const cfg = presentation.config || {};
   if (cfg.defaultTitleFont) ids.add(cfg.defaultTitleFont);
   if (cfg.defaultBodyFont) ids.add(cfg.defaultBodyFont);

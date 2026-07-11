@@ -69,8 +69,8 @@ describe('demoVarsCssForSlide — every built-in theme maps to its resolved colo
       expect(css).toContain(`--eigendeck-heading: ${def.colors.heading};`);
       expect(css).toContain(`--eigendeck-accent: ${def.colors.accent};`);
       expect(css).toContain(`--eigendeck-muted: ${def.colors.muted};`);
-      // default body font resolves to PT Sans
-      expect(css).toContain("--eigendeck-font: 'PT Sans';");
+      // default body font resolves to Lato (DEFAULT_FONT_ID)
+      expect(css).toContain("--eigendeck-font: 'Lato';");
     });
   }
 });

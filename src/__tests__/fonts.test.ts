@@ -53,9 +53,9 @@ describe('fontForPreset resolution priority', () => {
     expect(f.id).toBe('libertinus');
   });
 
-  it('title preset falls back to ptsans when nothing set', () => {
+  it('title preset falls back to the default (lato) when nothing set', () => {
     const f = fontForPreset('title', {}, {});
-    expect(f.id).toBe('ptsans');
+    expect(f.id).toBe('lato');
   });
 
   it('body preset uses bodyFont when set', () => {
@@ -110,31 +110,31 @@ describe('fontFamilyForPreset', () => {
 });
 
 describe('backward compatibility', () => {
-  it('resolves to ptsans for legacy presentations with no font fields', () => {
+  it('resolves to the default (lato) for legacy presentations with no font fields', () => {
     // Legacy slide: no titleFont/bodyFont/hypeFont
     const legacySlide = { id: 'x', elements: [], notes: '' };
     const legacyConfig = { transition: 'slide', backgroundTransition: 'fade', width: 1920, height: 1080 };
-    expect(fontForPreset('title', legacySlide, legacyConfig).id).toBe('ptsans');
-    expect(fontForPreset('body', legacySlide, legacyConfig).id).toBe('ptsans');
+    expect(fontForPreset('title', legacySlide, legacyConfig).id).toBe('lato');
+    expect(fontForPreset('body', legacySlide, legacyConfig).id).toBe('lato');
     // hype (sticky note) defaults to Shantell when no font is set
     expect(fontForPreset('hype', legacySlide, legacyConfig).id).toBe('shantell');
-    expect(fontForPreset('footnote', legacySlide, legacyConfig).id).toBe('ptsans');
+    expect(fontForPreset('footnote', legacySlide, legacyConfig).id).toBe('lato');
   });
 
   it('handles missing slide fields gracefully', () => {
-    expect(fontForPreset('title', {}, {}).id).toBe('ptsans');
+    expect(fontForPreset('title', {}, {}).id).toBe('lato');
   });
 
-  it('handles unknown font ids by falling back to ptsans', () => {
+  it('handles unknown font ids by falling back to the default (lato)', () => {
     const slide = { titleFont: 'nonexistent-font' };
-    expect(fontForPreset('title', slide, {}).id).toBe('ptsans');
+    expect(fontForPreset('title', slide, {}).id).toBe('lato');
   });
 });
 
 describe('collectUsedFontIds', () => {
-  it('always includes ptsans even if not explicitly set', () => {
+  it('always includes the default font (lato) even if not explicitly set', () => {
     const ids = collectUsedFontIds({ slides: [] });
-    expect(ids).toContain('ptsans');
+    expect(ids).toContain('lato');
   });
 
   it('includes presentation defaults', () => {
@@ -172,7 +172,7 @@ describe('collectUsedFontIds', () => {
       slides: [{ titleFont: 'definitely-not-a-real-font' }],
     });
     expect(ids).not.toContain('definitely-not-a-real-font');
-    expect(ids).toContain('ptsans');
+    expect(ids).toContain('lato');
   });
 });
 
