@@ -169,6 +169,33 @@ describe('[characterize] Text Background (backgroundColor xor boxTint)', () => {
   });
 });
 
+// A new deck palette color must appear in EVERY inspector color control (they all
+// share <ColorControl>, but this proves each site actually passes customPalette — a
+// site that forgot to would silently omit brand colors). The inline toolbar (5th
+// location) is covered in TextFormatToolbar.test.tsx.
+describe('[coverage] deck customPalette shows in every inspector color control', () => {
+  const hasSwatch = (container: HTMLElement, label: string) =>
+    [...section(container, label).querySelectorAll('button.prop-color-swatch')]
+      .some((b) => b.getAttribute('title') === 'Deck palette #ff00ff');
+
+  it('text element: Text Color + Background', () => {
+    seed(TEXT(), { customPalette: ['#ff00ff'] });
+    const { container } = render(<PropertiesPanel />);
+    expect(hasSwatch(container, 'Text Color')).toBe(true);
+    expect(hasSwatch(container, 'Background')).toBe(true);
+  });
+  it('arrow element: Color', () => {
+    seed(ARROW(), { customPalette: ['#ff00ff'] });
+    const { container } = render(<PropertiesPanel />);
+    expect(hasSwatch(container, 'Color')).toBe(true);
+  });
+  it('cover element: Color', () => {
+    seed(COVER(), { customPalette: ['#ff00ff'] });
+    const { container } = render(<PropertiesPanel />);
+    expect(hasSwatch(container, 'Color')).toBe(true);
+  });
+});
+
 describe('[characterize] Arrow Color (element.color)', () => {
   it('offers exactly ARROW_PALETTE (8), each writing element.color', () => {
     seed(ARROW());
