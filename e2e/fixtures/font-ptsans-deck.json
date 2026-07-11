@@ -1,0 +1,8 @@
+{
+  "title": "Font ptsans",
+  "theme": "white",
+  "slides": [{ "id": "s1", "layout": "default", "notes": "", "elements": [
+    { "id": "t", "type": "text", "preset": "body", "html": "Body text", "position": { "x": 200, "y": 200, "width": 700, "height": 150 } }
+  ] }],
+  "config": { "width": 1920, "height": 1080, "defaultTitleFont": "ptsans", "defaultBodyFont": "ptsans" }
+}

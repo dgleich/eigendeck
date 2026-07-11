@@ -310,6 +310,16 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
   PROBE=e2e/color-token-probe.mjs E2E_DECK=/tmp/token.eigendeck \
     PROBE_OUT=gitignore/color-token-e2e bash e2e/run-probe.sh   # -> TOKEN_PASS
   ```
+- **font-default-probe.mjs** — font-resolution priority in the real app (deck-stored
+  font > global default). Lato is the global default; example decks store PT Sans
+  explicitly. Opens a deck and asserts the body text's computed `font-family` includes
+  `E2E_EXPECT`. Run against both fixtures:
+  ```bash
+  eigendeck-cli /tmp/font-ptsans.eigendeck import json e2e/fixtures/font-ptsans-deck.json
+  PROBE=e2e/font-default-probe.mjs E2E_DECK=/tmp/font-ptsans.eigendeck E2E_EXPECT="PT Sans" bash e2e/run-probe.sh
+  eigendeck-cli /tmp/font-lato.eigendeck import json e2e/fixtures/font-lato-deck.json
+  PROBE=e2e/font-default-probe.mjs E2E_DECK=/tmp/font-lato.eigendeck E2E_EXPECT="Lato" bash e2e/run-probe.sh
+  ```
 - **overflow-hunt.mjs** — audit (not pass/fail): walks a deck and reports text
   elements whose content overflows its box (surfaced the #95 cut-off risk).
 - **deck-demos-render-probe.mjs** — opens a deck and asserts every demo /
