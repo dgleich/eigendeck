@@ -366,6 +366,15 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
   eigendeck-cli /tmp/themesave.eigendeck import json e2e/fixtures/slide-delete-deck.json
   PROBE=e2e/theme-persist-probe.mjs E2E_DECK=/tmp/themesave.eigendeck bash e2e/run-probe.sh   # -> THEMESAVE_PASS
   ```
+- **hud-remeasure-probe.mjs** — present mode fully unmounts the editor; on Escape the
+  floating insert HUD remounts and its `--insert-hud-h` measurement must re-run, or the
+  canvas keeps the fallback padding and the +Title/+Body chips overlap the slide (worst
+  with the inspector open → chips wrap to extra rows). Asserts `--insert-hud-h` still
+  matches the real HUD height after an inspector-on present→escape cycle. Run:
+  ```bash
+  eigendeck-cli /tmp/hud.eigendeck import json e2e/fixtures/slide-delete-deck.json
+  PROBE=e2e/hud-remeasure-probe.mjs E2E_DECK=/tmp/hud.eigendeck bash e2e/run-probe.sh   # -> HUD_PASS
+  ```
 - **overflow-hunt.mjs** — audit (not pass/fail): walks a deck and reports text
   elements whose content overflows its box (surfaced the #95 cut-off risk).
 - **deck-demos-render-probe.mjs** — opens a deck and asserts every demo /

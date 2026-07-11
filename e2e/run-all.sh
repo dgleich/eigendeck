@@ -159,6 +159,7 @@ MANIFEST=(
   "slide-delete-probe.mjs|slidedel.eigendeck||import_json \$ROOT/e2e/fixtures/slide-delete-deck.json"
   "present-cover-probe.mjs|slidedel.eigendeck||import_json \$ROOT/e2e/fixtures/slide-delete-deck.json"
   "theme-persist-probe.mjs|themesave.eigendeck||import_json \$ROOT/e2e/fixtures/slide-delete-deck.json"
+  "hud-remeasure-probe.mjs|hud.eigendeck||import_json \$ROOT/e2e/fixtures/slide-delete-deck.json"
 )
 
 pass=0; fail=0; failed=()

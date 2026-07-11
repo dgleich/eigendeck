@@ -593,12 +593,15 @@ function App() {
     const ro = new ResizeObserver(apply);
     ro.observe(hud);
     return () => ro.disconnect();
-    // Depend on projectPath: the editor-area (and the HUD) only mount once a deck
-    // is open, AFTER App first mounts (welcome/launch gate). With [] deps this
-    // ran while both refs were still null, so --insert-hud-h was never set and
-    // the canvas kept the 38px fallback — the HUD's wrapped rows then overlapped
-    // the slide. Re-running when the editor mounts wires up the observer.
-  }, [projectPath]);
+    // Depend on projectPath AND isPresenting: the editor-area (and the HUD) only
+    // mount once a deck is open (welcome/launch gate) — with [] deps this ran while
+    // both refs were still null, so --insert-hud-h was never set and the canvas kept
+    // the fallback padding, overlapping the HUD's wrapped rows. Present mode fully
+    // UNMOUNTS the editor (App returns <PresentMode/> early), so on Escape the HUD
+    // remounts fresh; without isPresenting here the effect wouldn't re-run, the new
+    // HUD would go unmeasured, and the fallback padding would overlap it again
+    // (worst with the inspector open, which wraps the chips to extra rows).
+  }, [projectPath, isPresenting]);
   const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[]; fromSlideIndex: number; fromSlideId: string } | { type: 'slide'; data: any } | null>(null);
   const [linkOverlayElementId, setLinkOverlayElementId] = useState<string | null>(null);
   const [promoteCandidates, setPromoteCandidates] = useState<{ elementId: string; slideNo: number; summary: string }[] | null>(null);
