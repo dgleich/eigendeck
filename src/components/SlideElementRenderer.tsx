@@ -22,7 +22,7 @@ import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import type { ThemeColors } from '../lib/themes';
 
-import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundResolved, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundResolved, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss, resolveColor } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset, resolveMonoFontPackage } from '../lib/fonts';
 import { buildTextElementSvgMarkup } from './TextElementSvg';
 import { TextFormatToolbar } from './TextFormatToolbar';
@@ -162,7 +162,7 @@ export function SlideElementRenderer({
             // editor even when the fill matches the background. The editor
             // specializes the WRAPPER (DraggableBox); the fill value comes from
             // the shared cover descriptor.
-            background: describeCover(element, slideBackground || '#ffffff').background,
+            background: describeCover(element, slideBackground || '#ffffff', theme).background,
             pointerEvents: 'none',
           }} />
         </DraggableBox>
@@ -171,7 +171,7 @@ export function SlideElementRenderer({
     case 'arrow':
       return (
         <ArrowRenderer element={element} zIndex={zIndex} scale={scale}
-          isSelected={isSelected}
+          isSelected={isSelected} theme={theme}
           onUpdate={onUpdate} onDelete={onDelete} onSelect={onSelect} />
       );
   }
@@ -496,7 +496,7 @@ function TextContent({
   const fontSize = effectiveFontSize(element, presentation.config);
   const fontWeight = presetStyle.fontWeight;
   const fontStyle = presetStyle.fontStyle;
-  const color = element.color || themeColor;
+  const color = resolveColor(element.color, themeColors, themeColor);
   // Math bundle = THIS preset's font bundle. Title elements use title math,
   // hype elements use hype math, others use body math. Each iframe pool stays
   // loaded so switching slides is fast.
@@ -1103,15 +1103,15 @@ export function DraggableBox({
 // Arrow renderer
 // ============================================
 function ArrowRenderer({
-  element: a, zIndex, scale, isSelected, onUpdate, onDelete, onSelect,
+  element: a, zIndex, scale, isSelected, theme, onUpdate, onDelete, onSelect,
 }: {
   element: Extract<SlideElement, { type: 'arrow' }>; zIndex: number; scale: number;
-  isSelected: boolean;
+  isSelected: boolean; theme?: ThemeColors;
   onUpdate: (changes: Partial<SlideElement>) => void;
   onDelete: () => void; onSelect: (e?: { shiftKey: boolean }) => void;
 }) {
   const { x1, y1, x2, y2 } = a;
-  const { color, strokeWidth, headSize, geo } = describeArrow(a);
+  const { color, strokeWidth, headSize, geo } = describeArrow(a, theme);
   const dragStart = useRef({ mx: 0, my: 0, ox1: 0, oy1: 0, ox2: 0, oy2: 0 });
 
   // Snap point to nearest 15° angle relative to an anchor

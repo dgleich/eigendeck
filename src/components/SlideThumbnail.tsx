@@ -95,7 +95,7 @@ function ThumbElement({ element: el, slide, presentation, imageTier }: {
     case 'image':
       return <ThumbImage element={el} imageTier={imageTier} />;
     case 'arrow': {
-      const a = describeArrow(el);
+      const a = describeArrow(el, resolveTheme(presentation.theme, slide.theme));
       return (
         <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
           <ArrowGlyph geo={a.geo} color={a.color} strokeWidth={a.strokeWidth} opacity={a.opacity} />
@@ -111,7 +111,8 @@ function ThumbElement({ element: el, slide, presentation, imageTier }: {
     case 'cover': {
       // Match the slide background (it's a reveal mask) — no border, so the
       // static render matches the live slide / speaker view. Explicit color wins.
-      const d = describeCover(el, resolveTheme(presentation.theme, slide.theme).background);
+      const tt = resolveTheme(presentation.theme, slide.theme);
+      const d = describeCover(el, tt.background, tt);
       return <CoverView box={d.box} background={d.background} />;
     }
     default:

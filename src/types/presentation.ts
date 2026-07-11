@@ -11,7 +11,7 @@ export { DEFAULT_TEXT_SIZES, resolveNamedSize, effectiveTextPresetSize, effectiv
 // Text inner-box layout (line-height + padding), shared with the static exports.
 export { textPresetBoxCss, textPaddingCss } from '../lib/textBox.mjs';
 // Text visual-style helpers (fill / effect / box-shadow), shared with the exports.
-export { textBackgroundCss, textBackgroundResolved, mixHex, TINT_STRENGTH, textEffectCss, textShadowCss, textBoxShadowCss } from '../lib/textStyle.mjs';
+export { textBackgroundCss, textBackgroundResolved, mixHex, TINT_STRENGTH, textEffectCss, textShadowCss, textBoxShadowCss, resolveColor } from '../lib/textStyle.mjs';
 // Per-preset style table (label/size/font/weight/style/color), shared with the exports.
 export { TEXT_PRESET_STYLES } from '../lib/textPresets.mjs';
 export type { TextPresetStyle } from '../lib/textPresets.mjs';
@@ -204,6 +204,10 @@ export interface DemoPieceElement extends BaseElement {
 export interface CoverElement extends BaseElement {
   type: 'cover';
   color?: string;  // default white
+  /** Themed tint fill (#132): 'accent' or a hex base, resolved as a wash relative
+   *  to the slide theme (describeCover) so a colored mask stays on-theme. Takes
+   *  precedence over `color`. */
+  boxTint?: string;
 }
 
 /**

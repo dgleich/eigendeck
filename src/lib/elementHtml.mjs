@@ -8,8 +8,8 @@ import { describeCover, describeArrow, imageVisuals } from './elementDescriptor.
 import { arrowSvgInner } from './arrowGeometry.mjs';
 
 /** cover — a reveal mask filled with the slide background (explicit color wins). */
-export function coverHtml(el, resolvedSlideBg, len) {
-  const d = describeCover(el, resolvedSlideBg);
+export function coverHtml(el, resolvedSlideBg, len, theme) {
+  const d = describeCover(el, resolvedSlideBg, theme);
   const b = d.box;
   return `<div style="position:absolute;left:${len(b.x)};top:${len(b.y)};width:${len(b.width)};height:${len(b.height)};background:${d.background};"></div>`;
 }
@@ -19,7 +19,7 @@ export function coverHtml(el, resolvedSlideBg, len) {
  *  coordinates map into the inch container; px targets (HTML export) omit it.
  *  pointer-events:none so the overlay never blocks the elements beneath it. */
 export function arrowSvgHtml(el, opts = {}) {
-  const a = describeArrow(el);
+  const a = describeArrow(el, opts.theme);
   const vb = opts.viewBox ? `viewBox="${opts.viewBox}" ` : '';
   return `<svg ${vb}style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">${arrowSvgInner(a.geo, a.color, a.strokeWidth, a.opacity)}</svg>`;
 }

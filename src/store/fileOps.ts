@@ -38,7 +38,7 @@ import {
 import {
   renderMathInHtml as renderMathPerBundle,
 } from '../lib/mathjaxRenderer';
-import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, resolveColor } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { buildTextElementSvgMarkup } from '../components/TextElementSvg';
 import { demoVarsCssForSlide } from '../lib/demoThemeInject';
@@ -416,7 +416,7 @@ export function makeTextElementRenderer(presentation: Presentation) {
     const theme = resolveTheme(presentation.theme, slide.theme);
     const presetFontPkg = fontForPreset(el.preset, slide, presentation.config);
     const fontFamily = el.fontFamily || fontFamilyForPreset(presetFontPkg, el.preset);
-    const color = el.color || themeColorForPreset(theme, el.preset);
+    const color = resolveColor(el.color, theme, themeColorForPreset(theme, el.preset));
     const valign = el.verticalAlign || (el.preset === 'title' || el.preset === 'footnote' ? 'bottom' : undefined);
     const renderedHtml = await renderMathPerBundle(
       el.html || '', presetFontPkg.id, presentation.config.mathPreamble || ''

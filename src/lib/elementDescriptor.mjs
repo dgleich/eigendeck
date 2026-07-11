@@ -17,10 +17,17 @@
 // Migration: types are moved onto this path incrementally (cover, image, arrow).
 
 import { arrowGeometry } from './arrowGeometry.mjs';
+import { resolveColor, textBackgroundResolved } from './textStyle.mjs';
 
-/** cover — a reveal mask filled with the slide background; an explicit color wins. */
-export function describeCover(el, resolvedSlideBg) {
-  return { kind: 'cover', box: el.position, background: el.color || resolvedSlideBg };
+/** cover — a reveal mask filled with the slide background; an explicit color wins.
+ *  A themed tint (`boxTint`, #132) resolves against `theme` (a wash relative to the
+ *  slide background) so a colored mask stays on-theme; when no theme is supplied
+ *  (e.g. the link overlay) a tinted cover falls back to the plain slide background. */
+export function describeCover(el, resolvedSlideBg, theme) {
+  const background = el.boxTint
+    ? (textBackgroundResolved(el, theme) || resolvedSlideBg)
+    : (el.color || resolvedSlideBg);
+  return { kind: 'cover', box: el.position, background };
 }
 
 /**
@@ -49,8 +56,10 @@ export function imageVisuals(el) {
  * once here; each target renders geo/color/strokeWidth/opacity its own way (React
  * ArrowGlyph, the SVG-string arrowSvgInner, or LinkOverlay's hit-target).
  */
-export function describeArrow(el) {
-  const { x1, y1, x2, y2, color = '#2563eb', strokeWidth = 4, headSize = 16, heads, opacity } = el;
+export function describeArrow(el, theme) {
+  const { x1, y1, x2, y2, strokeWidth = 4, headSize = 16, heads, opacity } = el;
+  // `'accent'` follows the slide theme (resolveColor); default stays #2563eb.
+  const color = resolveColor(el.color, theme, '#2563eb');
   return {
     kind: 'arrow', x1, y1, x2, y2, color, strokeWidth, headSize, heads, opacity,
     geo: arrowGeometry(x1, y1, x2, y2, headSize, heads),

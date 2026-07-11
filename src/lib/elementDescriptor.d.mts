@@ -7,8 +7,9 @@ export interface CoverDescriptor {
 }
 
 export function describeCover(
-  el: { position: ElementBox; color?: string },
+  el: { position: ElementBox; color?: string; boxTint?: string },
   resolvedSlideBg: string,
+  theme?: { background?: string; accent?: string },
 ): CoverDescriptor;
 
 export interface ImageVisuals {
@@ -39,4 +40,5 @@ export function describeArrow(
     color?: string; strokeWidth?: number; headSize?: number;
     heads?: 'start' | 'end' | 'both' | 'none'; opacity?: number;
   },
+  theme?: { accent?: string },
 ): ArrowDescriptor;

@@ -14,6 +14,7 @@
 
 import { resolveTheme, themeColorForPreset } from './themes';
 import { coverHtml, arrowSvgHtml, imageHtml } from './elementHtml.mjs';
+import { resolveColor } from './textStyle.mjs';
 import { textElementHtml } from './textElementHtml.mjs';
 import { markAsEigendeck } from './clipboard';
 import { effectiveFontSize } from '../types/presentation';
@@ -57,7 +58,7 @@ export function buildPrintSlideHtml(
       // (inches for lengths via px2in, points for font-size via px2pt).
       const presetFontFamily = fontFamilyForPreset(fontForPreset(el.preset, slide, presentation.config), el.preset);
       inner += textElementHtml(el, {
-        color: el.color || themeColorForPreset(theme, el.preset),
+        color: resolveColor(el.color, theme, themeColorForPreset(theme, el.preset)),
         fontFamily: el.fontFamily || presetFontFamily,
         fontSize: effectiveFontSize(el, presentation.config),
         content: markAsEigendeck(mathHtmlByKey?.get(`${slide.id}:${el.id}`) ?? el.html ?? ''),
@@ -72,9 +73,9 @@ export function buildPrintSlideHtml(
       if (src) inner += imageHtml(src, el, px2in);
     } else if (el.type === 'arrow') {
       // viewBox maps the px arrow coords into the inch-scaled container.
-      inner += arrowSvgHtml(el, { viewBox: `0 0 ${W} ${H}` });
+      inner += arrowSvgHtml(el, { viewBox: `0 0 ${W} ${H}`, theme });
     } else if (el.type === 'cover') {
-      inner += coverHtml(el, theme.background, px2in);
+      inner += coverHtml(el, theme.background, px2in, theme);
     } else if (isLiveElement(el.type)) {
       // P0-2: notebook joins demo/demo-piece/video as a baked screenshot.
       const screenshot = demoScreenshots.get(`${slide.id}:${el.id}`);

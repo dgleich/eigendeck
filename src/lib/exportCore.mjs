@@ -9,7 +9,7 @@ export { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
 import { buildEmbedSrc, DEMO_SANDBOX } from './videoEmbedParse.mjs';
 import { themeColorsByName, themeColorForPreset } from './themeColors.mjs';
 import { effectiveFontSize } from './textSizes.mjs';
-import { textBackgroundResolved, textBoxShadowCss, applyCodeFont } from './textStyle.mjs';
+import { textBackgroundResolved, textBoxShadowCss, applyCodeFont, resolveColor } from './textStyle.mjs';
 import { TEXT_PRESET_STYLES } from './textPresets.mjs';
 import { textElementHtml } from './textElementHtml.mjs';
 
@@ -273,8 +273,8 @@ export async function buildExportHtml(opts) {
           // #104: resolve the THEME foreground per preset (not the hard-coded
           // preset color), so default-color text is visible on dark/black themes —
           // matching the editor and the app/GUI export. Explicit el.color wins.
-          const legacyColor = el.color
-            || themeColorForPreset(themeColorsByName(presentation.theme, slide && slide.theme), el.preset);
+          const legacyTheme = themeColorsByName(presentation.theme, slide && slide.theme);
+          const legacyColor = resolveColor(el.color, legacyTheme, themeColorForPreset(legacyTheme, el.preset));
           let textHtml = el.html || '';
           if (renderMath && /\$[^$]+\$|\$\$[\s\S]+?\$\$/.test(textHtml)) {
             const bundleId = resolveMathBundle ? resolveMathBundle(el.preset, slide) : undefined;
@@ -406,10 +406,10 @@ export async function buildExportHtml(opts) {
           break;
         }
         case 'cover':
-          inner += coverHtml(el, themeBackground(presentation, slide), (n) => `${n}px`);
+          inner += coverHtml(el, themeBackground(presentation, slide), (n) => `${n}px`, themeColorsByName(presentation.theme, slide && slide.theme));
           break;
         case 'arrow':
-          inner += arrowSvgHtml(el);
+          inner += arrowSvgHtml(el, { theme: themeColorsByName(presentation.theme, slide && slide.theme) });
           break;
       }
     }

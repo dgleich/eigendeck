@@ -11,7 +11,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import type { SlideElement, TextElement, Slide, PresentationConfig } from '../types/presentation';
-import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, resolveColor } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from './themes';
 import { fontForPreset, fontFamilyForPreset } from './fonts';
 import { renderMathInHtmlSync, containsMath } from './mathjaxRenderer';
@@ -107,7 +107,8 @@ export function textElementClipboardHtml(
   const pkg = fontForPreset(el.preset, slide, config);
   const fontFamily = el.fontFamily || fontFamilyForPreset(pkg, el.preset);
   const fontSize = effectiveFontSize(el, config);
-  const color = el.color || themeColorForPreset(resolveTheme(theme, slide.theme), el.preset);
+  const clipTheme = resolveTheme(theme, slide.theme);
+  const color = resolveColor(el.color, clipTheme, themeColorForPreset(clipTheme, el.preset));
   const rendered = containsMath(el.html)
     ? (renderMathInHtmlSync(el.html, pkg.id, config.mathPreamble) ?? el.html ?? '')
     : (el.html || '');

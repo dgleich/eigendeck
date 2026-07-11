@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mixHex, textBackgroundResolved, textBoxShadowCss, TINT_STRENGTH } from './textStyle.mjs';
+import { mixHex, textBackgroundResolved, textBoxShadowCss, TINT_STRENGTH, resolveColor } from './textStyle.mjs';
 
 describe('mixHex', () => {
   it('mixes two hex colors by t', () => {
@@ -37,6 +37,24 @@ describe('textBackgroundResolved (#132 boxTint)', () => {
   it('falls back to the fixed backgroundColor when no boxTint', () => {
     expect(textBackgroundResolved({ backgroundColor: '#abcdef' }, theme)).toBe('#abcdef');
     expect(textBackgroundResolved({}, theme)).toBeUndefined();
+  });
+});
+
+describe('resolveColor (#132 accent token)', () => {
+  const theme = { accent: '#2563eb' };
+  it('undefined color → the per-preset fallback', () => {
+    expect(resolveColor(undefined, theme, '#222222')).toBe('#222222');
+  });
+  it("'accent' → the theme accent (re-adapts per theme)", () => {
+    expect(resolveColor('accent', { accent: '#2563eb' }, '#222')).toBe('#2563eb');
+    expect(resolveColor('accent', { accent: '#60a5fa' }, '#222')).toBe('#60a5fa');
+  });
+  it("'accent' with no theme accent → fallback", () => {
+    expect(resolveColor('accent', {}, '#222222')).toBe('#222222');
+    expect(resolveColor('accent', null, '#222222')).toBe('#222222');
+  });
+  it('a literal color passes through untouched', () => {
+    expect(resolveColor('#ff0000', theme, '#222222')).toBe('#ff0000');
   });
 });
 

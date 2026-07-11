@@ -53,11 +53,12 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
       );
     case 'cover': {
       // Reveal mask filled with the slide background (explicit color wins).
-      const d = describeCover(el, resolveTheme(ctx.presentationTheme, ctx.slide.theme).background);
+      const t = resolveTheme(ctx.presentationTheme, ctx.slide.theme);
+      const d = describeCover(el, t.background, t);
       return <CoverView box={d.box} background={d.background} extraStyle={{ zIndex, ...style }} />;
     }
     case 'arrow': {
-      const a = describeArrow(el);
+      const a = describeArrow(el, resolveTheme(ctx.presentationTheme, ctx.slide.theme));
       return (
         <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex, ...style }}>
           <ArrowGlyph geo={a.geo} color={a.color} strokeWidth={a.strokeWidth} opacity={a.opacity} />

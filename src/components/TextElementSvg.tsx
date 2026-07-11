@@ -14,7 +14,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { TextElement, Slide, PresentationConfig } from '../types/presentation';
-import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundResolved, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundResolved, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss, resolveColor } from '../types/presentation';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import { applyCodeFont } from '../lib/textStyle.mjs';
 import { fontForPreset, fontFamilyForPreset, resolveMonoFontPackage } from '../lib/fonts';
@@ -147,7 +147,7 @@ export function TextElementSvg({
   const fontSize = effectiveFontSize(element, presentationConfig);
   const fontWeight = presetStyle.fontWeight;
   const fontStyle = presetStyle.fontStyle;
-  const color = element.color || themeColor;
+  const color = resolveColor(element.color, theme, themeColor);
   const mathBundleId = presetFontPkg.id;
 
   const valign = element.verticalAlign || (element.preset === 'title' || element.preset === 'footnote' ? 'bottom' : undefined);

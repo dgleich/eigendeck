@@ -67,6 +67,17 @@ export function textBackgroundResolved(el, theme) {
   return textBackgroundCss(el);
 }
 
+/** Resolve an element's foreground color, honoring the theme-relative `'accent'`
+ *  token (#132 follow-up): `undefined` → the caller's per-preset theme fallback;
+ *  `'accent'` → the slide theme's accent (so it re-adapts per theme, like a tint,
+ *  but as a solid foreground); any other value is a literal color. `theme` is the
+ *  resolved ThemeColors ({ accent, ... }); `fallback` is the preset/default color. */
+export function resolveColor(color, theme, fallback) {
+  if (!color) return fallback;
+  if (color === 'accent') return (theme && theme.accent) || fallback;
+  return color;
+}
+
 /** Text legibility effect (#73): drop shadow or high-contrast glow. */
 export function textEffectCss(effect, color) {
   if (effect === 'shadow') return '0 2px 4px rgba(0,0,0,0.45)';
