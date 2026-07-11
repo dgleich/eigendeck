@@ -321,8 +321,8 @@ export function PropertiesPanel() {
             </PropSection>
             <PropSection label="Security">
               <button
-                className="prop-input"
-                style={{ cursor: 'pointer', textAlign: 'left', width: '100%' }}
+                className="prop-zbtn"
+                style={{ textAlign: 'left', width: '100%', padding: '6px 10px' }}
                 title="Review which files on your computer this deck links to, and approve or block them"
                 onClick={() => void import('../lib/securityWindow').then((m) => m.openSecurityWindow())}>
                 Linked files &amp; security…
@@ -1053,16 +1053,8 @@ function FontSizeRow({ element, updateElement, config }: {
         const active = !isOverride && (element.fontSizeName ?? fallbackName) === name;
         return (
           <button key={name}
-            className="prop-zbtn"
-            style={{
-              padding: '4px 8px',
-              background: active ? '#dbeafe' : '#fff',
-              border: '1px solid ' + (active ? '#2563eb' : '#d1d5db'),
-              borderRadius: 3, cursor: 'pointer',
-              fontSize: 11,
-              color: active ? '#1e40af' : '#374151',
-              fontWeight: active ? 600 : 400,
-            }}
+            className={`prop-zbtn ${active ? 'active' : ''}`}
+            style={{ padding: '4px 8px', fontSize: 11 }}
             onClick={() => updateElement(element.id, {
               // For text elements, when the named button matches the
               // preset's own sizeName we strip BOTH fields so the
@@ -1329,24 +1321,14 @@ function PreambleField({
           onClick={insertGlobal}
           disabled={!globalPreamble}
           title={globalPreamble ? 'Prepend the global preamble to this one' : 'Global preamble is empty (set in Settings…)'}
-          style={{
-            padding: '3px 8px', fontSize: 11,
-            background: '#f3f4f6', color: globalPreamble ? '#222' : '#999',
-            border: '1px solid #ddd', borderRadius: 3,
-            cursor: globalPreamble ? 'pointer' : 'not-allowed',
-          }}>
+          className="prop-zbtn" style={{ fontSize: 11 }}>
           Insert global
         </button>
         <button
           onClick={replaceWithGlobal}
           disabled={!globalPreamble}
           title={globalPreamble ? 'Replace this preamble with the global preamble' : 'Global preamble is empty (set in Settings…)'}
-          style={{
-            padding: '3px 8px', fontSize: 11,
-            background: '#f3f4f6', color: globalPreamble ? '#222' : '#999',
-            border: '1px solid #ddd', borderRadius: 3,
-            cursor: globalPreamble ? 'pointer' : 'not-allowed',
-          }}>
+          className="prop-zbtn" style={{ fontSize: 11 }}>
           Replace with global
         </button>
       </div>
