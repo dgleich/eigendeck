@@ -1,5 +1,6 @@
 export function textBackgroundCss(el: { backgroundColor?: string; backgroundOpacity?: number }): string | undefined;
 export const TINT_STRENGTH: number;
+export const TINT_STRENGTH_DARK: number;
 export function mixHex(a: string, b: string, t: number): string;
 export function textBackgroundResolved(el: { backgroundColor?: string; backgroundOpacity?: number; boxTint?: string } | null | undefined, theme?: { background?: string; accent?: string }): string | undefined;
 export function resolveColor(color: string | undefined, theme: { accent?: string } | null | undefined, fallback: string): string;

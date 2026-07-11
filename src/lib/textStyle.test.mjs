@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mixHex, textBackgroundResolved, textBoxShadowCss, TINT_STRENGTH, resolveColor, boxShadowExtents } from './textStyle.mjs';
+import { mixHex, textBackgroundResolved, textBoxShadowCss, TINT_STRENGTH, TINT_STRENGTH_DARK, resolveColor, boxShadowExtents } from './textStyle.mjs';
 
 describe('mixHex', () => {
   it('mixes two hex colors by t', () => {
@@ -28,10 +28,14 @@ describe('textBackgroundResolved (#132 boxTint)', () => {
       .toBe(mixHex('#ffffff', '#ff0000', TINT_STRENGTH));
   });
 
-  it('adapts to the theme background (dark theme lifts, not greys)', () => {
-    const light = textBackgroundResolved({ boxTint: 'accent' }, { background: '#ffffff', accent: '#2563eb' });
-    const dark = textBackgroundResolved({ boxTint: 'accent' }, { background: '#111111', accent: '#2563eb' });
+  it('dark themes mix the base in more strongly + SATURATED (no white-wash)', () => {
+    const accent = '#2563eb';
+    const light = textBackgroundResolved({ boxTint: 'accent' }, { background: '#ffffff', accent });
+    const dark = textBackgroundResolved({ boxTint: 'accent' }, { background: '#111111', accent });
     expect(light).not.toBe(dark);
+    // dark = a plain mix toward the SATURATED base (not a white-washed pastel).
+    expect(dark).toBe(mixHex('#111111', accent, TINT_STRENGTH_DARK));
+    expect(TINT_STRENGTH_DARK).toBeGreaterThan(TINT_STRENGTH);
   });
 
   it('falls back to the fixed backgroundColor when no boxTint', () => {

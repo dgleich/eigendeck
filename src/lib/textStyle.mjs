@@ -40,6 +40,11 @@ export function mixHex(a, b, t) {
  *  as a real color on any theme. */
 export const TINT_STRENGTH = 0.2;
 
+/** Dark themes mix the base in MUCH more strongly (and, crucially, keep the hue
+ *  saturated — no white-wash) so a card reads as a real, vivid colored surface
+ *  instead of a muddy grey slate. */
+export const TINT_STRENGTH_DARK = 0.52;
+
 /** Rec.601 luminance (0–255) of a #rrggbb color; 0 on bad input. */
 function luma601(hex) {
   const h = (hex || '').replace('#', '');
@@ -50,19 +55,15 @@ function luma601(hex) {
 /** Effective text-element background, honoring a themed tint (#132 "card"): when
  *  `el.boxTint` is set, tint RELATIVE TO THE SLIDE THEME so the fill stays colored
  *  AND contrasting on any theme. On LIGHT themes we wash the background toward the
- *  base color (a pastel). On DARK themes a card should read as an ELEVATED surface,
- *  so we lift the background toward a BRIGHTENED base — otherwise a dark base over a
- *  dark background is just a muddy near-black. Otherwise the fixed backgroundColor.
- *  `theme` is the resolved ThemeColors ({ background, accent }). */
+ *  base color (a pale pastel). On DARK themes we mix the base in far more strongly
+ *  and keep it SATURATED (no white-wash) so the panel reads as a real colored
+ *  surface — an earlier white-wash desaturated it into a muddy grey slate. Otherwise
+ *  the fixed backgroundColor. `theme` is the resolved ThemeColors ({ background, accent }). */
 export function textBackgroundResolved(el, theme) {
   if (el && el.boxTint && theme) {
     const bg = theme.background || '#ffffff';
     const base = el.boxTint === 'accent' ? (theme.accent || '#3b82f6') : el.boxTint;
-    if (luma601(bg) < 100) {
-      // Dark theme: brighten the hue, then lift the surface more strongly.
-      return mixHex(bg, mixHex(base, '#ffffff', 0.45), 0.34);
-    }
-    return mixHex(bg, base, TINT_STRENGTH);
+    return mixHex(bg, base, luma601(bg) < 100 ? TINT_STRENGTH_DARK : TINT_STRENGTH);
   }
   return textBackgroundCss(el);
 }
