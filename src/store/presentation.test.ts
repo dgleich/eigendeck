@@ -1,6 +1,55 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { usePresentationStore, presentationRows, slideMeta } from './presentation';
 import { createDefaultPresentation } from '../types/presentation';
+import type { Presentation, Slide } from '../types/presentation';
+
+// EXHAUSTIVE persistence coverage. `Record<keyof T, ...>` forces every model field
+// to be classified as HOW it persists — adding a field to Presentation/Slide without
+// listing it here is a COMPILE error (tsc), so you can't add a field without deciding
+// its writer. The runtime tests then tie the 'row'/'column'/'config' classes to the
+// actual writer output (presentationRows / slideMeta), so a field classified as
+// written-standalone must really be written. `config`/element/slides sub-fields ride
+// in a JSON blob or their own writers and are covered by construction.
+describe('persistence coverage — every model field has a writer', () => {
+  // How each top-level Presentation field reaches disk.
+  const PRESENTATION_FIELD_COVERAGE: Record<keyof Presentation, 'row' | 'config' | 'slides'> = {
+    title: 'row',       // presentationRows → its own KV row
+    theme: 'row',       // presentationRows → its own KV row
+    config: 'config',   // presentationRows → the config JSON blob (all sub-fields ride along)
+    slides: 'slides',   // written by the slide writers, not presentationRows
+  };
+
+  // How each Slide field reaches disk.
+  const SLIDE_FIELD_COVERAGE: Record<keyof Slide, 'id' | 'column' | 'config' | 'elements'> = {
+    id: 'id',           // db_add_slide primary key
+    notes: 'column',    // slideMeta → notes column
+    groupId: 'column',  // slideMeta → groupId column
+    theme: 'config',    // slideMeta → slide config JSON
+    titleFont: 'config',
+    bodyFont: 'config',
+    hypeFont: 'config',
+    elements: 'elements', // written by the element writers
+  };
+
+  it('presentationRows writes exactly the row+config presentation fields', () => {
+    const p = { title: 'T', theme: 'white', slides: [], config: {} as Presentation['config'] } as Presentation;
+    const shouldWrite = (Object.keys(PRESENTATION_FIELD_COVERAGE) as (keyof Presentation)[])
+      .filter((k) => PRESENTATION_FIELD_COVERAGE[k] === 'row' || PRESENTATION_FIELD_COVERAGE[k] === 'config')
+      .sort();
+    expect(Object.keys(presentationRows(p)).sort()).toEqual(shouldWrite);
+  });
+
+  it('slideMeta writes every column+config slide field', () => {
+    const s = { id: 's', notes: 'n', groupId: 'g', theme: 'dark', titleFont: 'a', bodyFont: 'b', hypeFont: 'c', elements: [] } as Slide;
+    const m = slideMeta(s);
+    const written = new Set<string>([...Object.keys(m).filter((k) => k !== 'config'), ...Object.keys(m.config)]);
+    for (const k of Object.keys(SLIDE_FIELD_COVERAGE) as (keyof Slide)[]) {
+      if (SLIDE_FIELD_COVERAGE[k] === 'column' || SLIDE_FIELD_COVERAGE[k] === 'config') {
+        expect(written.has(k)).toBe(true); // classified as persisted-standalone → must be written
+      }
+    }
+  });
+});
 
 // Contract guard for the "persisted-but-not-change-detected" bug class (the deck
 // theme silently stopped saving because the flush and the change-detector were two
