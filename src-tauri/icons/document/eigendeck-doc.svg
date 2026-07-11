@@ -1,57 +1,242 @@
-<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f6eed9"/>
-      <stop offset="0.55" stop-color="#ecdfbd"/>
-      <stop offset="1" stop-color="#ddcb9d"/>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="1024"
+   height="1024"
+   viewBox="0 0 1024 1024"
+   version="1.1"
+   id="svg20"
+   sodipodi:docname="eigendeck-doc.svg"
+   inkscape:version="1.4 (e7c3feb1, 2024-10-09)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview20"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.6"
+     inkscape:cx="223.33333"
+     inkscape:cy="730.83333"
+     inkscape:window-width="1808"
+     inkscape:window-height="1224"
+     inkscape:window-x="603"
+     inkscape:window-y="282"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg20" />
+  <defs
+     id="defs7">
+    <linearGradient
+       id="bodyGrad"
+       x1="0"
+       y1="0"
+       x2="0"
+       y2="1">
+      <stop
+         offset="0"
+         stop-color="#f6eed9"
+         id="stop1" />
+      <stop
+         offset="0.55"
+         stop-color="#ecdfbd"
+         id="stop2" />
+      <stop
+         offset="1"
+         stop-color="#ddcb9d"
+         id="stop3" />
     </linearGradient>
-    <linearGradient id="badgeGrad" x1="0" y1="0" x2="0.6" y2="1">
-      <stop offset="0" stop-color="#57abd9"/>
-      <stop offset="0.5" stop-color="#2b86b7"/>
-      <stop offset="1" stop-color="#1d6491"/>
+    <linearGradient
+       id="badgeGrad"
+       x1="98.871261"
+       y1="689.78588"
+       x2="303.80443"
+       y2="1031.3411"
+       gradientTransform="matrix(1.6499696,0,0,1.4964657,-143.24583,-539.9423)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0"
+         stop-color="#57abd9"
+         id="stop4" />
+      <stop
+         offset="0.5"
+         stop-color="#2b86b7"
+         id="stop5" />
+      <stop
+         offset="1"
+         stop-color="#1d6491"
+         id="stop6" />
     </linearGradient>
-    <clipPath id="pageClip"><path d="M 190,64 H 672 L 862,254 V 932 Q 862,960 834,960 H 190 Q 162,960 162,932 V 92 Q 162,64 190,64 Z"/></clipPath>
-    <clipPath id="badgeClip"><rect x="110" y="620" width="380" height="307" rx="66"/></clipPath>
-    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="10"/>
+    <clipPath
+       id="pageClip">
+      <path
+         d="M 190,64 H 672 L 862,254 V 932 Q 862,960 834,960 H 190 Q 162,960 162,932 V 92 Q 162,64 190,64 Z"
+         id="path6" />
+    </clipPath>
+    <clipPath
+       id="badgeClip">
+      <rect
+         x="110"
+         y="620"
+         width="380"
+         height="307"
+         rx="66"
+         id="rect6" />
+    </clipPath>
+    <filter
+       id="soft"
+       x="-0.54347826"
+       y="-inf"
+       width="2.0869565"
+       height="inf">
+      <feGaussianBlur
+         stdDeviation="10"
+         id="feGaussianBlur6" />
     </filter>
-    <filter id="soft18" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="18"/>
+    <filter
+       id="soft18"
+       x="-0.11368421"
+       y="-0.14071661"
+       width="1.2273684"
+       height="1.2814332">
+      <feGaussianBlur
+         stdDeviation="18"
+         id="feGaussianBlur7" />
     </filter>
   </defs>
-  <style>
-    .text { font-family: "PT Sans", "PTSans", Arial, Helvetica, sans-serif; font-weight: 700; }
+  <style
+     id="style7">
+    .text { font-family: &quot;PT Sans&quot;, &quot;PTSans&quot;, Arial, Helvetica, sans-serif; font-weight: 700; }
   </style>
-  <rect x="182" y="34" width="700" height="896" rx="28"
-    fill="#d8c596" stroke="#333" stroke-width="14" stroke-linejoin="round"/>
-  <path d="M 190,64 H 672 L 862,254 V 932 Q 862,960 834,960 H 190 Q 162,960 162,932 V 92 Q 162,64 190,64 Z"
-    fill="url(#bodyGrad)" stroke="#333" stroke-width="16"
-    stroke-linecap="round" stroke-linejoin="round"/>
-  <g clip-path="url(#pageClip)">
-    <path d="M 672,64 L 862,254" stroke="#8a774e" stroke-width="30"
-      opacity="0.4" filter="url(#soft)" fill="none" transform="translate(-12,12)"/>
-    <rect x="150" y="52" width="724" height="30" fill="#fffaf0" opacity="0.7" filter="url(#soft)"/>
-    <rect x="150" y="64" width="26" height="896" fill="#8a774e" opacity="0.22" filter="url(#soft)"/>
-    <rect x="848" y="64" width="26" height="896" fill="#8a774e" opacity="0.22" filter="url(#soft)"/>
+  <rect
+     x="182"
+     y="34"
+     width="700"
+     height="896"
+     rx="28"
+     fill="#d8c596"
+     stroke="#333"
+     stroke-width="14"
+     stroke-linejoin="round"
+     id="rect7" />
+  <path
+     d="M 190,64 H 672 L 862,254 V 932 Q 862,960 834,960 H 190 Q 162,960 162,932 V 92 Q 162,64 190,64 Z"
+     fill="url(#bodyGrad)"
+     stroke="#333"
+     stroke-width="16"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path7" />
+  <path
+     d="M 915.66667,207 V 45 q 0,-28 -28,-28 h -162 z"
+     fill="#e2d2aa"
+     stroke="#333333"
+     stroke-width="16"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="path10"
+     style="fill:#ffffff;fill-opacity:1;stroke:none" />
+  <g
+     transform="translate(0,-84.333333)"
+     id="g12">
+    <g
+       transform="matrix(5.21217,0,0,5.21217,322.81,630)"
+       id="g11">
+      <path
+         d="M 54.78,-5.17 33.41,-61.08 11.92,-5.17 h 8 V 0 H -0.59 v -5.17 h 6.4 l 25.97,-67.74 h 8.2 l 26.04,67.74 h 7.17 V 0 h -26.5 v -5.17 z"
+         fill="#fffaf0"
+         id="path11" />
+    </g>
   </g>
-  <path d="M 672,64 V 226 Q 672,254 700,254 H 862 Z"
-    fill="#e2d2aa" stroke="#333" stroke-width="16"
-    stroke-linecap="round" stroke-linejoin="round"/>
-  <g transform="translate(0,-6)"><g transform="translate(322.81,630.00) scale(5.21217)"><path d="M 54.78,-5.17 L 33.41,-61.08 L 11.92,-5.17 L 19.92,-5.17 L 19.92,-0.00 L -0.59,-0.00 L -0.59,-5.17 L 5.81,-5.17 L 31.78,-72.91 L 39.98,-72.91 L 66.02,-5.17 L 73.19,-5.17 L 73.19,-0.00 L 46.69,-0.00 L 46.69,-5.17 L 54.78,-5.17 Z" fill="#fffaf0"/></g></g>
-  <g transform="translate(0,6)"><g transform="translate(322.81,630.00) scale(5.21217)"><path d="M 54.78,-5.17 L 33.41,-61.08 L 11.92,-5.17 L 19.92,-5.17 L 19.92,-0.00 L -0.59,-0.00 L -0.59,-5.17 L 5.81,-5.17 L 31.78,-72.91 L 39.98,-72.91 L 66.02,-5.17 L 73.19,-5.17 L 73.19,-0.00 L 46.69,-0.00 L 46.69,-5.17 L 54.78,-5.17 Z" fill="#a8946a"/></g></g>
-  <g transform="translate(0,0)"><g transform="translate(322.81,630.00) scale(5.21217)"><path d="M 54.78,-5.17 L 33.41,-61.08 L 11.92,-5.17 L 19.92,-5.17 L 19.92,-0.00 L -0.59,-0.00 L -0.59,-5.17 L 5.81,-5.17 L 31.78,-72.91 L 39.98,-72.91 L 66.02,-5.17 L 73.19,-5.17 L 73.19,-0.00 L 46.69,-0.00 L 46.69,-5.17 L 54.78,-5.17 Z" fill="#e9dcba"/></g></g>
-  <rect x="110" y="636" width="380" height="307" rx="66"
-    fill="#000" opacity="0.32" filter="url(#soft18)"/>
-  <rect x="110" y="620" width="380" height="307" rx="66" fill="url(#badgeGrad)"/>
-  <g clip-path="url(#badgeClip)">
-    <rect x="96" y="608" width="410" height="26" rx="13" fill="#ffffff" opacity="0.55" filter="url(#soft)"/>
+  <g
+     transform="translate(0,-72.333333)"
+     id="g14">
+    <g
+       transform="matrix(5.21217,0,0,5.21217,322.81,630)"
+       id="g13">
+      <path
+         d="M 54.78,-5.17 33.41,-61.08 11.92,-5.17 h 8 V 0 H -0.59 v -5.17 h 6.4 l 25.97,-67.74 h 8.2 l 26.04,67.74 h 7.17 V 0 h -26.5 v -5.17 z"
+         fill="#a8946a"
+         id="path12" />
+    </g>
   </g>
-  <text x="175" y="856" class="text" style="font-size:210px; fill:#14506f"
-    transform="translate(0,6)">&#955;</text>
-  <g transform="translate(175,850)"><path d="M 50.66,-104.61 L 44.30,-121.83 Q 41.44,-129.71 37.57,-132.56 Q 33.73,-135.45 24.08,-135.45 L 12.60,-135.45 L 12.60,-159.57 L 33.83,-159.57 Q 52.50,-159.57 62.61,-151.66 Q 72.71,-143.75 79.67,-125.11 L 126.62,-0.00 L 89.94,-0.00 L 67.07,-60.31 L 42.95,-0.00 L 6.27,-0.00 L 50.66,-104.61 Z" fill="#fff"/></g>
-  <g clip-path="url(#badgeClip)">
-    <line x1="341" y1="835" x2="433" y2="835" stroke="#cfeaff"
-      stroke-width="52" stroke-linecap="round" opacity="0.6" filter="url(#soft)"/>
+  <g
+     transform="translate(0,-78.333333)"
+     id="g16">
+    <g
+       transform="matrix(5.21217,0,0,5.21217,322.81,630)"
+       id="g15">
+      <path
+         d="M 54.78,-5.17 33.41,-61.08 11.92,-5.17 h 8 V 0 H -0.59 v -5.17 h 6.4 l 25.97,-67.74 h 8.2 l 26.04,67.74 h 7.17 V 0 h -26.5 v -5.17 z"
+         fill="#e9dcba"
+         id="path14" />
+    </g>
   </g>
-  <line x1="337" y1="835" x2="437" y2="835" stroke="#fff" stroke-width="30" stroke-linecap="round"/>
+  <rect
+     x="110"
+     y="636"
+     width="380"
+     height="307"
+     rx="66"
+     fill="#000000"
+     opacity="0.32"
+     filter="url(#soft18)"
+     id="rect16"
+     transform="matrix(1.4830416,0,0,1.6649047,-143.24583,-539.9423)" />
+  <rect
+     x="19.888746"
+     y="492.29861"
+     width="563.55579"
+     height="511.12573"
+     rx="97.880745"
+     fill="url(#badgeGrad)"
+     id="rect17"
+     style="fill:url(#badgeGrad);stroke-width:1.57134" />
+  <g
+     transform="matrix(1.8259994,0,0,2.0499189,42.45132,910.66825)"
+     id="g19"
+     style="stroke:#000000;stroke-width:6.36398;stroke-dasharray:none;stroke-opacity:1">
+    <path
+       d="m 50.66,-104.61 -6.36,-17.22 q -2.86,-7.88 -6.73,-10.73 -3.84,-2.89 -13.49,-2.89 H 12.6 v -24.12 h 21.23 q 18.67,0 28.78,7.91 10.1,7.91 17.06,26.55 L 126.62,0 H 89.94 L 67.07,-60.31 42.95,0 H 6.27 Z"
+       fill="#ffffff"
+       id="path18"
+       style="stroke:#000000;stroke-width:6.36398;stroke-dasharray:none;stroke-opacity:1" />
+    <text
+       xml:space="preserve"
+       style="font-size:244.377px;line-height:1.25;font-family:Monaco;-inkscape-font-specification:Monaco;text-align:center;text-anchor:middle;stroke-width:6.36398;stroke-dasharray:none"
+       x="200.70726"
+       y="-52.116726"
+       id="text41"
+       transform="scale(1.0595416,0.94380437)"><tspan
+         sodipodi:role="line"
+         id="tspan41"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:244.377px;font-family:'PT Sans Caption';-inkscape-font-specification:'PT Sans Caption';fill:#ffffff;fill-opacity:1;stroke:#282828;stroke-width:6.36398;stroke-dasharray:none;stroke-opacity:1"
+         x="200.70726"
+         y="-52.116726">_</tspan></text>
+  </g>
+  <g
+     clip-path="url(#badgeClip)"
+     id="g20"
+     transform="matrix(1.4830416,0,0,1.6649047,-143.24583,-539.9423)">
+    <line
+       x1="341"
+       y1="835"
+       x2="433"
+       y2="835"
+       stroke="#cfeaff"
+       stroke-width="52"
+       stroke-linecap="round"
+       opacity="0.6"
+       filter="url(#soft)"
+       id="line19" />
+  </g>
+  <path
+     style="fill:none;stroke:#333333;stroke-width:16;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
+     d="M 730,35 883.33334,185"
+     id="path20"
+     sodipodi:nodetypes="cc" />
 </svg>
