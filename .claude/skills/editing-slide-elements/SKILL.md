@@ -6,6 +6,9 @@ version: 0.1.0
 
 # Editing Slide Elements
 
+> Human-facing companion: `docs/ELEMENT-CHECKLIST.md` holds the same checklists in
+> the repo docs. Keep the two in sync when the render paths change.
+
 ## When to use
 
 Any time you touch the element data model or how an element looks:

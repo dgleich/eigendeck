@@ -99,6 +99,12 @@ Slides can have `groupId` for slide groups (shared numbering, group move).
 
 See `docs/SPEC.md` for full schema and `docs/LLM-EDITING.md` for the programmatic editing guide.
 
+**Changing an element type or property?** Follow `docs/ELEMENT-CHECKLIST.md` — the
+"what to touch, how to verify" checklists covering all **7 render/output modes**
+(editor, present, present-animation, HTML export, PDF/print, link overlay,
+thumbnail). A property added in one mode is silently dropped by the others unless
+propagated (the #98/#85 bug class).
+
 ## Hooks
 
 PostToolUse hook on Write|Edit reminds to update `docs/LLM-EDITING.md` when src/types/presentation.ts changes. (In .claude/settings.local.json)
