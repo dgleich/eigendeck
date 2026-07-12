@@ -101,6 +101,9 @@ quote, comparison table, closing.
    regenerable and diff-able. Model it on `tools/build_html_showcase.mjs` /
    `tools/build_frontend_slides_example.mjs`. Keep HTML self-contained (inline
    `<style>`, system/data: fonts, inline SVG / data: images).
+   **Always include a top-level `config: { "width": 1920, "height": 1080 }`** in
+   the deck JSON — Eigendeck defaults to it if missing, but a deck without it that
+   hits an older build presents to a collapsed 0×0 stage (shows nothing).
 2. **Build the deck** with the **eigendeck-cli** skill:
    `eigendeck-cli <deck>.eigendeck import json <deck>.json`.
 3. **Render + eyeball EVERY slide** with the **eigendeck-e2e** rig — don't trust
