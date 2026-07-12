@@ -60,8 +60,11 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
   const shownIndexRef = useRef(currentIndex);
 
   const totalSlides = presentation.slides.length;
-  const slideW = presentation.config.width;
-  const slideH = presentation.config.height;
+  // Fall back to the canonical 1920×1080 when a deck carries no config (e.g. built
+  // via `import json` without a config block). Without this the stage collapses to
+  // 0×0 and every element overflows off-screen — present shows nothing (#137).
+  const slideW = presentation.config.width || 1920;
+  const slideH = presentation.config.height || 1080;
 
   // Black out the page root + lock scroll while the present overlay is mounted, so
   // no light editor UI can peek behind it (e.g. a bottom sliver when macOS overlay
