@@ -31,6 +31,7 @@ export interface ArrowDescriptor {
   headSize: number;
   heads?: 'start' | 'end' | 'both' | 'none';
   opacity?: number;
+  c1x?: number; c1y?: number; c2x?: number; c2y?: number;
   geo: ReturnType<typeof import('./arrowGeometry.mjs').arrowGeometry>;
 }
 
@@ -39,6 +40,7 @@ export function describeArrow(
     x1: number; y1: number; x2: number; y2: number;
     color?: string; strokeWidth?: number; headSize?: number;
     heads?: 'start' | 'end' | 'both' | 'none'; opacity?: number;
+    c1x?: number; c1y?: number; c2x?: number; c2y?: number;
   },
   theme?: { accent?: string },
 ): ArrowDescriptor;

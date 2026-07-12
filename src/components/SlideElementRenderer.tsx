@@ -1193,7 +1193,43 @@ function ArrowRenderer({
     [x1, y1, x2, y2, scale, onUpdate, onSelect]
   );
 
-  const bb = arrowBBox(x1, y1, x2, y2, headSize, a.heads, 30);   // headSize/geo from describeArrow above
+  // Default control-handle positions — the 1/3 and 2/3 points on the straight
+  // line, so an un-curved arrow's handles sit ON the line (invisible curve).
+  // Dragging one materializes BOTH (a cubic needs all four) and bends the arrow.
+  const c1dx = Math.round(x1 + (x2 - x1) / 3), c1dy = Math.round(y1 + (y2 - y1) / 3);
+  const c2dx = Math.round(x1 + 2 * (x2 - x1) / 3), c2dy = Math.round(y1 + 2 * (y2 - y1) / 3);
+  const c1hx = a.c1x ?? c1dx, c1hy = a.c1y ?? c1dy;
+  const c2hx = a.c2x ?? c2dx, c2hy = a.c2y ?? c2dy;
+
+  const handleControl = useCallback(
+    (e: React.PointerEvent, which: 'c1' | 'c2') => {
+      e.preventDefault(); e.stopPropagation(); onSelect(); pauseUndo();
+      const sMx = e.clientX, sMy = e.clientY;
+      // Snapshot both control points (materializing defaults) so the first drag
+      // produces a complete, valid cubic even from a straight arrow.
+      const base = {
+        c1x: a.c1x ?? Math.round(x1 + (x2 - x1) / 3), c1y: a.c1y ?? Math.round(y1 + (y2 - y1) / 3),
+        c2x: a.c2x ?? Math.round(x1 + 2 * (x2 - x1) / 3), c2y: a.c2y ?? Math.round(y1 + 2 * (y2 - y1) / 3),
+      };
+      const handleMove = (me: PointerEvent) => {
+        const dx = (me.clientX - sMx) / scale, dy = (me.clientY - sMy) / scale;
+        const moved = which === 'c1'
+          ? { c1x: Math.round(base.c1x + dx), c1y: Math.round(base.c1y + dy) }
+          : { c2x: Math.round(base.c2x + dx), c2y: Math.round(base.c2y + dy) };
+        onUpdate({ ...base, ...moved } as any);
+      };
+      const handleUp = () => { resumeUndo(); window.removeEventListener('pointermove', handleMove); window.removeEventListener('pointerup', handleUp); };
+      window.addEventListener('pointermove', handleMove); window.addEventListener('pointerup', handleUp);
+    },
+    [x1, y1, x2, y2, a.c1x, a.c1y, a.c2x, a.c2y, scale, onUpdate, onSelect]
+  );
+
+  // Double-click a control handle → straighten (clear all four control points).
+  const straighten = useCallback(() => {
+    onUpdate({ c1x: undefined, c1y: undefined, c2x: undefined, c2y: undefined } as any);
+  }, [onUpdate]);
+
+  const bb = arrowBBox(x1, y1, x2, y2, headSize, a.heads, 30, a.c1x, a.c1y, a.c2x, a.c2y);
   const { minX, minY, maxX, maxY } = bb;
 
   return (
@@ -1224,10 +1260,28 @@ function ArrowRenderer({
       }}
       style={{ position: 'absolute', left: minX, top: minY, width: maxX - minX, height: maxY - minY, pointerEvents: 'auto', zIndex }}>
       <svg width={maxX - minX} height={maxY - minY} style={{ overflow: 'visible' }}>
-        <line x1={x1 - minX} y1={y1 - minY} x2={x2 - minX} y2={y2 - minY}
-          stroke="transparent" strokeWidth={24} style={{ pointerEvents: 'stroke', cursor: 'move' }} onPointerDown={handleBody} />
+        {geo.curved
+          ? <path d={geo.path} transform={`translate(${-minX} ${-minY})`} fill="none"
+              stroke="transparent" strokeWidth={24} style={{ pointerEvents: 'stroke', cursor: 'move' }} onPointerDown={handleBody} />
+          : <line x1={x1 - minX} y1={y1 - minY} x2={x2 - minX} y2={y2 - minY}
+              stroke="transparent" strokeWidth={24} style={{ pointerEvents: 'stroke', cursor: 'move' }} onPointerDown={handleBody} />}
         <ArrowGlyph geo={geo} color={color} strokeWidth={strokeWidth} opacity={a.opacity}
           dx={minX} dy={minY} gStyle={{ pointerEvents: 'none' }} />
+        {isSelected && (
+          <g className="arrow-control-handles">
+            {/* Inkscape-style handle lines from each endpoint to its control point. */}
+            <line x1={x1 - minX} y1={y1 - minY} x2={c1hx - minX} y2={c1hy - minY}
+              stroke={color} strokeWidth={1} strokeDasharray="3 3" opacity={0.6} style={{ pointerEvents: 'none' }} />
+            <line x1={x2 - minX} y1={y2 - minY} x2={c2hx - minX} y2={c2hy - minY}
+              stroke={color} strokeWidth={1} strokeDasharray="3 3" opacity={0.6} style={{ pointerEvents: 'none' }} />
+            <circle cx={c1hx - minX} cy={c1hy - minY} r={6} fill={color} stroke="#fff" strokeWidth={2}
+              className="arrow-control-handle" style={{ pointerEvents: 'all', cursor: 'grab' }}
+              onPointerDown={(e) => handleControl(e, 'c1')} onDoubleClick={(e) => { e.stopPropagation(); straighten(); }} />
+            <circle cx={c2hx - minX} cy={c2hy - minY} r={6} fill={color} stroke="#fff" strokeWidth={2}
+              className="arrow-control-handle" style={{ pointerEvents: 'all', cursor: 'grab' }}
+              onPointerDown={(e) => handleControl(e, 'c2')} onDoubleClick={(e) => { e.stopPropagation(); straighten(); }} />
+          </g>
+        )}
         <circle cx={x1 - minX} cy={y1 - minY} r={8} fill="#fff" stroke={color} strokeWidth={2}
           className="arrow-handle" style={{ pointerEvents: 'all', cursor: 'crosshair' }}
           onPointerDown={(e) => handleEndpoint(e, 'start')} />

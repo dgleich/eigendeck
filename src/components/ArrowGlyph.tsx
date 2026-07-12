@@ -20,9 +20,23 @@ export function ArrowGlyph({ geo, color, strokeWidth, opacity, dx = 0, dy = 0, g
   dy?: number;
   gStyle?: CSSProperties;
 }) {
+  // Curved arrow: the geo.path is absolute, so offset the whole group via a
+  // translate (a per-point path rewrite isn't practical). Straight arrows keep
+  // the original per-coordinate subtraction so their DOM is byte-identical.
+  if (geo.curved) {
+    const shift = dx || dy ? `translate(${-dx} ${-dy})` : undefined;
+    return (
+      <g opacity={opacity ?? 1} style={gStyle} transform={shift}>
+        <path d={geo.path} fill="none" stroke={color} strokeWidth={strokeWidth} />
+        {geo.triangles.map((t, i) => (
+          <polygon key={i} points={t.map((p) => `${p[0]},${p[1]}`).join(' ')} fill={color} />
+        ))}
+      </g>
+    );
+  }
   return (
     <g opacity={opacity ?? 1} style={gStyle}>
-      <line x1={geo.line.x1 - dx} y1={geo.line.y1 - dy} x2={geo.line.x2 - dx} y2={geo.line.y2 - dy} stroke={color} strokeWidth={strokeWidth} />
+      <line x1={geo.line!.x1 - dx} y1={geo.line!.y1 - dy} x2={geo.line!.x2 - dx} y2={geo.line!.y2 - dy} stroke={color} strokeWidth={strokeWidth} />
       {geo.triangles.map((t, i) => (
         <polygon key={i} points={t.map((p) => `${p[0] - dx},${p[1] - dy}`).join(' ')} fill={color} />
       ))}

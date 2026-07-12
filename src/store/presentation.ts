@@ -100,6 +100,17 @@ interface PresentationState {
   toggleShowGrid: () => void;
 }
 
+/** Translate an arrow by (dx, dy) — endpoints AND any Bézier control points, so a
+ *  curved arrow keeps its shape when moved (#129). Absent controls stay absent. */
+function shiftArrow(el: Extract<SlideElement, { type: 'arrow' }>, dx: number, dy: number) {
+  const out = { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
+  if (el.c1x != null) out.c1x = el.c1x + dx;
+  if (el.c1y != null) out.c1y = el.c1y + dy;
+  if (el.c2x != null) out.c2x = el.c2x + dx;
+  if (el.c2y != null) out.c2y = el.c2y + dy;
+  return out;
+}
+
 function updateCurrentSlide(
   state: PresentationState,
   updater: (slide: Slide) => Slide
@@ -558,7 +569,8 @@ export const usePresentationStore = create<PresentationState>()(
           .find((e) => e.id !== elementId && e.syncId === syncId);
         const geom: Partial<SlideElement> = peer
           ? (peer.type === 'arrow' && el.type === 'arrow'
-              ? { x1: peer.x1, y1: peer.y1, x2: peer.x2, y2: peer.y2 } as Partial<SlideElement>
+              ? { x1: peer.x1, y1: peer.y1, x2: peer.x2, y2: peer.y2,
+                  c1x: peer.c1x, c1y: peer.c1y, c2x: peer.c2x, c2y: peer.c2y } as Partial<SlideElement>
               : { position: { ...peer.position } } as Partial<SlideElement>)
           : {};
         void runResyncHook(el);
@@ -742,7 +754,7 @@ export const usePresentationStore = create<PresentationState>()(
               elements: slide.elements.map((el) => {
                 if (!elementIds.includes(el.id) && !(el.syncId && syncIds.has(el.syncId))) return el;
                 if (el.type === 'arrow') {
-                  return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
+                  return shiftArrow(el, dx, dy);
                 }
                 return { ...el, position: { ...el.position, x: el.position.x + dx, y: el.position.y + dy } };
               }),
@@ -755,7 +767,7 @@ export const usePresentationStore = create<PresentationState>()(
             elements: slide.elements.map((el) => {
               if (!elementIds.includes(el.id)) return el;
               if (el.type === 'arrow') {
-                return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
+                return shiftArrow(el, dx, dy);
               }
               return { ...el, position: { ...el.position, x: el.position.x + dx, y: el.position.y + dy } };
             }),

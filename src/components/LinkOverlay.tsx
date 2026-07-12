@@ -4,7 +4,8 @@ import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
 import type { SlideElement } from '../types/presentation';
 import { ElementPreviewImg } from './ElementPreviewImg';
 import { VideoThumb } from './VideoThumb';
-import { triPoints } from '../lib/arrowGeometry.mjs';
+import { arrowBBox } from '../lib/arrowGeometry.mjs';
+import { ArrowGlyph } from './ArrowGlyph';
 import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
 import { ELEMENT_PLACEHOLDERS as PH } from '../lib/elementPlaceholders.mjs';
 
@@ -220,26 +221,19 @@ function LinkableElement({ element: el, isLinked, linkable = true, onClick }: {
     case 'arrow': {
       const a = describeArrow(el);
       const { x1, y1, x2, y2, geo, color } = a;
-      // Use bounding box for click target
-      const pad = 30;
-      const bx = Math.min(x1, x2) - pad;
-      const by = Math.min(y1, y2) - pad;
-      const bw = Math.abs(x2 - x1) + pad * 2;
-      const bh = Math.abs(y2 - y1) + pad * 2;
+      // Bounding-box click target — arrowBBox includes any Bézier control points
+      // so a curved arrow's hit area still covers the bowed-out curve.
+      const { minX: bx, minY: by, maxX, maxY } = arrowBBox(x1, y1, x2, y2, a.headSize, a.heads, 30, a.c1x, a.c1y, a.c2x, a.c2y);
+      const bw = maxX - bx, bh = maxY - by;
       return (
         <div style={{ position: 'absolute', left: bx, top: by, width: bw, height: bh, cursor: 'pointer', zIndex: 10 }}
           onClick={onClick} className="link-overlay-element">
           <svg width={bw} height={bh} style={{ overflow: 'visible' }}>
-            {/* fat transparent hit target spans the full (un-inset) line */}
-            <line x1={x1 - bx} y1={y1 - by} x2={x2 - bx} y2={y2 - by}
-              stroke="transparent" strokeWidth={24} style={{ pointerEvents: 'stroke' }} />
-            <g opacity={a.opacity ?? 1}>
-              <line x1={geo.line.x1 - bx} y1={geo.line.y1 - by} x2={geo.line.x2 - bx} y2={geo.line.y2 - by}
-                stroke={color} strokeWidth={a.strokeWidth} />
-              {geo.triangles.map((t, i) => (
-                <polygon key={i} points={triPoints(t.map((p) => [p[0] - bx, p[1] - by]))} fill={color} />
-              ))}
-            </g>
+            {/* fat transparent hit target follows the (un-inset) curve or line */}
+            {geo.curved
+              ? <path d={geo.path} transform={`translate(${-bx} ${-by})`} fill="none" stroke="transparent" strokeWidth={24} style={{ pointerEvents: 'stroke' }} />
+              : <line x1={x1 - bx} y1={y1 - by} x2={x2 - bx} y2={y2 - by} stroke="transparent" strokeWidth={24} style={{ pointerEvents: 'stroke' }} />}
+            <ArrowGlyph geo={geo} color={color} strokeWidth={a.strokeWidth} opacity={a.opacity} dx={bx} dy={by} />
           </svg>
           {isLinked && <div style={{ position: 'absolute', inset: 0, border: '4px solid #16a34a', borderRadius: 4 }} />}
         </div>

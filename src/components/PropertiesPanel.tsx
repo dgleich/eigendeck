@@ -709,6 +709,33 @@ export function PropertiesPanel() {
                     })}
                   </div>
                 </PropSection>
+                <PropSection label="Shape">
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {(() => {
+                      const curved = selectedEl.c1x != null && selectedEl.c1y != null
+                        && selectedEl.c2x != null && selectedEl.c2y != null;
+                      const straighten = () => updateElement(selectedEl.id,
+                        { c1x: undefined, c1y: undefined, c2x: undefined, c2y: undefined } as any);
+                      const curve = () => {
+                        // Bow the arc out perpendicular to the chord at the 1/3 & 2/3 points.
+                        const { x1, y1, x2, y2 } = selectedEl;
+                        const dx = x2 - x1, dy = y2 - y1;
+                        const len = Math.hypot(dx, dy) || 1;
+                        const nx = -dy / len, ny = dx / len;
+                        const bow = Math.min(len * 0.25, 80);
+                        updateElement(selectedEl.id, {
+                          c1x: Math.round(x1 + dx / 3 + nx * bow), c1y: Math.round(y1 + dy / 3 + ny * bow),
+                          c2x: Math.round(x1 + 2 * dx / 3 + nx * bow), c2y: Math.round(y1 + 2 * dy / 3 + ny * bow),
+                        } as any);
+                      };
+                      return ([['Straight', !curved, straighten], ['Curved', curved, curve]] as const).map(([lbl, active, fn]) => (
+                        <button key={lbl} className={`prop-zbtn ${active ? 'active' : ''}`}
+                          style={{ fontSize: 11, width: 'auto', padding: '3px 10px' }}
+                          onClick={fn}>{lbl}</button>
+                      ));
+                    })()}
+                  </div>
+                </PropSection>
                 <PropSection label="Width">
                   <input className="prop-input-sm" type="number" value={selectedEl.strokeWidth || 4} min={1} max={40}
                     onChange={(e) => updateElement(selectedEl.id, { strokeWidth: parseInt(e.target.value) || 4 } as any)} />

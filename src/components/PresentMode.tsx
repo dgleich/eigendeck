@@ -263,7 +263,9 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
               // Linked arrow → interpolate its endpoints (or static if unmoved).
               if (role === 'linked' && from && el.type === 'arrow' && from.type === 'arrow') {
                 const moved = !(from.x1 === el.x1 && from.y1 === el.y1 &&
-                  from.x2 === el.x2 && from.y2 === el.y2);
+                  from.x2 === el.x2 && from.y2 === el.y2 &&
+                  from.c1x === el.c1x && from.c1y === el.c1y &&
+                  from.c2x === el.c2x && from.c2y === el.c2y);
                 if (moved) {
                   return (
                     <AnimatedArrow key={el.id} from={from} to={el} zIndex={z}
@@ -391,35 +393,45 @@ function easeInOut(t: number): number {
 
 type ArrowEl = Extract<SlideElement, { type: 'arrow' }>;
 
+// Effective cubic control points for an arrow — its own, or the 1/3 & 2/3 points
+// on the chord when absent — so a straight↔curved transition interpolates smoothly
+// (a straight arrow's implicit controls sit on the line).
+function effControls(s: ArrowEl) {
+  return {
+    c1x: s.c1x ?? s.x1 + (s.x2 - s.x1) / 3, c1y: s.c1y ?? s.y1 + (s.y2 - s.y1) / 3,
+    c2x: s.c2x ?? s.x1 + 2 * (s.x2 - s.x1) / 3, c2y: s.c2y ?? s.y1 + 2 * (s.y2 - s.y1) / 3,
+  };
+}
+
 function AnimatedArrow({ from, to, zIndex, animating, hasPrev }: {
   from: ArrowEl; to: ArrowEl; zIndex: number; animating: boolean; hasPrev: boolean;
 }) {
-  const [coords, setCoords] = useState({
-    x1: hasPrev ? from.x1 : to.x1,
-    y1: hasPrev ? from.y1 : to.y1,
-    x2: hasPrev ? from.x2 : to.x2,
-    y2: hasPrev ? from.y2 : to.y2,
+  const fc = effControls(from), tc = effControls(to);
+  const atStart = (s: ArrowEl, c: ReturnType<typeof effControls>) => ({
+    x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, ...c,
   });
+  const [coords, setCoords] = useState(hasPrev ? atStart(from, fc) : atStart(to, tc));
   const animRef = useRef<number | null>(null);
   const startTime = useRef(0);
 
   useEffect(() => {
     if (!animating || !hasPrev) {
-      setCoords({ x1: to.x1, y1: to.y1, x2: to.x2, y2: to.y2 });
+      setCoords(atStart(to, tc));
       return;
     }
 
     startTime.current = performance.now();
+    const lerp = (a: number, b: number, e: number) => a + (b - a) * e;
     const animate = (now: number) => {
       const elapsed = now - startTime.current;
       const t = Math.min(elapsed / TRANSITION_MS, 1);
       const e = easeInOut(t);
 
       setCoords({
-        x1: from.x1 + (to.x1 - from.x1) * e,
-        y1: from.y1 + (to.y1 - from.y1) * e,
-        x2: from.x2 + (to.x2 - from.x2) * e,
-        y2: from.y2 + (to.y2 - from.y2) * e,
+        x1: lerp(from.x1, to.x1, e), y1: lerp(from.y1, to.y1, e),
+        x2: lerp(from.x2, to.x2, e), y2: lerp(from.y2, to.y2, e),
+        c1x: lerp(fc.c1x, tc.c1x, e), c1y: lerp(fc.c1y, tc.c1y, e),
+        c2x: lerp(fc.c2x, tc.c2x, e), c2y: lerp(fc.c2y, tc.c2y, e),
       });
 
       if (t < 1) {
@@ -428,19 +440,24 @@ function AnimatedArrow({ from, to, zIndex, animating, hasPrev }: {
     };
 
     // Start from the 'from' position
-    setCoords({ x1: from.x1, y1: from.y1, x2: from.x2, y2: from.y2 });
+    setCoords(atStart(from, fc));
     animRef.current = requestAnimationFrame(animate);
 
     return () => {
       if (animRef.current) cancelAnimationFrame(animRef.current);
     };
-  }, [animating, hasPrev, from.x1, from.y1, from.x2, from.y2, to.x1, to.y1, to.x2, to.y2]);
+  }, [animating, hasPrev, from.x1, from.y1, from.x2, from.y2, to.x1, to.y1, to.x2, to.y2,
+    fc.c1x, fc.c1y, fc.c2x, fc.c2y, tc.c1x, tc.c1y, tc.c2x, tc.c2y]);
 
   const { x1, y1, x2, y2 } = coords;
   const color = to.color || '#e53e3e';
   const strokeWidth = to.strokeWidth || 4;
   const headSize = to.headSize || 16;
-  const geo = arrowGeometry(x1, y1, x2, y2, headSize, to.heads);
+  // Curved only if the target arrow is curved; then use the interpolated controls.
+  const curved = to.c1x != null && to.c1y != null && to.c2x != null && to.c2y != null;
+  const geo = curved
+    ? arrowGeometry(x1, y1, x2, y2, headSize, to.heads, coords.c1x, coords.c1y, coords.c2x, coords.c2y)
+    : arrowGeometry(x1, y1, x2, y2, headSize, to.heads);
 
   return (
     <svg style={{
@@ -448,7 +465,9 @@ function AnimatedArrow({ from, to, zIndex, animating, hasPrev }: {
       pointerEvents: 'none', overflow: 'visible', zIndex,
     }}>
       <g opacity={to.opacity ?? 1}>
-        <line x1={geo.line.x1} y1={geo.line.y1} x2={geo.line.x2} y2={geo.line.y2} stroke={color} strokeWidth={strokeWidth} />
+        {geo.curved
+          ? <path d={geo.path} fill="none" stroke={color} strokeWidth={strokeWidth} />
+          : <line x1={geo.line!.x1} y1={geo.line!.y1} x2={geo.line!.x2} y2={geo.line!.y2} stroke={color} strokeWidth={strokeWidth} />}
         {geo.triangles.map((t, i) => <polygon key={i} points={triPoints(t)} fill={color} />)}
       </g>
     </svg>

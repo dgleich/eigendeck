@@ -57,11 +57,13 @@ export function imageVisuals(el) {
  * ArrowGlyph, the SVG-string arrowSvgInner, or LinkOverlay's hit-target).
  */
 export function describeArrow(el, theme) {
-  const { x1, y1, x2, y2, strokeWidth = 4, headSize = 16, heads, opacity } = el;
+  const { x1, y1, x2, y2, strokeWidth = 4, headSize = 16, heads, opacity,
+    c1x, c1y, c2x, c2y } = el;
   // `'accent'` follows the slide theme (resolveColor); default stays #2563eb.
   const color = resolveColor(el.color, theme, '#2563eb');
   return {
     kind: 'arrow', x1, y1, x2, y2, color, strokeWidth, headSize, heads, opacity,
-    geo: arrowGeometry(x1, y1, x2, y2, headSize, heads),
+    c1x, c1y, c2x, c2y,
+    geo: arrowGeometry(x1, y1, x2, y2, headSize, heads, c1x, c1y, c2x, c2y),
   };
 }
