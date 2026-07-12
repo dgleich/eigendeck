@@ -28,7 +28,8 @@ No sanitizer needed — the markup can "go wild" and the browser contains it.
   constants), shared by every path so isolation can't drift. + `.d.mts` + unit test.
 - All 7 render paths (editor / present / present-wrapper=noop / HTML export / PDF-print
   inline / link-overlay placeholder / thumbnail). Print needs no bake — a static
-  srcdoc iframe renders in the browser's print output.
+  srcdoc iframe renders in the browser's print output. **Confirmed working on the Mac
+  (user, 2026-07-12)** — the print/PDF path was the one thing not headlessly verifiable.
 - Insert: native **Insert → HTML Element** menu only (no toolbar button). Inspector:
   raw-HTML textarea + Background + a "may reshape complex markup" warning.
 - Docs: LLM-EDITING.md (authoring reference), SPEC.md, AGENTS.md element list.
