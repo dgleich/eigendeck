@@ -32,3 +32,18 @@ describe('[simplify-guard] SlideElementRenderer render snapshot', () => {
     });
   }
 });
+
+describe('curved arrow (#129)', () => {
+  const curved = { id: 'a2', type: 'arrow', x1: 100, y1: 500, x2: 400, y2: 520,
+    color: '#e53e3e', strokeWidth: 4, headSize: 16, heads: 'end',
+    c1x: 200, c1y: 620, c2x: 300, c2y: 620,
+    position: { x: 0, y: 0, width: 0, height: 0 } } as unknown as SlideElement;
+
+  it('renders the curved arrow as an SVG <path>, not a <line>', () => {
+    const html = renderEl(curved);
+    expect(html).toContain('<path d="M 100 500 C 200 620 300 620');
+    // The visible glyph is a path; the only <line> would be the (straight) fat
+    // hit target, which for a curve is also replaced by a path.
+    expect(html).not.toContain('<line');
+  });
+});
