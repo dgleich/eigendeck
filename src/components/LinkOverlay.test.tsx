@@ -45,3 +45,25 @@ describe('[simplify-guard] LinkOverlay render snapshot', () => {
     expect(container.innerHTML).toMatchSnapshot();
   });
 });
+
+describe('link-overlay curved arrow (#129)', () => {
+  it('renders a curved arrow target as an SVG <path>, not a <line>', () => {
+    const source = { id: 'src', type: 'text', preset: 'body', html: 'src', position: { x: 0, y: 0, width: 100, height: 50 } };
+    const curved = { id: 'a2', type: 'arrow', x1: 100, y1: 500, x2: 400, y2: 520,
+      color: '#e53e3e', strokeWidth: 4, headSize: 16, heads: 'end',
+      c1x: 200, c1y: 620, c2x: 300, c2y: 620, position: { x: 0, y: 0, width: 0, height: 0 } };
+    const presentation = {
+      title: 'T', theme: 'white', config: { width: 1920, height: 1080 },
+      slides: [
+        { id: 's0', layout: 'default', notes: '', elements: [source] },
+        { id: 's1', layout: 'default', notes: '', elements: [curved] },
+      ],
+    } as unknown as Presentation;
+    usePresentationStore.setState({ presentation, currentSlideIndex: 0 });
+    const { container } = render(<LinkOverlay elementId="src" onClose={() => {}} />);
+    expect(container.innerHTML).toContain('<path d="M 100 500 C 200 620 300 620');
+    // The only line-like elements would be the (straight) hit target; a curve's
+    // hit target is also a path, so no <line> at all.
+    expect(container.querySelector('line')).toBeNull();
+  });
+});

@@ -35,3 +35,19 @@ describe('[simplify-guard] SlideThumbnail render snapshot', () => {
     expect(container.innerHTML).toMatchSnapshot();
   });
 });
+
+describe('thumbnail curved arrow (#129)', () => {
+  it('renders a curved arrow as an SVG <path>, not a <line>', () => {
+    const { presentation, slide } = deck();
+    (slide.elements as unknown as Array<Record<string, unknown>>).push({
+      id: 'a2', type: 'arrow', x1: 100, y1: 500, x2: 400, y2: 520,
+      color: '#e53e3e', strokeWidth: 4, headSize: 16, heads: 'end',
+      c1x: 200, c1y: 620, c2x: 300, c2y: 620,
+      position: { x: 0, y: 0, width: 0, height: 0 },
+    });
+    const { container } = render(
+      <SlideThumbnail presentation={presentation} slide={slide} width={400} />,
+    );
+    expect(container.innerHTML).toContain('<path d="M 100 500 C 200 620 300 620');
+  });
+});

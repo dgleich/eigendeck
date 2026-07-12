@@ -396,14 +396,14 @@ type ArrowEl = Extract<SlideElement, { type: 'arrow' }>;
 // Effective cubic control points for an arrow — its own, or the 1/3 & 2/3 points
 // on the chord when absent — so a straight↔curved transition interpolates smoothly
 // (a straight arrow's implicit controls sit on the line).
-function effControls(s: ArrowEl) {
+export function effControls(s: ArrowEl) {
   return {
     c1x: s.c1x ?? s.x1 + (s.x2 - s.x1) / 3, c1y: s.c1y ?? s.y1 + (s.y2 - s.y1) / 3,
     c2x: s.c2x ?? s.x1 + 2 * (s.x2 - s.x1) / 3, c2y: s.c2y ?? s.y1 + 2 * (s.y2 - s.y1) / 3,
   };
 }
 
-function AnimatedArrow({ from, to, zIndex, animating, hasPrev }: {
+export function AnimatedArrow({ from, to, zIndex, animating, hasPrev }: {
   from: ArrowEl; to: ArrowEl; zIndex: number; animating: boolean; hasPrev: boolean;
 }) {
   const fc = effControls(from), tc = effControls(to);

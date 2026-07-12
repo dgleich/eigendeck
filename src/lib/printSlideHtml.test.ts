@@ -39,6 +39,19 @@ describe('[simplify-guard] buildPrintSlideHtml render snapshot', () => {
     expect(buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots)).toMatchSnapshot();
   });
 
+  it('renders a curved arrow as an SVG <path> in the print/PDF path (#129)', () => {
+    const slide = {
+      id: 's1', layout: 'default', notes: '',
+      elements: [{ id: 'a1', type: 'arrow', x1: 100, y1: 500, x2: 400, y2: 520,
+        color: '#2563eb', strokeWidth: 4, headSize: 16, heads: 'end',
+        c1x: 200, c1y: 620, c2x: 300, c2y: 620, position: { x: 0, y: 0, width: 0, height: 0 } }],
+    } as unknown as Slide;
+    const presentation = { title: 'T', theme: 'white', config: { width: 1920, height: 1080 }, slides: [slide] } as unknown as Presentation;
+    const out = buildPrintSlideHtml(slide, presentation, new Map(), new Map());
+    expect(out).toContain('<path d="M 100 500 C 200 620 300 620');
+    expect(out).toContain('fill="none"');
+  });
+
   it('uses pre-rendered math HTML for a text element when provided (#print-math)', () => {
     const slide = {
       id: 's1', layout: 'default', notes: '',
