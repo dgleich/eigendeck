@@ -98,6 +98,7 @@ const mk = (id, theme, el) => ({ id, layout: 'default', notes: '', theme, elemen
 const deck = {
   title: 'Frontend-slides in Eigendeck',
   theme: 'black',
+  config: { width: 1920, height: 1080 },
   slides: [
     mk('s0', 'black', hero), mk('s1', 'black', section), mk('s2', 'black', stats),
     mk('s3', 'black', quote), mk('s4', 'black', table), mk('s5', 'black', closing),
