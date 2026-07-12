@@ -755,6 +755,7 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .item(&MenuItemBuilder::new("Text Box").id("insert-textbox").build(app).map_err(|e| e.to_string())?)
         .item(&MenuItemBuilder::new("Note").id("insert-note").build(app).map_err(|e| e.to_string())?)
         .item(&MenuItemBuilder::new("Footnote").id("insert-footnote").build(app).map_err(|e| e.to_string())?)
+        .item(&MenuItemBuilder::new("Card").id("insert-card").build(app).map_err(|e| e.to_string())?)
         .separator()
         .item(&MenuItemBuilder::new("Arrow").id("insert-arrow").build(app).map_err(|e| e.to_string())?)
         .item(&MenuItemBuilder::new("Cover Rectangle").id("insert-cover").build(app).map_err(|e| e.to_string())?)
