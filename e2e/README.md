@@ -460,3 +460,42 @@ probe selects slide 1 and asserts the **undeclared host is blocked** while the
     /tmp/el-target/debug/eigendeck-cli /tmp/netmanifest.eigendeck import json /tmp/netmanifest.json
     PROBE=$PWD/e2e/netmanifest-probe.mjs E2E_DECK=/tmp/netmanifest.eigendeck bash e2e/run-probe.sh
     # -> NETMANIFEST_PASS
+
+## Raw HTML element (#137, src/lib/htmlElement.mjs)
+
+The `html` element renders arbitrary markup in a sandboxed `<iframe srcdoc>` with
+NO `allow-scripts` (zero JS) and an injected CSP that blocks all network (only
+`data:` URIs + inline styles). The editor uses `sandbox="allow-same-origin"` (so
+the parent can toggle contentEditable and probes can read `contentDocument`);
+present / export / thumbnail use the fully-locked `sandbox=""`. All probes below
+are gated in `run-all.sh` and build via `import_json` (fixtures in `fixtures/`).
+
+- **html-element-probe.mjs** (`html-element-deck.json`) — the core: same-origin
+  script-less editor iframe renders the authored markup + carries the CSP;
+  double-click → contentEditable; HTML export emits a locked iframe;
+  copy/paste + cut round-trip.
+- **html-security-noscript-probe.mjs** (`html-security-deck.json`) — the
+  high-value real-WebKit check jsdom can't do: the fixture embeds
+  `<script>window.__pwned=1</script>`, `<img onerror=…>`, `<svg><script>`. Asserts
+  NOTHING runs — parent AND frame `window.__pwned` unset, canary div has no
+  `data-ran`/`data-onerror` — in the editor AND present mode (locked, opaque
+  origin, `contentDocument` unreadable).
+- **html-security-network-probe.mjs** (`html-network-deck.json`) — CSP blocks
+  egress: a remote `<img>`/`<link>` fails (`complete && naturalWidth===0`) while a
+  `data:` `<img>` loads (`naturalWidth>0`) — the block is at the CSP layer.
+- **html-persist-probe.mjs** — edit `html`+`background` → `save()` → inspect the
+  SAVED DB (`valid_to IS NULL`) for the new string, then reopen in a fresh session
+  and confirm it re-renders.
+- **html-inspector-probe.mjs** — drive the real `.properties-panel` Raw HTML
+  `<textarea>` (native setter + `input` event) → store + srcdoc update; Background
+  control → srcdoc `background:<color>`.
+- **html-present-render-probe.mjs** — present mode renders a locked iframe
+  (`sandbox=""`, no allow-scripts) with CSP + markup (present `/screenshot` hangs,
+  so it captures via the seam best-effort).
+- **html-thumbnail-probe.mjs** — the sidebar thumbnail renders the html element as
+  a locked iframe — same isolation as present/export, no drift.
+- **html-duplicate-delete-probe.mjs** — `duplicateSlide` carries the html element
+  (markup+background, fresh slide); `deleteElement` removes it from the source
+  slide only.
+- **html-undo-redo-probe.mjs** — the REAL Cmd+Z / Cmd+Shift+Z keyboard path
+  (`undoWithNav`/`redoWithNav`) reverts + restores an html edit.

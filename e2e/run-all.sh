@@ -173,6 +173,20 @@ MANIFEST=(
   "a4-arrow-visuals.mjs|a4arrow.eigendeck||import_json \$ROOT/e2e/fixtures/a4-arrowvis-deck.json"
   "arrow-spline-probe.mjs|arrspline.eigendeck||import_json \$ROOT/e2e/fixtures/arrow-spline-deck.json"
   "html-element-probe.mjs|htmlel.eigendeck||import_json \$ROOT/e2e/fixtures/html-element-deck.json"
+  # #137 raw-HTML element — security + all render/output paths in REAL WebKit.
+  # The two security probes are the high-value ones jsdom cannot do: no-script
+  # (script/onerror never fire, parent+frame uncompromised) and no-egress (CSP
+  # blocks remote img/link while data: loads). Then persistence round-trip,
+  # inspector textarea + background, present/thumbnail lock, duplicate/delete,
+  # undo/redo.
+  "html-security-noscript-probe.mjs|htmlsec.eigendeck||import_json \$ROOT/e2e/fixtures/html-security-deck.json"
+  "html-security-network-probe.mjs|htmlnet.eigendeck||import_json \$ROOT/e2e/fixtures/html-network-deck.json"
+  "html-persist-probe.mjs|htmlel.eigendeck||import_json \$ROOT/e2e/fixtures/html-element-deck.json"
+  "html-inspector-probe.mjs|htmlel.eigendeck||import_json \$ROOT/e2e/fixtures/html-element-deck.json"
+  "html-present-render-probe.mjs|htmlel.eigendeck||import_json \$ROOT/e2e/fixtures/html-element-deck.json"
+  "html-thumbnail-probe.mjs|htmlel.eigendeck||import_json \$ROOT/e2e/fixtures/html-element-deck.json"
+  "html-duplicate-delete-probe.mjs|htmlel.eigendeck||import_json \$ROOT/e2e/fixtures/html-element-deck.json"
+  "html-undo-redo-probe.mjs|htmlel.eigendeck||import_json \$ROOT/e2e/fixtures/html-element-deck.json"
   "a4-text-cover.mjs|a4txt.eigendeck||import_json \$ROOT/e2e/fixtures/a4-textcover-deck.json"
   "a3-output-themes.mjs|a3out.eigendeck||python3 $EXFIX/make_a3_output_deck.py dark \$DECKDIR/a3out.json; import_json \$DECKDIR/a3out.json"
   "a3-discard-reload.mjs|a3ov.eigendeck||python3 $EXFIX/make_overlay_deck.py single \$DECKDIR/a3ov.json; import_json \$DECKDIR/a3ov.json"
