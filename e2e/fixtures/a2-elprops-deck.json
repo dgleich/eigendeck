@@ -1,0 +1,114 @@
+{
+  "config": {
+    "author": "Init Author",
+    "backgroundTransition": "fade",
+    "defaultBodyFont": "ptsans",
+    "defaultTitleFont": "ptsans",
+    "height": 1080,
+    "showSlideNumber": true,
+    "transition": "slide",
+    "venue": "Init Venue",
+    "width": 1920
+  },
+  "slides": [
+    {
+      "elements": [
+        {
+          "backgroundColor": "#00ff00",
+          "backgroundOpacity": 0.5,
+          "borderRadius": 12,
+          "boxShadow": true,
+          "boxTint": "accent",
+          "color": "#ff0000",
+          "fontSize": 42,
+          "fontSizeName": "small",
+          "html": "<div>hello</div>",
+          "id": "txt-1",
+          "padding": {
+            "bottom": 10,
+            "left": 15,
+            "right": 5,
+            "top": 0
+          },
+          "position": {
+            "h": 100,
+            "w": 400,
+            "x": 100,
+            "y": 100
+          },
+          "preset": "body",
+          "rotation": -7,
+          "textEffect": "glow",
+          "type": "text",
+          "verticalAlign": "bottom"
+        },
+        {
+          "borderRadius": 24,
+          "id": "img-1",
+          "opacity": 0.3,
+          "position": {
+            "h": 200,
+            "w": 300,
+            "x": 200,
+            "y": 200
+          },
+          "rotation": 15,
+          "type": "image"
+        },
+        {
+          "color": "#0000ff",
+          "headSize": 30,
+          "heads": "both",
+          "id": "arr-1",
+          "opacity": 0.4,
+          "position": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "strokeWidth": 8,
+          "type": "arrow",
+          "x1": 100,
+          "x2": 500,
+          "y1": 400,
+          "y2": 400
+        },
+        {
+          "boxTint": "#123456",
+          "color": "#abcdef",
+          "id": "cover-1",
+          "position": {
+            "h": 300,
+            "w": 400,
+            "x": 0,
+            "y": 0
+          },
+          "type": "cover"
+        }
+      ],
+      "id": "slide-1",
+      "notes": ""
+    },
+    {
+      "elements": [
+        {
+          "html": "<div>hello</div>",
+          "id": "txt-2",
+          "position": {
+            "h": 100,
+            "w": 400,
+            "x": 300,
+            "y": 300
+          },
+          "preset": "body",
+          "type": "text"
+        }
+      ],
+      "id": "slide-2",
+      "notes": ""
+    }
+  ],
+  "theme": "white",
+  "title": "A2 Fixture"
+}

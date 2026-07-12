@@ -1,0 +1,103 @@
+{
+  "config": {
+    "author": "Ada Lovelace",
+    "autoReloadAssets": "on",
+    "backgroundTransition": "none",
+    "customPalette": [
+      "#111111",
+      "#222222",
+      "#333333"
+    ],
+    "defaultBodyFont": "noto",
+    "defaultHypeFont": "shantell",
+    "defaultMonoFont": "firacode",
+    "defaultTitleFont": "lato",
+    "height": 720,
+    "mathPreamble": "\\newcommand{\\R}{\\mathbb{R}}",
+    "showSlideNumber": false,
+    "transition": "none",
+    "venue": "STOC 2026",
+    "width": 1280
+  },
+  "slides": [
+    {
+      "bodyFont": "noto",
+      "elements": [
+        {
+          "html": "<div>hello</div>",
+          "id": "txt-1",
+          "position": {
+            "h": 100,
+            "w": 400,
+            "x": 100,
+            "y": 100
+          },
+          "preset": "body",
+          "type": "text"
+        },
+        {
+          "id": "img-1",
+          "position": {
+            "h": 200,
+            "w": 300,
+            "x": 200,
+            "y": 200
+          },
+          "type": "image"
+        },
+        {
+          "color": "#000000",
+          "id": "arr-1",
+          "position": {
+            "h": 0,
+            "w": 0,
+            "x": 0,
+            "y": 0
+          },
+          "type": "arrow",
+          "x1": 100,
+          "x2": 500,
+          "y1": 400,
+          "y2": 400
+        },
+        {
+          "color": "#112233",
+          "id": "cover-1",
+          "position": {
+            "h": 300,
+            "w": 400,
+            "x": 0,
+            "y": 0
+          },
+          "type": "cover"
+        }
+      ],
+      "hypeFont": "shantell",
+      "id": "slide-1",
+      "notes": "speaker notes here",
+      "theme": "dark",
+      "titleFont": "lato"
+    },
+    {
+      "elements": [
+        {
+          "html": "<div>hello</div>",
+          "id": "txt-2",
+          "position": {
+            "h": 100,
+            "w": 400,
+            "x": 300,
+            "y": 300
+          },
+          "preset": "body",
+          "type": "text"
+        }
+      ],
+      "groupId": "grp-A",
+      "id": "slide-2",
+      "notes": ""
+    }
+  ],
+  "theme": "white",
+  "title": "New Title 42"
+}

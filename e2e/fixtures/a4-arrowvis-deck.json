@@ -1,0 +1,50 @@
+{
+  "config": {
+    "defaultBodyFont": "ptsans",
+    "defaultTitleFont": "ptsans",
+    "height": 1080,
+    "width": 1920
+  },
+  "slides": [
+    {
+      "elements": [
+        {
+          "color": "#8b5cf6",
+          "headSize": 40,
+          "heads": "both",
+          "id": "arrBoth",
+          "opacity": 0.4,
+          "strokeWidth": 10,
+          "type": "arrow",
+          "x1": 300,
+          "x2": 900,
+          "y1": 300,
+          "y2": 300
+        }
+      ],
+      "id": "s1",
+      "notes": ""
+    },
+    {
+      "elements": [
+        {
+          "color": "#8b5cf6",
+          "headSize": 40,
+          "heads": "end",
+          "id": "arr2",
+          "opacity": 0.4,
+          "strokeWidth": 10,
+          "type": "arrow",
+          "x1": 300,
+          "x2": 900,
+          "y1": 500,
+          "y2": 500
+        }
+      ],
+      "id": "s2",
+      "notes": ""
+    }
+  ],
+  "theme": "white",
+  "title": "a4 arrow visuals"
+}

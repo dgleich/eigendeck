@@ -1,0 +1,54 @@
+{
+  "config": {
+    "defaultBodyFont": "ptsans",
+    "defaultTitleFont": "ptsans",
+    "height": 1080,
+    "width": 1920
+  },
+  "slides": [
+    {
+      "elements": [
+        {
+          "backgroundColor": "#ffcc00",
+          "backgroundOpacity": 0.8,
+          "borderRadius": 24,
+          "boxShadow": true,
+          "html": "Hello world",
+          "id": "txt",
+          "padding": {
+            "bottom": 40,
+            "left": 50,
+            "right": 50,
+            "top": 40
+          },
+          "position": {
+            "height": 300,
+            "width": 600,
+            "x": 200,
+            "y": 200
+          },
+          "preset": "body",
+          "rotation": 12,
+          "textEffect": "shadow",
+          "type": "text",
+          "verticalAlign": "middle"
+        },
+        {
+          "color": "#123456",
+          "id": "cov",
+          "position": {
+            "height": 300,
+            "width": 400,
+            "x": 1000,
+            "y": 200
+          },
+          "type": "cover"
+        }
+      ],
+      "id": "s1",
+      "notes": ""
+    }
+  ],
+  "theme": "white",
+  "title": "a4 text+cover"
+}
