@@ -233,7 +233,9 @@ A plain rectangle used to cover/hide other elements. Shows as a dashed outline i
   "strokeWidth": 4,
   "headSize": 16,
   "heads": "end",
-  "opacity": 1
+  "opacity": 1,
+  "c1x": 500, "c1y": 620,
+  "c2x": 700, "c2y": 620
 }
 ```
 
@@ -241,6 +243,7 @@ Arrow coordinates (`x1,y1` to `x2,y2`) are in slide space (1920x1080).
 The `position` field is required but ignored for arrows (use x1/y1/x2/y2).
 - `heads`: `"end"` (default) | `"start"` | `"both"` | `"none"` — which ends get an arrowhead. The line is automatically pulled back to the head base so the stroke doesn't poke through the tip.
 - `opacity`: number 0–1 (default 1) — arrow stroke/fill opacity.
+- `c1x`/`c1y`/`c2x`/`c2y`: optional cubic-Bézier control points (#129) — `c1` is the handle off the start, `c2` off the end. When **all four** are present the arrow curves (`M x1 y1 C c1x c1y c2x c2y x2 y2`); omit any and it's a straight line. Arrowheads orient to the curve tangent at each tip. In the editor these are the Inkscape-style handles shown when an arrow is selected (drag to bend, double-click to straighten); the inspector's Shape toggle sets or clears them.
 
 ### Demo Element
 

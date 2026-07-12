@@ -357,6 +357,27 @@ describe('buildExportHtml', () => {
     expect(src.slides[0].elements[0].heads).toBe('both');
     expect(src.slides[0].elements[0].opacity).toBe(0.5);
   });
+
+  it('round-trips a curved arrow as an SVG path (#129)', async () => {
+    const p = makePresentation({
+      slides: [{
+        id: 's1', layout: 'default', notes: '',
+        elements: [{ id: 'a1', type: 'arrow', x1: 0, y1: 0, x2: 200, y2: 0, color: '#2563eb',
+          strokeWidth: 4, headSize: 16, heads: 'none', c1x: 40, c1y: 80, c2x: 160, c2y: 80 }],
+      }],
+    });
+    const html = await buildExportHtml({
+      presentation: p, readFile: async () => new Uint8Array([0]), readTextFile: async () => '',
+      renderMath: null, applyMathPreamble: null,
+    });
+    // Curved arrow renders a cubic <path>, not a <line>.
+    expect(html).toContain('<path d="M 0 0 C 40 80 160 80 200 0"');
+    expect(html).toContain('fill="none"');
+    // Control points survive the source round-trip.
+    const src = JSON.parse(decodeURIComponent(escape(atob(html.match(/<!-- eigendeck-source: (.+?) -->/)[1]))));
+    expect(src.slides[0].elements[0].c1x).toBe(40);
+    expect(src.slides[0].elements[0].c2y).toBe(80);
+  });
 });
 
 describe('htmlEscapeForSrcdoc', () => {
