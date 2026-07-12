@@ -1,0 +1,17 @@
+{
+  "title": "arrow spline (#129)",
+  "theme": "white",
+  "slides": [
+    {
+      "id": "s0",
+      "layout": "default",
+      "notes": "",
+      "theme": "white",
+      "elements": [
+        { "id": "t0", "type": "text", "preset": "title", "html": "Curved arrows", "position": { "x": 80, "y": 40, "width": 1760, "height": 150 } },
+        { "id": "straight", "type": "arrow", "x1": 200, "y1": 700, "x2": 800, "y2": 700, "color": "#2563eb", "strokeWidth": 6, "headSize": 22, "heads": "end", "position": { "x": 0, "y": 0, "width": 0, "height": 0 } },
+        { "id": "curved", "type": "arrow", "x1": 1000, "y1": 700, "x2": 1700, "y2": 700, "color": "#dc2626", "strokeWidth": 6, "headSize": 22, "heads": "end", "c1x": 1150, "c1y": 450, "c2x": 1550, "c2y": 450, "position": { "x": 0, "y": 0, "width": 0, "height": 0 } }
+      ]
+    }
+  ]
+}

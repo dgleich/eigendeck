@@ -171,6 +171,7 @@ MANIFEST=(
   "a2-undo.mjs|a2undo.eigendeck||import_json \$ROOT/e2e/fixtures/a2-undo-deck.json"
   "a2-clear-props.mjs|a2clear.eigendeck||import_json \$ROOT/e2e/fixtures/a2-clear-deck.json"
   "a4-arrow-visuals.mjs|a4arrow.eigendeck||import_json \$ROOT/e2e/fixtures/a4-arrowvis-deck.json"
+  "arrow-spline-probe.mjs|arrspline.eigendeck||import_json \$ROOT/e2e/fixtures/arrow-spline-deck.json"
   "a4-text-cover.mjs|a4txt.eigendeck||import_json \$ROOT/e2e/fixtures/a4-textcover-deck.json"
   "a3-output-themes.mjs|a3out.eigendeck||python3 $EXFIX/make_a3_output_deck.py dark \$DECKDIR/a3out.json; import_json \$DECKDIR/a3out.json"
   "a3-discard-reload.mjs|a3ov.eigendeck||python3 $EXFIX/make_overlay_deck.py single \$DECKDIR/a3ov.json; import_json \$DECKDIR/a3ov.json"
