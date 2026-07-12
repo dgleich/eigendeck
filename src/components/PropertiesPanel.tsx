@@ -804,6 +804,16 @@ export function PropertiesPanel() {
                     onColor={(c) => updateElement(selectedEl.id, { background: c } as any)}
                   />
                 </PropSection>
+                <PropSection label="Interactive">
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!!selectedEl.interactive} style={{ marginTop: 2 }}
+                      onChange={(e) => updateElement(selectedEl.id, { interactive: e.target.checked || undefined } as any)} />
+                    <span style={{ color: '#6b7280', lineHeight: 1.4 }}>
+                      Clickable in present mode (native controls / <code>:hover</code> — no script).
+                      Double-click on the canvas to interact.
+                    </span>
+                  </label>
+                </PropSection>
               </>
             )}
 

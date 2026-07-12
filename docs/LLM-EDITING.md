@@ -391,6 +391,13 @@ is **not** the text element (no rich-text presets) and **not** a demo (no script
   `<body>` of a sandboxed `srcdoc` iframe).
 - `background`: optional CSS color for the box. Omit for **transparent** (composites
   onto the slide).
+- `interactive`: optional boolean (default false). When true the element **receives
+  mouse events**, so native script-less interactivity works — `<input type="range">`,
+  radio/checkbox `:checked` state, `<details>`, `:hover`. It becomes clickable in
+  present mode (and double-click on the canvas enters an "interact" mode instead of
+  editing). Leave false/omitted for plain static design HTML so it never blocks the
+  slide. (Still no JavaScript — interactivity is CSS/native-control only, e.g. a
+  radio-driven `:checked ~ .fill { height: … }` thermometer.)
 - `position`: standard box (slide space, 1920×1080).
 
 **Sandbox — what works and what doesn't.** The HTML renders in a locked-down iframe,

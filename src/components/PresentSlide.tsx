@@ -67,12 +67,15 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
       );
     }
     case 'html':
-      // Locked (no-script, no-network, no same-origin) — presenting is read-only.
+      // Locked (no-script, no-network, no same-origin). `interactive` elements
+      // receive clicks so native controls (range/radio/details/:hover) work live;
+      // static ones stay pass-through so they never block the slide.
       return (
         <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background)}
           sandbox={HTML_SANDBOX_LOCKED} style={{
             position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
-            border: 'none', background: 'transparent', pointerEvents: 'none', zIndex, ...style,
+            border: 'none', background: 'transparent',
+            pointerEvents: el.interactive ? 'auto' : 'none', zIndex, ...style,
           }} />
       );
     default:

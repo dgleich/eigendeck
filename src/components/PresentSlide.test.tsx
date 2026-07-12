@@ -39,6 +39,16 @@ describe('present html element (#137)', () => {
     expect(iframe.getAttribute('sandbox')).toBe('');            // locked
     expect(iframe.getAttribute('srcdoc') || '').toContain('<p>hi</p>');
   });
+
+  it('is pass-through by default, clickable when interactive', () => {
+    const base = { id: 'h1', type: 'html', html: '<p>x</p>', position: { x: 0, y: 0, width: 100, height: 100 } };
+    const staticEl = { ...base } as unknown as SlideElement;
+    const liveEl = { ...base, interactive: true } as unknown as SlideElement;
+    const s = render(<PresentElement element={staticEl} zIndex={0} ctx={ctx()} />);
+    expect(s.container.querySelector('iframe')!.style.pointerEvents).toBe('none');
+    const l = render(<PresentElement element={liveEl} zIndex={0} ctx={ctx()} />);
+    expect(l.container.querySelector('iframe')!.style.pointerEvents).toBe('auto');
+  });
 });
 
 describe('present curved arrow (#129)', () => {

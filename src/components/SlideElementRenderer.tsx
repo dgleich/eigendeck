@@ -408,7 +408,9 @@ function HtmlBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(false);      // contentEditable (static HTML)
+  const [interacting, setInteracting] = useState(false); // clickable controls (interactive HTML)
+  const interactive = !!element.interactive;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const srcDoc = htmlElementSrcdoc(element.html, element.background);
 
@@ -437,6 +439,14 @@ function HtmlBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
     };
   }, [editing]);
 
+  // Double-click: interactive elements enter "interact" mode (click native
+  // controls, like a demo); static ones enter contentEditable edit mode.
+  const onDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (interactive) setInteracting(true); else setEditing(true);
+  };
+  const live = editing || interacting;
+
   return (
     <DraggableBox
       element={element} zIndex={zIndex} scale={scale}
@@ -445,11 +455,14 @@ function HtmlBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
     >
       <iframe ref={iframeRef} title="HTML element" srcDoc={srcDoc} sandbox={HTML_SANDBOX_EDITABLE}
         style={{ width: '100%', height: '100%', border: 'none', background: 'transparent',
-          pointerEvents: editing ? 'auto' : 'none' }} />
-      {!editing && (
+          pointerEvents: live ? 'auto' : 'none' }} />
+      {!live && (
         <div className="demo-overlay"
-          onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }}
+          onDoubleClick={onDoubleClick}
           style={{ position: 'absolute', inset: 0, cursor: 'grab', zIndex: 1 }} />
+      )}
+      {interacting && (
+        <InteractLockBar scale={scale} onLock={() => setInteracting(false)} />
       )}
       {editing && (
         <InteractLockBar scale={scale} onLock={() => finishRef.current()}>

@@ -215,6 +215,12 @@ export interface HtmlElement extends BaseElement {
   /** Optional box background (CSS color). Default transparent so it composites
    *  onto the slide. */
   background?: string;
+  /** Opt-in: let the element receive real mouse events so native, script-less
+   *  interactivity works — `<input type=range>`, radios/`:checked`, `<details>`,
+   *  `:hover` (#137). When true it's clickable in present mode, and double-click
+   *  in the editor enters an "interact" mode (like a demo) instead of editing.
+   *  Default false → plain static design HTML (never captures clicks). */
+  interactive?: boolean;
 }
 
 export interface DemoPieceElement extends BaseElement {
