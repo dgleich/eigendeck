@@ -432,7 +432,9 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
-.el-notebook .nb-stream.nb-stdout { color: #111827; }
+/* stdout follows the theme foreground (--nb-fg) — it was hardcoded #111827, which is
+   invisible on a dark/black slide. */
+.el-notebook .nb-stream.nb-stdout { color: var(--nb-fg, #111827); }
 .el-notebook .nb-stream.nb-stderr {
   color: #991b1b;
   background: #fef2f2;
@@ -444,6 +446,15 @@
   background: #fef2f2;
   padding: 4px 8px;
   border-left: 3px solid #b91c1c;
+}
+/* Dark slides: the light-pink stderr/error boxes are jarring + low-contrast on a black
+   background. Use a translucent dark-red panel with light-red text so they stay legible
+   and on-theme (matches the .nb-theme-dark syntax-highlight overrides). */
+.el-notebook .nb-theme-dark .nb-stream.nb-stderr,
+.el-notebook .nb-theme-dark .nb-error {
+  color: #fca5a5;
+  background: rgba(153, 27, 27, 0.25);
+  border-left-color: #ef4444;
 }
 .el-notebook .nb-image {
   /* Fill the cell width by default. A matplotlib figure renders at
