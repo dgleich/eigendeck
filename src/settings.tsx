@@ -12,10 +12,18 @@
  */
 import ReactDOM from 'react-dom/client';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { listen } from '@tauri-apps/api/event';
 import { SettingsPanel } from './components/SettingsModal';
 import { initRuntime } from './lib/runtime';
 
 initRuntime();
+
+// Deep-link: when the window is already open, the main window emits `settings-tab`
+// to switch tabs (e.g. View → Customize Toolbar… → `ui`). Bridge it to the plain
+// window event SettingsPanel listens for (keeps the panel free of Tauri imports).
+void listen<string>('settings-tab', (e) => {
+  window.dispatchEvent(new CustomEvent('eigendeck:settings-tab', { detail: e.payload }));
+});
 
 function SettingsRoot(): React.ReactElement {
   return (

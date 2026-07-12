@@ -815,6 +815,10 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .item(&show_grid_item)
         .separator()
         .item(&decorations_item)
+        // macOS-standard toolbar customization. Eigendeck's insert buttons aren't
+        // NSToolbar items (no native drag-sheet), so this routes to the Settings
+        // "UI & Toolbar" section (App.tsx `customize-toolbar` → openSettingsWindow('ui')).
+        .item(&MenuItemBuilder::new("Customize Toolbar…").id("customize-toolbar").build(app).map_err(|e| e.to_string())?)
         .separator()
         .item(&debug_item)
         .item(&devtools_item)

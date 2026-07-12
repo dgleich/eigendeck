@@ -1613,6 +1613,9 @@ function App() {
         case 'settings':
           void openSettingsWindow();
           break;
+        case 'customize-toolbar':  // macOS-standard "Customize Toolbar…" → the
+          void openSettingsWindow('ui');   // Settings "UI & Toolbar" section
+          break;
         case 'help-learning':
         case 'help-manual':
         case 'help-report-bug': {

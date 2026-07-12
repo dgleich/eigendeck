@@ -6,8 +6,12 @@
 // PREF_SYNC bridge (preferences.ts + initRuntime → initPrefSync).
 
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import type { SettingsTab } from '../components/SettingsModal';
 
-export async function openSettingsWindow(): Promise<void> {
+/** Open (or focus) the Settings window. `tab` deep-links to a section — a fresh
+ *  window carries it in the URL hash; an already-open window is told via the
+ *  `settings-tab` event (settings.tsx bridges it to the panel). */
+export async function openSettingsWindow(tab?: SettingsTab): Promise<void> {
   const existing = await WebviewWindow.getByLabel('settings');
   if (existing) {
     // Raise it (needs core:window:allow-{unminimize,show,set-focus} in the
@@ -15,11 +19,12 @@ export async function openSettingsWindow(): Promise<void> {
     await existing.unminimize();
     await existing.show();
     await existing.setFocus();
+    if (tab) await existing.emit('settings-tab', tab);
     return;
   }
 
   new WebviewWindow('settings', {
-    url: '/settings.html',
+    url: tab ? `/settings.html#${tab}` : '/settings.html',
     title: 'Settings',
     width: 640,
     height: 560,

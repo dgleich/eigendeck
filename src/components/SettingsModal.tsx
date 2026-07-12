@@ -13,14 +13,33 @@ import { usePreference, type JupyterServerEntry } from '../lib/preferences';
 import { DEFAULT_TEXT_SIZES, type NamedSize } from '../types/presentation';
 import { INSERT_ITEMS, INSERT_GROUP_ORDER, type InsertGroup } from '../lib/insertItems';
 
-type Tab = 'general' | 'security' | 'ui' | 'servers';
+export type SettingsTab = 'general' | 'security' | 'ui' | 'servers';
+type Tab = SettingsTab;
+const VALID_TABS: Tab[] = ['general', 'security', 'ui', 'servers'];
+
+// Deep-link support: the Settings window can open on a specific tab. A fresh
+// window carries the tab in its URL hash (#ui); an already-open window is told
+// via the `eigendeck:settings-tab` window event (settings.tsx bridges the Tauri
+// event to it). "Customize Toolbar…" (View menu) uses this to jump to `ui`.
+function tabFromHash(): Tab {
+  const h = (typeof location !== 'undefined' ? location.hash.replace(/^#/, '') : '') as Tab;
+  return VALID_TABS.includes(h) ? h : 'general';
+}
 
 // The settings BODY (tabs + content), chrome-free so it can live either in the
 // legacy modal or the standalone Settings window (src/settings.tsx). `header`
 // renders a title row (the window uses it; the modal supplies its own with a
 // close button).
 export function SettingsPanel({ header }: { header?: React.ReactNode }) {
-  const [tab, setTab] = useState<Tab>('general');
+  const [tab, setTab] = useState<Tab>(tabFromHash);
+  useEffect(() => {
+    const onTab = (e: Event) => {
+      const t = (e as CustomEvent<Tab>).detail;
+      if (VALID_TABS.includes(t)) setTab(t);
+    };
+    window.addEventListener('eigendeck:settings-tab', onTab);
+    return () => window.removeEventListener('eigendeck:settings-tab', onTab);
+  }, []);
   return (
     <>
       {header}
