@@ -93,11 +93,18 @@ function PresentImage({ element: el, zIndex, style }: {
     displayWidth: el.position.width, displayHeight: el.position.height, snapshotVariant: el.snapshotVariant,
   });
   if (!src) return null;
+  const iv = imageVisualStyle(el);
+  // The transition wrapper `style` carries the fade opacity; if spread last it would
+  // clobber the element's authored opacity. Combine them (fade × element opacity) so
+  // both survive — matching editor/export where the element opacity always applies.
+  const elOpacity = typeof iv.opacity === 'number' ? iv.opacity : 1;
+  const fadeOpacity = typeof style?.opacity === 'number' ? style.opacity : 1;
   return (
     <img src={src} alt="" style={{
       position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height, objectFit: 'contain', zIndex,
-      ...imageVisualStyle(el),
+      ...iv,
       ...style,
+      opacity: elOpacity * fadeOpacity,
     }} />
   );
 }

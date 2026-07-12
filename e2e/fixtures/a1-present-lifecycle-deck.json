@@ -1,0 +1,37 @@
+{
+  "title": "a1 present lifecycle",
+  "theme": "white",
+  "slides": [
+    {
+      "id": "s0",
+      "layout": "default",
+      "notes": "notes for slide 0",
+      "theme": "white",
+      "elements": [
+        { "id": "t0", "type": "text", "preset": "title", "html": "Slide Zero White", "position": { "x": 80, "y": 40, "width": 1760, "height": 150 } },
+        { "id": "b0", "type": "text", "preset": "body", "html": "<div>body zero</div>", "position": { "x": 200, "y": 400, "width": 800, "height": 200 } }
+      ]
+    },
+    {
+      "id": "s1",
+      "layout": "default",
+      "notes": "notes for slide 1",
+      "theme": "dark",
+      "elements": [
+        { "id": "t1", "type": "text", "preset": "title", "html": "Slide One Dark", "position": { "x": 80, "y": 40, "width": 1760, "height": 150 } },
+        { "id": "b1", "type": "text", "preset": "body", "html": "<div>body one</div>", "position": { "x": 200, "y": 400, "width": 800, "height": 200 } }
+      ]
+    },
+    {
+      "id": "s2",
+      "layout": "default",
+      "notes": "notes for slide 2",
+      "theme": "black",
+      "elements": [
+        { "id": "t2", "type": "text", "preset": "title", "html": "Slide Two Black", "position": { "x": 80, "y": 40, "width": 1760, "height": 150 } },
+        { "id": "b2", "type": "text", "preset": "body", "html": "<div>body two</div>", "position": { "x": 200, "y": 400, "width": 800, "height": 200 } }
+      ]
+    }
+  ],
+  "config": { "width": 1920, "height": 1080, "author": "e2e author", "venue": "e2e venue", "defaultTitleFont": "ptsans", "defaultBodyFont": "ptsans" }
+}

@@ -478,6 +478,12 @@ function TextContent({
 }) {
   const [editing, setEditing] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // Survives unmount: React nulls `ref.current` before passive-effect cleanups run,
+  // so the commit-on-unmount (below) can't read `ref`. This callback ref keeps the
+  // last live node (never cleared on the null callback), and a detached node's
+  // innerHTML is still readable — so we can commit the in-progress edit on unmount.
+  const nodeRef = useRef<HTMLDivElement | null>(null);
+  const setEditRef = useCallback((n: HTMLDivElement | null) => { ref.current = n; if (n) nodeRef.current = n; }, []);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0, width: 0 });
 
@@ -609,29 +615,42 @@ function TextContent({
     }, 0);
   };
 
-  const commitAndClose = useCallback(() => {
-    if (ref.current) {
-      stripMathLineStyles(ref.current);
-      // Sanitize WebKit bugs: use the DOM to normalize, then read back
-      // This handles unclosed tags, mismatched nesting, text-align on spans, etc.
-      const sanitizer = document.createElement('div');
-      sanitizer.innerHTML = ref.current.innerHTML;
-      // Fix text-align on span → div (justifyCenter bug)
-      for (const span of Array.from(sanitizer.querySelectorAll('span[style]')) as HTMLElement[]) {
-        if (span.style.textAlign) {
-          const div = document.createElement('div');
-          div.style.cssText = span.style.cssText;
-          div.innerHTML = span.innerHTML;
-          span.replaceWith(div);
-        }
+  // Read the contentEditable, normalize/sanitize it, and commit to the store —
+  // WITHOUT touching editing state, so it's safe to call from an unmount cleanup.
+  const commitHtml = useCallback(() => {
+    // On unmount ref.current is already null; fall back to the surviving node ref.
+    const node = ref.current || nodeRef.current;
+    if (!node) return;
+    stripMathLineStyles(node);
+    // Sanitize WebKit bugs: use the DOM to normalize, then read back
+    // This handles unclosed tags, mismatched nesting, text-align on spans, etc.
+    const sanitizer = document.createElement('div');
+    sanitizer.innerHTML = node.innerHTML;
+    // Fix text-align on span → div (justifyCenter bug)
+    for (const span of Array.from(sanitizer.querySelectorAll('span[style]')) as HTMLElement[]) {
+      if (span.style.textAlign) {
+        const div = document.createElement('div');
+        div.style.cssText = span.style.cssText;
+        div.innerHTML = span.innerHTML;
+        span.replaceWith(div);
       }
-      // Reduce to the toolbar allowlist (strips anything unsafe or un-authorable)
-      // so what we persist always matches what the editor can produce.
-      const html = sanitizeRichText(sanitizer.innerHTML);
-      onCommit(html);
     }
-    setEditing(false);
+    // Reduce to the toolbar allowlist (strips anything unsafe or un-authorable)
+    // so what we persist always matches what the editor can produce.
+    onCommit(sanitizeRichText(sanitizer.innerHTML));
   }, [onCommit]);
+
+  const commitAndClose = useCallback(() => {
+    commitHtml();
+    setEditing(false);
+  }, [commitHtml]);
+
+  // Commit any in-progress edit if this element UNMOUNTS while editing — entering
+  // present mode (F5 / Present menu) unmounts the whole editor, and without this the
+  // uncommitted typed text was lost (the blur/outside-click commit never fires).
+  const pendingCommit = useRef<(() => void) | undefined>(undefined);
+  pendingCommit.current = editing ? commitHtml : undefined;
+  useEffect(() => () => { pendingCommit.current?.(); }, []);
 
   // Close editing when clicking outside this element
   useEffect(() => {
@@ -685,7 +704,7 @@ function TextContent({
         document.body
       )}
       <div
-        ref={ref}
+        ref={setEditRef}
         style={style}
         contentEditable={editing}
         suppressContentEditableWarning

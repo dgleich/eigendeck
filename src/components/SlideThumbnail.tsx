@@ -15,6 +15,7 @@ import { CoverView } from './ElementView';
 import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
 import { ELEMENT_PLACEHOLDERS as PH } from '../lib/elementPlaceholders.mjs';
 import { resolveTheme } from '../lib/themes';
+import { imageVisualStyle } from '../lib/imageVisualStyle';
 import { TextElementSvg } from './TextElementSvg';
 import { useRenderedAsset } from '../lib/assetRenderer';
 import { ASSET_TIER } from '../lib/assetCache';
@@ -131,7 +132,7 @@ function ThumbImage({ element, imageTier }: { element: Extract<SlideElement, { t
       background: url ? 'transparent' : '#f0f0f0', border: url ? 'none' : '1px solid #ddd', borderRadius: 2,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      {url ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+      {url ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', ...imageVisualStyle(element) }} />
         : <span style={{ fontSize: 24, color: '#aaa' }}>IMG</span>}
     </div>
   );
