@@ -1,0 +1,39 @@
+{
+  "title": "Interactive thermometer (#137)",
+  "theme": "white",
+  "slides": [
+    {
+      "id": "s0",
+      "layout": "default",
+      "notes": "",
+      "theme": "black",
+      "elements": [
+        {
+          "id": "title",
+          "type": "text",
+          "preset": "title",
+          "html": "Click a level — no JavaScript",
+          "position": {
+            "x": 80,
+            "y": 40,
+            "width": 1760,
+            "height": 130
+          }
+        },
+        {
+          "id": "thermo",
+          "type": "html",
+          "interactive": true,
+          "background": "#0b1020",
+          "position": {
+            "x": 560,
+            "y": 210,
+            "width": 800,
+            "height": 800
+          },
+          "html": "<style>\n  .lv{display:none}\n  .stage{height:100%;display:flex;align-items:center;justify-content:center;gap:70px;\n    font-family:system-ui,sans-serif;color:#e5e7eb}\n  .thermo{position:relative;display:flex;flex-direction:column;align-items:center}\n  .tube{position:relative;width:52px;height:520px;background:#111827;\n    border:5px solid #cbd5e1;border-bottom:none;border-radius:26px 26px 0 0;overflow:hidden;z-index:2}\n  .fill{position:absolute;left:0;bottom:0;width:100%;\n    background:linear-gradient(#fecaca,#f87171 45%,#dc2626);\n    transition:height .6s cubic-bezier(.34,1.56,.64,1)}\n  .bulb{width:110px;height:110px;margin-top:-16px;border-radius:50%;z-index:1;\n    background:radial-gradient(circle at 34% 30%,#fca5a5,#dc2626 55%,#991b1b);\n    border:5px solid #cbd5e1;box-shadow:0 0 44px rgba(220,38,38,.55)}\n  .scale{display:flex;flex-direction:column;justify-content:space-between;height:520px;\n    font-size:26px;font-variant-numeric:tabular-nums}\n  .scale label{cursor:pointer;padding:4px 14px;border-radius:8px;transition:background .15s;\n    display:flex;gap:10px;align-items:baseline}\n  .scale label:hover{background:#1e293b}\n  .scale .n{font-size:16px;color:#94a3b8}\n  #t0:checked~.stage .fill{height:8%}#t1:checked~.stage .fill{height:24%}#t2:checked~.stage .fill{height:40%}#t3:checked~.stage .fill{height:58%}#t4:checked~.stage .fill{height:76%}#t5:checked~.stage .fill{height:94%}\n  #t0:checked~.stage label[for=\"t0\"],#t1:checked~.stage label[for=\"t1\"],#t2:checked~.stage label[for=\"t2\"],#t3:checked~.stage label[for=\"t3\"],#t4:checked~.stage label[for=\"t4\"],#t5:checked~.stage label[for=\"t5\"]{background:#dc2626;color:#fff;font-weight:700}\n</style>\n<input type=\"radio\" name=\"temp\" id=\"t0\" class=\"lv\"><input type=\"radio\" name=\"temp\" id=\"t1\" class=\"lv\"><input type=\"radio\" name=\"temp\" id=\"t2\" class=\"lv\" checked><input type=\"radio\" name=\"temp\" id=\"t3\" class=\"lv\"><input type=\"radio\" name=\"temp\" id=\"t4\" class=\"lv\"><input type=\"radio\" name=\"temp\" id=\"t5\" class=\"lv\">\n<div class=\"stage\">\n  <div class=\"thermo\"><div class=\"tube\"><div class=\"fill\"></div></div><div class=\"bulb\"></div></div>\n  <div class=\"scale\"><label for=\"t5\">100° <span class=\"n\">boiling</span></label><label for=\"t4\">80°</label><label for=\"t3\">60°</label><label for=\"t2\">40°</label><label for=\"t1\">20°</label><label for=\"t0\">0° <span class=\"n\">freezing</span></label></div>\n</div>"
+        }
+      ]
+    }
+  ]
+}

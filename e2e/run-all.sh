@@ -187,6 +187,9 @@ MANIFEST=(
   "html-thumbnail-probe.mjs|htmlel.eigendeck||import_json \$ROOT/e2e/fixtures/html-element-deck.json"
   "html-duplicate-delete-probe.mjs|htmlel.eigendeck||import_json \$ROOT/e2e/fixtures/html-element-deck.json"
   "html-undo-redo-probe.mjs|htmlel.eigendeck||import_json \$ROOT/e2e/fixtures/html-element-deck.json"
+  # opt-in `interactive` flag: a pure-CSS radio/:checked thermometer is clickable
+  # in the editor interact-mode + present (pointer-events plumbing), no JavaScript.
+  "html-interactive-probe.mjs|htmlint.eigendeck||import_json \$ROOT/e2e/fixtures/html-interactive-deck.json"
   "a4-text-cover.mjs|a4txt.eigendeck||import_json \$ROOT/e2e/fixtures/a4-textcover-deck.json"
   "a3-output-themes.mjs|a3out.eigendeck||python3 $EXFIX/make_a3_output_deck.py dark \$DECKDIR/a3out.json; import_json \$DECKDIR/a3out.json"
   "a3-discard-reload.mjs|a3ov.eigendeck||python3 $EXFIX/make_overlay_deck.py single \$DECKDIR/a3ov.json; import_json \$DECKDIR/a3ov.json"
