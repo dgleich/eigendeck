@@ -29,6 +29,31 @@ describe('htmlElementSrcdoc (#137)', () => {
   });
 });
 
+describe('html tables (#137)', () => {
+  // A realistic LLM-authored table: nested thead/tbody, quoted style + colspan
+  // attributes, unicode — good stress for the srcdoc + attribute escaping.
+  const TABLE = '<table style="width:100%;border-collapse:collapse">'
+    + '<thead><tr><th>Method</th><th colspan="2">Result</th></tr></thead>'
+    + '<tbody><tr><td>Lanczos</td><td>λ₁…λₖ</td><td>fast</td></tr></tbody></table>';
+
+  it('carries the full table structure verbatim into the srcdoc body', () => {
+    const doc = htmlElementSrcdoc(TABLE);
+    expect(doc).toContain('<table style="width:100%;border-collapse:collapse">');
+    expect(doc).toContain('<th colspan="2">Result</th>');
+    expect(doc).toContain('<td>λ₁…λₖ</td>');   // unicode preserved
+    expect(doc).toContain('</tbody></table>');
+  });
+
+  it('attribute-escapes the whole table for the srcdoc="" attribute (no host breakout)', () => {
+    const html = htmlElementIframeHtml({ html: TABLE }, 'position:absolute;');
+    // Every tag/quote is escaped so nothing lands as real markup in the host doc.
+    expect(html).toContain('&lt;table');
+    expect(html).toContain('colspan=&quot;2&quot;');
+    expect(html).not.toContain('<table');        // no raw <table> leaked out
+    expect(html).not.toContain('<td>');
+  });
+});
+
 describe('htmlElementIframeHtml (#137)', () => {
   it('emits a sandboxed iframe with the srcdoc attribute-escaped', () => {
     const html = htmlElementIframeHtml({ html: '<b title="a&b">x</b>' }, 'position:absolute;');

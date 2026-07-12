@@ -51,6 +51,19 @@ describe('html element (#137)', () => {
     expect(srcdoc).toContain("default-src 'none'");
     expect(srcdoc).toContain('background:#0b1020;');
   });
+
+  it('renders a table (nested rows + quoted attrs) into the iframe srcdoc', () => {
+    const tableEl = { id: 'h2', type: 'html',
+      html: '<table><thead><tr><th colspan="2">R</th></tr></thead><tbody><tr><td>a</td><td>b</td></tr></tbody></table>',
+      position: { x: 100, y: 100, width: 400, height: 300 } } as unknown as SlideElement;
+    const { container } = render(
+      <SlideElementRenderer element={tableEl} zIndex={1} scale={0.5} projectPath={null} isSelected={false}
+        slideBackground="#ffffff" onUpdate={noop} onDelete={noop} onSelect={noop} />,
+    );
+    const srcdoc = container.querySelector('iframe')!.getAttribute('srcdoc') || '';
+    expect(srcdoc).toContain('<table><thead><tr><th colspan="2">R</th>');
+    expect(srcdoc).toContain('<tbody><tr><td>a</td><td>b</td></tr></tbody>');
+  });
 });
 
 describe('curved arrow (#129)', () => {

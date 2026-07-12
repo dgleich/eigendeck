@@ -379,6 +379,29 @@ describe('buildExportHtml', () => {
     expect(src.slides[0].elements[0].html).toBe('<h1>Hi</h1>');
   });
 
+  it('exports an html table inside the locked sandboxed iframe (#137)', async () => {
+    const table = '<table style="border-collapse:collapse"><thead><tr><th colspan="2">Result</th></tr></thead>'
+      + '<tbody><tr><td>Lanczos</td><td>fast</td></tr></tbody></table>';
+    const p = makePresentation({
+      slides: [{
+        id: 's1', layout: 'default', notes: '',
+        elements: [{ id: 'h1', type: 'html', html: table, position: { x: 100, y: 100, width: 600, height: 300 } }],
+      }],
+    });
+    const html = await buildExportHtml({
+      presentation: p, readFile: async () => new Uint8Array([0]), readTextFile: async () => '',
+      renderMath: null, applyMathPreamble: null,
+    });
+    expect(html).toContain('sandbox=""');
+    // The full table survives, attribute-escaped inside the srcdoc.
+    expect(html).toContain('&lt;table');
+    expect(html).toContain('colspan=&quot;2&quot;');
+    expect(html).toContain('Lanczos');
+    // The source round-trip keeps the raw table.
+    const src = JSON.parse(decodeURIComponent(escape(atob(html.match(/<!-- eigendeck-source: (.+?) -->/)[1]))));
+    expect(src.slides[0].elements[0].html).toBe(table);
+  });
+
   it('round-trips a curved arrow as an SVG path (#129)', async () => {
     const p = makePresentation({
       slides: [{
