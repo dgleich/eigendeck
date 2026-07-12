@@ -775,6 +775,38 @@ export function PropertiesPanel() {
               </PropSection>
             )}
 
+            {selectedEl.type === 'html' && (
+              <>
+                <PropSection label="Raw HTML">
+                  <textarea
+                    className="prop-input"
+                    value={selectedEl.html}
+                    spellCheck={false}
+                    onChange={(e) => updateElement(selectedEl.id, { html: e.target.value } as any)}
+                    style={{ width: '100%', minHeight: 170, boxSizing: 'border-box',
+                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11,
+                      lineHeight: 1.45, resize: 'vertical', whiteSpace: 'pre', overflowX: 'auto' }}
+                  />
+                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 5, lineHeight: 1.45 }}>
+                    Rendered in a locked sandbox — no scripts, no network (embed images/fonts as
+                    {' '}<code>data:</code> URIs). Double-click on the slide to edit in place
+                    {' '}(<span style={{ color: '#92400e' }}>best effort — may reshape complex markup</span>).
+                  </div>
+                </PropSection>
+                <PropSection label="Background">
+                  <ColorControl
+                    value={selectedEl.background}
+                    palette={FILL_PALETTE}
+                    customPalette={presentation.config.customPalette}
+                    allowNone noneLabel="Transparent"
+                    allowCustom
+                    onNone={() => updateElement(selectedEl.id, { background: undefined } as any)}
+                    onColor={(c) => updateElement(selectedEl.id, { background: c } as any)}
+                  />
+                </PropSection>
+              </>
+            )}
+
             {/* Cross-slide relationships — sync (same element, shared position)
                 and animation links. Shown only when the element participates. */}
             {selectedEl.syncId && (

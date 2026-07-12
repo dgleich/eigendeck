@@ -14,6 +14,7 @@
 
 import { resolveTheme, themeColorForPreset } from './themes';
 import { coverHtml, arrowSvgHtml, imageHtml } from './elementHtml.mjs';
+import { htmlElementIframeHtml } from './htmlElement.mjs';
 import { resolveColor } from './textStyle.mjs';
 import { textElementHtml } from './textElementHtml.mjs';
 import { markAsEigendeck } from './clipboard';
@@ -76,6 +77,10 @@ export function buildPrintSlideHtml(
       inner += arrowSvgHtml(el, { viewBox: `0 0 ${W} ${H}`, theme });
     } else if (el.type === 'cover') {
       inner += coverHtml(el, theme.background, px2in, theme);
+    } else if (el.type === 'html') {
+      // Static + locked (no script/network) → the srcdoc iframe renders in the
+      // browser's print output directly, no screenshot bake needed.
+      inner += htmlElementIframeHtml(el, `position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};border:none;background:transparent;`);
     } else if (isLiveElement(el.type)) {
       // P0-2: notebook joins demo/demo-piece/video as a baked screenshot.
       const screenshot = demoScreenshots.get(`${slide.id}:${el.id}`);

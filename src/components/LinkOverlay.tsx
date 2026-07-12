@@ -213,6 +213,15 @@ function LinkableElement({ element: el, isLinked, linkable = true, onClick }: {
           {el.piece}
         </div>
       );
+    case 'html':
+      // Link picker only needs a clickable target — a neutral labelled box (the
+      // real HTML iframe isn't interactive here and isn't worth mounting).
+      return (
+        <div style={{ ...wrapStyle, background: '#eef2ff', border: isLinked ? '4px solid #16a34a' : '4px dashed #a5b4fc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, color: '#6366f1' }}
+          onClick={onClick} className="link-overlay-element">
+          HTML
+        </div>
+      );
     case 'cover':
       return (
         <div style={{ ...wrapStyle, background: describeCover(el, '#fff').background, border: isLinked ? '4px solid #16a34a' : '4px solid #ddd' }}

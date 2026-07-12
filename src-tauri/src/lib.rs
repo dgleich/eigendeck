@@ -761,6 +761,9 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .item(&MenuItemBuilder::new("Cover Rectangle").id("insert-cover").build(app).map_err(|e| e.to_string())?)
         .item(&MenuItemBuilder::new("Image…").id("insert-image").build(app).map_err(|e| e.to_string())?)
         .item(&MenuItemBuilder::new("Hype Note").id("insert-hype").build(app).map_err(|e| e.to_string())?)
+        // Raw-HTML escape hatch (#137) — menu-only (no toolbar button); routes
+        // through the shared insert- handler to runInsert('html').
+        .item(&MenuItemBuilder::new("HTML Element").id("insert-html").build(app).map_err(|e| e.to_string())?)
         .separator()
         .item(&MenuItemBuilder::new("Demo (HTML)…").id("insert-demo").build(app).map_err(|e| e.to_string())?)
         .item(&MenuItemBuilder::new("Notebook…").id("insert-notebook").build(app).map_err(|e| e.to_string())?)

@@ -94,7 +94,7 @@ cd src-tauri && cargo check && cargo clippy -- -D warnings
 ## Data model
 
 Every slide has an `elements[]` array. Array order = z-order.
-Element types: `text` (5 presets), `image`, `arrow`, `demo`, `demo-piece`, `notebook`, `video` (file or YouTube/Vimeo/PeerTube embed), `cover`.
+Element types: `text` (5 presets), `image`, `arrow`, `demo`, `demo-piece`, `notebook`, `video` (file or YouTube/Vimeo/PeerTube embed), `cover`, `html` (raw-HTML escape hatch — sandboxed, no script, no network).
 Slides can have `groupId` for slide groups (shared numbering, group move).
 
 See `docs/SPEC.md` for full schema and `docs/LLM-EDITING.md` for the programmatic editing guide.

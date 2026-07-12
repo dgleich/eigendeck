@@ -9,6 +9,7 @@ import { arrowBBox } from '../lib/arrowGeometry.mjs';
 import { ArrowGlyph } from './ArrowGlyph';
 import { imageVisualStyle } from '../lib/imageVisualStyle';
 import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
+import { htmlElementSrcdoc, HTML_SANDBOX_EDITABLE } from '../lib/htmlElement.mjs';
 import { sanitizeRichText } from '../lib/sanitizeRichText';
 import { useAssetUrl } from '../lib/demoAssets';
 import { demoVarsCssForSlide } from '../lib/demoThemeInject';
@@ -173,6 +174,15 @@ export function SlideElementRenderer({
         <ArrowRenderer element={element} zIndex={zIndex} scale={scale}
           isSelected={isSelected} theme={theme}
           onUpdate={onUpdate} onDelete={onDelete} onSelect={onSelect} />
+      );
+
+    case 'html':
+      return (
+        <HtmlBox
+          element={element} zIndex={zIndex} scale={scale}
+          isSelected={isSelected}
+          onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
+        />
       );
   }
 }
@@ -377,6 +387,77 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
       {interacting && (
         // Reload moved to the inspector's Asset section ("Reload from disk now").
         <InteractLockBar scale={scale} onLock={() => setInteracting(false)} />
+      )}
+    </DraggableBox>
+  );
+}
+
+// ============================================
+// HTML element (#137) — raw HTML in a locked, script-less sandboxed iframe (an
+// injected CSP blocks all network). Double-click to edit inline: because the
+// editor's sandbox is `allow-same-origin` WITHOUT allow-scripts (no page JS can
+// run — the safe combination), the parent can toggle contentEditable on the
+// framed document and read the markup back. Best-effort — arbitrary HTML may not
+// edit cleanly, so a warning shows and the Inspector's textarea is the reliable
+// source of truth.
+// ============================================
+function HtmlBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpdate }: {
+  element: Extract<SlideElement, { type: 'html' }>;
+  zIndex: number; scale: number;
+  isSelected: boolean;
+  onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
+  onUpdate: (changes: Partial<SlideElement>) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const srcDoc = htmlElementSrcdoc(element.html, element.background);
+
+  // Read the edited markup back out of the frame and leave edit mode. Kept in a
+  // ref so the keydown/blur listeners always call the latest version.
+  const finishRef = useRef<() => void>(() => {});
+  finishRef.current = () => {
+    const html = iframeRef.current?.contentDocument?.body?.innerHTML;
+    if (html != null && html !== element.html) onUpdate({ html } as any);
+    setEditing(false);
+  };
+
+  // Enter edit mode: make the framed body contentEditable + focus it.
+  useEffect(() => {
+    if (!editing) return;
+    const doc = iframeRef.current?.contentDocument;
+    if (!doc?.body) { setEditing(false); return; }
+    doc.body.contentEditable = 'true';
+    doc.body.style.outline = 'none';
+    doc.body.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); finishRef.current(); } };
+    doc.addEventListener('keydown', onKey);
+    return () => {
+      doc.removeEventListener('keydown', onKey);
+      try { doc.body.contentEditable = 'false'; } catch { /* frame reloaded/gone */ }
+    };
+  }, [editing]);
+
+  return (
+    <DraggableBox
+      element={element} zIndex={zIndex} scale={scale}
+      className="el-html" isSelected={isSelected}
+      onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
+    >
+      <iframe ref={iframeRef} title="HTML element" srcDoc={srcDoc} sandbox={HTML_SANDBOX_EDITABLE}
+        style={{ width: '100%', height: '100%', border: 'none', background: 'transparent',
+          pointerEvents: editing ? 'auto' : 'none' }} />
+      {!editing && (
+        <div className="demo-overlay"
+          onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }}
+          style={{ position: 'absolute', inset: 0, cursor: 'grab', zIndex: 1 }} />
+      )}
+      {editing && (
+        <InteractLockBar scale={scale} onLock={() => finishRef.current()}>
+          <span style={{
+            padding: '2px 8px', fontSize: 11, borderRadius: 4, whiteSpace: 'nowrap',
+            background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d',
+          }}>⚠ direct edits may reshape complex HTML — raw source is in the Inspector</span>
+        </InteractLockBar>
       )}
     </DraggableBox>
   );

@@ -9,6 +9,7 @@ import { useRef } from 'react';
 import { resolveTheme } from '../lib/themes';
 import { useAssetUrl } from '../lib/demoAssets';
 import { useDemoDoc, useDeckFontFacesCss } from '../lib/demoMount';
+import { htmlElementSrcdoc, HTML_SANDBOX_LOCKED } from '../lib/htmlElement.mjs';
 import { useImageSrc } from '../lib/imageSrc';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
 import { buildEmbedSrc, VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
@@ -65,6 +66,15 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
         </svg>
       );
     }
+    case 'html':
+      // Locked (no-script, no-network, no same-origin) — presenting is read-only.
+      return (
+        <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background)}
+          sandbox={HTML_SANDBOX_LOCKED} style={{
+            position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
+            border: 'none', background: 'transparent', pointerEvents: 'none', zIndex, ...style,
+          }} />
+      );
     default:
       return null;
   }

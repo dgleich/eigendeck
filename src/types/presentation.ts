@@ -201,6 +201,22 @@ export interface DemoElement extends BaseElement {
   assetId: string;
 }
 
+/** Raw-HTML escape hatch (#137): a general HTML element for arbitrary design/layout
+ *  markup (especially LLM-authored). NOT the text element (no rich-text presets)
+ *  and NOT a demo (no bridge/capture). Rendered in a locked-down sandboxed iframe:
+ *  no scripts run and an injected CSP blocks all network (data: URIs only), so the
+ *  markup can "go wild" safely — it can't script, escape its box, or phone home.
+ *  The editor uses an `allow-same-origin` (still script-less) sandbox so double-
+ *  click can make it contentEditable; every other path uses a fully-locked one. */
+export interface HtmlElement extends BaseElement {
+  type: 'html';
+  /** The raw HTML rendered inside the sandboxed iframe (srcdoc body). */
+  html: string;
+  /** Optional box background (CSS color). Default transparent so it composites
+   *  onto the slide. */
+  background?: string;
+}
+
 export interface DemoPieceElement extends BaseElement {
   type: 'demo-piece';
   piece: string;
@@ -352,7 +368,8 @@ export type SlideElement =
   | DemoPieceElement
   | CoverElement
   | NotebookElement
-  | VideoElement;
+  | VideoElement
+  | HtmlElement;
 
 // ============================================
 // Slide and Presentation

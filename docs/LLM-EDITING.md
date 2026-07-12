@@ -370,6 +370,46 @@ Playback options (all toggles default **off**; `playbackRate` defaults to **1**)
 
 A poster frame (file) or the provider thumbnail (embed) is captured into the preview cache for the sidebar mini-slides and static export (`previewCache`, variant `preview`). Add via the "+ Video" toolbar button (file picker or pasted URL) or by **dragging a video file** onto the canvas.
 
+### HTML Element
+
+The **raw-HTML escape hatch** (#137) — a general element for arbitrary design/layout
+markup when no other element fits. This is the element to reach for when you want to
+"go wild" with custom HTML/CSS (gradients, grids, SVG, tables, fancy typography). It
+is **not** the text element (no rich-text presets) and **not** a demo (no scripting).
+
+```json
+{
+  "id": "unique-uuid",
+  "type": "html",
+  "html": "<div style=\"display:grid;place-items:center;height:100%;font-family:system-ui\"><h1 style=\"font-size:64px;background:linear-gradient(90deg,#6366f1,#ec4899);-webkit-background-clip:text;color:transparent\">Hello</h1></div>",
+  "background": "#0b1020",
+  "position": { "x": 560, "y": 340, "width": 800, "height": 400 }
+}
+```
+
+- `html`: REQUIRED — the raw HTML rendered inside the element's box (it becomes the
+  `<body>` of a sandboxed `srcdoc` iframe).
+- `background`: optional CSS color for the box. Omit for **transparent** (composites
+  onto the slide).
+- `position`: standard box (slide space, 1920×1080).
+
+**Sandbox — what works and what doesn't.** The HTML renders in a locked-down iframe,
+so the markup is contained and safe by construction:
+
+- **No JavaScript runs.** `<script>`, inline `onclick`/`onerror`, etc. never execute.
+  This element is for *static* design; if you need interactivity, use a demo.
+- **No network.** An injected CSP allows only `data:` URIs — remote `<img src=http…>`,
+  web fonts, and `<link>` stylesheets are blocked. **Embed images and fonts as
+  `data:` URIs** (base64) directly in the HTML. This keeps decks offline-portable.
+- Inline `<style>` and `style=` attributes work; CSS is scoped to the iframe (it
+  can't leak onto the slide).
+
+Editing: the Inspector has a **raw-HTML textarea** (the reliable source of truth).
+Double-clicking the element on the canvas also enables **best-effort in-place
+contentEditable** (a warning notes that direct editing can reshape complex markup).
+Inserted from the native **Insert → HTML Element** menu (intentionally not a toolbar
+button) or by writing the element JSON directly, as above.
+
 ## Linked Objects
 
 Elements can be linked across slides for animation and content synchronization.

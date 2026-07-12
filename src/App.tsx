@@ -773,7 +773,19 @@ function App() {
         });
         break;
       }
-      case 'hype': store.addElement(createTextElement('hype')); break;
+      case 'html':
+        // Raw-HTML escape hatch (#137). Not in the toolbar — inserted from the
+        // native Insert menu (or written programmatically by an LLM). Seeds a
+        // placeholder that hints at both edit paths.
+        store.addElement({
+          id: crypto.randomUUID(), type: 'html',
+          position: { x: 560, y: 340, width: 800, height: 400 },
+          html: '<div style="font-family:system-ui;height:100%;display:flex;flex-direction:column;justify-content:center;gap:10px;padding:28px;border:2px dashed #c7d2fe;border-radius:18px;box-sizing:border-box">'
+            + '<div style="font-size:42px;font-weight:700;color:#4f46e5">HTML element</div>'
+            + '<div style="font-size:20px;color:#475569">Edit the raw HTML in the Inspector, or double-click to edit here (best effort).</div>'
+            + '</div>',
+        });
+        break;
       case 'arrow':
         store.addElement({ id: crypto.randomUUID(), type: 'arrow', x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: '#2563eb', strokeWidth: 4, headSize: 16 });
         break;

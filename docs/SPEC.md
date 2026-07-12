@@ -149,6 +149,26 @@ All content on a slide is an element. Five types:
 - Demo files must work standalone in a browser (inline CSS/JS or CDN)
 - Reload button in editor to refresh after external edits
 
+#### HTML Element
+
+```json
+{
+  "id": "uuid",
+  "type": "html",
+  "html": "<div style=\"…\">arbitrary markup</div>",
+  "background": "#0b1020",
+  "position": { "x": 560, "y": 340, "width": 800, "height": 400 }
+}
+```
+
+- Raw-HTML escape hatch (#137) for custom design/layout — not text, not a demo.
+- Rendered in a **locked sandboxed iframe**: no scripts run, and an injected CSP
+  blocks all network (only `data:` URIs for images/fonts). The editor uses an
+  `allow-same-origin` (still script-less) sandbox to enable best-effort in-place
+  contentEditable; all other paths use a fully-locked sandbox.
+- `background` optional (default transparent). Inserted from Insert → HTML Element.
+- See `docs/LLM-EDITING.md` for the authoring reference.
+
 ---
 
 ## Editor
