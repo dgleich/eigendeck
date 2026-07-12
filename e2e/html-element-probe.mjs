@@ -68,7 +68,55 @@ else {
   if (!html.includes('EIGEN')) problems.push('export missing the authored markup');
 }
 
+// (5) Copy/paste: select the element, Cmd+C (sets the in-app clipboard), then a
+// paste event → a SECOND html element with the same markup + background and a
+// fresh id. Exercises the real App copy/paste handlers, not the store directly.
+const nHtml = () => exec(sid, "return window.__eigendeck.store.getState().presentation.slides[0].elements.filter(e=>e.type==='html').length");
+const before = await nHtml();
+await exec(sid, "window.__eigendeck.store.getState().selectObject({type:'element',id:'raw'});");
+await sleep(150);
+await exec(sid, "document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'c',metaKey:true,ctrlKey:true,bubbles:true}));");
+await sleep(150);
+await exec(sid, "document.body.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true}));");
+await sleep(400);
+const cp = JSON.parse(await exec(sid, `
+  const els = window.__eigendeck.store.getState().presentation.slides[0].elements.filter(e=>e.type==='html');
+  const orig = els.find(e=>e.id==='raw'), copy = els.find(e=>e.id!=='raw');
+  return JSON.stringify({
+    count: els.length,
+    sameHtml: !!(orig && copy && orig.html===copy.html),
+    sameBg: !!(orig && copy && orig.background===copy.background),
+    freshId: !!(copy && copy.id && copy.id!=='raw'),
+  });
+`));
+if (cp.count !== before + 1) problems.push(`copy/paste: expected ${before + 1} html elements, got ${cp.count}`);
+if (!cp.sameHtml) problems.push('paste did not preserve the html markup');
+if (!cp.sameBg) problems.push('paste did not preserve the background');
+if (!cp.freshId) problems.push('paste did not assign a fresh id');
+
+// (6) Cut: the DraggableBox context menu's Cut = copy + delete. Select the copy,
+// dispatch Cmd+C then delete it, and confirm we're back to one — and can paste it.
+await exec(sid, `
+  const copy = window.__eigendeck.store.getState().presentation.slides[0].elements.find(e=>e.type==='html'&&e.id!=='raw');
+  const s = window.__eigendeck.store.getState();
+  s.selectObject({type:'element',id:copy.id});
+`);
+await sleep(150);
+await exec(sid, "document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'c',metaKey:true,ctrlKey:true,bubbles:true}));");
+await sleep(100);
+await exec(sid, `
+  const copy = window.__eigendeck.store.getState().presentation.slides[0].elements.find(e=>e.type==='html'&&e.id!=='raw');
+  window.__eigendeck.store.getState().deleteElement(copy.id);
+`);
+await sleep(200);
+const afterCut = await nHtml();
+if (afterCut !== before) problems.push(`cut: expected ${before} html elements after delete, got ${afterCut}`);
+await exec(sid, "document.body.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true}));");
+await sleep(400);
+const afterRepaste = await nHtml();
+if (afterRepaste !== before + 1) problems.push(`cut→paste: expected ${before + 1} after re-paste, got ${afterRepaste}`);
+
 await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {});
 if (problems.length) { for (const p of problems) console.error('  •', p); fail(`${problems.length} problem(s)`); }
-console.log(`HTML_PASS: same-origin script-less iframe renders authored markup + CSP; double-click → contentEditable; export locked. PNGs → ${OUT}/`);
+console.log(`HTML_PASS: same-origin script-less iframe renders authored markup + CSP; double-click → contentEditable; export locked; copy/paste + cut round-trip. PNGs → ${OUT}/`);
 process.exit(0);
