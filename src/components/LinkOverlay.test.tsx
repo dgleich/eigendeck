@@ -46,6 +46,24 @@ describe('[simplify-guard] LinkOverlay render snapshot', () => {
   });
 });
 
+describe('link-overlay html element (#137)', () => {
+  it('renders a labelled click-target box (no iframe mounted)', () => {
+    const source = { id: 'src', type: 'text', preset: 'body', html: 'src', position: { x: 0, y: 0, width: 100, height: 50 } };
+    const htmlEl = { id: 'h1', type: 'html', html: '<b>x</b>', position: { x: 60, y: 40, width: 400, height: 200 } };
+    const presentation = {
+      title: 'T', theme: 'white', config: { width: 1920, height: 1080 },
+      slides: [
+        { id: 's0', layout: 'default', notes: '', elements: [source] },
+        { id: 's1', layout: 'default', notes: '', elements: [htmlEl] },
+      ],
+    } as unknown as Presentation;
+    usePresentationStore.setState({ presentation, currentSlideIndex: 0 });
+    const { container, getByText } = render(<LinkOverlay elementId="src" onClose={() => {}} />);
+    expect(getByText('HTML')).toBeTruthy();
+    expect(container.querySelector('iframe')).toBeNull();   // picker uses a placeholder
+  });
+});
+
 describe('link-overlay curved arrow (#129)', () => {
   it('renders a curved arrow target as an SVG <path>, not a <line>', () => {
     const source = { id: 'src', type: 'text', preset: 'body', html: 'src', position: { x: 0, y: 0, width: 100, height: 50 } };

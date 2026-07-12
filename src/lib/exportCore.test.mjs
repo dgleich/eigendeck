@@ -358,6 +358,27 @@ describe('buildExportHtml', () => {
     expect(src.slides[0].elements[0].opacity).toBe(0.5);
   });
 
+  it('exports an html element as a locked sandboxed iframe with CSP (#137)', async () => {
+    const p = makePresentation({
+      slides: [{
+        id: 's1', layout: 'default', notes: '',
+        elements: [{ id: 'h1', type: 'html', html: '<h1>Hi</h1>', background: '#0b1020',
+          position: { x: 100, y: 100, width: 400, height: 300 } }],
+      }],
+    });
+    const html = await buildExportHtml({
+      presentation: p, readFile: async () => new Uint8Array([0]), readTextFile: async () => '',
+      renderMath: null, applyMathPreamble: null,
+    });
+    // A sandboxed iframe (no allow-scripts) whose srcdoc is attribute-escaped.
+    expect(html).toContain('sandbox=""');
+    expect(html).toContain('&lt;h1&gt;Hi&lt;/h1&gt;');           // escaped inner HTML
+    expect(html).toContain("default-src 'none'");                // CSP survived the escape
+    expect(html).not.toContain('allow-scripts');
+    const src = JSON.parse(decodeURIComponent(escape(atob(html.match(/<!-- eigendeck-source: (.+?) -->/)[1]))));
+    expect(src.slides[0].elements[0].html).toBe('<h1>Hi</h1>');
+  });
+
   it('round-trips a curved arrow as an SVG path (#129)', async () => {
     const p = makePresentation({
       slides: [{

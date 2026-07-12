@@ -39,6 +39,20 @@ describe('[simplify-guard] buildPrintSlideHtml render snapshot', () => {
     expect(buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots)).toMatchSnapshot();
   });
 
+  it('renders an html element as a locked sandboxed iframe (inch units) (#137)', () => {
+    const slide = {
+      id: 's1', layout: 'default', notes: '',
+      elements: [{ id: 'h1', type: 'html', html: '<h1>Hi</h1>',
+        position: { x: 192, y: 108, width: 384, height: 216 } }],
+    } as unknown as Slide;
+    const presentation = { title: 'T', theme: 'white', config: { width: 1920, height: 1080 }, slides: [slide] } as unknown as Presentation;
+    const out = buildPrintSlideHtml(slide, presentation, new Map(), new Map());
+    expect(out).toContain('sandbox=""');
+    expect(out).toContain('&lt;h1&gt;Hi&lt;/h1&gt;');
+    expect(out).toContain('in;');   // inch-based positioning (px2in)
+    expect(out).not.toContain('allow-scripts');
+  });
+
   it('renders a curved arrow as an SVG <path> in the print/PDF path (#129)', () => {
     const slide = {
       id: 's1', layout: 'default', notes: '',

@@ -33,6 +33,26 @@ describe('[simplify-guard] SlideElementRenderer render snapshot', () => {
   }
 });
 
+describe('html element (#137)', () => {
+  const htmlEl = { id: 'h1', type: 'html', html: '<h1>Design</h1>', background: '#0b1020',
+    position: { x: 100, y: 100, width: 400, height: 300 } } as unknown as SlideElement;
+
+  it('renders a same-origin (script-less) sandboxed iframe carrying the srcdoc + CSP', () => {
+    const { container } = render(
+      <SlideElementRenderer element={htmlEl} zIndex={1} scale={0.5} projectPath={null} isSelected={false}
+        slideBackground="#ffffff" onUpdate={noop} onDelete={noop} onSelect={noop} />,
+    );
+    const iframe = container.querySelector('iframe')!;
+    expect(iframe).toBeTruthy();
+    // Editor sandbox enables contentEditable but never allows scripts.
+    expect(iframe.getAttribute('sandbox')).toBe('allow-same-origin');
+    const srcdoc = iframe.getAttribute('srcdoc') || '';
+    expect(srcdoc).toContain('<h1>Design</h1>');
+    expect(srcdoc).toContain("default-src 'none'");
+    expect(srcdoc).toContain('background:#0b1020;');
+  });
+});
+
 describe('curved arrow (#129)', () => {
   const curved = { id: 'a2', type: 'arrow', x1: 100, y1: 500, x2: 400, y2: 520,
     color: '#e53e3e', strokeWidth: 4, headSize: 16, heads: 'end',

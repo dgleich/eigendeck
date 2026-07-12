@@ -30,6 +30,17 @@ describe('[simplify-guard] PresentElement render snapshot', () => {
   });
 });
 
+describe('present html element (#137)', () => {
+  it('renders a fully-locked (no-script, no-same-origin) sandboxed iframe', () => {
+    const el = { id: 'h1', type: 'html', html: '<p>hi</p>',
+      position: { x: 100, y: 100, width: 400, height: 300 } } as unknown as SlideElement;
+    const { container } = render(<PresentElement element={el} zIndex={0} ctx={ctx()} />);
+    const iframe = container.querySelector('iframe')!;
+    expect(iframe.getAttribute('sandbox')).toBe('');            // locked
+    expect(iframe.getAttribute('srcdoc') || '').toContain('<p>hi</p>');
+  });
+});
+
 describe('present curved arrow (#129)', () => {
   it('renders a curved arrow as an SVG <path>, not a <line>', () => {
     const curved = { id: 'a2', type: 'arrow', x1: 100, y1: 500, x2: 400, y2: 520,

@@ -36,6 +36,22 @@ describe('[simplify-guard] SlideThumbnail render snapshot', () => {
   });
 });
 
+describe('thumbnail html element (#137)', () => {
+  it('renders a locked sandboxed iframe mini-preview', () => {
+    const { presentation, slide } = deck();
+    (slide.elements as unknown as Array<Record<string, unknown>>).push({
+      id: 'h1', type: 'html', html: '<b>hi</b>',
+      position: { x: 100, y: 100, width: 400, height: 300 },
+    });
+    const { container } = render(
+      <SlideThumbnail presentation={presentation} slide={slide} width={400} />,
+    );
+    const iframe = container.querySelector('iframe')!;
+    expect(iframe.getAttribute('sandbox')).toBe('');
+    expect(iframe.getAttribute('srcdoc') || '').toContain('<b>hi</b>');
+  });
+});
+
 describe('thumbnail curved arrow (#129)', () => {
   it('renders a curved arrow as an SVG <path>, not a <line>', () => {
     const { presentation, slide } = deck();
