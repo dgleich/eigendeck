@@ -185,6 +185,14 @@ export interface ArrowElement extends BaseElement {
   heads?: 'end' | 'start' | 'both' | 'none';
   /** Stroke/fill opacity, 0–1. Default 1. (#98) */
   opacity?: number;
+  /** Cubic-Bézier control points (#129, Inkscape-style handles): c1 is the handle
+   *  off the start, c2 off the end. When ALL four are present the arrow curves
+   *  (M x1 y1 C c1x c1y c2x c2y x2 y2); absent → a straight line. Heads orient to
+   *  the curve tangent. */
+  c1x?: number;
+  c1y?: number;
+  c2x?: number;
+  c2y?: number;
 }
 
 export interface DemoElement extends BaseElement {

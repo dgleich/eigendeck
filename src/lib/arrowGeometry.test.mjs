@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { arrowGeometry, triPoints, arrowBBox } from './arrowGeometry.mjs';
+import { arrowGeometry, triPoints, arrowBBox, arrowSvgInner } from './arrowGeometry.mjs';
 
 const near = (a, b, t = 1e-6) => Math.abs(a - b) < t;
 const inset = 20 * Math.cos(Math.PI / 6);   // headSize * cos(30°) ≈ 17.32
@@ -68,5 +68,51 @@ describe('arrowGeometry (#98)', () => {
     const bb = arrowBBox(0, 0, 100, 0, 20, 'both', 5);
     expect(bb.minX).toBeLessThanOrEqual(0);
     expect(bb.maxX).toBeGreaterThanOrEqual(100);
+  });
+});
+
+describe('arrowGeometry curved (#129)', () => {
+  it('partial control points → still straight (backward compat)', () => {
+    // Only c1 given: not enough for a curve, falls back to the straight line.
+    const g = arrowGeometry(0, 0, 100, 0, 20, 'end', 50, 40);
+    expect(g.curved).toBeFalsy();
+    expect(g.line).toBeTruthy();
+    expect(g.path).toBeUndefined();
+  });
+
+  it('all four control points → cubic path, no line', () => {
+    const g = arrowGeometry(0, 0, 100, 0, 20, 'none', 20, 40, 80, 40);
+    expect(g.curved).toBe(true);
+    expect(g.line).toBeUndefined();
+    // 'none' → endpoints untouched, path runs corner to corner through both ctrls.
+    expect(g.path).toBe('M 0 0 C 20 40 80 40 100 0');
+    expect(g.triangles.length).toBe(0);
+  });
+
+  it('end head points along the c2→end tangent, not the chord', () => {
+    // c2 sits directly ABOVE the end, so the curve arrives heading straight down;
+    // the head tip is at the true endpoint and its base is pulled back UPWARD.
+    const g = arrowGeometry(0, 0, 100, 0, 20, 'end', 0, -40, 100, -40);
+    const t = g.triangles[0];
+    expect(t[0]).toEqual([100, 0]);                 // tip at the real endpoint
+    const baseMidX = (t[1][0] + t[2][0]) / 2, baseMidY = (t[1][1] + t[2][1]) / 2;
+    expect(near(baseMidX, 100)).toBe(true);         // base directly above tip
+    expect(baseMidY).toBeLessThan(0);               // pulled UP along the tangent
+    // Path end is pulled back to that base along the same tangent.
+    expect(g.path.endsWith(`${baseMidX} ${baseMidY}`)).toBe(true);
+  });
+
+  it('arrowBBox includes the control points', () => {
+    const bb = arrowBBox(0, 0, 100, 0, 20, 'none', 20, 0, 20, 200, 80);
+    expect(bb.maxX).toBeGreaterThanOrEqual(200);    // c2x beyond both endpoints
+    expect(bb.maxY).toBeGreaterThanOrEqual(80);     // c2y below the chord
+  });
+
+  it('arrowSvgInner renders a <path> for a curved arrow', () => {
+    const g = arrowGeometry(0, 0, 100, 0, 20, 'none', 20, 40, 80, 40);
+    const svg = arrowSvgInner(g, '#f00', 3);
+    expect(svg).toContain('<path d="M 0 0 C 20 40 80 40 100 0"');
+    expect(svg).toContain('fill="none"');
+    expect(svg).not.toContain('<line');
   });
 });
