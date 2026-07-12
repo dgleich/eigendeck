@@ -1,0 +1,17 @@
+{
+  "title": "html element (#137)",
+  "theme": "white",
+  "slides": [
+    {
+      "id": "s0",
+      "layout": "default",
+      "notes": "",
+      "theme": "white",
+      "elements": [
+        { "id": "t0", "type": "text", "preset": "title", "html": "Raw HTML element", "position": { "x": 80, "y": 40, "width": 1760, "height": 150 } },
+        { "id": "raw", "type": "html", "background": "#0b1020", "position": { "x": 360, "y": 300, "width": 1200, "height": 520 },
+          "html": "<div style=\"height:100%;display:grid;place-items:center;font-family:system-ui\"><h1 style=\"font-size:110px;margin:0;background:linear-gradient(90deg,#818cf8,#f472b6);-webkit-background-clip:text;background-clip:text;color:transparent\">EIGEN·HTML</h1></div>" }
+      ]
+    }
+  ]
+}
