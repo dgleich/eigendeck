@@ -162,6 +162,10 @@ MANIFEST=(
   "hud-remeasure-probe.mjs|hud.eigendeck||import_json \$ROOT/e2e/fixtures/slide-delete-deck.json"
   "a1-present-midedit-loss-probe.mjs|a1mid.eigendeck||import_json \$ROOT/e2e/fixtures/a1-present-lifecycle-deck.json"
   "a4-image-visuals.mjs|a4img.eigendeck||python3 $EXFIX/make_a4_image_deck.py \$DECKDIR/a4img.json; import_json \$DECKDIR/a4img.json"
+  "a1-speaker-stale-flag-probe.mjs|a1life.eigendeck||import_json \$ROOT/e2e/fixtures/a1-present-lifecycle-deck.json"
+  "a1-present-escape-invariants-probe.mjs|a1life.eigendeck||import_json \$ROOT/e2e/fixtures/a1-present-lifecycle-deck.json"
+  "a1-present-render-nav-probe.mjs|a1life.eigendeck||import_json \$ROOT/e2e/fixtures/a1-present-lifecycle-deck.json"
+  "a1-present-startslide-repeat-probe.mjs|a1life.eigendeck||import_json \$ROOT/e2e/fixtures/a1-present-lifecycle-deck.json"
 )
 
 pass=0; fail=0; failed=()

@@ -607,6 +607,10 @@ function App() {
   const [promoteCandidates, setPromoteCandidates] = useState<{ elementId: string; slideNo: number; summary: string }[] | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuEntry[] } | null>(null);
   const [multiMonitorPresenting, setMultiMonitorPresenting] = useState(false);
+  // Whenever presenting ends (any path), clear the multi-monitor flag — otherwise a
+  // screen-share whose projector window died without emitting presenter:closed leaves
+  // it stuck true, and the NEXT plain present renders the SpeakerMode to the audience.
+  useEffect(() => { if (!isPresenting) setMultiMonitorPresenting(false); }, [isPresenting]);
   // False until the boot-time launch-file check resolves. Gates the welcome
   // screen so a file-launch (double-click / open-with) goes straight to the
   // editor without flashing the intro screen first (see the init effect).
