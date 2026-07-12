@@ -1,0 +1,17 @@
+{
+  "title": "html element network CSP (#137)",
+  "theme": "white",
+  "slides": [
+    {
+      "id": "s0",
+      "layout": "default",
+      "notes": "",
+      "theme": "white",
+      "elements": [
+        { "id": "t0", "type": "text", "preset": "title", "html": "HTML CSP network", "position": { "x": 80, "y": 40, "width": 1760, "height": 150 } },
+        { "id": "raw", "type": "html", "background": "#101418", "position": { "x": 360, "y": 300, "width": 1200, "height": 520 },
+          "html": "<div id=\"canaryEIGEN\" style=\"color:#fff;font-family:system-ui;padding:20px\">csp canary</div><link rel=\"stylesheet\" href=\"http://127.0.0.1:9/blocked.css\"><img id=\"r\" src=\"http://127.0.0.1:9/blocked.png\" alt=\"blocked\" style=\"width:80px;height:80px\"><img id=\"ok\" src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==\" alt=\"data-ok\" style=\"width:40px;height:40px\">" }
+      ]
+    }
+  ]
+}

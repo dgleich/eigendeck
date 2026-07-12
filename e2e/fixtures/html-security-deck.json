@@ -1,0 +1,17 @@
+{
+  "title": "html element security (#137)",
+  "theme": "white",
+  "slides": [
+    {
+      "id": "s0",
+      "layout": "default",
+      "notes": "",
+      "theme": "white",
+      "elements": [
+        { "id": "t0", "type": "text", "preset": "title", "html": "HTML security", "position": { "x": 80, "y": 40, "width": 1760, "height": 150 } },
+        { "id": "raw", "type": "html", "background": "#101418", "position": { "x": 360, "y": 300, "width": 1200, "height": 520 },
+          "html": "<div id=\"payloadEIGEN\" style=\"color:#fff;font-family:system-ui;padding:20px\">no-script canary</div><script>window.__pwned=1;document.getElementById('payloadEIGEN').setAttribute('data-ran','yes');</script><img id=\"onerr\" src=\"x\" onerror=\"window.__pwned=1;document.getElementById('payloadEIGEN').setAttribute('data-onerror','yes')\"><svg><script>window.__pwned=1</script></svg>" }
+      ]
+    }
+  ]
+}
