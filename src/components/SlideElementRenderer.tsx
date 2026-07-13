@@ -465,12 +465,17 @@ function HtmlBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
         <InteractLockBar scale={scale} onLock={() => setInteracting(false)} />
       )}
       {editing && (
-        <InteractLockBar scale={scale} onLock={() => finishRef.current()}>
-          <span style={{
-            padding: '2px 8px', fontSize: 11, borderRadius: 4, whiteSpace: 'nowrap',
-            background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d',
-          }}>⚠ direct edits may reshape complex HTML — raw source is in the Inspector</span>
-        </InteractLockBar>
+        <>
+          <InteractLockBar scale={scale} onLock={() => finishRef.current()} />
+          {/* Warning sits BELOW the element (mirrors the Lock bar above), so it
+              doesn't cover content or the toolbar. Inverse-scaled to stay readable. */}
+          <div style={{
+            position: 'absolute', top: '100%', left: '50%', zIndex: 3, marginTop: 6,
+            transform: `translateX(-50%) scale(${1 / scale})`, transformOrigin: 'top center',
+            padding: '3px 10px', fontSize: 11, borderRadius: 4, whiteSpace: 'nowrap',
+            background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d', pointerEvents: 'none',
+          }}>⚠ direct edits may reshape complex HTML — raw source is in the Inspector</div>
+        </>
       )}
     </DraggableBox>
   );
