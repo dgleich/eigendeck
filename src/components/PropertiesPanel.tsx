@@ -13,6 +13,7 @@ import { OVERRIDDEN_DIM, overriddenLabel } from '../lib/overriddenStyle';
 import { ColorControl } from './ColorControl';
 import { askConfirm } from '../lib/confirmDialog';
 import { TEXT_PALETTE, FILL_PALETTE, ARROW_PALETTE } from '../lib/colorPalettes';
+import { arrowInsertPoint } from '../lib/arrowGeometry.mjs';
 
 /** Strip per-run inline text colors (the format toolbar's foreColor produces
  *  `<span style="color:…">` / `<font color>`) so the element-level Text Color
@@ -732,23 +733,20 @@ export function PropertiesPanel() {
                       // "+ Point": add an interior interpolation point (the curve passes THROUGH
                       // it; drag the on-canvas dot to route, double-click it to remove). Auto-
                       // curves a straight arrow (materialises the endpoint handles), then inserts
-                      // the point at the midpoint of the longest segment.
+                      // the knot where the tangent is already parallel to the chord — so the
+                      // auto-smooth spline routes through it without changing shape (arrowInsertPoint).
                       const addPoint = () => {
                         const { x1, y1, x2, y2 } = selectedEl;
-                        const base = curved ? {} : {
-                          c1x: Math.round(x1 + (x2 - x1) / 3), c1y: Math.round(y1 + (y2 - y1) / 3),
-                          c2x: Math.round(x1 + 2 * (x2 - x1) / 3), c2y: Math.round(y1 + 2 * (y2 - y1) / 3),
-                        };
-                        const pts = selectedEl.points || [];
-                        const knots = [{ x: x1, y: y1 }, ...pts, { x: x2, y: y2 }];
-                        let li = 0, ld = -1;
-                        for (let i = 0; i < knots.length - 1; i++) {
-                          const d = Math.hypot(knots[i + 1].x - knots[i].x, knots[i + 1].y - knots[i].y);
-                          if (d > ld) { ld = d; li = i; }
-                        }
-                        const mid = { x: Math.round((knots[li].x + knots[li + 1].x) / 2), y: Math.round((knots[li].y + knots[li + 1].y) / 2) };
-                        const next = [...pts]; next.splice(li, 0, mid);
-                        updateElement(selectedEl.id, { ...base, points: next } as any);
+                        const c = curved
+                          ? { c1x: selectedEl.c1x!, c1y: selectedEl.c1y!, c2x: selectedEl.c2x!, c2y: selectedEl.c2y! }
+                          : {
+                              c1x: Math.round(x1 + (x2 - x1) / 3), c1y: Math.round(y1 + (y2 - y1) / 3),
+                              c2x: Math.round(x1 + 2 * (x2 - x1) / 3), c2y: Math.round(y1 + 2 * (y2 - y1) / 3),
+                            };
+                        const res = arrowInsertPoint(x1, y1, x2, y2, c.c1x, c.c1y, c.c2x, c.c2y, selectedEl.points);
+                        if (!res) return;
+                        const base = curved ? {} : c;
+                        updateElement(selectedEl.id, { ...base, points: res.points } as any);
                       };
                       return (
                         <>

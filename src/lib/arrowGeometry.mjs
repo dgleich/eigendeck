@@ -72,6 +72,94 @@ export function arrowGeometry(x1, y1, x2, y2, headSize, heads, c1x, c1y, c2x, c2
   };
 }
 
+/** Choose where to insert a new interior interpolation knot so the auto-smooth
+ *  (Catmull-Rom) curve changes as little as possible.
+ *
+ *  The interior knots carry NO stored handles — their tangent is auto-derived as
+ *  `T = (next − prev)/6`, i.e. always PARALLEL TO THE CHORD between the knot's
+ *  neighbours. So the only knot placement that introduces no kink is the point
+ *  where the existing curve's tangent is ALREADY parallel to that chord. By the
+ *  mean value theorem such a point exists on every segment; we find it by
+ *  bisection on the LONGEST segment (most room), starting from its midpoint.
+ *
+ *  Direction is preserved exactly; only the auto-tangent LENGTH (belly fullness)
+ *  can differ slightly — a second-order change, no plateau. If the parallel
+ *  point lands within `minGap` of a neighbouring knot (only possible on a nearly
+ *  straight, already-crowded segment) it's clamped inward, trading a small,
+ *  unavoidable wiggle for the spacing.
+ *
+ *  Returns `{ points, index }` — the new interior-points array and the inserted
+ *  point's index within it — or null if the arrow isn't curved (no c1/c2).
+ */
+export function arrowInsertPoint(x1, y1, x2, y2, c1x, c1y, c2x, c2y, points, minGap = 24) {
+  if (c1x == null || c1y == null || c2x == null || c2y == null) return null;
+  const pts = Array.isArray(points) ? points.filter((p) => p && p.x != null && p.y != null) : [];
+  const K = [{ x: x1, y: y1 }, ...pts, { x: x2, y: y2 }];
+  const n = K.length;
+  // Control points exactly as arrowGeometry builds them: user handles at the
+  // ends, Catmull-Rom auto-tangents at the interior knots.
+  const outC = new Array(n), inC = new Array(n);
+  outC[0] = { x: c1x, y: c1y };
+  inC[n - 1] = { x: c2x, y: c2y };
+  for (let i = 1; i < n - 1; i++) {
+    const tx = (K[i + 1].x - K[i - 1].x) / 6, ty = (K[i + 1].y - K[i - 1].y) / 6;
+    outC[i] = { x: K[i].x + tx, y: K[i].y + ty };
+    inC[i] = { x: K[i].x - tx, y: K[i].y - ty };
+  }
+  // Pick the longest segment (chord length) to host the new knot.
+  let seg = 0, segLen = -1;
+  for (let i = 0; i < n - 1; i++) {
+    const L = Math.hypot(K[i + 1].x - K[i].x, K[i + 1].y - K[i].y);
+    if (L > segLen) { segLen = L; seg = i; }
+  }
+  const P0 = K[seg], P1 = outC[seg], P2 = inC[seg + 1], P3 = K[seg + 1];
+  const chord = { x: P3.x - P0.x, y: P3.y - P0.y };
+  // f(t) = cross(curve tangent, chord); its zero is the parallel-tangent point.
+  const cross = (t) => {
+    const u = 1 - t;
+    const dx = 3 * u * u * (P1.x - P0.x) + 6 * u * t * (P2.x - P1.x) + 3 * t * t * (P3.x - P2.x);
+    const dy = 3 * u * u * (P1.y - P0.y) + 6 * u * t * (P2.y - P1.y) + 3 * t * t * (P3.y - P2.y);
+    return dx * chord.y - dy * chord.x;
+  };
+  const at = (t) => {
+    const u = 1 - t, b0 = u * u * u, b1 = 3 * u * u * t, b2 = 3 * u * t * t, b3 = t * t * t;
+    return {
+      x: b0 * P0.x + b1 * P1.x + b2 * P2.x + b3 * P3.x,
+      y: b0 * P0.y + b1 * P1.y + b2 * P2.y + b3 * P3.y,
+    };
+  };
+  // Sample f on a grid; take the sign-change bracket closest to the midpoint.
+  const N = 64;
+  let bracket = null, bestDist = Infinity, prevT = 0, prevF = cross(0);
+  for (let k = 1; k <= N; k++) {
+    const t = k / N, f = cross(t);
+    if ((prevF < 0 && f > 0) || (prevF > 0 && f < 0)) {
+      const dist = Math.abs((prevT + t) / 2 - 0.5);
+      if (dist < bestDist) { bestDist = dist; bracket = [prevT, t]; }
+    }
+    prevT = t; prevF = f;
+  }
+  let tStar = 0.5;   // fallback: no parallel point (near-straight) → midpoint, accept the wiggle.
+  if (bracket) {
+    let [lo, hi] = bracket, flo = cross(lo);
+    for (let it = 0; it < 40; it++) {
+      const mid = (lo + hi) / 2, fmid = cross(mid);
+      if (fmid === 0) { lo = hi = mid; break; }
+      if ((flo < 0) === (fmid < 0)) { lo = mid; flo = fmid; } else { hi = mid; }
+    }
+    tStar = (lo + hi) / 2;
+  }
+  // Keep the new knot at least minGap (in t) from either endpoint.
+  if (segLen > 0) {
+    const tGap = Math.min(0.45, minGap / segLen);
+    tStar = Math.max(tGap, Math.min(1 - tGap, tStar));
+  }
+  const np = at(tStar);
+  const newPts = [...pts];
+  newPts.splice(seg, 0, { x: Math.round(np.x), y: Math.round(np.y) });
+  return { points: newPts, index: seg };
+}
+
 /** An SVG `points` string for one triangle. */
 export function triPoints(t) {
   return t.map((p) => p[0] + ',' + p[1]).join(' ');

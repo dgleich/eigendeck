@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { arrowGeometry, triPoints, arrowBBox, arrowSvgInner } from './arrowGeometry.mjs';
+import { arrowGeometry, triPoints, arrowBBox, arrowSvgInner, arrowInsertPoint } from './arrowGeometry.mjs';
 
 const near = (a, b, t = 1e-6) => Math.abs(a - b) < t;
 const inset = 20 * Math.cos(Math.PI / 6);   // headSize * cos(30°) ≈ 17.32
@@ -129,6 +129,49 @@ describe('arrowGeometry curved (#129)', () => {
   it('arrowBBox includes interior points', () => {
     const bb = arrowBBox(0, 0, 200, 0, 20, 'none', 10, 40, 40, 160, 40, [{ x: 100, y: -80 }]);
     expect(bb.minY).toBeLessThanOrEqual(-80);
+  });
+
+  it('arrowInsertPoint: null when the arrow has no (full) handles', () => {
+    expect(arrowInsertPoint(0, 0, 200, 0)).toBeNull();               // straight
+    expect(arrowInsertPoint(0, 0, 200, 0, 50, -100)).toBeNull();     // partial handles
+  });
+
+  it('arrowInsertPoint: symmetric bow → knot at the apex (tangent ∥ chord)', () => {
+    // Symmetric upward bow; the parallel-tangent point is the apex at t=0.5.
+    const res = arrowInsertPoint(0, 0, 200, 0, 50, -100, 150, -100, []);
+    expect(res.index).toBe(0);
+    expect(res.points.length).toBe(1);
+    const p = res.points[0];
+    expect(Math.abs(p.x - 100)).toBeLessThan(2);   // apex x
+    expect(Math.abs(p.y + 75)).toBeLessThan(2);    // apex y = -75
+  });
+
+  it('arrowInsertPoint: the new knot lies ON the existing curve (shape preserved)', () => {
+    // A lopsided bow — parallel point is off-midpoint but still on the curve.
+    const res = arrowInsertPoint(0, 0, 200, 0, 20, -120, 190, -30, []);
+    const p = res.points[0];
+    // Re-derive the single-segment cubic and confirm the point sits on it at
+    // SOME t (min distance to the sampled curve ≈ 0).
+    const P = [[0, 0], [20, -120], [190, -30], [200, 0]];
+    const at = (t) => {
+      const u = 1 - t, b = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+      return [b[0] * P[0][0] + b[1] * P[1][0] + b[2] * P[2][0] + b[3] * P[3][0],
+              b[0] * P[0][1] + b[1] * P[1][1] + b[2] * P[2][1] + b[3] * P[3][1]];
+    };
+    let best = Infinity;
+    for (let k = 0; k <= 200; k++) { const c = at(k / 200); best = Math.min(best, Math.hypot(c[0] - p.x, c[1] - p.y)); }
+    expect(best).toBeLessThan(1.5);
+    // And well clear of both endpoints (minGap honoured).
+    expect(Math.hypot(p.x, p.y)).toBeGreaterThan(20);
+    expect(Math.hypot(p.x - 200, p.y)).toBeGreaterThan(20);
+  });
+
+  it('arrowInsertPoint: splits the LONGEST segment', () => {
+    // One existing knot near the start → segment 1 (knot→end) is far longer.
+    const res = arrowInsertPoint(0, 0, 300, 0, 30, -60, 270, -60, [{ x: 60, y: -50 }]);
+    expect(res.index).toBe(1);            // inserted into the second (long) segment
+    expect(res.points.length).toBe(2);
+    expect(res.points[0]).toEqual({ x: 60, y: -50 });   // original knot kept, order preserved
   });
 
   it('arrowSvgInner renders a <path> for a curved arrow', () => {
