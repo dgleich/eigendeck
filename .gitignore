@@ -83,3 +83,8 @@ coverage/
 # Agent memory mirror (per-machine cross-project memory) + runtime lock — never repo content
 .claude/memory/
 .claude/scheduled_tasks.lock
+
+# Public skills repo — its OWN standalone git repo (distributable set of Eigendeck
+# skills for Claude / Claude Code). Lives here for convenience but is published
+# separately; never part of the app repo. See skills-public/README.md.
+skills-public/
