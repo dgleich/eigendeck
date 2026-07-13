@@ -413,7 +413,12 @@ function HtmlBox({ element, zIndex, scale, isSelected, theme, onSelect, onDelete
   const [interacting, setInteracting] = useState(false); // clickable controls (interactive HTML)
   const interactive = !!element.interactive;
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const srcDoc = htmlElementSrcdoc(element.html, element.background, element.vars, theme);
+  // While editing, render the RAW source (manifest + literal {{tokens}}) so the
+  // contentEditable DOM read back on finish preserves the variable template (#138);
+  // otherwise render the spliced, variable-driven output.
+  const srcDoc = editing
+    ? htmlElementSrcdoc(element.html, element.background, undefined, undefined, { raw: true })
+    : htmlElementSrcdoc(element.html, element.background, element.vars, theme);
 
   // Read the edited markup back out of the frame and leave edit mode. Kept in a
   // ref so the keydown/blur listeners always call the latest version.
@@ -449,20 +454,35 @@ function HtmlBox({ element, zIndex, scale, isSelected, theme, onSelect, onDelete
     return () => { cancelled = true; iframe?.removeEventListener('load', measure); };
   }, [element.scaleMode, element.scaleW, element.scaleH, element.position.width, element.position.height, onUpdate]);
 
-  // Enter edit mode: make the framed body contentEditable + focus it.
+  // Enter edit mode: make the framed body contentEditable + focus it. Entering edit
+  // switches srcDoc to the raw source (for var elements), which RELOADS the iframe —
+  // so (re)apply on the frame's `load` too, not just once, or the setup lands on the
+  // stale doc and is wiped by the reload. `setup` is idempotent per-document.
   useEffect(() => {
     if (!editing) return;
-    const doc = iframeRef.current?.contentDocument;
-    if (!doc?.body) { setEditing(false); return; }
-    doc.body.contentEditable = 'true';
-    doc.body.style.outline = 'none';
-    doc.body.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); finishRef.current(); } };
-    doc.addEventListener('keydown', onKey);
-    return () => {
-      doc.removeEventListener('keydown', onKey);
-      try { doc.body.contentEditable = 'false'; } catch { /* frame reloaded/gone */ }
+    const iframe = iframeRef.current;
+    if (!iframe) { setEditing(false); return; }
+    let activeDoc: Document | null = null;
+    let onKey: ((e: KeyboardEvent) => void) | null = null;
+    const teardown = () => {
+      if (activeDoc && onKey) activeDoc.removeEventListener('keydown', onKey);
+      try { if (activeDoc?.body) activeDoc.body.contentEditable = 'false'; } catch { /* gone */ }
+      activeDoc = null; onKey = null;
     };
+    const setup = () => {
+      const doc = iframe.contentDocument;
+      if (!doc?.body || doc === activeDoc) return;
+      teardown();
+      activeDoc = doc;
+      doc.body.contentEditable = 'true';
+      doc.body.style.outline = 'none';
+      doc.body.focus();
+      onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); finishRef.current(); } };
+      doc.addEventListener('keydown', onKey);
+    };
+    iframe.addEventListener('load', setup);
+    setup(); // handle the no-reload case (element without variables → srcDoc unchanged)
+    return () => { iframe.removeEventListener('load', setup); teardown(); };
   }, [editing]);
 
   // Double-click: interactive elements enter "interact" mode (click native

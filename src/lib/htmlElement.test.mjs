@@ -34,6 +34,22 @@ describe('htmlElementSrcdoc (#137)', () => {
   it('tolerates a missing/undefined body', () => {
     expect(htmlElementSrcdoc(undefined)).toContain('<body></body>');
   });
+
+  it('splices variables by default but keeps the raw template in raw mode (#138)', () => {
+    const html = '<script type="application/eigendeck-vars+json">'
+      + '{"v":{"type":"int","default":7}}</script><b>{{v}}</b>';
+    // Default: manifest stripped, token spliced, :root var emitted.
+    const spliced = htmlElementSrcdoc(html, undefined, { v: 9 });
+    expect(spliced).toContain('<b>9</b>');
+    expect(spliced).toContain('--v:9;');
+    expect(spliced).not.toContain('eigendeck-vars+json');
+    expect(spliced).not.toContain('{{v}}');
+    // Raw (edit) mode: manifest + literal token preserved so read-back keeps them.
+    const raw = htmlElementSrcdoc(html, undefined, { v: 9 }, undefined, { raw: true });
+    expect(raw).toContain('eigendeck-vars+json');
+    expect(raw).toContain('{{v}}');
+    expect(raw).not.toContain('--v:');
+  });
 });
 
 describe('html tables (#137)', () => {

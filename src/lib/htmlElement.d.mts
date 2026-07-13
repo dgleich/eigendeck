@@ -7,6 +7,7 @@ export function htmlElementSrcdoc(
   background?: string,
   vars?: Record<string, string | number>,
   theme?: { background?: string; accent?: string },
+  opts?: { raw?: boolean },
 ): string;
 
 export function htmlElementIframeHtml(

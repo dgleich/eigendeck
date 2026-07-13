@@ -36,8 +36,13 @@ export const HTML_ELEMENT_CSP =
  *  tint resolution) are spliced in: `:root{--name:…}` custom properties for the CSS
  *  side and `{{name}}` tokens for the HTML side; the manifest is stripped. Omitting
  *  vars/theme still applies the manifest DEFAULTS (so every path stays consistent). */
-export function htmlElementSrcdoc(rawHtml, background, vars, theme) {
-  const { html: body, rootCss } = spliceHtmlVars(rawHtml, vars, theme);
+export function htmlElementSrcdoc(rawHtml, background, vars, theme, opts) {
+  // `raw` mode skips the splice — used by in-canvas editing so the contentEditable
+  // DOM (and the markup read back out of it) keeps the manifest + literal {{tokens}},
+  // instead of the derived, spliced body that would lose them.
+  const { html: body, rootCss } = opts && opts.raw
+    ? { html: typeof rawHtml === 'string' ? rawHtml : '', rootCss: '' }
+    : spliceHtmlVars(rawHtml, vars, theme);
   const bg = background ? String(background).replace(/[<>"]/g, '') : 'transparent';
   return '<!doctype html><html><head><meta charset="utf-8">'
     + `<meta http-equiv="Content-Security-Policy" content="${HTML_ELEMENT_CSP}">`
