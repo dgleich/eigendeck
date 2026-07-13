@@ -1390,8 +1390,11 @@ function ArrowRenderer({
           className="arrow-handle" style={{ pointerEvents: 'all', cursor: 'crosshair' }}
           onPointerDown={(e) => handleEndpoint(e, 'end')} />
       </svg>
-      <button className="el-delete-btn" style={{ position: 'absolute', left: (x1 + x2) / 2 - minX - 10, top: (y1 + y2) / 2 - minY - 10, pointerEvents: 'all' }}
-        onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Delete">×</button>
+      {/* Same delete button as every other element (DraggableBox) — the shared
+          .el-delete-btn CSS floats it above the wrapper's top-right corner and
+          shows it on select/hover. The arrow wrapper is a positioned .slide-element,
+          so no inline positioning needed (was a one-off centered/inline version). */}
+      <button className="el-delete-btn" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Delete">×</button>
     </div>
   );
 }
