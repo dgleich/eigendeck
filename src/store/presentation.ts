@@ -108,6 +108,7 @@ function shiftArrow(el: Extract<SlideElement, { type: 'arrow' }>, dx: number, dy
   if (el.c1y != null) out.c1y = el.c1y + dy;
   if (el.c2x != null) out.c2x = el.c2x + dx;
   if (el.c2y != null) out.c2y = el.c2y + dy;
+  if (el.points) out.points = el.points.map((p) => ({ x: p.x + dx, y: p.y + dy }));
   return out;
 }
 
@@ -570,7 +571,7 @@ export const usePresentationStore = create<PresentationState>()(
         const geom: Partial<SlideElement> = peer
           ? (peer.type === 'arrow' && el.type === 'arrow'
               ? { x1: peer.x1, y1: peer.y1, x2: peer.x2, y2: peer.y2,
-                  c1x: peer.c1x, c1y: peer.c1y, c2x: peer.c2x, c2y: peer.c2y } as Partial<SlideElement>
+                  c1x: peer.c1x, c1y: peer.c1y, c2x: peer.c2x, c2y: peer.c2y, points: peer.points } as Partial<SlideElement>
               : { position: { ...peer.position } } as Partial<SlideElement>)
           : {};
         void runResyncHook(el);

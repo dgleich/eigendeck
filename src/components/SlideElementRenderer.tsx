@@ -1291,10 +1291,11 @@ function ArrowRenderer({
     (e: React.PointerEvent) => {
       e.preventDefault(); e.stopPropagation(); onSelect(); pauseUndo();
       dragStart.current = { mx: e.clientX, my: e.clientY, ox1: x1, oy1: y1, ox2: x2, oy2: y2 };
-      // Capture the Bézier control points too so a body-drag translates the WHOLE
-      // curve; without this the endpoints move but c1/c2 stay put and the curve
-      // warps (#129 regression).
+      // Capture the Bézier control points AND interior points so a body-drag
+      // translates the WHOLE curve; without this the endpoints move but the
+      // controls/waypoints stay put and the curve warps (#129 regression).
       const oc = { c1x: a.c1x, c1y: a.c1y, c2x: a.c2x, c2y: a.c2y };
+      const opts = (a.points || []).map((p) => ({ ...p }));
       const handleMove = (me: PointerEvent) => {
         let dx = (me.clientX - dragStart.current.mx) / scale;
         let dy = (me.clientY - dragStart.current.my) / scale;
@@ -1303,18 +1304,19 @@ function ArrowRenderer({
           if (Math.abs(dx) > Math.abs(dy)) dy = 0;
           else dx = 0;
         }
-        const upd: Record<string, number> = {
+        const upd: Record<string, unknown> = {
           x1: Math.round(dragStart.current.ox1 + dx), y1: Math.round(dragStart.current.oy1 + dy),
           x2: Math.round(dragStart.current.ox2 + dx), y2: Math.round(dragStart.current.oy2 + dy),
         };
         if (oc.c1x != null && oc.c1y != null) { upd.c1x = Math.round(oc.c1x + dx); upd.c1y = Math.round(oc.c1y + dy); }
         if (oc.c2x != null && oc.c2y != null) { upd.c2x = Math.round(oc.c2x + dx); upd.c2y = Math.round(oc.c2y + dy); }
+        if (opts.length) upd.points = opts.map((p) => ({ x: Math.round(p.x + dx), y: Math.round(p.y + dy) }));
         onUpdate(upd as any);
       };
       const handleUp = () => { resumeUndo(); window.removeEventListener('pointermove', handleMove); window.removeEventListener('pointerup', handleUp); };
       window.addEventListener('pointermove', handleMove); window.addEventListener('pointerup', handleUp);
     },
-    [x1, y1, x2, y2, a.c1x, a.c1y, a.c2x, a.c2y, scale, onUpdate, onSelect]
+    [x1, y1, x2, y2, a.c1x, a.c1y, a.c2x, a.c2y, a.points, scale, onUpdate, onSelect]
   );
 
   // Default control-handle positions — the 1/3 and 2/3 points on the straight
@@ -1348,12 +1350,37 @@ function ArrowRenderer({
     [x1, y1, x2, y2, a.c1x, a.c1y, a.c2x, a.c2y, scale, onUpdate, onSelect]
   );
 
-  // Double-click a control handle → straighten (clear all four control points).
+  // Double-click a control handle → straighten (clear control points AND waypoints).
   const straighten = useCallback(() => {
-    onUpdate({ c1x: undefined, c1y: undefined, c2x: undefined, c2y: undefined } as any);
+    onUpdate({ c1x: undefined, c1y: undefined, c2x: undefined, c2y: undefined, points: undefined } as any);
   }, [onUpdate]);
 
-  const bb = arrowBBox(x1, y1, x2, y2, headSize, a.heads, 30, a.c1x, a.c1y, a.c2x, a.c2y);
+  // Drag an interior interpolation point (the curve passes through it; no handles).
+  const handlePoint = useCallback(
+    (e: React.PointerEvent, idx: number) => {
+      e.preventDefault(); e.stopPropagation(); onSelect(); pauseUndo();
+      const sMx = e.clientX, sMy = e.clientY;
+      const pts = (a.points || []).map((p) => ({ ...p }));
+      const base = pts[idx];
+      if (!base) { resumeUndo(); return; }
+      const bx = base.x, by = base.y;
+      const handleMove = (me: PointerEvent) => {
+        const dx = (me.clientX - sMx) / scale, dy = (me.clientY - sMy) / scale;
+        const next = pts.map((p, i) => (i === idx ? { x: Math.round(bx + dx), y: Math.round(by + dy) } : p));
+        onUpdate({ points: next } as any);
+      };
+      const handleUp = () => { resumeUndo(); window.removeEventListener('pointermove', handleMove); window.removeEventListener('pointerup', handleUp); };
+      window.addEventListener('pointermove', handleMove); window.addEventListener('pointerup', handleUp);
+    },
+    [a.points, scale, onUpdate, onSelect]
+  );
+  // Double-click an interior point → remove it.
+  const removePoint = useCallback((idx: number) => {
+    const next = (a.points || []).filter((_, i) => i !== idx);
+    onUpdate({ points: next.length ? next : undefined } as any);
+  }, [a.points, onUpdate]);
+
+  const bb = arrowBBox(x1, y1, x2, y2, headSize, a.heads, 30, a.c1x, a.c1y, a.c2x, a.c2y, a.points);
   const { minX, minY, maxX, maxY } = bb;
 
   return (
@@ -1406,6 +1433,14 @@ function ArrowRenderer({
               onPointerDown={(e) => handleControl(e, 'c2')} onDoubleClick={(e) => { e.stopPropagation(); straighten(); }} />
           </g>
         )}
+        {/* Interior interpolation points — on-curve dots the curve passes through
+            (no handles). Drag to route; double-click to remove. Added via "+ Point". */}
+        {isSelected && (a.points || []).map((p, i) => (
+          <circle key={i} cx={p.x - minX} cy={p.y - minY} r={7} fill="#fff" stroke={color} strokeWidth={3}
+            className="arrow-point" style={{ pointerEvents: 'all', cursor: 'move' }}
+            onPointerDown={(e) => handlePoint(e, i)}
+            onDoubleClick={(e) => { e.stopPropagation(); removePoint(i); }} />
+        ))}
         <circle cx={x1 - minX} cy={y1 - minY} r={8} fill="#fff" stroke={color} strokeWidth={2}
           className="arrow-handle" style={{ pointerEvents: 'all', cursor: 'crosshair' }}
           onPointerDown={(e) => handleEndpoint(e, 'start')} />

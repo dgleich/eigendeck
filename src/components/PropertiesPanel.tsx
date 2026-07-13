@@ -710,12 +710,13 @@ export function PropertiesPanel() {
                   </div>
                 </PropSection>
                 <PropSection label="Shape">
-                  <div style={{ display: 'flex', gap: 4 }}>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                     {(() => {
                       const curved = selectedEl.c1x != null && selectedEl.c1y != null
                         && selectedEl.c2x != null && selectedEl.c2y != null;
+                      const nPts = (selectedEl.points || []).length;
                       const straighten = () => updateElement(selectedEl.id,
-                        { c1x: undefined, c1y: undefined, c2x: undefined, c2y: undefined } as any);
+                        { c1x: undefined, c1y: undefined, c2x: undefined, c2y: undefined, points: undefined } as any);
                       const curve = () => {
                         // Bow the arc out perpendicular to the chord at the 1/3 & 2/3 points.
                         const { x1, y1, x2, y2 } = selectedEl;
@@ -728,11 +729,39 @@ export function PropertiesPanel() {
                           c2x: Math.round(x1 + 2 * dx / 3 + nx * bow), c2y: Math.round(y1 + 2 * dy / 3 + ny * bow),
                         } as any);
                       };
-                      return ([['Straight', !curved, straighten], ['Curved', curved, curve]] as const).map(([lbl, active, fn]) => (
-                        <button key={lbl} className={`prop-zbtn ${active ? 'active' : ''}`}
-                          style={{ fontSize: 11, width: 'auto', padding: '3px 10px' }}
-                          onClick={fn}>{lbl}</button>
-                      ));
+                      // "+ Point": add an interior interpolation point (the curve passes THROUGH
+                      // it; drag the on-canvas dot to route, double-click it to remove). Auto-
+                      // curves a straight arrow (materialises the endpoint handles), then inserts
+                      // the point at the midpoint of the longest segment.
+                      const addPoint = () => {
+                        const { x1, y1, x2, y2 } = selectedEl;
+                        const base = curved ? {} : {
+                          c1x: Math.round(x1 + (x2 - x1) / 3), c1y: Math.round(y1 + (y2 - y1) / 3),
+                          c2x: Math.round(x1 + 2 * (x2 - x1) / 3), c2y: Math.round(y1 + 2 * (y2 - y1) / 3),
+                        };
+                        const pts = selectedEl.points || [];
+                        const knots = [{ x: x1, y: y1 }, ...pts, { x: x2, y: y2 }];
+                        let li = 0, ld = -1;
+                        for (let i = 0; i < knots.length - 1; i++) {
+                          const d = Math.hypot(knots[i + 1].x - knots[i].x, knots[i + 1].y - knots[i].y);
+                          if (d > ld) { ld = d; li = i; }
+                        }
+                        const mid = { x: Math.round((knots[li].x + knots[li + 1].x) / 2), y: Math.round((knots[li].y + knots[li + 1].y) / 2) };
+                        const next = [...pts]; next.splice(li, 0, mid);
+                        updateElement(selectedEl.id, { ...base, points: next } as any);
+                      };
+                      return (
+                        <>
+                          {([['Straight', !curved, straighten], ['Curved', curved, curve]] as const).map(([lbl, active, fn]) => (
+                            <button key={lbl} className={`prop-zbtn ${active ? 'active' : ''}`}
+                              style={{ fontSize: 11, width: 'auto', padding: '3px 10px' }}
+                              onClick={fn}>{lbl}</button>
+                          ))}
+                          <button className="prop-zbtn" style={{ fontSize: 11, width: 'auto', padding: '3px 10px' }}
+                            onClick={addPoint} title="Add an interpolation point the arrow routes through">+ Point</button>
+                          {nPts > 0 && <span style={{ fontSize: 11, color: '#6b7280' }}>{nPts} pt{nPts > 1 ? 's' : ''}</span>}
+                        </>
+                      );
                     })()}
                   </div>
                 </PropSection>

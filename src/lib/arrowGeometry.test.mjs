@@ -108,6 +108,29 @@ describe('arrowGeometry curved (#129)', () => {
     expect(bb.maxY).toBeGreaterThanOrEqual(80);     // c2y below the chord
   });
 
+  it('interior points → a multi-segment cubic passing THROUGH each point', () => {
+    // curved (all four controls) + one interior waypoint at (100,-50).
+    const g = arrowGeometry(0, 0, 200, 0, 20, 'none', 40, 40, 160, 40, [{ x: 100, y: -50 }]);
+    expect(g.curved).toBe(true);
+    // Two cubic segments (one C per segment): start→point, point→end.
+    expect((g.path.match(/C /g) || []).length).toBe(2);
+    // The path visits the interior point exactly (it's a segment endpoint).
+    expect(g.path).toContain('100 -50');
+    // Start uses the c1 handle, end uses c2 (heads still orient to them).
+    expect(g.path.startsWith('M 0 0 C 40 40')).toBe(true);
+    expect(g.path).toContain('160 40 200 0');
+  });
+
+  it('no points → the single-segment cubic (unchanged)', () => {
+    const g = arrowGeometry(0, 0, 200, 0, 20, 'none', 40, 40, 160, 40, []);
+    expect(g.path).toBe('M 0 0 C 40 40 160 40 200 0');
+  });
+
+  it('arrowBBox includes interior points', () => {
+    const bb = arrowBBox(0, 0, 200, 0, 20, 'none', 10, 40, 40, 160, 40, [{ x: 100, y: -80 }]);
+    expect(bb.minY).toBeLessThanOrEqual(-80);
+  });
+
   it('arrowSvgInner renders a <path> for a curved arrow', () => {
     const g = arrowGeometry(0, 0, 100, 0, 20, 'none', 20, 40, 80, 40);
     const svg = arrowSvgInner(g, '#f00', 3);

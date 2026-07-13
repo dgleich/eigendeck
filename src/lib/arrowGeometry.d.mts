@@ -10,9 +10,11 @@ export interface ArrowGeo {
   triangles: number[][][];
 }
 
+export interface ArrowPoint { x: number; y: number }
+
 export function arrowGeometry(
   x1: number, y1: number, x2: number, y2: number, headSize: number, heads?: ArrowHeads,
-  c1x?: number, c1y?: number, c2x?: number, c2y?: number,
+  c1x?: number, c1y?: number, c2x?: number, c2y?: number, points?: ArrowPoint[],
 ): ArrowGeo;
 
 export function triPoints(t: number[][]): string;
@@ -24,5 +26,5 @@ export function arrowSvgInner(
 export function arrowBBox(
   x1: number, y1: number, x2: number, y2: number,
   headSize: number, heads?: ArrowHeads, pad?: number,
-  c1x?: number, c1y?: number, c2x?: number, c2y?: number,
+  c1x?: number, c1y?: number, c2x?: number, c2y?: number, points?: ArrowPoint[],
 ): { minX: number; minY: number; maxX: number; maxY: number };

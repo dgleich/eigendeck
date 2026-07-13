@@ -193,6 +193,10 @@ export interface ArrowElement extends BaseElement {
   c1y?: number;
   c2x?: number;
   c2y?: number;
+  /** Interior interpolation points (#129): the curve passes smoothly THROUGH each,
+   *  between the handled endpoints (no handles on these — just draggable dots, added
+   *  via "+ Point"). Only used when the arrow is curved (c1/c2 present). */
+  points?: Array<{ x: number; y: number }>;
 }
 
 export interface DemoElement extends BaseElement {
