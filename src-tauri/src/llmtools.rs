@@ -85,33 +85,44 @@ pub fn install_llm_tools(app: tauri::AppHandle, target_dir: String) -> Result<St
     std::fs::create_dir_all(&out_dir)
         .map_err(|e| format!("Could not create {}: {}", out_dir.display(), e))?;
 
-    let entries = std::fs::read_dir(&kit_dir)
-        .map_err(|e| format!("Could not read kit dir {}: {}", kit_dir.display(), e))?;
+    // Copy the whole kit tree — the kit now has subdirs (skills/, reference/), so
+    // recurse. AGENTS.md gets the CLI-path substitution; everything else is a
+    // straight copy.
+    copy_kit_tree(&kit_dir, &out_dir, &cli_str)?;
 
+    Ok(out_dir.to_string_lossy().to_string())
+}
+
+/// Recursively copy `src` into `dst`, preserving the directory structure. The
+/// top-level `AGENTS.md` has `__EIGENDECK_CLI_PATH__` replaced with the resolved
+/// CLI path; all other files are copied verbatim.
+fn copy_kit_tree(src: &Path, dst: &Path, cli_str: &str) -> Result<(), String> {
+    std::fs::create_dir_all(dst)
+        .map_err(|e| format!("Could not create {}: {}", dst.display(), e))?;
+    let entries = std::fs::read_dir(src)
+        .map_err(|e| format!("Could not read {}: {}", src.display(), e))?;
     for entry in entries {
         let entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-        let file_name = match path.file_name().and_then(|n| n.to_str()) {
+        let name = match path.file_name().and_then(|n| n.to_str()) {
             Some(n) => n.to_string(),
             None => continue,
         };
-        let dest = out_dir.join(&file_name);
-
-        if file_name == "AGENTS.md" {
-            // Substitute the resolved CLI path for the placeholder.
-            let contents = std::fs::read_to_string(&path)
-                .map_err(|e| format!("Could not read {}: {}", path.display(), e))?;
-            let contents = contents.replace(CLI_PLACEHOLDER, &cli_str);
-            std::fs::write(&dest, contents)
-                .map_err(|e| format!("Could not write {}: {}", dest.display(), e))?;
-        } else {
-            std::fs::copy(&path, &dest)
-                .map_err(|e| format!("Could not copy {} → {}: {}", path.display(), dest.display(), e))?;
+        let dest = dst.join(&name);
+        if path.is_dir() {
+            copy_kit_tree(&path, &dest, cli_str)?;
+        } else if path.is_file() {
+            if name == "AGENTS.md" {
+                let contents = std::fs::read_to_string(&path)
+                    .map_err(|e| format!("Could not read {}: {}", path.display(), e))?;
+                let contents = contents.replace(CLI_PLACEHOLDER, cli_str);
+                std::fs::write(&dest, contents)
+                    .map_err(|e| format!("Could not write {}: {}", dest.display(), e))?;
+            } else {
+                std::fs::copy(&path, &dest)
+                    .map_err(|e| format!("Could not copy {} → {}: {}", path.display(), dest.display(), e))?;
+            }
         }
     }
-
-    Ok(out_dir.to_string_lossy().to_string())
+    Ok(())
 }

@@ -171,15 +171,15 @@ fn main() {
     tauri_build::build()
 }
 
-/// Copy the 4 LLM docs from docs/ into src-tauri/resources/llm-tools/ so they
-/// ship as bundled resources next to the committed AGENTS.md / CLAUDE.md /
-/// demo-starter.html. The File → Install LLM Tools… command writes the whole
-/// folder to a user-chosen location. The copies are gitignored (generated
+/// Copy the 4 LLM docs from docs/ into src-tauri/resources/llm-tools/reference/
+/// so they ship as bundled resources alongside the committed AGENTS.md (router) +
+/// skills/ + demo-starter.html. The File → Install LLM Tools… command writes the
+/// whole folder to a user-chosen location. The copies are gitignored (generated
 /// duplicates). Missing sources are skipped, not fatal, so the build keeps
 /// working in trees without the docs (e.g. partial checkouts).
 fn stage_llm_tools_docs() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let dest_dir = manifest_dir.join("resources").join("llm-tools");
+    let dest_dir = manifest_dir.join("resources").join("llm-tools").join("reference");
     if let Err(e) = fs::create_dir_all(&dest_dir) {
         println!("cargo:warning=could not create {}: {}", dest_dir.display(), e);
         return;

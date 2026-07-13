@@ -51,10 +51,10 @@ mathjax-fonts/
 
 # LLM-tools kit: the 4 docs below are copied from the repo root by build.rs
 # (generated duplicates). AGENTS.md / CLAUDE.md / demo-starter.html stay committed.
-src-tauri/resources/llm-tools/LLM-EDITING.md
-src-tauri/resources/llm-tools/SPEC.md
-src-tauri/resources/llm-tools/DEMO_AUTHORING.md
-src-tauri/resources/llm-tools/DEMO_SPEC.md
+# LLM-tools reference docs — build.rs copies these from docs/ at build time
+# (generated duplicates). The skills/ and AGENTS.md/demo-starter.html in the kit
+# ARE committed (canonical); the standalone skills-public/ repo mirrors skills/.
+src-tauri/resources/llm-tools/reference/
 
 # Python bytecode cache (tools/)
 __pycache__/
