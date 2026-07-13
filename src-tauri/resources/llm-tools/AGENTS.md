@@ -44,8 +44,7 @@ workflow.
 
 The skills link into these when you need the exhaustive detail:
 
-- `reference/LLM-EDITING.md` — the complete programmatic-editing guide.
-- `reference/SPEC.md` — the full data model (slide/element schema, text presets, themes, config).
+- `reference/LLM-EDITING.md` — the complete programmatic-editing guide (the full slide/element schema, text presets, themes, config, math).
 - `reference/DEMO_AUTHORING.md` — the demo architecture (controller + viewport pieces, theming, the bridge).
 - `reference/DEMO_SPEC.md` — the demo element schema.
 

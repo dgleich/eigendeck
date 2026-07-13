@@ -190,7 +190,11 @@ fn stage_llm_tools_docs() {
         .parent()
         .map(|p| p.join("docs"))
         .unwrap_or_else(|| manifest_dir.join("docs"));
-    for name in ["LLM-EDITING.md", "SPEC.md", "DEMO_AUTHORING.md", "DEMO_SPEC.md"] {
+    // Only the AUTHORING-facing docs ship in the kit — NOT the internal ones
+    // (architecture, security, storage, build). SPEC.md is deliberately excluded:
+    // it's a broad product spec (editor UI, keyboard, tech stack) whose useful part
+    // (the element schema) LLM-EDITING.md already covers.
+    for name in ["LLM-EDITING.md", "DEMO_AUTHORING.md", "DEMO_SPEC.md"] {
         let src = docs.join(name);
         // Re-stage when the source doc changes.
         println!("cargo:rerun-if-changed={}", src.display());
