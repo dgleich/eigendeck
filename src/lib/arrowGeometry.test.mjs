@@ -136,59 +136,19 @@ describe('arrowGeometry curved (#129)', () => {
     expect(arrowInsertPoint(0, 0, 200, 0, 50, -100)).toBeNull();     // partial handles
   });
 
-  it('arrowInsertPoint: symmetric bow → knot at the apex (tangent ∥ chord)', () => {
-    // Symmetric upward bow; the parallel-tangent point is the apex at t=0.5.
+  it('arrowInsertPoint: symmetric bow → new knot at the mid-curve point, handles untouched', () => {
+    // Insert at the longest segment's MIDPOINT on the curve. For a symmetric bow
+    // the t=0.5 point is the apex (100,-75). The endpoint handles are NOT returned
+    // (the caller keeps c1/c2 as-is — no scaling).
     const res = arrowInsertPoint(0, 0, 200, 0, 50, -100, 150, -100, []);
     expect(res.index).toBe(0);
-    expect(res.points.length).toBe(1);
-    const p = res.points[0];
-    expect(Math.abs(p.x - 100)).toBeLessThan(2);   // apex x
-    expect(Math.abs(p.y + 75)).toBeLessThan(2);    // apex y = -75
-    // Endpoint handles halved toward their endpoints (de Casteljau L1/R1 at t=0.5).
-    expect(res.c1x).toBe(25); expect(res.c1y).toBe(-50);    // lerp(start, c1, .5)
-    expect(res.c2x).toBe(175); expect(res.c2y).toBe(-50);   // lerp(c2, end, .5)
+    expect(res.points).toEqual([{ x: 100, y: -75 }]);   // apex = cubic at t=0.5
+    expect(res.c1x).toBeUndefined();                     // handles NOT part of the result
+    expect(res.c2x).toBeUndefined();
   });
 
-  it('arrowInsertPoint: the re-fit spline stays close to the original curve', () => {
-    // Insert a knot, rebuild the two-segment path with the returned handles, and
-    // confirm it tracks the original single cubic to within a few px everywhere.
-    const c = [50, -100, 150, -100];
-    const orig = arrowGeometry(0, 0, 200, 0, 20, 'none', ...c, []);
-    const res = arrowInsertPoint(0, 0, 200, 0, ...c, []);
-    const refit = arrowGeometry(0, 0, 200, 0, 20, 'none',
-      res.c1x, res.c1y, res.c2x, res.c2y, res.points);
-    // Sample both paths and take the max nearest-point gap (Hausdorff-ish).
-    const sample = (d, N) => {
-      // Evaluate an SVG "M .. C .. C .." path at N points per cubic segment.
-      const nums = d.match(/-?\d+(\.\d+)?/g).map(Number);
-      const segs = [];
-      let cx = nums[0], cy = nums[1], i = 2;
-      while (i + 5 < nums.length) {
-        segs.push([[cx, cy], [nums[i], nums[i + 1]], [nums[i + 2], nums[i + 3]], [nums[i + 4], nums[i + 5]]]);
-        cx = nums[i + 4]; cy = nums[i + 5]; i += 6;
-      }
-      const pts = [];
-      for (const [P0, P1, P2, P3] of segs) {
-        for (let k = 0; k <= N; k++) {
-          const t = k / N, u = 1 - t, b = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
-          pts.push([b[0] * P0[0] + b[1] * P1[0] + b[2] * P2[0] + b[3] * P3[0],
-                    b[0] * P0[1] + b[1] * P1[1] + b[2] * P2[1] + b[3] * P3[1]]);
-        }
-      }
-      return pts;
-    };
-    const A = sample(orig.path, 40), B = sample(refit.path, 40);
-    let maxGap = 0;
-    for (const a of A) {
-      let best = Infinity;
-      for (const b of B) best = Math.min(best, Math.hypot(a[0] - b[0], a[1] - b[1]));
-      maxGap = Math.max(maxGap, best);
-    }
-    expect(maxGap).toBeLessThan(5);   // re-fit tracks the original within ~5px
-  });
-
-  it('arrowInsertPoint: the new knot lies ON the existing curve (shape preserved)', () => {
-    // A lopsided bow — parallel point is off-midpoint but still on the curve.
+  it('arrowInsertPoint: the new knot lies ON the existing curve (no jump)', () => {
+    // A lopsided bow — the t=0.5 midpoint is still exactly on the curve.
     const res = arrowInsertPoint(0, 0, 200, 0, 20, -120, 190, -30, []);
     const p = res.points[0];
     // Re-derive the single-segment cubic and confirm the point sits on it at
@@ -202,7 +162,7 @@ describe('arrowGeometry curved (#129)', () => {
     let best = Infinity;
     for (let k = 0; k <= 200; k++) { const c = at(k / 200); best = Math.min(best, Math.hypot(c[0] - p.x, c[1] - p.y)); }
     expect(best).toBeLessThan(1.5);
-    // And well clear of both endpoints (minGap honoured).
+    // And mid-curve (t=0.5) → well clear of both endpoints.
     expect(Math.hypot(p.x, p.y)).toBeGreaterThan(20);
     expect(Math.hypot(p.x - 200, p.y)).toBeGreaterThan(20);
   });

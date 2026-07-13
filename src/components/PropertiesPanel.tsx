@@ -730,11 +730,10 @@ export function PropertiesPanel() {
                           c2x: Math.round(x1 + 2 * dx / 3 + nx * bow), c2y: Math.round(y1 + 2 * dy / 3 + ny * bow),
                         } as any);
                       };
-                      // "+ Point": add an interior interpolation point (the curve passes THROUGH
-                      // it; drag the on-canvas dot to route, double-click it to remove). Auto-
-                      // curves a straight arrow (materialises the endpoint handles), then inserts
-                      // the knot where the tangent is already parallel to the chord — so the
-                      // auto-smooth spline routes through it without changing shape (arrowInsertPoint).
+                      // "+ Point": add an interior waypoint the curve passes THROUGH (drag the
+                      // on-canvas dot to route, double-click to remove). A straight arrow gets
+                      // endpoint handles materialised on the line first. The endpoint handles are
+                      // left UNCHANGED — the new knot just lets the curve re-smooth.
                       const addPoint = () => {
                         const { x1, y1, x2, y2 } = selectedEl;
                         const c = curved
@@ -745,10 +744,7 @@ export function PropertiesPanel() {
                             };
                         const res = arrowInsertPoint(x1, y1, x2, y2, c.c1x, c.c1y, c.c2x, c.c2y, selectedEl.points);
                         if (!res) return;
-                        // Apply the (possibly endpoint-scaled) handles so the spline shape holds.
-                        updateElement(selectedEl.id, {
-                          c1x: res.c1x, c1y: res.c1y, c2x: res.c2x, c2y: res.c2y, points: res.points,
-                        } as any);
+                        updateElement(selectedEl.id, { ...c, points: res.points } as any);
                       };
                       return (
                         <>
