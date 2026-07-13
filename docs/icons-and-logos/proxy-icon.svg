@@ -5,7 +5,7 @@
    height="1024"
    version="1.1"
    id="svg8"
-   sodipodi:docname="eigendeck_proxy_icon_grouped_taller.svg"
+   sodipodi:docname="proxy-icon.svg"
    inkscape:version="1.4 (e7c3feb1, 2024-10-09)"
    inkscape:export-filename="eigendeck_proxy_icon_grouped_taller.png"
    inkscape:export-xdpi="218"
@@ -23,9 +23,9 @@
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
-     inkscape:zoom="0.52"
-     inkscape:cx="396.15385"
-     inkscape:cy="316.34615"
+     inkscape:zoom="0.02"
+     inkscape:cx="450"
+     inkscape:cy="275"
      inkscape:window-width="1200"
      inkscape:window-height="1186"
      inkscape:window-x="0"
@@ -42,7 +42,8 @@
        y1="80"
        x2="860"
        y2="980"
-       gradientUnits="userSpaceOnUse">
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.0015853,0,0,1.0189497,-28.9414,29.492921)">
       <stop
          offset="0"
          stop-color="#F7EED6"
@@ -50,11 +51,13 @@
       <stop
          offset="0.62"
          stop-color="#E8D9AE"
-         id="stop2" />
+         id="stop2"
+         style="stop-color:#dec584;stop-opacity:1;" />
       <stop
          offset="1"
          stop-color="#D6C085"
-         id="stop3" />
+         id="stop3"
+         style="stop-color:#c3a248;stop-opacity:1;" />
     </linearGradient>
     <linearGradient
        id="folderEdge"
@@ -100,20 +103,21 @@
      style="fill:url(#folderEdge)" />
   <path
      id="folder-face"
-     d="m 202,76 h 506 l 188,188 v 600 q 0,70 -70,70 H 204 q -70,0 -70,-70 V 154 q 0,-78 68,-78 z"
+     d="m 173.37882,106.9331 h 506.80213 l 188.29803,191.56253 v 611.36979 q 0,71.32648 -70.11097,71.32648 H 175.38199 q -70.11097,0 -70.11097,-71.32648 V 186.41117 q 0,-79.47807 68.1078,-79.47807 z"
      fill="url(#paper)"
-     style="fill:url(#paper)" />
+     style="fill:url(#paper);stroke:#ad9d73;stroke-width:10.8754;stroke-dasharray:none;stroke-opacity:1" />
   <path
      id="dogear-seam"
-     d="M 708,76 896,264"
+     d="m 693.41667,107.25 169.25,183.83333"
      fill="none"
      stroke="#303030"
      stroke-width="18"
-     stroke-linecap="round" />
+     stroke-linecap="round"
+     sodipodi:nodetypes="cc" />
   <g
      id="embossed-lambda"
      opacity="0.72"
-     transform="translate(-40.384615,-61.538462)">
+     transform="matrix(0.9009176,0,0,0.9009176,15.332689,-43.801427)">
     <path
        id="embossed-lambda-highlight"
        d="M 392,630 536,216 676,630"
@@ -153,7 +157,8 @@
      style="fill:url(#badge)" />
   <g
      id="lambda-mark"
-     transform="matrix(456,0,0,-456,37,930.53846)">
+     transform="matrix(456,0,0,-456,37,930.53846)"
+     style="stroke-width:0.03289474;stroke-dasharray:none">
     <path
        d="M 0.24125,0.49812 0.21094,0.58016 Q 0.19734,0.61766 0.17891,0.63125 0.16062,0.645 0.11469,0.645 H 0.06 V 0.75984 H 0.16109 Q 0.25,0.75984 0.29813,0.72219 0.34625,0.68453 0.37938,0.59578 L 0.60297,0 H 0.42828 L 0.31938,0.28719 0.20453,0 H 0.02984 Z"
        fill="#ffffff"
@@ -161,11 +166,13 @@
        stroke-width="0.06"
        stroke-linejoin="round"
        paint-order="stroke fill"
-       id="path7" />
+       id="path7"
+       style="stroke-width:0.03289474;stroke-dasharray:none" />
   </g>
   <g
      id="underscore-mark"
-     transform="matrix(456,0,0,-456,81.23077,822.84615)">
+     transform="matrix(456,0,0,-456,81.23077,822.84615)"
+     style="stroke-width:0;stroke-dasharray:none">
     <path
        d="m 1.13281,-0.14313 v -0.09265 h -0.5 v 0.09265 z"
        fill="#ffffff"
@@ -173,13 +180,7 @@
        stroke-width="0.06"
        stroke-linejoin="round"
        paint-order="stroke fill"
-       id="path8" />
+       id="path8"
+       style="stroke-width:0;stroke-dasharray:none" />
   </g>
-  <path
-     id="path9"
-     d="M 708,76 896,264"
-     fill="none"
-     stroke="#303030"
-     stroke-width="18"
-     stroke-linecap="round" />
 </svg>

@@ -1459,10 +1459,7 @@ function ArrowRenderer({
               stroke="transparent" strokeWidth={24} style={{ pointerEvents: 'stroke', cursor: 'move' }} onPointerDown={handleBody} />}
         <ArrowGlyph geo={geo} color={color} strokeWidth={strokeWidth} opacity={a.opacity}
           dx={minX} dy={minY} gStyle={{ pointerEvents: 'none' }} />
-        {/* Bézier control handles — ONLY for a two-handle curve (no waypoints). A
-            point-arrow is a pure Catmull-Rom spline through its knots, so c1/c2 don't
-            apply; its controls are the interior dots + endpoints below. */}
-        {isSelected && !(a.points && a.points.length) && (
+        {isSelected && (
           <g className="arrow-control-handles">
             {/* Inkscape-style handle lines from each endpoint to its control point. */}
             <line x1={x1 - minX} y1={y1 - minY} x2={c1hx - minX} y2={c1hy - minY}

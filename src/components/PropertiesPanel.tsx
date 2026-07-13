@@ -730,16 +730,24 @@ export function PropertiesPanel() {
                           c2x: Math.round(x1 + 2 * dx / 3 + nx * bow), c2y: Math.round(y1 + 2 * dy / 3 + ny * bow),
                         } as any);
                       };
-                      // "+ Point": add an interior waypoint the curve passes THROUGH (drag the
-                      // on-canvas dot to route, double-click to remove). The arrow becomes a pure
-                      // Catmull-Rom spline through its knots — the two endpoints smooth toward
-                      // their neighbours too, so we DROP c1/c2 (no endpoint-slope memory).
+                      // "+ Point": add an interior interpolation point (the curve passes THROUGH
+                      // it; drag the on-canvas dot to route, double-click it to remove). Auto-
+                      // curves a straight arrow (materialises the endpoint handles), then inserts
+                      // the knot where the tangent is already parallel to the chord — so the
+                      // auto-smooth spline routes through it without changing shape (arrowInsertPoint).
                       const addPoint = () => {
                         const { x1, y1, x2, y2 } = selectedEl;
-                        const res = arrowInsertPoint(x1, y1, x2, y2, selectedEl.points,
-                          selectedEl.c1x, selectedEl.c1y, selectedEl.c2x, selectedEl.c2y);
+                        const c = curved
+                          ? { c1x: selectedEl.c1x!, c1y: selectedEl.c1y!, c2x: selectedEl.c2x!, c2y: selectedEl.c2y! }
+                          : {
+                              c1x: Math.round(x1 + (x2 - x1) / 3), c1y: Math.round(y1 + (y2 - y1) / 3),
+                              c2x: Math.round(x1 + 2 * (x2 - x1) / 3), c2y: Math.round(y1 + 2 * (y2 - y1) / 3),
+                            };
+                        const res = arrowInsertPoint(x1, y1, x2, y2, c.c1x, c.c1y, c.c2x, c.c2y, selectedEl.points);
+                        if (!res) return;
+                        // Apply the (possibly endpoint-scaled) handles so the spline shape holds.
                         updateElement(selectedEl.id, {
-                          points: res.points, c1x: undefined, c1y: undefined, c2x: undefined, c2y: undefined,
+                          c1x: res.c1x, c1y: res.c1y, c2x: res.c2x, c2y: res.c2y, points: res.points,
                         } as any);
                       };
                       return (

@@ -9,31 +9,13 @@ const ARROW_HA = Math.PI / 6;   // head half-angle (30°)
 
 export function arrowGeometry(x1, y1, x2, y2, headSize, heads, c1x, c1y, c2x, c2y, points) {
   const ha = ARROW_HA;
-  const pts = Array.isArray(points) ? points.filter((p) => p && p.x != null && p.y != null) : [];
-  const hasPts = pts.length > 0;
-  // Two shapes beyond a straight line (#129):
-  //   • interior waypoints  → a pure Catmull-Rom spline through [start, …pts, end].
-  //     EVERY tangent, including the two endpoints, is DERIVED from the adjacent
-  //     knot (the endpoints one-sided). No stored c1/c2 memory — the ends smooth
-  //     toward the neighbouring point. Waypoints take precedence over c1/c2.
-  //   • two Bézier handles (c1/c2, no waypoints) → a single cubic the user shaped.
-  const hasHandles = c1x != null && c1y != null && c2x != null && c2y != null;
-  const curved = hasHandles || hasPts;
+  // Cubic-Bézier control points (#129): c1 off the start, c2 off the end. When all
+  // four are present the arrow curves; otherwise it's a straight line (unchanged).
+  const curved = c1x != null && c1y != null && c2x != null && c2y != null;
   // Head angle at each tip = the curve TANGENT there (straight: the line dir).
-  let endAng, startAng;
-  if (hasPts) {
-    // Derived end tangents: end head along (lastPt→end), start head outward (firstPt→start).
-    const first = pts[0], last = pts[pts.length - 1];
-    endAng = Math.atan2(y2 - last.y, x2 - last.x);
-    startAng = Math.atan2(y1 - first.y, x1 - first.x);
-  } else if (hasHandles) {
-    // end head along c2→end; start head points OUTWARD along c1→start.
-    endAng = Math.atan2(y2 - c2y, x2 - c2x);
-    startAng = Math.atan2(y1 - c1y, x1 - c1x);
-  } else {
-    endAng = Math.atan2(y2 - y1, x2 - x1);
-    startAng = Math.atan2(y1 - y2, x1 - x2);
-  }
+  // end head points along c2→end; start head points OUTWARD along c1→start.
+  const endAng = curved ? Math.atan2(y2 - c2y, x2 - c2x) : Math.atan2(y2 - y1, x2 - x1);
+  const startAng = curved ? Math.atan2(y1 - c1y, x1 - c1x) : Math.atan2(y1 - y2, x1 - x2);
   const atEnd = heads !== 'start' && heads !== 'none';   // default/'end'/'both'
   const atStart = heads === 'start' || heads === 'both';
   // tip → base-centre distance. For an arrow shorter than the combined insets,
@@ -60,31 +42,26 @@ export function arrowGeometry(x1, y1, x2, y2, headSize, heads, c1x, c1y, c2x, c2
   const sx = atStart ? x1 - Math.cos(startAng) * inset : x1;
   const sy = atStart ? y1 - Math.sin(startAng) * inset : y1;
   if (curved) {
-    if (!hasPts) {
-      // Two-handle Bézier the user shaped directly.
+    const pts = Array.isArray(points) ? points.filter((p) => p && p.x != null && p.y != null) : [];
+    if (pts.length === 0) {
       return { curved: true, path: `M ${sx} ${sy} C ${c1x} ${c1y} ${c2x} ${c2y} ${ex} ${ey}`, triangles };
     }
-    // Pure Catmull-Rom spline through [start, …pts, end]. Tangent at knot i is
-    // (K[i+1] − K[i−1])/2, giving Bézier controls K[i] ± (K[i+1] − K[i−1])/6. The
-    // two ENDPOINTS use a one-sided difference (K[1] − K[0], K[n−1] − K[n−2]) — so
-    // no c1/c2 memory; the ends bend toward the neighbouring point like every knot.
+    // Interior interpolation points (#129): the curve passes THROUGH each point,
+    // smoothly. The two END tangents keep coming from the user handles (c1/c2, so
+    // the heads orient exactly as before); interior knots get automatic
+    // Catmull-Rom tangents (T = (next − prev)/6). No handles on interior points.
     const K = [{ x: sx, y: sy }, ...pts, { x: ex, y: ey }];
-    const n = K.length;
-    const outC = new Array(n);
-    const inC = new Array(n);
-    for (let i = 0; i < n; i++) {
-      if (i === 0) {
-        outC[0] = { x: K[0].x + (K[1].x - K[0].x) / 3, y: K[0].y + (K[1].y - K[0].y) / 3 };
-      } else if (i === n - 1) {
-        inC[n - 1] = { x: K[n - 1].x - (K[n - 1].x - K[n - 2].x) / 3, y: K[n - 1].y - (K[n - 1].y - K[n - 2].y) / 3 };
-      } else {
-        const tx = (K[i + 1].x - K[i - 1].x) / 6, ty = (K[i + 1].y - K[i - 1].y) / 6;
-        outC[i] = { x: K[i].x + tx, y: K[i].y + ty };
-        inC[i] = { x: K[i].x - tx, y: K[i].y - ty };
-      }
+    const outC = new Array(K.length);
+    const inC = new Array(K.length);
+    outC[0] = { x: c1x, y: c1y };
+    inC[K.length - 1] = { x: c2x, y: c2y };
+    for (let i = 1; i < K.length - 1; i++) {
+      const tx = (K[i + 1].x - K[i - 1].x) / 6, ty = (K[i + 1].y - K[i - 1].y) / 6;
+      outC[i] = { x: K[i].x + tx, y: K[i].y + ty };
+      inC[i] = { x: K[i].x - tx, y: K[i].y - ty };
     }
     let d = `M ${sx} ${sy}`;
-    for (let i = 0; i < n - 1; i++) {
+    for (let i = 0; i < K.length - 1; i++) {
       d += ` C ${outC[i].x} ${outC[i].y} ${inC[i + 1].x} ${inC[i + 1].y} ${K[i + 1].x} ${K[i + 1].y}`;
     }
     return { curved: true, path: d, triangles };
@@ -95,59 +72,107 @@ export function arrowGeometry(x1, y1, x2, y2, headSize, heads, c1x, c1y, c2x, c2
   };
 }
 
-/** Insert a new interior waypoint ON the current curve, at the midpoint of its
- *  LONGEST segment, so the arrow keeps its shape and just gains a draggable knot.
- *  The result is always a pure Catmull-Rom point-arrow (the caller drops c1/c2):
- *    • already has points → sample the longest Catmull-Rom segment at its middle;
- *    • a two-handle Bézier (c1/c2 given, no points) → sample that cubic at t=0.5
- *      (converts it to a point-arrow that follows the bend);
- *    • straight → the line midpoint (stays straight until the knot is dragged).
- *  Returns `{ points, index }` — the new waypoint array and the inserted index.
+/** Choose where to insert a new interior interpolation knot so the auto-smooth
+ *  (Catmull-Rom) curve changes as little as possible.
+ *
+ *  The interior knots carry NO stored handles — their tangent is auto-derived as
+ *  `T = (next − prev)/6`, i.e. always PARALLEL TO THE CHORD between the knot's
+ *  neighbours. So the only knot placement that introduces no kink is the point
+ *  where the existing curve's tangent is ALREADY parallel to that chord. By the
+ *  mean value theorem such a point exists on every segment; we find it by
+ *  bisection on the LONGEST segment (most room), starting from its midpoint.
+ *
+ *  Direction is preserved exactly; only the auto-tangent LENGTH (belly fullness)
+ *  can differ slightly — a second-order change, no plateau. If the parallel
+ *  point lands within `minGap` of a neighbouring knot (only possible on a nearly
+ *  straight, already-crowded segment) it's clamped inward, trading a small,
+ *  unavoidable wiggle for the spacing.
+ *
+ *  Because each half-segment is now shorter, the endpoint handles must be scaled
+ *  toward their endpoints by the split parameter (`lerp(start, c1, t*)` /
+ *  `lerp(c2, end, t*)` — the de Casteljau first-level controls) or a full-length
+ *  handle on a half-length segment overshoots. With both the parallel placement
+ *  AND the scaled handles the endpoints stay EXACT; only the interior tangent
+ *  length is approximate. Handles are scaled only for the endpoint they touch
+ *  (splitting an interior-to-interior segment leaves c1/c2 alone).
+ *
+ *  Returns `{ points, index, c1x, c1y, c2x, c2y }` — the new interior-points
+ *  array, the inserted point's index within it, and the (possibly scaled)
+ *  endpoint handles to apply — or null if the arrow isn't curved (no c1/c2).
  */
-export function arrowInsertPoint(x1, y1, x2, y2, points, c1x, c1y, c2x, c2y) {
+export function arrowInsertPoint(x1, y1, x2, y2, c1x, c1y, c2x, c2y, points, minGap = 24) {
+  if (c1x == null || c1y == null || c2x == null || c2y == null) return null;
   const pts = Array.isArray(points) ? points.filter((p) => p && p.x != null && p.y != null) : [];
-  const cubicAt = (P0, P1, P2, P3, t) => {
+  const K = [{ x: x1, y: y1 }, ...pts, { x: x2, y: y2 }];
+  const n = K.length;
+  // Control points exactly as arrowGeometry builds them: user handles at the
+  // ends, Catmull-Rom auto-tangents at the interior knots.
+  const outC = new Array(n), inC = new Array(n);
+  outC[0] = { x: c1x, y: c1y };
+  inC[n - 1] = { x: c2x, y: c2y };
+  for (let i = 1; i < n - 1; i++) {
+    const tx = (K[i + 1].x - K[i - 1].x) / 6, ty = (K[i + 1].y - K[i - 1].y) / 6;
+    outC[i] = { x: K[i].x + tx, y: K[i].y + ty };
+    inC[i] = { x: K[i].x - tx, y: K[i].y - ty };
+  }
+  // Pick the longest segment (chord length) to host the new knot.
+  let seg = 0, segLen = -1;
+  for (let i = 0; i < n - 1; i++) {
+    const L = Math.hypot(K[i + 1].x - K[i].x, K[i + 1].y - K[i].y);
+    if (L > segLen) { segLen = L; seg = i; }
+  }
+  const P0 = K[seg], P1 = outC[seg], P2 = inC[seg + 1], P3 = K[seg + 1];
+  const chord = { x: P3.x - P0.x, y: P3.y - P0.y };
+  // f(t) = cross(curve tangent, chord); its zero is the parallel-tangent point.
+  const cross = (t) => {
+    const u = 1 - t;
+    const dx = 3 * u * u * (P1.x - P0.x) + 6 * u * t * (P2.x - P1.x) + 3 * t * t * (P3.x - P2.x);
+    const dy = 3 * u * u * (P1.y - P0.y) + 6 * u * t * (P2.y - P1.y) + 3 * t * t * (P3.y - P2.y);
+    return dx * chord.y - dy * chord.x;
+  };
+  const at = (t) => {
     const u = 1 - t, b0 = u * u * u, b1 = 3 * u * u * t, b2 = 3 * u * t * t, b3 = t * t * t;
     return {
       x: b0 * P0.x + b1 * P1.x + b2 * P2.x + b3 * P3.x,
       y: b0 * P0.y + b1 * P1.y + b2 * P2.y + b3 * P3.y,
     };
   };
-  const round = (p) => ({ x: Math.round(p.x), y: Math.round(p.y) });
-
-  if (pts.length > 0) {
-    // Catmull-Rom controls exactly as arrowGeometry builds them (one-sided ends);
-    // sample the longest segment at its middle to place the new knot on the curve.
-    const K = [{ x: x1, y: y1 }, ...pts, { x: x2, y: y2 }];
-    const n = K.length;
-    const outC = new Array(n), inC = new Array(n);
-    for (let i = 0; i < n; i++) {
-      if (i === 0) outC[0] = { x: K[0].x + (K[1].x - K[0].x) / 3, y: K[0].y + (K[1].y - K[0].y) / 3 };
-      else if (i === n - 1) inC[n - 1] = { x: K[n - 1].x - (K[n - 1].x - K[n - 2].x) / 3, y: K[n - 1].y - (K[n - 1].y - K[n - 2].y) / 3 };
-      else {
-        const tx = (K[i + 1].x - K[i - 1].x) / 6, ty = (K[i + 1].y - K[i - 1].y) / 6;
-        outC[i] = { x: K[i].x + tx, y: K[i].y + ty };
-        inC[i] = { x: K[i].x - tx, y: K[i].y - ty };
-      }
+  // Sample f on a grid; take the sign-change bracket closest to the midpoint.
+  const N = 64;
+  let bracket = null, bestDist = Infinity, prevT = 0, prevF = cross(0);
+  for (let k = 1; k <= N; k++) {
+    const t = k / N, f = cross(t);
+    if ((prevF < 0 && f > 0) || (prevF > 0 && f < 0)) {
+      const dist = Math.abs((prevT + t) / 2 - 0.5);
+      if (dist < bestDist) { bestDist = dist; bracket = [prevT, t]; }
     }
-    let seg = 0, best = -1;
-    for (let i = 0; i < n - 1; i++) {
-      const L = Math.hypot(K[i + 1].x - K[i].x, K[i + 1].y - K[i].y);
-      if (L > best) { best = L; seg = i; }
+    prevT = t; prevF = f;
+  }
+  let tStar = 0.5;   // fallback: no parallel point (near-straight) → midpoint, accept the wiggle.
+  if (bracket) {
+    let [lo, hi] = bracket, flo = cross(lo);
+    for (let it = 0; it < 40; it++) {
+      const mid = (lo + hi) / 2, fmid = cross(mid);
+      if (fmid === 0) { lo = hi = mid; break; }
+      if ((flo < 0) === (fmid < 0)) { lo = mid; flo = fmid; } else { hi = mid; }
     }
-    const np = round(cubicAt(K[seg], outC[seg], inC[seg + 1], K[seg + 1], 0.5));
-    const newPts = [...pts];
-    newPts.splice(seg, 0, np);
-    return { points: newPts, index: seg };
+    tStar = (lo + hi) / 2;
   }
-
-  if (c1x != null && c1y != null && c2x != null && c2y != null) {
-    // Two-handle Bézier → sample it at the midpoint and become a point-arrow.
-    const np = round(cubicAt({ x: x1, y: y1 }, { x: c1x, y: c1y }, { x: c2x, y: c2y }, { x: x2, y: y2 }, 0.5));
-    return { points: [np], index: 0 };
+  // Keep the new knot at least minGap (in t) from either endpoint.
+  if (segLen > 0) {
+    const tGap = Math.min(0.45, minGap / segLen);
+    tStar = Math.max(tGap, Math.min(1 - tGap, tStar));
   }
-  // Straight → the line midpoint (collinear, so it stays straight until dragged).
-  return { points: [round({ x: (x1 + x2) / 2, y: (y1 + y2) / 2 })], index: 0 };
+  const np = at(tStar);
+  const newPts = [...pts];
+  newPts.splice(seg, 0, { x: Math.round(np.x), y: Math.round(np.y) });
+  // Scale the endpoint handle(s) the split segment touches toward their endpoint
+  // by the split parameter, so a half-length segment doesn't keep a full handle.
+  const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+  let nc1x = c1x, nc1y = c1y, nc2x = c2x, nc2y = c2y;
+  if (seg === 0) { nc1x = lerp(x1, c1x, tStar); nc1y = lerp(y1, c1y, tStar); }
+  if (seg === n - 2) { nc2x = lerp(c2x, x2, tStar); nc2y = lerp(c2y, y2, tStar); }
+  return { points: newPts, index: seg, c1x: nc1x, c1y: nc1y, c2x: nc2x, c2y: nc2y };
 }
 
 /** An SVG `points` string for one triangle. */

@@ -108,26 +108,17 @@ describe('arrowGeometry curved (#129)', () => {
     expect(bb.maxY).toBeGreaterThanOrEqual(80);     // c2y below the chord
   });
 
-  it('interior points → pure Catmull-Rom spline, endpoints DERIVED (not c1/c2)', () => {
-    // One waypoint at (100,-50). c1/c2 are passed but MUST be ignored — a
-    // point-arrow smooths its ends toward the neighbour, no endpoint-slope memory.
+  it('interior points → a multi-segment cubic passing THROUGH each point', () => {
+    // curved (all four controls) + one interior waypoint at (100,-50).
     const g = arrowGeometry(0, 0, 200, 0, 20, 'none', 40, 40, 160, 40, [{ x: 100, y: -50 }]);
     expect(g.curved).toBe(true);
-    expect((g.path.match(/C /g) || []).length).toBe(2);   // two cubic segments
-    expect(g.path).toContain('100 -50');                  // visits the waypoint
-    // The stored handles do NOT appear — the start control is K0+(K1-K0)/3 and the
-    // end control is K2-(K2-K1)/3, both derived from the waypoint, not 40,40/160,40.
-    expect(g.path.startsWith('M 0 0 C 40 40')).toBe(false);
-    expect(g.path).not.toContain('160 40');
-    // Derived start control ≈ (100/3, -50/3); derived end control ≈ (166.67, -16.67).
-    expect(g.path).toMatch(/^M 0 0 C 33\.3/);
-  });
-
-  it('points imply curved even without c1/c2 handles', () => {
-    const g = arrowGeometry(0, 0, 200, 0, 20, 'none', undefined, undefined, undefined, undefined, [{ x: 100, y: -50 }]);
-    expect(g.curved).toBe(true);
+    // Two cubic segments (one C per segment): start→point, point→end.
+    expect((g.path.match(/C /g) || []).length).toBe(2);
+    // The path visits the interior point exactly (it's a segment endpoint).
     expect(g.path).toContain('100 -50');
-    expect(g.line).toBeUndefined();
+    // Start uses the c1 handle, end uses c2 (heads still orient to them).
+    expect(g.path.startsWith('M 0 0 C 40 40')).toBe(true);
+    expect(g.path).toContain('160 40 200 0');
   });
 
   it('no points → the single-segment cubic (unchanged)', () => {
@@ -140,51 +131,88 @@ describe('arrowGeometry curved (#129)', () => {
     expect(bb.minY).toBeLessThanOrEqual(-80);
   });
 
-  it('arrowInsertPoint: straight arrow → the line midpoint (stays straight)', () => {
-    // No points, no handles → one collinear waypoint at the middle. Catmull-Rom
-    // through 3 collinear knots is still straight until the knot is dragged.
-    const res = arrowInsertPoint(0, 0, 200, 0);
-    expect(res.points).toEqual([{ x: 100, y: 0 }]);
+  it('arrowInsertPoint: null when the arrow has no (full) handles', () => {
+    expect(arrowInsertPoint(0, 0, 200, 0)).toBeNull();               // straight
+    expect(arrowInsertPoint(0, 0, 200, 0, 50, -100)).toBeNull();     // partial handles
+  });
+
+  it('arrowInsertPoint: symmetric bow → knot at the apex (tangent ∥ chord)', () => {
+    // Symmetric upward bow; the parallel-tangent point is the apex at t=0.5.
+    const res = arrowInsertPoint(0, 0, 200, 0, 50, -100, 150, -100, []);
     expect(res.index).toBe(0);
+    expect(res.points.length).toBe(1);
+    const p = res.points[0];
+    expect(Math.abs(p.x - 100)).toBeLessThan(2);   // apex x
+    expect(Math.abs(p.y + 75)).toBeLessThan(2);    // apex y = -75
+    // Endpoint handles halved toward their endpoints (de Casteljau L1/R1 at t=0.5).
+    expect(res.c1x).toBe(25); expect(res.c1y).toBe(-50);    // lerp(start, c1, .5)
+    expect(res.c2x).toBe(175); expect(res.c2y).toBe(-50);   // lerp(c2, end, .5)
   });
 
-  it('arrowInsertPoint: two-handle Bézier → samples the curve at t=0.5 (becomes a point)', () => {
-    // Symmetric bow c1(50,-100) c2(150,-100). The cubic at t=0.5 is (100,-75).
-    // The caller drops c1/c2; this returns just the on-curve waypoint.
-    const res = arrowInsertPoint(0, 0, 200, 0, [], 50, -100, 150, -100);
-    expect(res.points).toEqual([{ x: 100, y: -75 }]);
-    expect(res.index).toBe(0);
-  });
-
-  it('arrowInsertPoint: existing points → new knot on the LONGEST segment, order kept', () => {
-    // Knot near the start → segment 1 (knot→end) is far longer, so the new knot
-    // lands there (index 1), after the original.
-    const res = arrowInsertPoint(0, 0, 300, 0, [{ x: 60, y: -50 }]);
-    expect(res.index).toBe(1);
-    expect(res.points.length).toBe(2);
-    expect(res.points[0]).toEqual({ x: 60, y: -50 });        // original kept, order preserved
-    expect(res.points[1].x).toBeGreaterThan(60);             // new knot in the second half
-    expect(res.points[1].x).toBeLessThan(300);
-  });
-
-  it('arrowInsertPoint: the new knot lies ON the current Catmull-Rom curve', () => {
-    // Insert into a one-point arrow, then confirm the new knot sits on the rendered
-    // curve (min distance to the sampled path ≈ 0) — so "+ Point" doesn't jump.
-    const res = arrowInsertPoint(0, 0, 200, 0, [{ x: 100, y: -60 }]);
-    const p = res.points.find((q) => !(q.x === 100 && q.y === -60));
-    const g = arrowGeometry(0, 0, 200, 0, 20, 'none', undefined, undefined, undefined, undefined, [{ x: 100, y: -60 }]);
-    const nums = g.path.match(/-?\d+(\.\d+)?/g).map(Number);
-    const segs = [];
-    let cx = nums[0], cy = nums[1], i = 2;
-    while (i + 5 < nums.length) { segs.push([[cx, cy], [nums[i], nums[i + 1]], [nums[i + 2], nums[i + 3]], [nums[i + 4], nums[i + 5]]]); cx = nums[i + 4]; cy = nums[i + 5]; i += 6; }
-    let best = Infinity;
-    for (const [P0, P1, P2, P3] of segs) for (let k = 0; k <= 100; k++) {
-      const t = k / 100, u = 1 - t, b = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
-      const x = b[0] * P0[0] + b[1] * P1[0] + b[2] * P2[0] + b[3] * P3[0];
-      const y = b[0] * P0[1] + b[1] * P1[1] + b[2] * P2[1] + b[3] * P3[1];
-      best = Math.min(best, Math.hypot(x - p.x, y - p.y));
+  it('arrowInsertPoint: the re-fit spline stays close to the original curve', () => {
+    // Insert a knot, rebuild the two-segment path with the returned handles, and
+    // confirm it tracks the original single cubic to within a few px everywhere.
+    const c = [50, -100, 150, -100];
+    const orig = arrowGeometry(0, 0, 200, 0, 20, 'none', ...c, []);
+    const res = arrowInsertPoint(0, 0, 200, 0, ...c, []);
+    const refit = arrowGeometry(0, 0, 200, 0, 20, 'none',
+      res.c1x, res.c1y, res.c2x, res.c2y, res.points);
+    // Sample both paths and take the max nearest-point gap (Hausdorff-ish).
+    const sample = (d, N) => {
+      // Evaluate an SVG "M .. C .. C .." path at N points per cubic segment.
+      const nums = d.match(/-?\d+(\.\d+)?/g).map(Number);
+      const segs = [];
+      let cx = nums[0], cy = nums[1], i = 2;
+      while (i + 5 < nums.length) {
+        segs.push([[cx, cy], [nums[i], nums[i + 1]], [nums[i + 2], nums[i + 3]], [nums[i + 4], nums[i + 5]]]);
+        cx = nums[i + 4]; cy = nums[i + 5]; i += 6;
+      }
+      const pts = [];
+      for (const [P0, P1, P2, P3] of segs) {
+        for (let k = 0; k <= N; k++) {
+          const t = k / N, u = 1 - t, b = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+          pts.push([b[0] * P0[0] + b[1] * P1[0] + b[2] * P2[0] + b[3] * P3[0],
+                    b[0] * P0[1] + b[1] * P1[1] + b[2] * P2[1] + b[3] * P3[1]]);
+        }
+      }
+      return pts;
+    };
+    const A = sample(orig.path, 40), B = sample(refit.path, 40);
+    let maxGap = 0;
+    for (const a of A) {
+      let best = Infinity;
+      for (const b of B) best = Math.min(best, Math.hypot(a[0] - b[0], a[1] - b[1]));
+      maxGap = Math.max(maxGap, best);
     }
+    expect(maxGap).toBeLessThan(5);   // re-fit tracks the original within ~5px
+  });
+
+  it('arrowInsertPoint: the new knot lies ON the existing curve (shape preserved)', () => {
+    // A lopsided bow — parallel point is off-midpoint but still on the curve.
+    const res = arrowInsertPoint(0, 0, 200, 0, 20, -120, 190, -30, []);
+    const p = res.points[0];
+    // Re-derive the single-segment cubic and confirm the point sits on it at
+    // SOME t (min distance to the sampled curve ≈ 0).
+    const P = [[0, 0], [20, -120], [190, -30], [200, 0]];
+    const at = (t) => {
+      const u = 1 - t, b = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+      return [b[0] * P[0][0] + b[1] * P[1][0] + b[2] * P[2][0] + b[3] * P[3][0],
+              b[0] * P[0][1] + b[1] * P[1][1] + b[2] * P[2][1] + b[3] * P[3][1]];
+    };
+    let best = Infinity;
+    for (let k = 0; k <= 200; k++) { const c = at(k / 200); best = Math.min(best, Math.hypot(c[0] - p.x, c[1] - p.y)); }
     expect(best).toBeLessThan(1.5);
+    // And well clear of both endpoints (minGap honoured).
+    expect(Math.hypot(p.x, p.y)).toBeGreaterThan(20);
+    expect(Math.hypot(p.x - 200, p.y)).toBeGreaterThan(20);
+  });
+
+  it('arrowInsertPoint: splits the LONGEST segment', () => {
+    // One existing knot near the start → segment 1 (knot→end) is far longer.
+    const res = arrowInsertPoint(0, 0, 300, 0, 30, -60, 270, -60, [{ x: 60, y: -50 }]);
+    expect(res.index).toBe(1);            // inserted into the second (long) segment
+    expect(res.points.length).toBe(2);
+    expect(res.points[0]).toEqual({ x: 60, y: -50 });   // original knot kept, order preserved
   });
 
   it('arrowSvgInner renders a <path> for a curved arrow', () => {

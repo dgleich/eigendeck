@@ -9,6 +9,7 @@
    inkscape:version="1.4 (e7c3feb1, 2024-10-09)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <sodipodi:namedview
@@ -21,7 +22,7 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:zoom="0.6"
-     inkscape:cx="223.33333"
+     inkscape:cx="222.5"
      inkscape:cy="730.83333"
      inkscape:window-width="1808"
      inkscape:window-height="1224"
@@ -107,22 +108,30 @@
          stdDeviation="18"
          id="feGaussianBlur7" />
     </filter>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#bodyGrad"
+       id="linearGradient41"
+       x1="173.80475"
+       y1="49.618898"
+       x2="173.80475"
+       y2="857.6981"
+       gradientTransform="matrix(0.88605176,0,0,1.1286022,42.333333,-31.333333)"
+       gradientUnits="userSpaceOnUse" />
   </defs>
   <style
      id="style7">
     .text { font-family: &quot;PT Sans&quot;, &quot;PTSans&quot;, Arial, Helvetica, sans-serif; font-weight: 700; }
   </style>
-  <rect
-     x="182"
-     y="34"
-     width="700"
-     height="896"
-     rx="28"
-     fill="#d8c596"
-     stroke="#333"
-     stroke-width="14"
+  <path
+     d="m 232.33333,32.666667 h 482 l 190,190.000003 v 678 q 0,28 -28,28 h -644 q -28,0 -28,-28 V 60.666667 q 0,-28 28,-28 z"
+     fill="url(#bodyGrad)"
+     stroke="#333333"
+     stroke-width="16"
+     stroke-linecap="round"
      stroke-linejoin="round"
-     id="rect7" />
+     id="path41"
+     style="fill:url(#linearGradient41)" />
   <path
      d="M 190,64 H 672 L 862,254 V 932 Q 862,960 834,960 H 190 Q 162,960 162,932 V 92 Q 162,64 190,64 Z"
      fill="url(#bodyGrad)"
@@ -234,9 +243,4 @@
        filter="url(#soft)"
        id="line19" />
   </g>
-  <path
-     style="fill:none;stroke:#333333;stroke-width:16;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
-     d="M 730,35 883.33334,185"
-     id="path20"
-     sodipodi:nodetypes="cc" />
 </svg>
