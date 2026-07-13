@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, fireEvent } from '@testing-library/react';
 import { SlideElementRenderer } from './SlideElementRenderer';
 import type { SlideElement } from '../types/presentation';
 
@@ -63,6 +63,31 @@ describe('html element (#137)', () => {
     const srcdoc = container.querySelector('iframe')!.getAttribute('srcdoc') || '';
     expect(srcdoc).toContain('<table><thead><tr><th colspan="2">R</th>');
     expect(srcdoc).toContain('<tbody><tr><td>a</td><td>b</td></tr></tbody>');
+  });
+});
+
+describe('curved arrow body-drag (#129 regression)', () => {
+  it('translates the control points with the endpoints', () => {
+    const onUpdate = vi.fn();
+    const curved = { id: 'a1', type: 'arrow', x1: 100, y1: 500, x2: 400, y2: 520,
+      color: '#e53e3e', strokeWidth: 4, headSize: 16, heads: 'end',
+      c1x: 200, c1y: 620, c2x: 300, c2y: 620,
+      position: { x: 0, y: 0, width: 0, height: 0 } } as unknown as SlideElement;
+    const { container } = render(
+      <SlideElementRenderer element={curved} zIndex={1} scale={0.5} projectPath={null} isSelected
+        slideBackground="#fff" onUpdate={onUpdate} onDelete={noop} onSelect={noop} />,
+    );
+    // The fat invisible body hit-target is the transparent-stroke <path>.
+    const hit = container.querySelector('path[stroke="transparent"]') as SVGElement;
+    expect(hit).toBeTruthy();
+    fireEvent.pointerDown(hit, { clientX: 200, clientY: 200 });
+    // +40,+20 screen px at scale 0.5 → +80,+40 in slide space.
+    fireEvent.pointerMove(window, { clientX: 240, clientY: 220 });
+    const calls = onUpdate.mock.calls;
+    const last = calls[calls.length - 1]?.[0];
+    expect(last.x1).toBe(180); expect(last.x2).toBe(480);       // endpoints moved +80
+    expect(last.c1x).toBe(280); expect(last.c1y).toBe(660);     // c1 moved +80,+40 (not left behind)
+    expect(last.c2x).toBe(380); expect(last.c2y).toBe(660);     // c2 moved too
   });
 });
 

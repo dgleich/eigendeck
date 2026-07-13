@@ -1268,6 +1268,10 @@ function ArrowRenderer({
     (e: React.PointerEvent) => {
       e.preventDefault(); e.stopPropagation(); onSelect(); pauseUndo();
       dragStart.current = { mx: e.clientX, my: e.clientY, ox1: x1, oy1: y1, ox2: x2, oy2: y2 };
+      // Capture the Bézier control points too so a body-drag translates the WHOLE
+      // curve; without this the endpoints move but c1/c2 stay put and the curve
+      // warps (#129 regression).
+      const oc = { c1x: a.c1x, c1y: a.c1y, c2x: a.c2x, c2y: a.c2y };
       const handleMove = (me: PointerEvent) => {
         let dx = (me.clientX - dragStart.current.mx) / scale;
         let dy = (me.clientY - dragStart.current.my) / scale;
@@ -1276,15 +1280,18 @@ function ArrowRenderer({
           if (Math.abs(dx) > Math.abs(dy)) dy = 0;
           else dx = 0;
         }
-        onUpdate({
+        const upd: Record<string, number> = {
           x1: Math.round(dragStart.current.ox1 + dx), y1: Math.round(dragStart.current.oy1 + dy),
           x2: Math.round(dragStart.current.ox2 + dx), y2: Math.round(dragStart.current.oy2 + dy),
-        } as any);
+        };
+        if (oc.c1x != null && oc.c1y != null) { upd.c1x = Math.round(oc.c1x + dx); upd.c1y = Math.round(oc.c1y + dy); }
+        if (oc.c2x != null && oc.c2y != null) { upd.c2x = Math.round(oc.c2x + dx); upd.c2y = Math.round(oc.c2y + dy); }
+        onUpdate(upd as any);
       };
       const handleUp = () => { resumeUndo(); window.removeEventListener('pointermove', handleMove); window.removeEventListener('pointerup', handleUp); };
       window.addEventListener('pointermove', handleMove); window.addEventListener('pointerup', handleUp);
     },
-    [x1, y1, x2, y2, scale, onUpdate, onSelect]
+    [x1, y1, x2, y2, a.c1x, a.c1y, a.c2x, a.c2y, scale, onUpdate, onSelect]
   );
 
   // Default control-handle positions — the 1/3 and 2/3 points on the straight
