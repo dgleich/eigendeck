@@ -63,6 +63,32 @@ describe('renderNotebookElementHtml', () => {
     expect(html).toContain(OUTPUT_TEXT);
   });
 
+  // KNOWN BUG (it.fails until fixed): rich cell outputs (HTML reprs, images) carry
+  // arbitrary content authored for a LIGHT background — pandas/library reprs
+  // hardcode dark text, matplotlib bakes a white facecolor. They render directly on
+  // the slide theme background, so on a black/dark slide a hardcoded-dark repr is
+  // invisible and a white figure clashes. Fix: give .nb-html / .nb-image a
+  // self-contained light "output card" (as Jupyter shows outputs on white even in
+  // dark mode). Flip `.fails` → `it` once the notebook CSS carries that.
+  it.fails('rich outputs render on a light card so hardcoded-dark reprs stay readable on a dark slide', async () => {
+    const IPYNB_RICH = JSON.stringify({
+      nbformat: 4, nbformat_minor: 5,
+      metadata: { kernelspec: { name: 'python3', display_name: 'Python 3' }, language_info: { name: 'python' } },
+      cells: [{ cell_type: 'code', execution_count: 1, source: ['df'], outputs: [
+        { output_type: 'execute_result', execution_count: 1, data: {
+          'text/html': ['<div style="color:#1a1a1a"><table class="dataframe"><tr><td style="color:#222">x</td></tr></table></div>'],
+          'text/plain': ['x'] } }] }],
+    });
+    const getRich = async (id: string) => {
+      if (id === 'a-nb-1') return new TextEncoder().encode(IPYNB_RICH);
+      throw new Error(`no asset ${id}`);
+    };
+    const black = { ...PRESENTATION, theme: 'black' } as unknown as Presentation;
+    const html = await renderNotebookElementHtml(ELEMENT, SLIDE, black, getRich);
+    // The inlined notebook CSS must give rich outputs a light background.
+    expect(html).toMatch(/\.nb-html\b[^{]*\{[^}]*background:\s*#f/i);
+  });
+
   it('is read-only: no run button and no editor', async () => {
     const html = await renderNotebookElementHtml(ELEMENT, SLIDE, PRESENTATION, getAssetBytes);
     // The .nb-cell-run / .nb-add-cell strings appear in the inlined

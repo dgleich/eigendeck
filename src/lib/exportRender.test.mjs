@@ -15,6 +15,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { buildExportHtml } from './exportCore.mjs';
 import { buildPrintSlideHtml } from './printSlideHtml';
+import { renderNotebookElementHtml } from './notebookExport';
 
 const RUN = process.env.EIGENDECK_RENDER === '1';
 const OUT = 'gitignore/export-audit/';
@@ -93,6 +94,50 @@ describe.runIf(RUN)('headless render (visual)', () => {
       const pp = await browser.newPage({ viewport: { width: 1056, height: 594 } });
       assertPng(await shot(pp, printHtml(els, { theme: 'white' }), 'print-white.png', false));
       assertPng(await shot(pp, printHtml(els, { theme: 'dark' }), 'print-dark.png', false));
+    } finally {
+      await browser.close();
+    }
+  }, 120000);
+
+  // Notebook cell output on a BLACK slide (screen + print media). Rich outputs
+  // (HTML reprs, images) carry content authored for a light background, so a
+  // hardcoded-dark repr must not go invisible on the dark theme. PNGs →
+  // gitignore/export-audit/nb-on-black*.png for eyeballing / the fix's before-after.
+  it('rasterizes a notebook with rich output on a black slide', async () => {
+    let chromium;
+    try { ({ chromium } = await import(process.env.EIGENDECK_PW || 'playwright-core')); }
+    catch { console.warn('[exportRender] playwright-core not resolvable — skipping'); return; }
+    const ipynb = JSON.stringify({
+      nbformat: 4, nbformat_minor: 5,
+      metadata: { kernelspec: { name: 'python3', display_name: 'Python 3' }, language_info: { name: 'python' } },
+      cells: [
+        { cell_type: 'markdown', source: ['## Results'] },
+        { cell_type: 'code', execution_count: 1, source: ['df'], outputs: [{ output_type: 'execute_result', execution_count: 1, data: {
+          'text/html': ['<div style="color:#1a1a1a"><table border="1" class="dataframe"><tr><th>i</th><th>value</th></tr><tr><td style="color:#222">0</td><td style="color:#222">3.14</td></tr></table></div>'],
+          'text/plain': ['i value'] } }] },
+        { cell_type: 'code', execution_count: 2, source: ['print("hi")'], outputs: [{ output_type: 'stream', name: 'stdout', text: ['hi\n'] }] },
+        { cell_type: 'code', execution_count: 3, source: ['plt.plot()'], outputs: [{ output_type: 'display_data', data: {
+          'image/svg+xml': ['<svg xmlns="http://www.w3.org/2000/svg" width="300" height="120"><rect width="300" height="120" fill="#fff"/><polyline points="10,100 100,30 200,70 290,20" fill="none" stroke="#1f77b4" stroke-width="3"/></svg>'] } }] },
+      ],
+    });
+    const el = { id: 'nb', type: 'notebook', assetId: 'a', position: { x: 0, y: 0, width: 900, height: 1000 } };
+    const slide = { id: 's1', elements: [el], notes: '' };
+    const pres = { title: 'T', theme: 'black', slides: [slide], config: { width: 1920, height: 1080 } };
+    const getBytes = async (id) => { if (id === 'a') return new TextEncoder().encode(ipynb); throw new Error('no ' + id); };
+    const iframe = await renderNotebookElementHtml(el, slide, pres, getBytes);
+    const doc = `<!doctype html><html><head><style>body{margin:0;background:#000}</style></head><body><div style="width:900px;height:1000px">${iframe}</div></body></html>`;
+    mkdirSync(OUT, { recursive: true });
+    const launchOpts = { args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] };
+    if (process.env.EIGENDECK_CHROME) launchOpts.executablePath = process.env.EIGENDECK_CHROME;
+    const browser = await chromium.launch(launchOpts);
+    try {
+      const page = await browser.newPage({ viewport: { width: 940, height: 1040 } });
+      await page.setContent(doc, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(400);
+      assertPng(await (async () => { const p = await page.screenshot(); writeFileSync(OUT + 'nb-on-black.png', p); return p; })());
+      await page.emulateMedia({ media: 'print' });
+      await page.waitForTimeout(200);
+      writeFileSync(OUT + 'nb-on-black-print.png', await page.screenshot());
     } finally {
       await browser.close();
     }
