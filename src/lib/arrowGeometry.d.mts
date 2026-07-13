@@ -10,7 +10,11 @@ export interface ArrowGeo {
   triangles: number[][][];
 }
 
-export interface ArrowPoint { x: number; y: number }
+export interface ArrowPoint {
+  x: number; y: number;
+  /** Explicit in/out control handles (exact "+ Point" subdivision). */
+  hix?: number; hiy?: number; hox?: number; hoy?: number;
+}
 
 export function arrowGeometry(
   x1: number, y1: number, x2: number, y2: number, headSize: number, heads?: ArrowHeads,
@@ -18,6 +22,11 @@ export function arrowGeometry(
 ): ArrowGeo;
 
 export function triPoints(t: number[][]): string;
+
+export function arrowInsertPoint(
+  x1: number, y1: number, x2: number, y2: number,
+  c1x: number, c1y: number, c2x: number, c2y: number, points?: ArrowPoint[],
+): { c1x: number; c1y: number; c2x: number; c2y: number; points: ArrowPoint[] };
 
 export function arrowSvgInner(
   geo: ArrowGeo, color: string, strokeWidth: number, opacity?: number,

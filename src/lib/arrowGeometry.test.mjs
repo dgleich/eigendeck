@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { arrowGeometry, triPoints, arrowBBox, arrowSvgInner } from './arrowGeometry.mjs';
+import { arrowGeometry, triPoints, arrowBBox, arrowSvgInner, arrowInsertPoint } from './arrowGeometry.mjs';
 
 const near = (a, b, t = 1e-6) => Math.abs(a - b) < t;
 const inset = 20 * Math.cos(Math.PI / 6);   // headSize * cos(30°) ≈ 17.32
@@ -119,6 +119,22 @@ describe('arrowGeometry curved (#129)', () => {
     // Start uses the c1 handle, end uses c2 (heads still orient to them).
     expect(g.path.startsWith('M 0 0 C 40 40')).toBe(true);
     expect(g.path).toContain('160 40 200 0');
+  });
+
+  it('arrowInsertPoint subdivides EXACTLY — the curve does not change (#129)', () => {
+    // single cubic (0,0)→(200,0), c1=(50,100), c2=(150,100). de Casteljau split at
+    // t=0.5: new knot (100,75) on the curve with handles, and c1/c2 shorten to the
+    // subdivided positions. The two sub-cubics reproduce the original exactly.
+    const upd = arrowInsertPoint(0, 0, 200, 0, 50, 100, 150, 100, undefined);
+    expect(upd.c1x).toBe(25); expect(upd.c1y).toBe(50);     // c1 → mid(start, old c1)
+    expect(upd.c2x).toBe(175); expect(upd.c2y).toBe(50);    // c2 → mid(old c2, end)
+    expect(upd.points).toHaveLength(1);
+    const p = upd.points[0];
+    expect([p.x, p.y]).toEqual([100, 75]);                  // on the original curve
+    expect([p.hix, p.hox]).toEqual([63, 138]);              // its exact in/out handles
+    // The rebuilt two-segment path IS the de Casteljau subdivision of the original.
+    const g = arrowGeometry(0, 0, 200, 0, 20, 'none', upd.c1x, upd.c1y, upd.c2x, upd.c2y, upd.points);
+    expect(g.path).toBe('M 0 0 C 25 50 63 75 100 75 C 138 75 175 50 200 0');
   });
 
   it('no points → the single-segment cubic (unchanged)', () => {

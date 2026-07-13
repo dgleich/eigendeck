@@ -108,7 +108,11 @@ function shiftArrow(el: Extract<SlideElement, { type: 'arrow' }>, dx: number, dy
   if (el.c1y != null) out.c1y = el.c1y + dy;
   if (el.c2x != null) out.c2x = el.c2x + dx;
   if (el.c2y != null) out.c2y = el.c2y + dy;
-  if (el.points) out.points = el.points.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+  if (el.points) out.points = el.points.map((p) => ({
+    x: p.x + dx, y: p.y + dy,
+    ...(p.hix != null ? { hix: p.hix + dx, hiy: (p.hiy ?? 0) + dy } : {}),
+    ...(p.hox != null ? { hox: p.hox + dx, hoy: (p.hoy ?? 0) + dy } : {}),
+  }));
   return out;
 }
 

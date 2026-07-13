@@ -1310,7 +1310,11 @@ function ArrowRenderer({
         };
         if (oc.c1x != null && oc.c1y != null) { upd.c1x = Math.round(oc.c1x + dx); upd.c1y = Math.round(oc.c1y + dy); }
         if (oc.c2x != null && oc.c2y != null) { upd.c2x = Math.round(oc.c2x + dx); upd.c2y = Math.round(oc.c2y + dy); }
-        if (opts.length) upd.points = opts.map((p) => ({ x: Math.round(p.x + dx), y: Math.round(p.y + dy) }));
+        if (opts.length) upd.points = opts.map((p) => ({
+          x: Math.round(p.x + dx), y: Math.round(p.y + dy),
+          ...(p.hix != null ? { hix: Math.round(p.hix + dx), hiy: Math.round((p.hiy ?? 0) + dy) } : {}),
+          ...(p.hox != null ? { hox: Math.round(p.hox + dx), hoy: Math.round((p.hoy ?? 0) + dy) } : {}),
+        }));
         onUpdate(upd as any);
       };
       const handleUp = () => { resumeUndo(); window.removeEventListener('pointermove', handleMove); window.removeEventListener('pointerup', handleUp); };
@@ -1363,10 +1367,16 @@ function ArrowRenderer({
       const pts = (a.points || []).map((p) => ({ ...p }));
       const base = pts[idx];
       if (!base) { resumeUndo(); return; }
-      const bx = base.x, by = base.y;
+      const b = { ...base };  // snapshot x/y + any stored handles
       const handleMove = (me: PointerEvent) => {
         const dx = (me.clientX - sMx) / scale, dy = (me.clientY - sMy) / scale;
-        const next = pts.map((p, i) => (i === idx ? { x: Math.round(bx + dx), y: Math.round(by + dy) } : p));
+        // Translate the point AND its stored handles rigidly, so the curve keeps
+        // its local shape as you route it.
+        const moved: { x: number; y: number; hix?: number; hiy?: number; hox?: number; hoy?: number } =
+          { x: Math.round(b.x + dx), y: Math.round(b.y + dy) };
+        if (b.hix != null) { moved.hix = Math.round(b.hix + dx); moved.hiy = Math.round((b.hiy ?? 0) + dy); }
+        if (b.hox != null) { moved.hox = Math.round(b.hox + dx); moved.hoy = Math.round((b.hoy ?? 0) + dy); }
+        const next = pts.map((p, i) => (i === idx ? moved : p));
         onUpdate({ points: next } as any);
       };
       const handleUp = () => { resumeUndo(); window.removeEventListener('pointermove', handleMove); window.removeEventListener('pointerup', handleUp); };

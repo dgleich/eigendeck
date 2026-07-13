@@ -194,9 +194,12 @@ export interface ArrowElement extends BaseElement {
   c2x?: number;
   c2y?: number;
   /** Interior interpolation points (#129): the curve passes smoothly THROUGH each,
-   *  between the handled endpoints (no handles on these — just draggable dots, added
-   *  via "+ Point"). Only used when the arrow is curved (c1/c2 present). */
-  points?: Array<{ x: number; y: number }>;
+   *  between the handled endpoints (no VISIBLE handles on these — just draggable
+   *  dots, added via "+ Point"). Only used when the arrow is curved (c1/c2 present).
+   *  A point may carry hidden explicit in/out control handles (hix/hiy, hox/hoy) set
+   *  by an exact "+ Point" subdivision so adding it doesn't change the curve; absent
+   *  → the point uses automatic (Catmull-Rom) smoothing. */
+  points?: Array<{ x: number; y: number; hix?: number; hiy?: number; hox?: number; hoy?: number }>;
 }
 
 export interface DemoElement extends BaseElement {

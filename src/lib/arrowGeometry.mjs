@@ -56,9 +56,13 @@ export function arrowGeometry(x1, y1, x2, y2, headSize, heads, c1x, c1y, c2x, c2
     outC[0] = { x: c1x, y: c1y };
     inC[K.length - 1] = { x: c2x, y: c2y };
     for (let i = 1; i < K.length - 1; i++) {
+      // A point may carry EXPLICIT in/out handles (hix/hiy, hox/hoy) — set by an
+      // exact "+ Point" subdivision so the curve doesn't change. Otherwise fall
+      // back to automatic Catmull-Rom tangents (T = (next − prev)/6).
+      const p = K[i];
       const tx = (K[i + 1].x - K[i - 1].x) / 6, ty = (K[i + 1].y - K[i - 1].y) / 6;
-      outC[i] = { x: K[i].x + tx, y: K[i].y + ty };
-      inC[i] = { x: K[i].x - tx, y: K[i].y - ty };
+      outC[i] = (p.hox != null) ? { x: p.hox, y: p.hoy } : { x: K[i].x + tx, y: K[i].y + ty };
+      inC[i] = (p.hix != null) ? { x: p.hix, y: p.hiy } : { x: K[i].x - tx, y: K[i].y - ty };
     }
     let d = `M ${sx} ${sy}`;
     for (let i = 0; i < K.length - 1; i++) {
@@ -75,6 +79,53 @@ export function arrowGeometry(x1, y1, x2, y2, headSize, heads, c1x, c1y, c2x, c2
 /** An SVG `points` string for one triangle. */
 export function triPoints(t) {
   return t.map((p) => p[0] + ',' + p[1]).join(' ');
+}
+
+/** Add a "+ Point" WITHOUT changing the curve (#129), by de Casteljau subdivision.
+ *  Splits the longest segment at t=0.5 into two cubics that together reproduce it
+ *  EXACTLY: the new interior knot lands on the curve and carries explicit in/out
+ *  handles (hix/hiy, hox/hoy), and the split segment's two endpoint handles are
+ *  updated to their subdivided positions (the endpoint c1/c2 shorten, or a
+ *  neighbour point's stored handle moves). Returns the changes to apply:
+ *  `{ points, c1x, c1y, c2x, c2y }`. */
+export function arrowInsertPoint(x1, y1, x2, y2, c1x, c1y, c2x, c2y, points) {
+  const pts = (Array.isArray(points) ? points : []).map((p) => ({ ...p }));
+  const K = [{ x: x1, y: y1 }, ...pts, { x: x2, y: y2 }];
+  // current control points per knot (stored handles win, else Catmull-Rom).
+  const outC = [], inC = [];
+  for (let i = 0; i < K.length; i++) {
+    if (i === 0) { outC[i] = { x: c1x, y: c1y }; inC[i] = null; }
+    else if (i === K.length - 1) { inC[i] = { x: c2x, y: c2y }; outC[i] = null; }
+    else {
+      const p = pts[i - 1];
+      const tx = (K[i + 1].x - K[i - 1].x) / 6, ty = (K[i + 1].y - K[i - 1].y) / 6;
+      outC[i] = (p.hox != null) ? { x: p.hox, y: p.hoy } : { x: K[i].x + tx, y: K[i].y + ty };
+      inC[i] = (p.hix != null) ? { x: p.hix, y: p.hiy } : { x: K[i].x - tx, y: K[i].y - ty };
+    }
+  }
+  let li = 0, ld = -1;
+  for (let i = 0; i < K.length - 1; i++) {
+    const d = Math.hypot(K[i + 1].x - K[i].x, K[i + 1].y - K[i].y);
+    if (d > ld) { ld = d; li = i; }
+  }
+  // de Casteljau split of segment [K[li] .. K[li+1]] at t=0.5.
+  const P0 = K[li], P1 = outC[li], P2 = inC[li + 1], P3 = K[li + 1];
+  const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  const rnd = (p) => ({ x: Math.round(p.x), y: Math.round(p.y) });
+  const L1 = mid(P0, P1), Hc = mid(P1, P2), R1 = mid(P2, P3);
+  const L2 = mid(L1, Hc), R2 = mid(Hc, R1);
+  const M = rnd(mid(L2, R2)), rL1 = rnd(L1), rR1 = rnd(R1), rL2 = rnd(L2), rR2 = rnd(R2);
+
+  let out = { c1x, c1y, c2x, c2y };
+  // K[li]'s OUT handle → L1.
+  if (li === 0) out = { ...out, c1x: rL1.x, c1y: rL1.y };
+  else { pts[li - 1].hox = rL1.x; pts[li - 1].hoy = rL1.y; }
+  // K[li+1]'s IN handle → R1.
+  if (li + 1 === K.length - 1) out = { ...out, c2x: rR1.x, c2y: rR1.y };
+  else { pts[li].hix = rR1.x; pts[li].hiy = rR1.y; }
+  // Insert the new knot (with its exact in/out handles) between them.
+  pts.splice(li, 0, { x: M.x, y: M.y, hix: rL2.x, hiy: rL2.y, hox: rR2.x, hoy: rR2.y });
+  return { ...out, points: pts };
 }
 
 /** SVG-STRING inner `<g>` for an arrow — the inset line + head polygon(s) wrapped

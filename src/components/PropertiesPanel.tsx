@@ -13,6 +13,7 @@ import { OVERRIDDEN_DIM, overriddenLabel } from '../lib/overriddenStyle';
 import { ColorControl } from './ColorControl';
 import { askConfirm } from '../lib/confirmDialog';
 import { TEXT_PALETTE, FILL_PALETTE, ARROW_PALETTE } from '../lib/colorPalettes';
+import { arrowInsertPoint } from '../lib/arrowGeometry.mjs';
 
 /** Strip per-run inline text colors (the format toolbar's foreColor produces
  *  `<span style="color:…">` / `<font color>`) so the element-level Text Color
@@ -735,20 +736,21 @@ export function PropertiesPanel() {
                       // the point at the midpoint of the longest segment.
                       const addPoint = () => {
                         const { x1, y1, x2, y2 } = selectedEl;
+                        // Auto-curve a straight arrow with handles ON the line (no bow), so
+                        // "+ Point" keeps it straight until you drag the new dot.
                         const base = curved ? {} : {
                           c1x: Math.round(x1 + (x2 - x1) / 3), c1y: Math.round(y1 + (y2 - y1) / 3),
                           c2x: Math.round(x1 + 2 * (x2 - x1) / 3), c2y: Math.round(y1 + 2 * (y2 - y1) / 3),
                         };
-                        const pts = selectedEl.points || [];
-                        const knots = [{ x: x1, y: y1 }, ...pts, { x: x2, y: y2 }];
-                        let li = 0, ld = -1;
-                        for (let i = 0; i < knots.length - 1; i++) {
-                          const d = Math.hypot(knots[i + 1].x - knots[i].x, knots[i + 1].y - knots[i].y);
-                          if (d > ld) { ld = d; li = i; }
-                        }
-                        const mid = { x: Math.round((knots[li].x + knots[li + 1].x) / 2), y: Math.round((knots[li].y + knots[li + 1].y) / 2) };
-                        const next = [...pts]; next.splice(li, 0, mid);
-                        updateElement(selectedEl.id, { ...base, points: next } as any);
+                        const c1x = selectedEl.c1x ?? (base as { c1x: number }).c1x;
+                        const c1y = selectedEl.c1y ?? (base as { c1y: number }).c1y;
+                        const c2x = selectedEl.c2x ?? (base as { c2x: number }).c2x;
+                        const c2y = selectedEl.c2y ?? (base as { c2y: number }).c2y;
+                        // Exact subdivision: the new point lands on the curve with its own
+                        // handles and the split segment's endpoint handles are updated, so
+                        // the spline is UNCHANGED (updated c1/c2 come back in the result).
+                        const upd = arrowInsertPoint(x1, y1, x2, y2, c1x, c1y, c2x, c2y, selectedEl.points);
+                        updateElement(selectedEl.id, upd as any);
                       };
                       return (
                         <>
