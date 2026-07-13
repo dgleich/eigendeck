@@ -23,6 +23,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { usePresentationStore } from '../store/presentation';
+import { openSettingsWindow } from '../lib/settingsWindow';
 import { usePreference, type JupyterServerEntry } from '../lib/preferences';
 import { findServerForKernel } from '../lib/notebookKernel';
 import { deckExternalKernels } from '../lib/serverHealth';
@@ -217,7 +218,12 @@ function PillDropdown({
           marginTop: 10, padding: 8, fontSize: 11, color: '#6b7280',
           background: '#fef2f2', borderRadius: 4, border: '1px solid #fecaca',
         }}>
-          Open <strong>Settings → Jupyter servers</strong> to add a server that advertises {missing.map(m => m.kernelName).join(', ')}.
+          <button onClick={() => { onClose(); void openSettingsWindow('servers'); }}
+            style={{
+              padding: 0, border: 'none', background: 'none', color: '#b91c1c',
+              font: 'inherit', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline',
+            }}>Settings → Jupyter servers</button>
+          {' '}to add a server that advertises {missing.map(m => m.kernelName).join(', ')}.
         </div>
       )}
 

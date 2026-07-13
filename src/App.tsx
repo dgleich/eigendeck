@@ -1111,7 +1111,7 @@ function App() {
         const store = usePresentationStore.getState();
         // Jupyter status icon → open Settings (Jupyter servers). Not a standard
         // insert/present action, so handle it before dispatchToolbarAction.
-        if (payload.id === 'jupyter') { void openSettingsWindow(); return; }
+        if (payload.id === 'jupyter') { void openSettingsWindow('servers'); return; }
         dispatchToolbarAction(payload.id, {
           addSlide: () => store.addSlide(),
           addBuild: () => store.addBuildSlide(),
