@@ -187,6 +187,9 @@ MANIFEST=(
   "html-thumbnail-probe.mjs|htmlel.eigendeck||import_json \$ROOT/e2e/fixtures/html-element-deck.json"
   "html-duplicate-delete-probe.mjs|htmlel.eigendeck||import_json \$ROOT/e2e/fixtures/html-element-deck.json"
   "html-undo-redo-probe.mjs|htmlel.eigendeck||import_json \$ROOT/e2e/fixtures/html-element-deck.json"
+  # undo captured for the REAL edit UIs (Inspector textarea + in-canvas contentEditable),
+  # not just a store-level updateElement.
+  "html-ui-undo-probe.mjs|htmlel.eigendeck||import_json \$ROOT/e2e/fixtures/html-element-deck.json"
   # opt-in `interactive` flag: a pure-CSS radio/:checked thermometer is clickable
   # in the editor interact-mode + present (pointer-events plumbing), no JavaScript.
   "html-interactive-probe.mjs|htmlint.eigendeck||import_json \$ROOT/e2e/fixtures/html-interactive-deck.json"
