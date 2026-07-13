@@ -1,6 +1,6 @@
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 // pdfium prebuilt release pinned here. MUST match the pdfium-render
 // `pdfium_NNNN` API binding (default is `pdfium_latest` = whatever
@@ -167,16 +167,17 @@ fn main() {
     }
 
     stage_llm_tools_docs();
+    stage_llm_tools_skills();
 
     tauri_build::build()
 }
 
 /// Copy the 4 LLM docs from docs/ into src-tauri/resources/llm-tools/reference/
 /// so they ship as bundled resources alongside the committed AGENTS.md (router) +
-/// skills/ + demo-starter.html. The File → Install LLM Tools… command writes the
-/// whole folder to a user-chosen location. The copies are gitignored (generated
-/// duplicates). Missing sources are skipped, not fatal, so the build keeps
-/// working in trees without the docs (e.g. partial checkouts).
+/// the assembled skills/ + demo-starter.html. The File → Install LLM Tools…
+/// command writes the whole folder to a user-chosen location. The copies are
+/// gitignored (generated duplicates). Missing sources are skipped, not fatal, so
+/// the build keeps working in trees without the docs (e.g. partial checkouts).
 fn stage_llm_tools_docs() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let dest_dir = manifest_dir.join("resources").join("llm-tools").join("reference");
@@ -201,4 +202,45 @@ fn stage_llm_tools_docs() {
             println!("cargo:warning=llm-tools doc {} not found at {} — skipping", name, src.display());
         }
     }
+}
+
+/// Assemble the LLM-tools skill set: copy the CANONICAL committed skills from
+/// <repo>/docs/skills/ into src-tauri/resources/llm-tools/skills/ so they bundle
+/// with the app (skills are versioned WITH the app, not fetched). The staged copy
+/// is gitignored (a generated duplicate of docs/skills/, which is the source of
+/// truth; skills-public/ is the standalone published mirror). Missing source =
+/// skipped, not fatal.
+fn stage_llm_tools_skills() {
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let src = manifest_dir
+        .parent()
+        .map(|p| p.join("docs").join("skills"))
+        .unwrap_or_else(|| manifest_dir.join("docs").join("skills"));
+    println!("cargo:rerun-if-changed={}", src.display());
+    if !src.exists() {
+        println!("cargo:warning=docs/skills not found at {} — skipping skill staging", src.display());
+        return;
+    }
+    let dest = manifest_dir.join("resources").join("llm-tools").join("skills");
+    // Start clean so a removed/renamed skill doesn't linger in the staged copy.
+    let _ = fs::remove_dir_all(&dest);
+    if let Err(e) = copy_dir_recursive(&src, &dest) {
+        println!("cargo:warning=could not stage docs/skills into llm-tools: {}", e);
+    }
+}
+
+/// Recursively copy a directory tree (build-time helper).
+fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let path = entry.path();
+        let dest = dst.join(entry.file_name());
+        if path.is_dir() {
+            copy_dir_recursive(&path, &dest)?;
+        } else if path.is_file() {
+            fs::copy(&path, &dest)?;
+        }
+    }
+    Ok(())
 }
