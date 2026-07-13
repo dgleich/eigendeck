@@ -44,3 +44,64 @@ No sanitizer needed — the markup can "go wild" and the browser contains it.
 
 Not pushed; branch is local (part of the arrow-splines → html-element stack the user
 will collapse).
+
+---
+
+## Continuation (2026-07-12→13): interactivity, files, a snippet library, print fixes
+
+The escape-hatch element grew a bunch of affordances once it proved out.
+
+### Opt-in interactivity (`30bf050`)
+- New `interactive?: boolean`. When set, the sandboxed frame receives pointer
+  events (native `:hover`, CSS `:checked` radios/checkboxes) — **still no script**.
+  Drove a **CSS-only thermometer** whose level is set by `:checked` radios.
+- Editor still needs a way to drag vs interact: double-click enters "interacting"
+  (frame gets events); click-away / Esc exits. The **"Lock" button was dropped**
+  (`f4fdda7`) — the user found it wrong for html; exit is implicit now. The edit
+  warning moved to **below** the element (`4dccf8a`).
+
+### Insert-from-file + a committed snippet library
+- **Insert → HTML Element from File…** (`29956de`) picks a snippet and
+  **validates** it (`htmlSnippet.ts`, pure/dependency-free for a future online
+  repo): rejects empty / non-HTML / `<script` / inline `on*=` handlers / remote
+  resources (http(s)/protocol-relative in src/srcset/url()/@import/link). Interactive
+  snippets are auto-detected.
+- **`examples-html-elements/`** (`545675e`) — the snippet library, moved **out of
+  gitignore** at the user's insistence (**"putting working, useful code in
+  gitignore isn't very helpful"**; render artifacts may stay gitignored, code may
+  not). Each `.html` starts `<!-- eigendeck-html-element name="X" [interactive] -->`;
+  a gallery deck is built from them. `schema_compat.rs` now globs this dir too.
+
+### Print/PDF was actually broken (the user was right to be mad)
+- The checklist covered the print path *structurally*, but the real PDF stripped
+  html-element backgrounds/gradients: `print-color-adjust:exact` **doesn't cascade
+  into a sandboxed iframe**. Fix = set it inside the srcdoc html/body
+  (`4571533`). The **same bug bit notebook export** (`c69b2d8`). Root-caused and
+  re-verified in a real headless-Chromium PDF (thermometer prints fully).
+- Also fixed **config-less present** rendering blank (`716b096`, default
+  1920×1080) — surfaced while dogfooding.
+
+### Dogfooding: frontend-slides
+- Researched the popular `frontend-slides` Claude skill and built a
+  **`frontend-slides-eigendeck` skill** (`b962674`) + a 6-slide bold example deck
+  (`fd59dee`) showing how far the html element gets you toward designer slides.
+- A 12-slide **html-showcase** deck (`f57887c`, by a background agent).
+
+### Menu/doc housekeeping (same session)
+- Insert menu gained **"Card"** (`3e25ab9`, was toolbar-only); View menu gained
+  **"Customize Toolbar…"** → Settings "UI & Toolbar" (`3019e32`, via
+  `openSettingsWindow(tab)` deep-linking).
+- **`docs/ELEMENT-CHECKLIST.md`** (`62e479e`) — the "what to touch across the 7
+  render/output modes" checklist, so the #98/#85 drift class is a lookup.
+
+### Verification
+- Broad e2e suite (8 gated probes): render/persist/edit/undo, security
+  (no-script + no-egress in real WebKit), interactive thermometer, present-stage,
+  thumbnail, duplicate/delete. Undo/redo confirmed captured for **both** edit UIs.
+- Still local, unpushed.
+
+## Queued (not yet done)
+- Jupyter toolbar button → Settings **"Jupyter servers"** tab (`openSettingsWindow('servers')`).
+- Toolbar shrink: make **gaps between elements** shrink before hiding items off-right.
+- HTML **scale-mode** inspector checkbox (never implemented — needs data model + all paths).
+- Right-click context menu on every element type (issue #136).
