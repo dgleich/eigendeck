@@ -14,6 +14,7 @@ import { ColorControl } from './ColorControl';
 import { askConfirm } from '../lib/confirmDialog';
 import { TEXT_PALETTE, FILL_PALETTE, ARROW_PALETTE } from '../lib/colorPalettes';
 import { arrowInsertPoint } from '../lib/arrowGeometry.mjs';
+import { parseHtmlVars, validateVarValue, type VarSpec } from '../lib/htmlVars.mjs';
 
 /** Strip per-run inline text colors (the format toolbar's foreColor produces
  *  `<span style="color:…">` / `<font color>`) so the element-level Text Color
@@ -853,6 +854,14 @@ export function PropertiesPanel() {
                     resize the box to grow or shrink the content.
                   </HelpText>
                 </PropSection>
+                <HtmlVariablesSection
+                  html={selectedEl.html}
+                  vars={selectedEl.vars}
+                  onChange={(next) =>
+                    updateElement(selectedEl.id, {
+                      vars: next && Object.keys(next).length ? next : undefined,
+                    } as any)}
+                />
               </>
             )}
 
@@ -1379,6 +1388,106 @@ function PropSection({ label, children }: { label: string; children: React.React
     <div className="prop-section">
       <div className="prop-label">{label}</div>
       {children}
+    </div>
+  );
+}
+
+/** Inspector section for an html element's declared variables (#138). Reads the
+ *  `application/eigendeck-vars+json` manifest from the html and renders one typed
+ *  control per variable; edits write to `el.vars`. Renders nothing when the html
+ *  declares no variables. */
+export function HtmlVariablesSection({ html, vars, onChange }: {
+  html: string;
+  vars: Record<string, string | number> | undefined;
+  onChange: (next: Record<string, string | number> | undefined) => void;
+}) {
+  const specs = parseHtmlVars(html);
+  if (specs.length === 0) return null;
+  const setVar = (name: string, value: string | number | undefined) => {
+    const next = { ...(vars || {}) };
+    if (value === undefined) delete next[name];
+    else next[name] = value;
+    onChange(next);
+  };
+  return (
+    <PropSection label="Variables">
+      {specs.map((spec) => (
+        <VarRow key={spec.name} spec={spec} value={vars?.[spec.name]}
+          onChange={(v) => setVar(spec.name, v)} />
+      ))}
+      <HelpText>
+        Declared in the element's HTML; spliced in as <code>var(--name)</code> and{' '}
+        <code>{'{{name}}'}</code>.
+      </HelpText>
+    </PropSection>
+  );
+}
+
+/** One typed variable control: a small box sized by `spec.width`, a red ✕ when the
+ *  value fails validation, and optional author help beneath. `value` is the stored
+ *  override (undefined → the manifest default). */
+function VarRow({ spec, value, onChange }: {
+  spec: VarSpec;
+  value: string | number | undefined;
+  onChange: (v: string | number | undefined) => void;
+}) {
+  const fallback = String(spec.default);
+  const [text, setText] = useState(value == null ? fallback : String(value));
+  // Resync the local buffer when the stored value changes out-of-band (reselect,
+  // undo, or a manifest edit that changed the default).
+  useEffect(() => { setText(value == null ? String(spec.default) : String(value)); },
+    [value, spec.default, spec.name]);
+
+  // Validate what's shown (color validates the committed value; number/string the buffer).
+  const shown = spec.type === 'color' ? (value == null ? spec.default : value) : text;
+  const valid = validateVarValue(spec, shown).ok;
+  const boxW = spec.width ?? (spec.type === 'string' ? 150 : 72);
+
+  // Write valid values; drop the key when it equals the default (keeps `vars` small).
+  const commit = (raw: string | number) => {
+    const v = validateVarValue(spec, raw);
+    if (!v.ok) return;
+    onChange(v.value === spec.default ? undefined : v.value);
+  };
+
+  const box: React.CSSProperties = {
+    width: boxW, boxSizing: 'border-box', fontSize: 12, padding: '2px 5px',
+    border: `1px solid ${valid ? '#d1d5db' : '#dc2626'}`, borderRadius: 4,
+  };
+  const isNum = spec.type === 'int' || spec.type === 'float';
+  const hasRange = isNum && spec.min !== undefined && spec.max !== undefined;
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 12, flex: 1, minWidth: 0, overflow: 'hidden',
+          textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={spec.name}>
+          {spec.label || spec.name}
+        </span>
+        {spec.type === 'color' && (
+          <input type="color" value={/^#[0-9a-f]{6}$/i.test(String(shown)) ? String(shown) : '#000000'}
+            onChange={(e) => { setText(e.target.value); commit(e.target.value); }}
+            style={{ width: 26, height: 22, padding: 0, border: '1px solid #d1d5db',
+              borderRadius: 4, cursor: 'pointer', flex: '0 0 auto' }} />
+        )}
+        <input type="text" value={text} spellCheck={false}
+          inputMode={isNum ? 'decimal' : undefined}
+          onChange={(e) => { setText(e.target.value); commit(e.target.value); }}
+          style={box} />
+        {!valid && (
+          <span title="Value doesn’t validate" aria-label="invalid"
+            style={{ color: '#dc2626', fontWeight: 700, flex: '0 0 auto' }}>✕</span>
+        )}
+      </div>
+      {hasRange && (
+        <input type="range" min={spec.min} max={spec.max} step={spec.step ?? (spec.type === 'int' ? 1 : 'any')}
+          value={Number.isFinite(Number(text)) ? Number(text) : spec.default}
+          onChange={(e) => { setText(e.target.value); commit(e.target.value); }}
+          style={{ width: '100%', marginTop: 4 }} />
+      )}
+      {spec.help && (
+        <div style={{ fontSize: 11, color: '#8a9099', marginTop: 2, lineHeight: 1.4 }}>{spec.help}</div>
+      )}
     </div>
   );
 }

@@ -235,6 +235,12 @@ export interface HtmlElement extends BaseElement {
    *  scaleMode is enabled. The box→design ratio is the scale factor. */
   scaleW?: number;
   scaleH?: number;
+  /** Typed-variable VALUES (#138), keyed by variable name. The DECLARATION
+   *  (type/default/range/help) lives in an `application/eigendeck-vars+json`
+   *  manifest inside `html`; this only overrides defaults. Spliced at render as
+   *  CSS custom properties (`var(--name)`) and `{{name}}` tokens. See
+   *  `src/lib/htmlVars.mjs` and `docs/html-element-variables.md`. */
+  vars?: Record<string, string | number>;
 }
 
 export interface DemoPieceElement extends BaseElement {

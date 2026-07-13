@@ -50,21 +50,27 @@ builder strips it from the rendered body):
 ```html
 <script type="application/eigendeck-vars+json">
 {
-  "value": { "type": "float",  "default": 62, "min": 0, "max": 100, "step": 0.5, "label": "Value" },
+  "value": { "type": "float",  "default": 62, "min": 0, "max": 100, "step": 0.5,
+             "label": "Value", "help": "Needle position", "width": 72 },
   "fill":  { "type": "color",  "default": "#e11d48" },
-  "unit":  { "type": "string", "default": "%" }
+  "unit":  { "type": "string", "default": "%", "width": 48 }
 }
 </script>
 ```
 
 - **`type`**: `"float"` | `"int"` | `"color"` | `"string"`.
-- **`default`**: required — the value when the element hasn't overridden it.
+- **`default`**: the value when the element hasn't overridden it (synthesised per
+  type — `0` / `#000000` / `""` — if absent or invalid).
 - **`min` / `max` / `step`**: numbers only; drive the inspector slider (optional).
 - **`label`**: optional inspector display name (defaults to the key).
+- **`help`**: optional explanation shown beneath the control in the inspector.
+- **`width`**: optional inspector control width in px (defaults: 72 numeric/color, 150 string).
 - The var **key** is the name used everywhere: CSS `var(--value)`, HTML `{{value}}`.
+  It must be a safe identifier (`[A-Za-z_][\w-]*`); malformed entries are dropped.
 
-A pure parser `parseHtmlVars(html): VarSpec[]` is shared by the inspector and the
-render builder (no duplicated parsing).
+A pure parser `parseHtmlVars(html): VarSpec[]` (plus `validateVarValue`,
+`resolveVars`, `stripVarsManifest`) lives in `src/lib/htmlVars.mjs` and is shared by
+the inspector and the render builder (no duplicated parsing). **Implemented.**
 
 ## Data model
 
@@ -109,16 +115,20 @@ No expression evaluation. `{{value}}` and `var(--value)` are **literal** substit
 
 ## Inspector
 
-`PropertiesPanel` html block gains a **Variables** section (only when the manifest
-declares any). One typed control per variable:
-- `float` / `int` → number input + slider when `min`/`max` given (respecting `step`).
-- `color` → `ColorControl`.
-- `string` → text input.
+`PropertiesPanel` html block gains a **Variables** section (`HtmlVariablesSection`),
+shown only when the manifest declares any. One compact typed control per variable,
+each `spec.width` wide:
+- `float` / `int` → text box + a slider when `min`/`max` are given (respecting `step`).
+- `color` → a native color swatch + a hex/name text box.
+- `string` → text box.
 
-Each writes `element.vars[name]`; a "reset to default" clears the key. This is a
-**non-interactive** parametrization (values set in the inspector), complementary to
-the `interactive` flag (in-frame native controls) — a gauge needs neither script nor
-`interactive`.
+A value that fails validation flags a red **✕** next to the control and is **not
+written** to the store (the last valid value stands). Each valid edit writes
+`element.vars[name]`; a value equal to the default drops the key (keeps `vars`
+small). Author `help` renders beneath the control. This is a **non-interactive**
+parametrization (values set in the inspector), complementary to the `interactive`
+flag (in-frame native controls) — a gauge needs neither script nor `interactive`.
+**Implemented** (render splice below is the remaining piece).
 
 ## Non-goals (the guardrail)
 
