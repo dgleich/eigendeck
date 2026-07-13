@@ -15,6 +15,12 @@ describe('htmlElementSrcdoc (#137)', () => {
     expect(HTML_ELEMENT_CSP).not.toContain('http');
   });
 
+  it('sets print-color-adjust:exact so backgrounds survive print/PDF (#137)', () => {
+    // Without this the sandboxed iframe drops its backgrounds/gradients when the
+    // deck is printed (the parent print-color-adjust does not cascade into it).
+    expect(htmlElementSrcdoc('<div>x</div>')).toContain('print-color-adjust:exact');
+  });
+
   it('defaults to a transparent background, honours an override', () => {
     expect(htmlElementSrcdoc('x')).toContain('background:transparent;');
     expect(htmlElementSrcdoc('x', '#ffeecc')).toContain('background:#ffeecc;');

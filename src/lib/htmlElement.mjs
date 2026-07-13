@@ -36,7 +36,11 @@ export function htmlElementSrcdoc(rawHtml, background) {
   const bg = background ? String(background).replace(/[<>"]/g, '') : 'transparent';
   return '<!doctype html><html><head><meta charset="utf-8">'
     + `<meta http-equiv="Content-Security-Policy" content="${HTML_ELEMENT_CSP}">`
-    + `<style>html,body{margin:0;padding:0;height:100%;background:${bg};box-sizing:border-box;}*{box-sizing:border-box;}</style>`
+    // print-color-adjust:exact so the iframe's backgrounds/gradients/fills survive
+    // print/PDF — the parent's print-color-adjust does NOT cascade into a sandboxed
+    // iframe, so without this the element loses its background + colours in print (#137).
+    + `<style>html,body{margin:0;padding:0;height:100%;background:${bg};box-sizing:border-box;`
+    + `-webkit-print-color-adjust:exact;print-color-adjust:exact;}*{box-sizing:border-box;}</style>`
     + `</head><body>${body}</body></html>`;
 }
 
