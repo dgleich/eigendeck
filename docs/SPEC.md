@@ -131,7 +131,8 @@ All content on a slide is an element. Five types:
 - Coordinates in slide space (1920×1080)
 - `position` field required but not used (arrow uses x1/y1/x2/y2)
 - Rendered as SVG with triangular arrowhead
-- Optional cubic-Bézier control points `c1x/c1y/c2x/c2y` (#129) curve the arrow when all four are present (Inkscape-style handles in the editor; heads orient to the curve tangent). Absent → straight line.
+- Optional cubic-Bézier control points `c1x/c1y/c2x/c2y` (#129) curve the arrow when all four are present (Inkscape-style handles in the editor; heads orient to the curve tangent). Absent → straight line. Interior `points[]` add waypoints (Catmull-Rom, no handles).
+- See **`docs/arrows.md`** for the full arrow spec: the cubic-Bézier-spline curve model (C¹, endpoint handles + Catmull-Rom interior), the endpoint-tangent-handle invariant, heads/inset, "+ Point", and editor interaction.
 
 #### Demo Element
 
