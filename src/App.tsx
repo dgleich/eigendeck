@@ -751,6 +751,37 @@ function App() {
     }
   };
 
+  // Insert an HTML element from a .html snippet FILE (#137). Validates it's a
+  // usable snippet first — the same gate a future "download from an online repo"
+  // flow will use — and rejects cruddy input (not HTML, scripts, remote resources)
+  // with a clear reason rather than silently inserting something that won't render.
+  const addHtmlFromPicker = async () => {
+    const store = usePresentationStore.getState();
+    const { open, message } = await import('@tauri-apps/plugin-dialog');
+    const selected = await open({ title: 'Insert HTML Element from File', filters: [{ name: 'HTML', extensions: ['html', 'htm'] }] });
+    if (!selected) return;
+    let raw: string;
+    try {
+      raw = await readTextFileNative(selected as string);
+    } catch (err) {
+      await message(`Couldn't read the file:\n${err}`, { title: 'Insert HTML Element', kind: 'error' });
+      return;
+    }
+    const { validateHtmlSnippet } = await import('./lib/htmlSnippet');
+    const v = validateHtmlSnippet(raw);
+    if (!v.ok) {
+      await message(`This file isn't a usable HTML element:\n\n• ${v.problems.join('\n• ')}`,
+        { title: 'Insert HTML Element', kind: 'error' });
+      return;
+    }
+    store.addElement({
+      id: crypto.randomUUID(), type: 'html',
+      position: { x: 560, y: 300, width: 800, height: 500 },
+      html: v.html,
+      ...(v.interactive ? { interactive: true } : {}),
+    });
+  };
+
   const runInsert = (id: string) => {
     const store = usePresentationStore.getState();
     switch (id) {
@@ -812,6 +843,7 @@ function App() {
       case 'image': void addImageFromPicker(); break;
       case 'demo': void addDemoFromPicker(); break;
       case 'notebook': void addNotebookFromPicker(); break;
+      case 'html-file': void addHtmlFromPicker(); break;
       case 'video': setVideoUrl(''); setVideoModalOpen(true); break;
     }
   };
