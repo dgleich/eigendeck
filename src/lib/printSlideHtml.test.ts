@@ -53,9 +53,11 @@ describe('[simplify-guard] buildPrintSlideHtml render snapshot', () => {
     expect(out).not.toContain('allow-scripts');
   });
 
-  it('scale-mode html: contain-scaled frame in a clipped box, inch lengths + unitless scale (#137)', () => {
-    // design 200×100 (2:1) inside a 400×100 box → width binds, scale = 400/200 = 2? no:
-    // min(400/200, 100/100) = min(2,1) = 1, letterboxed horizontally.
+  it('scale-mode html: iframe sized in CSS px (not inches) so content is not clipped (#137)', () => {
+    // The iframe content is authored in CSS px. The print box is in inches, and a
+    // slide-px is only S*96 CSS px there — so the frame must be sized in CSS px
+    // (design size) and scaled DOWN, not sized in inches (which shrank its px
+    // canvas ~2× and clipped). Regression guard for the print scaleMode bug.
     const slide = {
       id: 's1', layout: 'default', notes: '',
       elements: [{ id: 'h1', type: 'html', html: '<h1>Hi</h1>', scaleMode: true, scaleW: 200, scaleH: 100,
@@ -63,11 +65,13 @@ describe('[simplify-guard] buildPrintSlideHtml render snapshot', () => {
     } as unknown as Slide;
     const presentation = { title: 'T', theme: 'white', config: { width: 1920, height: 1080 }, slides: [slide] } as unknown as Presentation;
     const out = buildPrintSlideHtml(slide, presentation, new Map(), new Map());
-    expect(out).toContain('overflow:hidden;');            // clipping wrapper
-    expect(out).toContain('scale(1);');                   // ratio (unit-free) preserved
+    expect(out).toContain('overflow:hidden;');                 // clipping wrapper
+    expect(out).toContain('width:200px;height:100px;');        // frame at DESIGN size in CSS px (the fix)
+    expect(out).not.toContain('scale(1);');                    // scaled down for the inch box, not 1:1
+    expect(out).toMatch(/scale\(0\.5/);                        // ~0.55 = 1 slide-px is S*96 CSS px
     expect(out).toContain('transform-origin:top left;');
-    expect(out).toContain('in;');                         // inner lengths inch-converted
-    expect(out).toContain('sandbox=""');                  // still locked
+    expect(out).toContain('in;overflow:hidden;');              // the WRAPPER box is still inch-based
+    expect(out).toContain('sandbox=""');                       // still locked
     expect(out).not.toContain('allow-scripts');
   });
 
