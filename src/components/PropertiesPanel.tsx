@@ -816,11 +816,11 @@ export function PropertiesPanel() {
                       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11,
                       lineHeight: 1.45, resize: 'vertical', whiteSpace: 'pre', overflowX: 'auto' }}
                   />
-                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 5, lineHeight: 1.45 }}>
+                  <HelpText>
                     Rendered in a locked sandbox — no scripts, no network (embed images/fonts as
                     {' '}<code>data:</code> URIs). Double-click on the slide to edit in place
                     {' '}(<span style={{ color: '#92400e' }}>best effort — may reshape complex markup</span>).
-                  </div>
+                  </HelpText>
                 </PropSection>
                 <PropSection label="Background">
                   <ColorControl
@@ -833,28 +833,28 @@ export function PropertiesPanel() {
                     onColor={(c) => updateElement(selectedEl.id, { background: c } as any)}
                   />
                 </PropSection>
-                <PropSection label="Interactive">
-                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={!!selectedEl.interactive} style={{ marginTop: 2 }}
+                <PropSection label="Options">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!!selectedEl.interactive}
                       onChange={(e) => updateElement(selectedEl.id, { interactive: e.target.checked || undefined } as any)} />
-                    <span style={{ color: '#6b7280', lineHeight: 1.4 }}>
-                      Clickable in present mode (native controls / <code>:hover</code> — no script).
-                      Double-click on the canvas to interact.
-                    </span>
+                    Interactive
                   </label>
-                </PropSection>
-                <PropSection label="Scale to fit">
-                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={!!selectedEl.scaleMode} style={{ marginTop: 2 }}
+                  <HelpText>
+                    Clickable in present mode (native controls / <code>:hover</code> — no script).
+                    Double-click on the canvas to interact.
+                  </HelpText>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', marginTop: 8 }}>
+                    <input type="checkbox" checked={!!selectedEl.scaleMode}
                       onChange={(e) => updateElement(selectedEl.id, (e.target.checked
                         // Capture the current box as the design size, then resizing scales.
                         ? { scaleMode: true, scaleW: Math.round(selectedEl.position.width), scaleH: Math.round(selectedEl.position.height) }
                         : { scaleMode: undefined }) as any)} />
-                    <span style={{ color: '#6b7280', lineHeight: 1.4 }}>
-                      Content scales to fill the box, keeping its aspect ratio. The current size
-                      becomes the design size — resize the box to grow or shrink the content.
-                    </span>
+                    Scale to fit
                   </label>
+                  <HelpText>
+                    Content scales to fill the box, keeping its aspect ratio. The current size
+                    becomes the design size — resize the box to grow or shrink the content.
+                  </HelpText>
                 </PropSection>
               </>
             )}
