@@ -22,7 +22,8 @@ use objc2_app_kit::{
     NSColor, NSCompositingOperation, NSFont, NSFontWeightRegular, NSImage,
     NSEvent, NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSText,
     NSTextAlignment, NSTextField, NSTextFieldCell, NSToolbar, NSToolbarDelegate,
-    NSToolbarDisplayMode, NSToolbarItem, NSView, NSWindow, NSWindowToolbarStyle,
+    NSToolbarDisplayMode, NSToolbarItem, NSToolbarItemVisibilityPriorityLow,
+    NSView, NSWindow, NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use serde::Serialize;
@@ -31,6 +32,16 @@ use tauri::{AppHandle, Emitter, Manager};
 /// Author/Venue toolbar-item size (logical points); the toolbar centers the item.
 const FIELD_WIDTH: f64 = 130.0;
 const FIELD_HEIGHT: f64 = 28.0;
+/// Floor width the fields/title may compress to under toolbar width pressure
+/// before NSToolbar resorts to pushing items into the overflow menu.
+const FIELD_MIN_WIDTH: f64 = 80.0;
+const TITLE_MIN_WIDTH: f64 = 140.0;
+/// Auto Layout priority for a PREFERRED (breakable) width — the item holds this
+/// width when there's room but yields it, shrinking, when the row is squeezed.
+/// Below Required(1000) so the toolbar can compress it before overflowing items.
+const WIDTH_PREFERRED_PRIORITY: f32 = 750.0;
+/// Same idea for the invisible lead spacer — lower, so gaps give before fields do.
+const GAP_PREFERRED_PRIORITY: f32 = 250.0;
 /// SF Symbol point size for the button icons. 18 clipped the taller glyphs
 /// (Export's up-arrow) against the button; 15 stays comfortably inside. Compact
 /// mode (labels off) drops to a smaller glyph to reclaim vertical space.
@@ -68,7 +79,7 @@ fn lead_gap_for(compact: bool) -> f64 {
 }
 
 const TITLE_ID: &str = "title";
-const TITLE_WIDTH: f64 = 240.0;
+const TITLE_WIDTH: f64 = 320.0;
 const TITLE_FONT_SIZE: f64 = 14.0;
 /// Breathing room (points) above AND below the title text, inside the focus ring.
 const TITLE_VPAD: f64 = 5.0;
@@ -409,7 +420,14 @@ define_class!(
                 // would then top-align). Intrinsic height reflects the bold 14pt font
                 // set above.
                 field.setTranslatesAutoresizingMaskIntoConstraints(false);
-                field.widthAnchor().constraintEqualToConstant(TITLE_WIDTH).setActive(true);
+                // Width is a RANGE, not a fixed value: prefer TITLE_WIDTH (held while
+                // there's room) but allow shrinking to TITLE_MIN_WIDTH under toolbar
+                // pressure, so the row compresses instead of pushing items to overflow.
+                field.widthAnchor().constraintLessThanOrEqualToConstant(TITLE_WIDTH).setActive(true);
+                field.widthAnchor().constraintGreaterThanOrEqualToConstant(TITLE_MIN_WIDTH).setActive(true);
+                let title_pref = field.widthAnchor().constraintEqualToConstant(TITLE_WIDTH);
+                title_pref.setPriority(WIDTH_PREFERRED_PRIORITY);
+                title_pref.setActive(true);
                 // Taller than the text (by 2*TITLE_VPAD) for ring room; the centering
                 // cell keeps the text centered within it.
                 let h = field.intrinsicContentSize().height + 2.0 * TITLE_VPAD;
@@ -435,12 +453,21 @@ define_class!(
                 }
                 *slot.borrow_mut() = Some(field.clone());
                 field.setTranslatesAutoresizingMaskIntoConstraints(false);
-                field.widthAnchor().constraintEqualToConstant(FIELD_WIDTH).setActive(true);
+                // Shrinkable width range (see the title): prefer FIELD_WIDTH, yield to
+                // FIELD_MIN_WIDTH under pressure.
+                field.widthAnchor().constraintLessThanOrEqualToConstant(FIELD_WIDTH).setActive(true);
+                field.widthAnchor().constraintGreaterThanOrEqualToConstant(FIELD_MIN_WIDTH).setActive(true);
+                let field_pref = field.widthAnchor().constraintEqualToConstant(FIELD_WIDTH);
+                field_pref.setPriority(WIDTH_PREFERRED_PRIORITY);
+                field_pref.setActive(true);
                 let h = field.intrinsicContentSize().height;
                 field.heightAnchor().constraintEqualToConstant(h).setActive(true);
                 let view: &NSView = &field;
                 item.setView(Some(view));
                 item.setLabel(&NSString::from_str(""));
+                // If compression still isn't enough, the metadata fields are the first
+                // to fall into the overflow menu — never the primary action buttons.
+                item.setVisibilityPriority(NSToolbarItemVisibilityPriorityLow);
                 Some(item)
             } else if id == JUPYTER_ID {
                 let compact = self.ivars().compact.get();
@@ -466,10 +493,18 @@ define_class!(
                     NSRect::new(NSPoint::new(0.0, 0.0), NSSize { width: 0.0, height: FIELD_HEIGHT }),
                 );
                 view.setTranslatesAutoresizingMaskIntoConstraints(false);
+                // PREFERRED (breakable) width: the compact lead gap holds its size when
+                // there's room but is the first thing to collapse when the row is
+                // squeezed — gaps shrink before items overflow. restyle_lead_gap still
+                // drives its constant per mode.
                 let width = view
                     .widthAnchor()
                     .constraintEqualToConstant(lead_gap_for(self.ivars().compact.get()));
+                width.setPriority(GAP_PREFERRED_PRIORITY);
                 width.setActive(true);
+                // Required floor so the collapsed gap never goes below 1pt (a 0-width
+                // toolbar view logs an "ambiguous size" warning).
+                view.widthAnchor().constraintGreaterThanOrEqualToConstant(1.0).setActive(true);
                 // Only width matters; keep height minimal so it never props the row up.
                 view.heightAnchor().constraintEqualToConstant(1.0).setActive(true);
                 item.setView(Some(&view));
