@@ -1,0 +1,12 @@
+<!-- eigendeck-html-element name="Typewriter"
+     A line typed out with a blinking caret via steps(). Set the animation steps AND
+     the width to the line's character count (here 25ch). Suggested box ~800×200. -->
+<style>
+  html,body{height:100%;margin:0}
+  .g{height:100%;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,'SF Mono',Menlo,monospace}
+  .tw{font-size:44px;color:#e2e8f0;white-space:nowrap;overflow:hidden;border-right:4px solid #22d3ee;width:0;
+    animation:type 2.6s steps(25) forwards, blink .7s step-end infinite}
+  @keyframes type{to{width:25ch}}
+  @keyframes blink{50%{border-color:transparent}}
+</style>
+<div class="g"><div class="tw">solve(A, b)  // no script</div></div>

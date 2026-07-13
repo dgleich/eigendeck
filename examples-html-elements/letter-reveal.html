@@ -1,0 +1,16 @@
+<!-- eigendeck-html-element name="Letter reveal"
+     A word whose letters drop in + fade, staggered (plays on mount). The no-script
+     cousin of example-demos/gimmicks. Edit the letters + animation-delay to taste.
+     Suggested box ~800×300. (Solid colour, not background-clip:text — a clipped
+     gradient doesn't fill child <span> glyphs in every WebKit.) -->
+<style>
+  html,body{height:100%;margin:0}
+  .g{height:100%;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif}
+  .word{display:flex;font-weight:800;font-size:110px;letter-spacing:-.02em;color:#c4b5fd}
+  .word span{display:inline-block;opacity:0;transform:translateY(-64px);
+    animation:drop .6s cubic-bezier(.18,1.25,.4,1) forwards}
+  @keyframes drop{to{opacity:1;transform:none}}
+</style>
+<div class="g"><div class="word">
+  <span style="animation-delay:.00s">e</span><span style="animation-delay:.06s">i</span><span style="animation-delay:.12s">g</span><span style="animation-delay:.18s">e</span><span style="animation-delay:.24s">n</span><span style="animation-delay:.30s">d</span><span style="animation-delay:.36s">e</span><span style="animation-delay:.42s">c</span><span style="animation-delay:.48s">k</span>
+</div></div>

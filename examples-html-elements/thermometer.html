@@ -1,0 +1,45 @@
+<!-- eigendeck-html-element name="Thermometer" interactive
+     A pure-CSS thermometer: hidden radios + `:checked ~ .stage .fill{height}` drive
+     the mercury; clickable scale labels switch levels; a transition animates it. No JS.
+     Needs "interactive": true. Suggested box ~600×480. -->
+<style>
+  html,body{height:100%;margin:0}
+  .lv{display:none}
+  .stage{height:100%;display:flex;align-items:center;justify-content:center;gap:70px;
+    font-family:system-ui,sans-serif;color:#e5e7eb;background:#0b1020}
+  .thermo{position:relative;display:flex;flex-direction:column;align-items:center}
+  .tube{position:relative;width:52px;height:360px;background:#111827;
+    border:5px solid #cbd5e1;border-bottom:none;border-radius:26px 26px 0 0;overflow:hidden;z-index:2}
+  .fill{position:absolute;left:0;bottom:0;width:100%;
+    background:linear-gradient(#fecaca,#f87171 45%,#dc2626);
+    transition:height .6s cubic-bezier(.34,1.56,.64,1)}
+  .bulb{width:88px;height:88px;margin-top:-14px;border-radius:50%;z-index:1;
+    background:radial-gradient(circle at 34% 30%,#fca5a5,#dc2626 55%,#991b1b);
+    border:5px solid #cbd5e1;box-shadow:0 0 40px rgba(220,38,38,.55)}
+  .scale{display:flex;flex-direction:column;justify-content:space-between;height:360px;
+    font-size:24px;font-variant-numeric:tabular-nums}
+  .scale label{cursor:pointer;padding:4px 14px;border-radius:8px;transition:background .15s}
+  .scale label:hover{background:#1e293b}
+  #t0:checked~.stage .fill{height:8%}
+  #t1:checked~.stage .fill{height:26%}
+  #t2:checked~.stage .fill{height:44%}
+  #t3:checked~.stage .fill{height:62%}
+  #t4:checked~.stage .fill{height:80%}
+  #t5:checked~.stage .fill{height:96%}
+  #t0:checked~.stage label[for=t0],#t1:checked~.stage label[for=t1],
+  #t2:checked~.stage label[for=t2],#t3:checked~.stage label[for=t3],
+  #t4:checked~.stage label[for=t4],#t5:checked~.stage label[for=t5]{background:#dc2626;color:#fff;font-weight:700}
+</style>
+<input type="radio" name="temp" id="t0" class="lv">
+<input type="radio" name="temp" id="t1" class="lv">
+<input type="radio" name="temp" id="t2" class="lv" checked>
+<input type="radio" name="temp" id="t3" class="lv">
+<input type="radio" name="temp" id="t4" class="lv">
+<input type="radio" name="temp" id="t5" class="lv">
+<div class="stage">
+  <div class="thermo"><div class="tube"><div class="fill"></div></div><div class="bulb"></div></div>
+  <div class="scale">
+    <label for="t5">100°</label><label for="t4">80°</label><label for="t3">60°</label>
+    <label for="t2">40°</label><label for="t1">20°</label><label for="t0">0°</label>
+  </div>
+</div>

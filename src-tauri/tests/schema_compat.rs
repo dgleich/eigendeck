@@ -112,26 +112,32 @@ fn all_committed_example_decks_load_under_current_schema() {
     let mut tested = 0;
     let mut failures: Vec<String> = Vec::new();
 
-    let mut entries: Vec<_> = fs::read_dir(&examples_dir)
-        .expect("read examples/")
-        .filter_map(|r| r.ok())
-        .filter(|e| e.path().extension().and_then(|s| s.to_str()) == Some("eigendeck"))
-        .collect();
-    entries.sort_by_key(|e| e.path());
+    // Glob every committed deck under examples/ AND examples-html-elements/ (the
+    // raw-HTML-element snippet gallery lives there). examples/ is required; the
+    // snippets dir is optional.
+    for dir in [&examples_dir, &repo_root.join("examples-html-elements")] {
+        if !dir.exists() { continue; }
+        let mut entries: Vec<_> = fs::read_dir(dir)
+            .unwrap_or_else(|_| panic!("read {}", dir.display()))
+            .filter_map(|r| r.ok())
+            .filter(|e| e.path().extension().and_then(|s| s.to_str()) == Some("eigendeck"))
+            .collect();
+        entries.sort_by_key(|e| e.path());
 
-    for entry in entries {
-        let src = entry.path();
-        let filename = src.file_name().unwrap().to_string_lossy().to_string();
-        let dest = temp_copy(&src, &scratch_dir);
+        for entry in entries {
+            let src = entry.path();
+            let filename = src.file_name().unwrap().to_string_lossy().to_string();
+            let dest = temp_copy(&src, &scratch_dir);
 
-        match validate_one(&dest) {
-            Ok(()) => {
-                println!("  ✓ {}", filename);
-                tested += 1;
-            }
-            Err(e) => {
-                println!("  ✗ {}: {}", filename, e);
-                failures.push(format!("{}: {}", filename, e));
+            match validate_one(&dest) {
+                Ok(()) => {
+                    println!("  ✓ {}", filename);
+                    tested += 1;
+                }
+                Err(e) => {
+                    println!("  ✗ {}: {}", filename, e);
+                    failures.push(format!("{}: {}", filename, e));
+                }
             }
         }
     }

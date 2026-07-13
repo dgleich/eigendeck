@@ -1,0 +1,11 @@
+<!-- eigendeck-html-element name="Shimmer"
+     A moving sheen swept across a word (background-clip:text). Suggested box ~700×250. -->
+<style>
+  html,body{height:100%;margin:0}
+  .g{height:100%;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif}
+  .sh{font-size:100px;font-weight:800;letter-spacing:-.01em;
+    background:linear-gradient(100deg,#3b4252 34%,#fff 50%,#3b4252 66%);background-size:220% auto;
+    -webkit-background-clip:text;background-clip:text;color:transparent;animation:sweep 2.4s linear infinite}
+  @keyframes sweep{to{background-position:-220% center}}
+</style>
+<div class="g"><div class="sh">shimmer</div></div>
