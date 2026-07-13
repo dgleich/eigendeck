@@ -48,6 +48,18 @@ setup` flow. There is no auto-build; `npm run setup` only copies the bundles int
 cd src-tauri && cargo check && cargo clippy -- -D warnings
 ```
 
+## Headless verification (don't defer to a Mac too fast)
+
+A lot that feels "app-only" **can** be checked headlessly in this Linux container:
+`vitest` (jsdom, unit + `@testing-library/react` components) → **Playwright/Chromium**
+(real HTML→PNG rasterize, `page.pdf()`, WebGL via swiftshader) → the **e2e Tauri
+rig** (`eigendeck-e2e` skill: the REAL app in headless WebKitGTK with real `invoke`
++ SQLite, driven via the `window.__eigendeck` seam) → `eigendeck-cli` → `cargo
+check`. jsdom can't rasterize (mock `domToDataUrl`); the e2e rig can't drive native
+dialogs. **Genuinely Mac-only:** `#[cfg(target_os="macos")]` code (NSToolbar/menu),
+the macOS clipboard, and pixel-perfect sign-off in the shipped WebKit. Full matrix
++ how-to: **`docs/headless-verification.md`**.
+
 ## Project structure
 
 - `src/` — React frontend
