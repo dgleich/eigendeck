@@ -21,7 +21,7 @@ export function arrowInsertPoint(
   x1: number, y1: number, x2: number, y2: number,
   c1x?: number, c1y?: number, c2x?: number, c2y?: number,
   points?: ArrowPoint[], minGap?: number,
-): { points: ArrowPoint[]; index: number } | null;
+): { points: ArrowPoint[]; index: number; c1x: number; c1y: number; c2x: number; c2y: number } | null;
 
 export function triPoints(t: number[][]): string;
 

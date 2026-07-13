@@ -745,8 +745,10 @@ export function PropertiesPanel() {
                             };
                         const res = arrowInsertPoint(x1, y1, x2, y2, c.c1x, c.c1y, c.c2x, c.c2y, selectedEl.points);
                         if (!res) return;
-                        const base = curved ? {} : c;
-                        updateElement(selectedEl.id, { ...base, points: res.points } as any);
+                        // Apply the (possibly endpoint-scaled) handles so the spline shape holds.
+                        updateElement(selectedEl.id, {
+                          c1x: res.c1x, c1y: res.c1y, c2x: res.c2x, c2y: res.c2y, points: res.points,
+                        } as any);
                       };
                       return (
                         <>

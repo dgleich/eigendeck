@@ -88,8 +88,17 @@ export function arrowGeometry(x1, y1, x2, y2, headSize, heads, c1x, c1y, c2x, c2
  *  straight, already-crowded segment) it's clamped inward, trading a small,
  *  unavoidable wiggle for the spacing.
  *
- *  Returns `{ points, index }` — the new interior-points array and the inserted
- *  point's index within it — or null if the arrow isn't curved (no c1/c2).
+ *  Because each half-segment is now shorter, the endpoint handles must be scaled
+ *  toward their endpoints by the split parameter (`lerp(start, c1, t*)` /
+ *  `lerp(c2, end, t*)` — the de Casteljau first-level controls) or a full-length
+ *  handle on a half-length segment overshoots. With both the parallel placement
+ *  AND the scaled handles the endpoints stay EXACT; only the interior tangent
+ *  length is approximate. Handles are scaled only for the endpoint they touch
+ *  (splitting an interior-to-interior segment leaves c1/c2 alone).
+ *
+ *  Returns `{ points, index, c1x, c1y, c2x, c2y }` — the new interior-points
+ *  array, the inserted point's index within it, and the (possibly scaled)
+ *  endpoint handles to apply — or null if the arrow isn't curved (no c1/c2).
  */
 export function arrowInsertPoint(x1, y1, x2, y2, c1x, c1y, c2x, c2y, points, minGap = 24) {
   if (c1x == null || c1y == null || c2x == null || c2y == null) return null;
@@ -157,7 +166,13 @@ export function arrowInsertPoint(x1, y1, x2, y2, c1x, c1y, c2x, c2y, points, min
   const np = at(tStar);
   const newPts = [...pts];
   newPts.splice(seg, 0, { x: Math.round(np.x), y: Math.round(np.y) });
-  return { points: newPts, index: seg };
+  // Scale the endpoint handle(s) the split segment touches toward their endpoint
+  // by the split parameter, so a half-length segment doesn't keep a full handle.
+  const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+  let nc1x = c1x, nc1y = c1y, nc2x = c2x, nc2y = c2y;
+  if (seg === 0) { nc1x = lerp(x1, c1x, tStar); nc1y = lerp(y1, c1y, tStar); }
+  if (seg === n - 2) { nc2x = lerp(c2x, x2, tStar); nc2y = lerp(c2y, y2, tStar); }
+  return { points: newPts, index: seg, c1x: nc1x, c1y: nc1y, c2x: nc2x, c2y: nc2y };
 }
 
 /** An SVG `points` string for one triangle. */
