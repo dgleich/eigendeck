@@ -1459,10 +1459,10 @@ function VarRow({ spec, value, onChange }: {
 
   return (
     <div style={{ marginBottom: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 12, flex: 1, minWidth: 0, overflow: 'hidden',
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+        <span style={{ fontSize: 12, maxWidth: 130, overflow: 'hidden',
           textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={spec.name}>
-          {spec.label || spec.name}
+          {spec.label || spec.name}:
         </span>
         {spec.type === 'color' && (
           <input type="color" value={/^#[0-9a-f]{6}$/i.test(String(shown)) ? String(shown) : '#000000'}
@@ -1486,7 +1486,8 @@ function VarRow({ spec, value, onChange }: {
           style={{ width: '100%', marginTop: 4 }} />
       )}
       {spec.help && (
-        <div style={{ fontSize: 11, color: '#8a9099', marginTop: 2, lineHeight: 1.4 }}>{spec.help}</div>
+        <div style={{ fontSize: 11, color: '#8a9099', marginTop: 2, lineHeight: 1.4,
+          textAlign: 'center' }}>{spec.help}</div>
       )}
     </div>
   );

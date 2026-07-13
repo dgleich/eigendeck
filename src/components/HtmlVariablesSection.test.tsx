@@ -22,9 +22,9 @@ describe('HtmlVariablesSection', () => {
       unit: { type: 'string', default: '%' },
     });
     render(<HtmlVariablesSection html={html} vars={undefined} onChange={() => {}} />);
-    expect(screen.getByText('Value')).toBeTruthy();
+    expect(screen.getByText('Value:')).toBeTruthy();
     expect(screen.getByText('Needle position')).toBeTruthy(); // author help
-    expect(screen.getByText('unit')).toBeTruthy();            // falls back to the name
+    expect(screen.getByText('unit:')).toBeTruthy();           // falls back to the name
   });
 
   it('flags an out-of-range stored value with a red ✕', () => {
