@@ -72,17 +72,6 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
       .catch(() => {});
   }, [editable, element.assetId, mode]);
 
-  // Cache a PNG preview of the rendered notebook so other places (the sidebar
-  // mini-slide, the link picker) can show an image of it instead of a live
-  // render. Debounced + editor-only; fires when the element changes (add =
-  // first mount, property edits = re-render) and once the cells have settled.
-  // The .nb-frame target excludes the DraggableBox authoring chrome.
-  useEffect(() => {
-    if (mode !== 'editor') return;
-    const t = setTimeout(() => { void capturePreview(element, '.nb-frame'); }, 700);
-    return () => clearTimeout(t);
-  }, [element, mode]);
-
   // Typography + theme → CSS variables on the frame. (See the detailed
   // notes in the prior revision; unchanged.)
   const proseFont = fontForNotebookProse(slide, config);
@@ -111,6 +100,26 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
     dark ? 'nb-theme-dark' : 'nb-theme-light',
     element.showBorder ? 'nb-frame--bordered' : '',
   ].filter(Boolean).join(' ');
+
+  // A signature that changes with the deck THEME. The preview-capture effects key
+  // on element/overlay, and the theme is applied as CSS vars on .nb-frame — but a
+  // theme switch doesn't change `element`, so without this term the effect never
+  // re-fires and the PDF/print export bakes the STALE (old-theme) preview → wrong
+  // colours on a dark slide (the live / present / HTML-export paths render fresh, so
+  // only print was broken). It also feeds capturePreview's backdrop (the theme
+  // background, so the rasterized PNG matches the slide) + its dedup key — the same
+  // theme-salt + background a demo already passes.
+  const themeSalt = `${theme.background}|${theme.text}|${dark ? 'd' : 'l'}`;
+
+  // Cache a PNG preview of the rendered notebook so other places (the sidebar
+  // mini-slide, link picker, and the PDF/print export) can show an image instead of
+  // a live render. Debounced + editor-only; re-fires on element edits AND theme
+  // changes. The .nb-frame target excludes the DraggableBox authoring chrome.
+  useEffect(() => {
+    if (mode !== 'editor') return;
+    const t = setTimeout(() => { void capturePreview(element, '.nb-frame', themeSalt, theme.background); }, 700);
+    return () => clearTimeout(t);
+  }, [element, mode, themeSalt, theme.background]);
 
   const highlight = element.syntaxHighlight !== false;
   const language = notebook?.language ?? null;
@@ -150,6 +159,8 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
         baseSize={baseSize}
         hideHeader={hideHeader}
         kernelDisplayName={notebook?.kernelDisplayName ?? notebook?.kernelspecName ?? null}
+        themeSalt={themeSalt}
+        previewBg={theme.background}
       />
     </div>
   );
@@ -183,7 +194,7 @@ export function filterMerged(merged: MergedCell[], element: NotebookElement): Me
 
 function ExternalKernelBody({
   element, mode, notebook, loading, error, interactive, editable, resolved, preamble, autoRun,
-  highlight, dark, language, baseSize, hideHeader, kernelDisplayName,
+  highlight, dark, language, baseSize, hideHeader, kernelDisplayName, themeSalt, previewBg,
 }: {
   element: NotebookElement;
   mode: 'editor' | 'present';
@@ -200,6 +211,8 @@ function ExternalKernelBody({
   baseSize: number;
   hideHeader: boolean;
   kernelDisplayName: string | null;
+  themeSalt: string;
+  previewBg: string;
 }) {
   const kernel = useKernel(resolved);
   // Overlay identity is the element's SYNC identity, not its per-slide id:
@@ -222,9 +235,9 @@ function ExternalKernelBody({
   const ovSig = serializeOverlay(ov.overlay);
   useEffect(() => {
     if (mode !== 'editor') return;
-    const t = setTimeout(() => { void capturePreview(elForCapture.current, '.nb-frame'); }, 700);
+    const t = setTimeout(() => { void capturePreview(elForCapture.current, '.nb-frame', themeSalt, previewBg); }, 700);
     return () => clearTimeout(t);
-  }, [ovSig, mode]);
+  }, [ovSig, mode, themeSalt, previewBg]);
 
   // Migrate legacy element.cellEdits (pre-overlay) into the overlay
   // once, then strip the field. cellEdits is being retired in favor of
