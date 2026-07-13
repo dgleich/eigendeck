@@ -95,7 +95,7 @@ export function buildPrintSlideHtml(
       const designH = htmlIsScaled(el) ? el.scaleH! : p.height;
       const L = htmlScaleLayout(p.width * S * 96, p.height * S * 96, designW, designH);
       const box = `position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)}`;
-      inner += htmlElementScaledIframeHtml(el, box, L, 'px');
+      inner += htmlElementScaledIframeHtml(el, box, L, 'px', undefined, theme);
     } else if (isLiveElement(el.type)) {
       // P0-2: notebook joins demo/demo-piece/video as a baked screenshot.
       const screenshot = demoScreenshots.get(`${slide.id}:${el.id}`);

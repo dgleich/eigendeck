@@ -33,3 +33,12 @@ export function resolveVars(
   vars: Record<string, number | string> | undefined,
 ): Record<string, number | string>;
 export function stripVarsManifest(html: string): string;
+export function resolveColorVar(
+  value: unknown,
+  theme?: { background?: string; accent?: string },
+): string;
+export function spliceHtmlVars(
+  html: string | null | undefined,
+  vars: Record<string, string | number> | undefined,
+  theme?: { background?: string; accent?: string },
+): { html: string; rootCss: string };

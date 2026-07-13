@@ -179,7 +179,7 @@ export function SlideElementRenderer({
     case 'html':
       return (
         <HtmlBox
-          element={element} zIndex={zIndex} scale={scale}
+          element={element} zIndex={zIndex} scale={scale} theme={theme}
           isSelected={isSelected}
           onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
         />
@@ -401,10 +401,11 @@ function DemoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
 // edit cleanly, so a warning shows and the Inspector's textarea is the reliable
 // source of truth.
 // ============================================
-function HtmlBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpdate }: {
+function HtmlBox({ element, zIndex, scale, isSelected, theme, onSelect, onDelete, onUpdate }: {
   element: Extract<SlideElement, { type: 'html' }>;
   zIndex: number; scale: number;
   isSelected: boolean;
+  theme?: ThemeColors;
   onSelect: (e?: { shiftKey: boolean }) => void; onDelete: () => void;
   onUpdate: (changes: Partial<SlideElement>) => void;
 }) {
@@ -412,7 +413,7 @@ function HtmlBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
   const [interacting, setInteracting] = useState(false); // clickable controls (interactive HTML)
   const interactive = !!element.interactive;
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const srcDoc = htmlElementSrcdoc(element.html, element.background);
+  const srcDoc = htmlElementSrcdoc(element.html, element.background, element.vars, theme);
 
   // Read the edited markup back out of the frame and leave edit mode. Kept in a
   // ref so the keydown/blur listeners always call the latest version.

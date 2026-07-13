@@ -15,7 +15,8 @@ const dir = dirname(fileURLToPath(import.meta.url));
 // Fixed slots (slide space 1920×1080) — the thermometer is tall/interactive.
 const SLOTS = {
   'thermometer.html': { x: 110, y: 250, width: 470, height: 500 },
-  'letter-reveal.html': { x: 640, y: 300, width: 600, height: 300 },
+  'gauge.html': { x: 640, y: 250, width: 480, height: 360 },
+  'letter-reveal.html': { x: 640, y: 630, width: 600, height: 150 },
   'progress-ring.html': { x: 1320, y: 260, width: 460, height: 420 },
   'typewriter.html': { x: 110, y: 800, width: 820, height: 200 },
   'shimmer.html': { x: 990, y: 770, width: 810, height: 260 },

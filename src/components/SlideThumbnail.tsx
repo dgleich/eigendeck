@@ -112,11 +112,12 @@ function ThumbElement({ element: el, slide, presentation, imageTier }: {
       // Static + locked (no script/network) → render the real thing for a true
       // mini-preview; it scales with the thumbnail's CSS transform.
       const p = el.position;
+      const htmlTheme = resolveTheme(presentation.theme, slide.theme);
       if (htmlIsScaled(el)) {
         const L = htmlScaleLayout(p.width, p.height, el.scaleW!, el.scaleH!);
         return (
           <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden' }}>
-            <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background)}
+            <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background, el.vars, htmlTheme)}
               sandbox={HTML_SANDBOX_LOCKED} scrolling="no" style={{
                 position: 'absolute', left: 0, top: 0, width: L.designW, height: L.designH,
                 border: 'none', background: 'transparent', pointerEvents: 'none',
@@ -127,7 +128,7 @@ function ThumbElement({ element: el, slide, presentation, imageTier }: {
         );
       }
       return (
-        <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background)}
+        <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background, el.vars, htmlTheme)}
           sandbox={HTML_SANDBOX_LOCKED} scrolling="no" style={{
             position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height,
             border: 'none', background: 'transparent', pointerEvents: 'none',

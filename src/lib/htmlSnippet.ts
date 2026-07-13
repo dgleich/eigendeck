@@ -4,6 +4,7 @@
 // gate that rejects cruddy input: not-HTML, scripts (won't run in the sandbox),
 // and remote resource references (blocked by the CSP). This function is PURE (no
 // Tauri / DOM deps) so it can guard both the local file picker and any remote fetch.
+import { stripVarsManifest } from './htmlVars.mjs';
 
 export interface SnippetCheck {
   ok: boolean;
@@ -52,7 +53,10 @@ export function validateHtmlSnippet(raw: unknown): SnippetCheck {
   if (!/<([a-z][a-z0-9-]*)\b[^>]*>/i.test(trimmed)) {
     problems.push('This doesn’t look like HTML — no elements were found.');
   }
-  if (/<script[\s>/]/i.test(html)) {
+  // The variables manifest (`<script type="application/eigendeck-vars+json">`, #138)
+  // is a non-executing data island — strip it before the script check so it's exempt
+  // while real scripts still trip the gate.
+  if (/<script[\s>/]/i.test(stripVarsManifest(html))) {
     problems.push('Contains a <script> — scripts don’t run in the sandbox. Use CSS animation or native form controls instead.');
   }
   if (/<[a-z][^>]*\son[a-z]+\s*=/i.test(html)) {

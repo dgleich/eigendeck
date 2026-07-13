@@ -70,6 +70,7 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
       // Locked (no-script, no-network, no same-origin). `interactive` elements
       // receive clicks so native controls (range/radio/details/:hover) work live;
       // static ones stay pass-through so they never block the slide.
+      const htmlTheme = resolveTheme(ctx.presentationTheme, ctx.slide.theme);
       // Scale mode: content laid out at its design size, contain-scaled into the box.
       if (htmlIsScaled(el)) {
         const L = htmlScaleLayout(pos.width, pos.height, el.scaleW!, el.scaleH!);
@@ -78,7 +79,7 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
             position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
             overflow: 'hidden', zIndex, ...style,
           }}>
-            <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background)}
+            <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background, el.vars, htmlTheme)}
               sandbox={HTML_SANDBOX_LOCKED} style={{
                 position: 'absolute', left: 0, top: 0, width: L.designW, height: L.designH,
                 border: 'none', background: 'transparent',
@@ -90,7 +91,7 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
         );
       }
       return (
-        <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background)}
+        <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background, el.vars, htmlTheme)}
           sandbox={HTML_SANDBOX_LOCKED} style={{
             position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
             border: 'none', background: 'transparent',

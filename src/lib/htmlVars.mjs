@@ -13,6 +13,7 @@
 //
 // The manifest <script> never executes (the sandbox has no allow-scripts) and is
 // stripped from the rendered body by stripVarsManifest().
+import { textBackgroundResolved } from './textStyle.mjs';
 
 /** The data-island script type carrying the variable manifest. */
 export const VARS_SCRIPT_TYPE = 'application/eigendeck-vars+json';
@@ -157,4 +158,65 @@ export function resolveVars(specs, vars) {
 /** Remove the manifest <script> from the html (it's metadata, never rendered). */
 export function stripVarsManifest(html) {
   return typeof html === 'string' ? html.replace(MANIFEST_RE, '') : html;
+}
+
+// ── Render-time splice ──────────────────────────────────────────────────────
+// A declared variable reaches the srcdoc TWO ways: as a CSS custom property
+// (`:root{--name:…}`, for the visual) and as a `{{name}}` token in the body (for
+// real text). Both go through the ONE shared builder (htmlElementSrcdoc) so every
+// render path is consistent.
+
+const DEFAULT_THEME = { background: '#ffffff', accent: '#3b82f6' };
+
+/** Resolve a color VALUE (literal or `tint:<base>` token) to a real CSS color for
+ *  the given slide theme. Tints resolve like card backgrounds (a wash relative to
+ *  the theme background) so they stay colored + contrasting on any theme. */
+export function resolveColorVar(value, theme) {
+  if (isTintToken(value)) {
+    return textBackgroundResolved({ boxTint: tintBase(value) }, theme || DEFAULT_THEME);
+  }
+  return typeof value === 'string' ? value : '';
+}
+
+// Sanitize a resolved value for the CSS `:root{--k:…}` context, by type. Returns
+// null to omit the declaration (never emit something that could break out of the
+// style). Numbers → bare number; color → validated color; string → a CSS string.
+function cssVarValue(type, value) {
+  if (type === 'int' || type === 'float') {
+    const n = Number(value);
+    return Number.isFinite(n) ? String(n) : null;
+  }
+  if (type === 'color') {
+    return isValidColor(value) ? String(value).trim() : null;
+  }
+  const s = String(value).replace(/[\\"<{}]/g, '').replace(/[\r\n]+/g, ' ');
+  return `"${s}"`;
+}
+
+// Escape a value for HTML text context (the `{{token}}` side).
+function htmlEscapeText(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/** Splice an html element's variables into its markup. Returns the body with the
+ *  manifest stripped and every `{{name}}` replaced (HTML-escaped), plus the
+ *  `:root{…}` CSS block declaring `--name` custom properties. No manifest → the
+ *  html is returned unchanged and `rootCss` is ''. Never throws. */
+export function spliceHtmlVars(html, vars, theme) {
+  if (typeof html !== 'string') return { html: html == null ? '' : String(html), rootCss: '' };
+  const specs = parseHtmlVars(html);
+  if (specs.length === 0) return { html, rootCss: '' };
+  const resolved = resolveVars(specs, vars);
+  let body = stripVarsManifest(html);
+  let decls = '';
+  for (const spec of specs) {
+    let val = resolved[spec.name];
+    if (spec.type === 'color') val = resolveColorVar(val, theme);
+    const css = cssVarValue(spec.type, val);
+    if (css != null) decls += `--${spec.name}:${css};`;
+    const token = `{{${spec.name}}}`;
+    if (body.indexOf(token) !== -1) body = body.split(token).join(htmlEscapeText(val));
+  }
+  return { html: body, rootCss: decls ? `:root{${decls}}` : '' };
 }

@@ -43,6 +43,12 @@ Each file starts with a metadata comment:
 | `typewriter.html` | Line typed out with a blinking caret (`steps()`) | |
 | `shimmer.html` | Moving sheen swept across a word (`background-clip:text`) | |
 | `progress-ring.html` | A conic-gradient ring that sweeps up to its target (`@property`) | |
+| `gauge.html` | Semicircular gauge driven by **variables** (needle/arc/readout) — no script | |
+
+**Variables (#138).** A snippet can declare typed variables in an
+`application/eigendeck-vars+json` data-island; they splice in as `var(--name)` (CSS)
+and `{{name}}` (text) and are edited in the Inspector's Variables section. `gauge.html`
+is the worked example. See `docs/html-element-variables.md`.
 
 See `docs/LLM-EDITING.md` (HTML Element) and the `frontend-slides-eigendeck` skill
 for authoring guidance.

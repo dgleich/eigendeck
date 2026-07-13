@@ -408,7 +408,39 @@ is **not** the text element (no rich-text presets) and **not** a demo (no script
   `html` is authored for.
 - `scaleW`, `scaleH`: the content's natural design width/height (slide px); only
   used when `scaleMode` is true. Missing/zero → no scaling (renders 1:1).
+- `vars`: optional `{ [name]: string | number }` — **variable VALUES** (#138). The
+  *declaration* (type/default/range/help) lives in a manifest inside `html` (below);
+  `vars` only overrides defaults. A value equal to the default may be omitted.
 - `position`: standard box (slide space, 1920×1080).
+
+**Variables (#138).** An html element can declare typed variables that splice into
+its markup two ways — as CSS custom properties (`var(--name)`, for the visual) and as
+`{{name}}` tokens (for real text) — so one knob (edited in the Inspector's **Variables**
+section) drives both. Declare them in a JSON data-island in `html` (it never executes
+— the sandbox has no scripts — and is stripped from the render):
+
+```html
+<script type="application/eigendeck-vars+json">
+{
+  "value": { "type": "float",  "default": 62, "min": 0, "max": 100, "step": 0.5, "label": "Value", "help": "Needle", "width": 72 },
+  "fill":  { "type": "color",  "default": "#22d3ee", "label": "Arc color" },
+  "unit":  { "type": "string", "default": "%" },
+  "note":  { "type": "string", "default": "", "multiline": true }
+}
+</script>
+<div class="arc" style="--stop:calc(var(--value)*1.8deg)"></div>
+<div class="readout">{{value}}{{unit}}</div>
+```
+
+- `type`: `"float" | "int" | "color" | "string"`. `default` required (synthesised per
+  type if absent). Numbers take `min`/`max`/`step`; `string` takes `multiline`.
+- `label` (Inspector name), `help` (explanation), `width` (control px) are optional.
+- **Color values** are a literal CSS color OR a theme **tint token** `tint:<base>`
+  (`tint:accent` follows the slide theme; `tint:#dc2626` a semantic tint). Tints
+  resolve to a real color **per slide theme** at render (like card backgrounds).
+- Splice is literal — **no logic/expressions**. Do math in CSS `calc(var(--name)*…)`.
+  See `docs/html-element-variables.md`; `examples-html-elements/gauge.html` is a full
+  example.
 
 **Sandbox — what works and what doesn't.** The HTML renders in a locked-down iframe,
 so the markup is contained and safe by construction:

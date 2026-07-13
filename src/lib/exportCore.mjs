@@ -412,16 +412,19 @@ export async function buildExportHtml(opts) {
         case 'arrow':
           inner += arrowSvgHtml(el, { theme: themeColorsByName(presentation.theme, slide && slide.theme) });
           break;
-        case 'html':
+        case 'html': {
           // Locked sandbox (no script/network) — the exported deck stays inert.
+          // Theme drives any tint-valued variables (#138).
+          const htmlTheme = themeColorsByName(presentation.theme, slide && slide.theme);
           if (htmlIsScaled(el)) {
             // Contain-scale: design-size frame transformed to fit the box (px units).
             const L = htmlScaleLayout(p.width, p.height, el.scaleW, el.scaleH);
-            inner += htmlElementScaledIframeHtml(el, absBox(p), L, 'px');
+            inner += htmlElementScaledIframeHtml(el, absBox(p), L, 'px', undefined, htmlTheme);
           } else {
-            inner += htmlElementIframeHtml(el, `${absBox(p)};border:none;background:transparent;`);
+            inner += htmlElementIframeHtml(el, `${absBox(p)};border:none;background:transparent;`, undefined, htmlTheme);
           }
           break;
+        }
       }
     }
 

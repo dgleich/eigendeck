@@ -90,14 +90,18 @@ Resolved value = `element.vars[name] ?? manifest[name].default`.
 ## Rendering
 
 All splicing happens in the **one shared builder** (`src/lib/htmlElement.mjs`
-`htmlElementSrcdoc`), so every render path (editor, present, thumbnail, HTML export,
-PDF/print, link overlay) gets it for free — no #98-class drift. Steps:
+`htmlElementSrcdoc`, via `spliceHtmlVars` in `htmlVars.mjs`), so every render path
+(editor, present, thumbnail, HTML export, PDF/print) gets it for free — no #98-class
+drift. Each path passes the element's `vars` + the resolved slide `theme`. Steps:
 
 1. `parseHtmlVars(html)` → declared vars; strip the manifest `<script>` from the body.
-2. Resolve values (defaults ⊕ `element.vars`).
+2. Resolve values (defaults ⊕ `element.vars`); resolve color tints against the theme.
 3. **CSS**: emit `:root{ --k: <cssValue>; … }` into the injected `<style>` (after the
    CSP/print-color-adjust rules). `cssValue` is type-sanitized (below).
 4. **HTML**: replace each `{{k}}` in the body with the HTML-escaped value.
+
+**Implemented** — verified end-to-end (real builder → headless render) across
+literal/tint colors and multiple themes. Example: `examples-html-elements/gauge.html`.
 
 ## Types, escaping, safety
 

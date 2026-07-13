@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseHtmlVars, validateVarValue, resolveVars, stripVarsManifest, isValidColor,
-  isTintToken, isColorValue, tintBase,
+  isTintToken, isColorValue, tintBase, spliceHtmlVars, resolveColorVar,
 } from './htmlVars.mjs';
 
 const manifest = (obj) =>
@@ -110,6 +110,55 @@ describe('tint tokens', () => {
     expect(spec.default).toBe('tint:accent');
     expect(validateVarValue(spec, 'tint:#16a34a')).toEqual({ ok: true, value: 'tint:#16a34a' });
     expect(validateVarValue(spec, 'tint:bogus').ok).toBe(false);
+  });
+});
+
+describe('spliceHtmlVars', () => {
+  const theme = { background: '#ffffff', accent: '#3b82f6' };
+
+  it('returns html unchanged with no manifest', () => {
+    expect(spliceHtmlVars('<div>x</div>', undefined, theme)).toEqual({ html: '<div>x</div>', rootCss: '' });
+  });
+
+  it('emits :root custom props and replaces {{tokens}}', () => {
+    const html = `${manifest({
+      value: { type: 'float', default: 62, min: 0, max: 100 },
+      unit: { type: 'string', default: '%' },
+    })}<div class="r">{{value}}{{unit}}</div>`;
+    const out = spliceHtmlVars(html, { value: 80 }, theme);
+    expect(out.rootCss).toContain('--value:80;');
+    expect(out.rootCss).toContain('--unit:"%";');
+    expect(out.html).toContain('<div class="r">80%</div>');
+    expect(out.html).not.toContain('<script');        // manifest stripped
+    expect(out.html).not.toContain('{{value}}');
+  });
+
+  it('resolves a tint color to a real theme color for both sides', () => {
+    const html = `${manifest({ fill: { type: 'color', default: 'tint:accent' } })}<b>{{fill}}</b>`;
+    const out = spliceHtmlVars(html, undefined, theme);
+    // A light-theme accent tint is a pale wash — a real hex, not the raw token.
+    expect(out.rootCss).toMatch(/--fill:#[0-9a-f]{6};/i);
+    expect(out.rootCss).not.toContain('tint:');
+    expect(out.html).toMatch(/<b>#[0-9a-f]{6}<\/b>/i);
+  });
+
+  it('HTML-escapes token values', () => {
+    const html = `${manifest({ t: { type: 'string', default: '' } })}<p>{{t}}</p>`;
+    const out = spliceHtmlVars(html, { t: '<img src=x>' }, theme);
+    expect(out.html).toContain('<p>&lt;img src=x&gt;</p>');
+  });
+
+  it('omits an out-of-range number decl by falling back to the default', () => {
+    const html = manifest({ v: { type: 'int', default: 5, min: 0, max: 10 } });
+    expect(spliceHtmlVars(html, { v: 999 }, theme).rootCss).toContain('--v:5;');
+  });
+});
+
+describe('resolveColorVar', () => {
+  it('passes literals through and resolves tints via theme', () => {
+    const theme = { background: '#ffffff', accent: '#3b82f6' };
+    expect(resolveColorVar('#e11d48', theme)).toBe('#e11d48');
+    expect(resolveColorVar('tint:accent', theme)).toMatch(/^#[0-9a-f]{6}$/i);
   });
 });
 

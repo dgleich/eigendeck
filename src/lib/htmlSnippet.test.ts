@@ -28,6 +28,14 @@ describe('validateHtmlSnippet (#137)', () => {
     expect(r.problems.join(' ')).toMatch(/script/i);
   });
 
+  it('allows the variables manifest but still rejects a real script beside it', () => {
+    const manifest = '<script type="application/eigendeck-vars+json">{"v":{"type":"int","default":1}}</script>';
+    expect(validateHtmlSnippet(`${manifest}<div>{{v}}</div>`).ok).toBe(true);
+    const withReal = validateHtmlSnippet(`${manifest}<div>ok</div><script>alert(1)</script>`);
+    expect(withReal.ok).toBe(false);
+    expect(withReal.problems.join(' ')).toMatch(/script/i);
+  });
+
   it('rejects inline event handlers', () => {
     const r = validateHtmlSnippet('<img src="data:," onerror="steal()"><div>x</div>');
     expect(r.ok).toBe(false);

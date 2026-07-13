@@ -15,6 +15,7 @@
 // toggle contentEditable for best-effort in-canvas editing. Every non-editing
 // target (present, export, thumbnail) uses the fully-locked empty sandbox.
 import { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
+import { spliceHtmlVars } from './htmlVars.mjs';
 
 /** Fully locked: no scripts, no same-origin, no network. Present / export / thumb. */
 export const HTML_SANDBOX_LOCKED = '';
@@ -30,9 +31,13 @@ export const HTML_ELEMENT_CSP =
   "default-src 'none'; img-src data:; media-src data:; style-src 'unsafe-inline'; font-src data:; base-uri 'none'; form-action 'none';";
 
 /** Wrap raw HTML into a full srcdoc document carrying the CSP. Transparent body so
- *  the element composites onto the slide; a per-element `background` can override. */
-export function htmlElementSrcdoc(rawHtml, background) {
-  const body = typeof rawHtml === 'string' ? rawHtml : '';
+ *  the element composites onto the slide; a per-element `background` can override.
+ *  When the html declares variables (#138), `vars` (stored values) + `theme` (for
+ *  tint resolution) are spliced in: `:root{--name:…}` custom properties for the CSS
+ *  side and `{{name}}` tokens for the HTML side; the manifest is stripped. Omitting
+ *  vars/theme still applies the manifest DEFAULTS (so every path stays consistent). */
+export function htmlElementSrcdoc(rawHtml, background, vars, theme) {
+  const { html: body, rootCss } = spliceHtmlVars(rawHtml, vars, theme);
   const bg = background ? String(background).replace(/[<>"]/g, '') : 'transparent';
   return '<!doctype html><html><head><meta charset="utf-8">'
     + `<meta http-equiv="Content-Security-Policy" content="${HTML_ELEMENT_CSP}">`
@@ -40,14 +45,14 @@ export function htmlElementSrcdoc(rawHtml, background) {
     // print/PDF — the parent's print-color-adjust does NOT cascade into a sandboxed
     // iframe, so without this the element loses its background + colours in print (#137).
     + `<style>html,body{margin:0;padding:0;height:100%;background:${bg};box-sizing:border-box;`
-    + `-webkit-print-color-adjust:exact;print-color-adjust:exact;}*{box-sizing:border-box;}</style>`
+    + `-webkit-print-color-adjust:exact;print-color-adjust:exact;}*{box-sizing:border-box;}${rootCss}</style>`
     + `</head><body>${body}</body></html>`;
 }
 
 /** The `<iframe>` HTML string for string-render targets (HTML export, PDF inline).
  *  `styleStr` positions/sizes the frame; `sandbox` defaults to the locked policy. */
-export function htmlElementIframeHtml(el, styleStr, sandbox = HTML_SANDBOX_LOCKED) {
-  const srcdoc = htmlEscapeForSrcdoc(htmlElementSrcdoc(el.html, el.background));
+export function htmlElementIframeHtml(el, styleStr, sandbox = HTML_SANDBOX_LOCKED, theme) {
+  const srcdoc = htmlEscapeForSrcdoc(htmlElementSrcdoc(el.html, el.background, el.vars, theme));
   return `<iframe srcdoc="${srcdoc}" style="${styleStr}" sandbox="${sandbox}"></iframe>`;
 }
 
@@ -55,8 +60,8 @@ export function htmlElementIframeHtml(el, styleStr, sandbox = HTML_SANDBOX_LOCKE
  *  positions the (clipping) wrapper in the caller's units; `L` carries the design
  *  size + centering offsets ALREADY in `unit` (px for export, in for print) and the
  *  unitless `scale`. Mirrors the DOM paths' wrapper+transform. */
-export function htmlElementScaledIframeHtml(el, boxStyleStr, L, unit = 'px', sandbox = HTML_SANDBOX_LOCKED) {
-  const srcdoc = htmlEscapeForSrcdoc(htmlElementSrcdoc(el.html, el.background));
+export function htmlElementScaledIframeHtml(el, boxStyleStr, L, unit = 'px', sandbox = HTML_SANDBOX_LOCKED, theme) {
+  const srcdoc = htmlEscapeForSrcdoc(htmlElementSrcdoc(el.html, el.background, el.vars, theme));
   const iframeStyle =
     `position:absolute;left:0;top:0;width:${L.designW}${unit};height:${L.designH}${unit};`
     + 'border:none;background:transparent;'

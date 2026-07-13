@@ -1,0 +1,49 @@
+<!-- eigendeck-html-element name="Gauge"
+     A semicircular gauge whose needle, arc fill and readout are all driven by
+     VARIABLES (#138) — no script. Edit them in the Inspector's Variables section:
+       • value (0–100) — needle angle + arc fill, via var(--value)
+       • fill        — arc/needle color (a literal color OR a theme tint)
+       • unit, label — real text, via {{unit}} / {{label}}
+     The manifest below declares them; the element stores the chosen values.
+     Suggested box ~460×340. -->
+<script type="application/eigendeck-vars+json">
+{
+  "value": { "type": "float",  "default": 62, "min": 0, "max": 100, "step": 0.5, "label": "Value", "width": 72 },
+  "fill":  { "type": "color",  "default": "#22d3ee", "label": "Arc color" },
+  "unit":  { "type": "string", "default": "%", "label": "Unit", "width": 48 },
+  "label": { "type": "string", "default": "coverage", "label": "Caption" }
+}
+</script>
+<style>
+  html,body{height:100%;margin:0}
+  .wrap{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:6px;font-family:system-ui,sans-serif}
+  .gauge{position:relative;width:300px;height:162px}
+  .track,.fill{position:absolute;left:10px;top:10px;width:280px;height:280px;border-radius:50%;
+    clip-path:inset(0 0 50% 0)}
+  .track{border:24px solid #1e293b;box-sizing:border-box}
+  /* Colored arc, filled to var(--value) (semicircle 0..100 → 0..180deg). */
+  .fill{
+    -webkit-mask:radial-gradient(circle at 140px 140px, transparent 116px, #000 117px);
+            mask:radial-gradient(circle at 140px 140px, transparent 116px, #000 117px);
+    background:conic-gradient(from 270deg,
+      var(--fill) calc(var(--value) * 1.8deg),
+      transparent calc(var(--value) * 1.8deg));
+  }
+  .needle{position:absolute;left:147px;top:28px;width:6px;height:118px;border-radius:3px;
+    background:#e2e8f0;transform-origin:3px 118px;
+    transform:rotate(calc(-90deg + var(--value) * 1.8deg))}
+  .cap{position:absolute;left:130px;top:130px;width:34px;height:34px;border-radius:50%;background:#e2e8f0}
+  .num{font-size:44px;font-weight:800;color:#e2e8f0;letter-spacing:-1px}
+  .lbl{font-size:18px;color:#64748b;letter-spacing:.16em;text-transform:uppercase}
+</style>
+<div class="wrap">
+  <div class="gauge">
+    <div class="track"></div>
+    <div class="fill"></div>
+    <div class="needle"></div>
+    <div class="cap"></div>
+  </div>
+  <div class="num">{{value}}{{unit}}</div>
+  <div class="lbl">{{label}}</div>
+</div>

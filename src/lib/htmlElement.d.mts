@@ -2,20 +2,27 @@ export const HTML_SANDBOX_LOCKED: string;
 export const HTML_SANDBOX_EDITABLE: string;
 export const HTML_ELEMENT_CSP: string;
 
-export function htmlElementSrcdoc(rawHtml: string | undefined | null, background?: string): string;
+export function htmlElementSrcdoc(
+  rawHtml: string | undefined | null,
+  background?: string,
+  vars?: Record<string, string | number>,
+  theme?: { background?: string; accent?: string },
+): string;
 
 export function htmlElementIframeHtml(
-  el: { html?: string; background?: string },
+  el: { html?: string; background?: string; vars?: Record<string, string | number> },
   styleStr: string,
   sandbox?: string,
+  theme?: { background?: string; accent?: string },
 ): string;
 
 export function htmlElementScaledIframeHtml(
-  el: { html?: string; background?: string },
+  el: { html?: string; background?: string; vars?: Record<string, string | number> },
   boxStyleStr: string,
   L: { designW: number; designH: number; scale: number; offsetX: number; offsetY: number },
   unit?: string,
   sandbox?: string,
+  theme?: { background?: string; accent?: string },
 ): string;
 
 export function htmlIsScaled(
