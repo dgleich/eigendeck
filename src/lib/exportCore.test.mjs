@@ -57,6 +57,33 @@ describe('buildExportHtml', () => {
     expect(html).toContain('Test Author');
   });
 
+  // #85 (font-embedding variant) — the export embeds the caller's @font-face CSS
+  // in the #eigendeck-fonts <style> block and, when present, does NOT fall back to
+  // the PT-Sans-only Google Fonts CDN. The app export always passes fontFacesCss;
+  // the CLI export must too (see export-cli-wiring test below) so CLI-exported
+  // decks in a non-PT-Sans font don't render in a fallback face / depend on the
+  // network.
+  it('embeds fontFacesCss and skips the CDN fallback when it is provided', async () => {
+    const css = "@font-face { font-family: 'Lato'; src: url('data:font/ttf;base64,AAAA') format('truetype'); }";
+    const html = await buildExportHtml({
+      presentation: makePresentation(),
+      readFile: async () => new Uint8Array([0]),
+      readTextFile: async () => '',
+      fontFacesCss: css,
+    });
+    expect(html).toContain(css);                              // the deck's fonts embedded
+    expect(html).not.toContain('fonts.googleapis.com');        // no CDN dependency
+  });
+
+  it('falls back to the PT-Sans CDN import only when fontFacesCss is absent', async () => {
+    const html = await buildExportHtml({
+      presentation: makePresentation(),
+      readFile: async () => new Uint8Array([0]),
+      readTextFile: async () => '',
+    });
+    expect(html).toContain('fonts.googleapis.com');
+  });
+
   it('scale-mode html exports a contain-scaled frame in a clipped px box (#137)', async () => {
     const p = makePresentation({
       slides: [{

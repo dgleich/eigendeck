@@ -14,7 +14,7 @@ import { invoke } from '@tauri-apps/api/core';
 // @ts-ignore — pure JS module
 import { buildExportHtml } from './lib/exportCore.mjs';
 import { renderMathInHtml, applyMathPreamble } from './lib/mathjax';
-import { fontForPreset, fontFamilyForPreset } from './lib/fonts';
+import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
 import { mathCacheKey } from './lib/mathjaxRenderer';
 import { pngBytesToDataUrl, previewLookupKey, pickLargestVariant, type CacheVariant } from './lib/assetCachePreview.mjs';
 
@@ -147,8 +147,20 @@ async function main() {
     }
     const cachingRender = makeCachingRenderMath(preamble);
 
+    // #85: embed @font-face data URLs for every font the deck uses, exactly like
+    // the app export (fileOps.buildPresentationExportHtml). Without this the CLI
+    // omitted fontFacesCss → exportCore fell back to the PT-Sans-only Google Fonts
+    // CDN, so a CLI-exported deck using any other font rendered in a fallback
+    // face on machines without it installed (and depended on network). Runs in
+    // the same hidden webview that already fetches /fonts/* for math, so the
+    // fetch resolves headlessly.
+    let fontFacesCss = '';
+    try { fontFacesCss = await buildEmbeddedFontFacesCSS(presentation); }
+    catch (e) { console.warn('font embedding (cli) failed:', e); }
+
     const html = await buildExportHtml({
       presentation,
+      fontFacesCss,
       readFile: async (path: string) => {
         const data = await invoke<number[]>('db_get_asset', { path });
         return new Uint8Array(data);
