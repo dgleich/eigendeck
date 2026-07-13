@@ -153,7 +153,11 @@ export async function renderNotebookElementHtml(
   //    html/body sized to fill so the .nb-body scrolls.
   const doc = `<!doctype html><html><head><meta charset="utf-8">`
     + `<style>${nbCss}\n`
-    + `html,body{margin:0;padding:0;height:100%;}`
+    // print-color-adjust:exact so the notebook's theme background/colours survive
+    // when the exported HTML is printed — the parent's does NOT cascade into this
+    // sandboxed srcdoc iframe, so without it dark-theme output is unreadable (light
+    // text on a stripped-to-white background). Same fix as the html element (#137).
+    + `html,body{margin:0;padding:0;height:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact;}`
     + `.el-notebook{height:100%;}`
     + `.el-notebook .nb-frame{height:100%;}`
     + `</style></head><body>`

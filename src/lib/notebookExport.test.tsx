@@ -82,6 +82,14 @@ describe('renderNotebookElementHtml', () => {
     expect(html).toContain('nb-body');
   });
 
+  it('sets print-color-adjust:exact so dark-theme output survives print (#137)', async () => {
+    // Without it, printing the exported HTML strips the notebook's dark background
+    // (the parent's print-color-adjust doesn't cascade into the sandboxed iframe),
+    // leaving light dark-theme text on white — unreadable.
+    const html = await renderNotebookElementHtml(ELEMENT, SLIDE, PRESENTATION, getAssetBytes);
+    expect(html).toContain('print-color-adjust:exact');
+  });
+
   it('renders html/svg cell outputs (sanitized) — not blanked by async sanitize', async () => {
     // Regression: SanitizedBlock sanitizes in a useEffect, which renderToStaticMarkup
     // can't run, so without the sync export path html/svg outputs would export EMPTY.
