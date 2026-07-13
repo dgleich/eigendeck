@@ -838,14 +838,15 @@ export function PropertiesPanel() {
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', marginTop: 8 }}>
                     <input type="checkbox" checked={!!selectedEl.scaleMode}
                       onChange={(e) => updateElement(selectedEl.id, (e.target.checked
-                        // Capture the current box as the design size, then resizing scales.
-                        ? { scaleMode: true, scaleW: Math.round(selectedEl.position.width), scaleH: Math.round(selectedEl.position.height) }
-                        : { scaleMode: undefined }) as any)} />
+                        // Just flip it on — HtmlBox measures the content's natural size and
+                        // writes scaleW/scaleH. Off clears them so re-enabling re-measures.
+                        ? { scaleMode: true }
+                        : { scaleMode: undefined, scaleW: undefined, scaleH: undefined }) as any)} />
                     Scale to fit
                   </label>
                   <HelpText>
-                    Content scales to fill the box, keeping its aspect ratio. The current size
-                    becomes the design size — resize the box to grow or shrink the content.
+                    Fits the content's natural size into the box, keeping its aspect ratio —
+                    resize the box to grow or shrink the content.
                   </HelpText>
                 </PropSection>
               </>

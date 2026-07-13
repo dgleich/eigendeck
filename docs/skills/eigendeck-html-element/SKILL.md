@@ -80,11 +80,11 @@ them. The translation is direct:
   clipping it**. The content is laid out at its **design size** and CSS-transformed to
   fit. Use this when your markup is authored at a fixed pixel size (a diagram, a card)
   and you want the box to act like a viewport onto it.
-- **`scaleW`, `scaleH`** — the design width/height (in slide px) the content is
-  authored at; only used when `scaleMode` is `true`. Missing or zero → no scaling
-  (renders 1:1). In the app, ticking the scale checkbox captures the box's current size
-  as the design size; in JSON, set these explicitly to whatever size you authored the
-  HTML for.
+- **`scaleW`, `scaleH`** — the content's natural design width/height (in slide px);
+  only used when `scaleMode` is `true`. Missing or zero → no scaling (renders 1:1). In
+  the app, ticking the scale checkbox MEASURES the content's natural size and stores it
+  (so toggling is idempotent); in JSON, set these explicitly to whatever size you
+  authored the HTML for.
 - **`position`** — the box in slide space. The slide canvas is **1920×1080**, origin
   top-left; `width`/`height` are in that space.
 

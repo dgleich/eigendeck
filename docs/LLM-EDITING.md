@@ -402,10 +402,11 @@ is **not** the text element (no rich-text presets) and **not** a demo (no script
 - `scaleMode`: optional boolean (default false). When true the content is scaled to
   **fit the box** (uniform "contain" — aspect ratio preserved, letterboxed), so
   resizing the box grows/shrinks fixed-size markup instead of clipping it. The content
-  is laid out at its **design size** (`scaleW`×`scaleH`) and CSS-transformed to fit.
-  In the app the checkbox captures the box's current size as the design size; in JSON,
-  set `scaleW`/`scaleH` to the size the `html` is authored for.
-- `scaleW`, `scaleH`: design width/height (slide px) the content is authored at; only
+  is laid out at its **natural design size** (`scaleW`×`scaleH`) and CSS-transformed to
+  fit. In the app, ticking the checkbox MEASURES the content's natural size and stores
+  it (so toggling it is idempotent); in JSON, set `scaleW`/`scaleH` to the size the
+  `html` is authored for.
+- `scaleW`, `scaleH`: the content's natural design width/height (slide px); only
   used when `scaleMode` is true. Missing/zero → no scaling (renders 1:1).
 - `position`: standard box (slide space, 1920×1080).
 

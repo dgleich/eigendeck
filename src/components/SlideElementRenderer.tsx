@@ -423,6 +423,31 @@ function HtmlBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
     setEditing(false);
   };
 
+  // Scale-to-fit: measure the CONTENT's natural size once (when scale mode is on
+  // but not yet measured) and store it as the design size. The editor iframe is
+  // same-origin, so we can read the framed document: shrink the body to fit its
+  // content, read the scroll extent (synchronous — no visible flicker), restore.
+  // Falls back to the box when the content has no intrinsic size (e.g. width:100%).
+  useEffect(() => {
+    if (!element.scaleMode || (element.scaleW && element.scaleH)) return;
+    let cancelled = false;
+    const measure = () => {
+      if (cancelled) return;
+      const b = iframeRef.current?.contentDocument?.body;
+      if (!b) return;
+      const pw = b.style.width, ph = b.style.height;
+      b.style.width = 'max-content'; b.style.height = 'max-content';
+      const w = Math.round(b.scrollWidth), h = Math.round(b.scrollHeight);
+      b.style.width = pw; b.style.height = ph;
+      if (w > 0 && h > 0) onUpdate({ scaleW: w, scaleH: h } as any);
+      else onUpdate({ scaleW: Math.round(element.position.width), scaleH: Math.round(element.position.height) } as any);
+    };
+    const iframe = iframeRef.current;
+    iframe?.addEventListener('load', measure);
+    measure();
+    return () => { cancelled = true; iframe?.removeEventListener('load', measure); };
+  }, [element.scaleMode, element.scaleW, element.scaleH, element.position.width, element.position.height, onUpdate]);
+
   // Enter edit mode: make the framed body contentEditable + focus it.
   useEffect(() => {
     if (!editing) return;
