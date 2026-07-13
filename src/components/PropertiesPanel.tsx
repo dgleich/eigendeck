@@ -1470,10 +1470,17 @@ function VarRow({ spec, value, onChange }: {
             style={{ width: 26, height: 22, padding: 0, border: '1px solid #d1d5db',
               borderRadius: 4, cursor: 'pointer', flex: '0 0 auto' }} />
         )}
-        <input type="text" value={text} spellCheck={false}
-          inputMode={isNum ? 'decimal' : undefined}
-          onChange={(e) => { setText(e.target.value); commit(e.target.value); }}
-          style={box} />
+        {spec.type === 'string' && spec.multiline ? (
+          <textarea value={text} spellCheck={false} rows={3}
+            onChange={(e) => { setText(e.target.value); commit(e.target.value); }}
+            style={{ ...box, minHeight: 46, resize: 'vertical', lineHeight: 1.35,
+              fontFamily: 'inherit', whiteSpace: 'pre-wrap' }} />
+        ) : (
+          <input type="text" value={text} spellCheck={false}
+            inputMode={isNum ? 'decimal' : undefined}
+            onChange={(e) => { setText(e.target.value); commit(e.target.value); }}
+            style={box} />
+        )}
         {!valid && (
           <span title="Value doesn’t validate" aria-label="invalid"
             style={{ color: '#dc2626', fontWeight: 700, flex: '0 0 auto' }}>✕</span>

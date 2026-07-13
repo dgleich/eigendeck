@@ -11,6 +11,8 @@ export interface VarSpec {
   help?: string;
   /** Inspector control width in px (author hint). */
   width?: number;
+  /** `string` only: render a multi-line textarea instead of a single-line box. */
+  multiline?: boolean;
 }
 
 export const VARS_SCRIPT_TYPE: string;

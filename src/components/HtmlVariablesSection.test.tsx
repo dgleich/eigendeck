@@ -46,6 +46,19 @@ describe('HtmlVariablesSection', () => {
     expect(onChange).toHaveBeenLastCalledWith({}); // key dropped
   });
 
+  it('renders a textarea for a multiline string', () => {
+    const html = manifest({ caption: { type: 'string', default: 'a\nb', multiline: true, label: 'Caption' } });
+    const onChange = vi.fn();
+    const { container } = render(
+      <HtmlVariablesSection html={html} vars={undefined} onChange={onChange} />,
+    );
+    const ta = container.querySelector('textarea') as HTMLTextAreaElement;
+    expect(ta).toBeTruthy();
+    expect(ta.value).toBe('a\nb');
+    fireEvent.change(ta, { target: { value: 'line1\nline2' } });
+    expect(onChange).toHaveBeenLastCalledWith({ caption: 'line1\nline2' });
+  });
+
   it('does not write while the value is invalid', () => {
     const html = manifest({ v: { type: 'int', default: 1 } });
     const onChange = vi.fn();

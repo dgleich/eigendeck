@@ -86,6 +86,7 @@ export function parseHtmlVars(html) {
       spec.default = isValidColor(raw.default) ? String(raw.default).trim() : '#000000';
     } else {
       spec.default = raw.default == null ? '' : String(raw.default);
+      if (raw.multiline === true) spec.multiline = true; // render a textarea
     }
 
     if (typeof raw.label === 'string' && raw.label.trim()) spec.label = raw.label.trim();

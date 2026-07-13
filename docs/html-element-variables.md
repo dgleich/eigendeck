@@ -65,6 +65,7 @@ builder strips it from the rendered body):
 - **`label`**: optional inspector display name (defaults to the key).
 - **`help`**: optional explanation shown beneath the control in the inspector.
 - **`width`**: optional inspector control width in px (defaults: 72 numeric/color, 150 string).
+- **`multiline`** (`string` only): render a multi-line textarea instead of a single-line box.
 - The var **key** is the name used everywhere: CSS `var(--value)`, HTML `{{value}}`.
   It must be a safe identifier (`[A-Za-z_][\w-]*`); malformed entries are dropped.
 
@@ -120,7 +121,7 @@ shown only when the manifest declares any. One compact typed control per variabl
 each `spec.width` wide:
 - `float` / `int` → text box + a slider when `min`/`max` are given (respecting `step`).
 - `color` → a native color swatch + a hex/name text box.
-- `string` → text box.
+- `string` → text box, or a multi-line textarea when `multiline` is set.
 
 A value that fails validation flags a red **✕** next to the control and is **not
 written** to the store (the last valid value stands). Each valid edit writes
