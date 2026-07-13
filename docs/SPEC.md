@@ -167,6 +167,10 @@ All content on a slide is an element. Five types:
   `allow-same-origin` (still script-less) sandbox to enable best-effort in-place
   contentEditable; all other paths use a fully-locked sandbox.
 - `background` optional (default transparent). Inserted from Insert → HTML Element.
+- `interactive` (optional) lets the frame receive mouse events for script-less native
+  interactivity (range/radio `:checked`/`:hover`). `scaleMode` (+ `scaleW`/`scaleH`)
+  scales the content to fit the box (uniform contain, aspect preserved) so resizing
+  grows/shrinks fixed-size markup instead of clipping it.
 - See `docs/LLM-EDITING.md` for the authoring reference.
 
 ---

@@ -9,3 +9,19 @@ export function htmlElementIframeHtml(
   styleStr: string,
   sandbox?: string,
 ): string;
+
+export function htmlElementScaledIframeHtml(
+  el: { html?: string; background?: string },
+  boxStyleStr: string,
+  L: { designW: number; designH: number; scale: number; offsetX: number; offsetY: number },
+  unit?: string,
+  sandbox?: string,
+): string;
+
+export function htmlIsScaled(
+  el: { scaleMode?: boolean; scaleW?: number; scaleH?: number } | null | undefined,
+): boolean;
+
+export function htmlScaleLayout(
+  bw: number, bh: number, sw: number, sh: number,
+): { designW: number; designH: number; scale: number; offsetX: number; offsetY: number };

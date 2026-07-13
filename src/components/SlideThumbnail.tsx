@@ -13,7 +13,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { ArrowGlyph } from './ArrowGlyph';
 import { CoverView } from './ElementView';
 import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
-import { htmlElementSrcdoc, HTML_SANDBOX_LOCKED } from '../lib/htmlElement.mjs';
+import { htmlElementSrcdoc, HTML_SANDBOX_LOCKED, htmlIsScaled, htmlScaleLayout } from '../lib/htmlElement.mjs';
 import { ELEMENT_PLACEHOLDERS as PH } from '../lib/elementPlaceholders.mjs';
 import { resolveTheme } from '../lib/themes';
 import { imageVisualStyle } from '../lib/imageVisualStyle';
@@ -112,6 +112,20 @@ function ThumbElement({ element: el, slide, presentation, imageTier }: {
       // Static + locked (no script/network) → render the real thing for a true
       // mini-preview; it scales with the thumbnail's CSS transform.
       const p = el.position;
+      if (htmlIsScaled(el)) {
+        const L = htmlScaleLayout(p.width, p.height, el.scaleW!, el.scaleH!);
+        return (
+          <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.width, height: p.height, overflow: 'hidden' }}>
+            <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background)}
+              sandbox={HTML_SANDBOX_LOCKED} scrolling="no" style={{
+                position: 'absolute', left: 0, top: 0, width: L.designW, height: L.designH,
+                border: 'none', background: 'transparent', pointerEvents: 'none',
+                transform: `translate(${L.offsetX}px, ${L.offsetY}px) scale(${L.scale})`,
+                transformOrigin: 'top left',
+              }} />
+          </div>
+        );
+      }
       return (
         <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background)}
           sandbox={HTML_SANDBOX_LOCKED} scrolling="no" style={{

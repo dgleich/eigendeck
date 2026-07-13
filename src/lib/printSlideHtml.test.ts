@@ -53,6 +53,24 @@ describe('[simplify-guard] buildPrintSlideHtml render snapshot', () => {
     expect(out).not.toContain('allow-scripts');
   });
 
+  it('scale-mode html: contain-scaled frame in a clipped box, inch lengths + unitless scale (#137)', () => {
+    // design 200×100 (2:1) inside a 400×100 box → width binds, scale = 400/200 = 2? no:
+    // min(400/200, 100/100) = min(2,1) = 1, letterboxed horizontally.
+    const slide = {
+      id: 's1', layout: 'default', notes: '',
+      elements: [{ id: 'h1', type: 'html', html: '<h1>Hi</h1>', scaleMode: true, scaleW: 200, scaleH: 100,
+        position: { x: 0, y: 0, width: 400, height: 100 } }],
+    } as unknown as Slide;
+    const presentation = { title: 'T', theme: 'white', config: { width: 1920, height: 1080 }, slides: [slide] } as unknown as Presentation;
+    const out = buildPrintSlideHtml(slide, presentation, new Map(), new Map());
+    expect(out).toContain('overflow:hidden;');            // clipping wrapper
+    expect(out).toContain('scale(1);');                   // ratio (unit-free) preserved
+    expect(out).toContain('transform-origin:top left;');
+    expect(out).toContain('in;');                         // inner lengths inch-converted
+    expect(out).toContain('sandbox=""');                  // still locked
+    expect(out).not.toContain('allow-scripts');
+  });
+
   it('renders a curved arrow as an SVG <path> in the print/PDF path (#129)', () => {
     const slide = {
       id: 's1', layout: 'default', notes: '',

@@ -9,7 +9,7 @@ import { arrowBBox } from '../lib/arrowGeometry.mjs';
 import { ArrowGlyph } from './ArrowGlyph';
 import { imageVisualStyle } from '../lib/imageVisualStyle';
 import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
-import { htmlElementSrcdoc, HTML_SANDBOX_EDITABLE } from '../lib/htmlElement.mjs';
+import { htmlElementSrcdoc, HTML_SANDBOX_EDITABLE, htmlIsScaled, htmlScaleLayout } from '../lib/htmlElement.mjs';
 import { sanitizeRichText } from '../lib/sanitizeRichText';
 import { useAssetUrl } from '../lib/demoAssets';
 import { demoVarsCssForSlide } from '../lib/demoThemeInject';
@@ -470,9 +470,25 @@ function HtmlBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
       className="el-html" isSelected={isSelected}
       onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
     >
-      <iframe ref={iframeRef} title="HTML element" srcDoc={srcDoc} sandbox={HTML_SANDBOX_EDITABLE}
-        style={{ width: '100%', height: '100%', border: 'none', background: 'transparent',
-          pointerEvents: live ? 'auto' : 'none' }} />
+      {htmlIsScaled(element) ? (() => {
+        // Scale mode: design-size iframe contain-scaled into the box (clipped).
+        // Editing/interacting still work through the transformed frame; the raw
+        // source stays 1:1 in the Inspector.
+        const L = htmlScaleLayout(element.position.width, element.position.height, element.scaleW!, element.scaleH!);
+        return (
+          <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+            <iframe ref={iframeRef} title="HTML element" srcDoc={srcDoc} sandbox={HTML_SANDBOX_EDITABLE}
+              style={{ position: 'absolute', left: 0, top: 0, width: L.designW, height: L.designH,
+                border: 'none', background: 'transparent',
+                transform: `translate(${L.offsetX}px, ${L.offsetY}px) scale(${L.scale})`, transformOrigin: 'top left',
+                pointerEvents: live ? 'auto' : 'none' }} />
+          </div>
+        );
+      })() : (
+        <iframe ref={iframeRef} title="HTML element" srcDoc={srcDoc} sandbox={HTML_SANDBOX_EDITABLE}
+          style={{ width: '100%', height: '100%', border: 'none', background: 'transparent',
+            pointerEvents: live ? 'auto' : 'none' }} />
+      )}
       {!live && (
         <div className="demo-overlay"
           onDoubleClick={onDoubleClick}

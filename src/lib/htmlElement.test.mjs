@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  htmlElementSrcdoc, htmlElementIframeHtml,
+  htmlElementSrcdoc, htmlElementIframeHtml, htmlElementScaledIframeHtml,
+  htmlIsScaled, htmlScaleLayout,
   HTML_SANDBOX_LOCKED, HTML_SANDBOX_EDITABLE, HTML_ELEMENT_CSP,
 } from './htmlElement.mjs';
 
@@ -77,5 +78,63 @@ describe('htmlElementIframeHtml (#137)', () => {
     expect(HTML_SANDBOX_EDITABLE).toBe('allow-same-origin');
     const editable = htmlElementIframeHtml({ html: 'x' }, '', HTML_SANDBOX_EDITABLE);
     expect(editable).toContain('sandbox="allow-same-origin"');
+  });
+});
+
+describe('html scale mode (#137)', () => {
+  it('htmlIsScaled needs the flag AND a design size', () => {
+    expect(htmlIsScaled({ scaleMode: true, scaleW: 200, scaleH: 100 })).toBe(true);
+    expect(htmlIsScaled({ scaleMode: true })).toBe(false);          // no design size
+    expect(htmlIsScaled({ scaleW: 200, scaleH: 100 })).toBe(false); // flag off
+    expect(htmlIsScaled(null)).toBe(false);
+  });
+
+  it('contain layout: box wider than design → fit by height, centred horizontally', () => {
+    // design 200×100 (2:1), box 800×200 (4:1). Height binds: scale = 200/100 = 2.
+    const L = htmlScaleLayout(800, 200, 200, 100);
+    expect(L.scale).toBe(2);
+    expect(L.designW).toBe(200); expect(L.designH).toBe(100);
+    expect(L.offsetY).toBe(0);                    // fills the height
+    expect(L.offsetX).toBe((800 - 200 * 2) / 2);  // = 200, letterboxed sides
+  });
+
+  it('contain layout: box taller than design → fit by width, centred vertically', () => {
+    // design 200×100 (2:1), box 200×400. Width binds: scale = 200/200 = 1.
+    const L = htmlScaleLayout(200, 400, 200, 100);
+    expect(L.scale).toBe(1);
+    expect(L.offsetX).toBe(0);
+    expect(L.offsetY).toBe((400 - 100) / 2);      // = 150
+  });
+
+  it('same aspect → exact fill, no letterbox', () => {
+    const L = htmlScaleLayout(400, 200, 200, 100);
+    expect(L.scale).toBe(2);
+    expect(L.offsetX).toBe(0); expect(L.offsetY).toBe(0);
+  });
+
+  it('degenerate design size falls back to scale 1 (no-op)', () => {
+    const L = htmlScaleLayout(300, 200, 0, 0);
+    expect(L.scale).toBe(1);
+    expect(L.designW).toBe(300); expect(L.designH).toBe(200);
+  });
+
+  it('scaled string render wraps a clipped box around a transformed frame', () => {
+    const el = { html: '<div>x</div>', scaleMode: true, scaleW: 200, scaleH: 100 };
+    const L = htmlScaleLayout(800, 200, 200, 100);
+    const out = htmlElementScaledIframeHtml(el, 'position:absolute;left:10px;top:20px;width:800px;height:200px', L, 'px');
+    expect(out).toMatch(/^<div style="position:absolute;left:10px;top:20px;width:800px;height:200px;overflow:hidden;">/);
+    expect(out).toContain('width:200px;height:100px;');          // design size on the frame
+    expect(out).toContain('transform:translate(200px,0px) scale(2);');
+    expect(out).toContain('transform-origin:top left;');
+    expect(out).toContain(`sandbox="${HTML_SANDBOX_LOCKED}"`);   // still locked
+    expect(out).toContain('&lt;div&gt;x&lt;/div&gt;');           // body srcdoc-escaped
+  });
+
+  it('scaled string render carries inches for the print path (scale stays unitless)', () => {
+    const el = { html: 'x', scaleMode: true, scaleW: 200, scaleH: 100 };
+    const out = htmlElementScaledIframeHtml(el, 'position:absolute;width:4in;height:1in',
+      { designW: 1.0, designH: 0.5, offsetX: 1.0, offsetY: 0, scale: 2 }, 'in');
+    expect(out).toContain('width:1in;height:0.5in;');
+    expect(out).toContain('transform:translate(1in,0in) scale(2);');   // ratio unchanged
   });
 });

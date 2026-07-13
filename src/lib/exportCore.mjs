@@ -2,7 +2,7 @@ import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { isEigendeckDemo } from './assetTypes.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
 import { coverHtml, arrowSvgHtml, imageHtml } from './elementHtml.mjs';
-import { htmlElementIframeHtml } from './htmlElement.mjs';
+import { htmlElementIframeHtml, htmlElementScaledIframeHtml, htmlIsScaled, htmlScaleLayout } from './htmlElement.mjs';
 import { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
 import { ELEMENT_PLACEHOLDERS as PH } from './elementPlaceholders.mjs';
 // Re-exported so existing importers (incl. exportCore.test.mjs) are unaffected.
@@ -414,7 +414,13 @@ export async function buildExportHtml(opts) {
           break;
         case 'html':
           // Locked sandbox (no script/network) — the exported deck stays inert.
-          inner += htmlElementIframeHtml(el, `${absBox(p)};border:none;background:transparent;`);
+          if (htmlIsScaled(el)) {
+            // Contain-scale: design-size frame transformed to fit the box (px units).
+            const L = htmlScaleLayout(p.width, p.height, el.scaleW, el.scaleH);
+            inner += htmlElementScaledIframeHtml(el, absBox(p), L, 'px');
+          } else {
+            inner += htmlElementIframeHtml(el, `${absBox(p)};border:none;background:transparent;`);
+          }
           break;
       }
     }

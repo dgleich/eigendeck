@@ -50,3 +50,41 @@ export function htmlElementIframeHtml(el, styleStr, sandbox = HTML_SANDBOX_LOCKE
   const srcdoc = htmlEscapeForSrcdoc(htmlElementSrcdoc(el.html, el.background));
   return `<iframe srcdoc="${srcdoc}" style="${styleStr}" sandbox="${sandbox}"></iframe>`;
 }
+
+/** Scale-mode iframe for string-render targets (HTML export, PDF/print). `boxStyleStr`
+ *  positions the (clipping) wrapper in the caller's units; `L` carries the design
+ *  size + centering offsets ALREADY in `unit` (px for export, in for print) and the
+ *  unitless `scale`. Mirrors the DOM paths' wrapper+transform. */
+export function htmlElementScaledIframeHtml(el, boxStyleStr, L, unit = 'px', sandbox = HTML_SANDBOX_LOCKED) {
+  const srcdoc = htmlEscapeForSrcdoc(htmlElementSrcdoc(el.html, el.background));
+  const iframeStyle =
+    `position:absolute;left:0;top:0;width:${L.designW}${unit};height:${L.designH}${unit};`
+    + 'border:none;background:transparent;'
+    + `transform:translate(${L.offsetX}${unit},${L.offsetY}${unit}) scale(${L.scale});transform-origin:top left;`;
+  return `<div style="${boxStyleStr};overflow:hidden;">`
+    + `<iframe srcdoc="${srcdoc}" style="${iframeStyle}" sandbox="${sandbox}"></iframe></div>`;
+}
+
+/** Whether the element opts into contain-scaling (needs both the flag and a design
+ *  size to compare the box against). */
+export function htmlIsScaled(el) {
+  return !!(el && el.scaleMode && el.scaleW > 0 && el.scaleH > 0);
+}
+
+/** Contain-scale layout for a scale-mode html element (#137). Given the live box
+ *  (bw×bh) and the captured design size (sw×sh), returns the UNIFORM scale factor
+ *  (aspect preserved) and the centering offset that fits the design-size content
+ *  inside the box, letterboxed. `scale` is a pure ratio; `designW/H` and
+ *  `offsetX/Y` are lengths in the SAME unit as the box — so a caller working in
+ *  other units (print inches) converts those lengths and leaves `scale` as-is.
+ *  Missing/degenerate design size falls back to the box (scale 1 = no-op). */
+export function htmlScaleLayout(bw, bh, sw, sh) {
+  const designW = sw > 0 ? sw : bw;
+  const designH = sh > 0 ? sh : bh;
+  const scale = designW > 0 && designH > 0 ? Math.min(bw / designW, bh / designH) : 1;
+  return {
+    designW, designH, scale,
+    offsetX: (bw - designW * scale) / 2,
+    offsetY: (bh - designH * scale) / 2,
+  };
+}

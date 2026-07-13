@@ -225,6 +225,16 @@ export interface HtmlElement extends BaseElement {
    *  in the editor enters an "interact" mode (like a demo) instead of editing.
    *  Default false → plain static design HTML (never captures clicks). */
   interactive?: boolean;
+  /** Opt-in: scale the content to fit the box (uniform "contain" — aspect
+   *  preserved, letterboxed), so resizing the box grows/shrinks fixed-size markup
+   *  instead of clipping it. The content is laid out at its DESIGN size
+   *  (`scaleW`×`scaleH`, captured when scale mode is enabled) and CSS-transformed
+   *  to fit. Default false → content renders 1:1 at the box's top-left. */
+  scaleMode?: boolean;
+  /** Design width/height (slide px) the content is authored at, captured when
+   *  scaleMode is enabled. The box→design ratio is the scale factor. */
+  scaleW?: number;
+  scaleH?: number;
 }
 
 export interface DemoPieceElement extends BaseElement {

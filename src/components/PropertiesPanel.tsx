@@ -843,6 +843,19 @@ export function PropertiesPanel() {
                     </span>
                   </label>
                 </PropSection>
+                <PropSection label="Scale to fit">
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!!selectedEl.scaleMode} style={{ marginTop: 2 }}
+                      onChange={(e) => updateElement(selectedEl.id, (e.target.checked
+                        // Capture the current box as the design size, then resizing scales.
+                        ? { scaleMode: true, scaleW: Math.round(selectedEl.position.width), scaleH: Math.round(selectedEl.position.height) }
+                        : { scaleMode: undefined }) as any)} />
+                    <span style={{ color: '#6b7280', lineHeight: 1.4 }}>
+                      Content scales to fill the box, keeping its aspect ratio. The current size
+                      becomes the design size — resize the box to grow or shrink the content.
+                    </span>
+                  </label>
+                </PropSection>
               </>
             )}
 

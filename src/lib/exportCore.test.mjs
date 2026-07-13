@@ -57,6 +57,26 @@ describe('buildExportHtml', () => {
     expect(html).toContain('Test Author');
   });
 
+  it('scale-mode html exports a contain-scaled frame in a clipped px box (#137)', async () => {
+    const p = makePresentation({
+      slides: [{
+        id: 's1', layout: 'default', notes: '',
+        elements: [{ id: 'h1', type: 'html', html: '<div>x</div>', scaleMode: true, scaleW: 200, scaleH: 100,
+          position: { x: 10, y: 20, width: 800, height: 200 } }],
+      }],
+    });
+    const html = await buildExportHtml({
+      presentation: p, readFile: async () => new Uint8Array([0]), readTextFile: async () => '',
+      renderMath: null, applyMathPreamble: null,
+    });
+    // min(800/200, 200/100) = 2, letterboxed sides (offsetX = (800-400)/2 = 200).
+    expect(html).toContain('overflow:hidden;');
+    expect(html).toContain('width:200px;height:100px;');            // design-size frame
+    expect(html).toContain('transform:translate(200px,0px) scale(2);');
+    expect(html).toContain('sandbox=""');                            // locked, no scripts
+    expect(html).not.toContain('allow-scripts');
+  });
+
   it('embeds source JSON for round-trip import', async () => {
     const p = makePresentation();
     const html = await buildExportHtml({

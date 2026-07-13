@@ -399,6 +399,14 @@ is **not** the text element (no rich-text presets) and **not** a demo (no script
   editing). Leave false/omitted for plain static design HTML so it never blocks the
   slide. (Still no JavaScript — interactivity is CSS/native-control only, e.g. a
   radio-driven `:checked ~ .fill { height: … }` thermometer.)
+- `scaleMode`: optional boolean (default false). When true the content is scaled to
+  **fit the box** (uniform "contain" — aspect ratio preserved, letterboxed), so
+  resizing the box grows/shrinks fixed-size markup instead of clipping it. The content
+  is laid out at its **design size** (`scaleW`×`scaleH`) and CSS-transformed to fit.
+  In the app the checkbox captures the box's current size as the design size; in JSON,
+  set `scaleW`/`scaleH` to the size the `html` is authored for.
+- `scaleW`, `scaleH`: design width/height (slide px) the content is authored at; only
+  used when `scaleMode` is true. Missing/zero → no scaling (renders 1:1).
 - `position`: standard box (slide space, 1920×1080).
 
 **Sandbox — what works and what doesn't.** The HTML renders in a locked-down iframe,

@@ -9,7 +9,7 @@ import { useRef } from 'react';
 import { resolveTheme } from '../lib/themes';
 import { useAssetUrl } from '../lib/demoAssets';
 import { useDemoDoc, useDeckFontFacesCss } from '../lib/demoMount';
-import { htmlElementSrcdoc, HTML_SANDBOX_LOCKED } from '../lib/htmlElement.mjs';
+import { htmlElementSrcdoc, HTML_SANDBOX_LOCKED, htmlIsScaled, htmlScaleLayout } from '../lib/htmlElement.mjs';
 import { useImageSrc } from '../lib/imageSrc';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
 import { buildEmbedSrc, VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
@@ -66,10 +66,29 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
         </svg>
       );
     }
-    case 'html':
+    case 'html': {
       // Locked (no-script, no-network, no same-origin). `interactive` elements
       // receive clicks so native controls (range/radio/details/:hover) work live;
       // static ones stay pass-through so they never block the slide.
+      // Scale mode: content laid out at its design size, contain-scaled into the box.
+      if (htmlIsScaled(el)) {
+        const L = htmlScaleLayout(pos.width, pos.height, el.scaleW!, el.scaleH!);
+        return (
+          <div style={{
+            position: 'absolute', left: pos.x, top: pos.y, width: pos.width, height: pos.height,
+            overflow: 'hidden', zIndex, ...style,
+          }}>
+            <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background)}
+              sandbox={HTML_SANDBOX_LOCKED} style={{
+                position: 'absolute', left: 0, top: 0, width: L.designW, height: L.designH,
+                border: 'none', background: 'transparent',
+                transform: `translate(${L.offsetX}px, ${L.offsetY}px) scale(${L.scale})`,
+                transformOrigin: 'top left',
+                pointerEvents: el.interactive ? 'auto' : 'none',
+              }} />
+          </div>
+        );
+      }
       return (
         <iframe title="HTML element" srcDoc={htmlElementSrcdoc(el.html, el.background)}
           sandbox={HTML_SANDBOX_LOCKED} style={{
@@ -78,6 +97,7 @@ export function PresentElement({ element: el, zIndex, style, ctx }: {
             pointerEvents: el.interactive ? 'auto' : 'none', zIndex, ...style,
           }} />
       );
+    }
     default:
       return null;
   }
