@@ -17,8 +17,12 @@ export interface VarSpec {
 
 export const VARS_SCRIPT_TYPE: string;
 export const VAR_TYPES: VarType[];
+export const TINT_PREFIX: string;
 
 export function isValidColor(v: unknown): boolean;
+export function tintBase(v: unknown): string;
+export function isTintToken(v: unknown): boolean;
+export function isColorValue(v: unknown): boolean;
 export function parseHtmlVars(html: string | null | undefined): VarSpec[];
 export function validateVarValue(
   spec: VarSpec,

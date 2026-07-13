@@ -120,8 +120,20 @@ No expression evaluation. `{{value}}` and `var(--value)` are **literal** substit
 shown only when the manifest declares any. One compact typed control per variable,
 each `spec.width` wide:
 - `float` / `int` → text box + a slider when `min`/`max` are given (respecting `step`).
-- `color` → a native color swatch + a hex/name text box.
+- `color` → the full `ColorControl` (palette swatches + custom picker + **theme
+  tints**), like the element Background control.
 - `string` → text box, or a multi-line textarea when `multiline` is set.
+
+### Color values: literal or theme tint
+
+A `color` value is stored as either a **literal** CSS color (`#e11d48`, `red`) or a
+**tint token** `tint:<base>`, where `<base>` is `accent` (follows the slide theme) or
+a semantic hex (`tint:#dc2626`). A tint is theme-relative: it stores the *base*, and
+the real color is resolved **per slide theme** at render time via the same
+`textBackgroundResolved` used for card backgrounds (a wash on light themes, a
+saturated mix on dark) — so one variable stays colored and contrasting on every
+theme. Literals pass through unchanged. The token keeps `vars` flat (still a string);
+`tint:accent` is a perfectly valid `default`.
 
 A value that fails validation flags a red **✕** next to the control and is **not
 written** to the store (the last valid value stands). Each valid edit writes

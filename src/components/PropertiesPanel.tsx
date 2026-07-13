@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentation';
 import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, parsePalette, textPresetBoxCss, type NamedSize } from '../types/presentation';
-import { BUILT_IN_THEMES, resolveTheme } from '../lib/themes';
+import { BUILT_IN_THEMES, resolveTheme, type ThemeColors } from '../lib/themes';
 import { extractDemoPieceNames } from '../lib/demoPieces';
 import { FONT_PACKAGES, DEFAULT_FONT_ID } from '../lib/fonts';
 import { listMonoEligible } from '../lib/notebookFonts';
@@ -14,7 +14,7 @@ import { ColorControl } from './ColorControl';
 import { askConfirm } from '../lib/confirmDialog';
 import { TEXT_PALETTE, FILL_PALETTE, ARROW_PALETTE } from '../lib/colorPalettes';
 import { arrowInsertPoint } from '../lib/arrowGeometry.mjs';
-import { parseHtmlVars, validateVarValue, type VarSpec } from '../lib/htmlVars.mjs';
+import { parseHtmlVars, validateVarValue, TINT_PREFIX, tintBase, type VarSpec } from '../lib/htmlVars.mjs';
 
 /** Strip per-run inline text colors (the format toolbar's foreColor produces
  *  `<span style="color:…">` / `<font color>`) so the element-level Text Color
@@ -857,6 +857,8 @@ export function PropertiesPanel() {
                 <HtmlVariablesSection
                   html={selectedEl.html}
                   vars={selectedEl.vars}
+                  theme={resolveTheme(presentation.theme, slide.theme)}
+                  customPalette={presentation.config.customPalette}
                   onChange={(next) =>
                     updateElement(selectedEl.id, {
                       vars: next && Object.keys(next).length ? next : undefined,
@@ -1396,9 +1398,11 @@ function PropSection({ label, children }: { label: string; children: React.React
  *  `application/eigendeck-vars+json` manifest from the html and renders one typed
  *  control per variable; edits write to `el.vars`. Renders nothing when the html
  *  declares no variables. */
-export function HtmlVariablesSection({ html, vars, onChange }: {
+export function HtmlVariablesSection({ html, vars, theme, customPalette, onChange }: {
   html: string;
   vars: Record<string, string | number> | undefined;
+  theme: ThemeColors;
+  customPalette?: readonly string[];
   onChange: (next: Record<string, string | number> | undefined) => void;
 }) {
   const specs = parseHtmlVars(html);
@@ -1413,6 +1417,7 @@ export function HtmlVariablesSection({ html, vars, onChange }: {
     <PropSection label="Variables">
       {specs.map((spec) => (
         <VarRow key={spec.name} spec={spec} value={vars?.[spec.name]}
+          theme={theme} customPalette={customPalette}
           onChange={(v) => setVar(spec.name, v)} />
       ))}
       <HelpText>
@@ -1425,10 +1430,13 @@ export function HtmlVariablesSection({ html, vars, onChange }: {
 
 /** One typed variable control: a small box sized by `spec.width`, a red ✕ when the
  *  value fails validation, and optional author help beneath. `value` is the stored
- *  override (undefined → the manifest default). */
-function VarRow({ spec, value, onChange }: {
+ *  override (undefined → the manifest default). `color` vars use the full ColorControl
+ *  (palette + tints), storing a literal color or a `tint:<base>` token. */
+function VarRow({ spec, value, theme, customPalette, onChange }: {
   spec: VarSpec;
   value: string | number | undefined;
+  theme: ThemeColors;
+  customPalette?: readonly string[];
   onChange: (v: string | number | undefined) => void;
 }) {
   const fallback = String(spec.default);
@@ -1450,6 +1458,41 @@ function VarRow({ spec, value, onChange }: {
     onChange(v.value === spec.default ? undefined : v.value);
   };
 
+  const label = (
+    <span style={{ fontSize: 12, maxWidth: 130, overflow: 'hidden',
+      textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={spec.name}>
+      {spec.label || spec.name}:
+    </span>
+  );
+  const help = spec.help ? (
+    <div style={{ fontSize: 11, color: '#8a9099', marginTop: 2, lineHeight: 1.4,
+      textAlign: 'center' }}>{spec.help}</div>
+  ) : null;
+
+  // Color: the full swatch/tint dropdown (like the element Background control). The
+  // stored value is a literal color OR a `tint:<base>` token; write via commit so
+  // equal-to-default still drops the key.
+  if (spec.type === 'color') {
+    const cur = String(shown);
+    const activeTint = tintBase(cur);
+    return (
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ textAlign: 'center', marginBottom: 4 }}>{label}</div>
+        <ColorControl
+          value={activeTint ? undefined : cur}
+          activeTint={activeTint || undefined}
+          palette={FILL_PALETTE}
+          customPalette={customPalette}
+          allowCustom
+          tint={{ kind: 'fill', theme }}
+          onColor={(c) => commit(c)}
+          onTint={(base) => commit(TINT_PREFIX + base)}
+        />
+        {help}
+      </div>
+    );
+  }
+
   const box: React.CSSProperties = {
     width: boxW, boxSizing: 'border-box', fontSize: 12, padding: '2px 5px',
     border: `1px solid ${valid ? '#d1d5db' : '#dc2626'}`, borderRadius: 4,
@@ -1460,16 +1503,7 @@ function VarRow({ spec, value, onChange }: {
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-        <span style={{ fontSize: 12, maxWidth: 130, overflow: 'hidden',
-          textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={spec.name}>
-          {spec.label || spec.name}:
-        </span>
-        {spec.type === 'color' && (
-          <input type="color" value={/^#[0-9a-f]{6}$/i.test(String(shown)) ? String(shown) : '#000000'}
-            onChange={(e) => { setText(e.target.value); commit(e.target.value); }}
-            style={{ width: 26, height: 22, padding: 0, border: '1px solid #d1d5db',
-              borderRadius: 4, cursor: 'pointer', flex: '0 0 auto' }} />
-        )}
+        {label}
         {spec.type === 'string' && spec.multiline ? (
           <textarea value={text} spellCheck={false} rows={3}
             onChange={(e) => { setText(e.target.value); commit(e.target.value); }}
@@ -1492,10 +1526,7 @@ function VarRow({ spec, value, onChange }: {
           onChange={(e) => { setText(e.target.value); commit(e.target.value); }}
           style={{ width: '100%', marginTop: 4 }} />
       )}
-      {spec.help && (
-        <div style={{ fontSize: 11, color: '#8a9099', marginTop: 2, lineHeight: 1.4,
-          textAlign: 'center' }}>{spec.help}</div>
-      )}
+      {help}
     </div>
   );
 }

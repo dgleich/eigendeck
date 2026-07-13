@@ -47,6 +47,29 @@ export function isValidColor(v) {
   return HEX_RE.test(s) || FUNC_COLOR_RE.test(s) || NAMED_COLORS.has(s.toLowerCase());
 }
 
+/** A `color` value can be a literal CSS color OR a theme-relative TINT token,
+ *  `tint:<base>` — where `<base>` is `accent` (follows the slide theme) or a
+ *  semantic hex (e.g. `tint:#dc2626`). The token stores a tint; the real color is
+ *  resolved per slide theme at render time (`textBackgroundResolved`), so the same
+ *  variable stays colored + contrasting on any theme. Keeps `vars` flat (a string). */
+export const TINT_PREFIX = 'tint:';
+
+/** The base of a tint token (`tint:accent` → `accent`), or '' if `v` isn't one. */
+export function tintBase(v) {
+  return typeof v === 'string' && v.startsWith(TINT_PREFIX) ? v.slice(TINT_PREFIX.length) : '';
+}
+
+/** Is `v` a valid tint token (`tint:accent` or `tint:<hex>`)? */
+export function isTintToken(v) {
+  const base = tintBase(v);
+  return base === 'accent' || isValidColor(base);
+}
+
+/** Is `v` a valid value for a `color` variable — a literal color OR a tint token? */
+export function isColorValue(v) {
+  return isValidColor(v) || isTintToken(v);
+}
+
 function num(v) {
   const n = typeof v === 'number' ? v : Number(v);
   return Number.isFinite(n) ? n : undefined;
@@ -83,7 +106,7 @@ export function parseHtmlVars(html) {
       const mx = num(raw.max); if (mx !== undefined) spec.max = mx;
       const st = num(raw.step); if (st !== undefined && st > 0) spec.step = st;
     } else if (type === 'color') {
-      spec.default = isValidColor(raw.default) ? String(raw.default).trim() : '#000000';
+      spec.default = isColorValue(raw.default) ? String(raw.default).trim() : '#000000';
     } else {
       spec.default = raw.default == null ? '' : String(raw.default);
       if (raw.multiline === true) spec.multiline = true; // render a textarea
@@ -112,7 +135,7 @@ export function validateVarValue(spec, raw) {
     return { ok: true, value: n };
   }
   if (spec.type === 'color') {
-    return isValidColor(raw) ? { ok: true, value: String(raw).trim() } : { ok: false };
+    return isColorValue(raw) ? { ok: true, value: String(raw).trim() } : { ok: false };
   }
   // string — any value is valid.
   return { ok: true, value: raw == null ? '' : String(raw) };

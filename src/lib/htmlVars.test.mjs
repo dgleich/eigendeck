@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseHtmlVars, validateVarValue, resolveVars, stripVarsManifest, isValidColor,
+  isTintToken, isColorValue, tintBase,
 } from './htmlVars.mjs';
 
 const manifest = (obj) =>
@@ -85,6 +86,30 @@ describe('stripVarsManifest', () => {
   it('removes the manifest block', () => {
     const html = `before${manifest({ a: { type: 'int', default: 1 } })}after`;
     expect(stripVarsManifest(html)).toBe('beforeafter');
+  });
+});
+
+describe('tint tokens', () => {
+  it('recognises tint:<base>', () => {
+    expect(isTintToken('tint:accent')).toBe(true);
+    expect(isTintToken('tint:#dc2626')).toBe(true);
+    expect(isTintToken('tint:garbage')).toBe(false);
+    expect(isTintToken('#dc2626')).toBe(false); // a literal, not a token
+    expect(tintBase('tint:accent')).toBe('accent');
+    expect(tintBase('#fff')).toBe('');
+  });
+  it('a color value may be a literal OR a tint token', () => {
+    expect(isColorValue('#e11d48')).toBe(true);
+    expect(isColorValue('tint:accent')).toBe(true);
+    expect(isColorValue('nope')).toBe(false);
+  });
+  it('parser + validator accept a tint token default/value', () => {
+    const [spec] = parseHtmlVars(
+      '<script type="application/eigendeck-vars+json">{"c":{"type":"color","default":"tint:accent"}}</script>',
+    );
+    expect(spec.default).toBe('tint:accent');
+    expect(validateVarValue(spec, 'tint:#16a34a')).toEqual({ ok: true, value: 'tint:#16a34a' });
+    expect(validateVarValue(spec, 'tint:bogus').ok).toBe(false);
   });
 });
 
