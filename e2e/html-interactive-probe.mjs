@@ -1,7 +1,7 @@
 // #137 `interactive` html element in the REAL app, via a pure-CSS (no-JS) radio/
 // `:checked` thermometer. Verifies the opt-in interactivity plumbing:
 //   • editor idle → iframe is pass-through (pointer-events:none, overlay for drag)
-//   • double-click → "interact" mode: pointer-events:auto + a Lock bar
+//   • double-click → "interact" mode: pointer-events:auto (exit via click-away/Esc)
 //   • a REAL click on a scale <label> flips the radio and moves the mercury fill
 //     (editor iframe is same-origin, so the result is readable)
 //   • present mode → interactive iframe gets pointer-events:auto (clickable live)
@@ -33,7 +33,7 @@ let v = await peSel(sid, '.el-html iframe'); if (v !== 'none') problems.push(`ed
 await exec(sid, "document.querySelector('.el-html .demo-overlay').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));");
 await sleep(400);
 v = await peSel(sid, '.el-html iframe'); if (v !== 'auto') problems.push(`editor interact pointer-events=${v} (want auto)`);
-if (!await exec(sid, "return !!document.querySelector('.el-html .demo-lock-btn')")) problems.push('editor interact: no Lock bar');
+// (interact mode has no "Lock" button — you click away / press Esc to exit)
 
 // A real click on the 0° label drops the level (default is t2=40%).
 const before = await exec(sid, "const f=document.querySelector('.el-html iframe');return f.contentDocument.getElementById('t2').checked");

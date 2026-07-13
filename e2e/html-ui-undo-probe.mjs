@@ -36,7 +36,7 @@ await exec(sid, "document.querySelector('.el-html .demo-overlay').dispatchEvent(
 await sleep(500);
 const pb0 = await past(sid);
 await exec(sid, "const f=document.querySelector('.el-html iframe');f.contentDocument.body.insertAdjacentHTML('beforeend','<p>CE-EDIT</p>');");
-await exec(sid, "const b=document.querySelector('.el-html .demo-lock-btn'); if(b) b.click();");
+await exec(sid, "window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));");  // finish: no Lock button — Esc/click-away commits
 await sleep(500);
 const bEdit = await getHtml(sid);
 if (!(bEdit && bEdit.includes('CE-EDIT'))) problems.push('contentEditable edit did not commit to the element');

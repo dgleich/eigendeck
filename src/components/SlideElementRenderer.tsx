@@ -447,6 +447,23 @@ function HtmlBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
   };
   const live = editing || interacting;
 
+  // Exit like text editing — NO "Lock". Click outside the element (or press
+  // Escape) finishes: commit for editing, stop for interacting. Clicks INSIDE the
+  // iframe are captured by the frame (no parent pointerdown reaches here), so
+  // interacting with the content never exits.
+  useEffect(() => {
+    if (!live) return;
+    const finish = () => { if (editing) finishRef.current(); else setInteracting(false); };
+    const onDown = (e: PointerEvent) => {
+      const host = iframeRef.current?.closest('[data-element-id]');
+      if (host && e.target instanceof Node && !host.contains(e.target)) finish();
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); finish(); } };
+    window.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('keydown', onKey); };
+  }, [live, editing]);
+
   return (
     <DraggableBox
       element={element} zIndex={zIndex} scale={scale}
@@ -461,21 +478,22 @@ function HtmlBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpd
           onDoubleClick={onDoubleClick}
           style={{ position: 'absolute', inset: 0, cursor: 'grab', zIndex: 1 }} />
       )}
-      {interacting && (
-        <InteractLockBar scale={scale} onLock={() => setInteracting(false)} />
-      )}
-      {editing && (
-        <>
-          <InteractLockBar scale={scale} onLock={() => finishRef.current()} />
-          {/* Warning sits BELOW the element (mirrors the Lock bar above), so it
-              doesn't cover content or the toolbar. Inverse-scaled to stay readable. */}
-          <div style={{
-            position: 'absolute', top: '100%', left: '50%', zIndex: 3, marginTop: 6,
-            transform: `translateX(-50%) scale(${1 / scale})`, transformOrigin: 'top center',
-            padding: '3px 10px', fontSize: 11, borderRadius: 4, whiteSpace: 'nowrap',
-            background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d', pointerEvents: 'none',
-          }}>⚠ direct edits may reshape complex HTML — raw source is in the Inspector</div>
-        </>
+      {live && (
+        // A status hint BELOW the element (no "Lock" button — click away / Esc to
+        // finish, like text editing). Amber warning while editing; subtle while
+        // interacting. Inverse-scaled to stay readable; never blocks input.
+        <div style={{
+          position: 'absolute', top: '100%', left: '50%', zIndex: 3, marginTop: 6,
+          transform: `translateX(-50%) scale(${1 / scale})`, transformOrigin: 'top center',
+          padding: '3px 10px', fontSize: 11, borderRadius: 4, whiteSpace: 'nowrap', pointerEvents: 'none',
+          ...(editing
+            ? { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }
+            : { background: '#e0f2fe', color: '#075985', border: '1px solid #7dd3fc' }),
+        }}>
+          {editing
+            ? '⚠ direct edits may reshape complex HTML — click away or Esc to finish · raw source is in the Inspector'
+            : 'interacting — click away or Esc to finish'}
+        </div>
       )}
     </DraggableBox>
   );
