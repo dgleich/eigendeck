@@ -14,7 +14,7 @@
 
 import { resolveTheme, themeColorForPreset } from './themes';
 import { coverHtml, arrowSvgHtml, imageHtml } from './elementHtml.mjs';
-import { htmlElementIframeHtml, htmlElementScaledIframeHtml, htmlIsScaled, htmlScaleLayout } from './htmlElement.mjs';
+import { htmlElementScaledIframeHtml, htmlIsScaled, htmlScaleLayout } from './htmlElement.mjs';
 import { resolveColor } from './textStyle.mjs';
 import { textElementHtml } from './textElementHtml.mjs';
 import { markAsEigendeck } from './clipboard';
@@ -80,22 +80,22 @@ export function buildPrintSlideHtml(
     } else if (el.type === 'html') {
       // Static + locked (no script/network) → the srcdoc iframe renders in the
       // browser's print output directly, no screenshot bake needed.
-      if (htmlIsScaled(el)) {
-        // Contain-scale. The iframe CONTENT is authored in CSS px (matching the
-        // captured design size scaleW×scaleH — slide-px == CSS-px in the editor).
-        // But the print box is in inches, and 1 CSS inch is ALWAYS 96 CSS px, so
-        // in print a slide-px is only S*96 CSS-px. Size the iframe in CSS px
-        // (so the content fits it 1:1) and contain-scale against the box's CSS-px
-        // size; the wrapper box stays in inches. (Sizing the iframe in inches would
-        // shrink its px canvas ~2× and clip the content — the #137 print scaleMode bug.)
-        const CSSPX_PER_SLIDEPX = S * 96;
-        const L = htmlScaleLayout(
-          p.width * CSSPX_PER_SLIDEPX, p.height * CSSPX_PER_SLIDEPX, el.scaleW!, el.scaleH!);
-        const box = `position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)}`;
-        inner += htmlElementScaledIframeHtml(el, box, L, 'px');
-      } else {
-        inner += htmlElementIframeHtml(el, `position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)};border:none;background:transparent;`);
-      }
+      //
+      // The iframe CONTENT is authored in CSS px (slide-px == CSS-px in the
+      // editor). Print positions elements in INCHES with NO slide-level transform,
+      // and an iframe's document always renders at 96 CSS-px/in regardless of the
+      // parent — so a slide-px is only S*96 CSS-px here. Without compensating, the
+      // content renders ~1/(S*96) ≈ 1.8× too big for its shrunken box. So ALWAYS
+      // size the iframe in CSS px (its design size) and scale it DOWN to the inch
+      // box. (HTML export scales the whole slide via a CSS transform, so its
+      // iframes scale for free — this only bites the inch-positioned print path.)
+      //   • scaleMode → design = the content's natural size (contain-fit + the shrink);
+      //   • otherwise → design = the box itself (content fills it, then shrinks).
+      const designW = htmlIsScaled(el) ? el.scaleW! : p.width;
+      const designH = htmlIsScaled(el) ? el.scaleH! : p.height;
+      const L = htmlScaleLayout(p.width * S * 96, p.height * S * 96, designW, designH);
+      const box = `position:absolute;left:${px2in(p.x)};top:${px2in(p.y)};width:${px2in(p.width)};height:${px2in(p.height)}`;
+      inner += htmlElementScaledIframeHtml(el, box, L, 'px');
     } else if (isLiveElement(el.type)) {
       // P0-2: notebook joins demo/demo-piece/video as a baked screenshot.
       const screenshot = demoScreenshots.get(`${slide.id}:${el.id}`);

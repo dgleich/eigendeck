@@ -81,10 +81,13 @@ export function htmlIsScaled(el) {
 export function htmlScaleLayout(bw, bh, sw, sh) {
   const designW = sw > 0 ? sw : bw;
   const designH = sh > 0 ? sh : bh;
-  const scale = designW > 0 && designH > 0 ? Math.min(bw / designW, bh / designH) : 1;
+  const scaleRaw = designW > 0 && designH > 0 ? Math.min(bw / designW, bh / designH) : 1;
+  // Round for clean CSS output (avoid float noise like -3.5e-15px / 0.5499999…):
+  // offsets to whole px (sub-px centering is imperceptible), scale to 4 decimals.
   return {
-    designW, designH, scale,
-    offsetX: (bw - designW * scale) / 2,
-    offsetY: (bh - designH * scale) / 2,
+    designW, designH,
+    scale: Math.round(scaleRaw * 1e4) / 1e4,
+    offsetX: Math.round((bw - designW * scaleRaw) / 2),
+    offsetY: Math.round((bh - designH * scaleRaw) / 2),
   };
 }

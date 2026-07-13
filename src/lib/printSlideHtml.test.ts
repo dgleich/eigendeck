@@ -39,7 +39,10 @@ describe('[simplify-guard] buildPrintSlideHtml render snapshot', () => {
     expect(buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots)).toMatchSnapshot();
   });
 
-  it('renders an html element as a locked sandboxed iframe (inch units) (#137)', () => {
+  it('non-scaled html: iframe in CSS px scaled DOWN to the inch box (content not oversized) (#137)', () => {
+    // The content is authored in slide-px == CSS-px; print positions in inches with
+    // no slide transform, so the iframe (96 CSS-px/in) must be sized at the box's
+    // slide-px and scaled by S*96 ≈ 0.55, or the content prints ~1.8x too big.
     const slide = {
       id: 's1', layout: 'default', notes: '',
       elements: [{ id: 'h1', type: 'html', html: '<h1>Hi</h1>',
@@ -49,8 +52,10 @@ describe('[simplify-guard] buildPrintSlideHtml render snapshot', () => {
     const out = buildPrintSlideHtml(slide, presentation, new Map(), new Map());
     expect(out).toContain('sandbox=""');
     expect(out).toContain('&lt;h1&gt;Hi&lt;/h1&gt;');
-    expect(out).toContain('in;');   // inch-based positioning (px2in)
     expect(out).not.toContain('allow-scripts');
+    expect(out).toContain('width:384px;height:216px;');   // iframe at the box's SLIDE-px size (CSS px)
+    expect(out).toMatch(/scale\(0\.5/);                    // shrunk by S*96 to the inch box
+    expect(out).toContain('in;overflow:hidden;');          // the wrapper box is inch-based
   });
 
   it('scale-mode html: iframe sized in CSS px (not inches) so content is not clipped (#137)', () => {
