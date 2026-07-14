@@ -135,6 +135,9 @@ MANIFEST=(
   # "nb-live-run-persist.mjs|live.eigendeck|E2E_JUPYTER=1|python3 $EXFIX/make_live_nb_deck.py \$DECKDIR/live.json; import_json \$DECKDIR/live.json"
 
   # ── video (codec-INDEPENDENT: round-trip + byte-level file/caption watch) ─
+  # #152 YouTube loopback shim: the Rust server's security hardening (id/Host/
+  # token/method allowlists, no-CORS, CSP/nosniff), driven against the REAL app.
+  "youtube-shim-probe.mjs|examples/intro-slide.eigendeck||"
   "video-roundtrip-probe.mjs|empty.eigendeck||$EMPTY"
   "video-watch-probe.mjs|empty.eigendeck||$EMPTY"
   "video-captions-watch-probe.mjs|empty.eigendeck||$EMPTY"
