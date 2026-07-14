@@ -761,6 +761,7 @@ export function PropertiesPanel() {
                       );
                     })()}
                   </div>
+                  <HelpText>Double-click an interior point to remove it.</HelpText>
                 </PropSection>
                 <PropSection label="Width">
                   <input className="prop-input-sm" type="number" value={selectedEl.strokeWidth || 4} min={1} max={40}
