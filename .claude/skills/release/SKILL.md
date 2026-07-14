@@ -30,13 +30,24 @@ All bundled fonts are **SIL OFL 1.1**; the set is `src/lib/fontRegistry.mjs` —
 **10 font families** (`FONT_PACKAGES`, each with a math pack) + monospace code
 fonts (`MONO_FONT_PACKAGES`, no math). Keep credit names matching the picker labels.
 
-### 3. Bump the version everywhere
+### 3. Icons / artwork up to date (when a source SVG changed)
+The shipped icons are **built** from SVG sources, so editing an SVG does NOT update
+the icon the app bundles until you rebuild + repack — easy to forget.
+- Detect staleness: compare last-change times of the source vs the built artifact —
+  `git log -1 --format=%ci -- src-tauri/icons/document/eigendeck-doc.svg` vs
+  `… -- src-tauri/icons/document/eigendeck-doc.icns`. If the SVG is newer, the
+  `.icns` + iconset PNGs are STALE. Same idea for the app icon (`src-tauri/icons/`).
+- Rebuild from the SVG (the `.icns` repack needs **macOS `iconutil`**): follow
+  `src-tauri/icons/document/README.md` — regenerate the iconset (cairosvg + pillow),
+  then `iconutil -c icns …`. **Commit** the rebuilt `eigendeck-doc.icns` + iconset.
+
+### 4. Bump the version everywhere
 Same YY.M.D (today's date) in ALL of:
 `src-tauri/tauri.conf.json`, `package.json`, `package-lock.json` (2 occurrences),
 `src-tauri/Cargo.toml`, and `src-tauri/Cargo.lock` (the `name = "eigendeck"`
 package). `grep -rn "<old-version>"` to be sure none are missed.
 
-### 4. Verify green
+### 5. Verify green
 `npm run build` · `npx vitest run` · `cd src-tauri && cargo check && cargo clippy -- -D warnings`.
 
 > ⚠️ **`#[cfg(target_os="macos")]` code is NOT compiled by Linux `cargo check`.**
@@ -44,7 +55,7 @@ package). `grep -rn "<old-version>"` to be sure none are missed.
 > `declareTypes_owner` unsafe, library validation). If you touched Rust under a
 > macOS cfg, build on a Mac before tagging.
 
-### 5. Run the FULL e2e suite (Linux only — every release)
+### 6. Run the FULL e2e suite (Linux only — every release)
 `vitest` only covers pure units; the frontend↔Rust boundary, present mode,
 demo-theme injection, text clipping (#79), notebooks, video, undo, copy/paste,
 asset watch, etc. are only exercised by the **e2e probes** (`e2e/*.mjs`), which
@@ -87,14 +98,16 @@ draft on GitHub and **Publish**.
 ## Gotchas
 - **Re-tagging a version:** delete the old draft + tag first
   (`gh release delete vX.Y.Z --cleanup-tag --yes`), then re-tag at the new commit.
-- **"App is damaged" on a downloaded/AirDropped build:** the app is **ad-hoc
-  signed** (`signingIdentity: "-"`), not notarized. Recipients must clear
-  quarantine **recursively**:
-  `xattr -dr com.apple.quarantine /Applications/Eigendeck.app`.
-  (Right-click→Open / "Open Anyway" only clears the top level, not nested files —
-  that's what made bundled PDFium fail to load until the
-  `com.apple.security.cs.disable-library-validation` entitlement landed.) A paid
-  Apple Developer account + notarization removes this entirely.
+- **Signing + notarization:** release builds are signed with a **Developer ID
+  Application** cert and **notarized** in CI (`apple-actions/import-codesign-certs` +
+  tauri-action, via the `APPLE_*` repo secrets). The bundled pdfium dylib is signed
+  by a `beforeBundleCommand` hook (`tools/sign-pdfium-macos.mjs`) because Tauri won't
+  sign a resource dylib (#146); its download is SHA-256-pinned in `build.rs` (#147).
+  A notarized build has no Gatekeeper "damaged"/"unidentified developer" warning.
+- **If notarization fails**, the Actions log lists the offending binary + reason
+  (e.g. an unsigned nested Mach-O, or "no secure timestamp"). An unsigned/unnotarized
+  build (secrets missing) still runs locally but recipients must clear quarantine
+  recursively: `xattr -dr com.apple.quarantine /Applications/Eigendeck.app`.
 - **Packaged-only features:** Install LLM Tools, the About icon + centered
   credits (`Credits.html`), and pdfium PDF rendering only work in a packaged
   build — exercise them after the build, not in `tauri dev`.
