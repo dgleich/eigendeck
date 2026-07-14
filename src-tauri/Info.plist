@@ -7,9 +7,31 @@
   Tauri's fileAssociations has no icon field. The icon file itself (eigendeck-doc.icns)
   ships via bundle.resources. See docs/mac-native-toolbar.md / issue #130.
   (fileAssociations in tauri.conf.json still drives the Linux/Windows associations.)
+
+  It also carries the App Transport Security exception that lets WKWebView load the
+  YouTube loopback shim's plain-http subframe (http://127.0.0.1:<port>). The exception
+  is SCOPED to 127.0.0.1 + localhost — NOT the global NSAllowsArbitraryLoadsInWebContent
+  — so ATS keeps enforcing https for every other host, preserving the network
+  containment of the demo/notebook/html iframes. See docs/youtube-embed-shim.md / #152.
 -->
 <plist version="1.0">
 <dict>
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSExceptionDomains</key>
+    <dict>
+      <key>127.0.0.1</key>
+      <dict>
+        <key>NSExceptionAllowsInsecureHTTPLoads</key>
+        <true/>
+      </dict>
+      <key>localhost</key>
+      <dict>
+        <key>NSExceptionAllowsInsecureHTTPLoads</key>
+        <true/>
+      </dict>
+    </dict>
+  </dict>
   <key>CFBundleDocumentTypes</key>
   <array>
     <dict>
