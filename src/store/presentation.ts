@@ -200,6 +200,27 @@ function debounceUndoSnapshot<F extends (...args: never[]) => void>(fn: F, ms: n
   }) as F;
 }
 
+// The inspector's open/closed state is a persisted preference (#145) so ⌘I / the View
+// toggle is remembered across launches. Direct localStorage read/write with the same
+// key + encoding as src/lib/preferences.ts (`showInspector`, default true) — the store
+// initializer runs at module-eval before React, so we don't use the hook-based module.
+const INSPECTOR_PREF_KEY = 'eigendeck:pref:showInspector';
+function readShowInspector(): boolean {
+  try {
+    const v = localStorage.getItem(INSPECTOR_PREF_KEY);
+    return v === null ? true : JSON.parse(v) === true;
+  } catch {
+    return true;
+  }
+}
+function writeShowInspector(v: boolean): void {
+  try {
+    localStorage.setItem(INSPECTOR_PREF_KEY, JSON.stringify(v));
+  } catch {
+    /* no localStorage (headless) — nothing to persist */
+  }
+}
+
 export const usePresentationStore = create<PresentationState>()(
   temporal(
     (set, get) => ({
@@ -209,7 +230,7 @@ export const usePresentationStore = create<PresentationState>()(
       isDirty: false,
       projectPath: null,
       selectedObject: { type: 'slide' },
-      showProperties: false,
+      showProperties: readShowInspector(),
       inspectorTab: 'slide',
       showHistory: false,
       snapToGrid: false,
@@ -840,7 +861,11 @@ export const usePresentationStore = create<PresentationState>()(
         })),
       setInspectorTab: (inspectorTab) => set({ inspectorTab }),
       toggleProperties: () =>
-        set((state) => ({ showProperties: !state.showProperties })),
+        set((state) => {
+          const showProperties = !state.showProperties;
+          writeShowInspector(showProperties); // persist so it's remembered next launch
+          return { showProperties };
+        }),
       toggleHistory: () =>
         set((state) => ({ showHistory: !state.showHistory })),
       toggleSnapToGrid: () =>

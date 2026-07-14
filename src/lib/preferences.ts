@@ -51,6 +51,11 @@ export interface PrefSchema {
    *  paragraphs that explain what a toggle does). On by default; experienced
    *  users can turn it off for a denser inspector. */
   showHelpText: boolean;
+  /** Whether the inspector (properties panel) is open. On by default — there's a
+   *  lot of essential functionality there. Persisted so ⌘I / the View toggle is
+   *  remembered across launches (the store seeds `showProperties` from this and
+   *  writes it back on toggle). */
+  showInspector: boolean;
   /** Spacing (in slide-space px) of the editor alignment grid. The single
    *  global knob for snap-to-grid; whether snapping/the overlay are ON is
    *  per-session UI state (View menu), not persisted. Default 40. */
@@ -108,6 +113,7 @@ const DEFAULTS: PrefSchema = {
   jupyterServers: [],
   defaultNotebookEditable: false,
   showHelpText: true,
+  showInspector: true,
   gridSpacing: 30,   // 960×540 (slide center) is a grid point at 30 → center "+" sits on a dot
   hiddenToolbarItems: [],
   tryProjectorMode: true,

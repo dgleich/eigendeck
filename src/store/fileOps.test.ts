@@ -18,7 +18,7 @@ describe('file operations (SQLite only)', () => {
       isDirty: false,
       projectPath: null,
       selectedObject: { type: 'slide' },
-      showProperties: false,
+      showProperties: true, // #145: inspector defaults on (persisted pref, default true)
     });
   });
 

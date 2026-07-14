@@ -42,7 +42,7 @@ function subscribe(event: DbEvent | '*', fn: () => void): () => void {
 // ============================================================================
 let _currentSlideIndex = 0;
 let _isPresenting = false;
-let _showProperties = false;
+let _showProperties = true; // #145: inspector defaults on (authoritative default lives in presentation.ts)
 let _projectPath: string | null = null;
 let _selectedObject: SelectedObject = { type: 'slide' };
 

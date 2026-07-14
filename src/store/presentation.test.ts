@@ -100,8 +100,18 @@ describe('presentation store', () => {
       isDirty: false,
       projectPath: null,
       selectedObject: { type: 'slide' },
-      showProperties: false,
+      showProperties: true, // #145: inspector defaults on (persisted pref, default true)
     });
+  });
+
+  it('toggleProperties persists the inspector state to the showInspector pref (#145)', () => {
+    const store = usePresentationStore.getState();
+    const before = store.showProperties;
+    store.toggleProperties();
+    expect(usePresentationStore.getState().showProperties).toBe(!before);
+    expect(JSON.parse(localStorage.getItem('eigendeck:pref:showInspector')!)).toBe(!before);
+    usePresentationStore.getState().toggleProperties(); // restore for other tests
+    expect(usePresentationStore.getState().showProperties).toBe(before);
   });
 
   it('initializes with a default presentation', () => {
