@@ -38,6 +38,7 @@ mod llmtools;
 mod mac_toolbar;
 mod pasteboard;
 mod pdf;
+mod youtube_shim;
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
@@ -76,6 +77,14 @@ fn take_launch_file() -> Option<String> {
 fn force_quit() {
     let _ = storage::close_db();
     std::process::exit(0);
+}
+
+/// Base URL of the YouTube loopback shim (`http://127.0.0.1:<port>/yt/<token>`),
+/// or "" if the shim failed to start. The frontend appends `/<id>?<flags>` to
+/// present YouTube in the packaged app (see youtube_shim.rs).
+#[tauri::command]
+fn youtube_shim_base(state: tauri::State<youtube_shim::ShimState>) -> String {
+    state.base.clone()
 }
 
 /// Show the macOS-native unsaved-changes dialog using NSAlert.
@@ -927,6 +936,7 @@ pub fn run() {
             enable_display_mirroring,
             update_recent_menu,
             take_launch_file,
+            youtube_shim_base,
             storage::db_open,
             storage::db_open_memory,
             storage::db_save_to_file,
@@ -1016,6 +1026,13 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
+            // Start the YouTube loopback shim (see youtube_shim.rs). The packaged
+            // app's tauri://localhost origin is rejected by YouTube's player; the
+            // shim gives it an http://127.0.0.1 parent. A bind failure is
+            // non-fatal — the base is left empty and the frontend embeds directly.
+            let shim = youtube_shim::start().unwrap_or_default();
+            app.manage(shim);
+
             // Native macOS NSToolbar (behind the mac-toolbar feature). Skipped
             // when EIGENDECK_WEBVIEW_TOOLBAR=1 forces the HTML toolbar instead.
             #[cfg(all(target_os = "macos", feature = "mac-toolbar"))]

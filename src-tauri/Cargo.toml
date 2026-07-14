@@ -38,6 +38,9 @@ sha2 = "0.10"   # verify the pdfium download against a pinned SHA-256 (#147)
 
 [dependencies]
 tauri = { version = "2", features = ["devtools"] }
+# Loopback HTTP shim that hosts the YouTube embed so the packaged app (origin
+# tauri://localhost) can present YouTube. See src/youtube_shim.rs + docs/youtube-embed-shim.md.
+tiny_http = "0.12"
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
