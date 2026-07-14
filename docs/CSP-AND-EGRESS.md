@@ -148,6 +148,14 @@ trackers, per demo." What remains deferred:
   and inline injection in the *privileged* frame. Gated on serving demos from a
   custom Tauri protocol so they don't inherit the parent CSP (#122, §4). Biggest
   remaining gap: today `tauri.conf.json` has `csp: null` on the app frame.
+  - The **YouTube loopback shim** (#152, `docs/youtube-embed-shim.md`) also wanted an
+    app-frame `frame-src` to allow-list its `http://127.0.0.1` embed page, but hits
+    the same wall (an app CSP is inherited by blob demos), so it too waits on #122.
+    The shim ships WITHOUT an app CSP — `csp: null` already permits the loopback
+    frame, and the shim page carries its own restrictive response-header CSP — so the
+    shim doesn't change this gap either way. When #122 lands and the app frame finally
+    gets a CSP, its `frame-src` must include `http://127.0.0.1:* http://localhost:*`
+    (the shim) alongside `blob:`/`data:` (demos) and the video-provider hosts.
 - **Least-privilege capability scope** — `src-tauri/capabilities/default.json` is
   `windows: ["main","*"]`, so the whole permission set (incl. `allow-create-webview-
   window`, `opener`, `dialog`, window controls) is granted to ANY window label. Not

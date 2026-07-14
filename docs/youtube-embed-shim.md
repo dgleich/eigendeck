@@ -126,31 +126,22 @@ Branch `feat/youtube-embed-shim`, tracking #152 (from #149).
   server serves the iframe; id/Host/token/method/no-CORS/CSP/nosniff all enforced).
 
 Remaining:
-- **Step 4 — app CSP — DEFERRED to its own effort** (not on this branch). Introducing
-  the app's first top-level CSP is entangled with two app features and needs full
-  WebKitGTK e2e verification (jsdom can't enforce CSP), so it does not belong bolted
-  onto the shim:
-  1. **Demo internet access (the blocker).** Demos mount via `blob:` URLs
-     (`URL.createObjectURL`, demoMount.ts). `blob:` is a *local scheme*, so a demo
-     iframe **inherits the app's top-level CSP and intersects it** with its own
-     injected CSP. Today `csp:null` means demos are governed solely by their injected
-     CSP (offline-by-default, opt-in internet, per-demo host scoping). Add a
-     restrictive app `connect-src`/`script-src`/`img-src` and every internet-enabled
-     demo inherits it — its `fetch`/CDN-`<script>`/remote-`<img>` get clamped
-     regardless of the demo's own CSP. So the app CSP must stay broad on the network
-     directives (`connect-src https:`, etc.) or it breaks demos; the demo's OWN
-     injected CSP stays the real per-demo containment.
-  2. **PeerTube federation.** `frame-src`/`media-src` can't enumerate PeerTube's
-     arbitrary instance origins, so those directives also need a broad `https:`.
-  A useful app CSP is therefore still possible (tight `default-src 'self'`,
-  `script-src 'self'` for the MAIN document only via a nonce/hash path that does NOT
-  clamp blob demos, `object-src 'none'`, `base-uri 'none'`, `frame-src` incl.
-  `blob: http://127.0.0.1:* https://…`), but getting `script-src` to constrain the
-  app document without clamping blob-inherited demos is the crux and needs the rig +
-  an internet-demo probe. Tracked as the `feat/csp-baseline` effort. **The shim does
-  not need it** (today's `csp:null` already permits the loopback frame), and adding
-  the shim doesn't worsen the CSP posture — so the shim is functionally complete
-  without step 4; the CSP is separate app-wide hardening.
+- **Step 4 — app CSP — DEFERRED (blocked on #122, pre-existing).** Introducing the
+  app's first top-level CSP is already known to break demos, and it's documented +
+  **rig-tested** in [`CSP-AND-EGRESS.md`](CSP-AND-EGRESS.md) §3–§5: demos mount from
+  `blob:` URLs (demoMount.ts), and a `blob:` document **inherits the embedding page's
+  CSP and can only make it more restrictive** (CSP3 inherit; WebKit honors it). So a
+  restrictive app `script-src`/`connect-src`/`img-src` is inherited by every demo —
+  their inline bridge, own code, and CDN `<script>`/`fetch` get clamped regardless of
+  the demo's own injected CSP (a strict `script-src 'self'` was tried and produced
+  `NBSEC_FAIL` on the rig). The real fix is serving demos from a **custom Tauri
+  protocol** instead of `blob:` so they stop inheriting the parent CSP — tracked in
+  **#122**. Until then the app ships `csp: null` deliberately. PeerTube federation
+  (arbitrary instance origins) is a second reason `frame-src`/`media-src` can't be a
+  tight allowlist. **The shim does not need the app CSP** (today's `csp: null` already
+  permits the loopback frame, so adding the shim doesn't worsen the CSP posture); the
+  shim-page's OWN response CSP (step 7) still constrains the shim document. So the
+  shim is functionally complete without step 4; the app-wide CSP stays gated on #122.
 - **Packaged-macOS sign-off** — build a signed `.app` and confirm YouTube actually
   plays through the shim (the rig serves the dev origin, so it can't exercise the
   `tauri:`-scheme activation path).
