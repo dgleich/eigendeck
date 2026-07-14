@@ -60,6 +60,32 @@ open an issue to start the conversation — concrete use cases drive the design 
 the extension API. (For interactive HTML demos *today*, see `docs/DEMO_AUTHORING.md`,
 which already lets you drop custom interactive content onto a slide.)
 
+## Pull requests
+
+<llm model="Claude Opus 4.8" date="2026-07-14">
+
+Whatever the change, **open your pull request with a few sentences you wrote
+yourself** — in plain human prose — saying *why* you want it and *what it helps
+with*. That framing is the first thing we read, and it's what tells us whether the
+change fits where Eigendeck is going. A PR that's just a diff with an
+auto-generated summary is hard to evaluate and easy to get wrong.
+
+Using an LLM to help write the code is completely fine — most of us do. But a
+**pure LLM-authored feature pull request** — no human intent behind it, and no one
+who actually understands and stands behind the change — will generally **not be
+reviewed**. We need a person who wants this, has run it, and can speak to the
+trade-offs.
+
+When a PR description (or any docs it touches) mixes your own writing with
+model-generated text, please **mark the provenance honestly**, following the
+human-vs-LLM convention from
+**[dgleich/llm-markdown-and-markup](https://github.com/dgleich/llm-markdown-and-markup)**:
+`<human>` / `<llm>` tags in HTML, or a `~~~~` fence in Markdown with your human
+intro first and any LLM-written detail below it. Human intent and framing come
+first; generated detail is supporting material we'll verify.
+
+</llm>
+
 ## Building from source
 
 See `README.md` for prerequisites and build commands (`npm install`,
