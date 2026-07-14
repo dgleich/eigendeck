@@ -1,10 +1,16 @@
-:::llm role=assisted
-
 <p align="center">
   <img src="logo-icon-light.svg" alt="Eigendeck" width="80">
 </p>
 
 <h1 align="center">Eigendeck</h1>
+
+> Eigendeck is the presentation app I've wanted for a long time that enables me to
+> fluidly mix demonstrations with technical and mathematical content. It has the
+> richest set of matched math fonts I know of outside LaTeX itself. It keeps you in
+> control and enables you to use LLMs to make presentations richer by building
+> interactivity into them.
+
+:::llm role=assisted
 
 <p align="center">
   A desktop presentation tool with embedded interactive demos and LaTeX math.<br>
