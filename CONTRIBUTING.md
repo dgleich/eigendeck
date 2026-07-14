@@ -1,3 +1,5 @@
+:::llm role=assisted
+
 # Contributing to Eigendeck
 
 Thanks for your interest in Eigendeck! It's a tool for building talks with
@@ -62,8 +64,6 @@ which already lets you drop custom interactive content onto a slide.)
 
 ## Pull requests
 
-<llm model="Claude Opus 4.8" date="2026-07-14">
-
 Whatever the change, **open your pull request with a few sentences you wrote
 yourself** — in plain human prose — saying *why* you want it and *what it helps
 with*. That framing is the first thing we read, and it's what tells us whether the
@@ -83,8 +83,6 @@ human-vs-LLM convention from
 `<human>` / `<llm>` tags in HTML, or a `~~~~` fence in Markdown with your human
 intro first and any LLM-written detail below it. Human intent and framing come
 first; generated detail is supporting material we'll verify.
-
-</llm>
 
 ## Building from source
 

@@ -1,3 +1,5 @@
+:::llm role=assisted
+
 <p align="center">
   <img src="logo-icon-light.svg" alt="Eigendeck" width="80">
 </p>
