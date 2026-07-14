@@ -114,5 +114,27 @@ Each step is an independently green, committable increment.
 
 ## Status
 
-Design + security review complete (this doc). Implementation on branch
-`feat/youtube-embed-shim`. Tracks #149; new tracking issue for the shim itself.
+Branch `feat/youtube-embed-shim`, tracking #152 (from #149).
+
+- **Step 1 — id validation — DONE** (`detectVideoProvider` enforces the 11-char shape).
+- **Step 2 — Rust shim server — DONE** (`youtube_shim.rs` + `youtube_shim_base`,
+  all hardening, Rust unit tests).
+- **Step 3 — frontend wiring — DONE** (`youtubeShim.ts`; routes YouTube through the
+  shim only on the `tauri:` scheme; Vimeo/PeerTube/dev unchanged).
+- **Step 5 — scoped ATS exception — DONE** (`Info.plist`, 127.0.0.1 + localhost only).
+- **Step 6 — headless verification — DONE** (`e2e/youtube-shim-probe.mjs` PASSES:
+  server serves the iframe; id/Host/token/method/no-CORS/CSP/nosniff all enforced).
+
+Remaining:
+- **Step 4 — app CSP — TODO** (ship-blocker per the review). Introduces the app's
+  first CSP. **Open decision:** PeerTube is federated (arbitrary instance origins),
+  so a strict `frame-src`/`connect-src`/`media-src` allowlist cannot enumerate it
+  without breaking PeerTube embeds + oEmbed thumbnails. Either allow `https:` broadly
+  for those directives (weaker, non-breaking) or accept degraded PeerTube. Needs the
+  full WebKitGTK e2e rig to verify MathJax/demos/notebooks/present/export don't
+  regress (jsdom can't enforce CSP). Best handled as its own focused pass. Note the
+  shim FUNCTIONS without this (today's `csp:null` already permits the loopback frame);
+  the CSP is hardening, required before a release ships the shim.
+- **Packaged-macOS sign-off** — build a signed `.app` and confirm YouTube actually
+  plays through the shim (the rig serves the dev origin, so it can't exercise the
+  `tauri:`-scheme activation path).
