@@ -170,3 +170,8 @@ possible later extension. Shaping the data model as `vars` now keeps that open.
   float/int/color only and add string once there's a real case?
 - **Reset semantics / validation UX** when a stored value falls outside a later-edited
   `min`/`max`.
+- **Scale-mode + a size-affecting variable** (known, minor): `scaleMode` captures the
+  content's natural `scaleW`/`scaleH` **once** and doesn't re-measure when a variable
+  later changes the content's size, so the contain-fit is computed against a stale
+  design size until scale mode is toggled off/on. Treated as by-design (the design size
+  is a deliberate snapshot); revisit only if it bites in practice.
