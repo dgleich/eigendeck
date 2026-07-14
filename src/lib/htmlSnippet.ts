@@ -2,8 +2,11 @@
 // self-contained HTML fragments (see examples-html-elements/), so "Insert HTML
 // Element from File…" — and, later, a "download from an online repo" flow — need a
 // gate that rejects cruddy input: not-HTML, scripts (won't run in the sandbox),
-// and remote resource references (blocked by the CSP). This function is PURE (no
-// Tauri / DOM deps) so it can guard both the local file picker and any remote fetch.
+// and remote resource references (blocked by the CSP). This is a UX guard, NOT a
+// security boundary — the real containment is the no-`allow-scripts` sandbox + CSP
+// applied to `el.html` in every render path; a snippet that slipped past this still
+// executes nothing. This function is PURE (no Tauri / DOM deps) so it can guard both
+// the local file picker and any remote fetch.
 import { stripVarsManifest } from './htmlVars.mjs';
 
 export interface SnippetCheck {

@@ -3,11 +3,12 @@
 //! author HTML demos.
 //!
 //! The kit is shipped as a bundled resource (`resources/llm-tools/`): the
-//! committed AGENTS.md / CLAUDE.md / demo-starter.html plus the 4 docs that
-//! build.rs copies from docs/ (LLM-EDITING.md, SPEC.md,
-//! DEMO_AUTHORING.md, DEMO_SPEC.md). The install copies every file into
-//! `<target>/eigendeck-llm-tools/` and substitutes the real absolute path to
-//! the app's `eigendeck-cli` for the `__EIGENDECK_CLI_PATH__` placeholder in
+//! committed AGENTS.md / CLAUDE.md / demo-starter.html, the distilled `skills/`
+//! (the front door), and `reference/` — the 3 authoring docs build.rs copies
+//! from docs/ (LLM-EDITING.md, DEMO_AUTHORING.md, DEMO_SPEC.md). The install
+//! copies the kit tree RECURSIVELY (preserving `skills/`/`reference/` subdirs)
+//! into `<target>/eigendeck-llm-tools/` and substitutes the real absolute path
+//! to the app's `eigendeck-cli` for the `__EIGENDECK_CLI_PATH__` placeholder in
 //! AGENTS.md.
 
 use std::path::{Path, PathBuf};

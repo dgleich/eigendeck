@@ -200,10 +200,13 @@ function cssVarValue(type, value) {
   return `"${s}"`;
 }
 
-// Escape a value for HTML text context (the `{{token}}` side).
+// Escape a value for HTML text context (the `{{token}}` side). Escapes `'` too so a
+// token placed inside a single-quoted attribute can't break out (defense-in-depth —
+// the no-script sandbox already neutralises any injected markup).
 function htmlEscapeText(s) {
   return String(s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 /** Splice an html element's variables into its markup. Returns the body with the

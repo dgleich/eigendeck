@@ -39,4 +39,34 @@ describe('AnimatedArrow curved render (#129)', () => {
     expect(container.querySelector('line')).not.toBeNull();
     expect(container.querySelector('path')).toBeNull();
   });
+
+  it('honors interior waypoints so a curved-with-points arrow keeps its shape (A1)', () => {
+    // A curved arrow with an interior waypoint. Without passing points to the
+    // geometry, the path would be a plain 2-handle cubic ignoring the waypoint.
+    const to = arrow({ x1: 0, y1: 0, x2: 400, y2: 0, c1x: 40, c1y: 0, c2x: 360, c2y: 0,
+      points: [{ x: 200, y: 200 }] });
+    const withPts = render(<AnimatedArrow from={to} to={to} zIndex={0} animating={false} hasPrev={false} />).container.innerHTML;
+    const noPts = render(<AnimatedArrow from={arrow({ x1: 0, y1: 0, x2: 400, y2: 0, c1x: 40, c1y: 0, c2x: 360, c2y: 0 })}
+      to={arrow({ x1: 0, y1: 0, x2: 400, y2: 0, c1x: 40, c1y: 0, c2x: 360, c2y: 0 })}
+      zIndex={0} animating={false} hasPrev={false} />).container.innerHTML;
+    // The waypoint bends the path, so the two path strings must differ.
+    expect(withPts).not.toEqual(noPts);
+    expect(withPts).toContain('200'); // the waypoint coordinate shows up in the path
+  });
+
+  it('resolves the accent color token against the theme (A2)', () => {
+    const to = arrow({ color: 'accent', x1: 0, y1: 0, x2: 300, y2: 0 });
+    const theme = { background: '#000', accent: '#ff8800', text: '#fff' } as any;
+    const { container } = render(
+      <AnimatedArrow from={to} to={to} zIndex={0} animating={false} hasPrev={false} theme={theme} />,
+    );
+    const line = container.querySelector('line')!;
+    expect(line.getAttribute('stroke')).toBe('#ff8800'); // NOT the literal "accent" / default red
+  });
+
+  it('defaults an uncolored arrow to #2563eb, matching every other path (A2)', () => {
+    const to = arrow({ color: undefined, x1: 0, y1: 0, x2: 300, y2: 0 });
+    const { container } = render(<AnimatedArrow from={to} to={to} zIndex={0} animating={false} hasPrev={false} />);
+    expect(container.querySelector('line')!.getAttribute('stroke')).toBe('#2563eb');
+  });
 });

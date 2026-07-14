@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
-import { resolveTheme } from '../lib/themes';
+import { resolveTheme, type ThemeColors } from '../lib/themes';
+import { resolveColor } from '../lib/textStyle.mjs';
 import { SpeakerPanel } from './SpeakerView';
 import { getSlideNumber } from '../types/presentation';
 import type { SlideElement } from '../types/presentation';
@@ -268,10 +269,12 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
                 const moved = !(from.x1 === el.x1 && from.y1 === el.y1 &&
                   from.x2 === el.x2 && from.y2 === el.y2 &&
                   from.c1x === el.c1x && from.c1y === el.c1y &&
-                  from.c2x === el.c2x && from.c2y === el.c2y);
+                  from.c2x === el.c2x && from.c2y === el.c2y &&
+                  JSON.stringify(from.points) === JSON.stringify(el.points));
                 if (moved) {
                   return (
                     <AnimatedArrow key={el.id} from={from} to={el} zIndex={z}
+                      theme={resolveTheme(presentation.theme, slide.theme)}
                       animating={animating} hasPrev={prevIndex !== null} />
                   );
                 }
@@ -406,12 +409,23 @@ export function effControls(s: ArrowEl) {
   };
 }
 
-export function AnimatedArrow({ from, to, zIndex, animating, hasPrev }: {
+// Interpolate interior waypoints: lerp point-for-point when the counts match
+// (the common linked-arrow case); otherwise snap to the target set (a count change
+// can't be tweened smoothly).
+function lerpPoints(a: ArrowEl['points'], b: ArrowEl['points'], e: number): ArrowEl['points'] {
+  if (a && b && a.length === b.length) {
+    return a.map((p, i) => ({ x: p.x + (b[i].x - p.x) * e, y: p.y + (b[i].y - p.y) * e }));
+  }
+  return b ?? a;
+}
+
+export function AnimatedArrow({ from, to, zIndex, animating, hasPrev, theme }: {
   from: ArrowEl; to: ArrowEl; zIndex: number; animating: boolean; hasPrev: boolean;
+  theme?: ThemeColors;
 }) {
   const fc = effControls(from), tc = effControls(to);
   const atStart = (s: ArrowEl, c: ReturnType<typeof effControls>) => ({
-    x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, ...c,
+    x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, ...c, points: s.points,
   });
   const [coords, setCoords] = useState(hasPrev ? atStart(from, fc) : atStart(to, tc));
   const animRef = useRef<number | null>(null);
@@ -435,6 +449,7 @@ export function AnimatedArrow({ from, to, zIndex, animating, hasPrev }: {
         x2: lerp(from.x2, to.x2, e), y2: lerp(from.y2, to.y2, e),
         c1x: lerp(fc.c1x, tc.c1x, e), c1y: lerp(fc.c1y, tc.c1y, e),
         c2x: lerp(fc.c2x, tc.c2x, e), c2y: lerp(fc.c2y, tc.c2y, e),
+        points: lerpPoints(from.points, to.points, e),
       });
 
       if (t < 1) {
@@ -450,16 +465,21 @@ export function AnimatedArrow({ from, to, zIndex, animating, hasPrev }: {
       if (animRef.current) cancelAnimationFrame(animRef.current);
     };
   }, [animating, hasPrev, from.x1, from.y1, from.x2, from.y2, to.x1, to.y1, to.x2, to.y2,
-    fc.c1x, fc.c1y, fc.c2x, fc.c2y, tc.c1x, tc.c1y, tc.c2x, tc.c2y]);
+    fc.c1x, fc.c1y, fc.c2x, fc.c2y, tc.c1x, tc.c1y, tc.c2x, tc.c2y,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    JSON.stringify(from.points), JSON.stringify(to.points)]);
 
   const { x1, y1, x2, y2 } = coords;
-  const color = to.color || '#e53e3e';
+  // Resolve like every other path (describeArrow): 'accent' → theme accent, default
+  // #2563eb — not the stale #e53e3e that made a linked accent arrow vanish (#132).
+  const color = resolveColor(to.color, theme, '#2563eb');
   const strokeWidth = to.strokeWidth || 4;
   const headSize = to.headSize || 16;
-  // Curved only if the target arrow is curved; then use the interpolated controls.
+  // Curved only if the target arrow is curved; then use the interpolated controls +
+  // interior waypoints so a curved-with-points arrow keeps its shape (#129).
   const curved = to.c1x != null && to.c1y != null && to.c2x != null && to.c2y != null;
   const geo = curved
-    ? arrowGeometry(x1, y1, x2, y2, headSize, to.heads, coords.c1x, coords.c1y, coords.c2x, coords.c2y)
+    ? arrowGeometry(x1, y1, x2, y2, headSize, to.heads, coords.c1x, coords.c1y, coords.c2x, coords.c2y, coords.points)
     : arrowGeometry(x1, y1, x2, y2, headSize, to.heads);
 
   return (
