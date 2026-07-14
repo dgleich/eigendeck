@@ -142,6 +142,7 @@ Remaining:
   permits the loopback frame, so adding the shim doesn't worsen the CSP posture); the
   shim-page's OWN response CSP (step 7) still constrains the shim document. So the
   shim is functionally complete without step 4; the app-wide CSP stays gated on #122.
-- **Packaged-macOS sign-off** — build a signed `.app` and confirm YouTube actually
-  plays through the shim (the rig serves the dev origin, so it can't exercise the
-  `tauri:`-scheme activation path).
+- **Packaged-macOS sign-off — DONE.** Verified with a local `npm run tauri build`:
+  YouTube plays through the shim in the packaged app (the `tauri:`-scheme activation
+  path the rig can't exercise). The shim is complete; only the app-wide CSP (step 4,
+  gated on #122) remains, and it's separate app-wide hardening the shim doesn't need.
