@@ -14,7 +14,7 @@ import { writeFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { openApp, waitSeam, quit, handles, switchTo, exec, execA, sleep,
          trustReport, openSecurityWindow, clickButtonWithText, clickApproveInRow,
-         hasApproveControls, waitForText } from './_ui.mjs';
+         clickApproveDir, hasApproveControls, waitForText } from './_ui.mjs';
 
 const APP = process.env.E2E_APP, DECK = process.env.E2E_DECK, HOME = dirname(DECK);
 const fail = (m) => { console.error('SECURITY_ACTIONS_FAIL:', m); process.exit(1); };
@@ -67,7 +67,7 @@ console.log('  2) trust this deck → trusted, files still eligible (trust appro
 // 3. approve the whole figs/ folder → ia+ib approved, ic (other/) still eligible
 await switchTo(sid, secH);
 if (!await waitForText(sid, 'Approve all')) fail('trusted view never rendered the folder-approve buttons');
-if (!await clickButtonWithText(sid, 'figs')) fail('no "Approve all … figs" folder button');
+if (!await clickApproveDir(sid, 'figs')) fail('no folder-approve button for the figs/ group');
 rep = await waitState(sid, mainH, (r) => rowByExt(r, 'figs/a.svg').approved && rowByExt(r, 'figs/b.svg').approved);
 if (!(rowByExt(rep, 'figs/a.svg').approved && rowByExt(rep, 'figs/b.svg').approved)) fail(`approve-folder did not approve both figs files; got ${JSON.stringify(rep.rows.map((r) => [r.ext, r.approved]))}`);
 if (rowByExt(rep, 'other/c.svg').approved) fail('approve-folder leaked into other/ (c.svg should still be eligible)');

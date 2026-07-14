@@ -107,6 +107,15 @@ export async function clickApproveInRow(sid, refSubstr) {
     const b=[...row.querySelectorAll('button')].find(b=>b.textContent.trim()==='Approve');
     if(b){b.click();return true;} return false;`);
 }
+// Click the folder-level "Approve all N files" button for the folder group whose
+// header path contains `dirSubstr`. The button label is "Approve all N files" (NO
+// folder name), so match on the button's PARENT header text, which renders the
+// folder path (PathText) alongside the button. Returns true if clicked.
+export async function clickApproveDir(sid, dirSubstr) {
+  return await exec(sid, `
+    const b=[...document.querySelectorAll('button')].find(x=>/^Approve all /.test((x.textContent||'').trim()) && ((x.parentElement&&x.parentElement.textContent)||'').includes(${JSON.stringify(dirSubstr)}));
+    if(b){b.click();return true;} return false;`);
+}
 // Click EVERY "Approve all … in …" folder button, one per settle. Returns how many.
 export async function clickAllFolderApprovals(sid) {
   let n = 0;
