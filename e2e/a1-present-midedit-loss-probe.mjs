@@ -54,9 +54,11 @@ if (midHtml && midHtml.includes(MARKER)) fail('precondition: store already has t
 //    (both go App keydown/menu -> startPresenting -> setPresenting(true)) enter
 //    present WITHOUT committing the focused contentEditable first (unlike the
 //    toolbar BUTTON, whose pointerdown blurs+commits via the outside-click handler).
-//    We can't drive F5's projector path in the rig (opening a 2nd Tauri window
-//    crashes WebKitWebDriver), so we invoke the identical single-window unmount the
-//    F5 fallback / "Present (single window)" menu produce: setPresenting(true).
+//    (The rig CAN drive the projector 2nd window — see present-projector-probe +
+//    _ui.mjs handle helpers; the old "2nd window crashes WebKitWebDriver" belief is
+//    disproven.) We deliberately use the single-window unmount here: it's the exact
+//    same setPresenting(true) path the F5 fallback / "Present (single window)" menu
+//    produce, and it's what strips the focused contentEditable — no 2nd window needed.
 await exec(sid, "window.__eigendeck.store.getState().setPresenting(true);");
 if (!await waitFor(sid, "!!document.querySelector('.present-slide, .speaker-mode')")) fail('did not enter present');
 await sleep(400);

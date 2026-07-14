@@ -44,6 +44,11 @@ unless it hits the genuinely-Mac-only list at the bottom.
 - **Cannot:** drive **native dialogs** (Open / Save As / the Print→PDF dialog) —
   work through the seam or launch args instead. Cannot run **macOS-native** code
   (it's WebKitGTK/Linux; see below).
+- **CAN drive the app's other webview windows** — Settings, Security, and the
+  screen-share Presenter open as real 2nd Tauri windows that WebDriver drives via
+  `getWindowHandles` + `switchToWindow` (see `e2e/_ui.mjs`). The old "opening a 2nd
+  window crashes WebKitWebDriver" belief is **stale**. Gotcha: settle (poll for
+  content) after `switchTo` — a freshly-loaded 2nd webview reads empty for a beat.
 - **Build:** `VITE_EIGENDECK_SEAM=1 npm run build` + `CARGO_TARGET_DIR=/tmp/el-target`;
   full provisioning + gotchas in the `eigendeck-e2e` skill.
 

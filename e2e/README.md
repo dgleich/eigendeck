@@ -238,8 +238,13 @@ See `../.claude/notes/notebook-edge-cases-findings.md` for findings.
 The trust/approve gate: a linked file is read/watched only when the deck is trusted
 AND its path approved. Fixtures must use real-enough bytes (mp4 `ftyp`, leading
 `<svg>`, `WEBVTT`) or the content gate rejects them. Watch probes trust the (CLI-
-built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the real
-"Trust this deck" action.
+built, untrusted) fixture through the **REAL Security window** via
+`trustAndWatchAllViaUI(sid)` in `_ui.mjs` (the trust-all action-seam was retired —
+seam discipline). That driver clicks "Trust this deck", then approves **every**
+control the window offers — folder "Approve all …" bulk buttons AND per-row "Approve"
+(a root-level / single file has only a per-row button; approving folders alone left
+it gated — the #150 bug). Second windows (Security/Settings/Presenter) are all
+drivable via WebDriver window handles; settle after `switchTo` before reading.
 
 - **asset-trust-states-probe.mjs** — one deck through the whole matrix in one launch:
   untrusted → trust → trusted-but-unapproved-new-path → approve → revoke. Asserts a
@@ -282,6 +287,10 @@ built, untrusted) fixture via `window.__eigendeck.trustDeck()` first — the rea
   CLIPPED in present mode (rendered box computes `overflow:hidden` AND content
   genuinely exceeds the box). The deterministic markup guard is the
   `buildTextElementSvgMarkup` unit test (`src/components/TextElementSvg.test.ts`).
+- **present-projector-probe.mjs** — the screen-share PRESENTER 2nd window
+  (`eigendeck:screen-share-present` → `openPresenterWindow`) opens, renders the slide,
+  and leaves the main window drivable. Proves the multi-window present path the
+  `a1-present-*` probes dodge; the "2nd window crashes WebKitWebDriver" belief is stale.
 - **card-render-probe.mjs** — Card (#132) render smoke: a themed Card fill
   (`boxTint` + `borderRadius` + `boxShadow`) must render its RESOLVED tint in the
   real WebKit webview across editor (#1), sidebar thumbnail (#7), present (#2), and
