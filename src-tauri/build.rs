@@ -41,6 +41,20 @@ fn bblanchon_asset_for_target() -> Option<(&'static str, &'static str, &'static 
     }
 }
 
+/// SHA-256 of each bblanchon archive for the pinned `PDFIUM_RELEASE_TAG`, verified on
+/// download (#147). Recompute on a tag bump: `curl -fsSL <release-url>/<archive> | sha256sum`.
+fn expected_pdfium_sha256(archive_name: &str) -> &'static str {
+    match archive_name {
+        "pdfium-mac-arm64.tgz"   => "9acf49e46c68992cd40810e88264b1ad171805d02fd41c4cca336aad6653b333",
+        "pdfium-mac-x64.tgz"     => "f455e0868ef7e5174a315de8789ee2b7a5544638d0ac7a3312ea7b68ebbc99cb",
+        "pdfium-linux-x64.tgz"   => "e3f0c66b2daad710cb6c8edd4a8c45c8902995e359dc0775917fc16e2e56349d",
+        "pdfium-linux-arm64.tgz" => "1518d09bbf09a1bef27a6f93656d95b55bd22bcaecda597679e05f4e82c5fbfa",
+        "pdfium-win-x64.tgz"     => "45c4cc5d052ef8ec6380b946b548a76100f4675e38362000a4c732e16d5e8eda",
+        "pdfium-win-arm64.tgz"   => "e99570d74211a88d41589feb8861ef9b40d78c8d26825270ad4fb7a9a1d02f6d",
+        other => panic!("no pinned SHA-256 for pdfium archive '{}' — add one (recompute on a tag bump)", other),
+    }
+}
+
 fn download_and_extract_pdfium(
     archive_name: &str,
     lib_in_archive: &str,
@@ -77,6 +91,22 @@ fn download_and_extract_pdfium(
     let mut bytes: Vec<u8> = Vec::new();
     std::io::copy(&mut resp.into_reader(), &mut bytes)
         .expect("read pdfium archive into memory");
+
+    // Supply-chain pin (#147): we bundle AND code-sign/notarize this third-party dylib
+    // under our own Developer ID, so verify the download is byte-for-byte the reviewed
+    // release before extracting it. A mismatch (tampered download / MITM / silently
+    // re-cut release) fails the build instead of shipping unverified bytes.
+    let actual = format!("{:x}", <sha2::Sha256 as sha2::Digest>::digest(&bytes));
+    let expected = expected_pdfium_sha256(archive_name);
+    if actual != expected {
+        panic!(
+            "pdfium archive SHA-256 mismatch for {}\n  expected {}\n  actual   {}\n\
+             Refusing to bundle/sign unverified bytes. If you bumped {}, recompute the pin \
+             (curl -fsSL <url> | sha256sum).",
+            archive_name, expected, actual, "PDFIUM_RELEASE_TAG",
+        );
+    }
+    println!("cargo:warning=pdfium archive verified (sha256={})", actual);
 
     // bblanchon ships .tgz for Mac/Linux.
     let gz = flate2::read::GzDecoder::new(&bytes[..]);
