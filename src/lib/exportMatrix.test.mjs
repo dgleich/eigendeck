@@ -427,9 +427,22 @@ describe('live types — HTML export', () => {
     const h = await exportHtml([{ id: 'n', type: 'notebook', assetId: 'N', src: 'n.ipynb', position: { x: 0, y: 0, width: 300, height: 200 } }], { previews: false });
     expect(h.toLowerCase()).toContain('nb');
   });
-  it('video embed → provider iframe', async () => {
+  it('video embed → provider iframe (YouTube: direct nocookie URL, NOT the shim)', async () => {
     const h = await exportHtml([{ id: 'v', type: 'video', kind: 'embed', url: 'https://youtube.com/watch?v=dQw4w9WgXcQ', provider: 'youtube', position: { x: 0, y: 0, width: 300, height: 200 } }]);
-    expect(h).toContain('<iframe src=');
+    // Export is a standalone file opened at a REAL origin (a web host), so it uses
+    // the direct provider URL — the loopback shim is a live-packaged-app-only fix.
+    expect(h).toContain('<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
+    expect(h).not.toContain('127.0.0.1');   // never the loopback shim in an export
+    expect(h).not.toContain('enablejsapi');  // export passes jsApi:false
+  });
+  it('video embed → Vimeo iframe', async () => {
+    const h = await exportHtml([{ id: 'v', type: 'video', kind: 'embed', url: 'https://vimeo.com/123456', provider: 'vimeo', position: { x: 0, y: 0, width: 300, height: 200 } }]);
+    expect(h).toContain('<iframe src="https://player.vimeo.com/video/123456');
+  });
+  it('video embed with an unrecognized/invalid id → clickable link fallback (never dropped)', async () => {
+    const h = await exportHtml([{ id: 'v', type: 'video', kind: 'embed', url: 'https://youtube.com/watch?v=bad', provider: 'youtube', position: { x: 0, y: 0, width: 300, height: 200 } }]);
+    expect(h).not.toContain('<iframe');
+    expect(h).toContain('href="https://youtube.com/watch?v=bad"'); // degrades to a "▶ Video" link
   });
   it('video file → inline <video> with controls/loop/autoplay', async () => {
     const h = await exportHtml([{ id: 'v', type: 'video', kind: 'file', src: 'v.mp4', controls: true, loop: true, autoplay: true, position: { x: 0, y: 0, width: 300, height: 200 } }]);
