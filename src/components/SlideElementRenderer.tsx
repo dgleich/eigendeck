@@ -1023,7 +1023,7 @@ export function DraggableBox({
 }) {
   const elementId = element.id;
   const pos = element.position;
-  const { linkId, syncId, _linkId, _syncId } = element;
+  const { linkId, syncId } = element;
   // Highlight this box while a context menu targets it (no selection change).
   const isContextTarget = useContextTarget() === elementId;
   const onPositionChange = (p: ElementPosition) => onUpdate({ position: p } as Partial<SlideElement>);
@@ -1230,82 +1230,7 @@ export function DraggableBox({
       }}
     >
       {children}
-      {/* Link badges — shown when selected */}
-      {isSelected && (
-        <div className="el-link-badges" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-          {/* Sync badge. Green = synced (click to free). Grey = either freed
-              (click to re-sync) OR animation-linked-but-not-synced (click to
-              PROMOTE link → sync, destructive). Hidden if there's no partner. */}
-          {(syncId || _syncId || linkId) && (() => {
-            const slides = usePresentationStore.getState().presentation.slides;
-            const sid = syncId || _syncId;
-            // A sync partner (synced/freed group) OR, for the promote case, an
-            // animation-link partner sharing this linkId.
-            //
-            // Sync case: count the WHOLE group across slides — don't require a
-            // DIFFERENT id. After save→reopen, synced instances correctly share
-            // ONE canonical id (one row, many junctions — the storage model), so
-            // an `el.id !== elementId` partner check finds nothing and wrongly
-            // hides the S badge. A group of >1 instance always has a partner.
-            const hasPartner = sid
-              ? slides.reduce((n, s) => n + s.elements.filter((el) =>
-                  el.syncId === sid || (el as any)._syncId === sid).length, 0) > 1
-              : slides.some((s) => s.elements.some((el) =>
-                  el.id !== elementId && el.linkId === linkId));
-            if (!hasPartner) return null;
-            const promote = !syncId && !_syncId;   // linked, not yet synced
-            return (
-              <button
-                className={`el-link-badge ${syncId ? 'el-badge-sync' : 'el-badge-off'}`}
-                title={syncId ? 'Synced — click to free position'
-                  : promote ? 'Animation-linked — click to promote to a sync (makes the copies identical; destructive)'
-                  : 'Position free — click to re-sync'}
-                onClick={() => {
-                  const store = usePresentationStore.getState();
-                  if (syncId) store.freeElement(elementId);
-                  else if (_syncId) store.resyncElement(elementId);
-                  else {
-                    // Promote link → sync. App decides: a recording conflict
-                    // raises the "which to keep?" chooser; otherwise it confirms
-                    // and promotes (keeping the only recording, if any).
-                    window.dispatchEvent(new CustomEvent('promote-to-sync', { detail: { elementId } }));
-                  }
-                }}>
-                S
-              </button>
-            );
-          })()}
-          {/* Animation badge: purple = active, grey = inactive */}
-          {(linkId || _linkId) && (
-            <button
-              className={`el-link-badge ${linkId ? 'el-badge-anim' : 'el-badge-off'}`}
-              title={linkId ? 'Animated — click to unlink' : 'Not animated — click to re-link'}
-              onClick={() => {
-                const store = usePresentationStore.getState();
-                if (linkId) store.unlinkElement(elementId);
-                else if (_linkId) store.relinkElement(elementId);
-              }}>
-              A
-            </button>
-          )}
-          {/* Link button: open Time Machine overlay. Disabled for synced
-              elements — sync and link are mutually exclusive: a synced element
-              shares ONE position across slides, so there's no position delta to
-              animate. Free it first to make it animatable. */}
-          <button
-            className="el-link-badge el-badge-link"
-            disabled={!!syncId}
-            title={syncId
-              ? 'Synced elements share one position across slides — free it (S) first to animate'
-              : 'Link to element on another slide'}
-            onClick={() => {
-              if (syncId) return;
-              window.dispatchEvent(new CustomEvent('open-link-overlay', { detail: { elementId } }));
-            }}>
-            L
-          </button>
-        </div>
-      )}
+      <ElementLinkBadges element={element} isSelected={isSelected} />
       <button className="el-delete-btn" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Delete">×</button>
       <div className="el-resize-handle" onPointerDown={handleResizeDown} />
     </div>
@@ -1525,11 +1450,101 @@ function ArrowRenderer({
           className="arrow-handle" style={{ pointerEvents: 'all', cursor: 'crosshair' }}
           onPointerDown={(e) => handleEndpoint(e, 'end')} />
       </svg>
-      {/* Same delete button as every other element (DraggableBox) — the shared
-          .el-delete-btn CSS floats it above the wrapper's top-right corner and
-          shows it on select/hover. The arrow wrapper is a positioned .slide-element,
-          so no inline positioning needed (was a one-off centered/inline version). */}
+      {/* Same chrome as every other element (DraggableBox): the sync / animation /
+          link badges and the delete button. The arrow wrapper is a positioned
+          .slide-element, so the shared CSS floats them at its corners. This is how
+          you author an animation link ON an arrow (arrows animate via AnimatedArrow;
+          #138 review). */}
+      <ElementLinkBadges element={a} isSelected={isSelected} />
       <button className="el-delete-btn" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Delete">×</button>
+    </div>
+  );
+}
+
+/** Sync (S) / animation (A) / link (L) badge cluster shown on a selected element —
+ *  shared by DraggableBox and ArrowRenderer so arrows get the same link authoring
+ *  chrome as every other element. Self-contained: needs only the element's id + link
+ *  fields; all actions go through the store / window events. */
+export function ElementLinkBadges({ element, isSelected }: {
+  element: { id: string; linkId?: string; syncId?: string; _linkId?: string; _syncId?: string };
+  isSelected: boolean;
+}) {
+  if (!isSelected) return null;
+  const elementId = element.id;
+  const { linkId, syncId, _linkId, _syncId } = element;
+  return (
+    <div className="el-link-badges" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+      {/* Sync badge. Green = synced (click to free). Grey = either freed
+          (click to re-sync) OR animation-linked-but-not-synced (click to
+          PROMOTE link → sync, destructive). Hidden if there's no partner. */}
+      {(syncId || _syncId || linkId) && (() => {
+        const slides = usePresentationStore.getState().presentation.slides;
+        const sid = syncId || _syncId;
+        // A sync partner (synced/freed group) OR, for the promote case, an
+        // animation-link partner sharing this linkId.
+        //
+        // Sync case: count the WHOLE group across slides — don't require a
+        // DIFFERENT id. After save→reopen, synced instances correctly share
+        // ONE canonical id (one row, many junctions — the storage model), so
+        // an `el.id !== elementId` partner check finds nothing and wrongly
+        // hides the S badge. A group of >1 instance always has a partner.
+        const hasPartner = sid
+          ? slides.reduce((n, s) => n + s.elements.filter((el) =>
+              el.syncId === sid || (el as any)._syncId === sid).length, 0) > 1
+          : slides.some((s) => s.elements.some((el) =>
+              el.id !== elementId && el.linkId === linkId));
+        if (!hasPartner) return null;
+        const promote = !syncId && !_syncId;   // linked, not yet synced
+        return (
+          <button
+            className={`el-link-badge ${syncId ? 'el-badge-sync' : 'el-badge-off'}`}
+            title={syncId ? 'Synced — click to free position'
+              : promote ? 'Animation-linked — click to promote to a sync (makes the copies identical; destructive)'
+              : 'Position free — click to re-sync'}
+            onClick={() => {
+              const store = usePresentationStore.getState();
+              if (syncId) store.freeElement(elementId);
+              else if (_syncId) store.resyncElement(elementId);
+              else {
+                // Promote link → sync. App decides: a recording conflict
+                // raises the "which to keep?" chooser; otherwise it confirms
+                // and promotes (keeping the only recording, if any).
+                window.dispatchEvent(new CustomEvent('promote-to-sync', { detail: { elementId } }));
+              }
+            }}>
+            S
+          </button>
+        );
+      })()}
+      {/* Animation badge: purple = active, grey = inactive */}
+      {(linkId || _linkId) && (
+        <button
+          className={`el-link-badge ${linkId ? 'el-badge-anim' : 'el-badge-off'}`}
+          title={linkId ? 'Animated — click to unlink' : 'Not animated — click to re-link'}
+          onClick={() => {
+            const store = usePresentationStore.getState();
+            if (linkId) store.unlinkElement(elementId);
+            else if (_linkId) store.relinkElement(elementId);
+          }}>
+          A
+        </button>
+      )}
+      {/* Link button: open Time Machine overlay. Disabled for synced
+          elements — sync and link are mutually exclusive: a synced element
+          shares ONE position across slides, so there's no position delta to
+          animate. Free it first to make it animatable. */}
+      <button
+        className="el-link-badge el-badge-link"
+        disabled={!!syncId}
+        title={syncId
+          ? 'Synced elements share one position across slides — free it (S) first to animate'
+          : 'Link to element on another slide'}
+        onClick={() => {
+          if (syncId) return;
+          window.dispatchEvent(new CustomEvent('open-link-overlay', { detail: { elementId } }));
+        }}>
+        L
+      </button>
     </div>
   );
 }
