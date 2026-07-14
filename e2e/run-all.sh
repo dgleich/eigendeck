@@ -56,6 +56,7 @@ MANIFEST=(
   # ── already-working entries (static example/fixture decks) ───────────────
   "present-clip-probe.mjs|examples/intro-slide.eigendeck||"
   "present-theme-parity-probe.mjs|examples/intro-slide.eigendeck||"
+  "present-projector-probe.mjs|examples/intro-slide.eigendeck||"
   "demo-theme-verify.mjs|examples/graph-explorer.eigendeck||"
   "demo-theme-scenario.mjs|examples/intro-slide.eigendeck||"
   "demo-theme-deck-verify.mjs|test-presentations/font-theme-matrix.eigendeck||"

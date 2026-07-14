@@ -149,10 +149,19 @@ export async function trustAndWatchAllViaUI(sid, mainH) {
   await switchTo(sid, secH);
   // Trust if the deck isn't trusted yet (button only present while untrusted).
   await clickButtonWithText(sid, 'Trust this deck');
-  // Wait for the re-init remount to finish rendering the trusted report (the
-  // folder-approve buttons) — clicking during "Scanning…" would find nothing.
-  await waitForText(sid, 'Approve all');
-  const nApproved = await clickAllFolderApprovals(sid);
+  // Wait for the re-init remount to finish rendering the trusted report — clicking
+  // during "Scanning…" would find nothing.
+  await waitForText(sid, 'Approve');
+  // Approve EVERYTHING the window offers — folder "Approve all …" bulk buttons AND
+  // per-row "Approve" (a root-level / single file shows a per-row Approve, not a
+  // folder button; the folder-only click missed it, so nothing got approved — #150).
+  // Loop until no approve control remains; the list re-renders after each click.
+  let nApproved = 0;
+  for (let i = 0; i < 25; i++) {
+    const clicked = await exec(sid, "const b=[...document.querySelectorAll('button')].find(x=>{const t=(x.textContent||'').trim();return t==='Approve'||/^Approve all /.test(t);});if(b){b.click();return true;}return false;");
+    if (!clicked) break;
+    nApproved++; await sleep(900);
+  }
   await sleep(600);
   await closeSecurityWindow(sid, mainH);
   // Force a main-window rescan + ledger-cache invalidation even when nothing was
