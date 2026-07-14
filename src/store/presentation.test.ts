@@ -28,6 +28,7 @@ describe('persistence coverage — every model field has a writer', () => {
     titleFont: 'config',
     bodyFont: 'config',
     hypeFont: 'config',
+    omitFooter: 'config', // slideMeta → slide config JSON (#135)
     elements: 'elements', // written by the element writers
   };
 
@@ -40,7 +41,7 @@ describe('persistence coverage — every model field has a writer', () => {
   });
 
   it('slideMeta writes every column+config slide field', () => {
-    const s = { id: 's', notes: 'n', groupId: 'g', theme: 'dark', titleFont: 'a', bodyFont: 'b', hypeFont: 'c', elements: [] } as Slide;
+    const s = { id: 's', notes: 'n', groupId: 'g', theme: 'dark', titleFont: 'a', bodyFont: 'b', hypeFont: 'c', omitFooter: true, elements: [] } as Slide;
     const m = slideMeta(s);
     const written = new Set<string>([...Object.keys(m).filter((k) => k !== 'config'), ...Object.keys(m.config)]);
     for (const k of Object.keys(SLIDE_FIELD_COVERAGE) as (keyof Slide)[]) {

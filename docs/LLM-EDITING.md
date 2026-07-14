@@ -76,6 +76,7 @@ my-presentation/
 - `mathPreamble`: optional LaTeX preamble applied to all MathJax rendering (e.g. `\newcommand`, `\def`)
 - `defaultTitleFont` / `defaultBodyFont` / `defaultHypeFont`: optional default font package ids (see `src/lib/fonts.ts`). Available ids include `"ptsans"`, `"libertinus"`, `"libertinus-sans"`, `"lm-sans"`, `"noto-sans"`, `"source-sans"`, `"source-code"`, `"shantell"`, `"concrete-euler"`. Slides may override via `Slide.titleFont` / `bodyFont` / `hypeFont`. Missing values resolve to `"ptsans"`.
 - `defaultMonoFont`: optional default monospace font package id, used by notebook code cells. Falls back to `"source-code"` (Source Code Pro, bundled). Notebook prose cells use the body font; only code cells / outputs use this.
+- `footerFont`: optional font package id for the slide footer (the author·venue line + slide number). Unset → `"ptsans"` (PT Sans, the historical default). Deck-level only.
 - `textSizes`: optional partial map overriding the deck's named type scale. Keys: `"footnote"` (default 24), `"note"` (32), `"body"` (48), `"title"` (72), `"hype"` (96). Values in slide-pixels. Absent keys fall back to the defaults. Used by every element that picks a size by name (notebook `fontSizeName`, and — as text presets are retrofitted — text element sizes).
 - `autoReloadAssets`: optional per-presentation override for the file-watching auto-reload behavior. `"on"` or `"off"` overrides the global preference; absent means follow the global. Per-asset overrides in `assets.auto_reload` still win.
 - `customPalette`: optional array of `#rrggbb` hex strings — a per-presentation color palette (e.g. brand colors) shown as a leading swatch row on **every** color control (the shared `<ColorControl>`: the inline text toolbar plus the inspector text-color / background / arrow / cover pickers). Edited in the Deck inspector ("Color Palette"). Purely an editing affordance; a chosen color is written to the same field as any other swatch (inline HTML for the toolbar, `color`/`backgroundColor` for the inspector).
@@ -101,8 +102,9 @@ Each slide has an `elements` array. Array order = z-order (first = bottom, last 
 - `theme`: optional per-slide theme override (otherwise inherits `presentation.theme`)
 - `groupId`: optional — slides with the same groupId form a group (shared numbering, used for build animations)
 - `titleFont` / `bodyFont` / `hypeFont`: optional per-slide font package overrides. Values are font ids from `src/lib/fonts.ts` (e.g. `"ptsans"`, `"shantell"`, `"libertinus"`). Title preset uses `titleFont`, hype preset uses `hypeFont`, all others use `bodyFont`. Falls back to `presentation.config.default*Font`, then `"ptsans"`. Math always follows the same font as the surrounding preset.
+- `omitFooter`: optional boolean. When `true`, this slide draws no footer (author·venue meta + slide number both hidden) — e.g. title slides, section dividers, full-bleed html slides. Numbering keeps counting through an omitted slide, so other slides' numbers stay stable. Absent/`false` = footer shown.
 
-> **Storage note**: at the SQLite level, the `theme`/`titleFont`/`bodyFont`/`hypeFont` fields are bundled into a single optional `slides.config` JSON column. Absent fields = inherit. Most slides have `config = NULL` (no overrides). The runtime cascade (element override → slide override → presentation default) does the resolution.
+> **Storage note**: at the SQLite level, the `theme`/`titleFont`/`bodyFont`/`hypeFont`/`omitFooter` fields are bundled into a single optional `slides.config` JSON column. Absent fields = inherit. Most slides have `config = NULL` (no overrides). The runtime cascade (element override → slide override → presentation default) does the resolution.
 
 ## Element Types
 

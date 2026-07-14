@@ -212,6 +212,14 @@ export function PropertiesPanel() {
                 onChange={(v) => updateSlide(currentSlideIndex, { hypeFont: v })}
                 inheritLabel="Inherit (presentation default)" />
             </PropSection>
+            <PropSection label="Footer">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}
+                title="Hide the author·venue line and slide number on this slide (numbering keeps counting)">
+                <input type="checkbox" checked={!!slide.omitFooter}
+                  onChange={(e) => updateSlide(currentSlideIndex, { omitFooter: e.target.checked })} />
+                Omit footer on this slide
+              </label>
+            </PropSection>
             {slide.elements.some((el) => el.syncId || el.linkId) && (
               <PropSection label="Links">
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -270,6 +278,11 @@ export function PropertiesPanel() {
                 onChange={(v) => updateConfig({ defaultMonoFont: v })}
                 inheritLabel="Source Code Pro (default)"
                 packages={listMonoEligible()} />
+            </PropSection>
+            <PropSection label="Footer Font">
+              <FontSelect value={presentation.config.footerFont}
+                onChange={(v) => updateConfig({ footerFont: v })}
+                inheritLabel="PT Sans (default)" />
             </PropSection>
             <PropSection label="Text sizes (px)">
               {/* Deck-level type scale — overrides DEFAULT_TEXT_SIZES.

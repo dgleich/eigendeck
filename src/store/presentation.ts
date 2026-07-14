@@ -1102,12 +1102,13 @@ export function presentationRows(p: Pick<Presentation, 'title' | 'theme' | 'conf
  *  and the slide change-detector (same rationale as presentationRows). `notes` and
  *  `groupId` are columns; the rest ride in the slide `config` JSON. Add a new
  *  per-slide override HERE, once, and both the write and the dirty-diff pick it up. */
-export function slideMeta(s: Slide): { notes: string; groupId: string; config: Record<string, string> } {
-  const config: Record<string, string> = {};
+export function slideMeta(s: Slide): { notes: string; groupId: string; config: Record<string, string | boolean> } {
+  const config: Record<string, string | boolean> = {};
   if (s.theme) config.theme = s.theme;
   if (s.titleFont) config.titleFont = s.titleFont;
   if (s.bodyFont) config.bodyFont = s.bodyFont;
   if (s.hypeFont) config.hypeFont = s.hypeFont;
+  if (s.omitFooter) config.omitFooter = true; // #135 — only when set (absence = footer shown)
   return { notes: s.notes || '', groupId: s.groupId || '', config };
 }
 

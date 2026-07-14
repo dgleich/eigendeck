@@ -1,6 +1,7 @@
 import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
 import { isEigendeckDemo } from './assetTypes.mjs';
 import { resolveMonoFontPackage } from './fontRegistry.mjs';
+import { showFooter, footerFontFamily } from './footer.mjs';
 import { coverHtml, arrowSvgHtml, imageHtml } from './elementHtml.mjs';
 import { htmlElementIframeHtml, htmlElementScaledIframeHtml, htmlIsScaled, htmlScaleLayout } from './htmlElement.mjs';
 import { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
@@ -442,7 +443,9 @@ export async function buildExportHtml(opts) {
       } catch (e) { console.error('Controller iframe failed:', e); }
     }
 
-    inner += `<div class="slide-footer"><span class="slide-footer-meta">${meta}</span><span class="slide-footer-number">${i + 1}</span></div>`;
+    if (showFooter(slide)) {
+      inner += `<div class="slide-footer"><span class="slide-footer-meta">${meta}</span><span class="slide-footer-number">${i + 1}</span></div>`;
+    }
     // P0-1: emit the per-slide theme background on the wrapper so dark/black/
     // light themes don't export white-on-white. CSS no longer forces #fff.
     const slideBg = themeBackground(presentation, slide);
@@ -455,6 +458,9 @@ export async function buildExportHtml(opts) {
   // self-contained SVG — no MathJax runtime, no CDN. A genuine cache miss in a
   // never-opened deck ships its $tex$ source verbatim (rare, and honest) rather
   // than pulling a wrong-font, network-dependent MathJax off a CDN.
+
+  // Deck-level footer font (#135) — resolved once for the shared .slide-footer CSS.
+  const footerFamily = footerFontFamily(presentation.config);
 
   // Embed source JSON for round-trip import
   const sourceB64 = (typeof btoa !== 'undefined')
@@ -490,7 +496,7 @@ ol li::before { counter-increment: ol-counter; content: counter(ol-counter) '. '
 .slide-footer {
   position: absolute; bottom: 20px; right: 40px;
   display: flex; align-items: baseline; gap: 16px;
-  font-family: 'PT Sans', sans-serif; color: #999; font-size: 18px;
+  font-family: ${footerFamily}; color: #999; font-size: 18px;
 }
 .slide-footer-number { font-size: 24px; }
 /* Navigation bar */

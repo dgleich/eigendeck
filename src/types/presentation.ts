@@ -415,6 +415,10 @@ export interface Slide {
   titleFont?: string;
   bodyFont?: string;
   hypeFont?: string;
+  // Hide the slide footer (author·venue meta + slide number) on this slide —
+  // e.g. title slides, section dividers, full-bleed html slides. Numbering keeps
+  // counting through an omitted slide (see getSlideNumber). #135.
+  omitFooter?: boolean;
 }
 
 export interface PresentationConfig {
@@ -432,6 +436,9 @@ export interface PresentationConfig {
   defaultTitleFont?: string;
   defaultBodyFont?: string;
   defaultHypeFont?: string;
+  // Deck-level footer font (author·venue meta + slide number). Font package id;
+  // unset → PT Sans (historical default). See src/lib/footer.mjs. #135.
+  footerFont?: string;
   // Default monospace font package id, used by notebook code cells.
   // Falls back to 'source-code' (bundled). Notebooks ALSO inherit
   // the body font for markdown cells via the slide/presentation

@@ -451,12 +451,14 @@ pub fn close_db() -> SqlResult<()> {
 /// override fields can be added here without a schema change.
 fn build_slide_config_json(slide: &serde_json::Value) -> Option<String> {
     let mut out = serde_json::Map::new();
-    for key in ["theme", "titleFont", "bodyFont", "hypeFont", "transition", "layout", "mathPreamble"] {
+    for key in ["theme", "titleFont", "bodyFont", "hypeFont", "omitFooter", "transition", "layout", "mathPreamble"] {
         if let Some(v) = slide.get(key) {
-            // Only include if the value is meaningful (non-null, non-empty string).
+            // Only include if the value is meaningful (non-null, non-empty string,
+            // non-false bool) — we never write defaults; absence drives the cascade.
             match v {
                 serde_json::Value::Null => {}
                 serde_json::Value::String(s) if s.is_empty() => {}
+                serde_json::Value::Bool(false) => {}
                 _ => { out.insert(key.to_string(), v.clone()); }
             }
         }

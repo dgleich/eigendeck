@@ -4,6 +4,7 @@ import { resolveTheme, type ThemeColors } from '../lib/themes';
 import { resolveColor } from '../lib/textStyle.mjs';
 import { SpeakerPanel } from './SpeakerView';
 import { getSlideNumber } from '../types/presentation';
+import { showFooter, footerFontFamily } from '../lib/footer.mjs';
 import type { SlideElement } from '../types/presentation';
 // Live-present element rendering is shared with the projector window
 // (src/presenter.tsx) via PresentSlide — one renderer, no drift.
@@ -333,10 +334,12 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
             })()}
 
             {/* Footer */}
-            <div className="slide-footer" style={{ zIndex: 1000 }}>
-              <span className="slide-footer-meta">{meta}</span>
-              <span className="slide-footer-number">{getSlideNumber(presentation.slides, currentIndex)}</span>
-            </div>
+            {showFooter(slide) && (
+              <div className="slide-footer" style={{ zIndex: 1000, fontFamily: footerFontFamily(presentation.config) }}>
+                <span className="slide-footer-meta">{meta}</span>
+                <span className="slide-footer-number">{getSlideNumber(presentation.slides, currentIndex)}</span>
+              </div>
+            )}
           </div>
         </div>
         {/* #29 — while zoomed, a transparent overlay above ALL slide content
