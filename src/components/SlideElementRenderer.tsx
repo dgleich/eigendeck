@@ -17,7 +17,8 @@ import { demoVarsCssForSlide } from '../lib/demoThemeInject';
 import { useDemoDoc, useDeckFontFacesCss } from '../lib/demoMount';
 import { capturePreview } from '../lib/previewCache';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
-import { buildEmbedSrc, VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
+import { VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
+import { useYoutubeShimBase, liveEmbedSrc } from '../lib/youtubeShim';
 import { NotebookBox } from './NotebookBox';
 import { useImageSrc } from '../lib/imageSrc';
 import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
@@ -597,8 +598,9 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
   // distracting and noisy. Build the src with autoplay suppressed until you
   // double-click to interact (files already don't autoplay in the editor —
   // the <video> has no autoPlay attr). Present mode keeps real autoplay.
+  const shimBase = useYoutubeShimBase();
   const embedSrc = element.kind === 'embed'
-    ? buildEmbedSrc(interacting ? element : { ...element, autoplay: false })
+    ? liveEmbedSrc(interacting ? element : { ...element, autoplay: false }, shimBase)
     : null;
   const embedRef = useRef<HTMLIFrameElement>(null);
   usePlaybackRate(videoRef, element.playbackRate ?? 1, src);

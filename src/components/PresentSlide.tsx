@@ -12,7 +12,8 @@ import { useDemoDoc, useDeckFontFacesCss } from '../lib/demoMount';
 import { htmlElementSrcdoc, HTML_SANDBOX_LOCKED, htmlIsScaled, htmlScaleLayout } from '../lib/htmlElement.mjs';
 import { useImageSrc } from '../lib/imageSrc';
 import { usePlaybackRate, usePingPong, useEmbedSpeed, togglePlay } from '../lib/videoPlayback';
-import { buildEmbedSrc, VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
+import { VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
+import { useYoutubeShimBase, liveEmbedSrc } from '../lib/youtubeShim';
 import type { Presentation, Slide, SlideElement, TextElement } from '../types/presentation';
 import { TextElementSvg } from './TextElementSvg';
 import { NotebookContent } from './notebook/NotebookContent';
@@ -151,7 +152,8 @@ function PresentVideo({ element: el, zIndex, style }: {
   const embedRef = useRef<HTMLIFrameElement>(null);
   const src = useAssetUrl(el.assetId);                 // video FILE — a plain asset,
   const captionsSrc = useAssetUrl(el.captionsAssetId); // not a demo (no demo-marker gate)
-  const embedSrc = el.kind === 'embed' ? buildEmbedSrc(el) : null;
+  const shimBase = useYoutubeShimBase();
+  const embedSrc = el.kind === 'embed' ? liveEmbedSrc(el, shimBase) : null;
   usePlaybackRate(ref, el.playbackRate ?? 1, src);
   usePingPong(ref, !!el.pingPong, el.playbackRate ?? 1, src);
   useEmbedSpeed(embedRef, el.provider, el.playbackRate ?? 1, embedSrc);
