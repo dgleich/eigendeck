@@ -65,6 +65,18 @@ jobs:
       - name: Setup MathJax bundle
         run: npm run setup
 
+      # Import the Developer ID cert into the keychain BEFORE the build, so the
+      # identity is available to the beforeBundleCommand pdfium-signing hook (which
+      # runs during the build, before tauri-action would otherwise import the cert).
+      # tauri's own app signing then reuses this same keychain (so APPLE_CERTIFICATE
+      # is NOT passed to tauri-action — one keychain, no ambiguity).
+      - name: Import signing certificate (macOS)
+        if: matrix.platform == 'macos-latest'
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
       # tauri-action builds + bundles + uploads to ONE draft release per tag
       # (idempotent: it reuses an existing draft and uploads missing assets).
       # macOS DMG packaging (bundle_dmg.sh / hdiutil) flakes intermittently, so
@@ -78,11 +90,11 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS code signing + notarization (empty on Linux/Windows → ignored).
-          # tauri-action imports the .p12 into a temp keychain and, when the
-          # notarization creds are present, signs → notarizes → staples the .app/DMG.
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          # macOS signing + notarization (empty on Linux/Windows → ignored). The cert
+          # is imported into the keychain by the "Import signing certificate" step
+          # ABOVE — before the build — so BOTH the beforeBundleCommand pdfium-signing
+          # hook AND tauri's own app signing find the identity. (tauri-action's built-in
+          # cert import happens too late for the hook, hence the up-front import.)
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
@@ -102,11 +114,11 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS code signing + notarization (empty on Linux/Windows → ignored).
-          # tauri-action imports the .p12 into a temp keychain and, when the
-          # notarization creds are present, signs → notarizes → staples the .app/DMG.
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          # macOS signing + notarization (empty on Linux/Windows → ignored). The cert
+          # is imported into the keychain by the "Import signing certificate" step
+          # ABOVE — before the build — so BOTH the beforeBundleCommand pdfium-signing
+          # hook AND tauri's own app signing find the identity. (tauri-action's built-in
+          # cert import happens too late for the hook, hence the up-front import.)
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
@@ -124,11 +136,11 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS code signing + notarization (empty on Linux/Windows → ignored).
-          # tauri-action imports the .p12 into a temp keychain and, when the
-          # notarization creds are present, signs → notarizes → staples the .app/DMG.
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          # macOS signing + notarization (empty on Linux/Windows → ignored). The cert
+          # is imported into the keychain by the "Import signing certificate" step
+          # ABOVE — before the build — so BOTH the beforeBundleCommand pdfium-signing
+          # hook AND tauri's own app signing find the identity. (tauri-action's built-in
+          # cert import happens too late for the hook, hence the up-front import.)
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
