@@ -1,0 +1,32 @@
+{
+  "title": "Footer verification (#135)",
+  "theme": "white",
+  "config": {
+    "width": 1920,
+    "height": 1080,
+    "author": "Ada Lovelace",
+    "venue": "SIAM 2026",
+    "footerFont": "lato"
+  },
+  "slides": [
+    {
+      "id": "s-footer",
+      "layout": "default",
+      "notes": "",
+      "theme": "white",
+      "elements": [
+        { "id": "t0", "type": "text", "preset": "title", "html": "Footer shown here", "position": { "x": 80, "y": 40, "width": 1760, "height": 150 } }
+      ]
+    },
+    {
+      "id": "s-nofooter",
+      "layout": "default",
+      "notes": "",
+      "theme": "dark",
+      "omitFooter": true,
+      "elements": [
+        { "id": "t1", "type": "text", "preset": "title", "html": "Footer omitted here", "position": { "x": 80, "y": 40, "width": 1760, "height": 150 } }
+      ]
+    }
+  ]
+}
