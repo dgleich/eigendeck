@@ -16,9 +16,8 @@ Confirmed NOT fixes (all tested live in the packaged app's Web Inspector): remov
 `/youtubei/v1/log_event` "access control checks" console errors are YouTube
 telemetry and are non-fatal (they appear on working embeds too).
 
-**Scope: YouTube only.** Vimeo was verified to play fine from `tauri://localhost`,
-so it keeps going direct. PeerTube is untested but its embeds are permissive; it
-also stays direct unless a real failure is reported.
+**Scope: YouTube only.** Vimeo and PeerTube were both verified to play fine from
+`tauri://localhost`, so they keep going direct. Only YouTube needs re-parenting.
 
 ## Solution — Option A: a static loopback shim (chosen)
 

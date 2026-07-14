@@ -13,6 +13,13 @@ export const DEMO_SANDBOX = 'allow-scripts allow-same-origin';
  *  present). (The static HTML export uses the older allowfullscreen attribute.) */
 export const VIDEO_EMBED_ALLOW = 'autoplay; fullscreen; picture-in-picture; encrypted-media';
 
+// A real YouTube video id is exactly 11 chars from [A-Za-z0-9_-]. We validate to
+// this canonical shape so a shared/opened deck can't smuggle an arbitrary string
+// (raw `?v=` was previously taken unchecked) into the embed URL — and, once the
+// packaged-app loopback shim interpolates the id into HTML, into an injection sink.
+// See docs/youtube-embed-shim.md. A non-conforming id yields null (no embed).
+const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
+
 export function detectVideoProvider(raw) {
   let u;
   try { u = new URL(String(raw).trim()); } catch { return null; }
@@ -20,13 +27,13 @@ export function detectVideoProvider(raw) {
 
   if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
     const v = u.searchParams.get('v');
-    if (v) return { provider: 'youtube', id: v };
-    const m = u.pathname.match(/^\/(?:embed|shorts|live)\/([\w-]+)/);
-    if (m) return { provider: 'youtube', id: m[1] };
+    if (v) return YOUTUBE_ID.test(v) ? { provider: 'youtube', id: v } : null;
+    const m = u.pathname.match(/^\/(?:embed|shorts|live)\/([^/?#]+)/);
+    if (m) return YOUTUBE_ID.test(m[1]) ? { provider: 'youtube', id: m[1] } : null;
   }
   if (host === 'youtu.be') {
     const id = u.pathname.slice(1).split('/')[0];
-    if (id) return { provider: 'youtube', id };
+    if (id) return YOUTUBE_ID.test(id) ? { provider: 'youtube', id } : null;
   }
   if (host === 'vimeo.com' || host === 'player.vimeo.com') {
     const m = u.pathname.match(/(\d+)/);

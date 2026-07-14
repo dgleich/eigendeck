@@ -428,7 +428,7 @@ describe('live types — HTML export', () => {
     expect(h.toLowerCase()).toContain('nb');
   });
   it('video embed → provider iframe', async () => {
-    const h = await exportHtml([{ id: 'v', type: 'video', kind: 'embed', url: 'https://youtube.com/watch?v=abc', provider: 'youtube', position: { x: 0, y: 0, width: 300, height: 200 } }]);
+    const h = await exportHtml([{ id: 'v', type: 'video', kind: 'embed', url: 'https://youtube.com/watch?v=dQw4w9WgXcQ', provider: 'youtube', position: { x: 0, y: 0, width: 300, height: 200 } }]);
     expect(h).toContain('<iframe src=');
   });
   it('video file → inline <video> with controls/loop/autoplay', async () => {
