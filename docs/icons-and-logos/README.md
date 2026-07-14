@@ -66,13 +66,27 @@ bash tools/make-doc-icns.sh     # iconutil: iconset -> eigendeck-doc.icns
 ```
 `iconutil` is a built-in macOS tool. That's the whole Mac loop.
 
-**Regenerate the iconset from the SVG masters** (only when the proxy art or the
-mark changes) — this is the Python step, run on Linux / CI:
+**Regenerate the iconset from the SVG masters** (only when `proxy-icon.svg` or
+`logo-icon-light.svg` changes) — the Python step. Runs on **Linux / CI**; no Mac
+needed for this part (it's "everything except `iconutil`"):
 ```bash
-uv venv venv-icons && uv pip install --python venv-icons cairosvg pillow
-python tools/build_doc_icon.py --preview     # rewrites the committed .iconset + previews
+uv venv venv-icons
+uv pip install --python venv-icons cairosvg pillow
+venv-icons/bin/python tools/build_doc_icon.py --preview
 ```
-Then run `make-doc-icns.sh` on the Mac to refresh the `.icns`.
+This rewrites all ten `src-tauri/icons/document/eigendeck-doc.iconset/*.png` (small
+slots 16 & 32 pt from `proxy-icon.svg`; large slots 128 pt+ = the mark on Apple's
+template) plus the `docs/icons-and-logos/previews/` contact sheet + hero. **Commit
+those PNGs.** Only the slots whose master actually changed will differ (e.g. a proxy
+edit touches just `icon_16x16*`/`icon_32x32*`). Requires Apple's `GenericDocumentIcon`
+template at `gitignore/generic-document-icon/…` (extract once on a Mac — see below;
+it's kept out of git, but persists locally so re-runs need no Mac).
+
+Then, **on your Mac**, repack the committed iconset into the `.icns` — the ONLY
+Mac-only step — and commit the result:
+```bash
+bash tools/make-doc-icns.sh     # iconutil: eigendeck-doc.iconset -> eigendeck-doc.icns
+```
 
 Masters: `proxy-icon.svg` (small slots) and `logo-icon-light.svg` (mark). The
 Apple `GenericDocumentIcon` template is **not** committed (Apple's art); extract
