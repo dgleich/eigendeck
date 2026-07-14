@@ -125,6 +125,17 @@ Gotchas that cost hours (all encoded in `_ui.mjs`):
 - **The Security window builds its report from the SAVED deck.** If a probe changes the
   deck via a raw `invoke` (e.g. `db_store_asset`), `save()` before opening the window or
   it'll show stale linked paths.
+- **Settle after `switchTo` a FRESH 2nd window before reading.** A just-loaded webview
+  can return an empty `document.body.textContent` for a beat right after the handle
+  switch — wait/retry until the EXPECTED content appears; don't assert on the first read
+  (this silently failed `settings-window-probe` with `got: <empty>`). And assert on real
+  BODY text, not the window title: the Settings window's title is `document.title`
+  ("Eigendeck — Settings"), while its body has the tabs (`General` / `Jupyter servers`) —
+  `body.textContent` never contains the word "Settings".
+- **Second windows (settings/security) ARE drivable — the old "opening a 2nd window
+  crashes WebKitWebDriver" note is stale** (that was the *projector* window path, a
+  different case). `getWindowHandles`/`switchToWindow` work; see `_ui.mjs` +
+  `security-window-handle-spike.mjs`.
 - **System-dialog stand-ins are the sanctioned exception.** `src/lib/filePicker.ts`
   reads `window.__eigendeckPickFile` (dev/seam builds only) so a probe can drive the real
   "Relocate…" button + handler without the native picker — the ONE blocked step is

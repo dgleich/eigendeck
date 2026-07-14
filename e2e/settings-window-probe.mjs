@@ -28,11 +28,15 @@ let setH = null;
 for (let i = 0; i < 12; i++) { await sleep(700); const hs = await handles(sid); setH = hs.find((h) => h !== mainH); if (setH) break; }
 if (!setH) fail('Settings window did not open (no second window handle)');
 
-// Switch into it and assert it rendered the panel (title + tabs).
+// Switch into it and assert it rendered the panel. Settle after the switch (the
+// freshly-loaded 2nd webview can read empty for a beat), then wait for the tabs.
+// NOTE: "Settings" is the window TITLE (document.title), not body text — the tabs
+// are General / Security / UI & Toolbar / Jupyter servers, so assert on those.
 await switchTo(sid, setH);
-let txt = '';
-for (let i = 0; i < 15; i++) { await sleep(500); txt = await domOf(sid); if (txt.includes('Settings') && txt.includes('Jupyter servers')) break; }
-if (!txt.includes('Settings')) fail(`Settings window content missing title; got: ${txt.slice(0, 120)}`);
+await sleep(1200);
+let txt = '', title = '';
+for (let i = 0; i < 15; i++) { await sleep(500); txt = await domOf(sid); title = String(await exec(sid, "return document.title||''")); if (txt.includes('General') && txt.includes('Jupyter servers')) break; }
+if (!title.includes('Settings')) fail(`Settings window title wrong; got: ${JSON.stringify(title)}`);
 if (!txt.includes('General') || !txt.includes('Jupyter servers')) fail(`Settings tabs missing; got: ${txt.slice(0, 160)}`);
 
 // Re-open (focus path): a second openSettings must NOT spawn a third window.
