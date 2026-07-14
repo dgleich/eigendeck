@@ -22,8 +22,12 @@ export const VARS_SCRIPT_TYPE = 'application/eigendeck-vars+json';
 export const VAR_TYPES = ['float', 'int', 'color', 'string'];
 
 // Match the manifest <script> block (type in either quote style, any attr order).
+// Global so ALL manifest blocks are parsed and stripped, not just the first.
 const MANIFEST_RE =
-  /<script\b[^>]*\btype\s*=\s*["']application\/eigendeck-vars\+json["'][^>]*>([\s\S]*?)<\/script\s*>/i;
+  /<script\b[^>]*\btype\s*=\s*["']application\/eigendeck-vars\+json["'][^>]*>([\s\S]*?)<\/script\s*>/gi;
+
+// A {{name}} token in the HTML body (name = a safe identifier).
+const TOKEN_RE = /\{\{([A-Za-z_][\w-]*)\}\}/g;
 
 // A var NAME must be a safe identifier: it becomes a CSS custom prop (`--name`)
 // and an HTML token (`{{name}}`), so restrict to letters/digits/_/- (no leading digit).
@@ -81,19 +85,20 @@ function num(v) {
  *  manifest yields []. Never throws. */
 export function parseHtmlVars(html) {
   if (typeof html !== 'string' || html.indexOf(VARS_SCRIPT_TYPE) === -1) return [];
-  const m = MANIFEST_RE.exec(html);
-  if (!m) return [];
-  let obj;
-  try {
-    obj = JSON.parse(m[1].trim());
-  } catch {
-    return [];
-  }
-  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return [];
 
   const specs = [];
-  for (const [name, raw] of Object.entries(obj)) {
-    if (!NAME_RE.test(name) || !raw || typeof raw !== 'object') continue;
+  const seen = new Set(); // first declaration of a name wins (across all manifests)
+  for (const m of html.matchAll(MANIFEST_RE)) {
+    let obj;
+    try {
+      obj = JSON.parse(m[1].trim());
+    } catch {
+      continue;
+    }
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) continue;
+
+    for (const [name, raw] of Object.entries(obj)) {
+    if (seen.has(name) || !NAME_RE.test(name) || !raw || typeof raw !== 'object') continue;
     const type = VAR_TYPES.includes(raw.type) ? raw.type : null;
     if (!type) continue;
 
@@ -116,7 +121,9 @@ export function parseHtmlVars(html) {
     if (typeof raw.label === 'string' && raw.label.trim()) spec.label = raw.label.trim();
     if (typeof raw.help === 'string' && raw.help.trim()) spec.help = raw.help.trim();
     const w = num(raw.width); if (w !== undefined && w > 0) spec.width = Math.round(w);
+    seen.add(name);
     specs.push(spec);
+    }
   }
   return specs;
 }
@@ -208,15 +215,19 @@ export function spliceHtmlVars(html, vars, theme) {
   const specs = parseHtmlVars(html);
   if (specs.length === 0) return { html, rootCss: '' };
   const resolved = resolveVars(specs, vars);
-  let body = stripVarsManifest(html);
   let decls = '';
+  const tokenVals = Object.create(null); // name → HTML-escaped text
   for (const spec of specs) {
     let val = resolved[spec.name];
     if (spec.type === 'color') val = resolveColorVar(val, theme);
     const css = cssVarValue(spec.type, val);
     if (css != null) decls += `--${spec.name}:${css};`;
-    const token = `{{${spec.name}}}`;
-    if (body.indexOf(token) !== -1) body = body.split(token).join(htmlEscapeText(val));
+    tokenVals[spec.name] = htmlEscapeText(val);
   }
+  // Single left-to-right pass so a value that itself contains `{{other}}` is inserted
+  // verbatim and never re-substituted (no cascade / order dependence). Unknown tokens
+  // are left untouched.
+  const body = stripVarsManifest(html).replace(TOKEN_RE, (m, name) =>
+    name in tokenVals ? tokenVals[name] : m);
   return { html: body, rootCss: decls ? `:root{${decls}}` : '' };
 }

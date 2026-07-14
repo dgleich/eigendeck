@@ -148,6 +148,31 @@ describe('spliceHtmlVars', () => {
     expect(out.html).toContain('<p>&lt;img src=x&gt;</p>');
   });
 
+  it('does NOT re-substitute a value that contains another token (single pass)', () => {
+    const html = `${manifest({
+      a: { type: 'string', default: '{{b}}' },
+      b: { type: 'string', default: 'X' },
+    })}<p>{{a}}</p>`;
+    const out = spliceHtmlVars(html, undefined, theme);
+    expect(out.html).toContain('<p>{{b}}</p>'); // literal, NOT cascaded to X
+  });
+
+  it('leaves an unknown {{token}} untouched', () => {
+    const html = `${manifest({ a: { type: 'string', default: 'A' } })}<p>{{a}} {{unknown}}</p>`;
+    expect(spliceHtmlVars(html, undefined, theme).html).toContain('<p>A {{unknown}}</p>');
+  });
+
+  it('parses AND strips every manifest when there are several', () => {
+    const html = `${manifest({ a: { type: 'int', default: 1 } })}`
+      + `<p>{{a}}-{{b}}</p>`
+      + `${manifest({ b: { type: 'int', default: 2 } })}`;
+    const out = spliceHtmlVars(html, { a: 7, b: 9 }, theme);
+    expect(out.html).toContain('<p>7-9</p>');
+    expect(out.html).not.toContain('eigendeck-vars+json'); // both manifests stripped
+    expect(out.rootCss).toContain('--a:7;');
+    expect(out.rootCss).toContain('--b:9;');
+  });
+
   it('omits an out-of-range number decl by falling back to the default', () => {
     const html = manifest({ v: { type: 'int', default: 5, min: 0, max: 10 } });
     expect(spliceHtmlVars(html, { v: 999 }, theme).rootCss).toContain('--v:5;');

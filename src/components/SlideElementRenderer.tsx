@@ -10,6 +10,7 @@ import { ArrowGlyph } from './ArrowGlyph';
 import { imageVisualStyle } from '../lib/imageVisualStyle';
 import { describeCover, describeArrow } from '../lib/elementDescriptor.mjs';
 import { htmlElementSrcdoc, HTML_SANDBOX_EDITABLE, htmlIsScaled, htmlScaleLayout } from '../lib/htmlElement.mjs';
+import { parseHtmlVars } from '../lib/htmlVars.mjs';
 import { sanitizeRichText } from '../lib/sanitizeRichText';
 import { useAssetUrl } from '../lib/demoAssets';
 import { demoVarsCssForSlide } from '../lib/demoThemeInject';
@@ -419,12 +420,23 @@ function HtmlBox({ element, zIndex, scale, isSelected, theme, onSelect, onDelete
   const srcDoc = editing
     ? htmlElementSrcdoc(element.html, element.background, undefined, undefined, { raw: true })
     : htmlElementSrcdoc(element.html, element.background, element.vars, theme);
+  // Whether entering edit mode reloads the frame: only when the html declares
+  // variables does raw ≠ spliced (so the srcDoc changes and the iframe reloads).
+  const hasVars = parseHtmlVars(element.html).length > 0;
 
+  // The document we actually enabled contentEditable on (the RAW-source doc). Read-back
+  // reads from THIS doc only — never from whatever the frame happens to hold — so a
+  // finish fired before the raw reload completes can't read the stale spliced doc
+  // (manifest stripped, tokens baked) and clobber the variable template (#138).
+  const editDocRef = useRef<Document | null>(null);
   // Read the edited markup back out of the frame and leave edit mode. Kept in a
   // ref so the keydown/blur listeners always call the latest version.
   const finishRef = useRef<() => void>(() => {});
   finishRef.current = () => {
-    const html = iframeRef.current?.contentDocument?.body?.innerHTML;
+    const doc = editDocRef.current;
+    // Commit only from the editable doc AND only while it's still the frame's current
+    // document; otherwise there was no real edit to save (e.g. cancel before load).
+    const html = doc && doc === iframeRef.current?.contentDocument ? doc.body?.innerHTML : undefined;
     if (html != null && html !== element.html) onUpdate({ html } as any);
     setEditing(false);
   };
@@ -462,18 +474,18 @@ function HtmlBox({ element, zIndex, scale, isSelected, theme, onSelect, onDelete
     if (!editing) return;
     const iframe = iframeRef.current;
     if (!iframe) { setEditing(false); return; }
-    let activeDoc: Document | null = null;
     let onKey: ((e: KeyboardEvent) => void) | null = null;
     const teardown = () => {
-      if (activeDoc && onKey) activeDoc.removeEventListener('keydown', onKey);
-      try { if (activeDoc?.body) activeDoc.body.contentEditable = 'false'; } catch { /* gone */ }
-      activeDoc = null; onKey = null;
+      const doc = editDocRef.current;
+      if (doc && onKey) doc.removeEventListener('keydown', onKey);
+      try { if (doc?.body) doc.body.contentEditable = 'false'; } catch { /* gone */ }
+      editDocRef.current = null; onKey = null;
     };
     const setup = () => {
       const doc = iframe.contentDocument;
-      if (!doc?.body || doc === activeDoc) return;
+      if (!doc?.body || doc === editDocRef.current) return;
       teardown();
-      activeDoc = doc;
+      editDocRef.current = doc;
       doc.body.contentEditable = 'true';
       doc.body.style.outline = 'none';
       doc.body.focus();
@@ -481,9 +493,12 @@ function HtmlBox({ element, zIndex, scale, isSelected, theme, onSelect, onDelete
       doc.addEventListener('keydown', onKey);
     };
     iframe.addEventListener('load', setup);
-    setup(); // handle the no-reload case (element without variables → srcDoc unchanged)
+    // Variable elements reload (raw srcDoc) on edit-enter → set up ONLY on that load,
+    // so we never make the stale spliced doc editable or read it back. Elements without
+    // a manifest don't reload (raw ≡ spliced) → set up the current doc immediately.
+    if (!hasVars) setup();
     return () => { iframe.removeEventListener('load', setup); teardown(); };
-  }, [editing]);
+  }, [editing, hasVars]);
 
   // Double-click: interactive elements enter "interact" mode (click native
   // controls, like a demo); static ones enter contentEditable edit mode.
