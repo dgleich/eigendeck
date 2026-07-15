@@ -219,6 +219,16 @@ fails if `E2E_ABSENT` appears.
    the pattern string → SIGKILL (rc 137, no output). `run.sh` anchors the
    pattern (`-f "^<bin>"`); ad-hoc commands should use `pkill -x <comm>` and
    `fuser -k 1420/tcp` instead.
+10. **WebDriver `GET /session/{id}/screenshot` HANGS once the app is presenting**
+    (headless WebKitGTK compositor wedges on the fullscreen present overlay + its
+    `srcdoc` iframes; editor-mode screenshots are fine). #134. Do NOT `/screenshot`
+    a present slide — capture pixels through the seam instead:
+    `window.__eigendeck.captureElement('.present-slide')` returns a `domToDataUrl`
+    PNG in-process, no compositor snapshot. Verify non-blank by drawing it to a
+    canvas and counting distinct colors (a blank stage is one flat color) — see
+    `e2e/present-visual-probe.mjs`. Also assert the stage rect isn't 0×0 (the #137
+    collapsed-stage regression). If you must call `/screenshot` in present, wrap it
+    in an `AbortController` timeout so a hung capture doesn't wedge the probe.
 
 ## PDF rendering in the rig (pdfium dylib location)
 

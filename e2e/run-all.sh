@@ -57,6 +57,9 @@ MANIFEST=(
   "present-clip-probe.mjs|examples/intro-slide.eigendeck||"
   "present-theme-parity-probe.mjs|examples/intro-slide.eigendeck||"
   "present-projector-probe.mjs|examples/intro-slide.eigendeck||"
+  # #134 present-mode VISUAL check via the in-app seam capture (captureElement),
+  # NOT WebDriver /screenshot which hangs in headless present. Asserts non-blank pixels.
+  "present-visual-probe.mjs|present-visual.eigendeck||import_json \$ROOT/e2e/fixtures/present-visual-deck.json"
   "demo-theme-verify.mjs|examples/graph-explorer.eigendeck||"
   "demo-theme-scenario.mjs|examples/intro-slide.eigendeck||"
   "demo-theme-deck-verify.mjs|test-presentations/font-theme-matrix.eigendeck||"

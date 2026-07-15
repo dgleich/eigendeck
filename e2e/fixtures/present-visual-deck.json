@@ -1,0 +1,16 @@
+{
+  "title": "Present visual capture (#134)",
+  "theme": "white",
+  "config": { "width": 1920, "height": 1080 },
+  "slides": [
+    {
+      "id": "s0", "layout": "default", "notes": "", "theme": "white",
+      "elements": [
+        { "id": "p-title", "type": "text", "preset": "title", "html": "PRESENT VISUAL TEST",
+          "position": { "x": 120, "y": 120, "width": 1200, "height": 200 } },
+        { "id": "p-cover", "type": "cover", "color": "#2563eb",
+          "position": { "x": 200, "y": 500, "width": 900, "height": 360 } }
+      ]
+    }
+  ]
+}
