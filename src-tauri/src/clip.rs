@@ -120,6 +120,41 @@ pub fn clip_clear_internal() -> Result<(), String> {
     Ok(())
 }
 
+/// Read a raster image off the SYSTEM clipboard as PNG bytes (or None if there
+/// isn't one). The Linux image-paste fallback (#94): WebKitGTK's sync
+/// `clipboardData` and async `navigator.clipboard.read()` don't reliably surface
+/// a screenshot's `image/png`, so the web paste paths miss. arboard reads the
+/// X11/Wayland clipboard image directly, so a screenshot pastes even when the
+/// web APIs expose nothing. macOS keeps using the unfiltered `pasteboard_*`
+/// path, so this is a no-op there.
+#[tauri::command]
+pub fn clip_read_system_image() -> Result<Option<Vec<u8>>, String> {
+    #[cfg(not(target_os = "macos"))]
+    {
+        let mut cb = match arboard::Clipboard::new() {
+            Ok(c) => c,
+            Err(_) => return Ok(None),
+        };
+        let img = match cb.get_image() {
+            Ok(img) => img,
+            Err(_) => return Ok(None), // no image on the clipboard
+        };
+        let (w, h) = (img.width as u32, img.height as u32);
+        let raw = img.bytes.into_owned();
+        let buf = image::RgbaImage::from_raw(w, h, raw)
+            .ok_or_else(|| "clipboard image: byte length doesn't match dimensions".to_string())?;
+        let mut png = Vec::new();
+        image::DynamicImage::ImageRgba8(buf)
+            .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+            .map_err(|e| e.to_string())?;
+        Ok(Some(png))
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Ok(None)
+    }
+}
+
 /// The system clipboard's monotonic generation counter, so we can tell whether
 /// the clipboard changed since our copy. macOS: NSPasteboard.changeCount.
 /// Other platforms: -1 (no cheap counter; the internal clip is treated as fresh
@@ -140,7 +175,101 @@ fn clipboard_generation(app: &tauri::AppHandle) -> i64 {
     }
     #[cfg(not(target_os = "macos"))]
     {
-        -1
+        system_clipboard_generation()
+    }
+}
+
+/// Linux/Windows generation: a HASH of the current system clipboard content.
+/// These platforms have no cheap monotonic counter like NSPasteboard's
+/// changeCount, so a foreign copy (screenshot, text, or an image from another
+/// app) changes the bytes, the hash changes, and the internal clip reads stale so
+/// the foreign content wins. (#94: on Linux the old sentinel value made the
+/// internal clip ALWAYS fresh, so an in-app image copy permanently shadowed later
+/// screenshots.) Called only on copy and paste (user actions), so the one
+/// clipboard read is affordable. Returns a non-negative hash (top bit cleared),
+/// because the staleness check requires a value at or above zero; a negative
+/// value is returned only when the clipboard is empty or unreadable.
+#[cfg(not(target_os = "macos"))]
+fn system_clipboard_generation() -> i64 {
+    use std::hash::{Hash, Hasher};
+    let mut cb = match arboard::Clipboard::new() {
+        Ok(c) => c,
+        Err(_) => return -1,
+    };
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    // Prefer the image target (screenshots / our own raster), fall back to text.
+    // A distinct tag per kind keeps an image and same-length text apart.
+    if let Ok(img) = cb.get_image() {
+        b'I'.hash(&mut h);
+        img.width.hash(&mut h);
+        img.height.hash(&mut h);
+        img.bytes.as_ref().hash(&mut h);
+    } else if let Ok(txt) = cb.get_text() {
+        if txt.is_empty() {
+            return -1;
+        }
+        b'T'.hash(&mut h);
+        txt.hash(&mut h);
+    } else {
+        return -1; // empty / unreadable clipboard
+    }
+    (h.finish() >> 1) as i64
+}
+
+#[cfg(all(test, not(target_os = "macos")))]
+mod clip_generation_tests {
+    use super::*;
+
+    fn set_img(cb: &mut arboard::Clipboard, w: usize, h: usize, fill: u8) {
+        cb.set_image(arboard::ImageData {
+            width: w,
+            height: h,
+            bytes: std::borrow::Cow::Owned(vec![fill; w * h * 4]),
+        })
+        .unwrap();
+    }
+
+    // Needs a display (arboard talks to X/Wayland). Run under `xvfb-run`; skips
+    // (passes) when no clipboard backend is available so headless CI without a
+    // display doesn't fail. Guards #94: the generation must MOVE when a foreign
+    // copy replaces our image — otherwise the internal clip never goes stale.
+    #[test]
+    fn generation_changes_when_clipboard_content_changes() {
+        let mut cb = match arboard::Clipboard::new() {
+            Ok(c) => c,
+            Err(_) => return, // no display / backend — skip
+        };
+        set_img(&mut cb, 4, 4, 0x11);
+        let g1 = system_clipboard_generation();
+        if g1 < 0 {
+            return; // backend couldn't serve a read-back here — skip rather than flake
+        }
+        // A "foreign copy" replaces the clipboard with different bytes.
+        set_img(&mut cb, 4, 4, 0x22);
+        let g2 = system_clipboard_generation();
+        assert!(g2 >= 0, "generation should be readable");
+        assert_ne!(g1, g2, "generation must change when clipboard content changes (#94)");
+        // Re-reading the SAME content is stable (no false staleness).
+        let g2b = system_clipboard_generation();
+        assert_eq!(g2, g2b, "generation must be stable for unchanged content");
+    }
+
+    // #94 Gap 2: the arboard fallback returns a decodable PNG of the clipboard
+    // image, so a Linux screenshot pastes even when WebKitGTK's web clipboard
+    // APIs surface nothing. Run under `xvfb-run`; skips without a display.
+    #[test]
+    fn read_system_image_returns_decodable_png() {
+        let mut cb = match arboard::Clipboard::new() {
+            Ok(c) => c,
+            Err(_) => return, // no display / backend — skip
+        };
+        set_img(&mut cb, 5, 3, 0x7f);
+        let png = match clip_read_system_image() {
+            Ok(Some(p)) => p,
+            _ => return, // backend couldn't serve the read-back here — skip
+        };
+        let decoded = image::load_from_memory(&png).expect("output must be valid PNG");
+        assert_eq!((decoded.width(), decoded.height()), (5, 3), "PNG must match the clipboard image dims");
     }
 }
 

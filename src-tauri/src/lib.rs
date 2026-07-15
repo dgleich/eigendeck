@@ -990,6 +990,7 @@ pub fn run() {
             clip::clip_peek_internal,
             clip::clip_paste_asset,
             clip::clip_clear_internal,
+            clip::clip_read_system_image,
             set_window_above_menubar,
             set_window_document,
             set_toolbar_fields,
