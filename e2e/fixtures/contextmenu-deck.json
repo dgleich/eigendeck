@@ -1,0 +1,52 @@
+{
+  "title": "Right-click context menu (#136)",
+  "theme": "white",
+  "config": {
+    "width": 1920,
+    "height": 1080
+  },
+  "slides": [
+    {
+      "id": "s0",
+      "layout": "default",
+      "notes": "",
+      "theme": "white",
+      "elements": [
+        {
+          "id": "e-text",
+          "type": "text",
+          "preset": "body",
+          "html": "Text element",
+          "position": {
+            "x": 100,
+            "y": 100,
+            "width": 400,
+            "height": 120
+          }
+        },
+        {
+          "id": "e-cover",
+          "type": "cover",
+          "color": "#334455",
+          "position": {
+            "x": 100,
+            "y": 300,
+            "width": 400,
+            "height": 150
+          }
+        },
+        {
+          "id": "e-html",
+          "type": "html",
+          "html": "<div style=\"color:#2563eb;font:28px sans-serif;padding:20px\">HTML widget with a <a href=\"#\">link</a></div>",
+          "position": {
+            "x": 600,
+            "y": 100,
+            "width": 500,
+            "height": 300
+          }
+        }
+      ]
+    }
+  ]
+}

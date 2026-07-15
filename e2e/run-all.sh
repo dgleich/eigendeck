@@ -163,6 +163,9 @@ MANIFEST=(
   # #95 editor cut-off badge: overflowing text shows it, fitting text doesn't
   # (jsdom can't measure overflow, so this needs the real rig).
   "text-overflow-probe.mjs|overflow.eigendeck||import_json \$ROOT/e2e/fixtures/overflow-text-deck.json"
+  # #136 right-click context menu opens for every element type, incl. the html
+  # iframe (whose overlay could swallow contextmenu). Real right-click via WebDriver.
+  "context-menu-elements-probe.mjs|ctxmenu.eigendeck||import_json \$ROOT/e2e/fixtures/contextmenu-deck.json"
   # #135 footer: presence/absence (per-slide omitFooter) + deck footerFont across
   # editor, present, and HTML export (print path covered by exportMatrix units).
   "footer-probe.mjs|footer.eigendeck||import_json \$ROOT/e2e/fixtures/footer-deck.json"
