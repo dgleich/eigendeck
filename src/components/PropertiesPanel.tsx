@@ -212,14 +212,12 @@ export function PropertiesPanel() {
                 onChange={(v) => updateSlide(currentSlideIndex, { hypeFont: v })}
                 inheritLabel="Inherit (presentation default)" />
             </PropSection>
-            <PropSection label="Footer">
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}
-                title="Hide the author·venue line and slide number on this slide (numbering keeps counting)">
-                <input type="checkbox" checked={!!slide.omitFooter}
-                  onChange={(e) => updateSlide(currentSlideIndex, { omitFooter: e.target.checked })} />
-                Hide
-              </label>
-            </PropSection>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginTop: 4, cursor: 'pointer' }}
+              title="Hide the author·venue line and slide number on this slide (numbering keeps counting)">
+              <input type="checkbox" checked={!!slide.omitFooter}
+                onChange={(e) => updateSlide(currentSlideIndex, { omitFooter: e.target.checked })} />
+              Hide the footer
+            </label>
             {slide.elements.some((el) => el.syncId || el.linkId) && (
               <PropSection label="Links">
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
