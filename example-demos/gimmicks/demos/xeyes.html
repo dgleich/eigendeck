@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<!--eigendeck-demo-v1-->
+<html>
+<head>
+<meta charset="utf-8">
+<!-- Unix "xeyes" as a TWO-PIECE eigendeck demo, so the eyes can follow the cursor
+     across the WHOLE slide (a single small iframe only sees pointer events over
+     its own box). Eigendeck auto-creates a piece for each `piece === '...'`:
+       • "capture" — place it FULL-SLIDE (1920x1080 at 0,0). Transparent; it
+                     listens to the cursor and broadcasts its slide position.
+       • "eyes"    — place the eyes wherever you like (small). Renders the eyes and
+                     leans the pupils toward the broadcast cursor position.
+     They talk over BroadcastChannel (the injected, origin-safe one). White
+     eyeballs + dark ink read on light and dark slides. Live in present mode.
+     NOTE: the full-slide capture piece grabs pointer events over the whole slide,
+     so it will sit over other elements — best on a dedicated eyes slide (see #155). -->
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; }
+body { overflow: hidden; background: transparent; }
+.xeyes-capture { width: 100%; height: 100%; }               /* transparent, full-slide */
+.xeyes-eyes { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; gap: 4%; }
+.xeye { position: relative; height: 82%; aspect-ratio: 3 / 4; max-height: 100%;
+  background: #fdfdfb; border: 0.9vmin solid #23232b; border-radius: 50%;
+  box-shadow: inset 0 -1.2vmin 2vmin rgba(0,0,0,0.12); }
+.xpupil { position: absolute; left: 50%; top: 50%; width: 34%; height: 26%;
+  background: #17171c; border-radius: 50%; transform: translate(-50%, -50%);
+  transition: transform 60ms linear; will-change: transform; }
+</style>
+</head>
+<body>
+<script>
+(function () {
+  const params = new URLSearchParams(location.hash.slice(1));
+  const piece = params.get('piece');
+  const channel = new BroadcastChannel('eigendeck-demo:xeyes.html');
+  const onReady = (fn) => (document.readyState === 'loading')
+    ? document.addEventListener('DOMContentLoaded', fn) : fn();
+
+  // ── Capture piece: full-slide, transparent. Broadcasts the cursor as
+  //    slide-normalized coords (0..1). Place it full-slide so 0..1 spans the slide.
+  if (piece === 'capture') {
+    onReady(() => {
+      const el = document.createElement('div');
+      el.className = 'xeyes-capture';
+      document.body.appendChild(el);
+    });
+    window.addEventListener('pointermove', (e) => {
+      channel.postMessage({
+        type: 'gaze',
+        nx: e.clientX / Math.max(1, window.innerWidth),
+        ny: e.clientY / Math.max(1, window.innerHeight),
+      });
+    });
+    return;
+  }
+
+  // ── Eyes piece (also the standalone/dev view when there's no piece param).
+  if (piece === 'eyes' || !piece) {
+    onReady(() => {
+      const wrap = document.createElement('div');
+      wrap.className = 'xeyes-eyes';
+      wrap.innerHTML = '<div class="xeye"><div class="xpupil"></div></div>'
+                     + '<div class="xeye"><div class="xpupil"></div></div>';
+      document.body.appendChild(wrap);
+      const eyes = Array.prototype.slice.call(wrap.querySelectorAll('.xeye'));
+      // Map a slide-normalized cursor to a gaze direction: slide-center = straight,
+      // pupils lean toward wherever the cursor is on the slide. Geometrically
+      // approximate (the eyes pane can't know its own slide position), but reads as
+      // "the eyes are watching the cursor" as it moves anywhere on the slide.
+      function gaze(nx, ny) {
+        const gx = Math.max(-1, Math.min(1, (nx - 0.5) * 2));
+        const gy = Math.max(-1, Math.min(1, (ny - 0.5) * 2));
+        for (const eye of eyes) {
+          const r = eye.getBoundingClientRect();
+          const px = gx * r.width * 0.20, py = gy * r.height * 0.22;
+          eye.querySelector('.xpupil').style.transform =
+            'translate(calc(-50% + ' + px + 'px), calc(-50% + ' + py + 'px))';
+        }
+      }
+      channel.onmessage = (e) => { if (e.data && e.data.type === 'gaze') gaze(e.data.nx, e.data.ny); };
+      // Standalone / cursor-over-the-eyes fallback.
+      window.addEventListener('pointermove', (e) =>
+        gaze(e.clientX / Math.max(1, innerWidth), e.clientY / Math.max(1, innerHeight)));
+      gaze(0.5, 0.35);
+    });
+    return;
+  }
+})();
+</script>
+</body>
+</html>
