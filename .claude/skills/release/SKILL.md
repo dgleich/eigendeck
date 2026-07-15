@@ -95,6 +95,23 @@ Expect: both Mac DMGs (`_aarch64.dmg` + `_x64.dmg`) + two `.app.tar.gz`, Linux
 (`.deb` / `.AppImage` / `.rpm`), Windows (`-setup.exe` / `.msi`). Review the
 draft on GitHub and **Publish**.
 
+## Website downloads page (eigendeck-web)
+
+The site's **`downloads.html`** (in the separate **eigendeck-web** repo; locally at
+`website/`) is dynamic — it fetches the latest release from the GitHub API client-side
+and shows OS-detected, direct-to-installer buttons. **No manual website edit is needed
+per release** — publishing the GitHub release is what updates it.
+
+Two things to know:
+- **Publish as a FULL release (not pre-release) when it should be "stable."** The page
+  prefers the newest **non-prerelease** release (and `github.com/.../releases/latest`
+  only resolves to one); it falls back to the newest build with a `beta` badge if every
+  release is a pre-release. So a release left as *Pre-release* shows up as beta and
+  `releases/latest` 404s.
+- **If the Tauri bundle asset names change**, update the filename-suffix picker regexes
+  in `downloads.html` (`aarch64.dmg` / `x64.dmg` / `-setup.exe` / `.msi` / `.AppImage`
+  / `.deb` / `.rpm`). Otherwise leave it alone.
+
 ## Gotchas
 - **Re-tagging a version:** delete the old draft + tag first
   (`gh release delete vX.Y.Z --cleanup-tag --yes`), then re-tag at the new commit.
