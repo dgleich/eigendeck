@@ -744,18 +744,26 @@ function TextContent({
     return () => { cancelled = true; };
   }, [element.html, mathBundleId, editing, mathPreamble]);
 
-  // #95: detect clipped (overflowing) text. Measure the SVG foreignObject's inner
-  // content div — scrollHeight/clientHeight are in viewBox units (= slide units),
-  // so the check is scale-independent. rAF lets dangerouslySetInnerHTML paint first.
+  // #95: detect clipped (overflowing) text. Compare the CONTENT div's natural
+  // size to the fixed-height box, not the box's own scroll offset — with
+  // valign:bottom/middle the box centers/bottom-aligns the content (flex), so it
+  // overflows the TOP, which scrollHeight doesn't count and would miss (e.g. the
+  // title preset defaults to valign:bottom). All in viewBox units (= slide
+  // units), so scale-independent. Re-measure after fonts load (Lato arrives async
+  // and changes metrics). rAF lets dangerouslySetInnerHTML paint first.
   useEffect(() => {
     if (editing) { setOverflowing(false); return; }
-    const raf = requestAnimationFrame(() => {
-      const inner = wrapperRef.current?.querySelector('foreignObject > div') as HTMLElement | null;
-      if (!inner) { setOverflowing(false); return; }
-      const over = inner.scrollHeight - inner.clientHeight > 1 || inner.scrollWidth - inner.clientWidth > 1;
-      setOverflowing(over);
-    });
-    return () => cancelAnimationFrame(raf);
+    let cancelled = false;
+    const measure = (): void => {
+      if (cancelled) return;
+      const box = wrapperRef.current?.querySelector('foreignObject > div') as HTMLElement | null;
+      const content = box?.firstElementChild as HTMLElement | null;
+      if (!box || !content) { setOverflowing(false); return; }
+      setOverflowing(content.scrollHeight > box.clientHeight + 1 || content.scrollWidth > box.clientWidth + 1);
+    };
+    const raf = requestAnimationFrame(measure);
+    document.fonts?.ready.then(() => requestAnimationFrame(measure)).catch(() => {});
+    return () => { cancelled = true; cancelAnimationFrame(raf); };
   }, [renderedHtml, editing, element.position.width, element.position.height, fontSize]);
 
   // Listen for 'start-editing' custom event from context menu
@@ -892,6 +900,10 @@ function TextContent({
       fontFamily, fontSize, fontWeight, fontStyle, color, valign,
       mono: resolveMonoFontPackage(presentation.config.defaultMonoFont).family,
     });
+    // Guard against a 0/NaN scale (division blows up to Infinity) — the canvas
+    // scale is always > 0 in practice, but a transient 0 during layout would
+    // otherwise produce an invalid transform.
+    const invScale = 1 / (scale || 1);
     return (
       <div
         ref={wrapperRef}
@@ -910,8 +922,8 @@ function TextContent({
               // Counter-scaled (scale(1/scale) about the pinned corner) so it stays
               // a constant on-screen size at any zoom; the canvas is scale(scale)
               // and .slide-element doesn't clip, so it renders below the content.
-              position: 'absolute', top: '100%', right: 0, marginTop: 4 / scale, zIndex: 2, pointerEvents: 'none',
-              transform: `scale(${1 / scale})`, transformOrigin: 'top right',
+              position: 'absolute', top: '100%', right: 0, marginTop: 4 * invScale, zIndex: 2, pointerEvents: 'none',
+              transform: `scale(${invScale})`, transformOrigin: 'top right',
               background: '#f59e0b', color: '#1a1a1a', fontSize: 12, lineHeight: 1, fontWeight: 700,
               padding: '1px 6px 3px', borderRadius: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
               opacity: 0.92, letterSpacing: '1.5px', whiteSpace: 'nowrap',
