@@ -30,7 +30,7 @@ ol li::before { counter-increment: ol-counter; content: counter(ol-counter) '. '
 .slide-footer {
   position: absolute; bottom: 20px; right: 40px;
   display: flex; align-items: baseline; gap: 16px;
-  font-family: 'PT Sans', sans-serif; color: #999; font-size: 18px;
+  font-family: 'Lato', sans-serif; color: #999; font-size: 18px;
 }
 .slide-footer-number { font-size: 24px; }
 /* Navigation bar */
