@@ -18,8 +18,8 @@ import { buildPrintSlideHtml } from './printSlideHtml';
 
 // ---- helpers ---------------------------------------------------------------
 
-function deck(elements, { theme = 'white', config = {} } = {}) {
-  const slide = { id: 's1', theme: undefined, layout: 'default', notes: '', elements };
+function deck(elements, { theme = 'white', config = {}, slideExtra = {} } = {}) {
+  const slide = { id: 's1', theme: undefined, layout: 'default', notes: '', elements, ...slideExtra };
   return {
     presentation: {
       title: 'Audit', theme, config: { width: 1920, height: 1080, ...config }, slides: [slide],
@@ -451,6 +451,36 @@ describe('live types — HTML export', () => {
     expect(h).toContain('loop');
     expect(h).toContain('autoplay');
     expect(h).toContain('muted');
+  });
+});
+
+describe('slide footer (#135)', () => {
+  it('default: footer present, Lato in the export CSS', async () => {
+    const h = await exportHtml([]);
+    expect(h).toContain('class="slide-footer"');
+    expect(h).toMatch(/\.slide-footer\s*\{[^}]*font-family:\s*'Lato'/);
+  });
+  it('config.footerFont sets the .slide-footer font-family', async () => {
+    const h = await exportHtml([], { config: { footerFont: 'shantell' } });
+    expect(h).toMatch(/\.slide-footer\s*\{[^}]*font-family:\s*'Shantell Sans'/);
+  });
+  it('slide.omitFooter drops the footer markup for that slide (CSS selector stays)', async () => {
+    const h = await exportHtml([], { slideExtra: { omitFooter: true } });
+    expect(h).not.toContain('class="slide-footer"');
+  });
+  // Path #5 (print/PDF) must honor both features too — the #98/#85 drift class.
+  it('print: default footer Lato + shows the number', () => {
+    const h = printHtml([], { slideNumber: 3 });
+    expect(h).toContain('class="slide-footer"');
+    expect(h).toContain("font-family:'Lato'");
+  });
+  it('print: config.footerFont applies', () => {
+    const h = printHtml([], { slideNumber: 3, config: { footerFont: 'shantell' } });
+    expect(h).toContain("font-family:'Shantell Sans'");
+  });
+  it('print: slide.omitFooter hides the footer', () => {
+    const h = printHtml([], { slideNumber: 3, slideExtra: { omitFooter: true } });
+    expect(h).not.toContain('class="slide-footer"');
   });
 });
 

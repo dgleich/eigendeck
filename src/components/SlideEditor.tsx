@@ -9,6 +9,7 @@ import { useDemoDoc, useDeckFontFacesCss, useDemoHost } from '../lib/demoMount';
 import { demoVarsCssForSlide } from '../lib/demoThemeInject';
 import { SlideElementRenderer } from './SlideElementRenderer';
 import { getSlideNumber, createTextElement } from '../types/presentation';
+import { showFooter, footerFontFamily } from '../lib/footer.mjs';
 import { resolveTheme } from '../lib/themes';
 import { detectAssetKind } from '../lib/assetCache';
 import { hasFreshInternalAsset } from '../lib/elementClipboard';
@@ -825,10 +826,12 @@ export function SlideEditor() {
               }} />
             );
           })()}
-          <div className="slide-footer">
-            <span className="slide-footer-meta">{meta}</span>
-            <span className="slide-footer-number">{getSlideNumber(presentation.slides, currentSlideIndex)}</span>
-          </div>
+          {showFooter(slide) && (
+            <div className="slide-footer" style={{ fontFamily: footerFontFamily(presentation.config) }}>
+              <span className="slide-footer-meta">{meta}</span>
+              <span className="slide-footer-number">{getSlideNumber(presentation.slides, currentSlideIndex)}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

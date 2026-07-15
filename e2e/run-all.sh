@@ -160,6 +160,9 @@ MANIFEST=(
   "font-default-probe.mjs|font-lato.eigendeck|E2E_EXPECT=lato|import_json \$ROOT/e2e/fixtures/font-lato-deck.json"
   "color-control-probe.mjs|ctrl.eigendeck||import_json \$ROOT/e2e/fixtures/color-control-deck.json"
   "cover-card-probe.mjs|cover.eigendeck||import_json \$ROOT/e2e/fixtures/cover-card-deck.json"
+  # #135 footer: presence/absence (per-slide omitFooter) + deck footerFont across
+  # editor, present, and HTML export (print path covered by exportMatrix units).
+  "footer-probe.mjs|footer.eigendeck||import_json \$ROOT/e2e/fixtures/footer-deck.json"
   "slide-delete-probe.mjs|slidedel.eigendeck||import_json \$ROOT/e2e/fixtures/slide-delete-deck.json"
   "present-cover-probe.mjs|slidedel.eigendeck||import_json \$ROOT/e2e/fixtures/slide-delete-deck.json"
   "theme-persist-probe.mjs|themesave.eigendeck||import_json \$ROOT/e2e/fixtures/slide-delete-deck.json"

@@ -21,6 +21,7 @@ import { markAsEigendeck } from './clipboard';
 import { effectiveFontSize } from '../types/presentation';
 import { fontForPreset, fontFamilyForPreset } from './fontRegistry.mjs';
 import type { Presentation, Slide } from '../types/presentation';
+import { showFooter, footerFontFamily } from './footer.mjs';
 
 const W = 1920, H = 1080;
 const S = 11 / 1920; // inches per pixel (11in-wide letter-landscape slide)
@@ -109,8 +110,8 @@ export function buildPrintSlideHtml(
   }
   // Slide footer (author · venue + slide number), mirroring the HTML export.
   const meta = [presentation.config?.author, presentation.config?.venue].filter(Boolean).join(' · ');
-  if (meta || slideNumber != null) {
-    inner += `<div class="slide-footer" style="position:absolute;bottom:${px2in(20)};right:${px2in(40)};display:flex;align-items:baseline;gap:${px2in(16)};font-family:'PT Sans',sans-serif;color:#888;font-size:${px2pt(18)};">` +
+  if (showFooter(slide) && (meta || slideNumber != null)) {
+    inner += `<div class="slide-footer" style="position:absolute;bottom:${px2in(20)};right:${px2in(40)};display:flex;align-items:baseline;gap:${px2in(16)};font-family:${footerFontFamily(presentation.config)};color:#888;font-size:${px2pt(18)};">` +
       `<span class="slide-footer-meta">${meta}</span><span class="slide-footer-number" style="font-size:${px2pt(24)};">${slideNumber ?? ''}</span></div>`;
   }
   return `<div class="slide" style="background:${theme.background};">${inner}</div>`;
