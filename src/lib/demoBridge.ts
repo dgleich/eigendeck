@@ -87,7 +87,13 @@ function netBlockMeta(net: 'block' | { hosts: string[] }): string {
   const form = hostSrc || "'none'";
   const csp = [
     "default-src 'none'",
-    `script-src 'unsafe-inline'${s}`,
+    // 'wasm-unsafe-eval' permits WebAssembly compilation ONLY (NOT JS eval/new
+    // Function — that's the separate, dangerous 'unsafe-eval'). Without it, script-src
+    // being set blocks WebAssembly.instantiate, so no Pyodide/GeoGebra/Emscripten
+    // (Rust/Go/C→wasm) demo can run — including in exported decks. Demos are already
+    // opaque-origin sandboxed + connect-src-gated, so wasm can't escape any further
+    // than the JS we already allow. See docs/CSP-AND-EGRESS.md.
+    `script-src 'unsafe-inline' 'wasm-unsafe-eval'${s}`,
     `style-src 'unsafe-inline'${s}`,
     `img-src data: blob:${s}`,
     `media-src data: blob:${s}`,

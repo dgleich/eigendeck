@@ -37,13 +37,24 @@ One coarse, all-or-nothing switch (two toggles that combine), default ON:
 **Enforcement** (`src/lib/demoBridge.ts`): when `useDemoInternetBlocked()` is true
 (master OFF **or** deck blocked), the demo document is built with, injected FIRST in
 `<head>`:
-- a CSP `<meta>`: `default-src 'none'; script-src 'unsafe-inline'; style-src
-  'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:;
+- a CSP `<meta>`: `default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval';
+  style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:;
   connect-src 'none'; frame-src blob: data:; child-src blob:; worker-src blob:;
   form-action 'none'; base-uri 'none'` — `default-src 'none'` refuses every REMOTE
   resource (fetch/XHR/WS/beacon/pixel/media/font/**script**/**style**/frame), and
   only the demo's own inline scripts/styles + `data:`/`blob:` assets are re-opened,
   so it still runs and renders from its own content;
+  - **`'wasm-unsafe-eval'`** permits `WebAssembly.instantiate` (Pyodide, GeoGebra,
+    Emscripten/Rust/Go→wasm demos). It is the NARROW token — it does **not** enable
+    JS `eval`/`new Function` (that's the dangerous `'unsafe-eval'`, which we never
+    add). Without it a set `script-src` blocks all wasm — verified: a bare wasm
+    module throws `CompileError` under `script-src 'unsafe-inline'`, runs once
+    `'wasm-unsafe-eval'` is added. Demos are opaque-origin + `connect-src`-gated, so
+    wasm can't escape any further than the JS we already allow. (A wasm demo still
+    needs its `.wasm` bytes: embed them as `data:`/base64 to stay offline, or declare
+    the CDN host in the manifest to fetch them.) NOTE for #122: a future app-wide
+    `script-src` must ALSO carry `'wasm-unsafe-eval'`, or the blob-inherit path
+    re-clamps demo wasm.
 - a **WebRTC neuter** (`delete window.RTCPeerConnection` + `webkitRTCPeerConnection`
   + `RTCDataChannel`) — closes the one egress channel CSP doesn't govern (§8).
 

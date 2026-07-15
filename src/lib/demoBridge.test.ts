@@ -13,7 +13,7 @@ describe('injectDemoBridge network policy', () => {
     // inline scripts/styles run (demo renders) but NO remote host is a source
     expect(out).toContain("script-src 'unsafe-inline'");
     expect(out).toContain("style-src 'unsafe-inline'");
-    expect(out).toMatch(/script-src 'unsafe-inline';/);   // nothing after unsafe-inline → no CDN
+    expect(out).toMatch(/script-src 'unsafe-inline' 'wasm-unsafe-eval';/);   // wasm allowed; no CDN host after
     expect(out).toContain('delete window.RTCPeerConnection');
     // CSP must precede the demo (first in <head> to be honored)
     expect(out.indexOf('Content-Security-Policy')).toBeLessThan(out.indexOf('<div>demo</div>'));
@@ -24,7 +24,7 @@ describe('injectDemoBridge network policy', () => {
     expect(out).toContain('connect-src https://api.stock.example wss://api.stock.example http://localhost:8888');
     expect(out).not.toContain("connect-src 'none'");
     // a declared CDN can serve the demo's scripts + styles + assets
-    expect(out).toContain("script-src 'unsafe-inline' https://api.stock.example wss://api.stock.example http://localhost:8888");
+    expect(out).toContain("script-src 'unsafe-inline' 'wasm-unsafe-eval' https://api.stock.example wss://api.stock.example http://localhost:8888");
     expect(out).toContain("style-src 'unsafe-inline' https://api.stock.example");
     expect(out).toContain('img-src data: blob: https://api.stock.example');
     // WebRTC still neutered even when scoped (it can't be host-limited via CSP)
