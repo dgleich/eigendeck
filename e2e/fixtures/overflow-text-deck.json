@@ -10,7 +10,10 @@
           "html": "This is a very long paragraph that absolutely will not fit inside a tiny box. It keeps going and going across many lines so the clip at the box bottom hides most of it. Line two. Line three. Line four. Line five. Line six.",
           "position": { "x": 100, "y": 100, "width": 320, "height": 90 } },
         { "id": "t-fit", "type": "text", "preset": "body", "html": "Short.",
-          "position": { "x": 100, "y": 600, "width": 1000, "height": 400 } }
+          "position": { "x": 100, "y": 600, "width": 1000, "height": 400 } },
+        { "id": "t-title-overflow", "type": "text", "preset": "title",
+          "html": "A very long title that will not fit in this short box and overflows the top when bottom-aligned so it clips",
+          "position": { "x": 600, "y": 100, "width": 520, "height": 80 } }
       ]
     }
   ]

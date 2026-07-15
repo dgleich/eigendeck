@@ -92,15 +92,16 @@ Jupyter/Pyodide), **video** (local file or YouTube/Vimeo/PeerTube embed), and **
 
 **Presets** (determine default styling):
 
-| Preset       | Font Size | Font Family      | Weight | Style  | Color   | Purpose                        |
+| Preset       | Font Size | Font role        | Weight | Style  | Color   | Purpose                        |
 |-------------|-----------|------------------|--------|--------|---------|--------------------------------|
-| `title`      | 72        | PT Sans          | bold   | normal | #222    | Slide titles                   |
-| `body`       | 48        | PT Sans          | normal | normal | #222    | Main content                   |
-| `textbox`    | 48        | PT Sans          | normal | normal | #222    | Freely positioned text         |
-| `annotation` | 32        | PT Sans          | normal | italic | #2563eb | Small callouts, blue italic    |
-| `footnote`   | 24        | PT Sans Narrow   | normal | normal | #888    | References, citations, grey    |
-| `hype`       | 48 (body) | Shantell (hypeFont) | normal | normal | #1a1a1a | Sticky-note callout (seeded yellow bg + jaunty tilt) |
+| `title`      | 72        | title font       | bold   | normal | #222    | Slide titles                   |
+| `body`       | 48        | body font        | normal | normal | #222    | Main content                   |
+| `textbox`    | 48        | body font        | normal | normal | #222    | Freely positioned text         |
+| `annotation` | 32        | body font        | normal | italic | #2563eb | Small callouts, blue italic    |
+| `footnote`   | 24        | body font (narrow variant, if the font has one) | normal | normal | #888 | References, citations, grey |
+| `hype`       | 48 (body) | hype font        | normal | normal | #1a1a1a | Sticky-note callout (seeded yellow bg + jaunty tilt) |
 
+- Fonts follow the deck's title/body/hype font settings (per-deck `config.default{Title,Body}Font`, per-slide `Slide.{title,body,hype}Font`). The default is **Lato** for title/body and **Shantell** for hype (`DEFAULT_FONT_ID` / the `hype` fallback in `fontRegistry.mjs`). `footnote` uses the font's narrow variant when it defines one (e.g. PT Sans → PT Sans Narrow; Lato has none, so it stays Lato).
 - `fontSize`, `fontFamily`, `color` are optional overrides
 - `html` supports: `<b>`, `<i>`, `<u>`, `<br>`, `<span style="...">`, `<ul>/<li>`, `$...$` (LaTeX)
 - Inline math: `$f(x) = x^2$` — rendered via MathJax SVG
