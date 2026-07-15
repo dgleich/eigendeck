@@ -1,0 +1,41 @@
+<!-- eigendeck-html-element name="Unix Eyes"
+     xeyes as a NO-SCRIPT html element. Pure CSS: the pupils glance toward the
+     cursor while it hovers a 3x3 grid over the eyes (9 gaze directions). Because
+     there's no JavaScript, it can only react while the cursor is over THIS element
+     (and only to 9 quantized directions) — it can't read the cursor elsewhere on
+     the slide. For real cursor-following anywhere, use the DEMO version
+     (xeyes-demo.html). Works in present / interact mode. Suggested box ~380x280. -->
+<style>
+  html, body { height: 100%; margin: 0; }
+  .xe { position: relative; height: 100%; width: 100%; }
+  /* 9 transparent hover cells (siblings of .eyes so the ~ combinator reaches the
+     pupils). Each drives a gaze direction. */
+  .xe i { position: absolute; width: 33.34%; height: 33.34%; z-index: 2; }
+  .eyes { position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; gap: 6%; z-index: 1; pointer-events: none; }
+  .eye { position: relative; height: 78%; aspect-ratio: 3 / 4; background: #fdfdfb;
+    border: 0.9vmin solid #23232b; border-radius: 50%;
+    box-shadow: inset 0 -1.2vmin 2vmin rgba(0,0,0,.12); }
+  .pupil { position: absolute; left: 50%; top: 50%; width: 34%; height: 26%;
+    background: #17171c; border-radius: 50%; transform: translate(-50%, -50%);
+    transition: transform 90ms ease-out; }
+  /* nine cells → nine gaze offsets (±5vmin x, ±6vmin y) */
+  .xe i:nth-of-type(1):hover ~ .eyes .pupil { transform: translate(calc(-50% - 5vmin), calc(-50% - 6vmin)); }
+  .xe i:nth-of-type(2):hover ~ .eyes .pupil { transform: translate(-50%, calc(-50% - 6vmin)); }
+  .xe i:nth-of-type(3):hover ~ .eyes .pupil { transform: translate(calc(-50% + 5vmin), calc(-50% - 6vmin)); }
+  .xe i:nth-of-type(4):hover ~ .eyes .pupil { transform: translate(calc(-50% - 5vmin), -50%); }
+  .xe i:nth-of-type(5):hover ~ .eyes .pupil { transform: translate(-50%, -50%); }
+  .xe i:nth-of-type(6):hover ~ .eyes .pupil { transform: translate(calc(-50% + 5vmin), -50%); }
+  .xe i:nth-of-type(7):hover ~ .eyes .pupil { transform: translate(calc(-50% - 5vmin), calc(-50% + 6vmin)); }
+  .xe i:nth-of-type(8):hover ~ .eyes .pupil { transform: translate(-50%, calc(-50% + 6vmin)); }
+  .xe i:nth-of-type(9):hover ~ .eyes .pupil { transform: translate(calc(-50% + 5vmin), calc(-50% + 6vmin)); }
+</style>
+<div class="xe">
+  <i style="left:0;top:0"></i><i style="left:33.33%;top:0"></i><i style="left:66.66%;top:0"></i>
+  <i style="left:0;top:33.33%"></i><i style="left:33.33%;top:33.33%"></i><i style="left:66.66%;top:33.33%"></i>
+  <i style="left:0;top:66.66%"></i><i style="left:33.33%;top:66.66%"></i><i style="left:66.66%;top:66.66%"></i>
+  <div class="eyes">
+    <div class="eye"><div class="pupil"></div></div>
+    <div class="eye"><div class="pupil"></div></div>
+  </div>
+</div>
