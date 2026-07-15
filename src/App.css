@@ -1144,7 +1144,12 @@ body.window-inactive .speaker-panel {
 }
 
 /* Normalize text element rendering between display and edit modes */
-.el-text div,
+/* Normalize CONTENT divs/paragraphs (the contentEditable emits <div> line
+   breaks) to zero margin/padding. Exclude the authoring chrome: the badge
+   container carries its own margin-bottom gap (else this reset clobbers it and
+   the L badge drifts below the delete button, which is a <button> and escapes
+   the reset). */
+.el-text div:not(.el-link-badges),
 .el-text p {
   margin: 0;
   padding: 0;
