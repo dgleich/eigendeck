@@ -100,7 +100,7 @@ export function SlideElementRenderer({
           }}
           onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
         >
-          <TextContent element={element} onCommit={(html) => onUpdate({ html } as any)} />
+          <TextContent element={element} scale={scale} onCommit={(html) => onUpdate({ html } as any)} />
         </DraggableBox>
       );
 
@@ -667,9 +667,11 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
 
 function TextContent({
   element,
+  scale,
   onCommit,
 }: {
   element: TextElement;
+  scale: number;
   onCommit: (html: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -902,10 +904,17 @@ function TextContent({
             className="text-overflow-badge"
             title="Text is cut off — this box is too small for its content"
             style={{
-              position: 'absolute', right: 3, bottom: 3, zIndex: 2, pointerEvents: 'none',
+              // Sit OUTSIDE the box, like the link/delete chrome — pinned at the
+              // element's bottom-right corner and growing down/outward, the mirror
+              // of the ElementLinkBadges cluster (pinned top-left, grows up).
+              // Counter-scaled (scale(1/scale) about the pinned corner) so it stays
+              // a constant on-screen size at any zoom; the canvas is scale(scale)
+              // and .slide-element doesn't clip, so it renders below the content.
+              position: 'absolute', top: '100%', right: 0, marginTop: 4 / scale, zIndex: 2, pointerEvents: 'none',
+              transform: `scale(${1 / scale})`, transformOrigin: 'top right',
               background: '#f59e0b', color: '#1a1a1a', fontSize: 12, lineHeight: 1, fontWeight: 700,
               padding: '1px 6px 3px', borderRadius: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
-              opacity: 0.92, letterSpacing: '1.5px',
+              opacity: 0.92, letterSpacing: '1.5px', whiteSpace: 'nowrap',
             }}
           >
             ⋯
