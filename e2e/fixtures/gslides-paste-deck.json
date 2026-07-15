@@ -1,0 +1,8 @@
+{
+  "title": "Google Slides paste (#158)",
+  "theme": "white",
+  "config": { "width": 1920, "height": 1080 },
+  "slides": [
+    { "id": "s0", "layout": "default", "notes": "", "theme": "white", "elements": [] }
+  ]
+}

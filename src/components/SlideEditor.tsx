@@ -3,7 +3,7 @@ import { usePresentationStore } from '../store/presentation';
 import { usePreference } from '../lib/preferences';
 import { extractDemoPieceNames } from '../lib/demoPieces';
 import { gridOverlaySvg } from '../lib/grid';
-import { captureHtmlToPng, looksLikeRichHtml } from '../lib/htmlPasteCapture';
+import { captureHtmlToPng, looksLikeRichHtml, extractPastedDataUrlImage } from '../lib/htmlPasteCapture';
 import { relPath } from '../App';
 import { useDemoDoc, useDeckFontFacesCss, useDemoHost } from '../lib/demoMount';
 import { demoVarsCssForSlide } from '../lib/demoThemeInject';
@@ -232,6 +232,25 @@ export function SlideEditor() {
           }
         } catch (err) {
           plog('async clipboard read failed:', err);
+        }
+      }
+
+      // Google Slides (and other apps that embed the image in HTML): copying an
+      // image out of Google Slides puts NO image on the clipboard — only text/html
+      // like `<b id="docs-internal-guid-…"><img src="data:image/png;base64,…">`.
+      // The image-item paths above all miss it, so pull the FIRST data-URL <img>
+      // straight out of the HTML and insert the ORIGINAL bytes (not a re-screenshot,
+      // which the rich-HTML fallback below would do — lossy + the <b> wrapper's
+      // styling). #158.
+      if (!picked && !hasEigendeckMarker(htmlEarly)) {
+        const embedded = extractPastedDataUrlImage(htmlEarly);
+        if (embedded) {
+          e.preventDefault();
+          const ext = embedded.mime === 'image/jpeg' ? 'jpg' : (embedded.mime.split('/')[1] || 'png');
+          const fileName = `pasted-${Date.now()}.${ext}`;
+          plog(`extracted data-URL <img> from pasted HTML → ${embedded.mime} (${embedded.bytes.length} bytes) → ${fileName}`);
+          await insertPastedAsset(`images/${fileName}`, embedded.bytes, embedded.mime, fileName);
+          return;
         }
       }
 

@@ -20,6 +20,30 @@ export function looksLikeRichHtml(html: string | null | undefined): boolean {
   return !!html && /<(table|thead|tbody|tr|ul|ol|li|pre|code|blockquote|h[1-6]|img|figure|section|article|p|div|dl)[\s>]/i.test(html);
 }
 
+/** Pull the FIRST embedded data-URL `<img>` out of pasted HTML (#158). Google
+ *  Slides (and similar) put no image on the clipboard — only `text/html` with an
+ *  `<img src="data:image/…;base64,…">` inside a `<b docs-internal-guid>` wrapper,
+ *  so the clipboard image-item paths all miss. Returns the decoded bytes + mime,
+ *  or null when there's no data-URL image (leave it to the rich-HTML fallback).
+ *  Pure string/base64 work — no DOM — so it runs anywhere and is unit-testable. */
+export function extractPastedDataUrlImage(
+  html: string | null | undefined,
+): { mime: string; bytes: Uint8Array } | null {
+  if (!html) return null;
+  const m = html.match(/<img\b[^>]*\bsrc\s*=\s*["']data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)["']/i);
+  if (!m) return null;
+  const mime = m[1];
+  const b64 = m[2].replace(/\s+/g, '');
+  try {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes.length ? { mime, bytes } : null;
+  } catch {
+    return null; // malformed base64
+  }
+}
+
 /** Strip scripts / handlers / js: URLs and the source font-family, returning
  *  body innerHTML safe to drop into an offscreen render node. DOM required. */
 export function sanitizeForCapture(html: string): string {

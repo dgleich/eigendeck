@@ -169,6 +169,9 @@ MANIFEST=(
   # #136 right-click context menu opens for every element type, incl. the html
   # iframe (whose overlay could swallow contextmenu). Real right-click via WebDriver.
   "context-menu-elements-probe.mjs|ctxmenu.eigendeck||import_json \$ROOT/e2e/fixtures/contextmenu-deck.json"
+  # #158 Google Slides image paste: image embedded in text/html (<img data:> in a
+  # <b docs-internal-guid>), no image on the clipboard → must still insert an image.
+  "gslides-paste-probe.mjs|gslides.eigendeck||import_json \$ROOT/e2e/fixtures/gslides-paste-deck.json"
   # #135 footer: presence/absence (per-slide omitFooter) + deck footerFont across
   # editor, present, and HTML export (print path covered by exportMatrix units).
   "footer-probe.mjs|footer.eigendeck||import_json \$ROOT/e2e/fixtures/footer-deck.json"
