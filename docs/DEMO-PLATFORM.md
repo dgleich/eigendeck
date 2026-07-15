@@ -88,9 +88,9 @@ paranoid.
 - **Enforcement:** when blocking is on, the injected `<head>` leads with a
   restrictive CSP `<meta>`: `connect-src 'none'; img-src 'self' data: blob:;
   media-src 'self' data: blob:; font-src 'self' data:; script-src 'unsafe-inline'
-  blob:; style-src 'unsafe-inline'; frame-src 'none'`. This kills
-  `fetch`/XHR/WebSocket and remote beacons while leaving inline code + blob assets
-  working. A CSP meta must precede content, so toggling re-mounts the iframe (we
+  'wasm-unsafe-eval' blob:; style-src 'unsafe-inline'; frame-src 'none'`. This kills
+  `fetch`/XHR/WebSocket and remote beacons while leaving inline code, WebAssembly,
+  and blob assets working (`'wasm-unsafe-eval'` is wasm-compile-only, not JS eval). A CSP meta must precede content, so toggling re-mounts the iframe (we
   already re-mount on `reloadKey`).
 - **Settings, both app-side (never in the deck, so a malicious deck can't grant
   its own demos network):**

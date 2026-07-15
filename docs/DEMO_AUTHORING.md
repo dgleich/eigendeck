@@ -123,6 +123,22 @@ a JSON `<script>` in the `<head>`:
 > host you load from. Vendoring a library inline is still nice (works even when the
 > viewer blocks internet), but no longer required just to run.
 
+## WebAssembly (Pyodide, GeoGebra, Emscripten/Rust/Go…)
+
+**WebAssembly works** — the demo CSP allows `'wasm-unsafe-eval'` (wasm compilation
+only, not JS `eval`), so `WebAssembly.instantiate` runs inside the sandbox. You
+still have to get the `.wasm` *bytes* the same way as any resource:
+
+- **Offline (recommended):** embed the module — base64 → `Uint8Array` →
+  `WebAssembly.instantiate(bytes)`. No manifest needed; runs even when the viewer
+  blocks internet.
+- **From a CDN:** `WebAssembly.instantiateStreaming(fetch(url))` is a network load,
+  so **declare that host in the manifest** (e.g. `cdn.jsdelivr.net` for Pyodide),
+  and expect it to go blank if the viewer has internet off.
+
+Threads/SharedArrayBuffer (cross-origin isolation) aren't available in the sandbox,
+so ship single-threaded wasm builds.
+
 ## Template
 
 ```html
