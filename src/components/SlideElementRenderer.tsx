@@ -100,7 +100,7 @@ export function SlideElementRenderer({
           }}
           onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}
         >
-          <TextContent element={element} onCommit={(html) => onUpdate({ html } as any)} />
+          <TextContent element={element} scale={scale} onCommit={(html) => onUpdate({ html } as any)} />
         </DraggableBox>
       );
 
@@ -667,9 +667,11 @@ function VideoBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUp
 
 function TextContent({
   element,
+  scale,
   onCommit,
 }: {
   element: TextElement;
+  scale: number;
   onCommit: (html: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -682,6 +684,10 @@ function TextContent({
   const setEditRef = useCallback((n: HTMLDivElement | null) => { ref.current = n; if (n) nodeRef.current = n; }, []);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0, width: 0 });
+  // #95: the #79 box-clip silently hides text that overflows its box. Flag it in
+  // the EDITOR (this component is editor-only) so authors see cut-off content
+  // instead of losing it invisibly. Present/export stay clipped (WYSIWYG).
+  const [overflowing, setOverflowing] = useState(false);
 
   const presetStyle = TEXT_PRESET_STYLES[element.preset];
   // Resolve theme color: explicit element.color > theme color > preset default
@@ -737,6 +743,20 @@ function TextContent({
     });
     return () => { cancelled = true; };
   }, [element.html, mathBundleId, editing, mathPreamble]);
+
+  // #95: detect clipped (overflowing) text. Measure the SVG foreignObject's inner
+  // content div — scrollHeight/clientHeight are in viewBox units (= slide units),
+  // so the check is scale-independent. rAF lets dangerouslySetInnerHTML paint first.
+  useEffect(() => {
+    if (editing) { setOverflowing(false); return; }
+    const raf = requestAnimationFrame(() => {
+      const inner = wrapperRef.current?.querySelector('foreignObject > div') as HTMLElement | null;
+      if (!inner) { setOverflowing(false); return; }
+      const over = inner.scrollHeight - inner.clientHeight > 1 || inner.scrollWidth - inner.clientWidth > 1;
+      setOverflowing(over);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [renderedHtml, editing, element.position.width, element.position.height, fontSize]);
 
   // Listen for 'start-editing' custom event from context menu
   useEffect(() => {
@@ -875,10 +895,32 @@ function TextContent({
     return (
       <div
         ref={wrapperRef}
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: '100%', height: '100%', position: 'relative' }}
         onDoubleClick={() => startEditing()}
-        dangerouslySetInnerHTML={{ __html: svgMarkup }}
-      />
+      >
+        <div style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: svgMarkup }} />
+        {overflowing && (
+          <div
+            className="text-overflow-badge"
+            title="Text is cut off — this box is too small for its content"
+            style={{
+              // Sit OUTSIDE the box, like the link/delete chrome — pinned at the
+              // element's bottom-right corner and growing down/outward, the mirror
+              // of the ElementLinkBadges cluster (pinned top-left, grows up).
+              // Counter-scaled (scale(1/scale) about the pinned corner) so it stays
+              // a constant on-screen size at any zoom; the canvas is scale(scale)
+              // and .slide-element doesn't clip, so it renders below the content.
+              position: 'absolute', top: '100%', right: 0, marginTop: 4 / scale, zIndex: 2, pointerEvents: 'none',
+              transform: `scale(${1 / scale})`, transformOrigin: 'top right',
+              background: '#f59e0b', color: '#1a1a1a', fontSize: 12, lineHeight: 1, fontWeight: 700,
+              padding: '1px 6px 3px', borderRadius: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
+              opacity: 0.92, letterSpacing: '1.5px', whiteSpace: 'nowrap',
+            }}
+          >
+            ⋯
+          </div>
+        )}
+      </div>
     );
   }
 

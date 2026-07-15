@@ -55,7 +55,13 @@ function cleanStyle(style: string): string {
 function cleanInto(src: Node, dst: Node, doc: Document): void {
   for (const child of Array.from(src.childNodes)) {
     if (child.nodeType === Node.TEXT_NODE) {
-      dst.appendChild(doc.createTextNode(child.nodeValue || ''));
+      // Normalize non-breaking spaces to regular, breakable spaces. WebKit's
+      // contentEditable inserts &nbsp; as you type; in edit mode it renders them
+      // breakable (-webkit-nbsp-mode:space), but every OUTPUT path (SVG
+      // foreignObject / HTML export / PDF) honors them as non-breaking and wraps
+      // raggedly — a WYSIWYG divergence (#159). Since these are editor artifacts,
+      // not intentional non-breaking spaces, fold them here on every ingest.
+      dst.appendChild(doc.createTextNode((child.nodeValue || '').replace(/ /g, ' ')));
       continue;
     }
     if (child.nodeType !== Node.ELEMENT_NODE) continue; // drop comments etc.

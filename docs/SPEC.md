@@ -68,7 +68,12 @@ my-presentation/
 
 ### Elements
 
-All content on a slide is an element. Five types:
+All content on a slide is an element. The `SlideElement` union has **nine** types:
+**text**, **image**, **arrow**, **demo**, **demo-piece** (a positioned viewport of a
+multi-piece demo), **cover** (an opaque masking rectangle), **notebook** (embedded
+Jupyter/Pyodide), **video** (local file or YouTube/Vimeo/PeerTube embed), and **html**
+(the raw-HTML escape hatch). The most common are detailed below; see
+`src/types/presentation.ts` + `docs/LLM-EDITING.md` for the full schema of each.
 
 #### Text Element
 
@@ -94,6 +99,7 @@ All content on a slide is an element. Five types:
 | `textbox`    | 48        | PT Sans          | normal | normal | #222    | Freely positioned text         |
 | `annotation` | 32        | PT Sans          | normal | italic | #2563eb | Small callouts, blue italic    |
 | `footnote`   | 24        | PT Sans Narrow   | normal | normal | #888    | References, citations, grey    |
+| `hype`       | 48 (body) | Shantell (hypeFont) | normal | normal | #1a1a1a | Sticky-note callout (seeded yellow bg + jaunty tilt) |
 
 - `fontSize`, `fontFamily`, `color` are optional overrides
 - `html` supports: `<b>`, `<i>`, `<u>`, `<br>`, `<span style="...">`, `<ul>/<li>`, `$...$` (LaTeX)

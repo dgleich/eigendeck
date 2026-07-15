@@ -20,6 +20,22 @@ describe('sanitizeRichText — security', () => {
   });
 });
 
+describe('sanitizeRichText — whitespace normalization', () => {
+  // The editor (WebKit contentEditable) silently inserts &nbsp; while you type.
+  // In edit mode WebKit's -webkit-nbsp-mode:space treats those as breakable, so
+  // text wraps cleanly; every OUTPUT path (SVG foreignObject / export / PDF)
+  // honors them as non-breaking and wraps raggedly — a WYSIWYG divergence (#159).
+  // Normalize the artifact nbsp to a regular, breakable space on every ingest.
+  it('normalizes &nbsp; to a regular breakable space', () => {
+    expect(sanitizeRichText('a&nbsp;b')).toBe('a b');
+    expect(sanitizeRichText('note.&nbsp;Okay')).toBe('note. Okay');
+    // the actual non-breaking-space character, not just the entity
+    expect(sanitizeRichText('x\u00A0y')).toBe('x y');
+    // inside allowed markup too
+    expect(sanitizeRichText('<b>a&nbsp;b</b>')).toBe('<b>a b</b>');
+  });
+});
+
 describe('sanitizeRichText — toolbar allowlist', () => {
   it('keeps the formatting the toolbar produces', () => {
     expect(sanitizeRichText('<b>a</b><i>b</i><s>c</s>')).toBe('<b>a</b><i>b</i><s>c</s>');

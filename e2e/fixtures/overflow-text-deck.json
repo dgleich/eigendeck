@@ -1,0 +1,17 @@
+{
+  "title": "Overflow badge (#95)",
+  "theme": "white",
+  "config": { "width": 1920, "height": 1080 },
+  "slides": [
+    {
+      "id": "s0", "layout": "default", "notes": "", "theme": "white",
+      "elements": [
+        { "id": "t-overflow", "type": "text", "preset": "body",
+          "html": "This is a very long paragraph that absolutely will not fit inside a tiny box. It keeps going and going across many lines so the clip at the box bottom hides most of it. Line two. Line three. Line four. Line five. Line six.",
+          "position": { "x": 100, "y": 100, "width": 320, "height": 90 } },
+        { "id": "t-fit", "type": "text", "preset": "body", "html": "Short.",
+          "position": { "x": 100, "y": 600, "width": 1000, "height": 400 } }
+      ]
+    }
+  ]
+}

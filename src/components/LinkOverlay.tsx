@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePresentationStore } from '../store/presentation';
-import { TEXT_PRESET_STYLES, effectiveFontSize } from '../types/presentation';
+import { TEXT_PRESET_STYLES, effectiveFontSize, getSlideNumber } from '../types/presentation';
 import type { SlideElement } from '../types/presentation';
 import { ElementPreviewImg } from './ElementPreviewImg';
 import { VideoThumb } from './VideoThumb';
@@ -95,10 +95,10 @@ export function LinkOverlay({ elementId, onClose }: Props) {
     <div className="link-overlay" onClick={onClose}>
       <div className="link-overlay-content" onClick={(e) => e.stopPropagation()}>
         <div className="link-overlay-header">
-          <span>Click an element on slide {viewSlideEntry.idx + 1} to link</span>
+          <span>Click an element on slide {getSlideNumber(presentation.slides, viewSlideEntry.idx)} to link</span>
           <div className="link-overlay-nav">
             <button disabled={viewIndex <= 0} onClick={navPrev}>&larr;</button>
-            <span>Slide {viewSlideEntry.idx + 1} / {presentation.slides.length}</span>
+            <span>Slide {getSlideNumber(presentation.slides, viewSlideEntry.idx)} / {presentation.slides.length}</span>
             <button disabled={viewIndex >= presentation.slides.length - 1} onClick={navNext}>&rarr;</button>
           </div>
           <button className="link-overlay-close" onClick={onClose}>Cancel</button>
