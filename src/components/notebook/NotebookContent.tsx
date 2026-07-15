@@ -32,7 +32,7 @@ import {
 import { NotebookElement, effectiveFontSize } from '../../types/presentation';
 import { usePresentationStore } from '../../store/presentation';
 import { fontForNotebookProse, fontForNotebookCode } from '../../lib/notebookFonts';
-import { resolveTheme, isDarkTheme } from '../../lib/themes';
+import { resolveTheme, isDarkTheme, previewThemeSalt } from '../../lib/themes';
 
 export function NotebookContent({ element, interactive, mode = 'editor' }: {
   element: NotebookElement;
@@ -109,7 +109,7 @@ export function NotebookContent({ element, interactive, mode = 'editor' }: {
   // only print was broken). It also feeds capturePreview's backdrop (the theme
   // background, so the rasterized PNG matches the slide) + its dedup key — the same
   // theme-salt + background a demo already passes.
-  const themeSalt = `${theme.background}|${theme.text}|${dark ? 'd' : 'l'}`;
+  const themeSalt = previewThemeSalt(theme);
 
   // Cache a PNG preview of the rendered notebook so other places (the sidebar
   // mini-slide, link picker, and the PDF/print export) can show an image instead of
