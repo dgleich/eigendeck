@@ -1,9 +1,9 @@
 // e2e: slide footer presence/absence + footerFont across the LIVE render paths
 // (#135). Deck has slide 0 (footer shown) + slide 1 (omitFooter:true), with
-// config.footerFont='lato' and author/venue set. Verifies:
-//   editor  (#1): footer present on slide 0 w/ Lato font; absent on slide 1
+// config.footerFont='shantell' and author/venue set. Verifies:
+//   editor  (#1): footer present on slide 0 w/ Shantell font; absent on slide 1
 //   present (#2): footer present on slide 0; absent on slide 1
-//   HTML export (#4): exactly ONE .slide-footer div (slide 1 omitted) + Lato CSS
+//   HTML export (#4): exactly ONE .slide-footer div (slide 1 omitted) + Shantell CSS
 // (Print/PDF path #5 is covered by exportMatrix unit tests — same builder.)
 import { openApp, waitSeam, exec, execA, sleep, quit } from './_ui.mjs';
 const APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
@@ -22,9 +22,9 @@ await exec(sid, "window.__eigendeck.store.getState().selectSlide(0);");
 await sleep(300);
 let f = JSON.parse(await footerInfo(sid));
 if (!f.present) fail('editor slide 0: footer missing (should be shown)');
-if (!/Lato/i.test(f.font)) fail(`editor slide 0: footer font not Lato: ${f.font}`);
+if (!/Shantell/i.test(f.font)) fail(`editor slide 0: footer font not Shantell: ${f.font}`);
 if (!/Ada Lovelace/.test(f.meta)) fail(`editor slide 0: meta missing author: ${f.meta}`);
-console.log('  editor slide 0: footer present, font=Lato, meta ok ✓');
+console.log('  editor slide 0: footer present, font=Shantell, meta ok ✓');
 
 await exec(sid, "window.__eigendeck.store.getState().selectSlide(1);");
 await sleep(300);
@@ -38,8 +38,8 @@ for (let i = 0; i < 20; i++) { await sleep(250); if (await exec(sid, "return !!d
 await sleep(400);
 f = JSON.parse(await footerInfo(sid));
 if (!f.present) fail('present slide 0: footer missing');
-if (!/Lato/i.test(f.font)) fail(`present slide 0: footer font not Lato: ${f.font}`);
-console.log('  present slide 0: footer present, font=Lato ✓');
+if (!/Shantell/i.test(f.font)) fail(`present slide 0: footer font not Shantell: ${f.font}`);
+console.log('  present slide 0: footer present, font=Shantell ✓');
 
 await exec(sid, "window.__eigendeck.store.getState().setPresenting(false);");
 await sleep(200);
@@ -56,8 +56,8 @@ const html = await execA(sid, `const d=arguments[arguments.length-1];Promise.res
 if (typeof html !== 'string' || html.startsWith('ERR:')) fail('export failed: ' + html);
 const footerCount = (html.match(/class="slide-footer"/g) || []).length;
 if (footerCount !== 1) fail(`HTML export: expected exactly 1 footer (slide 1 omitted), got ${footerCount}`);
-if (!/\.slide-footer\s*\{[^}]*font-family:\s*'Lato'/.test(html)) fail('HTML export: .slide-footer CSS is not Lato');
-console.log('  HTML export: exactly 1 footer div (slide 1 omitted) + Lato CSS ✓');
+if (!/\.slide-footer\s*\{[^}]*font-family:\s*'Shantell Sans'/.test(html)) fail('HTML export: .slide-footer CSS is not Shantell');
+console.log('  HTML export: exactly 1 footer div (slide 1 omitted) + Shantell CSS ✓');
 
 await quit(sid);
 console.log('FOOTER_PASS: footer presence/absence + footerFont correct in editor, present, and HTML export');

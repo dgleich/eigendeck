@@ -455,28 +455,28 @@ describe('live types — HTML export', () => {
 });
 
 describe('slide footer (#135)', () => {
-  it('default: footer present, PT Sans in the export CSS', async () => {
+  it('default: footer present, Lato in the export CSS', async () => {
     const h = await exportHtml([]);
     expect(h).toContain('class="slide-footer"');
-    expect(h).toMatch(/\.slide-footer\s*\{[^}]*font-family:\s*'PT Sans'/);
+    expect(h).toMatch(/\.slide-footer\s*\{[^}]*font-family:\s*'Lato'/);
   });
   it('config.footerFont sets the .slide-footer font-family', async () => {
-    const h = await exportHtml([], { config: { footerFont: 'lato' } });
-    expect(h).toMatch(/\.slide-footer\s*\{[^}]*font-family:\s*'Lato'/);
+    const h = await exportHtml([], { config: { footerFont: 'shantell' } });
+    expect(h).toMatch(/\.slide-footer\s*\{[^}]*font-family:\s*'Shantell Sans'/);
   });
   it('slide.omitFooter drops the footer markup for that slide (CSS selector stays)', async () => {
     const h = await exportHtml([], { slideExtra: { omitFooter: true } });
     expect(h).not.toContain('class="slide-footer"');
   });
   // Path #5 (print/PDF) must honor both features too — the #98/#85 drift class.
-  it('print: default footer PT Sans + shows the number', () => {
+  it('print: default footer Lato + shows the number', () => {
     const h = printHtml([], { slideNumber: 3 });
     expect(h).toContain('class="slide-footer"');
-    expect(h).toContain("font-family:'PT Sans'");
+    expect(h).toContain("font-family:'Lato'");
   });
   it('print: config.footerFont applies', () => {
-    const h = printHtml([], { slideNumber: 3, config: { footerFont: 'lato' } });
-    expect(h).toContain("font-family:'Lato'");
+    const h = printHtml([], { slideNumber: 3, config: { footerFont: 'shantell' } });
+    expect(h).toContain("font-family:'Shantell Sans'");
   });
   it('print: slide.omitFooter hides the footer', () => {
     const h = printHtml([], { slideNumber: 3, slideExtra: { omitFooter: true } });

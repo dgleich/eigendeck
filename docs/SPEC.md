@@ -203,7 +203,7 @@ All content on a slide is an element. Five types:
 - **+ Slide**: add slide after current
 - **Save**: save to project (Cmd+S)
 - **Title**: double-click to edit presentation title
-- **Author / Venue**: text fields, shown in slide footer. The footer font is a deck-level choice (`config.footerFont`, default PT Sans, in the Deck inspector), and any slide can hide its footer via the **Omit footer** checkbox (`slide.omitFooter`; numbering keeps counting through it). The footer renders identically across the editor, present, HTML export, and print/PDF paths via the shared `src/lib/footer.mjs` helper.
+- **Author / Venue**: text fields, shown in slide footer. The footer font is a deck-level choice (`config.footerFont`, default Lato, in the Deck inspector), and any slide can hide its footer via the **Omit footer** checkbox (`slide.omitFooter`; numbering keeps counting through it). The footer renders identically across the editor, present, HTML export, and print/PDF paths via the shared `src/lib/footer.mjs` helper.
 - **Export**: export to standalone HTML file
 - **Present**: enter presentation mode (F5)
 

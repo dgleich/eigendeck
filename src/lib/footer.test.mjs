@@ -2,16 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { footerFontFamily, showFooter, FOOTER_DEFAULT_FONT_ID } from './footer.mjs';
 
 describe('footer helpers (#135)', () => {
-  it('footerFontFamily defaults to PT Sans (historical behavior) when unset', () => {
-    expect(FOOTER_DEFAULT_FONT_ID).toBe('ptsans');
-    expect(footerFontFamily(undefined)).toContain('PT Sans');
-    expect(footerFontFamily({})).toContain('PT Sans');
-    expect(footerFontFamily({ footerFont: undefined })).toContain('PT Sans');
+  it('footerFontFamily defaults to Lato (the deck default) when unset', () => {
+    expect(FOOTER_DEFAULT_FONT_ID).toBe('lato');
+    expect(footerFontFamily(undefined)).toContain('Lato');
+    expect(footerFontFamily({})).toContain('Lato');
+    expect(footerFontFamily({ footerFont: undefined })).toContain('Lato');
   });
   it('footerFontFamily honors config.footerFont', () => {
-    const custom = footerFontFamily({ footerFont: 'lato' });
-    expect(custom).toContain('Lato');
-    expect(custom).not.toContain('PT Sans');
+    const custom = footerFontFamily({ footerFont: 'shantell' });
+    expect(custom).toContain('Shantell');
+    expect(custom).not.toContain('Lato');
   });
   it('an unknown font id falls back to a valid family, never empty', () => {
     expect(footerFontFamily({ footerFont: 'does-not-exist' })).toBeTruthy();

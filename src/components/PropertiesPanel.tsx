@@ -217,7 +217,7 @@ export function PropertiesPanel() {
                 title="Hide the author·venue line and slide number on this slide (numbering keeps counting)">
                 <input type="checkbox" checked={!!slide.omitFooter}
                   onChange={(e) => updateSlide(currentSlideIndex, { omitFooter: e.target.checked })} />
-                Omit footer on this slide
+                Hide
               </label>
             </PropSection>
             {slide.elements.some((el) => el.syncId || el.linkId) && (
@@ -282,7 +282,7 @@ export function PropertiesPanel() {
             <PropSection label="Footer Font">
               <FontSelect value={presentation.config.footerFont}
                 onChange={(v) => updateConfig({ footerFont: v })}
-                inheritLabel="PT Sans (default)" />
+                inheritLabel="Lato (default)" />
             </PropSection>
             <PropSection label="Text sizes (px)">
               {/* Deck-level type scale — overrides DEFAULT_TEXT_SIZES.
