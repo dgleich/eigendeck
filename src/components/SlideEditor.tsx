@@ -265,6 +265,26 @@ export function SlideEditor() {
         }
       }
 
+      // Linux image fallback (#94): WebKitGTK doesn't reliably surface a
+      // screenshot's image/png on the sync DataTransfer OR the async Clipboard
+      // API, so both image paths above miss. Read the raster straight off the
+      // system clipboard via arboard (Rust). Only fires when no web-API image was
+      // found and there's no rich HTML to render (Sheets/Slides handled above), so
+      // it's a screenshot-shaped last resort. No-op on macOS (returns null).
+      if (!picked) {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const png = await invoke<number[] | null>('clip_read_system_image');
+          if (png && png.length) {
+            e.preventDefault();
+            const fileName = `pasted-${Date.now()}.png`;
+            plog(`arboard system-image fallback → ${png.length} bytes → ${fileName}`);
+            await insertPastedAsset(`images/${fileName}`, new Uint8Array(png), 'image/png', fileName);
+            return;
+          }
+        } catch (err) { plog('clip_read_system_image failed:', err); }
+      }
+
       if (!picked || !pickedFormat) { plog('nothing pasteable in clipboard'); return; }
       e.preventDefault();
       const blob = picked.getAsFile();
