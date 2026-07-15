@@ -362,13 +362,11 @@ Contextual properties for selected object:
 
 ---
 
-## Native Menu Bar (macOS)
+## Native Menu Bar
 
-- **Eigendeck**: About, Services, Hide/Show, Quit (Cmd+Q)
-- **File**: New Project (Cmd+N), Open (Cmd+O), Save (Cmd+S), Export (Cmd+E), Close
-- **Edit**: Undo, Redo, Cut, Copy, Paste, Select All
-- **View**: Present (F5), Speaker Notes, Inspector (Cmd+I), Debug Console (Cmd+Shift+D), Fullscreen
-- **Window**: Minimize, Maximize, Close
+The native menu bar is **platform-native** (macOS / Windows / Linux differ — app
+menu, Settings vs Preferences, Quit vs Exit, About placement, Window menu). Full
+structure, per-OS placement table, item ids, and how it's wired: **[`docs/menus.md`](menus.md)**.
 
 ---
 

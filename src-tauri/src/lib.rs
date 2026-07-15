@@ -678,6 +678,35 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         // (comments above still carries the credits text on Windows/Linux.)
         .icon(app_about_icon())
         .build();
+    // Platform-native menu placement. Settings/Preferences, Quit/Exit, and Deck
+    // Security live in DIFFERENT menus per OS (macOS app menu vs File/Edit/Help),
+    // so build the items once here and slot them in below via cfg. Same ids →
+    // the same JS handlers on every platform.
+    //   - Settings label: "Preferences..." on Linux (GTK), "Settings..." elsewhere.
+    #[cfg(target_os = "linux")]
+    let settings_item = MenuItemBuilder::new("Preferences...").id("settings").accelerator("CmdOrCtrl+,")
+        .build(app).map_err(|e| e.to_string())?;
+    #[cfg(not(target_os = "linux"))]
+    let settings_item = MenuItemBuilder::new("Settings...").id("settings").accelerator("CmdOrCtrl+,")
+        .build(app).map_err(|e| e.to_string())?;
+    //   - Quit label/accel: macOS "Quit Eigendeck" ⌘Q (app menu); Linux "Quit"
+    //     Ctrl+Q (File); Windows "Exit" (File; Alt+F4 is the OS-level accelerator).
+    #[cfg(target_os = "macos")]
+    let quit_item = MenuItemBuilder::new("Quit Eigendeck").id("quit").accelerator("CmdOrCtrl+Q")
+        .build(app).map_err(|e| e.to_string())?;
+    #[cfg(target_os = "windows")]
+    let quit_item = MenuItemBuilder::new("Exit").id("quit")
+        .build(app).map_err(|e| e.to_string())?;
+    #[cfg(target_os = "linux")]
+    let quit_item = MenuItemBuilder::new("Quit").id("quit").accelerator("CmdOrCtrl+Q")
+        .build(app).map_err(|e| e.to_string())?;
+    //   - Deck Security: macOS Window menu; Win/Linux File (no Window menu there).
+    let deck_security_item = MenuItemBuilder::new("Deck Security Settings").id("deck-security")
+        .build(app).map_err(|e| e.to_string())?;
+
+    // App menu (macOS ONLY): About/Services/Hide/Settings/Quit. Windows and Linux
+    // have no app-name menu — those items are relocated to File/Edit/Help below.
+    #[cfg(target_os = "macos")]
     let app_menu = SubmenuBuilder::new(app, "Eigendeck")
         .about(Some(about_meta))
         .separator()
@@ -687,11 +716,9 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .hide_others()
         .show_all()
         .separator()
-        .item(&MenuItemBuilder::new("Settings...").id("settings").accelerator("CmdOrCtrl+,")
-            .build(app).map_err(|e| e.to_string())?)
+        .item(&settings_item)
         .separator()
-        .item(&MenuItemBuilder::new("Quit Eigendeck").id("quit").accelerator("CmdOrCtrl+Q")
-            .build(app).map_err(|e| e.to_string())?)
+        .item(&quit_item)
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -726,7 +753,7 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
     if let Some(ref rm) = recent_menu {
         file_sub = file_sub.item(rm);
     }
-    let file_menu = file_sub
+    let mut file_sub = file_sub
         .separator()
         .item(&save_item)
         .item(&save_as_item)
@@ -738,20 +765,43 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .item(&export_pdf_ss_item)
         .separator()
         .item(&presentation_settings_item)
-        .item(&gc_assets_item)
+        .item(&gc_assets_item);
+    // Win/Linux have no Window menu, so Deck Security lives here in File.
+    #[cfg(not(target_os = "macos"))]
+    {
+        file_sub = file_sub.item(&deck_security_item);
+    }
+    file_sub = file_sub
         .separator()
         .item(&install_llm_tools_item)
-        .separator()
-        .close_window()
-        .build()
-        .map_err(|e| e.to_string())?;
+        .separator();
+    // Windows: app Settings live in File (native "File → Settings…"). Linux puts
+    // Preferences in Edit instead; macOS in the app menu.
+    #[cfg(target_os = "windows")]
+    {
+        file_sub = file_sub.item(&settings_item).separator();
+    }
+    file_sub = file_sub.close_window();
+    // Win/Linux: File ends with Exit/Quit (macOS quits from the app menu).
+    #[cfg(not(target_os = "macos"))]
+    {
+        file_sub = file_sub.separator().item(&quit_item);
+    }
+    let file_menu = file_sub.build().map_err(|e| e.to_string())?;
 
-    let edit_menu = SubmenuBuilder::new(app, "Edit")
+    let paste_plain_item = MenuItemBuilder::new("Paste without Formatting").id("paste-plain")
+        .build(app).map_err(|e| e.to_string())?;
+    let mut edit_sub = SubmenuBuilder::new(app, "Edit")
         .undo().redo().separator().cut().copy().paste()
-        .item(&MenuItemBuilder::new("Paste without Formatting").id("paste-plain")
-            .build(app).map_err(|e| e.to_string())?)
-        .select_all()
-        .build().map_err(|e| e.to_string())?;
+        .item(&paste_plain_item)
+        .select_all();
+    // Linux (GTK): app Preferences live at the bottom of Edit. Windows puts them
+    // in File; macOS in the app menu.
+    #[cfg(target_os = "linux")]
+    {
+        edit_sub = edit_sub.separator().item(&settings_item);
+    }
+    let edit_menu = edit_sub.build().map_err(|e| e.to_string())?;
 
     // Insert menu — every insertable element type, ALWAYS available
     // regardless of which buttons the user hid from the editor toolbar
@@ -863,9 +913,11 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build()
         .map_err(|e| e.to_string())?;
 
+    // Window menu (macOS ONLY) — min/max/close come from the native title bar on
+    // Win/Linux. Deck Security moved to File there (see above).
+    #[cfg(target_os = "macos")]
     let window_menu = SubmenuBuilder::new(app, "Window")
-        .item(&MenuItemBuilder::new("Deck Security Settings").id("deck-security")
-            .build(app).map_err(|e| e.to_string())?)
+        .item(&deck_security_item)
         .separator()
         .minimize().maximize().separator().close_window()
         .build().map_err(|e| e.to_string())?;
@@ -874,33 +926,47 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
     // the opener plugin, routed through the catch-all `menu-event` emit (handled
     // in App.tsx). The OSS/font credits live in the native About panel
     // (Eigendeck → About Eigendeck).
-    let help_menu = SubmenuBuilder::new(app, "Help")
+    let mut help_sub = SubmenuBuilder::new(app, "Help")
         .item(&MenuItemBuilder::new("Learning about Eigendeck").id("help-learning")
             .build(app).map_err(|e| e.to_string())?)
         .item(&MenuItemBuilder::new("Manual").id("help-manual")
             .build(app).map_err(|e| e.to_string())?)
         .separator()
         .item(&MenuItemBuilder::new("Report a Bug…").id("help-report-bug")
-            .build(app).map_err(|e| e.to_string())?)
-        .build()
-        .map_err(|e| e.to_string())?;
+            .build(app).map_err(|e| e.to_string())?);
+    // Windows/Linux: "About Eigendeck" lives at the bottom of Help (macOS has it in
+    // the app menu). Uses the same AboutMetadata → built-in About dialog.
+    #[cfg(not(target_os = "macos"))]
+    {
+        help_sub = help_sub.separator().about(Some(about_meta));
+    }
+    let help_menu = help_sub.build().map_err(|e| e.to_string())?;
 
     // Debug submenu — appended ONLY when launched with --debug. The flag is
     // read inside debug::attach_submenu_if_enabled; lib.rs never sees the bool.
     let debug_menu = debug::attach_submenu_if_enabled(app)?;
 
-    let mut bar = MenuBuilder::new(app)
-        .item(&app_menu)
+    let mut bar = MenuBuilder::new(app);
+    // App-name menu first — macOS only.
+    #[cfg(target_os = "macos")]
+    {
+        bar = bar.item(&app_menu);
+    }
+    bar = bar
         .item(&file_menu)
         .item(&edit_menu)
         .item(&view_menu)
         .item(&insert_menu)
-        .item(&slide_menu)
-        .item(&window_menu);
+        .item(&slide_menu);
+    // Window menu — macOS only.
+    #[cfg(target_os = "macos")]
+    {
+        bar = bar.item(&window_menu);
+    }
     if let Some(ref dm) = debug_menu {
         bar = bar.item(dm);
     }
-    // Help last (after the optional Debug submenu) — macOS convention.
+    // Help last (after the optional Debug submenu).
     bar = bar.item(&help_menu);
     bar.build().map_err(|e| e.to_string())
 }
