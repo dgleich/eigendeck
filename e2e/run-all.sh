@@ -160,6 +160,9 @@ MANIFEST=(
   "font-default-probe.mjs|font-lato.eigendeck|E2E_EXPECT=lato|import_json \$ROOT/e2e/fixtures/font-lato-deck.json"
   "color-control-probe.mjs|ctrl.eigendeck||import_json \$ROOT/e2e/fixtures/color-control-deck.json"
   "cover-card-probe.mjs|cover.eigendeck||import_json \$ROOT/e2e/fixtures/cover-card-deck.json"
+  # #95 editor cut-off badge: overflowing text shows it, fitting text doesn't
+  # (jsdom can't measure overflow, so this needs the real rig).
+  "text-overflow-probe.mjs|overflow.eigendeck||import_json \$ROOT/e2e/fixtures/overflow-text-deck.json"
   # #135 footer: presence/absence (per-slide omitFooter) + deck footerFont across
   # editor, present, and HTML export (print path covered by exportMatrix units).
   "footer-probe.mjs|footer.eigendeck||import_json \$ROOT/e2e/fixtures/footer-deck.json"
