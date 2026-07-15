@@ -1,5 +1,36 @@
 import { describe, it, expect } from 'vitest';
-import { looksLikeRichHtml, sanitizeForCapture } from './htmlPasteCapture';
+import { looksLikeRichHtml, sanitizeForCapture, extractPastedDataUrlImage } from './htmlPasteCapture';
+
+describe('extractPastedDataUrlImage (#158 Google Slides)', () => {
+  // 1x1 transparent PNG
+  const PNG_B64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  // Exactly the shape Google Slides puts on text/html (see issue #158).
+  const gslides = `<b id="docs-internal-guid-5400a67e-7fff-4cf0-ed00-dfea257517fc" style="caret-color: rgb(0, 0, 0); font-weight: normal;"><img width="754px;" height="568px;" src="data:image/png;base64,${PNG_B64}"></b>`;
+
+  it('pulls the embedded PNG out of a Google Slides paste', () => {
+    const r = extractPastedDataUrlImage(gslides);
+    expect(r).not.toBeNull();
+    expect(r!.mime).toBe('image/png');
+    // decodes to the real PNG signature
+    expect([...r!.bytes.slice(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+  });
+
+  it('handles single-quoted src and jpeg', () => {
+    const r = extractPastedDataUrlImage(`<img src='data:image/jpeg;base64,${PNG_B64}'>`);
+    expect(r!.mime).toBe('image/jpeg');
+  });
+
+  it('returns null when there is no data-URL image', () => {
+    expect(extractPastedDataUrlImage('<table><tr><td>x</td></tr></table>')).toBeNull();
+    expect(extractPastedDataUrlImage('<img src="https://example.com/x.png">')).toBeNull();
+    expect(extractPastedDataUrlImage('')).toBeNull();
+    expect(extractPastedDataUrlImage(null)).toBeNull();
+  });
+
+  it('returns null on malformed base64', () => {
+    expect(extractPastedDataUrlImage('<img src="data:image/png;base64,@@@notbase64@@@">')).toBeNull();
+  });
+});
 
 describe('looksLikeRichHtml', () => {
   it('detects block/structured HTML', () => {

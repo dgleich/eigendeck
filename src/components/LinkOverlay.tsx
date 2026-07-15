@@ -91,14 +91,25 @@ export function LinkOverlay({ elementId, onClose }: Props) {
     || otherSlides[otherSlides.length - 1];
   const viewSlide = viewSlideEntry.slide;
 
+  // Build-adjusted numbers (match the sidebar/footer via getSlideNumber) + an
+  // orientation offset from the slide holding the element you're linking FROM
+  // (the "link origin"), so you know how far the browsed slide is (#88).
+  const viewNum = getSlideNumber(presentation.slides, viewSlideEntry.idx);
+  const totalNum = getSlideNumber(presentation.slides, presentation.slides.length - 1);
+  const originNum = getSlideNumber(presentation.slides, currentSlideIndex);
+  const delta = viewNum - originNum;
+  const orientation = delta === 0
+    ? 'same number as the link origin'
+    : `${Math.abs(delta)} ${Math.abs(delta) === 1 ? 'slide' : 'slides'} ${delta < 0 ? 'before' : 'after'} the link origin`;
+
   return (
     <div className="link-overlay" onClick={onClose}>
       <div className="link-overlay-content" onClick={(e) => e.stopPropagation()}>
         <div className="link-overlay-header">
-          <span>Click an element on slide {getSlideNumber(presentation.slides, viewSlideEntry.idx)} to link</span>
+          <span>Click an element on slide {viewNum} to link</span>
           <div className="link-overlay-nav">
             <button disabled={viewIndex <= 0} onClick={navPrev}>&larr;</button>
-            <span>Slide {getSlideNumber(presentation.slides, viewSlideEntry.idx)} / {presentation.slides.length}</span>
+            <span>Slide {viewNum} of {totalNum} · {orientation}</span>
             <button disabled={viewIndex >= presentation.slides.length - 1} onClick={navNext}>&rarr;</button>
           </div>
           <button className="link-overlay-close" onClick={onClose}>Cancel</button>
