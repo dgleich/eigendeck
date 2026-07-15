@@ -791,17 +791,17 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
 
     let paste_plain_item = MenuItemBuilder::new("Paste without Formatting").id("paste-plain")
         .build(app).map_err(|e| e.to_string())?;
-    let mut edit_sub = SubmenuBuilder::new(app, "Edit")
+    let edit_base = SubmenuBuilder::new(app, "Edit")
         .undo().redo().separator().cut().copy().paste()
         .item(&paste_plain_item)
         .select_all();
-    // Linux (GTK): app Preferences live at the bottom of Edit. Windows puts them
-    // in File; macOS in the app menu.
+    // Linux (GTK): app Preferences live at the bottom of Edit. Windows puts them in
+    // File; macOS in the app menu. Consume the builder per-cfg so there's no unused
+    // `mut` on the platforms that add nothing here (the macOS build warned on it).
     #[cfg(target_os = "linux")]
-    {
-        edit_sub = edit_sub.separator().item(&settings_item);
-    }
-    let edit_menu = edit_sub.build().map_err(|e| e.to_string())?;
+    let edit_menu = edit_base.separator().item(&settings_item).build().map_err(|e| e.to_string())?;
+    #[cfg(not(target_os = "linux"))]
+    let edit_menu = edit_base.build().map_err(|e| e.to_string())?;
 
     // Insert menu — every insertable element type, ALWAYS available
     // regardless of which buttons the user hid from the editor toolbar
@@ -926,7 +926,7 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
     // the opener plugin, routed through the catch-all `menu-event` emit (handled
     // in App.tsx). The OSS/font credits live in the native About panel
     // (Eigendeck → About Eigendeck).
-    let mut help_sub = SubmenuBuilder::new(app, "Help")
+    let help_base = SubmenuBuilder::new(app, "Help")
         .item(&MenuItemBuilder::new("Learning about Eigendeck").id("help-learning")
             .build(app).map_err(|e| e.to_string())?)
         .item(&MenuItemBuilder::new("Manual").id("help-manual")
@@ -934,13 +934,13 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .separator()
         .item(&MenuItemBuilder::new("Report a Bug…").id("help-report-bug")
             .build(app).map_err(|e| e.to_string())?);
-    // Windows/Linux: "About Eigendeck" lives at the bottom of Help (macOS has it in
-    // the app menu). Uses the same AboutMetadata → built-in About dialog.
+    // Windows/Linux: "About Eigendeck" at the bottom of Help (macOS has it in the app
+    // menu; same AboutMetadata → built-in About dialog). Consume per-cfg so there's
+    // no unused `mut` on macOS (which adds nothing here).
     #[cfg(not(target_os = "macos"))]
-    {
-        help_sub = help_sub.separator().about(Some(about_meta));
-    }
-    let help_menu = help_sub.build().map_err(|e| e.to_string())?;
+    let help_menu = help_base.separator().about(Some(about_meta)).build().map_err(|e| e.to_string())?;
+    #[cfg(target_os = "macos")]
+    let help_menu = help_base.build().map_err(|e| e.to_string())?;
 
     // Debug submenu — appended ONLY when launched with --debug. The flag is
     // read inside debug::attach_submenu_if_enabled; lib.rs never sees the bool.
