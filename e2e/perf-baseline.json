@@ -1,0 +1,17 @@
+{
+  "_note": "Perf reference captured by e2e/perf-probe.mjs. Numbers are ENVIRONMENT-RELATIVE (headless xvfb/WebKitGTK in the CI container — much slower than a Mac). Do NOT compare across machines. The real guard is BEFORE/AFTER on the SAME machine: run the probe on main, apply a fix, run it again, compare. A regression is a clear jump (>~25%) on a metric the fix could plausibly touch. Guards #115 (preview pipeline) + #153 (op smoothness).",
+  "captured": "2026-07-15 (CI container)",
+  "deck": "examples/graph-explorer.eigendeck (4 slides, demos)",
+  "runs": 3,
+  "metrics_ms": {
+    "openToSeam": 1019,
+    "seamToFirstSlide": 7,
+    "allThumbnails": 3,
+    "switchSlide": 62,
+    "addText": 54,
+    "addImage": 33,
+    "addSlide": 33,
+    "moveElements": 25,
+    "undoRedo": 36
+  }
+}

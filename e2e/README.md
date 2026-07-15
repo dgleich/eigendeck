@@ -508,3 +508,26 @@ are gated in `run-all.sh` and build via `import_json` (fixtures in `fixtures/`).
   slide only.
 - **html-undo-redo-probe.mjs** — the REAL Cmd+Z / Cmd+Shift+Z keyboard path
   (`undoWithNav`/`redoWithNav`) reverts + restores an html edit.
+
+## Performance regression checks (per-fix)
+
+Guards against silent perf regressions (#115 preview pipeline, #153 op smoothness).
+Timings are ENVIRONMENT-RELATIVE (slow xvfb, not a Mac) — the signal is the
+**before/after delta on the same machine**, not the absolute number.
+
+For each fix that touches rendering, the store, assets, demos, or the export/preview
+paths, run BEFORE and AFTER and compare:
+
+```bash
+# on the fix's base (before) AND after the change, same machine:
+TMP=$(mktemp -d); cp examples/graph-explorer.eigendeck "$TMP/d.eigendeck"; rm -f "$TMP"/d.eigendeck-*
+PERF_RUNS=3 PROBE=$PWD/e2e/perf-probe.mjs E2E_DECK="$TMP/d.eigendeck" bash e2e/run-probe.sh | grep PERF_REPORT -A15
+# demo smoothness (asserts an fps floor):
+PROBE=$PWD/e2e/relay-fps-probe.mjs E2E_DECK=<fps deck> bash e2e/run-probe.sh
+```
+
+`perf-probe.mjs` reports median-of-N for: open→seam, seam→first-slide, all
+thumbnails, and the common editing ops (switch slide, add text/image/slide, move
+elements, undo/redo). A reference snapshot is `e2e/perf-baseline.json`. A clear jump
+(>~25%) on a metric the fix could plausibly touch = investigate before merging.
+Also run the full gate (`npm run test:e2e`) so no fix introduces a functional regression.
