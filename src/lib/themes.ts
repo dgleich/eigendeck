@@ -48,3 +48,11 @@ export function isDarkTheme(theme: ThemeColors): boolean {
   const b = parseInt(hex.slice(4, 6), 16);
   return (r * 299 + g * 587 + b * 114) / 1000 < 128;
 }
+
+/** Salt that changes when the resolved slide THEME changes — mixed into the
+ *  notebook preview-cache signature so a theme switch invalidates the cached
+ *  PNG. Shared by the live capture (NotebookContent) and the PDF/print export's
+ *  staleness check (#140) so both compute the SAME value. */
+export function previewThemeSalt(theme: ThemeColors): string {
+  return `${theme.background}|${theme.text}|${isDarkTheme(theme) ? 'd' : 'l'}`;
+}

@@ -15,6 +15,11 @@ import { bytesToBase64 } from './base64';
 import { hashString } from './hash';
 
 /** The cache key for an element's preview: its sync identity. */
+// Separator between the readable theme-salt prefix and the content hash in a
+// DOM-node preview's stored signature. A control char that can't appear in a
+// theme salt (hex colors + `|`) or a base-36 hash, so a plain split is safe.
+const PREVIEW_SALT_SEP = '␞';
+
 export function previewKey(el: Pick<SlideElement, 'id' | 'syncId'>): string {
   return el.syncId ?? el.id;
 }
@@ -113,7 +118,11 @@ export async function capturePreview(
   // In-DOM node (notebook / video): rasterize directly. The signature includes the
   // node's HTML so it changes exactly when the picture's structure does. (Canvas
   // pixel state isn't in the HTML — acceptable: a thumbnail is a single frame.)
-  const sig = hashString(`${width}x${height}|${cacheSalt ?? ''}|${backgroundColor ?? ''}|${node.outerHTML}`);
+  // The theme salt is kept as a READABLE prefix (not folded into the hash) so the
+  // PDF/print export can compare it against the current theme WITHOUT the node's
+  // outerHTML — which it can't read for a notebook that isn't on the current slide.
+  // A theme change then reads stale at export → forces a fresh capture (#140).
+  const sig = `${cacheSalt ?? ''}${PREVIEW_SALT_SEP}${hashString(`${width}x${height}|${backgroundColor ?? ''}|${node.outerHTML}`)}`;
   await storeCapture(key, width, height, sig, async () => {
     const { domToDataUrl } = await import('modern-screenshot');
     return domToDataUrl(node, { width, height, scale: 1, backgroundColor });
@@ -176,5 +185,23 @@ export async function loadPreviewDataUrl(key: string): Promise<string | null> {
   } catch (e) {
     console.warn('loadPreviewDataUrl failed:', e);
     return null;
+  }
+}
+
+/** True when a cached DOM-node (notebook) preview exists but was captured under a
+ *  DIFFERENT theme salt than `expectedSalt` — so the PDF/print export should
+ *  re-capture it instead of baking the stale-theme PNG (#140). False when there's
+ *  no cached preview, or its stored signature predates the salt-prefix format
+ *  (can't tell → treat as fresh, preserving prior behavior). */
+export async function isPreviewThemeStale(key: string, expectedSalt: string): Promise<boolean> {
+  try {
+    const variants = await invoke<CacheVariant[]>('db_list_asset_cache_variants', { sourceId: key });
+    const p = variants.find((v) => v.variant === 'preview');
+    if (!p || !p.source_hash) return false;
+    const i = p.source_hash.indexOf(PREVIEW_SALT_SEP);
+    if (i < 0) return false; // pre-prefix format — can't compare, keep the cached preview
+    return p.source_hash.slice(0, i) !== expectedSalt;
+  } catch {
+    return false;
   }
 }

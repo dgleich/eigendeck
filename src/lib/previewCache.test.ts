@@ -6,7 +6,7 @@ vi.mock('modern-screenshot', () => ({
 }));
 import { invoke } from '@tauri-apps/api/core';
 import { domToDataUrl } from 'modern-screenshot';
-import { previewKey, loadPreviewDataUrl, capturePreview } from './previewCache';
+import { previewKey, loadPreviewDataUrl, capturePreview, isPreviewThemeStale } from './previewCache';
 
 const PNG_SIG = [0x89, 0x50, 0x4e, 0x47]; // \x89PNG
 
@@ -49,6 +49,37 @@ describe('loadPreviewDataUrl', () => {
       return Promise.resolve(new Uint8Array(0).buffer);
     });
     expect(await loadPreviewDataUrl('k')).toBeNull();
+  });
+});
+
+describe('isPreviewThemeStale (#140)', () => {
+  const SEP = '␞';
+  beforeEach(() => (invoke as any).mockReset());
+  const withHash = (source_hash: string | null) =>
+    (invoke as any).mockImplementation((cmd: string) =>
+      cmd === 'db_list_asset_cache_variants'
+        ? Promise.resolve([{ variant: 'preview', width: 4, height: 4, source_hash }])
+        : Promise.resolve(null));
+
+  it('is stale when the stored salt prefix differs from the current theme', async () => {
+    withHash(`#fff|#222|l${SEP}abc123`);
+    expect(await isPreviewThemeStale('k', '#000|#fff|d')).toBe(true);
+  });
+
+  it('is fresh when the stored salt prefix matches', async () => {
+    withHash(`#000|#fff|d${SEP}abc123`);
+    expect(await isPreviewThemeStale('k', '#000|#fff|d')).toBe(false);
+  });
+
+  it('is fresh (no false eviction) for a pre-prefix signature with no separator', async () => {
+    withHash('legacyhashonly');
+    expect(await isPreviewThemeStale('k', '#000|#fff|d')).toBe(false);
+  });
+
+  it('is fresh when there is no cached preview at all', async () => {
+    (invoke as any).mockImplementation((cmd: string) =>
+      cmd === 'db_list_asset_cache_variants' ? Promise.resolve([]) : Promise.resolve(null));
+    expect(await isPreviewThemeStale('k', '#000|#fff|d')).toBe(false);
   });
 });
 

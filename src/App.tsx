@@ -28,7 +28,8 @@ import type { MenuEntry } from './components/ContextMenu';
 import { detachDelta, pasteElementDelta } from './lib/syncLink';
 import { offsetElement } from './lib/offsetElement';
 import { buildPrintSlideHtml } from './lib/printSlideHtml';
-import { previewKey, loadPreviewDataUrl } from './lib/previewCache';
+import { previewKey, loadPreviewDataUrl, isPreviewThemeStale } from './lib/previewCache';
+import { resolveTheme, previewThemeSalt } from './lib/themes';
 import { registerNotebookLifecycle } from './components/notebook/notebookLifecycle';
 import { runCopyHook } from './lib/elementLifecycle';
 import { loadOverlayFor } from './lib/useOverlay';
@@ -253,10 +254,17 @@ async function printToPdf() {
   if (hasDemos) {
     for (const slide of presentation.slides) {
       for (const el of slide.elements) {
-        if (isLiveElement(el.type)) {
-          const cached = await loadPreviewDataUrl(previewKey(el));
-          if (cached) demoScreenshots.set(`${slide.id}:${el.id}`, cached);
+        if (!isLiveElement(el.type)) continue;
+        // A notebook's cached preview only re-captures while its slide is mounted,
+        // so a theme switch leaves the previews for OTHER slides stale. Skip a
+        // theme-stale one here so it drops into the needsLiveCapture flip-through
+        // below and gets re-rasterized with the live theme (#140).
+        if (el.type === 'notebook') {
+          const salt = previewThemeSalt(resolveTheme(presentation.theme, slide.theme));
+          if (await isPreviewThemeStale(previewKey(el), salt)) continue;
         }
+        const cached = await loadPreviewDataUrl(previewKey(el));
+        if (cached) demoScreenshots.set(`${slide.id}:${el.id}`, cached);
       }
     }
   }
