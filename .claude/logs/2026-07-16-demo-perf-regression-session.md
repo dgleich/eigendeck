@@ -61,6 +61,44 @@ Rig caveat: software-GL over-weights iframe compositing → magnitudes ≠ Mac.
 - **C. Internet-block per-mount caching** (~7 ms) — small, touches the security
   path; low priority.
 
+## What's per-mount vs cached (base64 is NOT re-encoded)
+Traced every call site to be sure the embed cost isn't wasted re-encoding:
+- `bytesToBase64` runs only inside `buildEmbeddedFontFacesCSS` (`fonts.ts`).
+- For the LIVE demo path that's reached only via `deckFontFacesCss` (`demoMount.ts`),
+  memoized by the deck's font signature (`fontCssCache`) → the base64 encode runs
+  **once per deck-font-set per session**, not per mount.
+- The spliced demo document (base64 already inline) is cached as a blob URL in
+  `docBlobCache`, keyed by asset+role+capture+net+theme+fonts → the splice +
+  `createObjectURL` also run **once per key**, reused across mounts.
+- So per mount our JS does ZERO encode/splice work; it reuses the same blob URL.
+  The ONLY per-mount cost is browser-side: parsing the big `data:` URL text into
+  the CSSOM on each fresh iframe load, plus the (inherent, unavoidable) font
+  decode when glyphs render. WOFF2 shrinks the PARSE payload (~1.7MB→~0.7MB of
+  base64), not any re-encode.
+
+## If/when demos move to a real Tauri origin — MUCH of this may be undone
+This whole font-embed machinery exists ONLY because demos are **opaque-origin**
+blob iframes that can't fetch app-origin `/fonts` (docs/DEMO-PLATFORM.md). If
+demos are ever served from a real Tauri origin (a custom protocol / asset origin
+with a stable, app-controlled origin), the tradeoffs flip:
+- Demos could load fonts by normal `@font-face { src: url('/fonts/…woff2') }` /
+  `<link>`, and the **browser font cache would hold ONE decode across every demo
+  mount** — eliminating the per-mount parse AND decode entirely. That is a bigger
+  win than anything here.
+- **Then these become unnecessary / should be reverted:** the base64 font embed
+  in `buildEmbeddedFontFacesCSS` for the demo path, the `demoReferencesFonts`
+  gate (commit 0cb3351), and the WOFF2-into-base64 embed (commit cf08ee5). Keep
+  the WOFF2 FILES + generator (`tools/build_font_woff2.py`, setup wiring) — serving
+  `.woff2` by URL is still the right call; only the *inlining* goes away.
+- A real origin may also restore same-origin comms (BroadcastChannel) and remove
+  the rAF-throttle workaround → the parent **relay + rAF pump** (`demoMount.ts`)
+  and part of the ~35 ms inherent-mount cost could go too. Re-measure then.
+- The `injectDemoTheme*` vars-splice can stay (cheap) or move to a served stylesheet.
+- **Net:** treat commits 0cb3351 + cf08ee5 as *opaque-origin-era* mitigations. The
+  durable artifacts are (a) the perf-report attribution, (b) the WOFF2 files +
+  generator, (c) the finding that the real fix is "don't re-mount / don't re-embed"
+  — which a Tauri origin delivers for free. Revisit both commits at that migration.
+
 ## Resume pointers
 - Old build present: `/tmp/el-old-target/debug/eigendeck` + `/tmp/el-old` worktree
   (`v26.6.24`); new binary `/tmp/el-target/debug/eigendeck`. Both dists carry the
