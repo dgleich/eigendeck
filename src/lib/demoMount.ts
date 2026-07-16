@@ -227,6 +227,11 @@ export function useDemoDoc(assetId: string | undefined, opts: DemoMountOpts): st
       .then((r) => { if (alive) setUrl(r); });
     return () => { alive = false; };
   }, [assetId, hash, channelKey, varsCss, fontFacesCss, capture, blockInternet, refresh]);
+  // Poke the rAF pump once the src is set: this effect runs after the commit that
+  // mounts the iframe, so the frame is in the DOM and the pump resumes on the next
+  // frame instead of waiting out its idle backstop (kills the "controls, then the
+  // animation" pop for demos that draw in rAF).
+  useEffect(() => { if (url) wakeDemoRafPump(); }, [url]);
   return url;
 }
 
@@ -340,47 +345,37 @@ export function useDemoHost(): void {
 // each frame; the bridge fires the demo's rAF callbacks on each tick.
 //
 // When no demo is on screen the loop must NOT spin at 60fps (a text-only slide
-// would burn the main thread). It used to nap on a fixed 100ms setTimeout, but
-// that delayed a freshly-mounted demo's first tick by up to 100ms — its
-// rAF-driven content (canvas/WebGL animation) visibly "popped in" AFTER its
-// synchronously-rendered controls. Instead, while idle we WATCH for a demo iframe
-// being inserted (MutationObserver) and resume within one frame of the mount, so
-// the demo starts animating essentially as soon as it exists. A slow poll backs
-// the observer up. Single-install is guaranteed by useDemoHost's ref-count.
+// would burn the main thread). It used to nap on a fixed 100ms setTimeout, which
+// delayed a freshly-mounted demo's first tick by up to 100ms (its rAF-driven
+// content "popped in" AFTER its synchronously-rendered controls). Now a demo mount
+// EXPLICITLY pokes the pump (wakeDemoRafPump, called from useDemoDoc once the src
+// is set + committed), so it resumes within a frame of the mount. The idle loop is
+// just a cheap backstop poll — deliberately NOT a MutationObserver, which fired on
+// every DOM mutation and measurably slowed initial render / thumbnail building on
+// element-heavy decks. Single-install is guaranteed by useDemoHost's ref-count.
+let wakePumpFn: (() => void) | null = null;
+/** A demo mounted — resume the pump now instead of waiting out the idle poll. */
+export function wakeDemoRafPump(): void { wakePumpFn?.(); }
 function installRafPump(): () => void {
   if (typeof window === 'undefined') return () => {};
   let running = true;
   let idle: ReturnType<typeof setTimeout> | undefined;
-  let observer: MutationObserver | undefined;
   let scheduled = false;
-  const hasDemo = () => !!document.querySelector('iframe.el-demo-frame');
-  const stopIdle = () => {
-    if (observer) { observer.disconnect(); observer = undefined; }
-    if (idle) { clearTimeout(idle); idle = undefined; }
-  };
   const schedule = () => { if (scheduled || !running) return; scheduled = true; requestAnimationFrame(pump); };
-  const goIdle = () => {
-    if (!observer) {
-      observer = new MutationObserver(() => { if (hasDemo()) { stopIdle(); schedule(); } });
-      observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
-    }
-    if (idle) clearTimeout(idle);
-    idle = setTimeout(schedule, 500); // safety net if a mutation is somehow missed
-  };
   const pump = (t: number) => {
     scheduled = false;
     if (!running) return;
     const frames = document.querySelectorAll('iframe.el-demo-frame');
-    if (frames.length === 0) { goIdle(); return; }
-    stopIdle();
+    if (frames.length === 0) { idle = setTimeout(schedule, 250); return; } // backstop only
     for (const f of frames) {
       const cw = (f as HTMLIFrameElement).contentWindow;
       if (cw) { try { cw.postMessage({ __eigendeck: 1, type: 'raf-tick', t }, '*'); } catch { /* opaque */ } }
     }
     schedule();
   };
+  wakePumpFn = () => { if (!running) return; if (idle) { clearTimeout(idle); idle = undefined; } schedule(); };
   schedule();
-  return () => { running = false; stopIdle(); };
+  return () => { running = false; if (idle) clearTimeout(idle); wakePumpFn = null; };
 }
 
 // --- parent-side relay -------------------------------------------------------
