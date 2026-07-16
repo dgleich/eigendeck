@@ -19,7 +19,11 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export E2E_APP="${E2E_APP:-/tmp/el-target/debug/eigendeck}"
 export PERF_REPS="${PERF_REPS:-3}"
 TMPBASE="$(mktemp -d)"
-RESULTS="$ROOT/e2e/perf-results.json"
+RESULTS="${PERF_RESULTS:-$ROOT/e2e/perf-results.json}"
+# The rig launcher to use — override with RUN_PROBE to serve a DIFFERENT dist (e.g.
+# an old build in a worktree: RUN_PROBE=/tmp/el-old/e2e/run-probe.sh serves
+# /tmp/el-old/dist). Its own dir's dist is served; E2E_APP picks the binary.
+RUNPROBE="${RUN_PROBE:-$ROOT/e2e/run-probe.sh}"
 
 # name|source-deck-path. The REAL decks in active use + light/demo baselines + the
 # (gitignored, large) synthetic perf decks. Keep the "used" ones — they're what the
@@ -45,7 +49,7 @@ for entry in "${DECKS[@]}"; do
   out="$dir/result.json"
   echo "== $name ($PERF_REPS reps) =="
   PROBE="$ROOT/e2e/perf-suite.mjs" E2E_DECK="$dir/$name.eigendeck" PERF_OUT="$out" \
-    bash "$ROOT/e2e/run-probe.sh" 2>&1 | grep -E "rep [0-9]|PERF_SUITE_FAIL|FATAL" | sed 's/\x1b\[[0-9;]*m//g'
+    bash "$RUNPROBE" 2>&1 | grep -E "rep [0-9]|PERF_SUITE_FAIL|FATAL" | sed 's/\x1b\[[0-9;]*m//g'
   if [ -f "$out" ]; then PARTS+=("$out"); else echo "  (no result for $name)"; fi
 done
 
