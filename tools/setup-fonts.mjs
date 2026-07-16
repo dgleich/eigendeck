@@ -141,6 +141,24 @@ function main() {
   }
 
   log(`Done — ${MATHJAX_FONTS_PACKAGES.length} MathJax bundles copied.`);
+
+  buildWoff2();
+}
+
+// Generate WOFF2 siblings for the bundled TTF/OTF fonts. These shrink the
+// demo/export font embed ~60% (opaque-origin demos inline the deck fonts as
+// base64 and re-parse them on every mount — docs/perf-report.md, "Demos").
+// OPTIONAL: needs uv + fonttools + brotli. If unavailable, src/lib/fonts.ts
+// falls back to the raw TTF (larger, still correct), so this must never abort.
+function buildWoff2() {
+  const tool = join(REPO_ROOT, 'tools', 'build_font_woff2.py');
+  if (!existsSync(tool)) return;
+  try {
+    execSync(`uv run --with fonttools --with brotli "${tool}"`, { stdio: 'inherit', cwd: REPO_ROOT });
+  } catch (e) {
+    log(`NOTE: skipped WOFF2 font generation (${(e.message || '').split('\n')[0]}). ` +
+        `Demo/export fonts fall back to TTF (larger, still correct). Install uv (https://astral.sh/uv) to enable.`);
+  }
 }
 
 main();

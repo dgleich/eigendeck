@@ -92,3 +92,4 @@ coverage/
 # skills for Claude / Claude Code). Lives here for convenience but is published
 # separately; never part of the app repo. See skills-public/README.md.
 skills-public/
+public/fonts/**/*.woff2

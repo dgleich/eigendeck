@@ -55,13 +55,24 @@ export async function buildEmbeddedFontFacesCSS(presentation: {
     const narrowFamily = bareNarrowFamilyName(pkg);
     for (const { filename, cssAttrs } of fontFilesForPackage(pkg)) {
       try {
-        const url = `/fonts/${pkg.id}/${filename}`;
-        const resp = await fetch(url);
-        if (!resp.ok) continue;
+        // Prefer the WOFF2 sibling (Brotli, ~40% of the TTF): this CSS is inlined
+        // as base64 into every demo/export document, so the smaller payload is
+        // re-parsed far faster on each opaque-iframe mount (docs/perf-report.md,
+        // "Demos"). Falls back to the raw TTF/OTF when no .woff2 exists (a build
+        // that hasn't run tools/build_font_woff2.py).
+        const base = `/fonts/${pkg.id}/${filename}`;
+        const woff2Url = base.replace(/\.(?:ttf|otf)$/i, '.woff2');
+        let mime = 'font/woff2';
+        let fmt = "format('woff2')";
+        let resp = await fetch(woff2Url);
+        if (!resp.ok) {
+          const ext = filename.split('.').pop() || 'ttf';
+          mime = ext === 'otf' ? 'font/otf' : 'font/ttf';
+          fmt = ext === 'otf' ? "format('opentype')" : "format('truetype')";
+          resp = await fetch(base);
+          if (!resp.ok) continue;
+        }
         const buf = new Uint8Array(await resp.arrayBuffer());
-        const ext = filename.split('.').pop() || 'ttf';
-        const mime = ext === 'otf' ? 'font/otf' : 'font/ttf';
-        const fmt = ext === 'otf' ? "format('opentype')" : "format('truetype')";
         const dataUrl = `data:${mime};base64,${bytesToBase64(buf)}`;
         const fontFamily = cssAttrs.isNarrow && narrowFamily ? narrowFamily : family;
         lines.push(
