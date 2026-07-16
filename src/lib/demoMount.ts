@@ -108,6 +108,27 @@ export interface DemoMountOpts {
   blockInternet?: boolean;
 }
 
+// The blob-cache identity for ONE mount. The `prefix` identifies the mount
+// (asset + role/piece + capture + net-block); the trailing theme/font hashes vary
+// so a theme switch / async-fonts-resolving / internet-toggle supersedes the prior
+// blob for the same prefix. ONE source of truth for the async builder AND the sync
+// peek so they can't drift.
+function demoDocCacheKeyParts(assetId: string, opts: DemoMountOpts): { prefix: string; key: string } {
+  const { hash = '', channelKey, varsCss = '', fontFacesCss = '', capture = false, blockInternet = false } = opts;
+  const prefix = `${assetId} ${hash} ${channelKey} ${capture ? 'C' : ''}${blockInternet ? 'B' : ''} `;
+  return { prefix, key: prefix + `${hashString(varsCss)} ${hashString(fontFacesCss)}` };
+}
+
+/** Synchronous read of an ALREADY-BUILT demo blob URL, or undefined on a miss.
+ *  Lets a re-mounted demo set its iframe `src` on the FIRST render instead of
+ *  waiting an async tick for getDemoDocumentUrl to resolve the same cached blob —
+ *  the synchronous availability the old same-origin useDemoUrl had. Positive hits
+ *  only; the async path still handles cold builds and the not-a-demo (null) case. */
+export function peekDemoDocumentUrl(assetId: string | undefined, opts: DemoMountOpts): string | undefined {
+  if (!assetId || blockedCache.has(assetId)) return undefined;
+  return docBlobCache.get(demoDocCacheKeyParts(assetId, opts).key);
+}
+
 /** Build (or reuse) the opaque-origin demo document blob URL. Returns null when
  *  the bytes aren't a marked demo, undefined while loading. */
 export async function getDemoDocumentUrl(assetId: string | undefined, opts: DemoMountOpts): Promise<string | null> {
@@ -120,8 +141,7 @@ export async function getDemoDocumentUrl(assetId: string | undefined, opts: Demo
   // prefix — revoke it (else it leaks, with the inlined modern-screenshot bytes when
   // capture is on). Other pieces of the same demo use a different `hash` → different
   // prefix → untouched.
-  const prefix = `${assetId} ${hash} ${channelKey} ${capture ? 'C' : ''}${blockInternet ? 'B' : ''} `;
-  const key = prefix + `${hashString(varsCss)} ${hashString(fontFacesCss)}`;
+  const { prefix, key } = demoDocCacheKeyParts(assetId, opts);
   const existing = docBlobCache.get(key);
   if (existing) return existing;
   for (const [k, u] of docBlobCache) {
@@ -182,7 +202,11 @@ export function invalidateIsolatedOutput(channelKey: string): void {
 export function useDemoDoc(assetId: string | undefined, opts: DemoMountOpts): string | null | undefined {
   const { hash, channelKey, varsCss, fontFacesCss, capture } = opts;
   const blockInternet = useDemoInternetBlocked(assetId);
-  const [url, setUrl] = useState<string | null | undefined>(undefined);
+  // Seed synchronously from an already-built blob (re-mount / same demo on another
+  // slide) so the iframe `src` is present on the first render — no async gap. Cold
+  // mounts still resolve via the effect below.
+  const [url, setUrl] = useState<string | null | undefined>(() =>
+    peekDemoDocumentUrl(assetId, { hash, channelKey, varsCss, fontFacesCss, capture, blockInternet }));
   const [refresh, setRefresh] = useState(0);
   // Reload when the underlying asset bytes change on disk (file-watch / "Reload
   // from disk now" fire eigendeck:asset-changed). invalidateDemoDoc drops the
@@ -215,22 +239,33 @@ interface FontDeck {
   config?: { defaultTitleFont?: string; defaultBodyFont?: string; defaultHypeFont?: string };
   slides?: Array<{ titleFont?: string; bodyFont?: string; hypeFont?: string }>;
 }
-export async function deckFontFacesCss(presentation: FontDeck): Promise<string> {
-  const key = JSON.stringify({
+function fontDeckKey(presentation: FontDeck): string {
+  return JSON.stringify({
     c: presentation.config,
     s: (presentation.slides || []).map((s) => [s.titleFont, s.bodyFont, s.hypeFont]),
   });
+}
+export async function deckFontFacesCss(presentation: FontDeck): Promise<string> {
+  const key = fontDeckKey(presentation);
   if (fontCssCache && fontCssCache.key === key) return fontCssCache.css;
   const css = await buildEmbeddedFontFacesCSS(presentation);
   fontCssCache = { key, css };
   return css;
+}
+/** Synchronous read of the memoized deck font CSS, or '' if not built yet. The
+ *  demo blob-cache key includes this CSS's hash, so a re-mount's sync peek must see
+ *  the real value on the first render (not '') or it computes the wrong key and
+ *  misses — defeating the synchronous-src seed. */
+function peekDeckFontFacesCss(presentation: FontDeck): string {
+  const key = fontDeckKey(presentation);
+  return fontCssCache && fontCssCache.key === key ? fontCssCache.css : '';
 }
 
 /** React hook: the deck's data-URL @font-face CSS (empty until built). */
 export function useDeckFontFacesCss(): string {
   const config = usePresentationStore((s) => s.presentation.config);
   const slides = usePresentationStore((s) => s.presentation.slides);
-  const [css, setCss] = useState('');
+  const [css, setCss] = useState(() => peekDeckFontFacesCss({ config, slides }));
   useEffect(() => {
     let alive = true;
     deckFontFacesCss({ config, slides }).then((c) => { if (alive) setCss(c); });
