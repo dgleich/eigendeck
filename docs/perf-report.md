@@ -3,7 +3,7 @@
 A structured, repeatable performance benchmark for Eigendeck — a fixed set of
 **editor-mode and present-mode activities**, timed and repeated N times for
 statistics, run across **several real decks + the perf-stress decks**, and merged
-into one **tracked JSON** (`e2e/perf-results.json`) whose git history is the
+into **tracked JSON** (`e2e/perf-results/<version>.json`, one per build) whose git history is the
 over-time regression record.
 
 > **Numbers are ENV-RELATIVE.** The rig is headless WebKitGTK + software GL under
@@ -16,8 +16,8 @@ over-time regression record.
 | File | Role |
 |---|---|
 | `e2e/perf-suite.mjs` | The benchmark for ONE deck: runs the activity set, repeats `PERF_REPS` sessions (fresh app open each), emits per-activity stats (median / mean / stdev / min / max + raw reps). |
-| `e2e/perf-suite-run.sh` | Runs the suite across the deck set (copying each deck to an isolated HOME so autosave can't mutate the committed originals) and merges into `e2e/perf-results.json` with git ref + timestamp + env. |
-| `e2e/perf-results.json` | The tracked results. Commit it; `git log -p e2e/perf-results.json` shows the perf history. |
+| `e2e/perf-suite-run.sh` | Runs the suite across the deck set (copying each deck to an isolated HOME so autosave can't mutate the committed originals) and merges into `e2e/perf-results/<git-describe>.json` with git ref + timestamp + env. |
+| `e2e/perf-results/<version>.json` | The tracked results, **one file per build version** (named by `git describe --tags`, e.g. `v26.7.15.json` at a release, `v26.6.24.json` for the pre-security baseline). Commit them; diff two files to compare versions, or `git log -p` one to see re-runs of the same version. |
 
 Prereqs are the usual e2e ones (see the **eigendeck-e2e** skill): `E2E_APP` built,
 and `dist/` built with **`VITE_EIGENDECK_SEAM=1 npm run build`** (a plain build
@@ -26,7 +26,7 @@ strips the seam and every session times out — see that skill's gotcha #11).
 ## Running it
 
 ```bash
-# whole suite, 3 reps/deck (default), writes e2e/perf-results.json
+# whole suite, 3 reps/deck (default); writes e2e/perf-results/<git-describe>.json
 bash e2e/perf-suite-run.sh
 # more reps for tighter stats
 PERF_REPS=5 bash e2e/perf-suite-run.sh
@@ -60,7 +60,7 @@ one-off jank); each op is followed by a double-rAF so the number includes the pa
 - `presentPrev` — the same, backward.
 - `exitPresent` — `setPresenting(false)` → back to the editor.
 
-## Reading `e2e/perf-results.json`
+## Reading the results
 
 ```jsonc
 {
@@ -82,8 +82,8 @@ one-off jank); each op is followed by a double-rAF so the number includes the pa
 ```
 
 **Study a regression** two ways:
-1. **Over time (same machine):** `git log -p -- e2e/perf-results.json`, or diff two
-   committed versions. Watch `median` per activity/deck; `stdev` tells you if a
+1. **Over time / across versions (same machine):** diff two `e2e/perf-results/*.json`
+   files (e.g. `v26.6.24.json` vs `v26.7.15-…json`), or `git log -p` one file for re-runs. Watch `median` per activity/deck; `stdev` tells you if a
    change is real or noise.
 2. **Before/after a change (or vs an old release):** build the other version in a
    throwaway worktree and diff. E.g. to check whether work regressed demos:
@@ -105,7 +105,7 @@ one-off jank); each op is followed by a double-rAF so the number includes the pa
    around a one-shot (poll a DOM condition with `await raf()` for the paint). Wrap it
    in `try/catch` returning `null` so one failing activity can't sink the rep.
 2. Add its name to the `ACT_KEYS` array (controls order + which keys get stats).
-3. It flows into `e2e/perf-results.json` automatically. Keep it deterministic and
+3. It flows into the per-version results JSON automatically. Keep it deterministic and
    side-effect-bounded (don't leave the deck in a state that skews later activities).
 
 **A new deck** — append `"name|/abs/path.eigendeck"` to `DECKS` in

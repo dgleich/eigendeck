@@ -76,6 +76,21 @@ npm run test:e2e                            # = bash e2e/run-all.sh → "ALL E2E
   (see `e2e/README.md`) and add it to the manifest.
 - A red e2e probe blocks the tag the same as a failing unit test.
 
+### 7. Grab a performance snapshot (every release)
+Record a perf baseline for the tag so regressions are trackable release-to-release:
+```bash
+bash e2e/perf-suite-run.sh          # writes e2e/perf-results/<git-describe>.json
+```
+- One file per version (named by `git describe --tags`), committed alongside the
+  release. Diff it against the previous release's file to catch a regression
+  (`docs/perf-report.md` explains the activities + how to read it). Numbers are
+  ENV-RELATIVE (headless rig) — comparable across builds on the SAME machine, not a
+  Mac stand-in; run it here (Linux rig), not on the Mac dev loop.
+- Not a hard gate like e2e, but a clear regression (e.g. present-mode `presentAdvance`
+  or `rapidSlideNav` up multiples on the real decks — welcome/magnetic-powers/
+  local-networks) is worth investigating before shipping. The `v26.6.24` (pre-security)
+  vs current diff already flagged the demo/content-slide nav regression (#153).
+
 ## Tag + build
 ```bash
 git -c safe.directory=/work tag vYY.M.D

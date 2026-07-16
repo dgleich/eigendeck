@@ -19,7 +19,12 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export E2E_APP="${E2E_APP:-/tmp/el-target/debug/eigendeck}"
 export PERF_REPS="${PERF_REPS:-3}"
 TMPBASE="$(mktemp -d)"
-RESULTS="${PERF_RESULTS:-$ROOT/e2e/perf-results.json}"
+# Results are named by the build's git-describe (tag-relative), one file per
+# version under e2e/perf-results/ — e.g. v26.7.15.json at a release, or
+# v26.7.15-24-g8ff7734.json for a dev build. Override the whole path with PERF_RESULTS.
+mkdir -p "$ROOT/e2e/perf-results"
+DESCRIBE="$(git -C "$ROOT" describe --tags --always 2>/dev/null || echo unknown)"
+RESULTS="${PERF_RESULTS:-$ROOT/e2e/perf-results/$DESCRIBE.json}"
 # The rig launcher to use — override with RUN_PROBE to serve a DIFFERENT dist (e.g.
 # an old build in a worktree: RUN_PROBE=/tmp/el-old/e2e/run-probe.sh serves
 # /tmp/el-old/dist). Its own dir's dist is served; E2E_APP picks the binary.
