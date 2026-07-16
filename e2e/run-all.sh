@@ -36,8 +36,14 @@ done
 [ -x "$E2E_APP" ] || { echo "FATAL: E2E_APP not executable: $E2E_APP — build it (see eigendeck-e2e skill)"; exit 2; }
 [ -d "$ROOT/dist" ] || { echo "FATAL: dist/ missing — run: VITE_EIGENDECK_SEAM=1 npm run build"; exit 2; }
 # Guard against a plain (seam-less) build: every probe would hang on waitSeam.
-grep -rq "__eigendeck" "$ROOT/dist/assets" 2>/dev/null || {
-  echo "FATAL: dist/ has no __eigendeck seam — rebuild with VITE_EIGENDECK_SEAM=1 npm run build"; exit 2; }
+# Match the seam ASSIGNMENT (`.__eigendeck={…}`), NOT any `__eigendeck` occurrence:
+# a plain (seam-less) `npm run build` still leaves stray `.__eigendeck` *reads*
+# (type casts) in the bundle, so a bare `grep __eigendeck` FALSE-POSITIVES and the
+# suite runs seam-less — every probe then times out on waitSeam while the frontend
+# loads fine, which reads as "decks won't open." See the eigendeck-e2e skill.
+grep -rq "__eigendeck={" "$ROOT/dist/assets" 2>/dev/null || {
+  echo "FATAL: dist/ has no __eigendeck seam ASSIGNMENT — a plain 'npm run build' strips it."
+  echo "       Rebuild with: VITE_EIGENDECK_SEAM=1 npm run build"; exit 2; }
 
 # Helpers usable from setup-cmd: build a SQLite deck from a JSON the python
 # builder emits. Usage: build_json <builder.py> <subcmd...>

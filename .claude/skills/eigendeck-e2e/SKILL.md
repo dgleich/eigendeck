@@ -229,6 +229,22 @@ fails if `E2E_ABSENT` appears.
     `e2e/present-visual-probe.mjs`. Also assert the stage rect isn't 0×0 (the #137
     collapsed-stage regression). If you must call `/screenshot` in present, wrap it
     in an `AbortController` timeout so a hung capture doesn't wedge the probe.
+11. **A plain `npm run build` silently strips the seam → EVERY deck "won't open."**
+    This one cost real time. Symptom: the frontend loads fine (the http log shows
+    `App-*.js`, fonts, `sanitizeRichText`/`watcherRegistry` served) but `waitSeam`
+    times out for every deck — light or heavy — so it looks like "the rig can't
+    load decks / can't handle images." Cause: any plain `npm run build` (e.g. a
+    routine `tsc + vite` check while doing unrelated frontend work) overwrites
+    `dist/` WITHOUT `VITE_EIGENDECK_SEAM=1`, so `window.__eigendeck` is tree-shaken
+    out and the probes' `waitSeam` never resolves. The trap: a bare
+    `grep -rq __eigendeck dist/assets` FALSE-POSITIVES — a seam-less build still
+    contains stray `.__eigendeck` *reads* (type casts). **Check for the ASSIGNMENT**
+    (`grep -rq "__eigendeck={" dist/assets`), which only the seam install produces
+    (`run-all.sh`/`run-probe.sh` now do this and abort with a clear message).
+    **After ANY plain build, rebuild with `VITE_EIGENDECK_SEAM=1 npm run build`
+    before running probes.** Diagnostic tell: `openApp` returns a session (the app
+    launched) but `store.getState().projectPath` / `window.__eigendeck` stays
+    undefined — that's a missing seam, not a slow/broken load.
 
 ## PDF rendering in the rig (pdfium dylib location)
 

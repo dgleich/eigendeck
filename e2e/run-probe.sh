@@ -23,6 +23,16 @@ DECK="${E2E_DECK:?set E2E_DECK}"
 DECKHOME="$(dirname "$DECK")"
 TAURI_DRIVER="$(command -v tauri-driver || echo "$HOME/.cargo/bin/tauri-driver")"
 
+# Guard against a seam-LESS dist. A plain `npm run build` (no VITE_EIGENDECK_SEAM=1)
+# strips the window.__eigendeck seam but leaves stray `.__eigendeck` reads, so it's
+# easy to run against a dist that has no seam — every probe then times out on
+# waitSeam while the frontend loads fine (looks like "the deck won't open"). Match
+# the ASSIGNMENT `.__eigendeck={`, not any occurrence. (This bit us; see the skill.)
+[ -d "$ROOT/dist" ] || { echo "FATAL: dist/ missing — VITE_EIGENDECK_SEAM=1 npm run build"; exit 2; }
+grep -rq "__eigendeck={" "$ROOT/dist/assets" 2>/dev/null || {
+  echo "FATAL: dist/ has no __eigendeck seam ASSIGNMENT — a plain 'npm run build' strips it."
+  echo "       Rebuild with: VITE_EIGENDECK_SEAM=1 npm run build"; exit 2; }
+
 # PRE-CLEAN: a crashed prior probe can leave tauri-driver holding :4444 (and a
 # stale app/WebKitWebDriver), so the next probe's session creation hits the OLD
 # driver → "invalid session id" / wrong-app failures. Kill any leftovers first.
