@@ -14,7 +14,7 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { injectDemoBridge } from './demoBridge';
-import { injectDemoThemeIntoHtml } from './demoTheme.mjs';
+import { injectDemoThemeIntoHtml, demoReferencesFonts } from './demoTheme.mjs';
 import { buildEmbeddedFontFacesCSS } from './fonts';
 import { hashString } from './hash';
 import { usePresentationStore } from '../store/presentation';
@@ -129,8 +129,12 @@ export async function getDemoDocumentUrl(assetId: string | undefined, opts: Demo
   }
   const raw = await fetchRawDemo(assetId);
   if (raw == null) return null;
+  // Only splice the (megabyte-scale, base64) @font-face faces into demos that
+  // actually name a deck font — otherwise every mount re-parses fonts the demo
+  // can't use. The theme vars still go in (cheap, and a demo may use the colors).
+  const effFontFaces = demoReferencesFonts(raw, fontFacesCss) ? fontFacesCss : '';
   const withBridge = injectDemoBridge(raw, hash ? `#${hash}` : '', channelKey, { capture, net: demoNet(blockInternet, raw) });
-  const doc = injectDemoThemeIntoHtml(withBridge, fontFacesCss, varsCss);
+  const doc = injectDemoThemeIntoHtml(withBridge, effFontFaces, varsCss);
   const url = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
   docBlobCache.set(key, url);
   return url;

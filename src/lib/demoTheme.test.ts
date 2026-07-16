@@ -3,7 +3,7 @@
 // faces actually loading) is e2e/demo-theme-scenario.mjs.
 import { describe, it, expect } from 'vitest';
 import {
-  demoThemeVarsCss, injectDemoThemeIntoHtml, DEMO_VARS_STYLE_ID,
+  demoThemeVarsCss, injectDemoThemeIntoHtml, DEMO_VARS_STYLE_ID, demoReferencesFonts,
 } from './demoTheme.mjs';
 import { demoVarsCssForSlide } from './demoThemeInject';
 import { BUILT_IN_THEMES } from './themes';
@@ -56,6 +56,34 @@ describe('injectDemoThemeIntoHtml', () => {
 
   it('is a no-op when both css blocks are empty', () => {
     expect(injectDemoThemeIntoHtml('<p>x</p>', '', '')).toBe('<p>x</p>');
+  });
+});
+
+describe('demoReferencesFonts — gate the per-mount @font-face embed', () => {
+  const FACES = "@font-face{font-family:'PT Sans';src:url(data:font/ttf;base64,AAAA)}\n@font-face{font-family:'Source Code Pro';src:url(data:font/ttf;base64,BBBB)}";
+
+  it('is false when there are no font faces to embed', () => {
+    expect(demoReferencesFonts('<html><body>x</body></html>', '')).toBe(false);
+  });
+
+  it('is false when the demo names no deck font (the graph-explorer case)', () => {
+    const html = '<html><body><canvas></canvas><style>body{font-family:sans-serif}</style></body></html>';
+    expect(demoReferencesFonts(html, FACES)).toBe(false);
+  });
+
+  it('is true when the demo uses an --eigendeck font var', () => {
+    const html = '<html><body><style>h1{font-family:var(--eigendeck-font)}</style></body></html>';
+    expect(demoReferencesFonts(html, FACES)).toBe(true);
+    expect(demoReferencesFonts('<b style="font:var(--eigendeck-mono)">x</b>', FACES)).toBe(true);
+  });
+
+  it('is true when the demo names an embedded font family literally', () => {
+    expect(demoReferencesFonts("<style>p{font-family:'PT Sans'}</style>", FACES)).toBe(true);
+    expect(demoReferencesFonts('<style>code{font-family:"Source Code Pro"}</style>', FACES)).toBe(true);
+  });
+
+  it('is false for a family name that is NOT among the embedded faces', () => {
+    expect(demoReferencesFonts("<style>p{font-family:'Helvetica'}</style>", FACES)).toBe(false);
   });
 });
 

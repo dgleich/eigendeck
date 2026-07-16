@@ -41,6 +41,27 @@ export function demoThemeVarsCss(colors, opts = {}) {
 }
 
 /**
+ * Whether a demo's HTML actually names one of the deck fonts — either the
+ * `--eigendeck-font/narrow/mono` custom properties, or a `font-family` name that
+ * the embedded @font-face block declares. A demo that never names a deck font
+ * can't render with one, so there's no reason to splice the (large, base64)
+ * @font-face faces into its document — that's pure per-mount parse cost (a
+ * default deck embeds ~1.7MB of PT Sans, re-parsed on every iframe mount /
+ * slide switch). Fonts still embed for any demo that DOES name them (the #86
+ * "existing demos already name the deck fonts" case is preserved).
+ */
+export function demoReferencesFonts(html, fontFacesCss) {
+  if (!fontFacesCss || !html) return false;
+  if (/--eigendeck-(?:font|narrow|mono)\b/.test(html)) return true;
+  const re = /font-family:\s*(['"])([^'"]+)\1/gi;
+  let m;
+  while ((m = re.exec(fontFacesCss)) !== null) {
+    if (html.includes(m[2])) return true;
+  }
+  return false;
+}
+
+/**
  * A self-contained `<style>` string carrying the font faces + theme vars, for
  * splicing into a static demo srcdoc (export). Empty parts are omitted.
  */
