@@ -1,0 +1,1468 @@
+{
+  "generatedAt": "2026-07-16T01:32:34Z",
+  "gitRef": "8ff7734",
+  "gitDescribe": "v26.7.15-24-g8ff7734",
+  "reps": 3,
+  "env": "headless WebKitGTK 2.50.6-1~deb12u1 / xvfb / software-GL (aarch64)",
+  "note": "Env-relative ms (headless rig). Compare within one machine / across builds, not as absolute perf. See docs/perf-report.md. local-networks patched with capped loops (others' medians unaffected).",
+  "decks": {
+    "intro-slide": {
+      "slides": 2,
+      "reps": 3,
+      "activities": {
+        "openToSeam": {
+          "median": 1017,
+          "mean": 1026,
+          "stdev": 12.7,
+          "min": 1017,
+          "max": 1044,
+          "reps": [
+            1044,
+            1017,
+            1017
+          ]
+        },
+        "seamToFirstRender": {
+          "median": 5,
+          "mean": 5,
+          "stdev": 1.6,
+          "min": 3,
+          "max": 7,
+          "reps": [
+            3,
+            7,
+            5
+          ]
+        },
+        "thumbnailsBuild": {
+          "median": 2,
+          "mean": 2,
+          "stdev": 0,
+          "min": 2,
+          "max": 2,
+          "reps": [
+            2,
+            2,
+            2
+          ]
+        },
+        "rapidSlideNav": {
+          "median": 16,
+          "mean": 16.3,
+          "stdev": 0.5,
+          "min": 16,
+          "max": 17,
+          "reps": [
+            16,
+            16,
+            17
+          ]
+        },
+        "addText": {
+          "median": 33,
+          "mean": 32.7,
+          "stdev": 0.5,
+          "min": 32,
+          "max": 33,
+          "reps": [
+            32,
+            33,
+            33
+          ]
+        },
+        "addImage": {
+          "median": 33,
+          "mean": 33,
+          "stdev": 0,
+          "min": 33,
+          "max": 33,
+          "reps": [
+            33,
+            33,
+            33
+          ]
+        },
+        "moveElements": {
+          "median": 33,
+          "mean": 32.7,
+          "stdev": 0.5,
+          "min": 32,
+          "max": 33,
+          "reps": [
+            33,
+            33,
+            32
+          ]
+        },
+        "addSlide": {
+          "median": 32,
+          "mean": 32.3,
+          "stdev": 0.5,
+          "min": 32,
+          "max": 33,
+          "reps": [
+            33,
+            32,
+            32
+          ]
+        },
+        "undoRedo": {
+          "median": 66,
+          "mean": 66,
+          "stdev": 0.8,
+          "min": 65,
+          "max": 67,
+          "reps": [
+            67,
+            65,
+            66
+          ]
+        },
+        "enterPresent": {
+          "median": 14,
+          "mean": 13.3,
+          "stdev": 0.9,
+          "min": 12,
+          "max": 14,
+          "reps": [
+            14,
+            14,
+            12
+          ]
+        },
+        "presentAdvance": {
+          "median": 17,
+          "mean": 17,
+          "stdev": 0.8,
+          "min": 16,
+          "max": 18,
+          "reps": [
+            18,
+            17,
+            16
+          ]
+        },
+        "presentPrev": {
+          "median": 17,
+          "mean": 17,
+          "stdev": 0.8,
+          "min": 16,
+          "max": 18,
+          "reps": [
+            17,
+            18,
+            16
+          ]
+        },
+        "exitPresent": {
+          "median": 28,
+          "mean": 27.7,
+          "stdev": 1.2,
+          "min": 26,
+          "max": 29,
+          "reps": [
+            26,
+            28,
+            29
+          ]
+        }
+      }
+    },
+    "graph-explorer": {
+      "slides": 4,
+      "reps": 3,
+      "activities": {
+        "openToSeam": {
+          "median": 1015,
+          "mean": 1024.7,
+          "stdev": 15.1,
+          "min": 1013,
+          "max": 1046,
+          "reps": [
+            1046,
+            1015,
+            1013
+          ]
+        },
+        "seamToFirstRender": {
+          "median": 3,
+          "mean": 4.3,
+          "stdev": 2.6,
+          "min": 2,
+          "max": 8,
+          "reps": [
+            8,
+            2,
+            3
+          ]
+        },
+        "thumbnailsBuild": {
+          "median": 2,
+          "mean": 2.3,
+          "stdev": 0.5,
+          "min": 2,
+          "max": 3,
+          "reps": [
+            3,
+            2,
+            2
+          ]
+        },
+        "rapidSlideNav": {
+          "median": 64,
+          "mean": 65,
+          "stdev": 2.2,
+          "min": 63,
+          "max": 68,
+          "reps": [
+            64,
+            68,
+            63
+          ]
+        },
+        "addText": {
+          "median": 63,
+          "mean": 65,
+          "stdev": 4.3,
+          "min": 61,
+          "max": 71,
+          "reps": [
+            61,
+            63,
+            71
+          ]
+        },
+        "addImage": {
+          "median": 32,
+          "mean": 38.3,
+          "stdev": 13.4,
+          "min": 26,
+          "max": 57,
+          "reps": [
+            32,
+            57,
+            26
+          ]
+        },
+        "moveElements": {
+          "median": 18,
+          "mean": 22.3,
+          "stdev": 6.8,
+          "min": 17,
+          "max": 32,
+          "reps": [
+            18,
+            32,
+            17
+          ]
+        },
+        "addSlide": {
+          "median": 32,
+          "mean": 27.7,
+          "stdev": 6.8,
+          "min": 18,
+          "max": 33,
+          "reps": [
+            18,
+            32,
+            33
+          ]
+        },
+        "undoRedo": {
+          "median": 65,
+          "mean": 65.3,
+          "stdev": 0.5,
+          "min": 65,
+          "max": 66,
+          "reps": [
+            65,
+            66,
+            65
+          ]
+        },
+        "enterPresent": {
+          "median": 16,
+          "mean": 16.3,
+          "stdev": 0.5,
+          "min": 16,
+          "max": 17,
+          "reps": [
+            17,
+            16,
+            16
+          ]
+        },
+        "presentAdvance": {
+          "median": 90,
+          "mean": 89,
+          "stdev": 2.2,
+          "min": 86,
+          "max": 91,
+          "reps": [
+            90,
+            86,
+            91
+          ]
+        },
+        "presentPrev": {
+          "median": 20,
+          "mean": 23.3,
+          "stdev": 6.2,
+          "min": 18,
+          "max": 32,
+          "reps": [
+            32,
+            20,
+            18
+          ]
+        },
+        "exitPresent": {
+          "median": 34,
+          "mean": 34,
+          "stdev": 4.1,
+          "min": 29,
+          "max": 39,
+          "reps": [
+            39,
+            29,
+            34
+          ]
+        }
+      }
+    },
+    "welcome": {
+      "slides": 24,
+      "reps": 3,
+      "activities": {
+        "openToSeam": {
+          "median": 1054,
+          "mean": 1095.3,
+          "stdev": 76.8,
+          "min": 1029,
+          "max": 1203,
+          "reps": [
+            1203,
+            1054,
+            1029
+          ]
+        },
+        "seamToFirstRender": {
+          "median": 78,
+          "mean": 79.3,
+          "stdev": 49,
+          "min": 20,
+          "max": 140,
+          "reps": [
+            78,
+            140,
+            20
+          ]
+        },
+        "thumbnailsBuild": {
+          "median": 30,
+          "mean": 23.7,
+          "stdev": 9.7,
+          "min": 10,
+          "max": 31,
+          "reps": [
+            31,
+            10,
+            30
+          ]
+        },
+        "rapidSlideNav": {
+          "median": 83,
+          "mean": 83.3,
+          "stdev": 0.5,
+          "min": 83,
+          "max": 84,
+          "reps": [
+            83,
+            84,
+            83
+          ]
+        },
+        "addText": {
+          "median": 75,
+          "mean": 78.7,
+          "stdev": 9.7,
+          "min": 69,
+          "max": 92,
+          "reps": [
+            92,
+            69,
+            75
+          ]
+        },
+        "addImage": {
+          "median": 90,
+          "mean": 87.7,
+          "stdev": 11.1,
+          "min": 73,
+          "max": 100,
+          "reps": [
+            90,
+            73,
+            100
+          ]
+        },
+        "moveElements": {
+          "median": 79,
+          "mean": 77,
+          "stdev": 5.9,
+          "min": 69,
+          "max": 83,
+          "reps": [
+            79,
+            83,
+            69
+          ]
+        },
+        "addSlide": {
+          "median": 67,
+          "mean": 67.3,
+          "stdev": 2.1,
+          "min": 65,
+          "max": 70,
+          "reps": [
+            65,
+            70,
+            67
+          ]
+        },
+        "undoRedo": {
+          "median": 138,
+          "mean": 137,
+          "stdev": 2.9,
+          "min": 133,
+          "max": 140,
+          "reps": [
+            133,
+            138,
+            140
+          ]
+        },
+        "enterPresent": {
+          "median": 56,
+          "mean": 88,
+          "stdev": 47.4,
+          "min": 53,
+          "max": 155,
+          "reps": [
+            56,
+            155,
+            53
+          ]
+        },
+        "presentAdvance": {
+          "median": 83,
+          "mean": 82.7,
+          "stdev": 0.5,
+          "min": 82,
+          "max": 83,
+          "reps": [
+            83,
+            83,
+            82
+          ]
+        },
+        "presentPrev": {
+          "median": 16,
+          "mean": 16.3,
+          "stdev": 0.5,
+          "min": 16,
+          "max": 17,
+          "reps": [
+            16,
+            16,
+            17
+          ]
+        },
+        "exitPresent": {
+          "median": 66,
+          "mean": 71,
+          "stdev": 7.8,
+          "min": 65,
+          "max": 82,
+          "reps": [
+            82,
+            66,
+            65
+          ]
+        }
+      }
+    },
+    "magnetic-powers": {
+      "slides": 45,
+      "reps": 3,
+      "activities": {
+        "openToSeam": {
+          "median": 999,
+          "mean": 1003,
+          "stdev": 26.3,
+          "min": 973,
+          "max": 1037,
+          "reps": [
+            999,
+            973,
+            1037
+          ]
+        },
+        "seamToFirstRender": {
+          "median": 23,
+          "mean": 21.3,
+          "stdev": 3.9,
+          "min": 16,
+          "max": 25,
+          "reps": [
+            16,
+            23,
+            25
+          ]
+        },
+        "thumbnailsBuild": {
+          "median": 20,
+          "mean": 20.3,
+          "stdev": 3.7,
+          "min": 16,
+          "max": 25,
+          "reps": [
+            16,
+            25,
+            20
+          ]
+        },
+        "rapidSlideNav": {
+          "median": 91,
+          "mean": 87.3,
+          "stdev": 5.2,
+          "min": 80,
+          "max": 91,
+          "reps": [
+            91,
+            80,
+            91
+          ]
+        },
+        "addText": {
+          "median": 49,
+          "mean": 49.3,
+          "stdev": 0.5,
+          "min": 49,
+          "max": 50,
+          "reps": [
+            49,
+            49,
+            50
+          ]
+        },
+        "addImage": {
+          "median": 59,
+          "mean": 57.3,
+          "stdev": 6.2,
+          "min": 49,
+          "max": 64,
+          "reps": [
+            59,
+            49,
+            64
+          ]
+        },
+        "moveElements": {
+          "median": 52,
+          "mean": 55.7,
+          "stdev": 6.6,
+          "min": 50,
+          "max": 65,
+          "reps": [
+            52,
+            50,
+            65
+          ]
+        },
+        "addSlide": {
+          "median": 52,
+          "mean": 56,
+          "stdev": 6.4,
+          "min": 51,
+          "max": 65,
+          "reps": [
+            51,
+            52,
+            65
+          ]
+        },
+        "undoRedo": {
+          "median": 114,
+          "mean": 110.3,
+          "stdev": 6.6,
+          "min": 101,
+          "max": 116,
+          "reps": [
+            114,
+            101,
+            116
+          ]
+        },
+        "enterPresent": {
+          "median": 18,
+          "mean": 18.3,
+          "stdev": 1.2,
+          "min": 17,
+          "max": 20,
+          "reps": [
+            17,
+            18,
+            20
+          ]
+        },
+        "presentAdvance": {
+          "median": 48,
+          "mean": 49.3,
+          "stdev": 3.4,
+          "min": 46,
+          "max": 54,
+          "reps": [
+            46,
+            54,
+            48
+          ]
+        },
+        "presentPrev": {
+          "median": 18,
+          "mean": 18,
+          "stdev": 0.8,
+          "min": 17,
+          "max": 19,
+          "reps": [
+            19,
+            18,
+            17
+          ]
+        },
+        "exitPresent": {
+          "median": 105,
+          "mean": 102.3,
+          "stdev": 5.2,
+          "min": 95,
+          "max": 107,
+          "reps": [
+            95,
+            105,
+            107
+          ]
+        }
+      }
+    },
+    "local-networks": {
+      "slides": 44,
+      "reps": 3,
+      "activities": {
+        "openToSeam": {
+          "median": 1016,
+          "mean": 1031,
+          "stdev": 21.9,
+          "min": 1015,
+          "max": 1062,
+          "reps": [
+            1062,
+            1016,
+            1015
+          ]
+        },
+        "seamToFirstRender": {
+          "median": 2,
+          "mean": 2.3,
+          "stdev": 0.5,
+          "min": 2,
+          "max": 3,
+          "reps": [
+            3,
+            2,
+            2
+          ]
+        },
+        "thumbnailsBuild": {
+          "median": 2,
+          "mean": 2.3,
+          "stdev": 0.5,
+          "min": 2,
+          "max": 3,
+          "reps": [
+            3,
+            2,
+            2
+          ]
+        },
+        "rapidSlideNav": {
+          "median": 85,
+          "mean": 84.7,
+          "stdev": 1.2,
+          "min": 83,
+          "max": 86,
+          "reps": [
+            85,
+            83,
+            86
+          ]
+        },
+        "addText": {
+          "median": 77,
+          "mean": 77,
+          "stdev": 2.4,
+          "min": 74,
+          "max": 80,
+          "reps": [
+            77,
+            74,
+            80
+          ]
+        },
+        "addImage": {
+          "median": 76,
+          "mean": 75.7,
+          "stdev": 0.5,
+          "min": 75,
+          "max": 76,
+          "reps": [
+            76,
+            76,
+            75
+          ]
+        },
+        "moveElements": {
+          "median": 81,
+          "mean": 81.7,
+          "stdev": 3.3,
+          "min": 78,
+          "max": 86,
+          "reps": [
+            81,
+            78,
+            86
+          ]
+        },
+        "addSlide": {
+          "median": 81,
+          "mean": 81.3,
+          "stdev": 1.2,
+          "min": 80,
+          "max": 83,
+          "reps": [
+            81,
+            80,
+            83
+          ]
+        },
+        "undoRedo": {
+          "median": 152,
+          "mean": 155,
+          "stdev": 6.5,
+          "min": 149,
+          "max": 164,
+          "reps": [
+            164,
+            149,
+            152
+          ]
+        },
+        "enterPresent": {
+          "median": 46,
+          "mean": 49.3,
+          "stdev": 6.2,
+          "min": 44,
+          "max": 58,
+          "reps": [
+            58,
+            46,
+            44
+          ]
+        },
+        "presentAdvance": {
+          "median": 67,
+          "mean": 68.7,
+          "stdev": 2.4,
+          "min": 67,
+          "max": 72,
+          "reps": [
+            72,
+            67,
+            67
+          ]
+        },
+        "presentPrev": {
+          "median": 84,
+          "mean": 82.3,
+          "stdev": 3.9,
+          "min": 77,
+          "max": 86,
+          "reps": [
+            86,
+            77,
+            84
+          ]
+        },
+        "exitPresent": {
+          "median": 101,
+          "mean": 114,
+          "stdev": 22,
+          "min": 96,
+          "max": 145,
+          "reps": [
+            101,
+            96,
+            145
+          ]
+        }
+      }
+    },
+    "frontend-slides": {
+      "slides": 6,
+      "reps": 3,
+      "activities": {
+        "openToSeam": {
+          "median": 1186,
+          "mean": 1159.7,
+          "stdev": 38.7,
+          "min": 1105,
+          "max": 1188,
+          "reps": [
+            1186,
+            1105,
+            1188
+          ]
+        },
+        "seamToFirstRender": {
+          "median": 347,
+          "mean": 345,
+          "stdev": 36.8,
+          "min": 299,
+          "max": 389,
+          "reps": [
+            389,
+            299,
+            347
+          ]
+        },
+        "thumbnailsBuild": {
+          "median": 321,
+          "mean": 320,
+          "stdev": 2.9,
+          "min": 316,
+          "max": 323,
+          "reps": [
+            321,
+            323,
+            316
+          ]
+        },
+        "rapidSlideNav": {
+          "median": 226,
+          "mean": 227.7,
+          "stdev": 12.7,
+          "min": 213,
+          "max": 244,
+          "reps": [
+            244,
+            213,
+            226
+          ]
+        },
+        "addText": {
+          "median": 32,
+          "mean": 32.3,
+          "stdev": 0.5,
+          "min": 32,
+          "max": 33,
+          "reps": [
+            32,
+            33,
+            32
+          ]
+        },
+        "addImage": {
+          "median": 33,
+          "mean": 32.7,
+          "stdev": 0.5,
+          "min": 32,
+          "max": 33,
+          "reps": [
+            33,
+            33,
+            32
+          ]
+        },
+        "moveElements": {
+          "median": 32,
+          "mean": 31,
+          "stdev": 1.4,
+          "min": 29,
+          "max": 32,
+          "reps": [
+            32,
+            32,
+            29
+          ]
+        },
+        "addSlide": {
+          "median": 33,
+          "mean": 32.7,
+          "stdev": 0.5,
+          "min": 32,
+          "max": 33,
+          "reps": [
+            33,
+            32,
+            33
+          ]
+        },
+        "undoRedo": {
+          "median": 66,
+          "mean": 66,
+          "stdev": 0,
+          "min": 66,
+          "max": 66,
+          "reps": [
+            66,
+            66,
+            66
+          ]
+        },
+        "enterPresent": {
+          "median": 132,
+          "mean": 124,
+          "stdev": 14.2,
+          "min": 104,
+          "max": 136,
+          "reps": [
+            132,
+            104,
+            136
+          ]
+        },
+        "presentAdvance": {
+          "median": 16,
+          "mean": 16,
+          "stdev": 0,
+          "min": 16,
+          "max": 16,
+          "reps": [
+            16,
+            16,
+            16
+          ]
+        },
+        "presentPrev": {
+          "median": 17,
+          "mean": 16.7,
+          "stdev": 0.5,
+          "min": 16,
+          "max": 17,
+          "reps": [
+            16,
+            17,
+            17
+          ]
+        },
+        "exitPresent": {
+          "median": 174,
+          "mean": 167.7,
+          "stdev": 13.4,
+          "min": 149,
+          "max": 180,
+          "reps": [
+            174,
+            180,
+            149
+          ]
+        }
+      }
+    },
+    "showcase": {
+      "slides": 16,
+      "reps": 3,
+      "activities": {
+        "openToSeam": {
+          "median": 1110,
+          "mean": 1118.3,
+          "stdev": 28,
+          "min": 1089,
+          "max": 1156,
+          "reps": [
+            1156,
+            1089,
+            1110
+          ]
+        },
+        "seamToFirstRender": {
+          "median": 80,
+          "mean": 78,
+          "stdev": 32.7,
+          "min": 37,
+          "max": 117,
+          "reps": [
+            117,
+            37,
+            80
+          ]
+        },
+        "thumbnailsBuild": {
+          "median": 32,
+          "mean": 43.7,
+          "stdev": 21.6,
+          "min": 25,
+          "max": 74,
+          "reps": [
+            25,
+            32,
+            74
+          ]
+        },
+        "rapidSlideNav": {
+          "median": 78,
+          "mean": 77.7,
+          "stdev": 0.5,
+          "min": 77,
+          "max": 78,
+          "reps": [
+            78,
+            77,
+            78
+          ]
+        },
+        "addText": {
+          "median": 72,
+          "mean": 73,
+          "stdev": 2.9,
+          "min": 70,
+          "max": 77,
+          "reps": [
+            77,
+            72,
+            70
+          ]
+        },
+        "addImage": {
+          "median": 69,
+          "mean": 69.3,
+          "stdev": 6.1,
+          "min": 62,
+          "max": 77,
+          "reps": [
+            77,
+            69,
+            62
+          ]
+        },
+        "moveElements": {
+          "median": 67,
+          "mean": 81,
+          "stdev": 19.8,
+          "min": 67,
+          "max": 109,
+          "reps": [
+            109,
+            67,
+            67
+          ]
+        },
+        "addSlide": {
+          "median": 70,
+          "mean": 75.3,
+          "stdev": 9.7,
+          "min": 67,
+          "max": 89,
+          "reps": [
+            89,
+            67,
+            70
+          ]
+        },
+        "undoRedo": {
+          "median": 174,
+          "mean": 175.7,
+          "stdev": 16,
+          "min": 157,
+          "max": 196,
+          "reps": [
+            157,
+            174,
+            196
+          ]
+        },
+        "enterPresent": {
+          "median": 92,
+          "mean": 86.7,
+          "stdev": 18.4,
+          "min": 62,
+          "max": 106,
+          "reps": [
+            106,
+            92,
+            62
+          ]
+        },
+        "presentAdvance": {
+          "median": 86,
+          "mean": 86.7,
+          "stdev": 16.3,
+          "min": 67,
+          "max": 107,
+          "reps": [
+            67,
+            107,
+            86
+          ]
+        },
+        "presentPrev": {
+          "median": 23,
+          "mean": 42,
+          "stdev": 28.3,
+          "min": 21,
+          "max": 82,
+          "reps": [
+            82,
+            23,
+            21
+          ]
+        },
+        "exitPresent": {
+          "median": 60,
+          "mean": 80.3,
+          "stdev": 29.5,
+          "min": 59,
+          "max": 122,
+          "reps": [
+            122,
+            59,
+            60
+          ]
+        }
+      }
+    },
+    "perf-medium": {
+      "slides": 4,
+      "reps": 3,
+      "activities": {
+        "openToSeam": {
+          "median": 1020,
+          "mean": 1024,
+          "stdev": 13.4,
+          "min": 1010,
+          "max": 1042,
+          "reps": [
+            1042,
+            1010,
+            1020
+          ]
+        },
+        "seamToFirstRender": {
+          "median": 3,
+          "mean": 2.7,
+          "stdev": 0.5,
+          "min": 2,
+          "max": 3,
+          "reps": [
+            3,
+            3,
+            2
+          ]
+        },
+        "thumbnailsBuild": {
+          "median": 2,
+          "mean": 2,
+          "stdev": 0,
+          "min": 2,
+          "max": 2,
+          "reps": [
+            2,
+            2,
+            2
+          ]
+        },
+        "rapidSlideNav": {
+          "median": 34,
+          "mean": 33.7,
+          "stdev": 0.5,
+          "min": 33,
+          "max": 34,
+          "reps": [
+            33,
+            34,
+            34
+          ]
+        },
+        "addText": {
+          "median": 33,
+          "mean": 32.7,
+          "stdev": 0.5,
+          "min": 32,
+          "max": 33,
+          "reps": [
+            33,
+            33,
+            32
+          ]
+        },
+        "addImage": {
+          "median": 33,
+          "mean": 33,
+          "stdev": 0,
+          "min": 33,
+          "max": 33,
+          "reps": [
+            33,
+            33,
+            33
+          ]
+        },
+        "moveElements": {
+          "median": 32,
+          "mean": 32,
+          "stdev": 0,
+          "min": 32,
+          "max": 32,
+          "reps": [
+            32,
+            32,
+            32
+          ]
+        },
+        "addSlide": {
+          "median": 32,
+          "mean": 32.3,
+          "stdev": 0.5,
+          "min": 32,
+          "max": 33,
+          "reps": [
+            32,
+            33,
+            32
+          ]
+        },
+        "undoRedo": {
+          "median": 66,
+          "mean": 65.7,
+          "stdev": 0.5,
+          "min": 65,
+          "max": 66,
+          "reps": [
+            65,
+            66,
+            66
+          ]
+        },
+        "enterPresent": {
+          "median": 16,
+          "mean": 16.3,
+          "stdev": 0.5,
+          "min": 16,
+          "max": 17,
+          "reps": [
+            16,
+            16,
+            17
+          ]
+        },
+        "presentAdvance": {
+          "median": 17,
+          "mean": 17,
+          "stdev": 0,
+          "min": 17,
+          "max": 17,
+          "reps": [
+            17,
+            17,
+            17
+          ]
+        },
+        "presentPrev": {
+          "median": 17,
+          "mean": 17,
+          "stdev": 0,
+          "min": 17,
+          "max": 17,
+          "reps": [
+            17,
+            17,
+            17
+          ]
+        },
+        "exitPresent": {
+          "median": 31,
+          "mean": 30.3,
+          "stdev": 1.7,
+          "min": 28,
+          "max": 32,
+          "reps": [
+            28,
+            31,
+            32
+          ]
+        }
+      }
+    },
+    "perf-stress-20mp": {
+      "slides": 7,
+      "reps": 3,
+      "activities": {
+        "openToSeam": {
+          "median": 1013,
+          "mean": 1022,
+          "stdev": 13.4,
+          "min": 1012,
+          "max": 1041,
+          "reps": [
+            1041,
+            1013,
+            1012
+          ]
+        },
+        "seamToFirstRender": {
+          "median": 3,
+          "mean": 2.7,
+          "stdev": 0.5,
+          "min": 2,
+          "max": 3,
+          "reps": [
+            3,
+            3,
+            2
+          ]
+        },
+        "thumbnailsBuild": {
+          "median": 2,
+          "mean": 2,
+          "stdev": 0,
+          "min": 2,
+          "max": 2,
+          "reps": [
+            2,
+            2,
+            2
+          ]
+        },
+        "rapidSlideNav": {
+          "median": 41,
+          "mean": 43.7,
+          "stdev": 10,
+          "min": 33,
+          "max": 57,
+          "reps": [
+            57,
+            41,
+            33
+          ]
+        },
+        "addText": {
+          "median": 18,
+          "mean": 22.7,
+          "stdev": 7.3,
+          "min": 17,
+          "max": 33,
+          "reps": [
+            33,
+            17,
+            18
+          ]
+        },
+        "addImage": {
+          "median": 17,
+          "mean": 22.3,
+          "stdev": 7.5,
+          "min": 17,
+          "max": 33,
+          "reps": [
+            33,
+            17,
+            17
+          ]
+        },
+        "moveElements": {
+          "median": 17,
+          "mean": 22.3,
+          "stdev": 7.5,
+          "min": 17,
+          "max": 33,
+          "reps": [
+            33,
+            17,
+            17
+          ]
+        },
+        "addSlide": {
+          "median": 18,
+          "mean": 18.3,
+          "stdev": 1.2,
+          "min": 17,
+          "max": 20,
+          "reps": [
+            20,
+            17,
+            18
+          ]
+        },
+        "undoRedo": {
+          "median": 66,
+          "mean": 65.7,
+          "stdev": 0.5,
+          "min": 65,
+          "max": 66,
+          "reps": [
+            66,
+            66,
+            65
+          ]
+        },
+        "enterPresent": {
+          "median": 16,
+          "mean": 18,
+          "stdev": 2.8,
+          "min": 16,
+          "max": 22,
+          "reps": [
+            22,
+            16,
+            16
+          ]
+        },
+        "presentAdvance": {
+          "median": 17,
+          "mean": 17,
+          "stdev": 0.8,
+          "min": 16,
+          "max": 18,
+          "reps": [
+            18,
+            16,
+            17
+          ]
+        },
+        "presentPrev": {
+          "median": 18,
+          "mean": 17.3,
+          "stdev": 0.9,
+          "min": 16,
+          "max": 18,
+          "reps": [
+            18,
+            18,
+            16
+          ]
+        },
+        "exitPresent": {
+          "median": 42,
+          "mean": 121.3,
+          "stdev": 119.3,
+          "min": 32,
+          "max": 290,
+          "reps": [
+            290,
+            32,
+            42
+          ]
+        }
+      }
+    }
+  }
+}
