@@ -132,7 +132,29 @@ reportlab; see that dir).
 - **Demos (security isolation).** Switching to a demo slide re-creates the
   opaque-origin `blob:` iframe + re-runs the injected-bridge handshake + parent-driven
   rAF — ~2.7× the pre-security cost (#153). `presentAdvance` / `rapidSlideNav` on a
-  demo deck (`graph-explorer`, `magnetic-powers`) surface it.
+  demo deck (`graph-explorer`, `magnetic-powers`) surface it. The regression was
+  attributed (headless rig, `graph-explorer`, editor `rapidSlideNav`, env-relative):
+  pre-security **26 ms**/switch → post-security **96 ms**. Breakdown of the ~70 ms gap:
+    1. **Embedded `@font-face` re-parse (~28 ms).** An opaque iframe can't fetch
+       app-origin `/fonts`, so the deck's fonts are spliced in as base64 `data:`
+       `@font-face` (~1.7 MB for a default PT Sans deck) and re-parsed on **every**
+       mount. Fixed for demos that don't name a deck font by
+       `demoReferencesFonts()` (`demoTheme.mjs`) gating the embed in
+       `getDemoDocumentUrl` (`demoMount.ts`) → 96→68 ms. A demo that DOES name a
+       deck font (via `--eigendeck-font/narrow/mono` or a declared family — most
+       of `magnetic-powers`/`welcome`) still pays it; shrinking the payload
+       (WOFF2, or embedding only declared weights) is the remaining lever there.
+    2. **`useDemoInternetBlocked` per-mount work (~7 ms).** Dynamic imports + the
+       block re-check on each mount. Minor; not yet optimized.
+    3. **Inherent opaque-origin mount (~35 ms).** Fresh browsing context + bridge
+       handshake + demo re-execution on every remount. Not reducible in JS — the
+       only lever is **not remounting**: a demo-iframe pool keyed by `assetId` that
+       stays mounted (hidden) across slide switches. Deep change to the
+       security-critical demo lifecycle; needs a Mac profile first (the rig is
+       software-GL and over-weights iframe compositing, so rig magnitudes ≠ Mac).
+  Present mode's `presentAdvance` regression (18→88 ms) is the same per-mount cost
+  plus the 300 ms cross-fade compositing both slides' demos; `selectSlide` (no
+  transition) stays flat ~33 ms in both builds, so the extra is the transition.
 - **Math (MathJax).** Text with `$…$` renders through a per-preset MathJax iframe
   pool; a deck heavy in math pays the pool warm-up on first open. Not in the current
   activity set — add a math-heavy deck if you want to track it.
