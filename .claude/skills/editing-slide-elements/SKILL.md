@@ -152,7 +152,17 @@ Create a TodoWrite item per applicable line.
     **promoted column** (a new top-level asset id, etc.) must be stripped here
     AND added on the Rust side (`src-tauri/src/storage.rs` schema + migration).
     `el.type` persists as `elementType`.
-11. **Docs** — add a section to `docs/LLM-EDITING.md` (authoring/JSON reference) and
+11. **HTML round-trip (re-import) — an 8th concern, separate from the 7 DISPLAY
+    paths.** The exported HTML must re-import into a working, editable deck
+    (File > Import from HTML). The full deck JSON is embedded once in the
+    `#eigendeck-deck` block (`db_export_json_with_assets`) and `db_import_json`
+    restores it, so a new type's PLAIN PROPERTIES round-trip for free. But an
+    **asset-bearing** type must be carried by `db_export_json_with_assets` /
+    `restore_assets` (`src-tauri/src/storage.rs`), and for single-store display
+    emit a `data-asset-id` placeholder the in-body loader paints (`exportCore.mjs`).
+    VERIFY it (below), don't assume — the whole point is that a downloaded HTML
+    reconstructs the exact deck.
+12. **Docs** — add a section to `docs/LLM-EDITING.md` (authoring/JSON reference) and
     `docs/SPEC.md` (architecture/behavior).
 
 ## Checklist: adding a NEW property on an existing type
@@ -209,5 +219,15 @@ copy carries everything except `detachedFields`.
   headlessly and check the new type/property survived (seed the cache by opening
   the deck in the editor first; CLI math/previews come from cache). A green app
   export is NOT proof the CLI export is green — that was the #85 bug.
+- **HTML round-trip (re-import)** — export → **import** must return the element with
+  every property (and, if asset-bearing, its bytes) intact, not just render it.
+  The gating e2e (`npm run test:e2e`) covers this generically: `element-fidelity-probe`
+  deep-diffs every element before vs after a real export→import (on
+  `examples/welcome.eigendeck`, `e2e/fixtures/all-elements-deck.json`, and
+  `e2e/fixtures/make_style_matrix_deck.py`), and `welcome-roundtrip-probe` asserts
+  asset bytes are restored byte-for-byte. **Add the new type — with representative
+  properties/assets — to `all-elements-deck.json`, or a style variation to
+  `make_style_matrix_deck.py`, so the sweep covers it.** A green display is NOT
+  proof the re-import is green (assets were silently stripped before #153).
 - If you fixed/skipped a straggler path (#5/#6/#7), say so explicitly in the
   commit/PR — silent omission reads as "done everywhere."

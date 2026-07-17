@@ -116,6 +116,15 @@ non-identity key to synced peers, and copy carries everything except
 - [ ] **HTML export wiring** — the exportCore switch (#4) serves all THREE
       callers; if the type needs caller-specific wiring (a preview PNG, a special
       renderer), wire it in **both** `fileOps.ts` and `export-cli.ts`.
+- [ ] **HTML round-trip (re-import) — the 8th concern, distinct from the 7 display
+      modes.** The exported HTML must re-import into a working deck (File > Import
+      from HTML). The full deck JSON is embedded once in the `#eigendeck-deck`
+      block (`db_export_json_with_assets`) and `db_import_json` restores it, so a
+      new type's PLAIN PROPERTIES round-trip automatically. But an **asset-bearing**
+      type must be carried by `db_export_json_with_assets` / `restore_assets`
+      (`src-tauri/src/storage.rs`), and for single-store display emit a
+      `data-asset-id` placeholder the in-body loader paints (see `exportCore.mjs`).
+      Verify with the round-trip e2e (Checklist C).
 - [ ] **Insert UX** — `App.tsx` `runInsert` switch + toolbar entry;
       `SlideEditor.tsx` add-element context menu; selection/marquee.
 - [ ] **Inspector** — a `selectedEl.type === '...'` block in
@@ -156,6 +165,14 @@ per applicable mode, then eyeball the visual paths.
       - #5 `printSlideHtml.test.ts`
       - #6 `LinkOverlay.test.tsx`
       - #7 `SlideThumbnail.test.tsx`
+- [ ] **HTML round-trip** — export → **import** must return the element with every
+      property (and, if asset-bearing, its bytes) intact — not just the display. The
+      gating e2e covers this generically: `element-fidelity-probe` deep-diffs every
+      element before vs after a real export→import (on `examples/welcome.eigendeck`,
+      `e2e/fixtures/all-elements-deck.json`, and `make_style_matrix_deck.py`), and
+      `welcome-roundtrip-probe` asserts asset bytes are restored. **Add the new type
+      (with representative properties/assets) to `all-elements-deck.json` — or a new
+      style variation to `make_style_matrix_deck.py` — so it's swept too.**
 - [ ] **Types + build** — `npx tsc --noEmit` and `npm run build` clean.
 - [ ] **CLI export specifically** — the app export and CLI export wire
       `buildExportHtml` differently; test **both** (see `eigendeck-cli` skill).
