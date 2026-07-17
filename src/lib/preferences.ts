@@ -8,6 +8,7 @@
 // API (getPreference / setPreference / usePreference) stays the same.
 
 import { useCallback, useEffect, useState } from 'react';
+import { DEFAULT_HIDDEN_TOOLBAR_ITEMS } from './insertItems';
 
 /**
  * The canonical pref schema. Every pref the app reads goes here so
@@ -64,7 +65,8 @@ export interface PrefSchema {
    *  src/lib/insertItems.ts for the id list). A *hidden* list, not a
    *  visible one, so element types added in future releases show up on
    *  the toolbar by default. The native "Insert" menu ignores this — it
-   *  always lists every action. Default [] (everything on the toolbar). */
+   *  always lists every action. Default = DEFAULT_HIDDEN_TOOLBAR_ITEMS
+   *  (currently ['demo'] — a power-user action re-addable in Settings). */
   hiddenToolbarItems: string[];
   /** Whether Present Mode (F5) attempts the dual-monitor "projector mode":
    *  detect a second display and open the live slide there fullscreen with
@@ -115,7 +117,7 @@ const DEFAULTS: PrefSchema = {
   showHelpText: true,
   showInspector: true,
   gridSpacing: 30,   // 960×540 (slide center) is a grid point at 30 → center "+" sits on a dot
-  hiddenToolbarItems: [],
+  hiddenToolbarItems: DEFAULT_HIDDEN_TOOLBAR_ITEMS,
   tryProjectorMode: true,
   demoInternetAccess: true,
   compactToolbar: false,

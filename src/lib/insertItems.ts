@@ -23,6 +23,12 @@ export interface InsertItem {
   tooltip: string;
   /** Toolbar group — items render in groups separated by a divider. */
   group: InsertGroup;
+  /** Hidden from the editor toolbar by default (still always in the Insert
+   *  menu, and re-addable via Settings → Toolbar buttons). Seeds the default
+   *  of the `hiddenToolbarItems` preference. Used for power-user actions most
+   *  users shouldn't see out of the box — currently just `demo`, which needs
+   *  infrastructure most users don't have. */
+  defaultHidden?: boolean;
 }
 
 export const INSERT_ITEMS: InsertItem[] = [
@@ -39,9 +45,14 @@ export const INSERT_ITEMS: InsertItem[] = [
   { id: 'image',    label: 'Image',    tooltip: 'Add image / vector / PDF from file',               group: 'objects' },
   { id: 'hype',     label: 'Hype',     tooltip: 'Add a Hype sticky note (yellow, Shantell)',        group: 'objects' },
   // embeds
-  { id: 'demo',     label: 'Demo',     tooltip: 'Add demo HTML',                                    group: 'embeds' },
+  { id: 'demo',     label: 'Demo',     tooltip: 'Add demo HTML',                                    group: 'embeds', defaultHidden: true },
   { id: 'notebook', label: 'Notebook', tooltip: 'Add Jupyter notebook',                             group: 'embeds' },
   { id: 'video',    label: 'Video',    tooltip: 'Add a movie — file or URL (YouTube/Vimeo/PeerTube)', group: 'embeds' },
 ];
 
 export const INSERT_GROUP_ORDER: InsertGroup[] = ['text', 'objects', 'embeds'];
+
+/** Ids hidden from the editor toolbar out of the box — seeds the
+ *  `hiddenToolbarItems` preference default (src/lib/preferences.ts). */
+export const DEFAULT_HIDDEN_TOOLBAR_ITEMS: string[] =
+  INSERT_ITEMS.filter((it) => it.defaultHidden).map((it) => it.id);
