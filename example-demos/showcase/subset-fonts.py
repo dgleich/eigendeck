@@ -16,7 +16,9 @@ can't turn into tofu. Subsetting only keeps glyphs a font actually has, so a
 Latin text face stays tiny even with the broad baseline.
 
 Usage:
-  uv run --with fonttools python subset-fonts.py showcase.html showcase.html
+  uv run --with fonttools --with brotli python subset-fonts.py showcase.html showcase.html
+
+(brotli is required to read/write WOFF2 — the app now embeds WOFF2 font faces.)
 """
 import sys, re, io, base64, os
 import html as htmlmod
@@ -39,16 +41,24 @@ unicodes.update(range(0x20, 0x7E + 1))                    # ASCII safety net
 # runtime-generated glyph this misses.
 
 # --- subset each embedded font ------------------------------------------------
-PAT = re.compile(r"data:font/(otf|ttf);base64,([A-Za-z0-9+/=]+)")
+# The app embeds WOFF2 faces (data:font/woff2) since cf08ee5, falling back to
+# ttf/otf. fontTools loads/saves each in place and preserves the flavor, so a
+# WOFF2 in stays WOFF2 out (needs brotli for the (de)compression).
+PAT = re.compile(r"data:font/(otf|ttf|woff2|woff);base64,([A-Za-z0-9+/=]+)")
 cache = {}
 before = after = 0
 
-def shrink(b64):
+def shrink(b64, fmt):
     raw = base64.b64decode(b64)
     opts = subset.Options()
     opts.layout_features = ["*"]      # keep kerning/ligatures for quality
     opts.drop_tables += ["FFTM"]      # FontForge timestamp, never needed
     opts.recalc_bounds = True
+    # Preserve the container flavor so the data: URI mime stays truthful
+    # (woff2 in -> woff2 out). Without this, fonttools writes a bare sfnt and the
+    # browser rejects the woff2-typed data URI as corrupt. ttf/otf keep default.
+    if fmt in ("woff", "woff2"):
+        opts.flavor = fmt
     font = subset.load_font(io.BytesIO(raw), opts)
     ss = subset.Subsetter(options=opts)
     ss.populate(unicodes=unicodes)
@@ -61,7 +71,7 @@ def repl(m):
     global before, after
     fmt, b64 = m.group(1), m.group(2)
     if b64 not in cache:
-        cache[b64] = shrink(b64)
+        cache[b64] = shrink(b64, fmt)
         before += len(b64)
         after += len(cache[b64])
     return f"data:font/{fmt};base64,{cache[b64]}"
