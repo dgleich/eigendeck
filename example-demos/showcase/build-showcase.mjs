@@ -202,19 +202,29 @@ const slides = [
 
 // Intro pointers on the first two slides — "click here" annotations + arrows that
 // invite the viewer to interact. Ported from the hand-authored showcase-open deck.
-// unshift (NOT push): these go to the BOTTOM of the z-order, behind the demo, so
-// their transparent bounding boxes don't intercept clicks on the demo's own
-// buttons (#163). The callouts sit in areas the demo doesn't cover, so they stay
-// visible behind it.
+//
+// #163: a text callout's transparent bounding box swallows clicks on the demo
+// buttons underneath it, so any callout whose box overlaps the demo's controls
+// is unshift()ed to the BOTTOM of the z-order (behind the demo) — its glyphs sit
+// clear of the controls, so it stays visible. Callouts that don't overlap any
+// button (and the thin arrows, which never cover one) stay push()ed on top.
 const ARROW = { type: 'arrow', position: { x: 0, y: 0, width: 0, height: 0 }, color: '#2563eb', strokeWidth: 4, headSize: 16 };
+// "Click here" blankets the mode palette on the left → behind the demo.
 slides[0].elements.unshift(
   { id: 's0-anno-1',  type: 'text', preset: 'annotation', html: 'Click here&nbsp;', position: { x: 302,  y: 887, width: 600, height: 150 } },
+);
+// "And here!" sits over the empty right of the palette (no buttons) + the arrows
+// are thin → stay on top, fully visible.
+slides[0].elements.push(
   { id: 's0-anno-2',  type: 'text', preset: 'annotation', html: 'And here!&nbsp;',  position: { x: 1334, y: 870, width: 600, height: 150 } },
   { id: 's0-arrow-1', ...ARROW, x1: 464,  y1: 914, x2: 535,  y2: 869 },
   { id: 's0-arrow-2', ...ARROW, x1: 1322, y1: 905, x2: 1257, y2: 947 },
 );
-slides[1].elements.unshift(
-  { id: 'drum-anno-1',  type: 'text', preset: 'annotation', html: 'Try drawing here!&nbsp;', color: '#2663eb', position: { x: 257, y: 803, width: 600, height: 150 } },
+// Drum: the "Try drawing here!" box is one line high (height 58), so it clears
+// the paint controls and no longer blocks them — it stays on top and visible,
+// alongside its arrow.
+slides[1].elements.push(
+  { id: 'drum-anno-1',  type: 'text', preset: 'annotation', html: 'Try drawing here!&nbsp;', color: '#2663eb', position: { x: 257, y: 803, width: 595, height: 58 } },
   { id: 'drum-arrow-1', ...ARROW, x1: 529, y1: 839, x2: 529, y2: 807 },
 );
 
