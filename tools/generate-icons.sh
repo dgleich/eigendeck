@@ -7,7 +7,7 @@
 set -e
 cd "$(dirname "$0")/.."
 
-SVG="logo-icon-light.svg"
+SVG="logo-icon-macos.svg"   # the cream-tile macOS app icon (the shipped icon.png/icns)
 OUT="/tmp/eigendeck-icon-1024.png"
 
 # Render SVG to 1024x1024 PNG with padding

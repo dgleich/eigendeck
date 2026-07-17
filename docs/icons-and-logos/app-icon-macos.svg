@@ -7,7 +7,7 @@
   <rect x="100" y="100" width="824" height="824" rx="160" fill="#f5f0e8"/>
 
   <!-- Centered logo — scaled to fit within the inset area -->
-  <g transform="translate(512, 512) scale(1.7) translate(-735, -485)">
+  <g transform="translate(512, 512) scale(2.2) translate(-735, -485)">
     <!-- back blue screen -->
     <rect x="652" y="423" width="220" height="178" rx="12"
       fill="none" stroke="#2b86b7" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
