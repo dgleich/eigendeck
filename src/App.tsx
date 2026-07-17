@@ -49,6 +49,7 @@ import {
   exportPresentation,
   buildPresentationExportHtml,
   importFromHtml,
+  importHtmlToDeck,
   openRecentProject,
   syncRecentMenu,
 } from './store/fileOps';
@@ -101,6 +102,10 @@ if (
       const s = usePresentationStore.getState();
       return buildPresentationExportHtml(s.presentation);
     },
+    // Import-from-HTML (dialog-free) — runs the REAL read->decode(#164)->import->
+    // save->open path minus the native open/save-as pickers, so E2E can verify a
+    // real exported HTML re-imports into a correct deck (Unicode intact).
+    importHtml: (htmlContent: string, savePath: string) => importHtmlToDeck(htmlContent, savePath),
     // Missing-source registry (#74) — lets E2E assert detect/relocate.
     missingAssets: () => getMissingAssets(),
     // Asset-security introspection (seam-only): report the current deck's trust state

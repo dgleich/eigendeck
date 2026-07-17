@@ -70,6 +70,7 @@ MANIFEST=(
   "demo-theme-scenario.mjs|examples/intro-slide.eigendeck||"
   "demo-theme-deck-verify.mjs|test-presentations/font-theme-matrix.eigendeck||"
   "demo-theme-recapture-probe.mjs|examples/intro-slide.eigendeck||"
+  "import-html-probe.mjs|examples/intro-slide.eigendeck||"   # #164 export->import round-trip (Unicode)
   "demo-preview-bg-probe.mjs|examples/intro-slide.eigendeck||"
 
   # ── editor / store correctness (clean empty deck; probes self-build) ─────

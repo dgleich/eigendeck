@@ -554,6 +554,33 @@ export async function exportPresentation(): Promise<void> {
 // Import from exported HTML
 // ============================================================================
 
+/** Dialog-free core of import-from-HTML: decode the embedded presentation from an
+ *  exported HTML string, build a FRESH deck from it, atomic-save to `savePath`,
+ *  and open it. Returns the imported deck's title, or null if the HTML carried no
+ *  embedded Eigendeck source. Throws on a corrupt payload / IO error. Shared by
+ *  importFromHtml (which wraps it in the open + save-as dialogs) and the E2E seam,
+ *  so the real read -> decode (#164) -> db_import_json -> save -> open path can be
+ *  exercised without native dialogs. */
+export async function importHtmlToDeck(htmlContent: string, savePath: string): Promise<string | null> {
+  // Shared decoder — the exact inverse of the export's UTF-8-safe encode (#164; a
+  // plain `atob` here mangled every deck with non-ASCII content into mojibake).
+  const presentation = parseEigendeckSource(htmlContent) as Presentation | null;
+  if (!presentation) return null;
+  // Build in a fresh in-memory DB and atomic-save over `savePath` rather than
+  // opening (possibly an existing file) to clear it in place. See createProject for
+  // why (dca9005 / issue #65). Close any open project first: db_open_memory is a
+  // no-op while a DB is open, so without this we'd import into the CURRENT deck's
+  // DB and carry its assets across.
+  const { closeSqliteProject } = await import('./presentation');
+  await closeSqliteProject();
+  await invoke('db_open_memory');
+  await invoke('db_import_json', { json: JSON.stringify(presentation) });
+  await invoke('db_save_to_file', { path: savePath });
+  await openSqliteProject(savePath);
+  addRecentProject(savePath, presentation.title);
+  return presentation.title;
+}
+
 export async function importFromHtml(): Promise<void> {
   const { open } = await import('@tauri-apps/plugin-dialog');
   const htmlFile = await open({
@@ -565,11 +592,11 @@ export async function importFromHtml(): Promise<void> {
   try {
     const htmlContent = await readTextFileNative(htmlFile as string);
 
+    // Peek the title (for the save dialog's default name) + validate before asking
+    // where to save. parseEigendeckSource throws on a corrupt payload, returns null
+    // when there's no embedded source.
     let presentation: Presentation | null;
     try {
-      // Shared decoder — the exact inverse of the export's UTF-8-safe encode (#164;
-      // a plain `atob` here mangled every deck with non-ASCII content into mojibake
-      // or a parse error).
       presentation = parseEigendeckSource(htmlContent) as Presentation | null;
     } catch {
       await showError('Failed to decode embedded presentation data.');
@@ -580,7 +607,6 @@ export async function importFromHtml(): Promise<void> {
       return;
     }
 
-    // Save as new .eigendeck file
     const selected = await save({
       title: 'Save Imported Presentation',
       defaultPath: `${presentation.title.replace(/[^a-zA-Z0-9]/g, '-')}.eigendeck`,
@@ -588,18 +614,7 @@ export async function importFromHtml(): Promise<void> {
     });
     if (!selected) return;
 
-    // Build in a fresh in-memory DB and atomic-save over `selected` rather
-    // than opening (possibly an existing file) to clear it in place. See
-    // createProject for why (dca9005 / issue #65). Close any open project
-    // first: db_open_memory is a no-op while a DB is open, so without this
-    // we'd import into the CURRENT deck's DB and carry its assets across.
-    const { closeSqliteProject } = await import('./presentation');
-    await closeSqliteProject();
-    await invoke('db_open_memory');
-    await invoke('db_import_json', { json: JSON.stringify(presentation) });
-    await invoke('db_save_to_file', { path: selected });
-    await openSqliteProject(selected as string);
-    addRecentProject(selected as string, presentation.title);
+    await importHtmlToDeck(htmlContent, selected as string);
   } catch (e) {
     await showError(`Failed to import: ${e}`);
   }
