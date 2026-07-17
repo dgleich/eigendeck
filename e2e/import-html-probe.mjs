@@ -13,15 +13,15 @@ const r = await exec(sid, `return (async()=>{
   store.getState().addElement({id, type:'text', preset:'body', html: marker, position:{x:100,y:100,width:600,height:100}});
   await new Promise(r=>setTimeout(r,150));
   const html = await window.__eigendeck.exportHtml();
-  const hasComment = /<!-- eigendeck-source: /.test(html);
+  const hasEmbed = /id="eigendeck-deck"|<!-- eigendeck-source: /.test(html);
   await window.__eigendeck.importHtml(html, "/tmp/imported-uni-e2e.eigendeck");
   await new Promise(r=>setTimeout(r,300));
   const p = store.getState().presentation; // now the reopened SAVED deck
   let found = null;
   for (const sl of p.slides) for (const el of (sl.elements||[])) if (el.id===id) found = el.html;
-  return { hasComment, markerOk: found===marker, foundSample: (found||'').slice(0,50) };
+  return { hasEmbed, markerOk: found===marker, foundSample: (found||'').slice(0,50) };
 })()`);
 await quit(sid);
-const ok = r && r.hasComment && r.markerOk;
+const ok = r && r.hasEmbed && r.markerOk;
 console.log('IMPORT_HTML ' + (ok ? 'PASS ' : 'FAIL ') + JSON.stringify(r));
 process.exit(ok ? 0 : 1);

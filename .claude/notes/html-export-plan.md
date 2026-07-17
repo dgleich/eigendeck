@@ -1,7 +1,30 @@
 # HTML export: make it complete + losslessly re-importable
 
-**Status:** planning. Backbone (self-contained JSON) is DONE; HTML side is not.
+**Status:** **Phase A DONE (2026-07-17)** — round-trip backbone shipped. Phases
+B–F (static *display* of svg/pdf/notebook beyond a preview PNG) still open.
 **Date:** 2026-06-03
+
+## Phase A — implemented (branch fix/import-html-unicode)
+- Export embeds the self-contained deck JSON (live in-memory structure + DB
+  `assets[]`) ONCE in `<script type="application/json" id="eigendeck-deck">` +
+  an in-body loader that paints `<img data-asset-id>` from it (`exportCore.mjs`
+  `deckJson` option; wired in `fileOps.ts` `buildPresentationExportHtml`, which
+  pairs the LIVE presentation with `db_export_json_with_assets`'s assets so
+  unsaved edits aren't lost).
+- Raster images are single-store (placeholder + loader, no second inline copy).
+  Demos keep their interactive srcdoc for display (per §demo below) AND ride in
+  `assets[]` for import — so **import is complete for ALL asset types** (image,
+  demo, demo-piece, notebook, pdf, video: their raw bytes are in the block and
+  `db_import_json`→`restore_assets` restores them under original ids).
+- `importFromHtml`/`importHtmlToDeck` read the block first (full asset restore),
+  falling back to the legacy `<!-- eigendeck-source -->` comment (structure only).
+- Verified: welcome deck (24 slides, 10 assets) exports→imports with all assets
+  restored + single-store; exported HTML renders in chromium (5/5 images painted
+  by the loader, 0 errors). e2e: `import-html-probe.mjs` (#164 Unicode),
+  `welcome-roundtrip-probe.mjs` (asset fidelity), both in the gating manifest.
+  Legacy CLI/batch exports (no `deckJson`) still emit the structure-only comment.
+- NOT yet: static DISPLAY of pdf/notebook (still preview PNG) + svg case — that's
+  Phases B–F below; import already recovers their bytes.
 
 ## Goal (from David)
 

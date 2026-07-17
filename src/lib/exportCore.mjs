@@ -48,6 +48,18 @@ export function parseEigendeckSource(html) {
   return JSON.parse(json);
 }
 
+export const EIGENDECK_DECK_RE = /<script type="application\/json" id="eigendeck-deck">([\s\S]*?)<\/script>/;
+
+/** The self-contained deck JSON (WITH assets) embedded by a modern export, or null
+ *  if absent (legacy structure-only export → use parseEigendeckSource). The string
+ *  is passed straight to db_import_json, which restores the assets[]. The export
+ *  escaped `</` as `<\/` to avoid closing the script early; that is valid JSON
+ *  (`\/` === `/`) so no un-escaping is needed before parsing. */
+export function extractEigendeckDeckJson(html) {
+  const m = html.match(EIGENDECK_DECK_RE);
+  return m ? m[1] : null;
+}
+
 /**
  * Shared HTML export logic.
  *
@@ -184,6 +196,17 @@ export function bytesToDataUrl(bytes, ext) {
 export async function buildExportHtml(opts) {
   const {
     presentation, readFile, readTextFile, renderMath, applyMathPreamble,
+    /**
+     * Optional: the self-contained deck JSON WITH assets (base64), as produced by
+     * the Rust `db_export_json_with_assets`. When provided, the export becomes
+     * losslessly re-importable AND single-store (docs .claude/notes/html-export-plan.md):
+     * the JSON is embedded ONCE in a `<script id="eigendeck-deck">` block that BOTH
+     * import (restore_assets) and the in-body asset loader read — raster images are
+     * emitted as `<img data-asset-id>` placeholders painted from the block, not a
+     * second inline copy. When omitted, the export falls back to the legacy
+     * structure-only `<!-- eigendeck-source -->` comment (assets not re-importable).
+     */
+    deckJson,
     /**
      * Optional: per-element font resolver. Returns the CSS font-family string
      * to use for an element on a given slide. If omitted, falls back to
@@ -343,6 +366,11 @@ export async function buildExportHtml(opts) {
               inner += `<div style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#aaa;font-size:24px;font-family:sans-serif;border:1px solid #ddd;">PDF</div>`;
               break;
             }
+          } else if (deckJson && el.assetId) {
+            // Single-store: don't inline the bytes here — the #eigendeck-deck block
+            // already carries them; emit a placeholder the loader paints.
+            inner += imageHtml('', el, (n) => `${n}px`, `data-asset-id="${el.assetId}"`);
+            break;
           } else {
             imgSrc = await getImageDataUrl(el.src);
             if (!imgSrc) {
@@ -497,6 +525,19 @@ export async function buildExportHtml(opts) {
 
   // Embed source JSON for round-trip import (File > Import from HTML).
   const sourceB64 = encodeEigendeckSource(presentation);
+  // Losslessly re-importable + single-store when the caller supplied the
+  // with-assets deck JSON: embed it ONCE in a script block that import reads
+  // (restore_assets) and the in-body loader paints images from — no second inline
+  // copy. Escape `</` so an asset containing `</script>` can't close the block.
+  // Without deckJson, fall back to the legacy structure-only comment.
+  const deckEmbed = deckJson
+    ? `<script type="application/json" id="eigendeck-deck">${deckJson.replace(/<\//g, '<\\/')}</script>\n`
+      + `<script>(function(){var e=document.getElementById('eigendeck-deck');if(!e)return;var d;`
+      + `try{d=JSON.parse(e.textContent)}catch(x){return}var m={};(d.assets||[]).forEach(function(a){`
+      + `if(a&&a.assetId&&a.data)m[a.assetId]='data:'+(a.mime||'application/octet-stream')+';base64,'+a.data});`
+      + `var g=document.querySelectorAll('img[data-asset-id]');for(var i=0;i<g.length;i++){`
+      + `var u=m[g[i].getAttribute('data-asset-id')];if(u)g[i].src=u}})();</script>`
+    : `<!-- eigendeck-source: ${sourceB64} -->`;
 
   return `<!DOCTYPE html>
 <html>
@@ -559,7 +600,7 @@ ol li::before { counter-increment: ol-counter; content: counter(ol-counter) '. '
 <div id="viewport">
 ${slideHtml.join('\n')}
 </div>
-<!-- eigendeck-source: ${sourceB64} -->
+${deckEmbed}
 <div id="nav-bar">
   <button id="nb-prev">&lsaquo;</button>
   <span class="nav-pos"><span id="nb-cur">1</span> / <span id="nb-total"></span></span>

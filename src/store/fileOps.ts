@@ -30,7 +30,7 @@ async function markNewDeckTrusted(presentation: Presentation): Promise<void> {
   }
 }
 // @ts-ignore — pure JS module shared with the CLI tool
-import { buildExportHtml, parseEigendeckSource } from '../lib/exportCore.mjs';
+import { buildExportHtml, parseEigendeckSource, extractEigendeckDeckJson } from '../lib/exportCore.mjs';
 import { readTextFileNative, writeTextFileNative, existsNative, mkdirNative } from '../lib/nativeFs';
 import {
   fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS, resolveMonoFontPackage,
@@ -484,9 +484,23 @@ export async function buildPresentationExportHtml(
     }))),
   };
 
+  // The self-contained deck JSON (structure + assets[] base64) for the losslessly
+  // re-importable, single-store embed (docs .claude/notes/html-export-plan.md).
+  // IMPORTANT: pair the LIVE (in-memory) structure with the DB's asset bytes —
+  // db_export_json_with_assets's *structure* reflects the last SQLite flush and can
+  // lag unsaved store edits, whereas the display renders from the store; taking only
+  // its `assets[]` keeps the embedded deck consistent with what's shown. Best-effort:
+  // on failure the export still renders and falls back to the legacy source comment.
+  let deckJson: string | undefined;
+  try {
+    const dbAssets = JSON.parse(await invoke<string>('db_export_json_with_assets')).assets || [];
+    deckJson = JSON.stringify({ ...presentation, assets: dbAssets });
+  } catch (e) { console.warn('with-assets embed failed; export won\'t be re-importable with assets:', e); }
+
   // Read assets from SQLite for inlining
   return buildExportHtml({
     presentation: hydrated,
+    deckJson,
     // Export reads ONLY embedded/cached bytes from SQLite — it NEVER touches disk.
     // Assets are always embedded (ASSETS.md: the asset table is the source of
     // truth), so there is no legitimate need for a disk read here; and resolving
@@ -562,10 +576,24 @@ export async function exportPresentation(): Promise<void> {
  *  so the real read -> decode (#164) -> db_import_json -> save -> open path can be
  *  exercised without native dialogs. */
 export async function importHtmlToDeck(htmlContent: string, savePath: string): Promise<string | null> {
-  // Shared decoder — the exact inverse of the export's UTF-8-safe encode (#164; a
-  // plain `atob` here mangled every deck with non-ASCII content into mojibake).
-  const presentation = parseEigendeckSource(htmlContent) as Presentation | null;
-  if (!presentation) return null;
+  // Prefer the modern self-contained deck block (structure + assets[] base64) —
+  // db_import_json restores the assets, so demos/images/notebooks come back
+  // (docs .claude/notes/html-export-plan.md). Fall back to the legacy structure-only
+  // <!-- eigendeck-source --> comment (assets not recoverable). The comment decode
+  // is the exact inverse of the UTF-8-safe encode (#164 — a plain atob mangled
+  // non-ASCII); the deck block is already JSON, passed straight through.
+  const deckJson = extractEigendeckDeckJson(htmlContent) as string | null;
+  let importJson: string;
+  let title: string;
+  if (deckJson) {
+    importJson = deckJson;
+    title = (JSON.parse(deckJson).title as string) || 'Imported Presentation';
+  } else {
+    const presentation = parseEigendeckSource(htmlContent) as Presentation | null;
+    if (!presentation) return null;
+    importJson = JSON.stringify(presentation);
+    title = presentation.title;
+  }
   // Build in a fresh in-memory DB and atomic-save over `savePath` rather than
   // opening (possibly an existing file) to clear it in place. See createProject for
   // why (dca9005 / issue #65). Close any open project first: db_open_memory is a
@@ -574,11 +602,11 @@ export async function importHtmlToDeck(htmlContent: string, savePath: string): P
   const { closeSqliteProject } = await import('./presentation');
   await closeSqliteProject();
   await invoke('db_open_memory');
-  await invoke('db_import_json', { json: JSON.stringify(presentation) });
+  await invoke('db_import_json', { json: importJson });
   await invoke('db_save_to_file', { path: savePath });
   await openSqliteProject(savePath);
-  addRecentProject(savePath, presentation.title);
-  return presentation.title;
+  addRecentProject(savePath, title);
+  return title;
 }
 
 export async function importFromHtml(): Promise<void> {
@@ -593,23 +621,25 @@ export async function importFromHtml(): Promise<void> {
     const htmlContent = await readTextFileNative(htmlFile as string);
 
     // Peek the title (for the save dialog's default name) + validate before asking
-    // where to save. parseEigendeckSource throws on a corrupt payload, returns null
-    // when there's no embedded source.
-    let presentation: Presentation | null;
+    // where to save — from either the modern deck block or the legacy comment.
+    let title: string | null;
     try {
-      presentation = parseEigendeckSource(htmlContent) as Presentation | null;
+      const deckJson = extractEigendeckDeckJson(htmlContent) as string | null;
+      title = deckJson
+        ? ((JSON.parse(deckJson).title as string) || 'Imported Presentation')
+        : ((parseEigendeckSource(htmlContent) as Presentation | null)?.title ?? null);
     } catch {
       await showError('Failed to decode embedded presentation data.');
       return;
     }
-    if (!presentation) {
+    if (title == null) {
       await showError('This HTML file does not contain embedded Eigendeck data.');
       return;
     }
 
     const selected = await save({
       title: 'Save Imported Presentation',
-      defaultPath: `${presentation.title.replace(/[^a-zA-Z0-9]/g, '-')}.eigendeck`,
+      defaultPath: `${title.replace(/[^a-zA-Z0-9]/g, '-')}.eigendeck`,
       filters: [{ name: 'Eigendeck', extensions: ['eigendeck'] }],
     });
     if (!selected) return;

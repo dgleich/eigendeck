@@ -27,7 +27,7 @@ export function arrowSvgHtml(el, opts = {}) {
 /** image — a positioned <img> with the shared visual styles (drop-shadow / corner
  *  radius / opacity / rotation from imageVisuals — IDENTICAL across targets). The
  *  `src` is already resolved (data URL / cached PNG); `len` formats the box. */
-export function imageHtml(src, el, len) {
+export function imageHtml(src, el, len, extraAttrs = '') {
   const p = el.position;
   const iv = imageVisuals(el);
   const styles = [
@@ -38,5 +38,10 @@ export function imageHtml(src, el, len) {
   if (iv.borderRadius) styles.push(`border-radius:${iv.borderRadius}px`);
   if (iv.opacity != null) styles.push(`opacity:${iv.opacity}`);
   if (iv.transform) styles.push(`transform:${iv.transform}`);
-  return `<img src="${src}" style="${styles.join(';')};" />`;
+  // `src` may be omitted for the single-store export path: the image is emitted as
+  // a `data-asset-id` placeholder (via extraAttrs) and painted by the in-body
+  // loader from the embedded #eigendeck-deck block, so its bytes aren't inlined twice.
+  const srcAttr = src ? ` src="${src}"` : '';
+  const extra = extraAttrs ? ` ${extraAttrs}` : '';
+  return `<img${srcAttr}${extra} style="${styles.join(';')};" />`;
 }
