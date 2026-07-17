@@ -72,6 +72,8 @@ MANIFEST=(
   "demo-theme-recapture-probe.mjs|examples/intro-slide.eigendeck||"
   "import-html-probe.mjs|examples/intro-slide.eigendeck||"   # #164 export->import round-trip (Unicode)
   "welcome-roundtrip-probe.mjs|examples/welcome.eigendeck||"   # HTML export->import restores assets (single-store)
+  "element-fidelity-probe.mjs|examples/welcome.eigendeck||"   # every element PROPERTY survives import (asset types)
+  "element-fidelity-probe.mjs|all-elements.eigendeck||import_json $ROOT/e2e/fixtures/all-elements-deck.json"   # video/html/cover/rich-text/arrow
   "demo-preview-bg-probe.mjs|examples/intro-slide.eigendeck||"
 
   # ── editor / store correctness (clean empty deck; probes self-build) ─────

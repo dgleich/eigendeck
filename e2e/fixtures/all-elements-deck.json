@@ -1,0 +1,16 @@
+{
+  "title": "All Elements Round-trip",
+  "theme": "white",
+  "config": { "width": 1920, "height": 1080 },
+  "slides": [{
+    "id": "s1", "layout": "default", "notes": "round-trip fixture",
+    "elements": [
+      { "id": "vid-embed", "type": "video", "kind": "embed", "src": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "position": {"x":60,"y":60,"width":640,"height":360} },
+      { "id": "txt-rich", "type": "text", "preset": "body", "html": "Rich <b>bold</b> <i>ital</i> λ Σ ∫ − “q” café", "backgroundColor": "#eef3fb", "backgroundOpacity": 0.8, "textEffect": "shadow", "verticalAlign": "bottom", "padding": {"top":10,"right":12,"bottom":10,"left":12}, "position": {"x":720,"y":60,"width":900,"height":260} },
+      { "id": "txt-title", "type": "text", "preset": "title", "html": "Title", "position": {"x":60,"y":460,"width":1800,"height":140} },
+      { "id": "arr-heads", "type": "arrow", "x1": 100, "y1": 700, "x2": 500, "y2": 760, "color": "#e53e3e", "strokeWidth": 4, "heads": "both", "headSize": 18, "opacity": 0.85, "position": {"x":0,"y":0,"width":0,"height":0} },
+      { "id": "cov-1", "type": "cover", "color": "#222222", "position": {"x":1200,"y":640,"width":300,"height":200} },
+      { "id": "html-1", "type": "html", "html": "<div style=\"font:bold 40px sans-serif;color:#c0f\">Hi ✦</div>", "scaleMode": true, "scaleW": 400, "scaleH": 200, "position": {"x":600,"y":700,"width":400,"height":200} }
+    ]
+  }]
+}
