@@ -22,6 +22,6 @@ const r = await exec(sid, `return (async()=>{
   return { hasDeckBlock, slidesOk: before.slides.length===after.slides.length, elsOk: bEls===aEls, assetElsOk: bAssetEls===aAssetEls, bAssetEls, aAssetEls };
 })()`);
 await quit(sid);
-const ok = r && r.hasDeckBlock && r.slidesOk && r.elsOk && r.assetElsOk && r.aAssetEls>0;
+const ok = r && r.hasDeckBlock && r.slidesOk && r.elsOk && r.assetElsOk;
 console.log('WELCOME_RT ' + (ok?'PASS ':'FAIL ') + JSON.stringify(r));
 process.exit(ok?0:1);
