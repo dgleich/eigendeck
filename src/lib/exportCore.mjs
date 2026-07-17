@@ -15,6 +15,39 @@ import { textBackgroundResolved, textBoxShadowCss, applyCodeFont, resolveColor }
 import { TEXT_PRESET_STYLES } from './textPresets.mjs';
 import { textElementHtml } from './textElementHtml.mjs';
 
+// --- round-trip source embed (File > Import from HTML) ------------------------
+// The exported HTML carries the full presentation JSON in an
+// `<!-- eigendeck-source: BASE64 -->` comment; import reads it back. The base64
+// is UTF-8-safe (a deck is full of non-ASCII: math λ Σ ∫ −, curly quotes, …), so
+// ENCODE and DECODE must be exact inverses. They used to live inline in two files
+// (export here, import in store/fileOps.ts) and DRIFTED — export UTF-8-encoded
+// while import used a plain `atob`, so every deck with non-ASCII imported as
+// mojibake or failed to parse (#164). Both sides now share this ONE pair, and the
+// round-trip test calls parseEigendeckSource (not a re-implementation) so they
+// can't drift again.
+export const EIGENDECK_SOURCE_RE = /<!-- eigendeck-source: (.+?) -->/;
+
+/** Base64 (UTF-8-safe) of the presentation JSON, for the export comment. */
+export function encodeEigendeckSource(presentation) {
+  const json = JSON.stringify(presentation);
+  return (typeof btoa !== 'undefined')
+    ? btoa(unescape(encodeURIComponent(json)))
+    : Buffer.from(json, 'utf-8').toString('base64');
+}
+
+/** Parse the embedded presentation out of exported HTML. Returns null when the
+ *  comment is absent (not an Eigendeck export); throws only if the JSON is
+ *  corrupt. Exact inverse of encodeEigendeckSource. */
+export function parseEigendeckSource(html) {
+  const m = html.match(EIGENDECK_SOURCE_RE);
+  if (!m) return null;
+  const b64 = m[1];
+  const json = (typeof atob !== 'undefined')
+    ? decodeURIComponent(escape(atob(b64)))
+    : Buffer.from(b64, 'base64').toString('utf-8');
+  return JSON.parse(json);
+}
+
 /**
  * Shared HTML export logic.
  *
@@ -462,10 +495,8 @@ export async function buildExportHtml(opts) {
   // Deck-level footer font (#135) — resolved once for the shared .slide-footer CSS.
   const footerFamily = footerFontFamily(presentation.config);
 
-  // Embed source JSON for round-trip import
-  const sourceB64 = (typeof btoa !== 'undefined')
-    ? btoa(unescape(encodeURIComponent(JSON.stringify(presentation))))
-    : Buffer.from(JSON.stringify(presentation)).toString('base64');
+  // Embed source JSON for round-trip import (File > Import from HTML).
+  const sourceB64 = encodeEigendeckSource(presentation);
 
   return `<!DOCTYPE html>
 <html>

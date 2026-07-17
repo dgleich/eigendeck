@@ -30,7 +30,7 @@ async function markNewDeckTrusted(presentation: Presentation): Promise<void> {
   }
 }
 // @ts-ignore — pure JS module shared with the CLI tool
-import { buildExportHtml } from '../lib/exportCore.mjs';
+import { buildExportHtml, parseEigendeckSource } from '../lib/exportCore.mjs';
 import { readTextFileNative, writeTextFileNative, existsNative, mkdirNative } from '../lib/nativeFs';
 import {
   fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS, resolveMonoFontPackage,
@@ -564,17 +564,19 @@ export async function importFromHtml(): Promise<void> {
 
   try {
     const htmlContent = await readTextFileNative(htmlFile as string);
-    const match = htmlContent.match(/<!-- eigendeck-source: (.+?) -->/);
-    if (!match) {
-      await showError('This HTML file does not contain embedded Eigendeck data.');
-      return;
-    }
 
-    let presentation: Presentation;
+    let presentation: Presentation | null;
     try {
-      presentation = JSON.parse(atob(match[1]));
+      // Shared decoder — the exact inverse of the export's UTF-8-safe encode (#164;
+      // a plain `atob` here mangled every deck with non-ASCII content into mojibake
+      // or a parse error).
+      presentation = parseEigendeckSource(htmlContent) as Presentation | null;
     } catch {
       await showError('Failed to decode embedded presentation data.');
+      return;
+    }
+    if (!presentation) {
+      await showError('This HTML file does not contain embedded Eigendeck data.');
       return;
     }
 

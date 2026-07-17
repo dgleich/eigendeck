@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildExportHtml, htmlEscapeForSrcdoc, injectDemoBootstrap, bytesToDataUrl } from './exportCore.mjs';
+import { buildExportHtml, htmlEscapeForSrcdoc, injectDemoBootstrap, bytesToDataUrl, encodeEigendeckSource, parseEigendeckSource } from './exportCore.mjs';
 
 // Minimal presentation for testing
 function makePresentation(overrides = {}) {
@@ -128,12 +128,10 @@ describe('buildExportHtml', () => {
       applyMathPreamble: null,
     });
 
-    // Extract embedded source (same logic as fileOps.ts importFromHtml)
-    const match = html.match(/<!-- eigendeck-source: (.+?) -->/);
-    expect(match).toBeTruthy();
-
-    const json = decodeURIComponent(escape(atob(match[1])));
-    const restored = JSON.parse(json);
+    // Decode via the SAME function importFromHtml uses (not a re-implementation —
+    // that reimplementation is what hid #164).
+    const restored = parseEigendeckSource(html);
+    expect(restored).toBeTruthy();
 
     // Verify structure
     expect(restored.title).toBe(original.title);
@@ -165,6 +163,34 @@ describe('buildExportHtml', () => {
     }
   });
 
+  // #164 regression: a deck full of non-ASCII (math symbols, curly quotes, accents)
+  // must survive export -> import. The old importFromHtml used a plain `atob` that
+  // does NOT reverse the UTF-8-safe encode, so this content came back as mojibake.
+  it('round-trips a Unicode deck (export -> import) without mojibake (#164)', async () => {
+    const original = makePresentation({
+      title: 'Eigenmodes λ Σ ∫ − “quoted” café',
+      slides: [{
+        id: 's1', layout: 'default', notes: 'Δu = λu — modes of a résumé',
+        elements: [{
+          id: 'e1', type: 'text', preset: 'body',
+          html: 'Chladni patterns: ∇²φ + k²φ = 0 · 你好 · 🎉',
+          position: { x: 0, y: 0, width: 100, height: 100 },
+        }],
+      }],
+    });
+    const html = await buildExportHtml({
+      presentation: original,
+      readFile: async () => new Uint8Array([0]),
+      readTextFile: async () => '',
+      renderMath: null,
+      applyMathPreamble: null,
+    });
+    const restored = parseEigendeckSource(html);
+    expect(restored.title).toBe(original.title);
+    expect(restored.slides[0].notes).toBe(original.slides[0].notes);
+    expect(restored.slides[0].elements[0].html).toBe(original.slides[0].elements[0].html);
+  });
+
   it('round-trips presentation with math', async () => {
     const p = makePresentation({
       slides: [{
@@ -186,8 +212,7 @@ describe('buildExportHtml', () => {
       applyMathPreamble: null,
     });
 
-    const match = html.match(/<!-- eigendeck-source: (.+?) -->/);
-    const restored = JSON.parse(decodeURIComponent(escape(atob(match[1]))));
+    const restored = parseEigendeckSource(html);
 
     expect(restored.slides[0].elements[0].html).toContain('$x^2 + y^2 = z^2$');
     expect(restored.config.mathPreamble).toBe('\\newcommand{\\R}{\\mathbb{R}}');
@@ -232,8 +257,7 @@ describe('buildExportHtml', () => {
     expect(controllerCount).toBeGreaterThan(0);
 
     // Round-trip the source
-    const match = html.match(/<!-- eigendeck-source: (.+?) -->/);
-    const restored = JSON.parse(decodeURIComponent(escape(atob(match[1]))));
+    const restored = parseEigendeckSource(html);
     expect(restored.slides[0].elements.length).toBe(3);
     expect(restored.slides[0].elements[0].type).toBe('demo');
     expect(restored.slides[0].elements[0].src).toBe('demos/test.html');
@@ -295,8 +319,7 @@ describe('buildExportHtml', () => {
       applyMathPreamble: null,
     });
 
-    const match = html.match(/<!-- eigendeck-source: (.+?) -->/);
-    const restored = JSON.parse(decodeURIComponent(escape(atob(match[1]))));
+    const restored = parseEigendeckSource(html);
     expect(restored.slides[0].elements[0].type).toBe('arrow');
     expect(restored.slides[0].elements[0].x1).toBe(100);
     expect(restored.slides[0].elements[1].type).toBe('cover');
@@ -327,8 +350,7 @@ describe('buildExportHtml', () => {
     expect(html).toContain('opacity:0.8');
     expect(html).toContain('rotate(15deg)');
 
-    const match = html.match(/<!-- eigendeck-source: (.+?) -->/);
-    const restored = JSON.parse(decodeURIComponent(escape(atob(match[1]))));
+    const restored = parseEigendeckSource(html);
     expect(restored.slides[0].elements[0].shadow).toBe(true);
     expect(restored.slides[0].elements[0].borderRadius).toBe(12);
     expect(restored.slides[0].elements[0].opacity).toBe(0.8);
@@ -357,8 +379,7 @@ describe('buildExportHtml', () => {
 
     expect(html).toContain('border-radius:16px');
 
-    const match = html.match(/<!-- eigendeck-source: (.+?) -->/);
-    const restored = JSON.parse(decodeURIComponent(escape(atob(match[1]))));
+    const restored = parseEigendeckSource(html);
     expect(restored.slides[0].elements[0].borderRadius).toBe(16);
     expect(restored.slides[0].elements[0].backgroundColor).toBe('#eef3fb');
   });
@@ -379,8 +400,7 @@ describe('buildExportHtml', () => {
       renderMath: null, applyMathPreamble: null,
     });
     expect(html).toContain('padding:24px 40px 24px 40px');
-    const match = html.match(/<!-- eigendeck-source: (.+?) -->/);
-    const restored = JSON.parse(decodeURIComponent(escape(atob(match[1]))));
+    const restored = parseEigendeckSource(html);
     expect(restored.slides[0].elements[0].padding).toEqual({ top: 24, right: 40, bottom: 24, left: 40 });
   });
 
@@ -400,7 +420,7 @@ describe('buildExportHtml', () => {
     // line is pulled back from the tip (no poke-through): x2 < 100
     const m = html.match(/<line x1="([\d.]+)"[^>]*x2="([\d.]+)"/);
     expect(parseFloat(m[2])).toBeLessThan(100);
-    const src = JSON.parse(decodeURIComponent(escape(atob(html.match(/<!-- eigendeck-source: (.+?) -->/)[1]))));
+    const src = parseEigendeckSource(html);
     expect(src.slides[0].elements[0].heads).toBe('both');
     expect(src.slides[0].elements[0].opacity).toBe(0.5);
   });
@@ -422,7 +442,7 @@ describe('buildExportHtml', () => {
     expect(html).toContain('&lt;h1&gt;Hi&lt;/h1&gt;');           // escaped inner HTML
     expect(html).toContain("default-src 'none'");                // CSP survived the escape
     expect(html).not.toContain('allow-scripts');
-    const src = JSON.parse(decodeURIComponent(escape(atob(html.match(/<!-- eigendeck-source: (.+?) -->/)[1]))));
+    const src = parseEigendeckSource(html);
     expect(src.slides[0].elements[0].html).toBe('<h1>Hi</h1>');
   });
 
@@ -445,7 +465,7 @@ describe('buildExportHtml', () => {
     expect(html).toContain('colspan=&quot;2&quot;');
     expect(html).toContain('Lanczos');
     // The source round-trip keeps the raw table.
-    const src = JSON.parse(decodeURIComponent(escape(atob(html.match(/<!-- eigendeck-source: (.+?) -->/)[1]))));
+    const src = parseEigendeckSource(html);
     expect(src.slides[0].elements[0].html).toBe(table);
   });
 
@@ -465,7 +485,7 @@ describe('buildExportHtml', () => {
     expect(html).toContain('<path d="M 0 0 C 40 80 160 80 200 0"');
     expect(html).toContain('fill="none"');
     // Control points survive the source round-trip.
-    const src = JSON.parse(decodeURIComponent(escape(atob(html.match(/<!-- eigendeck-source: (.+?) -->/)[1]))));
+    const src = parseEigendeckSource(html);
     expect(src.slides[0].elements[0].c1x).toBe(40);
     expect(src.slides[0].elements[0].c2y).toBe(80);
   });
@@ -621,5 +641,28 @@ describe('[simplify-guard] exportCore full-output snapshot (all element types)',
       resolveMathBundle: () => 'ptsans',
     });
     expect(html).toMatchSnapshot();
+  });
+});
+
+describe('eigendeck-source codec (encode/parse) — #164', () => {
+  it('parse is the exact inverse of encode, incl. non-ASCII', () => {
+    const p = { title: 'λ Σ ∫ “x” café 你好 🎉', slides: [{ id: 's', notes: '−Δu = λu' }] };
+    const html = `<!-- eigendeck-source: ${encodeEigendeckSource(p)} -->`;
+    expect(parseEigendeckSource(html)).toEqual(p);
+  });
+
+  it('returns null when there is no embedded source', () => {
+    expect(parseEigendeckSource('<html><body>not an eigendeck export</body></html>')).toBeNull();
+  });
+
+  it('a plain atob (the old importFromHtml bug) mangles non-ASCII — guards the fix', () => {
+    const p = { title: 'λ Σ ∫' };
+    const b64 = encodeEigendeckSource(p);
+    // The old code did JSON.parse(atob(b64)); atob alone does not reverse the
+    // UTF-8 encode, so the title comes back corrupted (mojibake), proving the
+    // shared parser is doing real work.
+    const mojibake = JSON.parse(atob(b64));
+    expect(mojibake.title).not.toBe(p.title);
+    expect(parseEigendeckSource(`<!-- eigendeck-source: ${b64} -->`).title).toBe(p.title);
   });
 });
