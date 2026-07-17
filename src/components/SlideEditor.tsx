@@ -661,41 +661,70 @@ export function SlideEditor() {
                   const relativePath = relPath(store.projectPath, fullPath);
                   const bytes = await readAddFileCapped(fullPath);
                   if (!bytes) continue;  // over the size cap → toast shown, skip this file
-                  // Demo HTML — pass externalPath so the file watcher
-                  // can subscribe (auto-reload on disk edits). Same
-                  // pattern as image drag-drop above. externalMtime
-                  // stays null at insertion; scan-on-load will record
-                  // it without invalidating (post-fix watcher checks
-                  // hash before invalidating cache).
-                  const { storeAssetWithCollisionCheck } = await import('../lib/assetInsert');
-                  const r = await storeAssetWithCollisionCheck({
-                    path: relativePath, data: bytes, mimeType: 'text/html',
-                    externalPath: relativePath, externalMtime: null,
-                  });
-                  if (r.cancelled) return;
-                  const assetId = r.assetId;
-
-                  // Detect demo-piece demos
                   const html = await readTextFileNative(fullPath);
-                  const pieces = extractDemoPieceNames(html);
 
-                  if (pieces.length > 0 && html.includes('BroadcastChannel')) {
-                    let x = 80;
-                    for (const piece of pieces) {
-                      const width = Math.floor((1760 - (pieces.length - 1) * 40) / pieces.length);
+                  // A dropped .html is ambiguous: it might be an Eigendeck demo
+                  // (embed as a demo/demo-piece asset) or just a plain HTML
+                  // snippet the user wants on the slide. Branch on the demo
+                  // marker so a non-demo .html falls back to a raw `html`
+                  // element (#137) instead of being rejected by the demo gate.
+                  const { isEigendeckDemo } = await import('../lib/assetTypes.mjs');
+                  if (isEigendeckDemo(bytes).ok) {
+                    // Demo HTML — pass externalPath so the file watcher
+                    // can subscribe (auto-reload on disk edits). Same
+                    // pattern as image drag-drop above. externalMtime
+                    // stays null at insertion; scan-on-load will record
+                    // it without invalidating (post-fix watcher checks
+                    // hash before invalidating cache).
+                    const { storeAssetWithCollisionCheck } = await import('../lib/assetInsert');
+                    const r = await storeAssetWithCollisionCheck({
+                      path: relativePath, data: bytes, mimeType: 'text/html',
+                      externalPath: relativePath, externalMtime: null,
+                    });
+                    if (r.cancelled) return;
+                    const assetId = r.assetId;
+
+                    // Detect demo-piece demos
+                    const pieces = extractDemoPieceNames(html);
+
+                    if (pieces.length > 0 && html.includes('BroadcastChannel')) {
+                      let x = 80;
+                      for (const piece of pieces) {
+                        const width = Math.floor((1760 - (pieces.length - 1) * 40) / pieces.length);
+                        store.addElement({
+                          id: crypto.randomUUID(), type: 'demo-piece' as any,
+                          piece, assetId,
+                          position: { x, y: 200, width, height: 700 },
+                        });
+                        x += width + 40;
+                      }
+                    } else {
                       store.addElement({
-                        id: crypto.randomUUID(), type: 'demo-piece' as any,
-                        piece, assetId,
-                        position: { x, y: 200, width, height: 700 },
+                        id: crypto.randomUUID(), type: 'demo',
+                        assetId,
+                        position: { x: 80, y: 200, width: 1760, height: 700 },
                       });
-                      x += width + 40;
                     }
                   } else {
-                    store.addElement({
-                      id: crypto.randomUUID(), type: 'demo',
-                      assetId,
-                      position: { x: 80, y: 200, width: 1760, height: 700 },
-                    });
+                    // Not an Eigendeck demo → insert as a raw HTML element
+                    // (#137). Same validation gate as the "Insert HTML Element
+                    // from File" picker so we reject unusable input (not HTML,
+                    // scripts, remote resources) with a reason rather than
+                    // silently dropping the file.
+                    const { validateHtmlSnippet } = await import('../lib/htmlSnippet');
+                    const { showToast } = await import('../lib/toasts');
+                    const v = validateHtmlSnippet(html);
+                    if (!v.ok) {
+                      showToast({ kind: 'error', ttl: 9000,
+                        message: `That .html isn't a usable HTML element: ${v.problems.join('; ')}` });
+                    } else {
+                      store.addElement({
+                        id: crypto.randomUUID(), type: 'html',
+                        position: { x: 560, y: 300, width: 800, height: 500 },
+                        html: v.html,
+                        ...(v.interactive ? { interactive: true } : {}),
+                      });
+                    }
                   }
                 } catch (err) { console.error('Failed to handle dropped HTML:', err); }
               } else if (isIpynb) {
