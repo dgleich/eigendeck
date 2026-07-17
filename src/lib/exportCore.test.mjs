@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildExportHtml, htmlEscapeForSrcdoc, injectDemoBootstrap, bytesToDataUrl, encodeEigendeckSource, parseEigendeckSource } from './exportCore.mjs';
+import { buildExportHtml, htmlEscapeForSrcdoc, injectDemoBootstrap, bytesToDataUrl, encodeEigendeckSource, parseEigendeckSource, extractEigendeckDeckJson } from './exportCore.mjs';
 
 // Minimal presentation for testing
 function makePresentation(overrides = {}) {
@@ -641,6 +641,35 @@ describe('[simplify-guard] exportCore full-output snapshot (all element types)',
       resolveMathBundle: () => 'ptsans',
     });
     expect(html).toMatchSnapshot();
+  });
+});
+
+describe('eigendeck-deck block (single-store, re-importable with assets)', () => {
+  it('embeds the with-assets deck JSON when deckJson is given, replacing the legacy comment', async () => {
+    // An asset whose base64/metadata contains </script> and </div> — must not close
+    // the block early (the `</` escape), and must survive extraction byte-identical.
+    const deck = { title: 'T λ', slides: [], assets: [
+      { assetId: 'a1', mime: 'text/html', data: 'PGh0bWw+', note: 'has </script> and </div> inside' },
+    ] };
+    const deckJson = JSON.stringify(deck);
+    const html = await buildExportHtml({
+      presentation: makePresentation(), readFile: async () => new Uint8Array([0]),
+      readTextFile: async () => '', deckJson,
+    });
+    expect(html).toContain('id="eigendeck-deck"');
+    expect(html).not.toContain('<!-- eigendeck-source');           // block replaces the comment
+    expect(html).toContain('data-asset-id');                        // loader wiring present
+    const recovered = extractEigendeckDeckJson(html);
+    expect(JSON.parse(recovered)).toEqual(deck);                    // </script> etc. round-tripped
+  });
+
+  it('falls back to the legacy comment (and no deck block) when deckJson is absent', async () => {
+    const html = await buildExportHtml({
+      presentation: makePresentation(), readFile: async () => new Uint8Array([0]), readTextFile: async () => '',
+    });
+    expect(html).toContain('<!-- eigendeck-source');
+    expect(html).not.toContain('id="eigendeck-deck"');
+    expect(extractEigendeckDeckJson(html)).toBeNull();
   });
 });
 
