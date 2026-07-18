@@ -92,6 +92,7 @@ MANIFEST=(
   # title-shift-probe is NOT gated — see e2e/README.md "Not yet gated"
   # (headless SVG glyph-geometry measurement reads null in this WebKit build).
   "zorder-probe.mjs|empty.eigendeck||$EMPTY"
+  "paste-text-probe.mjs|empty.eigendeck||$EMPTY"   # #161 paste plain/styled text → text element (color kept, font-size dropped)
   "styling-roundtrip.mjs|empty.eigendeck||$EMPTY"
   "sync-badge-reopen-probe.mjs|empty.eigendeck||$EMPTY"
 
