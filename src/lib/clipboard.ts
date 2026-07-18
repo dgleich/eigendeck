@@ -16,24 +16,44 @@
 //     clipboard's text/html; present → trust the HTML (strip
 //     marker); absent → fall back to text/plain.
 
-/** Magic-comment marker for eigendeck-origin HTML. Survives WebKit
- *  clipboard sanitization cleanly (custom MIME types can be
- *  stripped). Invisible in render — HTML comments are skipped by
- *  parsers. Versioned so the format can evolve. */
+/** Legacy magic-comment marker for eigendeck-origin HTML. Kept for back-compat
+ *  (and it works in-webview, where clipboardData round-trips verbatim), but a
+ *  leading HTML comment does NOT reliably survive the macOS NSPasteboard's
+ *  text/html re-serialization — so it can't be the only signal. Versioned. */
 export const EIGENDECK_PASTE_MARKER = '<!--eigendeck-copy:v1-->';
 
-/** Prepend the marker to an HTML fragment. */
+/** Robust marker: a data ATTRIBUTE on a real wrapper element. Unlike a comment,
+ *  a DOM attribute survives the OS clipboard's HTML re-serialization (macOS), so
+ *  an eigendeck→eigendeck paste is still recognized after a native pasteboard
+ *  round-trip. `div` wrapper (valid around block or inline content). */
+const EIGENDECK_ATTR_MARKER = 'data-eigendeck-copy';
+
+/** Prepend the comment marker only (no wrapper element — no layout impact).
+ *  Used where the marked HTML is RENDERED (HTML export / print), so it must not
+ *  alter structure; the comment is enough there because that HTML isn't put on
+ *  the OS clipboard until a user copies it (and the data-attribute form is used
+ *  for the in-app clipboard producers). */
 export function markAsEigendeck(html: string): string {
   return EIGENDECK_PASTE_MARKER + html;
 }
 
-/** True iff the HTML carries our marker anywhere. */
-export function hasEigendeckMarker(html: string): boolean {
-  return html.includes(EIGENDECK_PASTE_MARKER);
+/** Wrap with BOTH markers for content going onto the CLIPBOARD. The data
+ *  attribute survives the macOS NSPasteboard's text/html re-serialization (a
+ *  leading comment does not), so an eigendeck→eigendeck paste is still routed
+ *  through the trusted/element path after a native pasteboard round-trip. */
+export function markAsEigendeckForClipboard(html: string): string {
+  return `${EIGENDECK_PASTE_MARKER}<div ${EIGENDECK_ATTR_MARKER}="v1">${html}</div>`;
 }
 
-/** Remove every instance of the marker (for use just before
- *  inserting trusted HTML into a destination element). */
+/** True iff the HTML carries either marker anywhere. */
+export function hasEigendeckMarker(html: string): boolean {
+  return html.includes(EIGENDECK_ATTR_MARKER) || html.includes(EIGENDECK_PASTE_MARKER);
+}
+
+/** Remove both markers (the comment, and the data attribute — leaving the plain
+ *  wrapper div, which the sanitizer keeps) before inserting trusted HTML. */
 export function stripEigendeckMarker(html: string): string {
-  return html.split(EIGENDECK_PASTE_MARKER).join('');
+  return html
+    .split(EIGENDECK_PASTE_MARKER).join('')
+    .replace(new RegExp(`\\s*${EIGENDECK_ATTR_MARKER}="v1"`, 'gi'), '');
 }

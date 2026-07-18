@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { looksLikeRichHtml, sanitizeForCapture, extractPastedDataUrlImage } from './htmlPasteCapture';
+import { htmlNeedsScreenshot, sanitizeForCapture, extractPastedDataUrlImage } from './htmlPasteCapture';
 
 describe('extractPastedDataUrlImage (#158 Google Slides)', () => {
   // 1x1 transparent PNG
@@ -32,18 +32,21 @@ describe('extractPastedDataUrlImage (#158 Google Slides)', () => {
   });
 });
 
-describe('looksLikeRichHtml', () => {
-  it('detects block/structured HTML', () => {
-    expect(looksLikeRichHtml('<table><tr><td>a</td></tr></table>')).toBe(true);
-    expect(looksLikeRichHtml('<ul><li>x</li></ul>')).toBe(true);
-    expect(looksLikeRichHtml('<h2>Title</h2>')).toBe(true);
-    expect(looksLikeRichHtml('<div><p>hi</p></div>')).toBe(true);
+describe('htmlNeedsScreenshot', () => {
+  it('screenshots structure a text box cannot represent (tables, images, preformatted)', () => {
+    expect(htmlNeedsScreenshot('<table><tr><td>a</td></tr></table>')).toBe(true);
+    expect(htmlNeedsScreenshot('<img src="data:image/png;base64,AAAA">')).toBe(true);
+    expect(htmlNeedsScreenshot('<pre>  code</pre>')).toBe(true);
   });
-  it('ignores bare inline / empty', () => {
-    expect(looksLikeRichHtml('<span>just text</span>')).toBe(false);
-    expect(looksLikeRichHtml('plain')).toBe(false);
-    expect(looksLikeRichHtml('')).toBe(false);
-    expect(looksLikeRichHtml(null)).toBe(false);
+  it('does NOT screenshot text a text box CAN represent (paragraphs, styling, lists, headings)', () => {
+    // Word/browsers wrap even a one-line styled sentence in <p>/<div> — must be editable text (#161).
+    expect(htmlNeedsScreenshot('<div><p>Here is <b>some</b> text.</p></div>')).toBe(false);
+    expect(htmlNeedsScreenshot('<ul><li>x</li></ul>')).toBe(false);
+    expect(htmlNeedsScreenshot('<h2>Title</h2>')).toBe(false);
+    expect(htmlNeedsScreenshot('<span style="color:red">just text</span>')).toBe(false);
+    expect(htmlNeedsScreenshot('plain')).toBe(false);
+    expect(htmlNeedsScreenshot('')).toBe(false);
+    expect(htmlNeedsScreenshot(null)).toBe(false);
   });
 });
 

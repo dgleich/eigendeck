@@ -21,7 +21,7 @@ import { VIDEO_EMBED_ALLOW } from '../lib/videoEmbed';
 import { useYoutubeShimBase, liveEmbedSrc } from '../lib/youtubeShim';
 import { NotebookBox } from './NotebookBox';
 import { useImageSrc } from '../lib/imageSrc';
-import { EIGENDECK_PASTE_MARKER, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
+import { markAsEigendeckForClipboard, hasEigendeckMarker, stripEigendeckMarker } from '../lib/clipboard';
 import { resolveTheme, themeColorForPreset } from '../lib/themes';
 import type { ThemeColors } from '../lib/themes';
 
@@ -969,7 +969,7 @@ function TextContent({
           const range = sel.getRangeAt(0);
           const container = document.createElement('div');
           container.appendChild(range.cloneContents());
-          e.clipboardData?.setData('text/html', EIGENDECK_PASTE_MARKER + container.innerHTML);
+          e.clipboardData?.setData('text/html', markAsEigendeckForClipboard(container.innerHTML));
           e.clipboardData?.setData('text/plain', sel.toString());
         } : undefined}
         onPaste={editing ? (e) => {

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react
 import { usePresentationStore } from '../store/presentation';
 import { usePreference } from '../lib/preferences';
 import { gridOverlaySvg } from '../lib/grid';
-import { captureHtmlToPng, looksLikeRichHtml, extractPastedDataUrlImage } from '../lib/htmlPasteCapture';
+import { captureHtmlToPng, htmlNeedsScreenshot, extractPastedDataUrlImage } from '../lib/htmlPasteCapture';
 import { pasteTextToElementHtml } from '../lib/pasteText';
 import { relPath } from '../App';
 import { useDemoDoc, useDeckFontFacesCss, useDemoHost } from '../lib/demoMount';
@@ -361,7 +361,7 @@ export function SlideEditor() {
      *  screenshot to a PNG, inserted as an image. Shared by the clipboardData
      *  path and the native-pasteboard (macOS) path. Returns true if it inserted. */
     const insertRichHtmlScreenshot = async (html: string): Promise<boolean> => {
-      if (!html || !looksLikeRichHtml(html) || hasEigendeckMarker(html)) return false;
+      if (!html || !htmlNeedsScreenshot(html) || hasEigendeckMarker(html)) return false;
       const { resolveFontPackage, bareFamilyName } = await import('../lib/fonts');
       const cfg = usePresentationStore.getState().presentation.config;
       const family = bareFamilyName(resolveFontPackage(cfg?.defaultBodyFont));

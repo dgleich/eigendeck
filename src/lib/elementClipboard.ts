@@ -15,7 +15,7 @@ import { TEXT_PRESET_STYLES, effectiveFontSize, resolveColor } from '../types/pr
 import { resolveTheme, themeColorForPreset } from './themes';
 import { fontForPreset, fontFamilyForPreset } from './fonts';
 import { renderMathInHtmlSync, containsMath } from './mathjaxRenderer';
-import { markAsEigendeck } from './clipboard';
+import { markAsEigendeckForClipboard } from './clipboard';
 
 const PAYLOAD_V = 1;
 
@@ -115,7 +115,7 @@ export function textElementClipboardHtml(
   const styled =
     `<div style="font-family:${fontFamily};font-size:${fontSize}px;font-weight:${preset.fontWeight};` +
     `font-style:${preset.fontStyle};color:${color};line-height:1.3;">${rendered}</div>`;
-  return { html: markAsEigendeck(styled), plain: plainTextFromHtml(el.html || '') };
+  return { html: markAsEigendeckForClipboard(styled), plain: plainTextFromHtml(el.html || '') };
 }
 
 /** Is there a FRESH internal asset clip right now? (staleness-checked in Rust).

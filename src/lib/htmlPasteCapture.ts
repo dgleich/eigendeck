@@ -14,10 +14,15 @@
 // the typeface so pastes look on-brand). Scripts / event handlers / javascript:
 // URLs are stripped before rendering.
 
-/** Does this clipboard HTML have block content worth capturing (vs. a bare
- *  inline run that a text element would handle better)? */
-export function looksLikeRichHtml(html: string | null | undefined): boolean {
-  return !!html && /<(table|thead|tbody|tr|ul|ol|li|pre|code|blockquote|h[1-6]|img|figure|section|article|p|div|dl)[\s>]/i.test(html);
+/** Does this pasted HTML contain structure a text box CAN'T represent — a real
+ *  TABLE, an image, or preformatted/SVG/MathML content? Those go to the screenshot
+ *  path. Everything else (paragraphs, <div>/<span> wrappers, bold/italic/color,
+ *  headings, lists) is representable as an editable text element via
+ *  sanitizeRichText's allowlist, so it must NOT screenshot. This is deliberately
+ *  narrow: Word and browsers wrap even a one-line styled sentence in <p>/<div>,
+ *  which should still paste as editable text, not an image (#161). */
+export function htmlNeedsScreenshot(html: string | null | undefined): boolean {
+  return !!html && /<(table|thead|tbody|tfoot|tr|td|th|img|svg|figure|pre|math)[\s>]/i.test(html);
 }
 
 /** Pull the FIRST embedded data-URL `<img>` out of pasted HTML (#158). Google

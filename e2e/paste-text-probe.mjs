@@ -67,6 +67,38 @@ if (!b.html.includes('&lt;x&gt;') || !b.html.includes('&amp;')) fail(`case B: me
 if (b.html.includes('<x>')) fail(`case B: raw tag leaked ("${b.html}")`);
 console.log(`  case B OK — plain text -> text element, <br> + escaping: ${b.html}`);
 
+// --- Case C: Word-style styled sentence wrapped in <p>/<div> — must become an
+//     editable TEXT element, NOT a screenshot image (the reported regression) ---
+base = els.length;
+await dispatchPaste('Here is some bold text.', '<div><p>Here is <b style="color:#008000">some bold</b> text.</p></div>');
+els = await waitForCount(base + 1);
+if (els.length !== base + 1) fail(`case C: expected ${base + 1} elements, got ${els.length}`);
+const c = els[els.length - 1];
+if (c.type !== 'text') fail(`case C: Word <p> paragraph came in as ${c.type}, expected text (must not screenshot)`);
+if (!/some bold/.test(c.html)) fail(`case C: text missing ("${c.html}")`);
+if (!/<(b|strong)|font-weight/i.test(c.html) || !/color/i.test(c.html)) fail(`case C: bold/color not preserved ("${c.html}")`);
+console.log(`  case C OK — Word <p> styled sentence -> TEXT element (not image): ${c.html}`);
+
+// --- Case D: a real TABLE must screenshot to an IMAGE, not flatten to text ---
+base = els.length;
+await dispatchPaste('a\tb', '<table><tr><td>a</td><td>b</td></tr></table>');
+els = await waitForCount(base + 1);
+if (els.length !== base + 1) fail(`case D: expected ${base + 1} elements, got ${els.length}`);
+const d = els[els.length - 1];
+if (d.type !== 'image') fail(`case D: table came in as ${d.type}, expected image (screenshot)`);
+console.log('  case D OK — table -> image (screenshot)');
+
+// --- Case E: an eigendeck-marked paste (a copy of an eigendeck text element)
+//     must NOT create a raw text box from the baked-color HTML — the marker makes
+//     this path defer to the element-clip paste. Assert no new element appears. ---
+base = els.length;
+// data-attribute marker (survives the OS pasteboard); baked color would be black.
+await dispatchPaste('white text', '<div data-eigendeck-copy="v1"><div style="color:#000000">white text</div></div>');
+await sleep(1500);
+els = await elsOnSlide0();
+if (els.length !== base) fail(`case E: eigendeck-marked paste created ${els.length - base} element(s); should defer (marker guard)`);
+console.log('  case E OK — eigendeck-marked paste defers (no raw text box created)');
+
 await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {});
 console.log('E2E_PASS: paste-text (#161)');
 process.exit(0);
