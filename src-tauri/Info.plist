@@ -3,9 +3,11 @@
 <!--
   Merged into the generated Info.plist by tauri-bundler on macOS builds. We declare
   the .eigendeck document type here (instead of relying on the `fileAssociations`
-  autogeneration) so we can point it at a custom icon via CFBundleTypeIconFile —
-  Tauri's fileAssociations has no icon field. The icon file itself (eigendeck-doc.icns)
-  ships via bundle.resources. See docs/mac-native-toolbar.md / issue #130.
+  autogeneration) so we can point it at a custom icon — Tauri's fileAssociations has
+  no icon field. The type binds to an exported UTI (dev.eigendeck.eigendeck) whose
+  UTTypeIconFile carries the icon (the robust path Launch Services prefers);
+  CFBundleTypeIconFile is kept as a fallback. The icon file (eigendeck-doc.icns)
+  ships via bundle.resources. See docs/mac-native-toolbar.md / issues #130, #151.
   (fileAssociations in tauri.conf.json still drives the Linux/Windows associations.)
 
   It also carries the App Transport Security exception that lets WKWebView load the
@@ -37,9 +39,14 @@
     <dict>
       <key>CFBundleTypeName</key>
       <string>Eigendeck Presentation</string>
-      <key>CFBundleTypeExtensions</key>
+      <!-- Bind the doc type to our exported UTI (below), NOT CFBundleTypeExtensions.
+           An extension-only declaration makes macOS synthesize a dynamic UTI and
+           the icon rides solely on CFBundleTypeIconFile, which is what fell back
+           to the auto-composited app-icon-on-a-page document icon (#151). Apple's
+           guidance is to use LSItemContentTypes OR CFBundleTypeExtensions, not both. -->
+      <key>LSItemContentTypes</key>
       <array>
-        <string>eigendeck</string>
+        <string>dev.eigendeck.eigendeck</string>
       </array>
       <key>CFBundleTypeRole</key>
       <string>Editor</string>
@@ -47,6 +54,36 @@
       <string>eigendeck-doc</string>
       <key>LSHandlerRank</key>
       <string>Owner</string>
+    </dict>
+  </array>
+  <!-- Exported UTI for the .eigendeck document type. Distinct from the app's
+       bundle identifier (dev.eigendeck.Eigendeck): this names the FILE type. The
+       document icon binds here via UTTypeIconFile, so it's tied to a real declared
+       type rather than just a filename extension — the robust path Finder and
+       Launch Services prefer, and the durable fix for #151. The icns basename
+       "eigendeck-doc" resolves to Resources/eigendeck-doc.icns (bundled flat by
+       tauri.conf.json's resources map). -->
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key>
+      <string>dev.eigendeck.eigendeck</string>
+      <key>UTTypeDescription</key>
+      <string>Eigendeck Presentation</string>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.data</string>
+        <string>public.content</string>
+      </array>
+      <key>UTTypeIconFile</key>
+      <string>eigendeck-doc</string>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>eigendeck</string>
+        </array>
+      </dict>
     </dict>
   </array>
 </dict>
