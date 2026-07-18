@@ -1667,6 +1667,15 @@ function App() {
           }
         })(); break;
         case 'debug-console': window.dispatchEvent(new CustomEvent('toggle-debug-console')); break;
+        case 'dump-pasteboard':
+          // Debug: dump the OS pasteboard's UTIs + previews to the JS console
+          // (and stdout, via the Rust command's println!). Diagnoses which
+          // clipboard representations a source app offers for paste routing.
+          import('@tauri-apps/api/core').then(({ invoke }) =>
+            invoke<string>('pasteboard_dump')
+              .then((r) => console.log('%c[pasteboard_dump]', 'font-weight:bold', '\n' + r))
+              .catch((e) => console.error('pasteboard_dump failed', e)));
+          break;
         case 'settings':
           void openSettingsWindow();
           break;

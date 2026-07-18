@@ -99,6 +99,35 @@ pub fn pasteboard_read_type(_app: tauri::AppHandle, uti: String) -> Result<Optio
     }
 }
 
+/// DEBUG: dump every UTI currently on the general pasteboard with a byte length
+/// and a text preview, to BOTH stdout (visible when the app is run from a
+/// terminal in debug mode) and the returned string (logged in the JS console).
+/// Used to diagnose which representations a source app offers so the paste
+/// handler can pick the right one. macOS-only; a note elsewhere.
+#[tauri::command]
+pub fn pasteboard_dump(_app: tauri::AppHandle) -> Result<String, String> {
+    #[cfg(target_os = "macos")]
+    {
+        use std::sync::mpsc;
+        let (tx, rx) = mpsc::channel::<String>();
+        let _ = _app.run_on_main_thread(move || {
+            let _ = tx.send(mac_pasteboard_dump());
+        });
+        let report = rx
+            .recv()
+            .unwrap_or_else(|_| "pasteboard_dump: main-thread dispatch failed".into());
+        // stdout (terminal debug run) — the leading marker makes it easy to grep.
+        println!("[pasteboard_dump]\n{report}");
+        Ok(report)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let msg = "pasteboard_dump: macOS-only (no NSPasteboard on this platform)".to_string();
+        println!("[pasteboard_dump] {msg}");
+        Ok(msg)
+    }
+}
+
 // generalPasteboard() in objc2-app-kit 0.3 takes no MainThreadMarker
 // (NSPasteboard read methods are thread-safe per Apple's docs). We still
 // dispatch to the main thread via Tauri's run_on_main_thread above so
@@ -135,6 +164,44 @@ fn mac_pasteboard_read_type(uti: &str) -> Result<Option<Vec<u8>>, String> {
     let ns = NSString::from_str(uti);
     let data = pb.dataForType(&ns);
     Ok(data.map(|d| d.to_vec()))
+}
+
+#[cfg(target_os = "macos")]
+fn mac_pasteboard_dump() -> String {
+    use objc2_app_kit::NSPasteboard;
+    let pb = NSPasteboard::generalPasteboard();
+    let mut lines = vec![String::from("=== general pasteboard types ===")];
+    match pb.types() {
+        Some(arr) => {
+            for t in arr.iter() {
+                let uti = t.to_string();
+                let detail = match mac_pasteboard_read_type(&uti) {
+                    Ok(Some(bytes)) => {
+                        let len = bytes.len();
+                        // Show a text preview for text-ish payloads; binary (png/tiff)
+                        // just reports its length (the lossy preview would be noise).
+                        let printable = bytes
+                            .iter()
+                            .take(64)
+                            .filter(|&&b| b == b'\n' || b == b'\t' || (0x20..=0x7e).contains(&b))
+                            .count();
+                        if printable * 100 >= bytes.len().min(64) * 80 {
+                            let text = String::from_utf8_lossy(&bytes);
+                            let snippet: String = text.chars().take(300).collect();
+                            format!("{len} bytes | {}", snippet.replace('\n', "\\n"))
+                        } else {
+                            format!("{len} bytes | <binary>")
+                        }
+                    }
+                    Ok(None) => "no data".into(),
+                    Err(e) => format!("read error: {e}"),
+                };
+                lines.push(format!("  {uti}\n      {detail}"));
+            }
+        }
+        None => lines.push("  (no types)".into()),
+    }
+    lines.join("\n")
 }
 
 /// Apple's stable name string for the drag pasteboard. Used by
