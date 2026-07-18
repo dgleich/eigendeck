@@ -119,6 +119,10 @@ export function SlideEditor() {
       // text/html + text/plain on the clipboard (no image), so the image
       // paths below all miss and we render the HTML table to SVG instead.
       const htmlEarly = e.clipboardData?.getData('text/html') || '';
+      // Same reason: capture text/plain up front for the text-element fallback
+      // (#161). clipboardData is neutered by the awaits below, so reading it
+      // there would come back empty for a plain-text (Keynote/Pages) paste.
+      const plainEarly = e.clipboardData?.getData('text/plain') || '';
 
       // Native NSPasteboard path FIRST: WebKit's clipboardData /
       // navigator.clipboard.read() filter out non-standard UTIs (notably
@@ -301,6 +305,30 @@ export function SlideEditor() {
             return;
           }
         } catch (err) { plog('clip_read_system_image failed:', err); }
+      }
+
+      // Plain / lightly-styled TEXT with no image (#161): text/plain (Keynote/
+      // Pages/plain text) or inline-only text/html — block-structured HTML
+      // (tables/lists/formatted blocks) was already handled by the screenshot
+      // path above. Create an editable text element preserving authorable
+      // styling (bold/italic/color/…) but not font-size/family, so the paste
+      // adopts the deck's typography instead of silently no-opping.
+      if (!picked && !hasEigendeckMarker(htmlEarly)) {
+        const { pasteTextToElementHtml } = await import('../lib/pasteText');
+        const html = pasteTextToElementHtml(htmlEarly, plainEarly);
+        if (html) {
+          e.preventDefault();
+          const W = 900, H = 360;
+          const el = createTextElement('textbox', {
+            x: Math.round((SLIDE_WIDTH - W) / 2), y: Math.round((SLIDE_HEIGHT - H) / 2),
+            width: W, height: H,
+          });
+          el.html = html;
+          addElement(el);
+          selectObject({ type: 'element', id: el.id });
+          plog('pasted text → text element');
+          return;
+        }
       }
 
       if (!picked || !pickedFormat) { plog('nothing pasteable in clipboard'); return; }
