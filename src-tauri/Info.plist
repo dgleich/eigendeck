@@ -4,7 +4,7 @@
   Merged into the generated Info.plist by tauri-bundler on macOS builds. We declare
   the .eigendeck document type here (instead of relying on the `fileAssociations`
   autogeneration) so we can point it at a custom icon — Tauri's fileAssociations has
-  no icon field. The type binds to an exported UTI (dev.eigendeck.eigendeck.presentation) whose
+  no icon field. The type binds to an exported UTI (dev.eigendeck.presentation) whose
   UTTypeIconFile carries the icon (the robust path Launch Services prefers);
   CFBundleTypeIconFile is kept as a fallback. The icon file (eigendeck-doc.icns)
   ships via bundle.resources. See docs/mac-native-toolbar.md / issues #130, #151.
@@ -46,7 +46,7 @@
            guidance is to use LSItemContentTypes OR CFBundleTypeExtensions, not both. -->
       <key>LSItemContentTypes</key>
       <array>
-        <string>dev.eigendeck.eigendeck.presentation</string>
+        <string>dev.eigendeck.presentation</string>
       </array>
       <key>CFBundleTypeRole</key>
       <string>Editor</string>
@@ -67,7 +67,7 @@
   <array>
     <dict>
       <key>UTTypeIdentifier</key>
-      <string>dev.eigendeck.eigendeck.presentation</string>
+      <string>dev.eigendeck.presentation</string>
       <key>UTTypeDescription</key>
       <string>Eigendeck Presentation</string>
       <key>UTTypeConformsTo</key>
