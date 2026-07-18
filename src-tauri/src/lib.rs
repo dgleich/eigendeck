@@ -1149,15 +1149,16 @@ pub fn run() {
                         let _ = window.emit("check-close", ());
                         return;
                     }
-                    // Handle devtools toggle on Rust side
+                    // Handle devtools toggle on Rust side. No debug_assertions
+                    // gate: the `devtools` Cargo feature is enabled for all
+                    // profiles (Cargo.toml), so open/close/is_devtools_open are
+                    // available in release too. Gating this to debug left the
+                    // "Developer Tools" View-menu item dead in packaged builds.
                     if id == "devtools" {
-                        #[cfg(debug_assertions)]
-                        {
-                            if window.is_devtools_open() {
-                                window.close_devtools();
-                            } else {
-                                window.open_devtools();
-                            }
+                        if window.is_devtools_open() {
+                            window.close_devtools();
+                        } else {
+                            window.open_devtools();
                         }
                         return;
                     }
