@@ -3,6 +3,7 @@ import { usePresentationStore } from '../store/presentation';
 import { usePreference } from '../lib/preferences';
 import { gridOverlaySvg } from '../lib/grid';
 import { captureHtmlToPng, looksLikeRichHtml, extractPastedDataUrlImage } from '../lib/htmlPasteCapture';
+import { pasteTextToElementHtml } from '../lib/pasteText';
 import { relPath } from '../App';
 import { useDemoDoc, useDeckFontFacesCss, useDemoHost } from '../lib/demoMount';
 import { demoVarsCssForSlide } from '../lib/demoThemeInject';
@@ -160,6 +161,24 @@ export function SlideEditor() {
             return;
           }
         }
+        // No native IMAGE UTI matched → try native TEXT. On macOS, WebKit does
+        // NOT expose text/plain|text/html on clipboardData for a non-editable
+        // paste target (the slide canvas), so every clipboard-based text path
+        // below is dead there — the paste silently no-ops. Read the real bytes
+        // off NSPasteboard instead: prefer public.html (styled / tables) then
+        // plain text. #161. (No-op on Linux/Windows — pasteboard_* return empty
+        // there, so those platforms fall through to the web clipboard below.)
+        const readNativeText = async (uti: string): Promise<string> => {
+          if (!nativeTypes.includes(uti)) return '';
+          const b = await invoke<number[] | null>('pasteboard_read_type', { uti });
+          return b && b.length ? new TextDecoder('utf-8').decode(new Uint8Array(b)) : '';
+        };
+        const nativeHtml = await readNativeText('public.html');
+        const nativePlain = (await readNativeText('public.utf8-plain-text')) || (await readNativeText('public.text'));
+        if (nativeHtml || nativePlain) {
+          if (await insertRichHtmlScreenshot(nativeHtml)) { e.preventDefault(); return; }
+          if (insertPastedText(nativeHtml, nativePlain)) { e.preventDefault(); return; }
+        }
         plog('native pasteboard had no preferred UTI; falling through to web clipboard');
       } catch (err) {
         plog('native pasteboard read failed (non-Mac or perm denied?):', err);
@@ -257,35 +276,12 @@ export function SlideEditor() {
         }
       }
 
-      // Google Sheets (and other HTML-only tables): no image on the clipboard,
-      // but a <table> in text/html. Render it to a self-contained SVG and
-      // insert through the same path as an Excel/Pages SVG paste.
-      // General rich-HTML paste: render it in the deck font and screenshot to a
-      // PNG, then insert as an image. Handles tables, lists, formatted blocks,
-      // etc. — the browser does the layout (far more robust than parsing one
-      // app's markup). Static snapshot, so thumbnails/present/export work for free.
-      if ((!picked || !pickedFormat) && looksLikeRichHtml(htmlEarly) && !hasEigendeckMarker(htmlEarly)) {
-        const { resolveFontPackage, bareFamilyName } = await import('../lib/fonts');
-        const cfg = usePresentationStore.getState().presentation.config;
-        const family = bareFamilyName(resolveFontPackage(cfg?.defaultBodyFont));
-        const cap = await captureHtmlToPng(htmlEarly, { fontFamily: `'${family}', sans-serif`, scale: 4 });
-        if (cap) {
-          e.preventDefault();
-          // Slide-space box at ~3x the CSS render (capture is 4x → crisp), capped.
-          const SCALE = 3;
-          let w = cap.width * SCALE, h = cap.height * SCALE;
-          const k = Math.min(1, 1600 / w, 900 / h);
-          w = Math.round(w * k); h = Math.round(h * k);
-          const pos = {
-            x: Math.round((SLIDE_WIDTH - w) / 2), y: Math.round((SLIDE_HEIGHT - h) / 2),
-            width: w, height: h,
-          };
-          const fileName = `pasted-html-${Date.now()}.png`;
-          plog(`pasted HTML → png ${cap.width}x${cap.height} font=${family}`);
-          await insertPastedAsset(`images/${fileName}`, cap.bytes, 'image/png', fileName, pos);
-          return;
-        }
-      }
+      // Google Sheets / rich-HTML paste (tables, lists, formatted blocks): no
+      // image on the clipboard, but a <table> etc. in text/html. Render it in the
+      // deck font and screenshot to a PNG — the browser does the layout (far more
+      // robust than parsing one app's markup), and it's a static snapshot so
+      // thumbnails/present/export work for free.
+      if (!picked && await insertRichHtmlScreenshot(htmlEarly)) { e.preventDefault(); return; }
 
       // Linux image fallback (#94): WebKitGTK doesn't reliably surface a
       // screenshot's image/png on the sync DataTransfer OR the async Clipboard
@@ -308,28 +304,12 @@ export function SlideEditor() {
       }
 
       // Plain / lightly-styled TEXT with no image (#161): text/plain (Keynote/
-      // Pages/plain text) or inline-only text/html — block-structured HTML
-      // (tables/lists/formatted blocks) was already handled by the screenshot
-      // path above. Create an editable text element preserving authorable
-      // styling (bold/italic/color/…) but not font-size/family, so the paste
-      // adopts the deck's typography instead of silently no-opping.
-      if (!picked && !hasEigendeckMarker(htmlEarly)) {
-        const { pasteTextToElementHtml } = await import('../lib/pasteText');
-        const html = pasteTextToElementHtml(htmlEarly, plainEarly);
-        if (html) {
-          e.preventDefault();
-          const W = 900, H = 360;
-          const el = createTextElement('textbox', {
-            x: Math.round((SLIDE_WIDTH - W) / 2), y: Math.round((SLIDE_HEIGHT - H) / 2),
-            width: W, height: H,
-          });
-          el.html = html;
-          addElement(el);
-          selectObject({ type: 'element', id: el.id });
-          plog('pasted text → text element');
-          return;
-        }
-      }
+      // Pages/plain text) or inline-only text/html — block-structured HTML was
+      // already handled by the screenshot path above. Create an editable text
+      // element that adopts the deck's typography instead of silently no-opping.
+      // (macOS reaches this via the native-pasteboard read above, since WebKit
+      // leaves clipboardData empty for a non-editable paste there.)
+      if (!picked && insertPastedText(htmlEarly, plainEarly)) { e.preventDefault(); return; }
 
       if (!picked || !pickedFormat) { plog('nothing pasteable in clipboard'); return; }
       e.preventDefault();
@@ -375,6 +355,46 @@ export function SlideEditor() {
         // Paste has no source folder — handler will just warn.
         void handleSvgExternalRefs(bytes, fileName, null);
       }
+    };
+
+    /** Rich HTML (tables/lists/formatted blocks) → render in the deck font and
+     *  screenshot to a PNG, inserted as an image. Shared by the clipboardData
+     *  path and the native-pasteboard (macOS) path. Returns true if it inserted. */
+    const insertRichHtmlScreenshot = async (html: string): Promise<boolean> => {
+      if (!html || !looksLikeRichHtml(html) || hasEigendeckMarker(html)) return false;
+      const { resolveFontPackage, bareFamilyName } = await import('../lib/fonts');
+      const cfg = usePresentationStore.getState().presentation.config;
+      const family = bareFamilyName(resolveFontPackage(cfg?.defaultBodyFont));
+      const cap = await captureHtmlToPng(html, { fontFamily: `'${family}', sans-serif`, scale: 4 });
+      if (!cap) return false;
+      // Slide-space box at ~3x the CSS render (capture is 4x → crisp), capped.
+      const SCALE = 3;
+      let w = cap.width * SCALE, h = cap.height * SCALE;
+      const k = Math.min(1, 1600 / w, 900 / h);
+      w = Math.round(w * k); h = Math.round(h * k);
+      const pos = { x: Math.round((SLIDE_WIDTH - w) / 2), y: Math.round((SLIDE_HEIGHT - h) / 2), width: w, height: h };
+      const fileName = `pasted-html-${Date.now()}.png`;
+      plog(`pasted HTML → png ${cap.width}x${cap.height} font=${family}`);
+      await insertPastedAsset(`images/${fileName}`, cap.bytes, 'image/png', fileName, pos);
+      return true;
+    };
+
+    /** Plain / lightly-styled text → an editable text element (#161). Shared by
+     *  the clipboardData path and the native-pasteboard (macOS) path. Returns
+     *  true if it inserted. */
+    const insertPastedText = (html: string, plain: string): boolean => {
+      if (hasEigendeckMarker(html)) return false;
+      const elHtml = pasteTextToElementHtml(html, plain);
+      if (!elHtml) return false;
+      const W = 900, H = 360;
+      const el = createTextElement('textbox', {
+        x: Math.round((SLIDE_WIDTH - W) / 2), y: Math.round((SLIDE_HEIGHT - H) / 2), width: W, height: H,
+      });
+      el.html = elHtml;
+      addElement(el);
+      selectObject({ type: 'element', id: el.id });
+      plog('pasted text → text element');
+      return true;
     };
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
