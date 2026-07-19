@@ -1410,6 +1410,12 @@ function App() {
           if (el.type === 'text') {
             const r = textElementClipboardHtml(el, slide, state.presentation.config, state.presentation.theme);
             visibleHtml = r.styledHtml; plain = r.plain;
+          } else if (el.type === 'html') {
+            // Raw-HTML element (#137): put its source on the clipboard as the
+            // visible flavors, so it renders/pastes into foreign apps and shows
+            // up as real content (not just the empty private-flavor wrapper).
+            visibleHtml = (el as { html?: string }).html || '';
+            plain = visibleHtml;
           }
           if (isCopyableAsset(el)) assetEl = el;
         }

@@ -45,6 +45,18 @@ for (let i = 0; i < 20; i++) { els1 = await elsOn(1); if (els1.length > base) br
 if (els1.length !== base + 1) fail(`internal paste: expected ${base + 1} els on slide 1, got ${els1.length}`);
 console.log(`  internal element paste onto another slide → +1 element (${els1[els1.length-1].type})`);
 
+// --- cross-slide paste must create an ANIMATION LINK (shared linkId src<->pasted) ---
+const linkInfo = await exec(sid, `
+  const s = window.__eigendeck.store.getState().presentation.slides;
+  const src = s[0].elements.find(e=>e.id==='t0');
+  const pasted = s[1].elements[s[1].elements.length-1];
+  return { srcLink: (src&&src.linkId)||null, pastedLink: (pasted&&pasted.linkId)||null };
+`);
+if (!linkInfo.pastedLink || linkInfo.pastedLink !== linkInfo.srcLink) {
+  fail('cross-slide paste did NOT create an animation link: ' + JSON.stringify(linkInfo));
+}
+console.log('  cross-slide paste created an animation link (shared linkId)');
+
 // --- STALE guard: now put TEXT on the clipboard, canvas-paste → must NOT paste the element ---
 base = (await elsOn(1)).length;
 await exec(sid, `
