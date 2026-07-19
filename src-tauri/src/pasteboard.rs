@@ -103,7 +103,9 @@ pub fn pasteboard_read_type(_app: tauri::AppHandle, uti: String) -> Result<Optio
 /// and a text preview, to BOTH stdout (visible when the app is run from a
 /// terminal in debug mode) and the returned string (logged in the JS console).
 /// Used to diagnose which representations a source app offers so the paste
-/// handler can pick the right one. macOS-only; a note elsewhere.
+/// handler can pick the right one. macOS-only; a note elsewhere. Debug builds
+/// only — compiled out of release entirely (registered under #[cfg] in lib.rs).
+#[cfg(debug_assertions)]
 #[tauri::command]
 pub fn pasteboard_dump(_app: tauri::AppHandle) -> Result<String, String> {
     #[cfg(target_os = "macos")]
@@ -166,7 +168,7 @@ fn mac_pasteboard_read_type(uti: &str) -> Result<Option<Vec<u8>>, String> {
     Ok(data.map(|d| d.to_vec()))
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", debug_assertions))]
 fn mac_pasteboard_dump() -> String {
     use objc2_app_kit::NSPasteboard;
     let pb = NSPasteboard::generalPasteboard();

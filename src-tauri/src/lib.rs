@@ -31,6 +31,10 @@ fn app_about_icon() -> Option<Image<'static>> {
 }
 
 mod clip;
+// Debug tooling (the Debug menu, its batch/diagnostic commands, the pasteboard
+// dump) is compiled ONLY into debug builds — none of it ships in a release
+// binary. Every debug:: reference below is #[cfg(debug_assertions)]-gated to match.
+#[cfg(debug_assertions)]
 mod debug;
 mod fscmds;
 mod llmtools;
@@ -942,8 +946,9 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
     #[cfg(target_os = "macos")]
     let help_menu = help_base.build().map_err(|e| e.to_string())?;
 
-    // Debug submenu — appended ONLY when launched with --debug. The flag is
-    // read inside debug::attach_submenu_if_enabled; lib.rs never sees the bool.
+    // Debug submenu — DEBUG BUILDS ONLY, and within those, appended only when
+    // launched with --debug (the flag is read inside attach_submenu_if_enabled).
+    #[cfg(debug_assertions)]
     let debug_menu = debug::attach_submenu_if_enabled(app)?;
 
     let mut bar = MenuBuilder::new(app);
@@ -963,6 +968,7 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
     {
         bar = bar.item(&window_menu);
     }
+    #[cfg(debug_assertions)]
     if let Some(ref dm) = debug_menu {
         bar = bar.item(dm);
     }
@@ -973,17 +979,25 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Parse --debug ONCE here. Stored as managed state; only the debug module
-    // reads it. Nothing else may branch on this flag (see debug.rs).
+    // Parse --debug ONCE here (debug builds only). Stored as managed state; only
+    // the debug module reads it. Nothing else may branch on this flag (see debug.rs).
+    #[cfg(debug_assertions)]
     let debug_flag = debug::DebugFlag(debug::parse_debug_flag());
 
-    tauri::Builder::default()
-        .manage(debug_flag)
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default();
+    #[cfg(debug_assertions)]
+    {
+        builder = builder.manage(debug_flag);
+    }
+    builder
         .manage(Mutex::new(fscmds::WatchState::default()))
         .invoke_handler(tauri::generate_handler![
+            #[cfg(debug_assertions)]
             debug::debug_enabled,
             pasteboard::pasteboard_list_types,
             pasteboard::pasteboard_read_type,
+            #[cfg(debug_assertions)]
             pasteboard::pasteboard_dump,
             pasteboard::pasteboard_list_drag_types,
             pasteboard::pasteboard_read_drag_type,
