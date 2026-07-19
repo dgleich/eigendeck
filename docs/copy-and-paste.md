@@ -80,6 +80,45 @@ On paste we **read live from the clipboard**, private flavor first. No separate
 buffer to invalidate ⇒ the stale-paste / nothing-pastes / accidental-duplicate
 bugs cannot occur by construction.
 
+### What goes on the clipboard, per copyable thing
+
+The **private flavor is universal**: EVERY copy (any element type, multi-select,
+or slide) writes the element/slide JSON (base64 in `text/html` via
+`encodeClipHtml`). That is what makes in-app paste full-fidelity and *linkable*.
+The **public flavor is type-specific** (what foreign apps get). The one iron rule
+that prevents the bug class: **the public flavor must NEVER clobber the private
+flavor** — they coexist on one clipboard (the image/arboard bug below).
+
+| Copyable | Private flavor (in-app, always) | Public flavor (foreign apps) |
+|---|---|---|
+| **text** | element JSON | `text/html` (styled, deck-rendered) + `text/plain` |
+| **html** (#137) | element JSON | `text/html` = the element's raw source + `text/plain` |
+| **image** (raster/svg/pdf) | element JSON (assetId ref) **+ the asset bytes** (Rust internal clip, staleness-checked) — carried so cross-deck paste re-stores them | the actual image (`image/png` / `image/svg+xml` / `application/pdf`) written by Rust — **must not overwrite the private `text/html`** |
+| **arrow** | element JSON | none (nothing meaningful to a foreign app) |
+| **cover** | element JSON | none |
+| **video** (file) | element JSON (assetId) + bytes (like image) | the video file / `image/png` poster (best-effort) |
+| **video** (embed: YouTube/Vimeo/…) | element JSON (the URL) | `text/plain` = the source URL |
+| **notebook** | element JSON (assetId) + bytes | `text/plain` = the notebook source (best-effort) |
+| **demo / demo-piece** | element JSON (assetId, piece) + bytes | none (or `text/plain` = the demo HTML source) |
+| **multi-selection** | elements JSON (array) | concatenated `text/plain` of the text-ish members |
+| **slide** | slide JSON | none (a slide isn't a foreign-app object) |
+
+Notes:
+- **The image/arboard clobber (the bug this table exists to prevent):** writing
+  the image bytes to the OS clipboard (Rust `arboard`) *replaces* the clipboard,
+  wiping the browser's `text/html` private flavor set on the same copy. So an
+  image paste lost its link metadata and fell to the asset-only path (no link).
+  Fix: the private flavor for asset elements lives in the **Rust internal clip's
+  payload** (element JSON + link metadata: source slide id, source element id,
+  syncId), so paste re-resolves the link from there — OR the Rust write publishes
+  the private `text/html` *alongside* the image (both survive). Either way the
+  invariant holds: an asset copy still carries its private flavor.
+- **Asset bytes** (image/video-file/notebook/demo) travel via the staleness-
+  checked Rust internal clip so cross-deck paste re-stores them into the target
+  deck with a fresh assetId; the private-flavor JSON only references the asset by
+  id (valid for same-deck paste).
+- Cut = copy + delete the source; the clipboard contents are identical.
+
 ### Internal references (links, sync groups)
 
 An Eigendeck element may be **linked** across slides (shared `linkId`, for

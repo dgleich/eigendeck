@@ -13,6 +13,18 @@ import { runCopyHook } from './elementLifecycle';
 import type { EigendeckClip } from './clipboardModel';
 import type { SlideElement } from '../types/presentation';
 
+/** Create the cross-slide animation LINK between a freshly-pasted element and its
+ *  source (shared linkId), IF the source still exists. Shared by the element
+ *  paste (pasteInternalClip) and the asset (image) paste. No-op when the source
+ *  slide/element is gone. */
+export function linkPastedToSource(pastedId: string, fromSlideId: string | undefined, sourceId: string): void {
+  const state = usePresentationStore.getState();
+  const srcSlideIdx = state.presentation.slides.findIndex((s) => s.id === fromSlideId);
+  if (srcSlideIdx < 0) return;
+  if (!state.presentation.slides[srcSlideIdx].elements.some((s) => s.id === sourceId)) return;
+  state.linkElements(pastedId, srcSlideIdx, sourceId);
+}
+
 export function pasteInternalClip(clip: EigendeckClip): void {
   const state = usePresentationStore.getState();
 
@@ -31,7 +43,6 @@ export function pasteInternalClip(clip: EigendeckClip): void {
   // Same slide if pasting back onto the slide we copied from (by id, so slide
   // reordering doesn't fool it).
   const sameSlide = targetSlide?.id === clip.fromSlideId;
-  const srcSlideIdx = state.presentation.slides.findIndex((s) => s.id === clip.fromSlideId);
 
   const newIds: string[] = [];
   const toLink: Array<{ pastedId: string; sourceId: string }> = [];
@@ -45,14 +56,10 @@ export function pasteInternalClip(clip: EigendeckClip): void {
     newIds.push(newEl.id);
     // Carry type-specific state (e.g. a notebook's recording) to the copy.
     void runCopyHook(el, newEl);
-    // Link to the source only if it still exists on the source slide.
-    if (link && srcSlideIdx >= 0
-        && state.presentation.slides[srcSlideIdx].elements.some((s) => s.id === el.id)) {
-      toLink.push({ pastedId: newEl.id, sourceId: el.id });
-    }
+    if (link) toLink.push({ pastedId: newEl.id, sourceId: el.id });
   }
   for (const { pastedId, sourceId } of toLink) {
-    usePresentationStore.getState().linkElements(pastedId, srcSlideIdx, sourceId);
+    linkPastedToSource(pastedId, clip.fromSlideId, sourceId);
   }
   if (newIds.length === 1) state.selectObject({ type: 'element', id: newIds[0] });
   else if (newIds.length > 1) state.selectObject({ type: 'multi', ids: newIds });

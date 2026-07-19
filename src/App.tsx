@@ -62,6 +62,7 @@ import { bytesToBase64 } from './lib/base64';
 import { extractDemoPieceNames } from './lib/demoPieces';
 import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement, textElementClipboardHtml } from './lib/elementClipboard';
 import { encodeClipHtml } from './lib/clipboardModel';
+import { linkPastedToSource } from './lib/pasteClip';
 import { buildEmbeddedFontFacesCSS, fontForPreset } from './lib/fonts';
 import { renderMathInHtml, containsMath } from './lib/mathjaxRenderer';
 import { getMissingAssets } from './lib/missingAssets';
@@ -1360,10 +1361,19 @@ function App() {
       if (pastedAsset) {
         e.preventDefault();
         const state = usePresentationStore.getState();
-        const p = (pastedAsset as { position?: { x: number; y: number; width: number; height: number } }).position;
-        if (p) (pastedAsset as { position: typeof p }).position = { ...p, x: p.x + 40, y: p.y + 40 };
-        state.addElement(pastedAsset);
-        state.selectObject({ type: 'element', id: pastedAsset.id });
+        const el = pastedAsset.element;
+        const p = (el as { position?: { x: number; y: number; width: number; height: number } }).position;
+        if (p) (el as { position: typeof p }).position = { ...p, x: p.x + 40, y: p.y + 40 };
+        state.addElement(el);
+        state.selectObject({ type: 'element', id: el.id });
+        // Cross-slide paste of an image → animation link to the source (same rule
+        // as element paste; the metadata rode in the asset payload because
+        // arboard's image write clobbers the html private flavor).
+        const link = pastedAsset.link;
+        const curSlideId = state.presentation.slides[state.currentSlideIndex]?.id;
+        if (link.sourceId && link.fromSlideId && !link.sourceSyncId && curSlideId !== link.fromSlideId) {
+          linkPastedToSource(el.id, link.fromSlideId, link.sourceId);
+        }
         return;
       }
       // Foreign system image → let SlideEditor handle it.
@@ -1430,8 +1440,11 @@ function App() {
       e.preventDefault();
       e.clipboardData.setData('text/html', encodeClipHtml(clip, visibleHtml));
       if (plain) e.clipboardData.setData('text/plain', plain);
-      // Asset element: ALSO place the image bytes on the clipboard for foreign paste.
-      if (assetEl) void copyAssetElement(assetEl); else void clearInternalClip();
+      // Asset element: ALSO place the image bytes on the clipboard for foreign
+      // paste (arboard). The link metadata rides in the asset payload since the
+      // image write clobbers the text/html private flavor.
+      if (assetEl) void copyAssetElement(assetEl, { fromSlideId: slide.id, fromSlideIndex: state.currentSlideIndex });
+      else void clearInternalClip();
     };
     window.addEventListener('copy', handleCopy);
 
