@@ -851,8 +851,6 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build(app).map_err(|e| e.to_string())?;
     let debug_item = MenuItemBuilder::new("Debug Console").id("debug-console").accelerator("CmdOrCtrl+Shift+D")
         .build(app).map_err(|e| e.to_string())?;
-    let dump_pb_item = MenuItemBuilder::new("Dump Pasteboard Types").id("dump-pasteboard")
-        .build(app).map_err(|e| e.to_string())?;
     let decorations_item = MenuItemBuilder::new("Hide Window Chrome").id("toggle-decorations").accelerator("CmdOrCtrl+Shift+F")
         .build(app).map_err(|e| e.to_string())?;
     let devtools_item = MenuItemBuilder::new("Developer Tools").id("devtools").accelerator("CmdOrCtrl+Alt+I")
@@ -887,7 +885,6 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .item(&MenuItemBuilder::new("Customize Toolbar…").id("customize-toolbar").build(app).map_err(|e| e.to_string())?)
         .separator()
         .item(&debug_item)
-        .item(&dump_pb_item)
         .item(&devtools_item)
         .separator()
         .fullscreen()

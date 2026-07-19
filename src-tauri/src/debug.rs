@@ -87,6 +87,10 @@ pub fn attach_submenu_if_enabled(app: &AppHandle) -> Result<Option<Submenu<Wry>>
         .id("debug-batch-strip-history")
         .build(app)
         .map_err(|e| e.to_string())?;
+    let dump_pb = MenuItemBuilder::new("Dump Pasteboard Types")
+        .id("dump-pasteboard")
+        .build(app)
+        .map_err(|e| e.to_string())?;
     let sub = SubmenuBuilder::new(app, "Debug")
         .item(&batch_html)
         .item(&batch_roundtrip)
@@ -94,6 +98,8 @@ pub fn attach_submenu_if_enabled(app: &AppHandle) -> Result<Option<Submenu<Wry>>
         .separator()
         .item(&batch_warm)
         .item(&batch_strip)
+        .separator()
+        .item(&dump_pb)
         .build()
         .map_err(|e| e.to_string())?;
     Ok(Some(sub))
