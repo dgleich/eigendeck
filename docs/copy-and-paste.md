@@ -143,13 +143,51 @@ Three levels, because a text element deliberately can't hold everything:
 
 | Command | Result |
 |---|---|
-| **Paste** (⌘V) | Best-fit into a **text element**, normalized to the deck: preset font/size, theme color (external whole-string color stripped), authorable inline styles kept. |
+| **Paste** (⌘V) | Smart default. Best-fit into a **text element**, normalized to the deck: preset font/size, theme color (external whole-string color stripped), authorable inline styles kept. |
 | **Paste and Keep Style** (⌘⇧V, + Edit menu) | Same text element, but **keep the source's authorable styling we can represent** — including a whole-string color. (Font/size still can't be held by a text element.) |
-| **Paste as HTML Element** (Edit menu, explicit) | Create a sandboxed **`html` element** (#137) that preserves the **full** source formatting — font, size, color, layout — for rich content the text element would flatten. |
+| **Paste as…** (Edit menu, explicit) | A **Paste-Special chooser** — the manual override for when the smart default picks the wrong representation. |
 
 `Paste and Match Style` semantics are **inverted** from the platform norm here:
 default *is* match-destination (styling is element-type-driven), and ⌘⇧V is the
 *preserve-source* backup — appropriate for a theme-driven app.
+
+**Paste as…** opens a small modal listing the representations *actually present*
+on the clipboard (never a fixed list — only the flavors this clipboard carries),
+each mapped to the element type it becomes:
+
+| Representation | Becomes |
+|---|---|
+| **Text** | text element (as ⌘V) |
+| **HTML** | sandboxed **`html` element** (#137) — full source formatting (font, size, color, layout) that a text element would flatten |
+| **Image** (PNG/raster) | image element |
+| **PDF** | image element (PDF asset) |
+| **SVG** | image element (SVG asset) |
+
+This is the industry Paste-Special escape hatch (PowerPoint's "Picture vs Keep
+Text Only", InDesign's "Prefer PDF When Pasting"), generalized to whatever the
+clipboard actually offers. It also gives us a clean home for "I copied a table
+from Word and I *want* the crisp PDF, not text."
+
+### Picking among representations (read order)
+
+There is no single global type priority — the **paste target** decides which
+representations it prefers, and we read our **private flavor first**:
+
+1. **Private Eigendeck flavor** (element/slide JSON) → objects/slide. Always
+   first, so an internal copy is never mis-picked as a rendered image.
+2. Then, for foreign content, the **canvas is text-preferring**: rich text
+   (`text/html`/`text/rtf`/non-trivial `text/plain`) → text element; a PDF that
+   accompanies rich text is a *rendering* and is skipped (a text-app copy —
+   Word/Pages put a PDF next to the real text).
+3. **Image / vector** (SVG > PNG > TIFF), and a **PDF with no accompanying rich
+   text** (a genuine vector/graphic copy) → image element.
+4. `text/plain` → text element.
+
+The `Paste as…` chooser overrides this order on demand.
+
+**Write order matters too.** On copy, put the private flavor and the
+representation we most want honored *first* — some readers (browsers, Apple
+Pages) are order-sensitive despite the spec saying they shouldn't be.
 
 ### Duplicate
 
@@ -168,8 +206,9 @@ duplicates.
    partial-text copy). Retire the App-vs-SlideEditor split into one dispatch.
 3. **Styling normalization** — preset font/size, strip external whole-string
    color, keep internal + sub-range colors, keep authorable inline styles.
-4. **Paste modes** — ⌘V (normalize), ⌘⇧V "Paste and Keep Style", Edit-menu
-   "Paste as HTML Element".
+4. **Paste modes** — ⌘V (normalize), ⌘⇧V "Paste and Keep Style", and the
+   Edit-menu **"Paste as…"** chooser (lists the clipboard's actual
+   representations → Text / HTML / Image / PDF / SVG).
 5. **⌘D duplicate bypasses the clipboard**; slide-paste vs object-paste gated on
    focus + slide flavor.
 
