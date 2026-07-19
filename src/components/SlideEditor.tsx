@@ -143,7 +143,16 @@ export function SlideEditor() {
           { utis: ['public.png', 'image/png'], ext: 'png', mime: 'image/png' },
           { utis: ['public.jpeg', 'image/jpeg', 'public.jpg'], ext: 'jpg', mime: 'image/jpeg' },
         ];
+        // A TEXT/document copy (Word, Pages, a browser selection) puts a PDF
+        // *rendering* of the text on the pasteboard alongside the real rich text
+        // — do NOT let that PDF hijack a text paste as an image. When rich text
+        // (public.html/public.rtf) is present, skip the PDF preference so the
+        // native text read below wins. A genuine graphic/vector copy carries no
+        // rich text, so its PDF is still taken. SVG/PNG/TIFF are untouched (real
+        // graphics from Office/Illustrator/screenshots). See #161 / pasteboard dump.
+        const hasRichText = nativeTypes.includes('public.html') || nativeTypes.includes('public.rtf');
         for (const pref of NATIVE_PREFER) {
+          if (pref.ext === 'pdf' && hasRichText) continue;
           for (const uti of pref.utis) {
             if (!nativeTypes.includes(uti)) continue;
             const tRead = performance.now();
