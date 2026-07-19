@@ -1440,8 +1440,17 @@ function App() {
     // then copyAssetElement (system image + cross-window internal clip).
     const handleCopy = (e: ClipboardEvent) => {
       const t = e.target as HTMLElement | null;
-      if (t?.closest?.('[contenteditable="true"]')) return; // text editing → native selection copy
-      if (t && ['INPUT', 'TEXTAREA'].includes(t.tagName)) return;
+      // A copy to the SYSTEM clipboard from editing a text element (or an
+      // input/textarea) supersedes any prior element/slide copy. Clear our
+      // internal buffer so a later CANVAS paste can't serve the STALE old
+      // element — the "multiple clipboards" desync. The system clipboard is
+      // authoritative after this; SlideElementRenderer's onCopy has already
+      // written the selection there.
+      if (t?.closest?.('[contenteditable="true"]') || (t && ['INPUT', 'TEXTAREA'].includes(t.tagName))) {
+        clipboardRef.current = null;
+        void clearInternalClip();
+        return;
+      }
       const state = usePresentationStore.getState();
       const sel = state.selectedObject;
       if (sel?.type !== 'element') { void clearInternalClip(); return; }
