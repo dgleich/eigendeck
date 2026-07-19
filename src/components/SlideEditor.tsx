@@ -4,6 +4,7 @@ import { usePreference } from '../lib/preferences';
 import { gridOverlaySvg } from '../lib/grid';
 import { captureHtmlToPng, htmlNeedsScreenshot, extractPastedDataUrlImage } from '../lib/htmlPasteCapture';
 import { pasteTextToElementHtml } from '../lib/pasteText';
+import { decodeClipHtml } from '../lib/clipboardModel';
 import { relPath } from '../App';
 import { useDemoDoc, useDeckFontFacesCss, useDemoHost } from '../lib/demoMount';
 import { demoVarsCssForSlide } from '../lib/demoThemeInject';
@@ -124,6 +125,30 @@ export function SlideEditor() {
       // (#161). clipboardData is neutered by the awaits below, so reading it
       // there would come back empty for a plain-text (Keynote/Pages) paste.
       const plainEarly = e.clipboardData?.getData('text/plain') || '';
+
+      // PRIVATE Eigendeck flavor FIRST (read private-first, per
+      // docs/copy-and-paste.md): an internal element/slide/multi copy round-trips
+      // with full fidelity straight from the OS clipboard — no separate buffer to
+      // desync. Cross-platform: clipboardData carries it on Linux/Windows; on
+      // macOS clipboardData is empty for a canvas paste, so also read the native
+      // pasteboard's public.html. Wins over images/text below.
+      {
+        let clip = decodeClipHtml(htmlEarly);
+        if (!clip) {
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            const b = await invoke<number[] | null>('pasteboard_read_type', { uti: 'public.html' });
+            if (b && b.length) clip = decodeClipHtml(new TextDecoder('utf-8').decode(new Uint8Array(b)));
+          } catch { /* non-macOS / no native pasteboard */ }
+        }
+        if (clip) {
+          e.preventDefault();
+          const { pasteInternalClip } = await import('../lib/pasteClip');
+          pasteInternalClip(clip);
+          plog('pasted internal clip → ' + clip.kind);
+          return;
+        }
+      }
 
       // Native NSPasteboard path FIRST: WebKit's clipboardData /
       // navigator.clipboard.read() filter out non-standard UTIs (notably
