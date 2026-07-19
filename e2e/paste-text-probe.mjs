@@ -43,7 +43,7 @@ const dispatchPaste = async (plain, html) => exec(sid, `
 `);
 const waitForCount = async (n) => { for (let i = 0; i < 20; i++) { const els = await elsOnSlide0(); if (els.length >= n) return els; await sleep(300); } return await elsOnSlide0(); };
 
-// --- Case A: styled text/html — keep color, drop font-size ---
+// --- Case A: styled text/html — strip a WHOLE-STRING color + font-size, keep bold ---
 let base = (await elsOnSlide0()).length;
 await dispatchPaste('Bold red', '<b style="color:#cc0000;font-size:44px">Bold red</b>');
 let els = await waitForCount(base + 1);
@@ -51,9 +51,10 @@ if (els.length !== base + 1) fail(`case A: expected ${base + 1} elements, got ${
 const a = els[els.length - 1];
 if (a.type !== 'text') fail(`case A: new element is ${a.type}, not text`);
 if (!a.html.includes('Bold red')) fail(`case A: text missing ("${a.html}")`);
-if (!/color/i.test(a.html)) fail(`case A: color not preserved ("${a.html}")`);
+if (/color/i.test(a.html)) fail(`case A: whole-string color NOT stripped ("${a.html}")`);
+if (!/<(b|strong)|font-weight/i.test(a.html)) fail(`case A: bold not kept ("${a.html}")`);
 if (/font-size|44px/i.test(a.html)) fail(`case A: font-size NOT stripped ("${a.html}")`);
-console.log(`  case A OK — styled html -> text element, color kept, font-size dropped: ${a.html}`);
+console.log(`  case A OK — whole-string color + font-size dropped, bold kept: ${a.html}`);
 
 // --- Case B: plain text only — newlines -> <br>, HTML metachars escaped ---
 base = els.length;
@@ -88,16 +89,20 @@ const d = els[els.length - 1];
 if (d.type !== 'image') fail(`case D: table came in as ${d.type}, expected image (screenshot)`);
 console.log('  case D OK — table -> image (screenshot)');
 
-// --- Case E: an eigendeck-marked paste (a copy of an eigendeck text element)
-//     must NOT create a raw text box from the baked-color HTML — the marker makes
-//     this path defer to the element-clip paste. Assert no new element appears. ---
+// --- Case E: an eigendeck TEXT-RUN copy (marker, but NO element JSON) — e.g. you
+//     copied part of a text while editing it — now creates a NEW text box with
+//     the WebKit-baked whole-string color STRIPPED (theme), per Stages 2/3.
+//     (Full element/slide copies carry the JSON and go through the private-flavor
+//     path, never reaching here.) ---
 base = els.length;
-// data-attribute marker (survives the OS pasteboard); baked color would be black.
 await dispatchPaste('white text', '<div data-eigendeck-copy="v1"><div style="color:#000000">white text</div></div>');
-await sleep(1500);
-els = await elsOnSlide0();
-if (els.length !== base) fail(`case E: eigendeck-marked paste created ${els.length - base} element(s); should defer (marker guard)`);
-console.log('  case E OK — eigendeck-marked paste defers (no raw text box created)');
+els = await waitForCount(base + 1);
+if (els.length !== base + 1) fail(`case E: expected a new text box, got ${els.length - base} new element(s)`);
+const eEl = els[els.length - 1];
+if (eEl.type !== 'text') fail(`case E: new element is ${eEl.type}, expected text`);
+if (!eEl.html.includes('white text')) fail(`case E: text missing ("${eEl.html}")`);
+if (/color/i.test(eEl.html)) fail(`case E: baked whole-string color NOT stripped ("${eEl.html}")`);
+console.log('  case E OK — eigendeck text-run → new text box, baked color stripped');
 
 await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {});
 console.log('E2E_PASS: paste-text (#161)');

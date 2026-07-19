@@ -6,10 +6,14 @@
 // is the pure decision: given the clipboard's text/html and text/plain, produce
 // the element html, or null when there's nothing usable.
 //
-// Styling policy is the format toolbar's allowlist via sanitizeRichText: keep
-// bold/italic/underline/strike, foreground color, uppercase + letter-spacing,
-// alignment and lists; DROP inline font-size and font-family (the pasted text
-// adopts the target preset's size). See sanitizeRichText.ts.
+// Styling policy (docs/copy-and-paste.md): keep only what the format toolbar can
+// author — bold / italic / strikethrough, foreground color, uppercase + letter-
+// spacing, alignment, lists. sanitizeRichText already DROPS font-size + font-
+// family (pasted text adopts the target preset). On top of that, for a PASTE we:
+//   - strip a color applied to the WHOLE string (a source default — Word's black,
+//     WebKit's baked neutral black — invisible on themed slides), so it inherits
+//     the deck theme; keep colors on SUB-RANGES (intentional highlights);
+//   - drop underline (Eigendeck has none), keeping line-through (strikethrough).
 
 import { sanitizeRichText } from './sanitizeRichText';
 
@@ -21,6 +25,39 @@ function plainToHtml(plain: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/\n/g, '<br>');
+}
+
+/** Post-sanitize paste normalization: drop a whole-string color + underline.
+ *  (Element-copy paste preserves color via the private flavor — this only runs
+ *  in the text-branch paste, foreign or edit-mode text-run.) */
+function normalizePastedStyles(html: string): string {
+  if (typeof DOMParser === 'undefined') return html;
+  const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html');
+  const rootText = doc.body.textContent || '';
+  doc.body.querySelectorAll<HTMLElement>('[style]').forEach((el) => {
+    // A color on an element that wraps the ENTIRE text is a blanket default → drop.
+    if (el.style.color && (el.textContent || '') === rootText) el.style.removeProperty('color');
+    // Underline is not authorable in Eigendeck — strip it, keep line-through.
+    const td = el.style.textDecoration || el.style.getPropertyValue('text-decoration-line');
+    if (td && /underline/i.test(td)) {
+      const kept = td.replace(/underline/ig, '').replace(/\s+/g, ' ').trim();
+      el.style.removeProperty('text-decoration');
+      el.style.removeProperty('text-decoration-line');
+      if (kept) el.style.textDecoration = kept;
+    }
+    if (!(el.getAttribute('style') || '').trim()) el.removeAttribute('style');
+  });
+  doc.body.querySelectorAll('font[color]').forEach((el) => {
+    if ((el.textContent || '') === rootText) el.removeAttribute('color');
+  });
+  // <u> → unwrap (no underline element in Eigendeck).
+  doc.body.querySelectorAll('u').forEach((u) => {
+    const parent = u.parentNode;
+    if (!parent) return;
+    while (u.firstChild) parent.insertBefore(u.firstChild, u);
+    parent.removeChild(u);
+  });
+  return doc.body.innerHTML;
 }
 
 /**
@@ -35,7 +72,7 @@ export function pasteTextToElementHtml(
 ): string | null {
   const h = (html || '').trim();
   if (h) {
-    const clean = sanitizeRichText(h).trim();
+    const clean = normalizePastedStyles(sanitizeRichText(h)).trim();
     if (clean) return clean;
   }
   const p = plain || '';

@@ -417,7 +417,11 @@ export function SlideEditor() {
      *  the clipboardData path and the native-pasteboard (macOS) path. Returns
      *  true if it inserted. */
     const insertPastedText = (html: string, plain: string): boolean => {
-      if (hasEigendeckMarker(html)) return false;
+      // No marker guard: element/slide copies are handled by the private-flavor
+      // path above (they return before we get here). Any marked html reaching
+      // this point is an edit-mode TEXT-RUN copy (marker, no element JSON) — it
+      // should become a new text box (docs/copy-and-paste.md Stage 2), same as
+      // foreign text. sanitizeRichText strips the marker attributes.
       const elHtml = pasteTextToElementHtml(html, plain);
       if (!elHtml) return false;
       const W = 900, H = 360;

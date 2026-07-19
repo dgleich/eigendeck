@@ -2,21 +2,37 @@ import { describe, it, expect } from 'vitest';
 import { pasteTextToElementHtml } from './pasteText';
 
 describe('pasteTextToElementHtml (#161)', () => {
-  it('keeps authorable styling from text/html (bold + color)', () => {
+  it('strips a WHOLE-STRING color (source default) but keeps bold', () => {
     const out = pasteTextToElementHtml('<b style="color:#c00">Hi</b>', 'Hi') || '';
     expect(out).toContain('Hi');
-    expect(out.toLowerCase()).toContain('color');
-    expect(out.toLowerCase()).toMatch(/<(b|strong)|font-weight/);
+    expect(out.toLowerCase()).not.toContain('color'); // whole-string color → theme
+    expect(out.toLowerCase()).toMatch(/<(b|strong)|font-weight/); // bold kept
   });
 
-  it('drops font-size and font-family from text/html (adopts the preset size)', () => {
+  it('keeps a SUB-RANGE color (intentional highlight)', () => {
+    const out = pasteTextToElementHtml(
+      'Here is <span style="color:#008000">green</span> text', 'Here is green text') || '';
+    expect(out).toContain('green');
+    expect(out.toLowerCase()).toContain('color'); // sub-range color survives
+  });
+
+  it('drops font-size, font-family and a whole-string color (adopts the preset/theme)', () => {
     const out = pasteTextToElementHtml(
       '<span style="font-size:48px;font-family:Comic Sans;color:red">big</span>', 'big') || '';
     expect(out).toContain('big');
     expect(out.toLowerCase()).not.toContain('font-size');
     expect(out.toLowerCase()).not.toContain('48px');
     expect(out.toLowerCase()).not.toContain('font-family');
-    expect(out.toLowerCase()).toContain('color'); // color survives
+    expect(out.toLowerCase()).not.toContain('color'); // whole-string color dropped too
+  });
+
+  it('drops underline (not authorable) but keeps strikethrough', () => {
+    const u = pasteTextToElementHtml('<u>under</u>', 'under') || '';
+    expect(u).not.toMatch(/<u\b/i);
+    expect(u).toContain('under');
+    const td = pasteTextToElementHtml('<span style="text-decoration:underline line-through">x</span>', 'x') || '';
+    expect(td.toLowerCase()).not.toContain('underline');
+    expect(td.toLowerCase()).toContain('line-through');
   });
 
   it('prefers text/html over text/plain when both are present', () => {
