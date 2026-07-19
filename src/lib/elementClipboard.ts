@@ -15,7 +15,6 @@ import { TEXT_PRESET_STYLES, effectiveFontSize, resolveColor } from '../types/pr
 import { resolveTheme, themeColorForPreset } from './themes';
 import { fontForPreset, fontFamilyForPreset } from './fonts';
 import { renderMathInHtmlSync, containsMath } from './mathjaxRenderer';
-import { markAsEigendeckForClipboard } from './clipboard';
 
 const PAYLOAD_V = 1;
 
@@ -93,16 +92,12 @@ function plainTextFromHtml(html: string): string {
     .replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-/** Build the rich text/html (+ plain-text fallback) for a TEXT element, to write
- *  to the system clipboard on the `copy` EVENT via clipboardData.setData — the
- *  race-free, WebKit-reliable path (writing on keydown via a native call gets
- *  clobbered by the browser's own copy). SYNCHRONOUS: math comes from the cache
- *  the editor already populated (renderMathInHtmlSync), so it can run inside the
- *  copy event. The HTML carries the eigendeck marker so pasting back into
- *  eigendeck takes the in-app element path, not the rich-HTML→image route. */
+/** The visible (foreign-app-facing) styled HTML + plain text for a copied text
+ *  element. Returns the RAW styled markup — the caller wraps it with the marker
+ *  + private JSON flavor via encodeClipHtml (clipboardModel). */
 export function textElementClipboardHtml(
   el: TextElement, slide: Slide, config: PresentationConfig, theme: string,
-): { html: string; plain: string } {
+): { styledHtml: string; plain: string } {
   const preset = TEXT_PRESET_STYLES[el.preset];
   const pkg = fontForPreset(el.preset, slide, config);
   const fontFamily = el.fontFamily || fontFamilyForPreset(pkg, el.preset);
@@ -115,7 +110,7 @@ export function textElementClipboardHtml(
   const styled =
     `<div style="font-family:${fontFamily};font-size:${fontSize}px;font-weight:${preset.fontWeight};` +
     `font-style:${preset.fontStyle};color:${color};line-height:1.3;">${rendered}</div>`;
-  return { html: markAsEigendeckForClipboard(styled), plain: plainTextFromHtml(el.html || '') };
+  return { styledHtml: styled, plain: plainTextFromHtml(el.html || '') };
 }
 
 /** Is there a FRESH internal asset clip right now? (staleness-checked in Rust).

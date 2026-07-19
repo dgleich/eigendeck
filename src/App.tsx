@@ -61,6 +61,7 @@ import { readFileNative, readTextFileNative, writeFileNative, writeTextFileNativ
 import { bytesToBase64 } from './lib/base64';
 import { extractDemoPieceNames } from './lib/demoPieces';
 import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement, textElementClipboardHtml } from './lib/elementClipboard';
+import { encodeClipHtml } from './lib/clipboardModel';
 import { buildEmbeddedFontFacesCSS, fontForPreset } from './lib/fonts';
 import { renderMathInHtml, containsMath } from './lib/mathjaxRenderer';
 import { getMissingAssets } from './lib/missingAssets';
@@ -1451,24 +1452,46 @@ function App() {
         void clearInternalClip();
         return;
       }
+      if (!e.clipboardData) return;
       const state = usePresentationStore.getState();
       const sel = state.selectedObject;
-      if (sel?.type !== 'element') { void clearInternalClip(); return; }
       const slide = state.presentation.slides[state.currentSlideIndex];
-      const el = slide?.elements.find((x) => x.id === sel.id);
-      if (!el) return;
-      if (el.type === 'text' && e.clipboardData) {
-        const { html, plain } = textElementClipboardHtml(el, slide, state.presentation.config, state.presentation.theme);
-        e.preventDefault();
-        e.clipboardData.setData('text/html', html);
-        e.clipboardData.setData('text/plain', plain);
-        void clearInternalClip();
-      } else if (isCopyableAsset(el)) {
-        e.preventDefault();
-        void copyAssetElement(el);
-      } else {
-        void clearInternalClip();
+      if (!slide) return;
+
+      // Write the PRIVATE Eigendeck flavor (element/slide JSON, base64 in
+      // text/html) onto the OS clipboard for every copy, so paste can round-trip
+      // an internal copy with full fidelity straight from the clipboard —
+      // retiring clipboardRef (docs/copy-and-paste.md). `visibleHtml`/`plain` are
+      // the foreign-app fallbacks. (Paste still reads clipboardRef until Stage 1c,
+      // so clipboardRef stays set by the keydown handler above — transitional.)
+      let clip: Parameters<typeof encodeClipHtml>[0] | null = null;
+      let visibleHtml = '';
+      let plain = '';
+      let assetEl: SlideElement | null = null;
+
+      if (sel?.type === 'element') {
+        const el = slide.elements.find((x) => x.id === sel.id);
+        if (el) {
+          clip = { kind: 'elements', elements: [el], fromSlideId: slide.id, fromSlideIndex: state.currentSlideIndex };
+          if (el.type === 'text') {
+            const r = textElementClipboardHtml(el, slide, state.presentation.config, state.presentation.theme);
+            visibleHtml = r.styledHtml; plain = r.plain;
+          }
+          if (isCopyableAsset(el)) assetEl = el;
+        }
+      } else if (sel?.type === 'multi') {
+        const els = slide.elements.filter((x) => sel.ids.includes(x.id));
+        if (els.length) clip = { kind: 'elements', elements: els, fromSlideId: slide.id, fromSlideIndex: state.currentSlideIndex };
+      } else if (!sel || sel.type === 'slide') {
+        clip = { kind: 'slide', slide, fromSlideId: slide.id, fromSlideIndex: state.currentSlideIndex };
       }
+      if (!clip) { void clearInternalClip(); return; }
+
+      e.preventDefault();
+      e.clipboardData.setData('text/html', encodeClipHtml(clip, visibleHtml));
+      if (plain) e.clipboardData.setData('text/plain', plain);
+      // Asset element: ALSO place the image bytes on the clipboard for foreign paste.
+      if (assetEl) void copyAssetElement(assetEl); else void clearInternalClip();
     };
     window.addEventListener('copy', handleCopy);
 
