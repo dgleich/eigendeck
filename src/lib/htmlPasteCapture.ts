@@ -141,7 +141,11 @@ export async function captureHtmlToPng(
       scale: opts.scale ?? 4,
       backgroundColor: '#ffffff',
       timeout: 2500,
-      font: false,
+      // Block only REMOTE image fetches (modern-screenshot calls fetchFn just for
+      // requestType==='image'). Do NOT disable font embedding: the deck fonts are
+      // data-URL @font-face already in <head> (zero network), so they embed for
+      // free — `font:false` would drop them and the capture would fall back to a
+      // serif. sanitizeForCapture + timeout cover the hang; this covers images.
       fetchFn: async (): Promise<string | false> => false,
     });
     return { bytes: dataUrlToBytes(dataUrl), width: Math.round(rect.width), height: Math.round(rect.height) };
