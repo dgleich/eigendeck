@@ -272,7 +272,12 @@ duplicates.
    color, keep internal + sub-range colors, keep authorable inline styles.
 4. **Paste modes** — ⌘V (normalize), ⌘⇧V "Paste and Keep Style", and the
    Edit-menu **"Paste as…"** chooser (lists the clipboard's actual
-   representations → Text / HTML / Image / PDF / SVG).
+   representations → Text / HTML / Image / PDF / SVG). **Paste as… is done**
+   (Edit menu + canvas context menu → `PasteAsModal`); it inspects the clipboard
+   (`clipboardRepresentations` over `gatherClipboardTypes`) and, on pick, reuses
+   SlideEditor's existing insert helpers via the `eigendeck:paste-as` event.
+   Currently an in-webview modal; a native popup-menu version is a follow-up.
+   ⌘⇧V "Keep Style" is still TODO (⌘⇧V today = paste plain text while editing).
 5. **⌘D duplicate bypasses the clipboard**; slide-paste vs object-paste gated on
    focus + slide flavor.
 

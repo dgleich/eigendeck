@@ -439,7 +439,40 @@ export function SlideEditor() {
       return true;
     };
     window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
+
+    // "Paste as…" (docs/copy-and-paste.md Stage 4): App opens the chooser and
+    // dispatches the picked kind here, where the insert helpers already live —
+    // so the explicit path reuses the exact same insertion as the auto ladder.
+    const handlePasteAs = async (ev: Event) => {
+      const kind = (ev as CustomEvent<{ kind: string }>).detail?.kind;
+      if (!kind) return;
+      const { readRepresentation } = await import('../lib/pasteAs');
+      const rep = await readRepresentation(kind as 'image' | 'svg' | 'pdf' | 'html' | 'text');
+      if (!rep) { plog(`paste-as ${kind}: representation gone`); return; }
+      if (rep.kind === 'text') { insertPastedText('', rep.text || ''); return; }
+      if (rep.kind === 'html') {
+        const { stripEigendeckMarker } = await import('../lib/clipboard');
+        const raw = stripEigendeckMarker(rep.html || '').trim();
+        if (!raw) return;
+        addElement({
+          id: crypto.randomUUID(), type: 'html',
+          position: { x: 360, y: 200, width: 1200, height: 680 },
+          html: raw,
+        });
+        return;
+      }
+      // image / svg / pdf → asset element
+      if (rep.bytes && rep.mime && rep.ext) {
+        const fileName = `pasted-${Date.now()}.${rep.ext}`;
+        await insertPastedAsset(`images/${fileName}`, rep.bytes, rep.mime, fileName);
+      }
+    };
+    window.addEventListener('eigendeck:paste-as', handlePasteAs as EventListener);
+
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+      window.removeEventListener('eigendeck:paste-as', handlePasteAs as EventListener);
+    };
   }, [projectPath, addElement]);
 
   // Marquee drag-to-select on canvas background
@@ -524,6 +557,7 @@ export function SlideEditor() {
       { label: 'Add Arrow', onClick: () => store.addElement({ id: crypto.randomUUID(), type: 'arrow', x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: '#2563eb', strokeWidth: 4, headSize: 16 }) },
       { separator: true },
       { label: 'Paste', shortcut: '\u2318V', onClick: () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', metaKey: true })) },
+      { label: 'Paste as\u2026', onClick: () => window.dispatchEvent(new CustomEvent('eigendeck:open-paste-as')) },
       { separator: true },
       { label: 'Slide Properties', onClick: () => {
         store.selectObject({ type: 'slide' });

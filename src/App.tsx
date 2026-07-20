@@ -64,6 +64,8 @@ import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement
 import { encodeClipHtml } from './lib/clipboardModel';
 import { linkPastedToSource } from './lib/pasteClip';
 import { eventInTextEditor } from './lib/editableTarget';
+import { PasteAsModal } from './components/PasteAsModal';
+import type { PasteRep } from './lib/pasteAs';
 import { buildEmbeddedFontFacesCSS, fontForPreset } from './lib/fonts';
 import { renderMathInHtml, containsMath } from './lib/mathjaxRenderer';
 import { getMissingAssets } from './lib/missingAssets';
@@ -634,6 +636,19 @@ function App() {
   const [videoUrl, setVideoUrl] = useState('');
   // Escape closes the video insert modal (in-app modal, no native Esc) — #120.
   useEscapeKey(videoModalOpen, () => setVideoModalOpen(false));
+  // "Paste as…" chooser (Stage 4): null = closed; an array (possibly empty) = open.
+  const [pasteAsReps, setPasteAsReps] = useState<PasteRep[] | null>(null);
+  const openPasteAs = useCallback(async () => {
+    const { gatherClipboardTypes, clipboardRepresentations } = await import('./lib/pasteAs');
+    setPasteAsReps(clipboardRepresentations(await gatherClipboardTypes()));
+  }, []);
+  // Canvas context-menu "Paste as…" dispatches this DOM event (the native Edit
+  // menu reaches openPasteAs via the Tauri menu-event path instead).
+  useEffect(() => {
+    const open = () => void openPasteAs();
+    window.addEventListener('eigendeck:open-paste-as', open);
+    return () => window.removeEventListener('eigendeck:open-paste-as', open);
+  }, [openPasteAs]);
   // Which "+ Insert" buttons are hidden from the editor toolbar. The
   // Insert menu (native) always lists everything; this only declutters
   // the toolbar. See src/lib/insertItems.ts + Settings → Toolbar buttons.
@@ -1638,6 +1653,7 @@ function App() {
         case 'export-pdf': printToPdf(); break;
         case 'export-pdf-screenshots': exportPdfScreenshots(); break;
         case 'import-html': importFromHtml(); break;
+        case 'paste-as': void openPasteAs(); break;
         case 'install-llm-tools': void installLlmTools(); break;
         case 'present': startPresenting(); break;
         case 'screen-share-present': flushToSqlite().then(() => startScreenSharePresenting()); break;
@@ -1866,6 +1882,16 @@ function App() {
           candidates={promoteCandidates}
           onPick={(elementId) => { usePresentationStore.getState().promoteToSync(elementId); setPromoteCandidates(null); }}
           onCancel={() => setPromoteCandidates(null)}
+        />
+      )}
+      {pasteAsReps && (
+        <PasteAsModal
+          reps={pasteAsReps}
+          onCancel={() => setPasteAsReps(null)}
+          onPick={(kind) => {
+            setPasteAsReps(null);
+            window.dispatchEvent(new CustomEvent('eigendeck:paste-as', { detail: { kind } }));
+          }}
         />
       )}
       {videoModalOpen && (
