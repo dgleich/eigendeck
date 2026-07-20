@@ -109,6 +109,21 @@ Verified: e2e `paste-text-probe` case F pastes text+remote-img as a TEXT element
 in **315ms** (was ~60s) in real WebKit; the table case still screenshots. New
 issue **none** — this closed the bug + the feature.
 
+## 5. Google Sheets / HTML-element font (serif)
+
+Two separate things:
+- **Screenshot path (my regression, FIXED):** the network-free fix's `font:false`
+  disabled deck-font embedding in the HTML→PNG capture → serif in the auto
+  table-screenshot and Paste as… → Simple Image. Dropped `font:false` (the deck
+  fonts are data-URL @font-face, embed for free; `fetchFn` only gates images).
+- **HTML element render (FLAGGED, #169):** pasting a Google Sheet via Paste as… →
+  HTML element renders serif because `htmlElementSrcdoc` sets no font-family and
+  its CSP blocks fetching the content's explicit `font-family:Roboto`. Fixing it
+  needs the deck @font-face + slide font wired into the srcdoc (single builder,
+  but multi-path wiring) and a per-element **"Use deck font"** toggle to override
+  the content's fonts. It's a design decision (raw-HTML escape hatch vs on-brand),
+  so I filed #169 with a proposal + the default questions rather than build it.
+
 ## State
 - Branch `feat/copy-paste-redesign` pushed, not merged.
 - Tests: **1483 unit/component passing**, tsc clean, build clean, cargo check +
