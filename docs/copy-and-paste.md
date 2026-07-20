@@ -228,6 +228,31 @@ The `Paste as…` chooser overrides this order on demand.
 representation we most want honored *first* — some readers (browsers, Apple
 Pages) are order-sensitive despite the spec saying they shouldn't be.
 
+### Interop — what each app puts on the clipboard
+
+The clipboard is a bag of representations; each app fills it differently, and the
+paste ladder (private flavor → data-URL image → screenshot → text) has to land
+each one in the right place. The table below is the captured reference; the live
+corpus is `e2e/fixtures/clipboard-corpus/corpus.json` (real macOS pasteboard type
+lists + representative bodies), exercised by `src/lib/clipboardInterop.test.ts`.
+
+| Source | Key flavors (macOS) | Body shape | Paste branch |
+| --- | --- | --- | --- |
+| **Eigendeck** element/slide | `public.html` (+ marker), `public.utf8-plain-text` | `data-eigendeck-copy` + base64 JSON | **internal** (objects/slide) |
+| **Word** — styled sentence | `public.html`, `public.rtf`, plain | `<p><span…>` wrapped run | **text** |
+| **Word / Excel / Numbers / Sheets** — a table or cell range | `public.html` (+ rtf / `com.apple.iwork.*`), plain | `<table>…</table>` | **image** (screenshot) |
+| **Google Docs** | `public.html`, plain, `org.chromium.web-custom-data` | `<b docs-internal-guid style=font-weight:normal>` styled run | **text** |
+| **Google Slides** (copied graphic, #158) | `public.html`, plain, chromium custom | `<b docs-internal-guid><img src=data:…>` — **no image on the clipboard** | **image** (extract data-URL) |
+| **Keynote** — text | `com.apple.iwork.keynote.key`, `public.rtf`, plain | (no useful html) | **text** (from rtf/plain) |
+| **Browser** — rich selection | `public.html`, plain, `com.apple.webarchive` | `<span>`/`<a>`/`<strong>` | **text** |
+| **Browser** — selection with an http `<img>` | `public.html`, plain | `<p>…<img src=https…></p>` | **image** (screenshot) |
+| **TextEdit (plain) / terminal / VS Code** | `public.utf8-plain-text` (± chromium) | none | **text** (from plain) |
+
+Notes: a single spreadsheet cell still screenshots (it arrives as a 1×1
+`<table>`) — a known, documented behavior, not a bug. A PDF that *accompanies*
+rich text (Word/Pages put one next to the real text) is a rendering and is
+skipped; a PDF with no rich text is a genuine graphic and pastes as an image.
+
 ### Duplicate
 
 **⌘D duplicates the selection in place and never touches the clipboard** — the
@@ -253,6 +278,18 @@ duplicates.
 
 ## Testing
 
+- **Round-trip matrix** (`src/lib/copyPasteRoundtrip.test.ts`): every element
+  type (text/image/arrow/cover/html/demo/demo-piece/notebook/video) through the
+  codec (encode → decode, lossless) and through `pasteInternalClip` (fresh id,
+  cross-slide link, distinctive field preserved). A new element type without a
+  row is a visible gap.
+- **Style matrix** (`src/lib/pasteStyles.test.ts`): whole-string color stripped
+  across hex/rgb/named/`<font>`, sub-range + nested colors kept, bold/italic/
+  strike kept, underline dropped + line-through kept, font-size/family dropped.
+- **Interop corpus** (`src/lib/clipboardInterop.test.ts` over
+  `e2e/fixtures/clipboard-corpus/corpus.json`): each real app payload
+  (Word/Docs/Slides/Sheets/Keynote/browsers/internal) lands in the right paste
+  branch — mirrors the `SlideEditor.handlePaste` ladder; keep in sync.
 - **Unit**: the private-flavor codec (encode element/slide JSON → `text/html` →
   decode); the styling normalizer (font/size dropped, external whole-string
   color stripped, sub-range color + bold kept, internal color preserved).
