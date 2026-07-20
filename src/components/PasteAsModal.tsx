@@ -15,6 +15,7 @@ const HINTS: Record<PasteKind, string> = {
   image: 'Insert the bitmap as an image element',
   svg: 'Insert the vector as an image element',
   pdf: 'Insert the PDF as an image element',
+  'html-image': 'Rasterize the HTML to a static image (no network access)',
   html: 'Insert the raw HTML as an HTML element',
   text: 'Insert as an editable text element (adopts the deck style)',
 };

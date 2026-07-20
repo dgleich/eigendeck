@@ -3,7 +3,7 @@
   "_branches": {
     "internal": "Eigendeck private flavor (data-eigendeck-copy + JSON) — decodeClipHtml wins first",
     "image-dataurl": "no clipboard image, but text/html embeds <img src=data:…> — extractPastedDataUrlImage (#158)",
-    "image-screenshot": "block HTML a text box can't hold (table/img/svg/pre/math) — htmlNeedsScreenshot → rasterize",
+    "image-screenshot": "block HTML a text box can't hold (table/svg/pre/math or a data: image) — htmlNeedsScreenshot → rasterize. A REMOTE <img> does NOT trigger this (it's stripped in the network-free capture); such content pastes as text.",
     "text": "styled/plain runs the format toolbar can author — pasteTextToElementHtml → editable text element"
   },
   "cases": [
@@ -64,11 +64,12 @@
       "expect": "text"
     },
     {
-      "app": "Browser — selection containing an http image",
+      "app": "Browser — selection with text + a remote image",
       "flavors": ["public.html", "public.utf8-plain-text"],
       "html": "<meta charset=\"utf-8\"><p>caption <img src=\"https://example.com/pic.png\" width=\"64\"></p>",
       "plain": "caption ",
-      "expect": "image-screenshot"
+      "expect": "text",
+      "note": "The remote <img> is stripped by the network-free capture, so this pastes as editable TEXT (not a rasterized screenshot that used to hang ~60s fetching the image). Use Paste as… → Simple Image to force a rasterization."
     },
     {
       "app": "TextEdit (plain) / terminal — plain text only",

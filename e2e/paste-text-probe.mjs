@@ -104,6 +104,22 @@ if (!eEl.html.includes('white text')) fail(`case E: text missing ("${eEl.html}")
 if (/color/i.test(eEl.html)) fail(`case E: baked whole-string color NOT stripped ("${eEl.html}")`);
 console.log('  case E OK — eigendeck text-run → new text box, baked color stripped');
 
+// --- Case F: a browser copy = text + a REMOTE <img> must paste as editable TEXT,
+//     NOT a rasterized screenshot (which used to fetch the remote image and hang
+//     ~60s). The remote img is stripped; only the text remains. Must also be FAST
+//     — assert it lands well under the old ~60s stall. ---
+base = els.length;
+const tF = Date.now();
+await dispatchPaste('caption text', '<meta charset="utf-8"><p>caption <img src="https://example.invalid/pic.png" width="64"> text</p>');
+els = await waitForCount(base + 1);
+const elapsedF = Date.now() - tF;
+if (els.length !== base + 1) fail(`case F: expected 1 new element, got ${els.length - base}`);
+const fEl = els[els.length - 1];
+if (fEl.type !== 'text') fail(`case F: browser text+remote-img came in as ${fEl.type}, expected text (must not screenshot/hang)`);
+if (!/caption/.test(fEl.html)) fail(`case F: text missing ("${fEl.html}")`);
+if (elapsedF > 15000) fail(`case F: paste took ${elapsedF}ms — the remote-image hang is back (should be immediate)`);
+console.log(`  case F OK — text + remote img → TEXT element in ${elapsedF}ms (no screenshot, no hang)`);
+
 await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {});
 console.log('E2E_PASS: paste-text (#161)');
 process.exit(0);

@@ -9,7 +9,11 @@
 //     elsewhere). The actual element INSERT is done by SlideEditor's existing
 //     paste helpers (reused via a CustomEvent), so nothing is duplicated here.
 
-export type PasteKind = 'image' | 'svg' | 'pdf' | 'html' | 'text';
+// 'html-image' = rasterize the clipboard HTML to a STATIC image (the screenshot
+// path), offered only when both HTML and text are present. Unlike the automatic
+// ⌘V screenshot it's an explicit choice, and the capture never touches the
+// network (see captureHtmlToPng) so it can't hang on a remote resource.
+export type PasteKind = 'image' | 'svg' | 'pdf' | 'html-image' | 'html' | 'text';
 
 export interface PasteRep {
   kind: PasteKind;
@@ -37,17 +41,30 @@ const KINDS: KindSpec[] = [
   { kind: 'pdf', label: 'PDF',
     types: ['com.adobe.pdf', 'application/pdf'],
     mime: 'application/pdf', ext: 'pdf' },
+  // Synthesized (no raw clipboard type): rasterize the clipboard HTML to a
+  // static PNG. Offered only when HTML *and* text are present — see
+  // clipboardRepresentations. mime/ext are the captured output.
+  { kind: 'html-image', label: 'Simple Image',
+    types: [], mime: 'image/png', ext: 'png' },
   { kind: 'html', label: 'HTML element',
     types: ['public.html', 'text/html'] },
   { kind: 'text', label: 'Text',
     types: ['public.utf8-plain-text', 'public.text', 'text/plain', 'public.rtf', 'text/rtf'] },
 ];
 
+const HTML_TYPES = ['public.html', 'text/html'];
+const TEXT_TYPES = ['public.utf8-plain-text', 'public.text', 'text/plain', 'public.rtf', 'text/rtf'];
+
 /** Which representations does this raw clipboard type/UTI list offer? PURE. */
 export function clipboardRepresentations(types: readonly string[]): PasteRep[] {
   const set = new Set(types.map((t) => t.toLowerCase()));
+  const has = (toks: string[]) => toks.some((t) => set.has(t.toLowerCase()));
+  // "Simple Image" (rasterize the HTML) is offered only when BOTH HTML and text
+  // are present — i.e. a rich copy (browser/Word/Docs) where rasterizing is a
+  // meaningful alternative to pasting the text.
+  const htmlImage = has(HTML_TYPES) && has(TEXT_TYPES);
   return KINDS
-    .filter((k) => k.types.some((t) => set.has(t.toLowerCase())))
+    .filter((k) => (k.kind === 'html-image' ? htmlImage : has(k.types)))
     .map((k) => ({ kind: k.kind, label: k.label }));
 }
 
@@ -121,7 +138,9 @@ export async function readRepresentation(kind: PasteKind): Promise<RepData | nul
     return null;
   }
 
-  if (kind === 'html') {
+  if (kind === 'html' || kind === 'html-image') {
+    // Both read the clipboard HTML; the caller rasterizes it for 'html-image'
+    // and creates a raw HTML element for 'html'.
     const nb = await readNativeBytes('public.html');
     if (nb) return { kind, html: new TextDecoder('utf-8').decode(nb) };
     const ab = await readAsyncBytes(['text/html']);

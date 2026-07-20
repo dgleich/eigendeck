@@ -398,8 +398,10 @@ export function SlideEditor() {
     /** Rich HTML (tables/lists/formatted blocks) → render in the deck font and
      *  screenshot to a PNG, inserted as an image. Shared by the clipboardData
      *  path and the native-pasteboard (macOS) path. Returns true if it inserted. */
-    const insertRichHtmlScreenshot = async (html: string): Promise<boolean> => {
-      if (!html || !htmlNeedsScreenshot(html) || hasEigendeckMarker(html)) return false;
+    const insertRichHtmlScreenshot = async (html: string, force = false): Promise<boolean> => {
+      // `force` (Paste as… → Simple Image) rasterizes regardless of
+      // htmlNeedsScreenshot; the auto path only screenshots real block content.
+      if (!html || (!force && !htmlNeedsScreenshot(html)) || hasEigendeckMarker(html)) return false;
       const { resolveFontPackage, bareFamilyName } = await import('../lib/fonts');
       const cfg = usePresentationStore.getState().presentation.config;
       const family = bareFamilyName(resolveFontPackage(cfg?.defaultBodyFont));
@@ -447,9 +449,10 @@ export function SlideEditor() {
       const kind = (ev as CustomEvent<{ kind: string }>).detail?.kind;
       if (!kind) return;
       const { readRepresentation } = await import('../lib/pasteAs');
-      const rep = await readRepresentation(kind as 'image' | 'svg' | 'pdf' | 'html' | 'text');
+      const rep = await readRepresentation(kind as 'image' | 'svg' | 'pdf' | 'html-image' | 'html' | 'text');
       if (!rep) { plog(`paste-as ${kind}: representation gone`); return; }
       if (rep.kind === 'text') { insertPastedText('', rep.text || ''); return; }
+      if (rep.kind === 'html-image') { await insertRichHtmlScreenshot(rep.html || '', true); return; }
       if (rep.kind === 'html') {
         const { stripEigendeckMarker } = await import('../lib/clipboard');
         const raw = stripEigendeckMarker(rep.html || '').trim();
