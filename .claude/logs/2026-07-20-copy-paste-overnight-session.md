@@ -27,9 +27,11 @@ defense-in-depth. `eventInTextEditor` also covers INPUT/TEXTAREA, closing a
 latent gap where a canvas paste could fire inside a plain input.
 Reproduction test included (`editableTarget.test.ts`, the target=body case).
 
-> Note: I could unit-test the guard logic and reproduce the target=body case,
-> but the *live* WebKit dispatch quirk is a real-WebKit behavior — worth a quick
-> confirm on the Mac that the double-paste is actually gone in the app.
+> Verified in the REAL WebKit engine: `e2e/caret-double-paste-probe.mjs` (gated
+> in run-all.sh) enters edit mode and dispatches a body-target paste; the guard
+> holds (no canvas element created) while a control paste on the canvas does
+> create one. This is the one place the actual quirk is exercised — jsdom can't
+> mis-target the event. Still fine to eyeball on the Mac, but it's covered.
 
 ## 2. Copy/paste correctness review — other findings
 
@@ -80,8 +82,12 @@ still TODO (today ⌘⇧V = paste plain text while editing).
 > (Edit → Paste as…, and right-click → Paste as… on the canvas).
 
 ## State
-- Branch `feat/copy-paste-redesign` @ 39a2e9f, pushed, not merged.
-- Tests: **1479 passing**, tsc clean, build clean, cargo check + clippy clean.
+- Branch `feat/copy-paste-redesign` pushed, not merged.
+- Tests: **1479 unit/component passing**, tsc clean, build clean, cargo check +
+  clippy clean. New **e2e** probe `caret-double-paste-probe.mjs` passes in the
+  real WebKit rig and is gated. (Paste as… has no e2e — its clipboard read can't
+  be seeded in the rig; the logic is unit/component-tested and its insert path is
+  already e2e-covered by paste-text/image probes.)
 - New issues: **#166** (clipboard-format corpus), **#167** (deferred copy/paste
   findings), **#168** (native Paste-as popup).
 - Stages: 1–3 done earlier; **4 done** tonight; **5** (⌘D duplicate bypass +
