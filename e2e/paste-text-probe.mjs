@@ -120,6 +120,34 @@ if (!/caption/.test(fEl.html)) fail(`case F: text missing ("${fEl.html}")`);
 if (elapsedF > 15000) fail(`case F: paste took ${elapsedF}ms — the remote-image hang is back (should be immediate)`);
 console.log(`  case F OK — text + remote img → TEXT element in ${elapsedF}ms (no screenshot, no hang)`);
 
+// --- Case G: a TABLE + a raster image ITEM on the clipboard (browsers/Sheets put
+//     a low-res selection bitmap next to the HTML). Our crisp HTML→PNG render must
+//     WIN; the raster must not preempt it. The raw-image path inserts at the fixed
+//     default 1200x680; our render inserts at a computed (table-aspect) size, so a
+//     non-default size proves the gate skipped the bitmap. ---
+base = els.length;
+await exec(sid, `
+  const dt = new DataTransfer();
+  dt.setData('text/plain', 'a\\tb');
+  dt.setData('text/html', '<table><tr><td>a</td><td>b</td></tr></table>');
+  const b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  const bin = atob(b64); const arr = new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  dt.items.add(new File([arr], 'sel.png', { type: 'image/png' }));
+  document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  return true;
+`);
+els = await waitForCount(base + 1);
+if (els.length !== base + 1) fail(`case G: expected 1 new element, got ${els.length - base}`);
+const gEl = els[els.length - 1];
+if (gEl.type !== 'image') fail(`case G: expected an image, got ${gEl.type}`);
+const gpos = await exec(sid, `
+  const s = window.__eigendeck.store.getState().presentation.slides[0];
+  const e = s.elements[s.elements.length - 1];
+  return e && e.position ? { w: Math.round(e.position.width), h: Math.round(e.position.height) } : null;
+`);
+if (gpos && gpos.w === 1200 && gpos.h === 680) fail(`case G: the raster bitmap preempted our render (default 1200x680 raw-image insert)`);
+console.log(`  case G OK — table + raster item → OUR HTML render won (size ${gpos ? gpos.w + 'x' + gpos.h : '?'} ≠ raw 1200x680)`);
+
 await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {});
 console.log('E2E_PASS: paste-text (#161)');
 process.exit(0);

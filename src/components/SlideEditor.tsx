@@ -180,8 +180,23 @@ export function SlideEditor() {
         // rich text, so its PDF is still taken. SVG/PNG/TIFF are untouched (real
         // graphics from Office/Illustrator/screenshots). See #161 / pasteboard dump.
         const hasRichText = nativeTypes.includes('public.html') || nativeTypes.includes('public.rtf');
+        const readNativeText = async (uti: string): Promise<string> => {
+          if (!nativeTypes.includes(uti)) return '';
+          const b = await invoke<number[] | null>('pasteboard_read_type', { uti });
+          return b && b.length ? new TextDecoder('utf-8').decode(new Uint8Array(b)) : '';
+        };
+        // Read the HTML up front: if it's block content we render better ourselves
+        // (a table etc. — htmlNeedsScreenshot), do NOT let a native RASTER bitmap
+        // preempt it. Browsers (Chrome/Safari) put a LOW-RES public.png/tiff render
+        // of the selection on the pasteboard next to the HTML; taking that gives a
+        // blurry image instead of our crisp HTML→PNG render (Google Sheets paste).
+        // SVG (vector) is still taken — it's sharp. PDF is already skipped when rich
+        // text is present.
+        const nativeHtml = await readNativeText('public.html');
+        const preferOwnRender = htmlNeedsScreenshot(nativeHtml);
         for (const pref of NATIVE_PREFER) {
           if (pref.ext === 'pdf' && hasRichText) continue;
+          if (preferOwnRender && (pref.ext === 'png' || pref.ext === 'jpg')) continue;
           for (const uti of pref.utis) {
             if (!nativeTypes.includes(uti)) continue;
             const tRead = performance.now();
@@ -199,19 +214,12 @@ export function SlideEditor() {
             return;
           }
         }
-        // No native IMAGE UTI matched → try native TEXT. On macOS, WebKit does
-        // NOT expose text/plain|text/html on clipboardData for a non-editable
-        // paste target (the slide canvas), so every clipboard-based text path
-        // below is dead there — the paste silently no-ops. Read the real bytes
-        // off NSPasteboard instead: prefer public.html (styled / tables) then
-        // plain text. #161. (No-op on Linux/Windows — pasteboard_* return empty
-        // there, so those platforms fall through to the web clipboard below.)
-        const readNativeText = async (uti: string): Promise<string> => {
-          if (!nativeTypes.includes(uti)) return '';
-          const b = await invoke<number[] | null>('pasteboard_read_type', { uti });
-          return b && b.length ? new TextDecoder('utf-8').decode(new Uint8Array(b)) : '';
-        };
-        const nativeHtml = await readNativeText('public.html');
+        // No native IMAGE UTI taken → native TEXT. On macOS, WebKit does NOT
+        // expose text/plain|text/html on clipboardData for a non-editable paste
+        // target (the slide canvas), so every clipboard-based text path below is
+        // dead there — the paste silently no-ops. We already read public.html
+        // above; read plain here. #161. (No-op on Linux/Windows — pasteboard_*
+        // return empty there, so those platforms fall through to the web clipboard.)
         const nativePlain = (await readNativeText('public.utf8-plain-text')) || (await readNativeText('public.text'));
         if (nativeHtml || nativePlain) {
           if (await insertRichHtmlScreenshot(nativeHtml)) { e.preventDefault(); return; }
@@ -256,7 +264,13 @@ export function SlideEditor() {
       let picked: DataTransferItem | null = null;
       let pickedFormat: Format | null = null;
       let pickedAlias: string | null = null;
+      // Same rule as the native path: when the HTML is block content we render
+      // better ourselves (a table etc.), don't let a low-res RASTER selection
+      // bitmap the browser also put on the clipboard preempt our HTML→PNG render.
+      // Vector (svg) is still taken — it's sharp.
+      const preferOwnRenderWeb = htmlNeedsScreenshot(htmlEarly);
       outer: for (const format of PREFERRED_FORMATS) {
+        if (preferOwnRenderWeb && format.ext !== 'svg') continue;
         for (const alias of format.aliases) {
           const found = itemList.find((it) => it.type === alias);
           if (found) { picked = found; pickedFormat = format; pickedAlias = alias; break outer; }
