@@ -81,13 +81,42 @@ still TODO (today ⌘⇧V = paste plain text while editing).
 > exercised in the live app / e2e rig — worth a smoke test on the Mac
 > (Edit → Paste as…, and right-click → Paste as… on the canvas).
 
+## 4. HTML paste hangs ~60s on remote resources (FIXED, commit dcba08c)
+
+**Symptom** you reported: copy from a browser HTML page, ⌘V on the canvas →
+nothing, then ~a minute later an element appears.
+
+**Root cause** (debug agent, confirmed): the rich-HTML screenshot path rasterizes
+the clipboard HTML with modern-screenshot, which tries to **fetch + inline the
+remote `<img>` / CSS background / webfonts** the browser copy carries. In the
+CSP'd/offline webview those fetches hang on two stacked 30s modern-screenshot
+timeouts (wait-for-load + fetch-abort) ≈ 60s, then a placeholder capture inserts
+late. `sanitizeForCapture` wasn't stripping remote URLs and `domToDataUrl` got no
+timeout/fetch options.
+
+**Fix** (defense in depth): the capture is now **network-free** — `fetchFn →
+false`, `timeout: 2500`, `font: false`, and `document.fonts.ready` time-boxed;
+`sanitizeForCapture` strips remote `<img>`, remote `url()`, and `<style>` blocks.
+And per your note ("it's trying to parse it as an image"), a **remote `<img>` no
+longer forces a screenshot** — text + a remote image now pastes as editable
+**text**. Tables / svg / pre / math / data: images still auto-rasterize.
+
+**Feature** you asked for: **Paste as… → "Simple Image"**, offered when the
+clipboard has both HTML and text; it rasterizes the HTML on demand (network-free)
+— so the screenshot is now an explicit choice, not a silent default.
+
+Verified: e2e `paste-text-probe` case F pastes text+remote-img as a TEXT element
+in **315ms** (was ~60s) in real WebKit; the table case still screenshots. New
+issue **none** — this closed the bug + the feature.
+
 ## State
 - Branch `feat/copy-paste-redesign` pushed, not merged.
-- Tests: **1479 unit/component passing**, tsc clean, build clean, cargo check +
-  clippy clean. New **e2e** probe `caret-double-paste-probe.mjs` passes in the
-  real WebKit rig and is gated. (Paste as… has no e2e — its clipboard read can't
-  be seeded in the rig; the logic is unit/component-tested and its insert path is
-  already e2e-covered by paste-text/image probes.)
+- Tests: **1483 unit/component passing**, tsc clean, build clean, cargo check +
+  clippy clean. **e2e**: `caret-double-paste-probe.mjs` (gated) and
+  `paste-text-probe` case F (text+remote-img → text, fast) both pass in the real
+  WebKit rig. (Paste as… chooser itself has no e2e — its clipboard read can't be
+  seeded in the rig; the logic is unit/component-tested and its insert paths are
+  e2e-covered by paste-text/image probes.)
 - New issues: **#166** (clipboard-format corpus), **#167** (deferred copy/paste
   findings), **#168** (native Paste-as popup).
 - Stages: 1–3 done earlier; **4 done** tonight; **5** (⌘D duplicate bypass +
