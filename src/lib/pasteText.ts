@@ -34,9 +34,10 @@ function normalizePastedStyles(html: string): string {
   if (typeof DOMParser === 'undefined') return html;
   const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html');
   const rootText = doc.body.textContent || '';
+  const hasText = rootText.trim().length > 0;
   doc.body.querySelectorAll<HTMLElement>('[style]').forEach((el) => {
     // A color on an element that wraps the ENTIRE text is a blanket default → drop.
-    if (el.style.color && (el.textContent || '') === rootText) el.style.removeProperty('color');
+    if (el.style.color && hasText && (el.textContent || '') === rootText) el.style.removeProperty('color');
     // Underline is not authorable in Eigendeck — strip it, keep line-through.
     const td = el.style.textDecoration || el.style.getPropertyValue('text-decoration-line');
     if (td && /underline/i.test(td)) {
@@ -47,8 +48,27 @@ function normalizePastedStyles(html: string): string {
     }
     if (!(el.getAttribute('style') || '').trim()) el.removeAttribute('style');
   });
+  // Multi-block uniform default: when several sibling blocks (Word/Docs
+  // paragraphs) all carry the SAME color and together cover ALL the text, that's
+  // a blanket default too (no single element equalled rootText, so the pass above
+  // missed it). Drop it so the deck theme's text color applies. A non-uniform set
+  // (different colors, or colors covering only part of the text) is an
+  // intentional highlight and is kept.
+  if (hasText) {
+    const colored = Array.from(doc.body.querySelectorAll<HTMLElement>('[style]')).filter((el) => el.style.color);
+    const topColored = colored.filter((el) => !colored.some((o) => o !== el && o.contains(el)));
+    const colorVals = new Set(topColored.map((el) => el.style.color.trim().toLowerCase()));
+    const norm = (s: string) => s.replace(/\s+/g, '');
+    const covered = norm(topColored.map((el) => el.textContent || '').join(''));
+    if (colorVals.size === 1 && covered === norm(rootText)) {
+      topColored.forEach((el) => {
+        el.style.removeProperty('color');
+        if (!(el.getAttribute('style') || '').trim()) el.removeAttribute('style');
+      });
+    }
+  }
   doc.body.querySelectorAll('font[color]').forEach((el) => {
-    if ((el.textContent || '') === rootText) el.removeAttribute('color');
+    if (hasText && (el.textContent || '') === rootText) el.removeAttribute('color');
   });
   // <u> → unwrap (no underline element in Eigendeck).
   doc.body.querySelectorAll('u').forEach((u) => {

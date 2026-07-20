@@ -5,6 +5,7 @@ import { gridOverlaySvg } from '../lib/grid';
 import { captureHtmlToPng, htmlNeedsScreenshot, extractPastedDataUrlImage } from '../lib/htmlPasteCapture';
 import { pasteTextToElementHtml } from '../lib/pasteText';
 import { decodeClipHtml } from '../lib/clipboardModel';
+import { eventInTextEditor } from '../lib/editableTarget';
 import { relPath } from '../App';
 import { useDemoDoc, useDeckFontFacesCss, useDemoHost } from '../lib/demoMount';
 import { demoVarsCssForSlide } from '../lib/demoThemeInject';
@@ -104,8 +105,11 @@ export function SlideEditor() {
     };
 
     const handlePaste = async (e: ClipboardEvent) => {
-      // Don't intercept paste if user is editing a text element
-      if ((e.target as HTMLElement).closest('[contenteditable="true"]')) return;
+      // Don't intercept paste if the caret is in a text editor. Checks
+      // focus/selection, not just e.target — WebKit can dispatch a keyboard
+      // paste with target=<body> while editing, which an e.target-only guard
+      // misses → double paste (new element + caret text). See editableTarget.ts.
+      if (eventInTextEditor(e)) return;
 
       // If a FRESH eigendeck asset is on the internal clip, the App-level paste
       // handler restores it (with attributes, into this deck). Defer so we don't

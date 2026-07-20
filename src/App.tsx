@@ -63,6 +63,7 @@ import { extractDemoPieceNames } from './lib/demoPieces';
 import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement, textElementClipboardHtml } from './lib/elementClipboard';
 import { encodeClipHtml } from './lib/clipboardModel';
 import { linkPastedToSource } from './lib/pasteClip';
+import { eventInTextEditor } from './lib/editableTarget';
 import { buildEmbeddedFontFacesCSS, fontForPreset } from './lib/fonts';
 import { renderMathInHtml, containsMath } from './lib/mathjaxRenderer';
 import { getMissingAssets } from './lib/missingAssets';
@@ -1343,8 +1344,11 @@ function App() {
     // Internal element/slide paste — runs on the paste event so it doesn't
     // block the system clipboard (image paste in SlideEditor gets first pick)
     const handlePaste = async (e: ClipboardEvent) => {
-      if ((e.target as HTMLElement).closest('[contenteditable="true"]')) return;
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+      // Bail when the caret is in a text editor. Checks focus/selection, not just
+      // e.target — WebKit can dispatch a keyboard paste with target=<body> while
+      // editing, which an e.target-only guard misses → double paste (element +
+      // caret text). See editableTarget.ts.
+      if (eventInTextEditor(e)) return;
       // Capture (synchronously, before any await) whether the SYSTEM clipboard
       // carries an image — clipboardData is neutered after an await.
       let sysImage = false;
@@ -1362,15 +1366,21 @@ function App() {
         e.preventDefault();
         const state = usePresentationStore.getState();
         const el = pastedAsset.element;
+        const link = pastedAsset.link;
+        const curSlideId = state.presentation.slides[state.currentSlideIndex]?.id;
+        // Offset ONLY for a same-slide paste (an independent copy sitting beside
+        // the original). A cross-slide paste keeps the source coordinates so the
+        // animation link interpolates in place — matching the element path
+        // (pasteClip.ts), which offsets only when sameSlide. Offsetting here drifted
+        // a linked image by 40px on the target slide.
+        const sameSlide = !link.fromSlideId || curSlideId === link.fromSlideId;
         const p = (el as { position?: { x: number; y: number; width: number; height: number } }).position;
-        if (p) (el as { position: typeof p }).position = { ...p, x: p.x + 40, y: p.y + 40 };
+        if (p && sameSlide) (el as { position: typeof p }).position = { ...p, x: p.x + 40, y: p.y + 40 };
         state.addElement(el);
         state.selectObject({ type: 'element', id: el.id });
         // Cross-slide paste of an image → animation link to the source (same rule
         // as element paste; the metadata rode in the asset payload because
         // arboard's image write clobbers the html private flavor).
-        const link = pastedAsset.link;
-        const curSlideId = state.presentation.slides[state.currentSlideIndex]?.id;
         if (link.sourceId && link.fromSlideId && !link.sourceSyncId && curSlideId !== link.fromSlideId) {
           linkPastedToSource(el.id, link.fromSlideId, link.sourceId);
         }
@@ -1386,14 +1396,13 @@ function App() {
     // preventDefault so the browser doesn't clobber our native arboard write,
     // then copyAssetElement (system image + cross-window internal clip).
     const handleCopy = (e: ClipboardEvent) => {
-      const t = e.target as HTMLElement | null;
       // A copy to the SYSTEM clipboard from editing a text element (or an
       // input/textarea) supersedes any prior element/slide copy. Clear our
       // internal buffer so a later CANVAS paste can't serve the STALE old
       // element — the "multiple clipboards" desync. The system clipboard is
       // authoritative after this; SlideElementRenderer's onCopy has already
       // written the selection there.
-      if (t?.closest?.('[contenteditable="true"]') || (t && ['INPUT', 'TEXTAREA'].includes(t.tagName))) {
+      if (eventInTextEditor(e)) {
         void clearInternalClip();
         return;
       }

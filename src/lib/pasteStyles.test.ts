@@ -55,6 +55,19 @@ const CASES: Case[] = [
     html: '<span style="text-decoration:underline line-through">x</span>',
     keep: [/line-through/i], drop: [/underline/i] },
 
+  // ---- multi-block uniform default color → stripped (Word/Docs emit the same
+  //      color on every paragraph; each <p> covers only part of the text, so the
+  //      per-element whole-string check misses it and it stays invisible on dark) ----
+  { name: 'two same-color paragraphs (uniform default) → color stripped',
+    html: '<p style="color:#000000">First line</p><p style="color:#000000">Second line</p>',
+    keep: ['First line', 'Second line'], drop: [/color/i] },
+  { name: 'three uniform black blocks → all stripped',
+    html: '<div style="color:#000">a</div><div style="color:#000">b</div><div style="color:#000">c</div>',
+    keep: ['a', 'b', 'c'], drop: [/color/i] },
+  { name: 'two DIFFERENT-color paragraphs → both kept (not a uniform default)',
+    html: '<p style="color:#008000">green para</p><p style="color:#0000ff">blue para</p>',
+    keep: ['green para', 'blue para', '008000', '0000ff'] },
+
   // ---- font-size / font-family → dropped ----
   { name: 'font-size dropped', html: '<span style="font-size:48px">big</span>', keep: ['big'], drop: [/font-size/i, /48px/i] },
   { name: 'font-family dropped', html: '<span style="font-family:Comic Sans">x</span>', keep: ['x'], drop: [/font-family/i] },

@@ -56,7 +56,11 @@ export function encodeClipHtml(clip: Omit<EigendeckClip, 'v'>, visibleHtml: stri
  */
 export function decodeClipHtml(html: string | null | undefined): EigendeckClip | null {
   if (!html) return null;
-  const m = html.match(new RegExp(`${JSON_ATTR}="([A-Za-z0-9+/=]+)"`));
+  // Accept single OR double quotes: a pasteboard round-trip (macOS
+  // public.html re-serialization) can re-quote attributes, and dropping to
+  // single quotes must not silently downgrade an internal paste to the
+  // screenshot/text fallback.
+  const m = html.match(new RegExp(`${JSON_ATTR}=["']([A-Za-z0-9+/=]+)["']`));
   if (!m) return null;
   try {
     const clip = JSON.parse(b64decode(m[1])) as EigendeckClip;
