@@ -277,7 +277,9 @@ duplicates.
    (`clipboardRepresentations` over `gatherClipboardTypes`) and, on pick, reuses
    SlideEditor's existing insert helpers via the `eigendeck:paste-as` event.
    Currently an in-webview modal; a native popup-menu version is a follow-up.
-   ⌘⇧V "Keep Style" is still TODO (⌘⇧V today = paste plain text while editing).
+   ⌘⇧V "Keep Style" is still TODO — ⌘⇧V is now unbound ("Paste without
+   Formatting" / the plain-text ⌘⇧V was removed 2026-07 as redundant with the
+   in-editor default).
 5. **⌘D duplicate bypasses the clipboard**; slide-paste vs object-paste gated on
    focus + slide flavor.
 

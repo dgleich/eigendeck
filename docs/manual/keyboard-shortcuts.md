@@ -45,7 +45,6 @@ this list says **⌘**.
 | ⌘B | Bold |
 | ⌘I | Italic |
 | ⌘E | Center |
-| ⌘⇧V | Paste as plain text |
 
 ## View and presenting
 

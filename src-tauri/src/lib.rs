@@ -793,15 +793,12 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
     }
     let file_menu = file_sub.build().map_err(|e| e.to_string())?;
 
-    let paste_plain_item = MenuItemBuilder::new("Paste without Formatting").id("paste-plain")
-        .build(app).map_err(|e| e.to_string())?;
     // "Paste as…" chooser (docs/copy-and-paste.md Stage 4) — routed via the
     // catch-all menu-event to the JS `paste-as` handler, which opens the picker.
     let paste_as_item = MenuItemBuilder::new("Paste as…").id("paste-as")
         .build(app).map_err(|e| e.to_string())?;
     let edit_base = SubmenuBuilder::new(app, "Edit")
         .undo().redo().separator().cut().copy().paste()
-        .item(&paste_plain_item)
         .item(&paste_as_item)
         .select_all();
     // Linux (GTK): app Preferences live at the bottom of Edit. Windows puts them in
