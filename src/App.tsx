@@ -1298,6 +1298,14 @@ function App() {
           }
           if (newIds.length === 1) state.selectObject({ type: 'element', id: newIds[0] });
           else if (newIds.length > 1) state.selectObject({ type: 'multi', ids: newIds });
+        } else if (sel?.type === 'slide') {
+          // Slide selected (sidebar) → duplicate the slide in place. Like the
+          // element/multi branches, this NEVER touches the clipboard — it's a
+          // direct store action, so a stale clipboard can't cause a surprise
+          // paste. duplicateSlide handles group insertion + animation links and
+          // selects the new slide. (⌘V on a slide is the clipboard PASTE path.)
+          e.preventDefault();
+          state.duplicateSlide(state.currentSlideIndex);
         }
       }
       // Arrow keys: nudge the selected element(s) (1px / 10px with Shift), else

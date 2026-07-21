@@ -46,6 +46,12 @@ this list says **⌘**.
 | ⌘I | Italic |
 | ⌘E | Center |
 
+## Editing
+
+| Shortcut | Action |
+|---|---|
+| ⌘D | Duplicate the selected element(s) or slide (in place) |
+
 ## View and presenting
 
 | Shortcut | Action |

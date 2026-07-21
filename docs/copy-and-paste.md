@@ -256,10 +256,15 @@ skipped; a PDF with no rich text is a genuine graphic and pastes as an image.
 ### Duplicate
 
 **⌘D duplicates the selection in place and never touches the clipboard** — the
-industry guard against a stale copy causing an accidental duplicate. Slide-paste
-(new slide) vs object-paste (elements onto the current slide) is decided by pane
-focus + the presence of a slide flavor, not by a clipboard branch that
-duplicates.
+industry guard against a stale copy causing an accidental duplicate. **Done** for
+all three selection kinds: an element, a multi-selection, and a **slide**
+(`duplicateSlide` — group-aware, with animation links, selects the new slide).
+Each is a direct store action, so a stale clipboard can't cause a surprise paste.
+
+Still TODO: making ⌘V's slide-paste (new slide) vs object-paste (elements onto
+the current slide) decision explicit by pane focus, rather than the interim
+"⌘V on a slide → duplicate the current slide" (`pasteInternalClip`, tracked with
+the cross-deck slide-paste in #167).
 
 ## Implementation stages
 
@@ -280,8 +285,9 @@ duplicates.
    ⌘⇧V "Keep Style" is still TODO — ⌘⇧V is now unbound ("Paste without
    Formatting" / the plain-text ⌘⇧V was removed 2026-07 as redundant with the
    in-editor default).
-5. **⌘D duplicate bypasses the clipboard**; slide-paste vs object-paste gated on
-   focus + slide flavor.
+5. **⌘D duplicate bypasses the clipboard** — DONE for element / multi / slide
+   (direct store actions). Remaining: slide-paste vs object-paste gated on focus
+   + slide flavor (the ⌘V half; ties to #167).
 
 ## Testing
 
