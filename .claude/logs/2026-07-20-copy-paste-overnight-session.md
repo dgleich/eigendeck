@@ -124,15 +124,52 @@ Two separate things:
   the content's fonts. It's a design decision (raw-HTML escape hatch vs on-brand),
   so I filed #169 with a proposal + the default questions rather than build it.
 
+## 6. Google Sheets pasted as a low-res image (FIXED)
+
+When you copy a Sheets range, the browser also puts a LOW-RES `public.png`/tiff
+bitmap of the selection on the clipboard next to the HTML; the paste ladder took
+that before ever reaching our crisp HTML render. Fix: before taking a native/
+clipboard RASTER, read the HTML — if it's block content we render better
+(`htmlNeedsScreenshot`: a table), skip the raster and use our HTML→PNG render
+(SVG vector is still taken; PDF already skipped when rich text present). Applied
+on both the macOS native-pasteboard and the Linux/Windows clipboardData paths.
+e2e: `paste-text-probe` case G (table + an image/png item → our render wins,
+inserted at table size not the raw 1200x680 default). commit b1fe291.
+
+## 7. Removed "Paste without Formatting" (⌘⇧V + Edit menu)
+
+You decided to drop it — redundant with the in-editor default (a ⌘V while
+editing already inserts foreign clipboard content as plain text; it only kept
+styling for an Eigendeck→Eigendeck marked copy). Removed the native menu item,
+its handler, and the ⌘⇧V keydown; ⌘⇧V is now unbound (reserved for a future
+"Keep Style"). On the canvas, "Paste as… → Text" is the explicit plain-text
+route. Docs updated. commit 1717530.
+
+## 8. Stage 5 — ⌘D duplicate + ⌘V slide-paste (DONE)
+
+- **⌘D** now duplicates a selected **slide** too (it already did element/multi),
+  via `duplicateSlide` — group-aware, links for builds, selects the new slide.
+  All three kinds are direct store actions, so a stale clipboard can't cause a
+  surprise paste. Sidebar "Duplicate Slide" label fixed D → ⌘D. commit 80e7aa3.
+- **⌘V slide-paste** now inserts the COPIED slide (`store.pasteSlide`: fresh
+  slide + element ids, no sync/link, standalone), not a duplicate of the CURRENT
+  slide (the old `pasteInternalClip` bug / #167 finding #1). Decided by **clip
+  kind** (slide clip → new slide; elements clip → objects) rather than the
+  design's focus-gating — simpler + predictable; flagged the deviation to David.
+  commit 1b13637. Remaining: cross-deck asset *bytes* (#167).
+- e2e: `keyboard-shortcuts-probe` asserts ⌘D on element + slide;
+  `internal-paste-probe` asserts slide copy→paste = new slide with the copied
+  content + fresh ids. Both green in real WebKit.
+
 ## State
-- Branch `feat/copy-paste-redesign` pushed, not merged.
-- Tests: **1483 unit/component passing**, tsc clean, build clean, cargo check +
-  clippy clean. **e2e**: `caret-double-paste-probe.mjs` (gated) and
-  `paste-text-probe` case F (text+remote-img → text, fast) both pass in the real
-  WebKit rig. (Paste as… chooser itself has no e2e — its clipboard read can't be
-  seeded in the rig; the logic is unit/component-tested and its insert paths are
-  e2e-covered by paste-text/image probes.)
-- New issues: **#166** (clipboard-format corpus), **#167** (deferred copy/paste
-  findings), **#168** (native Paste-as popup).
-- Stages: 1–3 done earlier; **4 done** tonight; **5** (⌘D duplicate bypass +
-  proper slide-paste, ties #165) remains, plus ⌘⇧V Keep Style.
+- Branch `feat/copy-paste-redesign` pushed, **not merged**. All 5 stages done.
+- Tests: **1484 unit/component passing**, tsc clean, build clean, cargo check +
+  clippy clean. e2e (real WebKit, gated): `caret-double-paste`, `paste-text`
+  (cases A–G incl. remote-img→text + Sheets-raster gate), `internal-paste`
+  (element + slide), `keyboard-shortcuts` (⌘D element + slide).
+- Open issues: **#166** (clipboard-format corpus), **#167** (deferred findings —
+  #1 fixed; cross-deck asset bytes remain), **#168** (native Paste-as popup),
+  **#169** (HTML-element deck font — awaiting David's default decision).
+- **Next:** merge the branch to main (large, green, self-contained), then
+  cross-deck asset bytes (#167) and/or #169 once its defaults are decided.
+  ⌘⇧V "Keep Style" is the only unbuilt Stage-4 nicety.
