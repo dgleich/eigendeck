@@ -16,8 +16,7 @@ after them covers what moves.
   (Cmd/Ctrl+S), Save As… (⇧S), Import from HTML…, Export to HTML (⇧E) / Printable
   HTML… (⇧P) / PDF (Screenshots)…, Presentation Settings…, Compact (Free Unused
   Assets), Install LLM Tools…, Close Window.
-- **Edit**: Undo, Redo, Cut, Copy, Paste, Paste without Formatting (`paste-plain`),
-  Select All.
+- **Edit**: Undo, Redo, Cut, Copy, Paste, Paste as… (`paste-as`), Select All.
 - **View**: Present Mode (F5), Screen Share Presentation, Present in This Window,
   Toggle Speaker Notes (⌥S), Toggle Inspector, History (⇧H), Snap to Grid / Show
   Grid Points (checkable), Hide Window Chrome (⇧F), Customize Toolbar…, Debug

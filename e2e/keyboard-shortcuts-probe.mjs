@@ -51,5 +51,19 @@ await key('Escape'); await sleep(150);
 const selType = await exec(sid, `return window.__eigendeck.store.getState().selectedObject?.type;`);
 if (selType !== 'slide') fail(`Escape should deselect to slide, got ${selType}`);
 
-console.log('KBD_PASS: nudge 1px/10px, Cmd+] z-order, Escape deselect');
+// 5. Cmd+D on an ELEMENT duplicates it on the current slide (clipboard-free).
+await exec(sid, `window.__eigendeck.store.getState().selectObject({type:'element',id:'kbd1'});`);
+const nElBefore = Number(await exec(sid, `const s=window.__eigendeck.store.getState(); return s.presentation.slides[s.currentSlideIndex].elements.length;`));
+await key('d', false, true); await sleep(200);
+const nElAfter = Number(await exec(sid, `const s=window.__eigendeck.store.getState(); return s.presentation.slides[s.currentSlideIndex].elements.length;`));
+if (nElAfter !== nElBefore + 1) fail(`Cmd+D on an element should duplicate it: ${nElBefore} -> ${nElAfter}`);
+
+// 6. Cmd+D on a SLIDE duplicates the slide (clipboard-free, the Stage-5 add).
+await exec(sid, `const s=window.__eigendeck.store.getState(); s.selectSlide(s.currentSlideIndex);`);
+const nSlBefore = Number(await exec(sid, `return window.__eigendeck.store.getState().presentation.slides.length;`));
+await key('d', false, true); await sleep(200);
+const nSlAfter = Number(await exec(sid, `return window.__eigendeck.store.getState().presentation.slides.length;`));
+if (nSlAfter !== nSlBefore + 1) fail(`Cmd+D on a slide should duplicate it: ${nSlBefore} -> ${nSlAfter}`);
+
+console.log('KBD_PASS: nudge 1px/10px, Cmd+] z-order, Escape deselect, Cmd+D duplicate (element + slide)');
 process.exit(0);

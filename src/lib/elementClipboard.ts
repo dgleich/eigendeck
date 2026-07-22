@@ -15,7 +15,6 @@ import { TEXT_PRESET_STYLES, effectiveFontSize, resolveColor } from '../types/pr
 import { resolveTheme, themeColorForPreset } from './themes';
 import { fontForPreset, fontFamilyForPreset } from './fonts';
 import { renderMathInHtmlSync, containsMath } from './mathjaxRenderer';
-import { markAsEigendeckForClipboard } from './clipboard';
 
 const PAYLOAD_V = 1;
 
@@ -25,6 +24,13 @@ interface AssetClipPayload {
   /** The element's renderable fields, minus identity (id/assetId/sync/link). */
   element: Record<string, unknown>;
   ext: string;
+  // Cross-slide LINK re-resolution on paste. The image path bypasses the
+  // text/html private flavor (arboard's image write clobbers it), so the link
+  // metadata rides in this payload instead. See docs/copy-and-paste.md.
+  fromSlideId?: string;
+  fromSlideIndex?: number;
+  sourceId?: string;
+  sourceSyncId?: string;
 }
 
 interface AssetMeta { mime_type?: string; path?: string }
@@ -55,7 +61,10 @@ function extFromMime(mime: string, path?: string): string {
 
 /** Copy a single image/SVG element to the internal clip + system clipboard.
  *  Returns true if it handled the element. */
-export async function copyAssetElement(el: SlideElement): Promise<boolean> {
+export async function copyAssetElement(
+  el: SlideElement,
+  ctx?: { fromSlideId: string; fromSlideIndex: number },
+): Promise<boolean> {
   if (!isCopyableAsset(el)) return false;
   const assetId = (el as { assetId: string }).assetId;
   try {
@@ -69,6 +78,8 @@ export async function copyAssetElement(el: SlideElement): Promise<boolean> {
     try { sourceDeckId = await invoke<string>('db_get_project_id'); } catch { /* unsaved deck */ }
     const payload: AssetClipPayload = {
       v: PAYLOAD_V, sourceDeckId, element: detachedFields(el), ext: extFromMime(mime, meta?.path),
+      fromSlideId: ctx?.fromSlideId, fromSlideIndex: ctx?.fromSlideIndex,
+      sourceId: el.id, sourceSyncId: (el as { syncId?: string }).syncId,
     };
     await invoke('clip_copy_asset', { assetId, payload: JSON.stringify(payload), mime });
     return true;
@@ -93,16 +104,12 @@ function plainTextFromHtml(html: string): string {
     .replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-/** Build the rich text/html (+ plain-text fallback) for a TEXT element, to write
- *  to the system clipboard on the `copy` EVENT via clipboardData.setData — the
- *  race-free, WebKit-reliable path (writing on keydown via a native call gets
- *  clobbered by the browser's own copy). SYNCHRONOUS: math comes from the cache
- *  the editor already populated (renderMathInHtmlSync), so it can run inside the
- *  copy event. The HTML carries the eigendeck marker so pasting back into
- *  eigendeck takes the in-app element path, not the rich-HTML→image route. */
+/** The visible (foreign-app-facing) styled HTML + plain text for a copied text
+ *  element. Returns the RAW styled markup — the caller wraps it with the marker
+ *  + private JSON flavor via encodeClipHtml (clipboardModel). */
 export function textElementClipboardHtml(
   el: TextElement, slide: Slide, config: PresentationConfig, theme: string,
-): { html: string; plain: string } {
+): { styledHtml: string; plain: string } {
   const preset = TEXT_PRESET_STYLES[el.preset];
   const pkg = fontForPreset(el.preset, slide, config);
   const fontFamily = el.fontFamily || fontFamilyForPreset(pkg, el.preset);
@@ -115,7 +122,7 @@ export function textElementClipboardHtml(
   const styled =
     `<div style="font-family:${fontFamily};font-size:${fontSize}px;font-weight:${preset.fontWeight};` +
     `font-style:${preset.fontStyle};color:${color};line-height:1.3;">${rendered}</div>`;
-  return { html: markAsEigendeckForClipboard(styled), plain: plainTextFromHtml(el.html || '') };
+  return { styledHtml: styled, plain: plainTextFromHtml(el.html || '') };
 }
 
 /** Is there a FRESH internal asset clip right now? (staleness-checked in Rust).
@@ -130,7 +137,14 @@ export async function hasFreshInternalAsset(): Promise<boolean> {
 /** Paste the internal clip's asset into the CURRENT deck and return a new,
  *  detached element (fresh id + assetId). Null if there's no fresh internal
  *  clip. The caller adds it to the slide. */
-export async function pasteAssetElement(): Promise<SlideElement | null> {
+export interface PastedAsset {
+  element: SlideElement;
+  /** Cross-slide link metadata (for the animation link the html private flavor
+   *  would otherwise carry). */
+  link: { fromSlideId?: string; sourceId?: string; sourceSyncId?: string };
+}
+
+export async function pasteAssetElement(): Promise<PastedAsset | null> {
   let meta: PeekResult | null = null;
   try { meta = await invoke<PeekResult | null>('clip_peek_internal'); } catch { return null; }
   if (!meta || !meta.has_bytes) return null;
@@ -142,9 +156,10 @@ export async function pasteAssetElement(): Promise<SlideElement | null> {
   try { res = await invoke<{ asset_id: string; payload: string } | null>('clip_paste_asset', { path }); }
   catch (e) { console.warn('[clip] clip_paste_asset failed:', e); return null; }
   if (!res) return null;
-  return {
+  const element = {
     ...payload.element,
     id: crypto.randomUUID(),
     assetId: res.asset_id,
   } as unknown as SlideElement;
+  return { element, link: { fromSlideId: payload.fromSlideId, sourceId: payload.sourceId, sourceSyncId: payload.sourceSyncId } };
 }

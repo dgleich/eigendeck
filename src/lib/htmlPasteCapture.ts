@@ -22,7 +22,15 @@
  *  narrow: Word and browsers wrap even a one-line styled sentence in <p>/<div>,
  *  which should still paste as editable text, not an image (#161). */
 export function htmlNeedsScreenshot(html: string | null | undefined): boolean {
-  return !!html && /<(table|thead|tbody|tfoot|tr|td|th|img|svg|figure|pre|math)[\s>]/i.test(html);
+  if (!html) return false;
+  // Structure a text box genuinely can't hold.
+  if (/<(table|thead|tbody|tfoot|tr|td|th|svg|figure|pre|math)[\s>]/i.test(html)) return true;
+  // An EMBEDDED (data:) image can't live in a text box either. A REMOTE <img> is
+  // NOT a screenshot trigger: sanitizeForCapture strips it (the capture is
+  // network-free), so a browser copy of text + a remote image pastes as editable
+  // TEXT instead of a rasterized (and formerly ~60s-hang-prone) screenshot. Use
+  // "Paste as… → Simple Image" to force a rasterization.
+  return /<img\b[^>]*\bsrc\s*=\s*["']?\s*data:/i.test(html);
 }
 
 /** Pull the FIRST embedded data-URL `<img>` out of pasted HTML (#158). Google
@@ -53,7 +61,15 @@ export function extractPastedDataUrlImage(
  *  body innerHTML safe to drop into an offscreen render node. DOM required. */
 export function sanitizeForCapture(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  doc.querySelectorAll('script, link, meta, title, base, iframe, object, embed').forEach((n) => n.remove());
+  // Drop <style> too — it can carry @font-face / @import with remote URLs the
+  // capture would otherwise try (and hang) to fetch.
+  doc.querySelectorAll('script, link, meta, title, base, iframe, object, embed, style').forEach((n) => n.remove());
+  // Remove REMOTE (non-data:) <img>: the capture is network-free, and a remote
+  // src makes modern-screenshot stall on a connect timeout (~30s ×2). Keep data:
+  // images (they render offline).
+  doc.querySelectorAll('img').forEach((img) => {
+    if (!/^\s*data:/i.test(img.getAttribute('src') || '')) img.remove();
+  });
   doc.querySelectorAll('*').forEach((el) => {
     for (const attr of Array.from(el.attributes)) {
       const name = attr.name.toLowerCase();
@@ -63,7 +79,14 @@ export function sanitizeForCapture(html: string): string {
       }
     }
     const style = (el as HTMLElement).style;
-    if (style && style.fontFamily) style.fontFamily = ''; // deck font becomes the default
+    if (style) {
+      if (style.fontFamily) style.fontFamily = ''; // deck font becomes the default
+      // Strip any inline style property referencing a remote url() (background
+      // image, mask, border-image, …) — same network-hang reason.
+      for (const prop of Array.from(style)) {
+        if (/url\(\s*["']?\s*https?:/i.test(style.getPropertyValue(prop))) style.removeProperty(prop);
+      }
+    }
   });
   return doc.body.innerHTML;
 }
@@ -101,12 +124,30 @@ export async function captureHtmlToPng(
   container.innerHTML = sanitizeForCapture(html);
   document.body.appendChild(container);
   try {
-    if (document.fonts?.ready) { try { await document.fonts.ready; } catch { /* ignore */ } }
+    // Time-box font readiness — an injected remote @font-face could otherwise
+    // stall this await.
+    if (document.fonts?.ready) {
+      try { await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 800))]); } catch { /* ignore */ }
+    }
     await new Promise((r) => requestAnimationFrame(() => r(null)));
     const rect = container.getBoundingClientRect();
     if (rect.width < 1 || rect.height < 1) return null;
     const { domToDataUrl } = await import('modern-screenshot');
-    const dataUrl = await domToDataUrl(container, { scale: opts.scale ?? 4, backgroundColor: '#ffffff' });
+    // NETWORK-FREE capture: never fetch remote resources (fetchFn → false) and
+    // cap any residual media wait (timeout), so a stray remote URL can't hang the
+    // paste for ~60s (two stacked 30s modern-screenshot timeouts). The deck font
+    // is applied via the container style, so skip webfont embedding (font:false).
+    const dataUrl = await domToDataUrl(container, {
+      scale: opts.scale ?? 4,
+      backgroundColor: '#ffffff',
+      timeout: 2500,
+      // Block only REMOTE image fetches (modern-screenshot calls fetchFn just for
+      // requestType==='image'). Do NOT disable font embedding: the deck fonts are
+      // data-URL @font-face already in <head> (zero network), so they embed for
+      // free — `font:false` would drop them and the capture would fall back to a
+      // serif. sanitizeForCapture + timeout cover the hang; this covers images.
+      fetchFn: async (): Promise<string | false> => false,
+    });
     return { bytes: dataUrlToBytes(dataUrl), width: Math.round(rect.width), height: Math.round(rect.height) };
   } catch (e) {
     console.warn('captureHtmlToPng failed:', e);

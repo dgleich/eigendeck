@@ -68,16 +68,25 @@ else {
   if (!html.includes('EIGEN')) problems.push('export missing the authored markup');
 }
 
-// (5) Copy/paste: select the element, Cmd+C (sets the in-app clipboard), then a
-// paste event → a SECOND html element with the same markup + background and a
-// fresh id. Exercises the real App copy/paste handlers, not the store directly.
+// (5) Copy/paste: select the element, fire the real 'copy' EVENT (handleCopy
+// writes the private Eigendeck flavor to clipboardData — the old keydown/
+// clipboardRef path was retired), then paste that html → a SECOND html element
+// with the same markup + background and a fresh id.
 const nHtml = () => exec(sid, "return window.__eigendeck.store.getState().presentation.slides[0].elements.filter(e=>e.type==='html').length");
+const copyCapture = () => exec(sid, `
+  const dt=new DataTransfer();
+  document.body.dispatchEvent(new ClipboardEvent('copy',{clipboardData:dt,bubbles:true,cancelable:true}));
+  return dt.getData('text/html');`);
+const pasteHtml = (h) => exec(sid, `
+  const dt=new DataTransfer(); dt.setData('text/html', ${JSON.stringify(h)});
+  document.body.dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}));`);
 const before = await nHtml();
 await exec(sid, "window.__eigendeck.store.getState().selectObject({type:'element',id:'raw'});");
 await sleep(150);
-await exec(sid, "document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'c',metaKey:true,ctrlKey:true,bubbles:true}));");
-await sleep(150);
-await exec(sid, "document.body.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true}));");
+const rawCopyHtml = await copyCapture();
+if (!/data-eigendeck-json=/.test(rawCopyHtml || '')) problems.push('html copy wrote no private flavor');
+await sleep(100);
+await pasteHtml(rawCopyHtml);
 await sleep(400);
 const cp = JSON.parse(await exec(sid, `
   const els = window.__eigendeck.store.getState().presentation.slides[0].elements.filter(e=>e.type==='html');
@@ -102,7 +111,7 @@ await exec(sid, `
   s.selectObject({type:'element',id:copy.id});
 `);
 await sleep(150);
-await exec(sid, "document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'c',metaKey:true,ctrlKey:true,bubbles:true}));");
+const cutHtml = await copyCapture();   // copy the selected copy, then delete it
 await sleep(100);
 await exec(sid, `
   const copy = window.__eigendeck.store.getState().presentation.slides[0].elements.find(e=>e.type==='html'&&e.id!=='raw');
@@ -111,7 +120,7 @@ await exec(sid, `
 await sleep(200);
 const afterCut = await nHtml();
 if (afterCut !== before) problems.push(`cut: expected ${before} html elements after delete, got ${afterCut}`);
-await exec(sid, "document.body.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true}));");
+await pasteHtml(cutHtml);
 await sleep(400);
 const afterRepaste = await nHtml();
 if (afterRepaste !== before + 1) problems.push(`cut→paste: expected ${before + 1} after re-paste, got ${afterRepaste}`);

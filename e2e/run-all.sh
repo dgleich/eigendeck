@@ -74,7 +74,7 @@ MANIFEST=(
   "welcome-roundtrip-probe.mjs|examples/welcome.eigendeck||"   # HTML export->import restores assets (single-store)
   "element-fidelity-probe.mjs|examples/welcome.eigendeck||"   # every element PROPERTY survives import (asset types)
   "element-fidelity-probe.mjs|all-elements.eigendeck||import_json $ROOT/e2e/fixtures/all-elements-deck.json"   # video/html/cover/rich-text/arrow
-  "element-fidelity-probe.mjs|stylematrix.eigendeck||python3 $EXFIX/make_style_matrix_deck.py $DECKDIR/sm.json; import_json $DECKDIR/sm.json"   # every export-matrix STYLE round-trips
+  "element-fidelity-probe.mjs|stylematrix.eigendeck||python3 $EXFIX/make_style_matrix_deck.py \$DECKDIR/sm.json; import_json \$DECKDIR/sm.json"   # every export-matrix STYLE round-trips
   "demo-preview-bg-probe.mjs|examples/intro-slide.eigendeck||"
 
   # ── editor / store correctness (clean empty deck; probes self-build) ─────
@@ -93,6 +93,9 @@ MANIFEST=(
   # (headless SVG glyph-geometry measurement reads null in this WebKit build).
   "zorder-probe.mjs|empty.eigendeck||$EMPTY"
   "paste-text-probe.mjs|empty.eigendeck||$EMPTY"   # #161 paste plain/styled text → text element (color kept, font-size dropped)
+  "internal-paste-probe.mjs|ip.eigendeck||import_json $EXFIX/internal-paste-deck.json"   # copy/paste redesign: private-flavor round-trip + stale guard
+  "image-link-probe.mjs|imglink.eigendeck||import_json $EXFIX/image-link-deck.json"   # copy/paste redesign: image copy -> paste + cross-slide link
+  "caret-double-paste-probe.mjs|caret-paste.eigendeck||import_json $EXFIX/caret-paste-deck.json"   # editing + paste must NOT create a canvas element (double-paste guard)
   "styling-roundtrip.mjs|empty.eigendeck||$EMPTY"
   "sync-badge-reopen-probe.mjs|empty.eigendeck||$EMPTY"
 

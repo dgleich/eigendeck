@@ -48,6 +48,10 @@ describe('htmlNeedsScreenshot', () => {
     expect(htmlNeedsScreenshot('')).toBe(false);
     expect(htmlNeedsScreenshot(null)).toBe(false);
   });
+  it('does NOT screenshot a REMOTE <img> (stripped in capture) → text; DOES for a data: image', () => {
+    expect(htmlNeedsScreenshot('<p>caption <img src="https://example.com/pic.png"></p>')).toBe(false);
+    expect(htmlNeedsScreenshot('<p>x <img src="data:image/png;base64,AAAA"></p>')).toBe(true);
+  });
 });
 
 describe('sanitizeForCapture', () => {
@@ -75,6 +79,25 @@ describe('sanitizeForCapture', () => {
   it('drops embeds (iframe/object/embed)', () => {
     const out = sanitizeForCapture('<div><iframe src="x"></iframe><p>ok</p></div>');
     expect(out).not.toContain('<iframe');
+    expect(out).toContain('ok');
+  });
+
+  it('removes REMOTE images + remote url() so the capture is network-free, keeps data: images', () => {
+    const out = sanitizeForCapture(
+      '<div><img src="https://x/a.png"><img src="data:image/png;base64,AAAA">' +
+      '<p style="background-image:url(https://x/bg.png);color:red">hi</p></div>',
+    );
+    expect(out).not.toContain('https://x/a.png');       // remote img removed
+    expect(out).toContain('data:image/png;base64,AAAA'); // data: img kept
+    expect(out.toLowerCase()).not.toContain('https://x/bg.png'); // remote bg url stripped
+    expect(out.toLowerCase()).toContain('color');        // other inline styles kept
+    expect(out).toContain('hi');
+  });
+
+  it('drops <style> blocks (remote @font-face / @import hang risk)', () => {
+    const out = sanitizeForCapture('<div><style>@font-face{font-family:x;src:url(https://x/f.woff2)}</style><p>ok</p></div>');
+    expect(out).not.toContain('<style');
+    expect(out.toLowerCase()).not.toContain('font-face');
     expect(out).toContain('ok');
   });
 });

@@ -45,7 +45,12 @@ this list says **⌘**.
 | ⌘B | Bold |
 | ⌘I | Italic |
 | ⌘E | Center |
-| ⌘⇧V | Paste as plain text |
+
+## Editing
+
+| Shortcut | Action |
+|---|---|
+| ⌘D | Duplicate the selected element(s) or slide (in place) |
 
 ## View and presenting
 

@@ -40,10 +40,9 @@ Avoid mixing the two patterns within a single setting — it confuses both the c
 ## Text Editing
 
 ### Paste behavior
-- **Cmd+V**: Rich paste — preserves formatting from clipboard
-- **Cmd+Shift+V**: Plain text paste — strips all formatting, inserts raw text via `insertText` execCommand
-- **Menu**: Edit > "Paste without Formatting" for discoverability
-- **Intention**: Rich paste is default because slide text often comes from other formatted sources. But command-line output and code snippets need plain paste.
+- **Cmd+V**: paste — foreign content already arrives as plain text (a text element's styling is element-type-driven); an Eigendeck→Eigendeck text copy keeps its authorable styling.
+- **Paste as… → Text** is the explicit "plain text" route on the canvas.
+- **Removed (2026-07):** the dedicated "Paste without Formatting" command / ⌘⇧V — redundant with the in-editor default (foreign paste already strips formatting), and ⌘⇧V is reserved for a future "Keep Style".
 
 ### Font size on pasted text
 - When rich text is pasted, it may contain inline `<font size="...">` or `<span style="font-size:...">` tags
@@ -180,7 +179,6 @@ Defined in `src/lib/themes.ts` — single file, easy to modify. Maps preset name
 - `Cmd+I` has NO native accelerator (handled in JS: italic in contentEditable, inspector otherwise)
 - `Cmd+E` for center text (no native accelerator)
 - `Cmd+Shift+E` for Export to HTML
-- `Cmd+Shift+V` handled in JS (paste plain text), menu item has no accelerator to avoid conflict
 
 ## Notebooks
 

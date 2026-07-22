@@ -25,7 +25,7 @@ import { nudgeDelta, zOrderDirection } from './lib/keyboardShortcuts';
 import { dispatchToolbarAction } from './lib/toolbarActions';
 import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
-import { detachDelta, pasteElementDelta } from './lib/syncLink';
+import { detachDelta } from './lib/syncLink';
 import { offsetElement } from './lib/offsetElement';
 import { buildPrintSlideHtml } from './lib/printSlideHtml';
 import { previewKey, loadPreviewDataUrl, isPreviewThemeStale } from './lib/previewCache';
@@ -61,6 +61,11 @@ import { readFileNative, readTextFileNative, writeFileNative, writeTextFileNativ
 import { bytesToBase64 } from './lib/base64';
 import { extractDemoPieceNames } from './lib/demoPieces';
 import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement, textElementClipboardHtml } from './lib/elementClipboard';
+import { encodeClipHtml } from './lib/clipboardModel';
+import { linkPastedToSource } from './lib/pasteClip';
+import { eventInTextEditor } from './lib/editableTarget';
+import { PasteAsModal } from './components/PasteAsModal';
+import type { PasteRep } from './lib/pasteAs';
 import { buildEmbeddedFontFacesCSS, fontForPreset } from './lib/fonts';
 import { renderMathInHtml, containsMath } from './lib/mathjaxRenderer';
 import { getMissingAssets } from './lib/missingAssets';
@@ -615,7 +620,6 @@ function App() {
     // HUD would go unmeasured, and the fallback padding would overlap it again
     // (worst with the inspector open, which wraps the chips to extra rows).
   }, [projectPath, isPresenting]);
-  const clipboardRef = useRef<{ type: 'elements'; data: SlideElement[]; fromSlideIndex: number; fromSlideId: string } | { type: 'slide'; data: any } | null>(null);
   const [linkOverlayElementId, setLinkOverlayElementId] = useState<string | null>(null);
   const [promoteCandidates, setPromoteCandidates] = useState<{ elementId: string; slideNo: number; summary: string }[] | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuEntry[] } | null>(null);
@@ -632,6 +636,19 @@ function App() {
   const [videoUrl, setVideoUrl] = useState('');
   // Escape closes the video insert modal (in-app modal, no native Esc) — #120.
   useEscapeKey(videoModalOpen, () => setVideoModalOpen(false));
+  // "Paste as…" chooser (Stage 4): null = closed; an array (possibly empty) = open.
+  const [pasteAsReps, setPasteAsReps] = useState<PasteRep[] | null>(null);
+  const openPasteAs = useCallback(async () => {
+    const { gatherClipboardTypes, clipboardRepresentations } = await import('./lib/pasteAs');
+    setPasteAsReps(clipboardRepresentations(await gatherClipboardTypes()));
+  }, []);
+  // Canvas context-menu "Paste as…" dispatches this DOM event (the native Edit
+  // menu reaches openPasteAs via the Tauri menu-event path instead).
+  useEffect(() => {
+    const open = () => void openPasteAs();
+    window.addEventListener('eigendeck:open-paste-as', open);
+    return () => window.removeEventListener('eigendeck:open-paste-as', open);
+  }, [openPasteAs]);
   // Which "+ Insert" buttons are hidden from the editor toolbar. The
   // Insert menu (native) always lists everything; this only declutters
   // the toolbar. See src/lib/insertItems.ts + Settings → Toolbar buttons.
@@ -1235,13 +1252,6 @@ function App() {
         if (key === 'b') { e.preventDefault(); document.execCommand('bold'); }
         if (key === 'i') { e.preventDefault(); document.execCommand('italic'); }
         if (key === 'e') { e.preventDefault(); document.execCommand('justifyCenter'); }
-        // Cmd+Shift+V: paste as plain text (strip formatting)
-        if (key === 'v' && e.shiftKey) {
-          e.preventDefault();
-          navigator.clipboard.readText().then((text) => {
-            document.execCommand('insertText', false, text);
-          }).catch(() => {});
-        }
       }
       // Cmd+I outside text: toggle inspector
       if (e.key.toLowerCase() === 'i' && (e.ctrlKey || e.metaKey) && !inEditable) { e.preventDefault(); usePresentationStore.getState().toggleProperties(); }
@@ -1288,6 +1298,14 @@ function App() {
           }
           if (newIds.length === 1) state.selectObject({ type: 'element', id: newIds[0] });
           else if (newIds.length > 1) state.selectObject({ type: 'multi', ids: newIds });
+        } else if (sel?.type === 'slide') {
+          // Slide selected (sidebar) → duplicate the slide in place. Like the
+          // element/multi branches, this NEVER touches the clipboard — it's a
+          // direct store action, so a stale clipboard can't cause a surprise
+          // paste. duplicateSlide handles group insertion + animation links and
+          // selects the new slide. (⌘V on a slide is the clipboard PASTE path.)
+          e.preventDefault();
+          state.duplicateSlide(state.currentSlideIndex);
         }
       }
       // Arrow keys: nudge the selected element(s) (1px / 10px with Shift), else
@@ -1330,30 +1348,11 @@ function App() {
           state.selectObject({ type: 'slide' });
         }
       }
-      // Copy (Cmd+C) — only when not editing text
-      if (e.key === 'c' && (e.ctrlKey || e.metaKey) && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !inEditable) {
-        const state = usePresentationStore.getState();
-        const sel = state.selectedObject;
-        const slide = state.presentation.slides[state.currentSlideIndex];
-        if (sel?.type === 'element') {
-          const el = slide.elements.find((el) => el.id === sel.id);
-          if (el) {
-            clipboardRef.current = { type: 'elements', data: [JSON.parse(JSON.stringify(el))], fromSlideIndex: state.currentSlideIndex, fromSlideId: slide.id };
-          }
-          // NOTE: the SYSTEM-clipboard write (rich HTML for text, image bytes +
-          // internal clip for assets) happens in the 'copy' EVENT handler below,
-          // not here — writing on keydown races (and loses to) the browser's own
-          // copy. See onCopy.
-        } else if (sel?.type === 'multi') {
-          clipboardRef.current = { type: 'elements', data: slide.elements
-            .filter((el) => sel.ids.includes(el.id))
-            .map((el) => JSON.parse(JSON.stringify(el))), fromSlideIndex: state.currentSlideIndex, fromSlideId: slide.id };
-          void clearInternalClip();
-        } else if (!sel || sel.type === 'slide') {
-          clipboardRef.current = { type: 'slide', data: JSON.parse(JSON.stringify(slide)) };
-          void clearInternalClip();
-        }
-      }
+      // Copy (Cmd+C): handled entirely by the 'copy' EVENT handler (handleCopy)
+      // — it writes the private Eigendeck flavor + fallbacks to the OS clipboard.
+      // Nothing on keydown (the old in-memory clipboardRef buffer is retired;
+      // paste reads the private flavor live from the clipboard — see
+      // docs/copy-and-paste.md).
       // Paste (Cmd+V): handled by paste event listener below (not keydown)
       // so system clipboard images take priority over internal clipboard
     };
@@ -1361,8 +1360,11 @@ function App() {
     // Internal element/slide paste — runs on the paste event so it doesn't
     // block the system clipboard (image paste in SlideEditor gets first pick)
     const handlePaste = async (e: ClipboardEvent) => {
-      if ((e.target as HTMLElement).closest('[contenteditable="true"]')) return;
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+      // Bail when the caret is in a text editor. Checks focus/selection, not just
+      // e.target — WebKit can dispatch a keyboard paste with target=<body> while
+      // editing, which an e.target-only guard misses → double paste (element +
+      // caret text). See editableTarget.ts.
+      if (eventInTextEditor(e)) return;
       // Capture (synchronously, before any await) whether the SYSTEM clipboard
       // carries an image — clipboardData is neutered after an await.
       let sysImage = false;
@@ -1379,58 +1381,29 @@ function App() {
       if (pastedAsset) {
         e.preventDefault();
         const state = usePresentationStore.getState();
-        const p = (pastedAsset as { position?: { x: number; y: number; width: number; height: number } }).position;
-        if (p) (pastedAsset as { position: typeof p }).position = { ...p, x: p.x + 40, y: p.y + 40 };
-        state.addElement(pastedAsset);
-        state.selectObject({ type: 'element', id: pastedAsset.id });
+        const el = pastedAsset.element;
+        const link = pastedAsset.link;
+        const curSlideId = state.presentation.slides[state.currentSlideIndex]?.id;
+        // Offset ONLY for a same-slide paste (an independent copy sitting beside
+        // the original). A cross-slide paste keeps the source coordinates so the
+        // animation link interpolates in place — matching the element path
+        // (pasteClip.ts), which offsets only when sameSlide. Offsetting here drifted
+        // a linked image by 40px on the target slide.
+        const sameSlide = !link.fromSlideId || curSlideId === link.fromSlideId;
+        const p = (el as { position?: { x: number; y: number; width: number; height: number } }).position;
+        if (p && sameSlide) (el as { position: typeof p }).position = { ...p, x: p.x + 40, y: p.y + 40 };
+        state.addElement(el);
+        state.selectObject({ type: 'element', id: el.id });
+        // Cross-slide paste of an image → animation link to the source (same rule
+        // as element paste; the metadata rode in the asset payload because
+        // arboard's image write clobbers the html private flavor).
+        if (link.sourceId && link.fromSlideId && !link.sourceSyncId && curSlideId !== link.fromSlideId) {
+          linkPastedToSource(el.id, link.fromSlideId, link.sourceId);
+        }
         return;
       }
       // Foreign system image → let SlideEditor handle it.
       if (sysImage) return;
-      const clip = clipboardRef.current;
-      if (clip?.type === 'elements') {
-        e.preventDefault();
-        const state = usePresentationStore.getState();
-        const targetSlide = state.presentation.slides[state.currentSlideIndex];
-        // Same slide if we're pasting back onto the slide we copied from (by id,
-        // so slide reordering doesn't fool it).
-        const sameSlide = targetSlide?.id === clip.fromSlideId;
-        // The source slide (where the originals still live) — for cross-slide
-        // linking. Located by id; may be gone if the slide was deleted.
-        const srcSlideIdx = state.presentation.slides.findIndex((s) => s.id === clip.fromSlideId);
-
-        const newIds: string[] = [];
-        const toLink: Array<{ pastedId: string; sourceId: string }> = [];
-        for (const el of clip.data) {
-          // Same slide → independent copy; cross-slide → join the source's sync
-          // group (if synced) else link to the source (animation). See
-          // pasteElementDelta + docs/sync-and-link.md.
-          const { delta, link } = pasteElementDelta(el, sameSlide);
-          const newEl = { ...JSON.parse(JSON.stringify(el)), id: crypto.randomUUID(), ...delta };
-          // Offset only the same-slide independent copy so it doesn't stack.
-          if (sameSlide) offsetElement(newEl, 40, 40);
-          state.addElement(newEl);
-          newIds.push(newEl.id);
-          // Carry type-specific state across (e.g. clone a notebook's
-          // recording). No-op when the copy joined the source's sync group
-          // (same overlay key → already shares it).
-          void runCopyHook(el, newEl);
-          // Link to the source only if it still exists on the source slide.
-          if (link && srcSlideIdx >= 0
-              && state.presentation.slides[srcSlideIdx].elements.some((s) => s.id === el.id)) {
-            toLink.push({ pastedId: newEl.id, sourceId: el.id });
-          }
-        }
-        // Link cross-slide pastes to their sources (shared linkId on both).
-        for (const { pastedId, sourceId } of toLink) {
-          usePresentationStore.getState().linkElements(pastedId, srcSlideIdx, sourceId);
-        }
-        if (newIds.length === 1) state.selectObject({ type: 'element', id: newIds[0] });
-        else if (newIds.length > 1) state.selectObject({ type: 'multi', ids: newIds });
-      } else if (clip?.type === 'slide') {
-        e.preventDefault();
-        usePresentationStore.getState().duplicateSlide(usePresentationStore.getState().currentSlideIndex);
-      }
     };
     window.addEventListener('paste', handlePaste);
 
@@ -1439,36 +1412,64 @@ function App() {
     // preventDefault so the browser doesn't clobber our native arboard write,
     // then copyAssetElement (system image + cross-window internal clip).
     const handleCopy = (e: ClipboardEvent) => {
-      const t = e.target as HTMLElement | null;
       // A copy to the SYSTEM clipboard from editing a text element (or an
       // input/textarea) supersedes any prior element/slide copy. Clear our
       // internal buffer so a later CANVAS paste can't serve the STALE old
       // element — the "multiple clipboards" desync. The system clipboard is
       // authoritative after this; SlideElementRenderer's onCopy has already
       // written the selection there.
-      if (t?.closest?.('[contenteditable="true"]') || (t && ['INPUT', 'TEXTAREA'].includes(t.tagName))) {
-        clipboardRef.current = null;
+      if (eventInTextEditor(e)) {
         void clearInternalClip();
         return;
       }
+      if (!e.clipboardData) return;
       const state = usePresentationStore.getState();
       const sel = state.selectedObject;
-      if (sel?.type !== 'element') { void clearInternalClip(); return; }
       const slide = state.presentation.slides[state.currentSlideIndex];
-      const el = slide?.elements.find((x) => x.id === sel.id);
-      if (!el) return;
-      if (el.type === 'text' && e.clipboardData) {
-        const { html, plain } = textElementClipboardHtml(el, slide, state.presentation.config, state.presentation.theme);
-        e.preventDefault();
-        e.clipboardData.setData('text/html', html);
-        e.clipboardData.setData('text/plain', plain);
-        void clearInternalClip();
-      } else if (isCopyableAsset(el)) {
-        e.preventDefault();
-        void copyAssetElement(el);
-      } else {
-        void clearInternalClip();
+      if (!slide) return;
+
+      // Write the PRIVATE Eigendeck flavor (element/slide JSON, base64 in
+      // text/html) onto the OS clipboard for every copy, so paste reads an
+      // internal copy back with full fidelity straight from the clipboard — no
+      // separate buffer to desync (docs/copy-and-paste.md). `visibleHtml`/`plain`
+      // are the foreign-app fallbacks.
+      let clip: Parameters<typeof encodeClipHtml>[0] | null = null;
+      let visibleHtml = '';
+      let plain = '';
+      let assetEl: SlideElement | null = null;
+
+      if (sel?.type === 'element') {
+        const el = slide.elements.find((x) => x.id === sel.id);
+        if (el) {
+          clip = { kind: 'elements', elements: [el], fromSlideId: slide.id, fromSlideIndex: state.currentSlideIndex };
+          if (el.type === 'text') {
+            const r = textElementClipboardHtml(el, slide, state.presentation.config, state.presentation.theme);
+            visibleHtml = r.styledHtml; plain = r.plain;
+          } else if (el.type === 'html') {
+            // Raw-HTML element (#137): put its source on the clipboard as the
+            // visible flavors, so it renders/pastes into foreign apps and shows
+            // up as real content (not just the empty private-flavor wrapper).
+            visibleHtml = (el as { html?: string }).html || '';
+            plain = visibleHtml;
+          }
+          if (isCopyableAsset(el)) assetEl = el;
+        }
+      } else if (sel?.type === 'multi') {
+        const els = slide.elements.filter((x) => sel.ids.includes(x.id));
+        if (els.length) clip = { kind: 'elements', elements: els, fromSlideId: slide.id, fromSlideIndex: state.currentSlideIndex };
+      } else if (!sel || sel.type === 'slide') {
+        clip = { kind: 'slide', slide, fromSlideId: slide.id, fromSlideIndex: state.currentSlideIndex };
       }
+      if (!clip) { void clearInternalClip(); return; }
+
+      e.preventDefault();
+      e.clipboardData.setData('text/html', encodeClipHtml(clip, visibleHtml));
+      if (plain) e.clipboardData.setData('text/plain', plain);
+      // Asset element: ALSO place the image bytes on the clipboard for foreign
+      // paste (arboard). The link metadata rides in the asset payload since the
+      // image write clobbers the text/html private flavor.
+      if (assetEl) void copyAssetElement(assetEl, { fromSlideId: slide.id, fromSlideIndex: state.currentSlideIndex });
+      else void clearInternalClip();
     };
     window.addEventListener('copy', handleCopy);
 
@@ -1653,6 +1654,7 @@ function App() {
         case 'export-pdf': printToPdf(); break;
         case 'export-pdf-screenshots': exportPdfScreenshots(); break;
         case 'import-html': importFromHtml(); break;
+        case 'paste-as': void openPasteAs(); break;
         case 'install-llm-tools': void installLlmTools(); break;
         case 'present': startPresenting(); break;
         case 'screen-share-present': flushToSqlite().then(() => startScreenSharePresenting()); break;
@@ -1736,11 +1738,6 @@ function App() {
           s.deleteSlide(s.currentSlideIndex);
           break;
         }
-        case 'paste-plain':
-          navigator.clipboard.readText().then((text) => {
-            document.execCommand('insertText', false, text);
-          }).catch(() => {});
-          break;
         case 'gc-assets': (async () => {
           try {
             // Flush any pending writes first so dirty elements don't
@@ -1881,6 +1878,16 @@ function App() {
           candidates={promoteCandidates}
           onPick={(elementId) => { usePresentationStore.getState().promoteToSync(elementId); setPromoteCandidates(null); }}
           onCancel={() => setPromoteCandidates(null)}
+        />
+      )}
+      {pasteAsReps && (
+        <PasteAsModal
+          reps={pasteAsReps}
+          onCancel={() => setPasteAsReps(null)}
+          onPick={(kind) => {
+            setPasteAsReps(null);
+            window.dispatchEvent(new CustomEvent('eigendeck:paste-as', { detail: { kind } }));
+          }}
         />
       )}
       {videoModalOpen && (

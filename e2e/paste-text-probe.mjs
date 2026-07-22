@@ -43,7 +43,7 @@ const dispatchPaste = async (plain, html) => exec(sid, `
 `);
 const waitForCount = async (n) => { for (let i = 0; i < 20; i++) { const els = await elsOnSlide0(); if (els.length >= n) return els; await sleep(300); } return await elsOnSlide0(); };
 
-// --- Case A: styled text/html — keep color, drop font-size ---
+// --- Case A: styled text/html — strip a WHOLE-STRING color + font-size, keep bold ---
 let base = (await elsOnSlide0()).length;
 await dispatchPaste('Bold red', '<b style="color:#cc0000;font-size:44px">Bold red</b>');
 let els = await waitForCount(base + 1);
@@ -51,9 +51,10 @@ if (els.length !== base + 1) fail(`case A: expected ${base + 1} elements, got ${
 const a = els[els.length - 1];
 if (a.type !== 'text') fail(`case A: new element is ${a.type}, not text`);
 if (!a.html.includes('Bold red')) fail(`case A: text missing ("${a.html}")`);
-if (!/color/i.test(a.html)) fail(`case A: color not preserved ("${a.html}")`);
+if (/color/i.test(a.html)) fail(`case A: whole-string color NOT stripped ("${a.html}")`);
+if (!/<(b|strong)|font-weight/i.test(a.html)) fail(`case A: bold not kept ("${a.html}")`);
 if (/font-size|44px/i.test(a.html)) fail(`case A: font-size NOT stripped ("${a.html}")`);
-console.log(`  case A OK — styled html -> text element, color kept, font-size dropped: ${a.html}`);
+console.log(`  case A OK — whole-string color + font-size dropped, bold kept: ${a.html}`);
 
 // --- Case B: plain text only — newlines -> <br>, HTML metachars escaped ---
 base = els.length;
@@ -88,16 +89,64 @@ const d = els[els.length - 1];
 if (d.type !== 'image') fail(`case D: table came in as ${d.type}, expected image (screenshot)`);
 console.log('  case D OK — table -> image (screenshot)');
 
-// --- Case E: an eigendeck-marked paste (a copy of an eigendeck text element)
-//     must NOT create a raw text box from the baked-color HTML — the marker makes
-//     this path defer to the element-clip paste. Assert no new element appears. ---
+// --- Case E: an eigendeck TEXT-RUN copy (marker, but NO element JSON) — e.g. you
+//     copied part of a text while editing it — now creates a NEW text box with
+//     the WebKit-baked whole-string color STRIPPED (theme), per Stages 2/3.
+//     (Full element/slide copies carry the JSON and go through the private-flavor
+//     path, never reaching here.) ---
 base = els.length;
-// data-attribute marker (survives the OS pasteboard); baked color would be black.
 await dispatchPaste('white text', '<div data-eigendeck-copy="v1"><div style="color:#000000">white text</div></div>');
-await sleep(1500);
-els = await elsOnSlide0();
-if (els.length !== base) fail(`case E: eigendeck-marked paste created ${els.length - base} element(s); should defer (marker guard)`);
-console.log('  case E OK — eigendeck-marked paste defers (no raw text box created)');
+els = await waitForCount(base + 1);
+if (els.length !== base + 1) fail(`case E: expected a new text box, got ${els.length - base} new element(s)`);
+const eEl = els[els.length - 1];
+if (eEl.type !== 'text') fail(`case E: new element is ${eEl.type}, expected text`);
+if (!eEl.html.includes('white text')) fail(`case E: text missing ("${eEl.html}")`);
+if (/color/i.test(eEl.html)) fail(`case E: baked whole-string color NOT stripped ("${eEl.html}")`);
+console.log('  case E OK — eigendeck text-run → new text box, baked color stripped');
+
+// --- Case F: a browser copy = text + a REMOTE <img> must paste as editable TEXT,
+//     NOT a rasterized screenshot (which used to fetch the remote image and hang
+//     ~60s). The remote img is stripped; only the text remains. Must also be FAST
+//     — assert it lands well under the old ~60s stall. ---
+base = els.length;
+const tF = Date.now();
+await dispatchPaste('caption text', '<meta charset="utf-8"><p>caption <img src="https://example.invalid/pic.png" width="64"> text</p>');
+els = await waitForCount(base + 1);
+const elapsedF = Date.now() - tF;
+if (els.length !== base + 1) fail(`case F: expected 1 new element, got ${els.length - base}`);
+const fEl = els[els.length - 1];
+if (fEl.type !== 'text') fail(`case F: browser text+remote-img came in as ${fEl.type}, expected text (must not screenshot/hang)`);
+if (!/caption/.test(fEl.html)) fail(`case F: text missing ("${fEl.html}")`);
+if (elapsedF > 15000) fail(`case F: paste took ${elapsedF}ms — the remote-image hang is back (should be immediate)`);
+console.log(`  case F OK — text + remote img → TEXT element in ${elapsedF}ms (no screenshot, no hang)`);
+
+// --- Case G: a TABLE + a raster image ITEM on the clipboard (browsers/Sheets put
+//     a low-res selection bitmap next to the HTML). Our crisp HTML→PNG render must
+//     WIN; the raster must not preempt it. The raw-image path inserts at the fixed
+//     default 1200x680; our render inserts at a computed (table-aspect) size, so a
+//     non-default size proves the gate skipped the bitmap. ---
+base = els.length;
+await exec(sid, `
+  const dt = new DataTransfer();
+  dt.setData('text/plain', 'a\\tb');
+  dt.setData('text/html', '<table><tr><td>a</td><td>b</td></tr></table>');
+  const b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  const bin = atob(b64); const arr = new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  dt.items.add(new File([arr], 'sel.png', { type: 'image/png' }));
+  document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  return true;
+`);
+els = await waitForCount(base + 1);
+if (els.length !== base + 1) fail(`case G: expected 1 new element, got ${els.length - base}`);
+const gEl = els[els.length - 1];
+if (gEl.type !== 'image') fail(`case G: expected an image, got ${gEl.type}`);
+const gpos = await exec(sid, `
+  const s = window.__eigendeck.store.getState().presentation.slides[0];
+  const e = s.elements[s.elements.length - 1];
+  return e && e.position ? { w: Math.round(e.position.width), h: Math.round(e.position.height) } : null;
+`);
+if (gpos && gpos.w === 1200 && gpos.h === 680) fail(`case G: the raster bitmap preempted our render (default 1200x680 raw-image insert)`);
+console.log(`  case G OK — table + raster item → OUR HTML render won (size ${gpos ? gpos.w + 'x' + gpos.h : '?'} ≠ raw 1200x680)`);
 
 await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {});
 console.log('E2E_PASS: paste-text (#161)');

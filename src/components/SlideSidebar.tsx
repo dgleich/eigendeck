@@ -116,7 +116,7 @@ export function SlideSidebar() {
               selectSlide(index);
               const store = usePresentationStore.getState();
               const items: MenuEntry[] = [
-                { label: 'Duplicate Slide', shortcut: 'D', onClick: () => duplicateSlide(index) },
+                { label: 'Duplicate Slide', shortcut: '⌘D', onClick: () => duplicateSlide(index) },
                 { label: 'Add Build Slide', onClick: () => store.addBuildSlide() },
                 { separator: true },
                 { label: 'Delete Slide', shortcut: 'X', onClick: () => deleteSlide(index), disabled: presentation.slides.length <= 1 },

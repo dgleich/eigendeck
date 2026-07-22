@@ -1,0 +1,110 @@
+{
+  "_about": "Interop corpus: what real apps put on the OS clipboard, and which Eigendeck paste branch each should take. `flavors` are the REAL macOS pasteboard type lists captured this session via Debug > Dump Pasteboard Types (see README). `html`/`plain` bodies are representative of each app's markup (the exact bytes vary per selection); they are shaped to exercise the classifier, not byte-for-byte captures. `expect` is the branch the paste ladder must choose. To add a real capture: paste the dump into a new object here (see README).",
+  "_branches": {
+    "internal": "Eigendeck private flavor (data-eigendeck-copy + JSON) — decodeClipHtml wins first",
+    "image-dataurl": "no clipboard image, but text/html embeds <img src=data:…> — extractPastedDataUrlImage (#158)",
+    "image-screenshot": "block HTML a text box can't hold (table/svg/pre/math or a data: image) — htmlNeedsScreenshot → rasterize. A REMOTE <img> does NOT trigger this (it's stripped in the network-free capture); such content pastes as text.",
+    "text": "styled/plain runs the format toolbar can author — pasteTextToElementHtml → editable text element"
+  },
+  "cases": [
+    {
+      "app": "Microsoft Word (macOS) — styled sentence",
+      "flavors": ["public.html", "public.rtf", "public.utf8-plain-text"],
+      "html": "<meta charset=\"utf-8\"><p style=\"margin:0\"><span style=\"font-family:Calibri;font-size:11pt;color:#000000\">Here is <b>some bold</b> text.</span></p>",
+      "plain": "Here is some bold text.",
+      "expect": "text"
+    },
+    {
+      "app": "Microsoft Word (macOS) — a table",
+      "flavors": ["public.html", "public.rtf", "public.utf8-plain-text"],
+      "html": "<meta charset=\"utf-8\"><table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>",
+      "plain": "a\tb\nc\td",
+      "expect": "image-screenshot"
+    },
+    {
+      "app": "Google Docs (Chrome) — styled paragraph",
+      "flavors": ["public.html", "public.utf8-plain-text", "org.chromium.web-custom-data"],
+      "html": "<meta charset=\"utf-8\"><b id=\"docs-internal-guid-5400a67e-7fff-4cf0-ed00-dfea257517fc\" style=\"font-weight:normal\"><p dir=\"ltr\"><span style=\"font-size:11pt;color:#000000\">Docs para with <span style=\"font-style:italic\">italics</span>.</span></p></b>",
+      "plain": "Docs para with italics.",
+      "expect": "text"
+    },
+    {
+      "app": "Google Slides (Chrome) — copied image (#158)",
+      "flavors": ["public.html", "public.utf8-plain-text", "org.chromium.web-custom-data"],
+      "html": "<meta charset=\"utf-8\"><b id=\"docs-internal-guid-aa11\" style=\"font-weight:normal\"><img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=\" width=\"200\" height=\"100\"></b>",
+      "plain": "",
+      "expect": "image-dataurl"
+    },
+    {
+      "app": "Google Sheets (Chrome) — a range",
+      "flavors": ["public.html", "public.utf8-plain-text", "org.chromium.web-custom-data"],
+      "html": "<meta charset=\"utf-8\"><google-sheets-html-origin><table><tbody><tr><td>1</td><td>2</td></tr></tbody></table></google-sheets-html-origin>",
+      "plain": "1\t2",
+      "expect": "image-screenshot"
+    },
+    {
+      "app": "Apple Keynote — copied text",
+      "flavors": ["com.apple.iwork.keynote.key", "com.apple.iWork.TSPNativeMetadata", "public.rtf", "public.utf8-plain-text"],
+      "html": "",
+      "plain": "A line from Keynote",
+      "expect": "text"
+    },
+    {
+      "app": "Apple Numbers — a cell range",
+      "flavors": ["com.apple.iwork.numbers.sffnumbers", "public.html", "public.utf8-plain-text"],
+      "html": "<table><tr><td>10</td><td>20</td></tr></table>",
+      "plain": "10\t20",
+      "expect": "image-screenshot"
+    },
+    {
+      "app": "Browser (Safari/Chrome) — rich text selection",
+      "flavors": ["public.html", "public.utf8-plain-text", "com.apple.webarchive"],
+      "html": "<meta charset=\"utf-8\"><span style=\"color:#111\">A <a href=\"https://example.com\">link</a> and <strong>bold</strong>.</span>",
+      "plain": "A link and bold.",
+      "expect": "text"
+    },
+    {
+      "app": "Browser — selection with text + a remote image",
+      "flavors": ["public.html", "public.utf8-plain-text"],
+      "html": "<meta charset=\"utf-8\"><p>caption <img src=\"https://example.com/pic.png\" width=\"64\"></p>",
+      "plain": "caption ",
+      "expect": "text",
+      "note": "The remote <img> is stripped by the network-free capture, so this pastes as editable TEXT (not a rasterized screenshot that used to hang ~60s fetching the image). Use Paste as… → Simple Image to force a rasterization."
+    },
+    {
+      "app": "TextEdit (plain) / terminal — plain text only",
+      "flavors": ["public.utf8-plain-text"],
+      "html": "",
+      "plain": "just\nplain\ntext",
+      "expect": "text"
+    },
+    {
+      "app": "VS Code — copied code",
+      "flavors": ["public.utf8-plain-text", "org.chromium.web-custom-data"],
+      "html": "",
+      "plain": "const x = 1;\nreturn x < 2 && x > 0;",
+      "expect": "text"
+    },
+    {
+      "app": "Excel — a single cell",
+      "flavors": ["public.html", "public.rtf", "public.utf8-plain-text"],
+      "html": "<table><tr><td>42</td></tr></table>",
+      "plain": "42",
+      "expect": "image-screenshot"
+    },
+    {
+      "app": "Eigendeck — an element copy (private flavor)",
+      "flavors": ["public.html", "public.utf8-plain-text"],
+      "html": "<div data-eigendeck-copy=\"v1\" data-eigendeck-json=\"eyJ2IjoxLCJraW5kIjoiZWxlbWVudHMiLCJlbGVtZW50cyI6W3siaWQiOiJ4IiwidHlwZSI6InRleHQiLCJwcmVzZXQiOiJib2R5IiwiaHRtbCI6IkhlbGxvIiwicG9zaXRpb24iOnsieCI6MSwieSI6MSwid2lkdGgiOjEwMCwiaGVpZ2h0Ijo0MH19XSwiZnJvbVNsaWRlSWQiOiJzMCIsImZyb21TbGlkZUluZGV4IjowfQ==\">Hello</div>",
+      "plain": "Hello",
+      "expect": "internal"
+    },
+    {
+      "app": "Eigendeck — a slide copy (private flavor)",
+      "flavors": ["public.html", "public.utf8-plain-text"],
+      "html": "<div data-eigendeck-copy=\"v1\" data-eigendeck-json=\"eyJ2IjoxLCJraW5kIjoic2xpZGUiLCJzbGlkZSI6eyJpZCI6InMwIiwibm90ZXMiOiIiLCJlbGVtZW50cyI6W119LCJmcm9tU2xpZGVJZCI6InMwIiwiZnJvbVNsaWRlSW5kZXgiOjB9\">Slide</div>",
+      "plain": "Slide",
+      "expect": "internal"
+    }
+  ]
+}

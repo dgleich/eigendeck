@@ -966,6 +966,7 @@ function TextContent({
           const sel = window.getSelection();
           if (!sel || sel.rangeCount === 0) return;
           e.preventDefault();
+          e.stopPropagation();  // don't let the window-level copy handler also fire
           const range = sel.getRangeAt(0);
           const container = document.createElement('div');
           container.appendChild(range.cloneContents());
@@ -982,6 +983,7 @@ function TextContent({
           const cb = e.clipboardData;
           if (!cb) return;
           e.preventDefault();
+          e.stopPropagation();  // don't let the window-level paste handlers also fire
           const html = cb.getData('text/html');
           if (html && hasEigendeckMarker(html)) {
             // Even our own marked HTML is run through the allowlist — a crafted

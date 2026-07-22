@@ -80,6 +80,45 @@ On paste we **read live from the clipboard**, private flavor first. No separate
 buffer to invalidate ⇒ the stale-paste / nothing-pastes / accidental-duplicate
 bugs cannot occur by construction.
 
+### What goes on the clipboard, per copyable thing
+
+The **private flavor is universal**: EVERY copy (any element type, multi-select,
+or slide) writes the element/slide JSON (base64 in `text/html` via
+`encodeClipHtml`). That is what makes in-app paste full-fidelity and *linkable*.
+The **public flavor is type-specific** (what foreign apps get). The one iron rule
+that prevents the bug class: **the public flavor must NEVER clobber the private
+flavor** — they coexist on one clipboard (the image/arboard bug below).
+
+| Copyable | Private flavor (in-app, always) | Public flavor (foreign apps) |
+|---|---|---|
+| **text** | element JSON | `text/html` (styled, deck-rendered) + `text/plain` |
+| **html** (#137) | element JSON | `text/html` = the element's raw source + `text/plain` |
+| **image** (raster/svg/pdf) | element JSON (assetId ref) **+ the asset bytes** (Rust internal clip, staleness-checked) — carried so cross-deck paste re-stores them | the actual image (`image/png` / `image/svg+xml` / `application/pdf`) written by Rust — **must not overwrite the private `text/html`** |
+| **arrow** | element JSON | none (nothing meaningful to a foreign app) |
+| **cover** | element JSON | none |
+| **video** (file) | element JSON (assetId) + bytes (like image) | the video file / `image/png` poster (best-effort) |
+| **video** (embed: YouTube/Vimeo/…) | element JSON (the URL) | `text/plain` = the source URL |
+| **notebook** | element JSON (assetId) + bytes | `text/plain` = the notebook source (best-effort) |
+| **demo / demo-piece** | element JSON (assetId, piece) + bytes | none (or `text/plain` = the demo HTML source) |
+| **multi-selection** | elements JSON (array) | concatenated `text/plain` of the text-ish members |
+| **slide** | slide JSON | none (a slide isn't a foreign-app object) |
+
+Notes:
+- **The image/arboard clobber (the bug this table exists to prevent):** writing
+  the image bytes to the OS clipboard (Rust `arboard`) *replaces* the clipboard,
+  wiping the browser's `text/html` private flavor set on the same copy. So an
+  image paste lost its link metadata and fell to the asset-only path (no link).
+  Fix: the private flavor for asset elements lives in the **Rust internal clip's
+  payload** (element JSON + link metadata: source slide id, source element id,
+  syncId), so paste re-resolves the link from there — OR the Rust write publishes
+  the private `text/html` *alongside* the image (both survive). Either way the
+  invariant holds: an asset copy still carries its private flavor.
+- **Asset bytes** (image/video-file/notebook/demo) travel via the staleness-
+  checked Rust internal clip so cross-deck paste re-stores them into the target
+  deck with a fresh assetId; the private-flavor JSON only references the asset by
+  id (valid for same-deck paste).
+- Cut = copy + delete the source; the clipboard contents are identical.
+
 ### Internal references (links, sync groups)
 
 An Eigendeck element may be **linked** across slides (shared `linkId`, for
@@ -189,13 +228,46 @@ The `Paste as…` chooser overrides this order on demand.
 representation we most want honored *first* — some readers (browsers, Apple
 Pages) are order-sensitive despite the spec saying they shouldn't be.
 
+### Interop — what each app puts on the clipboard
+
+The clipboard is a bag of representations; each app fills it differently, and the
+paste ladder (private flavor → data-URL image → screenshot → text) has to land
+each one in the right place. The table below is the captured reference; the live
+corpus is `e2e/fixtures/clipboard-corpus/corpus.json` (real macOS pasteboard type
+lists + representative bodies), exercised by `src/lib/clipboardInterop.test.ts`.
+
+| Source | Key flavors (macOS) | Body shape | Paste branch |
+| --- | --- | --- | --- |
+| **Eigendeck** element/slide | `public.html` (+ marker), `public.utf8-plain-text` | `data-eigendeck-copy` + base64 JSON | **internal** (objects/slide) |
+| **Word** — styled sentence | `public.html`, `public.rtf`, plain | `<p><span…>` wrapped run | **text** |
+| **Word / Excel / Numbers / Sheets** — a table or cell range | `public.html` (+ rtf / `com.apple.iwork.*`), plain | `<table>…</table>` | **image** (screenshot) |
+| **Google Docs** | `public.html`, plain, `org.chromium.web-custom-data` | `<b docs-internal-guid style=font-weight:normal>` styled run | **text** |
+| **Google Slides** (copied graphic, #158) | `public.html`, plain, chromium custom | `<b docs-internal-guid><img src=data:…>` — **no image on the clipboard** | **image** (extract data-URL) |
+| **Keynote** — text | `com.apple.iwork.keynote.key`, `public.rtf`, plain | (no useful html) | **text** (from rtf/plain) |
+| **Browser** — rich selection | `public.html`, plain, `com.apple.webarchive` | `<span>`/`<a>`/`<strong>` | **text** |
+| **Browser** — selection with an http `<img>` | `public.html`, plain | `<p>…<img src=https…></p>` | **image** (screenshot) |
+| **TextEdit (plain) / terminal / VS Code** | `public.utf8-plain-text` (± chromium) | none | **text** (from plain) |
+
+Notes: a single spreadsheet cell still screenshots (it arrives as a 1×1
+`<table>`) — a known, documented behavior, not a bug. A PDF that *accompanies*
+rich text (Word/Pages put one next to the real text) is a rendering and is
+skipped; a PDF with no rich text is a genuine graphic and pastes as an image.
+
 ### Duplicate
 
 **⌘D duplicates the selection in place and never touches the clipboard** — the
-industry guard against a stale copy causing an accidental duplicate. Slide-paste
-(new slide) vs object-paste (elements onto the current slide) is decided by pane
-focus + the presence of a slide flavor, not by a clipboard branch that
-duplicates.
+industry guard against a stale copy causing an accidental duplicate. **Done** for
+all three selection kinds: an element, a multi-selection, and a **slide**
+(`duplicateSlide` — group-aware, with animation links, selects the new slide).
+Each is a direct store action, so a stale clipboard can't cause a surprise paste.
+
+⌘V is decided by the **clip kind** (which is what you copied): a **slide** clip
+pastes the COPIED slide as a new, independent slide after the current one
+(`store.pasteSlide` — fresh slide + element ids, no sync/link, standalone); an
+**elements** clip pastes objects onto the current slide. This replaced the
+interim "⌘V on a slide → duplicate the *current* slide". Cross-deck, the slide's
+structure pastes but assets not present in the target deck come in broken (the
+clip carries JSON, not bytes — the asset-bytes-on-the-clipboard work is #167).
 
 ## Implementation stages
 
@@ -208,12 +280,34 @@ duplicates.
    color, keep internal + sub-range colors, keep authorable inline styles.
 4. **Paste modes** — ⌘V (normalize), ⌘⇧V "Paste and Keep Style", and the
    Edit-menu **"Paste as…"** chooser (lists the clipboard's actual
-   representations → Text / HTML / Image / PDF / SVG).
-5. **⌘D duplicate bypasses the clipboard**; slide-paste vs object-paste gated on
-   focus + slide flavor.
+   representations → Text / HTML / Image / PDF / SVG). **Paste as… is done**
+   (Edit menu + canvas context menu → `PasteAsModal`); it inspects the clipboard
+   (`clipboardRepresentations` over `gatherClipboardTypes`) and, on pick, reuses
+   SlideEditor's existing insert helpers via the `eigendeck:paste-as` event.
+   Currently an in-webview modal; a native popup-menu version is a follow-up.
+   ⌘⇧V "Keep Style" is still TODO — ⌘⇧V is now unbound ("Paste without
+   Formatting" / the plain-text ⌘⇧V was removed 2026-07 as redundant with the
+   in-editor default).
+5. **⌘D duplicate bypasses the clipboard** — DONE (element / multi / slide,
+   direct store actions). **⌘V slide-paste** now pastes the COPIED slide as a new
+   independent slide (`store.pasteSlide`), not a duplicate of the current — DONE.
+   Remaining: carrying asset bytes so a cross-deck slide/multi paste isn't broken
+   (#167).
 
 ## Testing
 
+- **Round-trip matrix** (`src/lib/copyPasteRoundtrip.test.ts`): every element
+  type (text/image/arrow/cover/html/demo/demo-piece/notebook/video) through the
+  codec (encode → decode, lossless) and through `pasteInternalClip` (fresh id,
+  cross-slide link, distinctive field preserved). A new element type without a
+  row is a visible gap.
+- **Style matrix** (`src/lib/pasteStyles.test.ts`): whole-string color stripped
+  across hex/rgb/named/`<font>`, sub-range + nested colors kept, bold/italic/
+  strike kept, underline dropped + line-through kept, font-size/family dropped.
+- **Interop corpus** (`src/lib/clipboardInterop.test.ts` over
+  `e2e/fixtures/clipboard-corpus/corpus.json`): each real app payload
+  (Word/Docs/Slides/Sheets/Keynote/browsers/internal) lands in the right paste
+  branch — mirrors the `SlideEditor.handlePaste` ladder; keep in sync.
 - **Unit**: the private-flavor codec (encode element/slide JSON → `text/html` →
   decode); the styling normalizer (font/size dropped, external whole-string
   color stripped, sub-range color + bold kept, internal color preserved).

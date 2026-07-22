@@ -1,0 +1,175 @@
+# 2026-07-20 (overnight) — caret double-paste fix, copy/paste review, Paste as…
+
+Continued on branch `feat/copy-paste-redesign` (all pushed). David reported a
+double-paste bug at bedtime and asked for: review that bug class, review the
+copy/paste work so far, fix what comes up, then build Paste as… (Stage 4).
+Everything below is committed + pushed; **not merged to main**.
+
+## 1. The reported bug — caret double-paste (FIXED, commit 9dfb8b1)
+
+**Symptom** (deck `gitignore/ctxmenu.eigendeck`, slide 2): editing the text
+element in caret mode, copied text from a terminal, hit ⌘V → got BOTH a new
+element on the canvas AND the text inserted at the caret.
+
+**Root cause** (confirmed by two review agents): the window-level paste/copy
+guards decided "caret edit vs canvas" purely from `e.target.closest(
+'[contenteditable="true"]')`. WebKit can dispatch a keyboard-initiated paste
+with `event.target = <body>` while the caret is in a contentEditable — the guard
+then fails, the canvas handler builds an element, and the browser's default
+paste still inserts at the caret. The caret-level `onPaste`/`onCopy` also never
+called `stopPropagation()`.
+
+**Fix**: new `src/lib/editableTarget.ts` `eventInTextEditor()` consults **focus
+(`document.activeElement`) + the selection anchor**, not just `e.target`, and now
+guards both window paste handlers (App + SlideEditor) and the window copy
+handler. Added `stopPropagation()` to the caret `onCopy`/`onPaste` as
+defense-in-depth. `eventInTextEditor` also covers INPUT/TEXTAREA, closing a
+latent gap where a canvas paste could fire inside a plain input.
+Reproduction test included (`editableTarget.test.ts`, the target=body case).
+
+> Verified in the REAL WebKit engine: `e2e/caret-double-paste-probe.mjs` (gated
+> in run-all.sh) enters edit mode and dispatches a body-target paste; the guard
+> holds (no canvas element created) while a control paste on the canvas does
+> create one. This is the one place the actual quirk is exercised — jsdom can't
+> mis-target the event. Still fine to eyeball on the Mac, but it's covered.
+
+## 2. Copy/paste correctness review — other findings
+
+Two agents reviewed the whole branch. I fixed the 3 clear, low-risk ones in the
+same commit (9dfb8b1):
+- **Cross-slide IMAGE paste offset the position by (40,40)**, drifting a linked
+  image on the target slide. Now offsets only for a same-slide paste, matching
+  the element path.
+- **`decodeClipHtml` only accepted double-quoted** `data-eigendeck-json`; a
+  pasteboard re-serialization (macOS public.html) with single quotes silently
+  downgraded an internal paste to the screenshot/text fallback. Now accepts both.
+- **Multi-block uniform default color** (Word/Docs emit the same color on every
+  paragraph; each `<p>` covers only part of the text, so the whole-string strip
+  missed it → invisible on dark themes). `normalizePastedStyles` now strips a
+  uniform color that covers ALL the text; different-color/partial sets are kept.
+  (3 new matrix cases.)
+
+The **remaining 6 findings** are more involved / cross-deck / tied to Stage 5, so
+I filed them as **#167** rather than rushing them overnight: whole-slide paste
+still duplicates the current slide (Stage 5); multi-select copy with an image
+drops asset bytes cross-deck; synced image cross-slide doesn't join the sync
+group; html-element source goes to the OS clipboard unsanitized (foreign-paste
+producer); data-URL `<img>` extraction can drop surrounding rich content; a
+narrow silent no-op if `clip_paste_asset` fails. Details + pointers in #167.
+
+## 3. Paste as… — Stage 4 (DONE, commit 39a2e9f)
+
+Built the chooser: pick which clipboard representation to paste instead of the
+auto ladder.
+- `src/lib/pasteAs.ts` — `clipboardRepresentations()` (raw UTI/MIME list →
+  Image/SVG/PDF/HTML/Text, pure + tested), `gatherClipboardTypes()` (native
+  NSPasteboard ∪ async Clipboard API), `readRepresentation(kind)` (native-first
+  read of the chosen bytes/text).
+- `PasteAsModal.tsx` — in-webview chooser (number-key select, Esc cancels).
+- Triggers: native **Edit → Paste as…** (`lib.rs`, via the menu-event relay) and
+  a **canvas context-menu** entry. On pick, App dispatches `eigendeck:paste-as`
+  and **SlideEditor performs the insert with its existing helpers** (no
+  duplicated insert logic).
+
+**Decision you flagged**: you'd prefer the system dialog. There's no OS "paste
+special" dialog API; the native equivalent is a popup menu at the cursor. I
+shipped the in-webview modal (cross-platform + headless-testable) and filed
+**#168** to upgrade it to a native popup menu (macOS first). ⌘⇧V "Keep Style" is
+still TODO (today ⌘⇧V = paste plain text while editing).
+
+> Verified via unit + component tests, full build, and cargo clippy. NOT yet
+> exercised in the live app / e2e rig — worth a smoke test on the Mac
+> (Edit → Paste as…, and right-click → Paste as… on the canvas).
+
+## 4. HTML paste hangs ~60s on remote resources (FIXED, commit dcba08c)
+
+**Symptom** you reported: copy from a browser HTML page, ⌘V on the canvas →
+nothing, then ~a minute later an element appears.
+
+**Root cause** (debug agent, confirmed): the rich-HTML screenshot path rasterizes
+the clipboard HTML with modern-screenshot, which tries to **fetch + inline the
+remote `<img>` / CSS background / webfonts** the browser copy carries. In the
+CSP'd/offline webview those fetches hang on two stacked 30s modern-screenshot
+timeouts (wait-for-load + fetch-abort) ≈ 60s, then a placeholder capture inserts
+late. `sanitizeForCapture` wasn't stripping remote URLs and `domToDataUrl` got no
+timeout/fetch options.
+
+**Fix** (defense in depth): the capture is now **network-free** — `fetchFn →
+false`, `timeout: 2500`, `font: false`, and `document.fonts.ready` time-boxed;
+`sanitizeForCapture` strips remote `<img>`, remote `url()`, and `<style>` blocks.
+And per your note ("it's trying to parse it as an image"), a **remote `<img>` no
+longer forces a screenshot** — text + a remote image now pastes as editable
+**text**. Tables / svg / pre / math / data: images still auto-rasterize.
+
+**Feature** you asked for: **Paste as… → "Simple Image"**, offered when the
+clipboard has both HTML and text; it rasterizes the HTML on demand (network-free)
+— so the screenshot is now an explicit choice, not a silent default.
+
+Verified: e2e `paste-text-probe` case F pastes text+remote-img as a TEXT element
+in **315ms** (was ~60s) in real WebKit; the table case still screenshots. New
+issue **none** — this closed the bug + the feature.
+
+## 5. Google Sheets / HTML-element font (serif)
+
+Two separate things:
+- **Screenshot path (my regression, FIXED):** the network-free fix's `font:false`
+  disabled deck-font embedding in the HTML→PNG capture → serif in the auto
+  table-screenshot and Paste as… → Simple Image. Dropped `font:false` (the deck
+  fonts are data-URL @font-face, embed for free; `fetchFn` only gates images).
+- **HTML element render (FLAGGED, #169):** pasting a Google Sheet via Paste as… →
+  HTML element renders serif because `htmlElementSrcdoc` sets no font-family and
+  its CSP blocks fetching the content's explicit `font-family:Roboto`. Fixing it
+  needs the deck @font-face + slide font wired into the srcdoc (single builder,
+  but multi-path wiring) and a per-element **"Use deck font"** toggle to override
+  the content's fonts. It's a design decision (raw-HTML escape hatch vs on-brand),
+  so I filed #169 with a proposal + the default questions rather than build it.
+
+## 6. Google Sheets pasted as a low-res image (FIXED)
+
+When you copy a Sheets range, the browser also puts a LOW-RES `public.png`/tiff
+bitmap of the selection on the clipboard next to the HTML; the paste ladder took
+that before ever reaching our crisp HTML render. Fix: before taking a native/
+clipboard RASTER, read the HTML — if it's block content we render better
+(`htmlNeedsScreenshot`: a table), skip the raster and use our HTML→PNG render
+(SVG vector is still taken; PDF already skipped when rich text present). Applied
+on both the macOS native-pasteboard and the Linux/Windows clipboardData paths.
+e2e: `paste-text-probe` case G (table + an image/png item → our render wins,
+inserted at table size not the raw 1200x680 default). commit b1fe291.
+
+## 7. Removed "Paste without Formatting" (⌘⇧V + Edit menu)
+
+You decided to drop it — redundant with the in-editor default (a ⌘V while
+editing already inserts foreign clipboard content as plain text; it only kept
+styling for an Eigendeck→Eigendeck marked copy). Removed the native menu item,
+its handler, and the ⌘⇧V keydown; ⌘⇧V is now unbound (reserved for a future
+"Keep Style"). On the canvas, "Paste as… → Text" is the explicit plain-text
+route. Docs updated. commit 1717530.
+
+## 8. Stage 5 — ⌘D duplicate + ⌘V slide-paste (DONE)
+
+- **⌘D** now duplicates a selected **slide** too (it already did element/multi),
+  via `duplicateSlide` — group-aware, links for builds, selects the new slide.
+  All three kinds are direct store actions, so a stale clipboard can't cause a
+  surprise paste. Sidebar "Duplicate Slide" label fixed D → ⌘D. commit 80e7aa3.
+- **⌘V slide-paste** now inserts the COPIED slide (`store.pasteSlide`: fresh
+  slide + element ids, no sync/link, standalone), not a duplicate of the CURRENT
+  slide (the old `pasteInternalClip` bug / #167 finding #1). Decided by **clip
+  kind** (slide clip → new slide; elements clip → objects) rather than the
+  design's focus-gating — simpler + predictable; flagged the deviation to David.
+  commit 1b13637. Remaining: cross-deck asset *bytes* (#167).
+- e2e: `keyboard-shortcuts-probe` asserts ⌘D on element + slide;
+  `internal-paste-probe` asserts slide copy→paste = new slide with the copied
+  content + fresh ids. Both green in real WebKit.
+
+## State
+- Branch `feat/copy-paste-redesign` pushed, **not merged**. All 5 stages done.
+- Tests: **1484 unit/component passing**, tsc clean, build clean, cargo check +
+  clippy clean. e2e (real WebKit, gated): `caret-double-paste`, `paste-text`
+  (cases A–G incl. remote-img→text + Sheets-raster gate), `internal-paste`
+  (element + slide), `keyboard-shortcuts` (⌘D element + slide).
+- Open issues: **#166** (clipboard-format corpus), **#167** (deferred findings —
+  #1 fixed; cross-deck asset bytes remain), **#168** (native Paste-as popup),
+  **#169** (HTML-element deck font — awaiting David's default decision).
+- **Next:** merge the branch to main (large, green, self-contained), then
+  cross-deck asset bytes (#167) and/or #169 once its defaults are decided.
+  ⌘⇧V "Keep Style" is the only unbuilt Stage-4 nicety.

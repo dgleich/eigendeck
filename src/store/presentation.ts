@@ -56,6 +56,11 @@ interface PresentationState {
   addBuildSlide: () => void; // duplicate current into same group (for builds)
   deleteSlide: (index: number) => void;
   duplicateSlide: (index: number) => void;
+  /** Paste a COPIED slide (from the clipboard's slide flavor) as a new,
+   *  INDEPENDENT slide after the current slide/build group: fresh slide + element
+   *  ids, no sync/link, no group membership. (⌘V of a slide clip — distinct from
+   *  ⌘D duplicate, which links for builds.) */
+  pasteSlide: (slide: unknown) => void;
   moveSlide: (from: number, to: number) => void;
   updateSlide: (index: number, changes: Partial<Slide>) => void;
   groupSlides: (indices: number[]) => void;
@@ -313,6 +318,44 @@ export const usePresentationStore = create<PresentationState>()(
             presentation: { ...state.presentation, slides },
             currentSlideIndex: insertAt,
             isDirty: true,
+          };
+        }),
+
+      pasteSlide: (slideJson) =>
+        set((state) => {
+          if (!slideJson || typeof slideJson !== 'object' || !Array.isArray((slideJson as Slide).elements)) {
+            return state;
+          }
+          const src = slideJson as Slide;
+          const slides = [...state.presentation.slides];
+          const cur = state.currentSlideIndex;
+          // Insert after the current slide, or after the end of the current build
+          // group (so a paste never splits a group).
+          let insertAt = cur + 1;
+          const curGroup = slides[cur]?.groupId;
+          if (curGroup) {
+            while (insertAt < slides.length && slides[insertAt].groupId === curGroup) insertAt++;
+          }
+          // INDEPENDENT copy: fresh slide + element ids, no sync/link (a paste is
+          // its own thing, not a build step — that's ⌘D), no group membership.
+          // assetIds are preserved (they resolve same-deck; cross-deck assets that
+          // aren't present come in broken — the clip carries JSON, not bytes; #167).
+          const copy: Slide = {
+            ...JSON.parse(JSON.stringify(src)),
+            id: crypto.randomUUID(),
+            groupId: undefined,
+            elements: (src.elements || []).map((el) => ({
+              ...JSON.parse(JSON.stringify(el)),
+              id: crypto.randomUUID(),
+              linkId: undefined, syncId: undefined, _linkId: undefined, _syncId: undefined,
+            })),
+          };
+          slides.splice(insertAt, 0, copy);
+          return {
+            presentation: { ...state.presentation, slides },
+            currentSlideIndex: insertAt,
+            isDirty: true,
+            selectedObject: { type: 'slide' },
           };
         }),
 

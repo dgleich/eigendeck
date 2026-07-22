@@ -1,7 +1,9 @@
 // Copy a notebook (MARK_A) on slide 1, paste it on the EMPTY slide 2 (cross-slide
 // → linked copy), save, QUIT, relaunch, and assert the pasted notebook on slide 2
 // carries the recording (MARK_A) — "copy carries the overlay". Drives the real
-// Cmd+C keydown + paste event so the actual App.tsx handlers (runCopyHook) run.
+// copy EVENT (handleCopy writes the private Eigendeck flavor to clipboardData)
+// + a paste event carrying it, so the actual App.tsx handlers (runCopyHook) run.
+// (The old keydown-Cmd+C / clipboardRef buffer was retired by the redesign.)
 const BASE='http://127.0.0.1:4444', APP=process.env.E2E_APP, DECK=process.env.E2E_DECK;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function post(p,b){const r=await fetch(BASE+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const t=await r.text();try{return JSON.parse(t)}catch{return t}}
@@ -23,13 +25,17 @@ const r=await execAsync(sid,`
     s.getState().selectSlide(0);
     s.getState().selectObject({type:'element', id:'nb1'});
     await new Promise(r=>setTimeout(r,100));
-    // Cmd+C: the keydown handler records the selected element into the clipboard.
-    document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'c',metaKey:true,bubbles:true}));
+    // Copy via the real 'copy' EVENT — handleCopy writes the private flavor to clipboardData.
+    const cdt=new DataTransfer();
+    document.body.dispatchEvent(new ClipboardEvent('copy',{clipboardData:cdt,bubbles:true,cancelable:true}));
+    const html=cdt.getData('text/html');
+    if(!/data-eigendeck-json=/.test(html||'')){done('ERR:copy wrote no private flavor');return;}
     await new Promise(r=>setTimeout(r,100));
-    // Move to the empty slide 2, then fire a paste event (internal clipboard).
+    // Move to the empty slide 2, then paste WITH the captured private flavor.
     s.getState().selectSlide(1);
     await new Promise(r=>setTimeout(r,100));
-    document.body.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true}));
+    const pdt=new DataTransfer(); pdt.setData('text/html',html);
+    document.body.dispatchEvent(new ClipboardEvent('paste',{clipboardData:pdt,bubbles:true,cancelable:true}));
     await new Promise(r=>setTimeout(r,1500));   // let runCopyHook clone the overlay
     // How many elements landed on slide 2?
     const n = s.getState().presentation.slides[1].elements.length;

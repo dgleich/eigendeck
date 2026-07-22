@@ -22,7 +22,6 @@ What a paste does depends on **where** you paste and **what's on the clipboard**
 Formatting from outside Eigendeck is dropped — you get clean plain text in the
 box's own style — *unless* the clipboard came from Eigendeck itself (copying a
 selection inside another text box keeps its bold/italic/super-/subscript/color).
-Use **Edit → Paste without Formatting** to force plain text even then.
 
 Copying and pasting **whole elements** (select, ⌘C, ⌘V) duplicates them; across
 slides this is also how you set up animations — see
@@ -70,4 +69,4 @@ content consistent with the rest of your slides.
 - **Updating a pasted table:** it's a snapshot, so re-copy from the source and
   paste again to replace it.
 - **Just the text, no styling:** paste into a text box instead of onto the
-  canvas, or use **Paste without Formatting**.
+  canvas, or use **Paste as… → Text**.

@@ -4,6 +4,8 @@ import { usePreference } from '../lib/preferences';
 import { gridOverlaySvg } from '../lib/grid';
 import { captureHtmlToPng, htmlNeedsScreenshot, extractPastedDataUrlImage } from '../lib/htmlPasteCapture';
 import { pasteTextToElementHtml } from '../lib/pasteText';
+import { decodeClipHtml } from '../lib/clipboardModel';
+import { eventInTextEditor } from '../lib/editableTarget';
 import { relPath } from '../App';
 import { useDemoDoc, useDeckFontFacesCss, useDemoHost } from '../lib/demoMount';
 import { demoVarsCssForSlide } from '../lib/demoThemeInject';
@@ -103,8 +105,11 @@ export function SlideEditor() {
     };
 
     const handlePaste = async (e: ClipboardEvent) => {
-      // Don't intercept paste if user is editing a text element
-      if ((e.target as HTMLElement).closest('[contenteditable="true"]')) return;
+      // Don't intercept paste if the caret is in a text editor. Checks
+      // focus/selection, not just e.target — WebKit can dispatch a keyboard
+      // paste with target=<body> while editing, which an e.target-only guard
+      // misses → double paste (new element + caret text). See editableTarget.ts.
+      if (eventInTextEditor(e)) return;
 
       // If a FRESH eigendeck asset is on the internal clip, the App-level paste
       // handler restores it (with attributes, into this deck). Defer so we don't
@@ -124,6 +129,30 @@ export function SlideEditor() {
       // (#161). clipboardData is neutered by the awaits below, so reading it
       // there would come back empty for a plain-text (Keynote/Pages) paste.
       const plainEarly = e.clipboardData?.getData('text/plain') || '';
+
+      // PRIVATE Eigendeck flavor FIRST (read private-first, per
+      // docs/copy-and-paste.md): an internal element/slide/multi copy round-trips
+      // with full fidelity straight from the OS clipboard — no separate buffer to
+      // desync. Cross-platform: clipboardData carries it on Linux/Windows; on
+      // macOS clipboardData is empty for a canvas paste, so also read the native
+      // pasteboard's public.html. Wins over images/text below.
+      {
+        let clip = decodeClipHtml(htmlEarly);
+        if (!clip) {
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            const b = await invoke<number[] | null>('pasteboard_read_type', { uti: 'public.html' });
+            if (b && b.length) clip = decodeClipHtml(new TextDecoder('utf-8').decode(new Uint8Array(b)));
+          } catch { /* non-macOS / no native pasteboard */ }
+        }
+        if (clip) {
+          e.preventDefault();
+          const { pasteInternalClip } = await import('../lib/pasteClip');
+          pasteInternalClip(clip);
+          plog('pasted internal clip → ' + clip.kind);
+          return;
+        }
+      }
 
       // Native NSPasteboard path FIRST: WebKit's clipboardData /
       // navigator.clipboard.read() filter out non-standard UTIs (notably
@@ -151,8 +180,23 @@ export function SlideEditor() {
         // rich text, so its PDF is still taken. SVG/PNG/TIFF are untouched (real
         // graphics from Office/Illustrator/screenshots). See #161 / pasteboard dump.
         const hasRichText = nativeTypes.includes('public.html') || nativeTypes.includes('public.rtf');
+        const readNativeText = async (uti: string): Promise<string> => {
+          if (!nativeTypes.includes(uti)) return '';
+          const b = await invoke<number[] | null>('pasteboard_read_type', { uti });
+          return b && b.length ? new TextDecoder('utf-8').decode(new Uint8Array(b)) : '';
+        };
+        // Read the HTML up front: if it's block content we render better ourselves
+        // (a table etc. — htmlNeedsScreenshot), do NOT let a native RASTER bitmap
+        // preempt it. Browsers (Chrome/Safari) put a LOW-RES public.png/tiff render
+        // of the selection on the pasteboard next to the HTML; taking that gives a
+        // blurry image instead of our crisp HTML→PNG render (Google Sheets paste).
+        // SVG (vector) is still taken — it's sharp. PDF is already skipped when rich
+        // text is present.
+        const nativeHtml = await readNativeText('public.html');
+        const preferOwnRender = htmlNeedsScreenshot(nativeHtml);
         for (const pref of NATIVE_PREFER) {
           if (pref.ext === 'pdf' && hasRichText) continue;
+          if (preferOwnRender && (pref.ext === 'png' || pref.ext === 'jpg')) continue;
           for (const uti of pref.utis) {
             if (!nativeTypes.includes(uti)) continue;
             const tRead = performance.now();
@@ -170,19 +214,12 @@ export function SlideEditor() {
             return;
           }
         }
-        // No native IMAGE UTI matched → try native TEXT. On macOS, WebKit does
-        // NOT expose text/plain|text/html on clipboardData for a non-editable
-        // paste target (the slide canvas), so every clipboard-based text path
-        // below is dead there — the paste silently no-ops. Read the real bytes
-        // off NSPasteboard instead: prefer public.html (styled / tables) then
-        // plain text. #161. (No-op on Linux/Windows — pasteboard_* return empty
-        // there, so those platforms fall through to the web clipboard below.)
-        const readNativeText = async (uti: string): Promise<string> => {
-          if (!nativeTypes.includes(uti)) return '';
-          const b = await invoke<number[] | null>('pasteboard_read_type', { uti });
-          return b && b.length ? new TextDecoder('utf-8').decode(new Uint8Array(b)) : '';
-        };
-        const nativeHtml = await readNativeText('public.html');
+        // No native IMAGE UTI taken → native TEXT. On macOS, WebKit does NOT
+        // expose text/plain|text/html on clipboardData for a non-editable paste
+        // target (the slide canvas), so every clipboard-based text path below is
+        // dead there — the paste silently no-ops. We already read public.html
+        // above; read plain here. #161. (No-op on Linux/Windows — pasteboard_*
+        // return empty there, so those platforms fall through to the web clipboard.)
         const nativePlain = (await readNativeText('public.utf8-plain-text')) || (await readNativeText('public.text'));
         if (nativeHtml || nativePlain) {
           if (await insertRichHtmlScreenshot(nativeHtml)) { e.preventDefault(); return; }
@@ -227,7 +264,13 @@ export function SlideEditor() {
       let picked: DataTransferItem | null = null;
       let pickedFormat: Format | null = null;
       let pickedAlias: string | null = null;
+      // Same rule as the native path: when the HTML is block content we render
+      // better ourselves (a table etc.), don't let a low-res RASTER selection
+      // bitmap the browser also put on the clipboard preempt our HTML→PNG render.
+      // Vector (svg) is still taken — it's sharp.
+      const preferOwnRenderWeb = htmlNeedsScreenshot(htmlEarly);
       outer: for (const format of PREFERRED_FORMATS) {
+        if (preferOwnRenderWeb && format.ext !== 'svg') continue;
         for (const alias of format.aliases) {
           const found = itemList.find((it) => it.type === alias);
           if (found) { picked = found; pickedFormat = format; pickedAlias = alias; break outer; }
@@ -369,8 +412,10 @@ export function SlideEditor() {
     /** Rich HTML (tables/lists/formatted blocks) → render in the deck font and
      *  screenshot to a PNG, inserted as an image. Shared by the clipboardData
      *  path and the native-pasteboard (macOS) path. Returns true if it inserted. */
-    const insertRichHtmlScreenshot = async (html: string): Promise<boolean> => {
-      if (!html || !htmlNeedsScreenshot(html) || hasEigendeckMarker(html)) return false;
+    const insertRichHtmlScreenshot = async (html: string, force = false): Promise<boolean> => {
+      // `force` (Paste as… → Simple Image) rasterizes regardless of
+      // htmlNeedsScreenshot; the auto path only screenshots real block content.
+      if (!html || (!force && !htmlNeedsScreenshot(html)) || hasEigendeckMarker(html)) return false;
       const { resolveFontPackage, bareFamilyName } = await import('../lib/fonts');
       const cfg = usePresentationStore.getState().presentation.config;
       const family = bareFamilyName(resolveFontPackage(cfg?.defaultBodyFont));
@@ -392,7 +437,11 @@ export function SlideEditor() {
      *  the clipboardData path and the native-pasteboard (macOS) path. Returns
      *  true if it inserted. */
     const insertPastedText = (html: string, plain: string): boolean => {
-      if (hasEigendeckMarker(html)) return false;
+      // No marker guard: element/slide copies are handled by the private-flavor
+      // path above (they return before we get here). Any marked html reaching
+      // this point is an edit-mode TEXT-RUN copy (marker, no element JSON) — it
+      // should become a new text box (docs/copy-and-paste.md Stage 2), same as
+      // foreign text. sanitizeRichText strips the marker attributes.
       const elHtml = pasteTextToElementHtml(html, plain);
       if (!elHtml) return false;
       const W = 900, H = 360;
@@ -406,7 +455,41 @@ export function SlideEditor() {
       return true;
     };
     window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
+
+    // "Paste as…" (docs/copy-and-paste.md Stage 4): App opens the chooser and
+    // dispatches the picked kind here, where the insert helpers already live —
+    // so the explicit path reuses the exact same insertion as the auto ladder.
+    const handlePasteAs = async (ev: Event) => {
+      const kind = (ev as CustomEvent<{ kind: string }>).detail?.kind;
+      if (!kind) return;
+      const { readRepresentation } = await import('../lib/pasteAs');
+      const rep = await readRepresentation(kind as 'image' | 'svg' | 'pdf' | 'html-image' | 'html' | 'text');
+      if (!rep) { plog(`paste-as ${kind}: representation gone`); return; }
+      if (rep.kind === 'text') { insertPastedText('', rep.text || ''); return; }
+      if (rep.kind === 'html-image') { await insertRichHtmlScreenshot(rep.html || '', true); return; }
+      if (rep.kind === 'html') {
+        const { stripEigendeckMarker } = await import('../lib/clipboard');
+        const raw = stripEigendeckMarker(rep.html || '').trim();
+        if (!raw) return;
+        addElement({
+          id: crypto.randomUUID(), type: 'html',
+          position: { x: 360, y: 200, width: 1200, height: 680 },
+          html: raw,
+        });
+        return;
+      }
+      // image / svg / pdf → asset element
+      if (rep.bytes && rep.mime && rep.ext) {
+        const fileName = `pasted-${Date.now()}.${rep.ext}`;
+        await insertPastedAsset(`images/${fileName}`, rep.bytes, rep.mime, fileName);
+      }
+    };
+    window.addEventListener('eigendeck:paste-as', handlePasteAs as EventListener);
+
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+      window.removeEventListener('eigendeck:paste-as', handlePasteAs as EventListener);
+    };
   }, [projectPath, addElement]);
 
   // Marquee drag-to-select on canvas background
@@ -491,6 +574,7 @@ export function SlideEditor() {
       { label: 'Add Arrow', onClick: () => store.addElement({ id: crypto.randomUUID(), type: 'arrow', x1: 400, y1: 400, x2: 800, y2: 400, position: { x: 0, y: 0, width: 0, height: 0 }, color: '#2563eb', strokeWidth: 4, headSize: 16 }) },
       { separator: true },
       { label: 'Paste', shortcut: '\u2318V', onClick: () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', metaKey: true })) },
+      { label: 'Paste as\u2026', onClick: () => window.dispatchEvent(new CustomEvent('eigendeck:open-paste-as')) },
       { separator: true },
       { label: 'Slide Properties', onClick: () => {
         store.selectObject({ type: 'slide' });
