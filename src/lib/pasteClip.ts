@@ -4,7 +4,8 @@
 // (clipboardData on Linux/Windows, the native pasteboard on macOS).
 //
 // Elements → objects on the current slide, re-resolving cross-slide link/sync
-// (pasteElementDelta + docs/sync-and-link.md). Slide → duplicate.
+// (pasteElementDelta + docs/sync-and-link.md). Slide → a new independent slide
+// built from the COPIED slide (store.pasteSlide), not a duplicate of the current.
 
 import { usePresentationStore } from '../store/presentation';
 import { pasteElementDelta } from './syncLink';
@@ -29,10 +30,11 @@ export function pasteInternalClip(clip: EigendeckClip): void {
   const state = usePresentationStore.getState();
 
   if (clip.kind === 'slide') {
-    // NOTE: preserves today's behavior (duplicate the current slide). The
-    // redesign's "insert the COPIED slide, after the current build" semantics
-    // (#165-adjacent) is a later stage; here we only move OFF clipboardRef.
-    state.duplicateSlide(state.currentSlideIndex);
+    // Paste the COPIED slide (clip.slide) as a new, independent slide after the
+    // current slide/group — NOT a duplicate of the current slide. Same-deck this
+    // is "copy slide 2, paste it"; cross-deck it inserts the slide (assets that
+    // aren't in the target deck come in broken — the clip is JSON, not bytes; #167).
+    state.pasteSlide(clip.slide);
     return;
   }
 

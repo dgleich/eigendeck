@@ -67,10 +67,28 @@ describe('pasteInternalClip', () => {
     expect(slide(1).elements).toHaveLength(2);
   });
 
-  it('slide clip duplicates the current slide (does NOT read the clipboard)', () => {
+  it('slide clip pastes the COPIED slide as a new INDEPENDENT slide (fresh ids), not a duplicate of the current', () => {
     const before = usePresentationStore.getState().presentation.slides.length;
-    pasteInternalClip({ v: 1, kind: 'slide', slide: slide(1), fromSlideId: 's1', fromSlideIndex: 1 });
-    expect(usePresentationStore.getState().presentation.slides.length).toBe(before + 1);
+    const copied = slide(0); // s0 carries element e0 (html 'hi'); current slide is s1 (empty)
+    pasteInternalClip({ v: 1, kind: 'slide', slide: copied, fromSlideId: 's0', fromSlideIndex: 0 });
+    const st = usePresentationStore.getState();
+    expect(st.presentation.slides.length).toBe(before + 1);
+    // Inserted AFTER the current slide (index 1) → new slide at index 2, selected.
+    expect(st.currentSlideIndex).toBe(2);
+    expect(st.selectedObject).toEqual({ type: 'slide' });
+    const pasted = st.presentation.slides[2];
+    expect(pasted.id).not.toBe('s0');                           // fresh slide id
+    expect(pasted.elements).toHaveLength(1);                    // the COPIED slide's element…
+    expect(pasted.elements[0].id).not.toBe('e0');              // …with a fresh element id
+    expect((pasted.elements[0] as { html?: string }).html).toBe('hi'); // …and the copied content
+    expect(pasted.elements[0].syncId).toBeFalsy();             // independent — no sync group
+    expect(pasted.elements[0].linkId).toBeFalsy();             // independent — no animation link
+  });
+
+  it('slide clip with a malformed payload is a no-op', () => {
+    const before = usePresentationStore.getState().presentation.slides.length;
+    pasteInternalClip({ v: 1, kind: 'slide', slide: undefined, fromSlideId: 's0', fromSlideIndex: 0 });
+    expect(usePresentationStore.getState().presentation.slides.length).toBe(before);
   });
 });
 

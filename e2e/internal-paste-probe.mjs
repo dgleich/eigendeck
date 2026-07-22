@@ -70,6 +70,41 @@ const added = els1.slice(base);
 if (added.length !== 1 || added[0].type !== 'text') fail(`stale guard: expected exactly 1 new TEXT element, got ${JSON.stringify(added)}`);
 console.log('  stale guard OK — a later text paste does not resurrect the copied element');
 
+// --- SLIDE copy/paste (Stage 5): copy slide 0, paste while on a DIFFERENT slide →
+//     a NEW slide with slide 0's CONTENT (fresh ids), not a duplicate of the
+//     current slide (the old pasteInternalClip bug). ---
+await exec(sid, `const s=window.__eigendeck.store.getState(); s.selectSlide(0); s.selectObject({type:'slide'});`);
+const slide0Sig = await exec(sid, `return JSON.stringify(window.__eigendeck.store.getState().presentation.slides[0].elements.map(e=>e.html||e.type));`);
+const slideCopyHtml = await exec(sid, `
+  const dt = new DataTransfer();
+  document.body.dispatchEvent(new ClipboardEvent('copy', { clipboardData: dt, bubbles: true, cancelable: true }));
+  return dt.getData('text/html');
+`);
+if (!/data-eigendeck-json=/.test(slideCopyHtml || '')) fail('slide copy did not write the private flavor');
+await exec(sid, `const s=window.__eigendeck.store.getState(); s.selectSlide(1); s.selectObject({type:'slide'});`);
+const nBefore = Number(await exec(sid, `return window.__eigendeck.store.getState().presentation.slides.length;`));
+await exec(sid, `
+  const dt = new DataTransfer(); dt.setData('text/html', ${JSON.stringify(slideCopyHtml)});
+  document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+`);
+let nAfter = nBefore;
+for (let i = 0; i < 20; i++) { nAfter = Number(await exec(sid, `return window.__eigendeck.store.getState().presentation.slides.length;`)); if (nAfter > nBefore) break; await sleep(300); }
+if (nAfter !== nBefore + 1) fail(`slide paste: expected +1 slide, got ${nBefore} -> ${nAfter}`);
+const pasted = JSON.parse(await exec(sid, `
+  const s = window.__eigendeck.store.getState();
+  const sl = s.presentation.slides[s.currentSlideIndex];
+  const s0 = s.presentation.slides[0];
+  return JSON.stringify({
+    sig: sl.elements.map(e=>e.html||e.type),
+    reusedSourceId: sl.elements.some(e => s0.elements.some(o => o.id === e.id)),
+    sameSlideId: sl.id === s0.id,
+  });
+`));
+if (JSON.stringify(pasted.sig) !== slide0Sig) fail(`slide paste: pasted content ${JSON.stringify(pasted.sig)} != copied slide 0 ${slide0Sig} (duplicated the wrong slide?)`);
+if (pasted.sameSlideId) fail('slide paste: slide id not freshened');
+if (pasted.reusedSourceId) fail('slide paste: element ids not freshened (shared with source)');
+console.log('  slide copy/paste → new slide with the COPIED slide content + fresh ids');
+
 await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {});
-console.log('E2E_PASS: internal-paste (copy/paste redesign Stage 1)');
+console.log('E2E_PASS: internal-paste (element + slide copy/paste)');
 process.exit(0);

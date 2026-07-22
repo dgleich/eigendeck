@@ -261,10 +261,13 @@ all three selection kinds: an element, a multi-selection, and a **slide**
 (`duplicateSlide` — group-aware, with animation links, selects the new slide).
 Each is a direct store action, so a stale clipboard can't cause a surprise paste.
 
-Still TODO: making ⌘V's slide-paste (new slide) vs object-paste (elements onto
-the current slide) decision explicit by pane focus, rather than the interim
-"⌘V on a slide → duplicate the current slide" (`pasteInternalClip`, tracked with
-the cross-deck slide-paste in #167).
+⌘V is decided by the **clip kind** (which is what you copied): a **slide** clip
+pastes the COPIED slide as a new, independent slide after the current one
+(`store.pasteSlide` — fresh slide + element ids, no sync/link, standalone); an
+**elements** clip pastes objects onto the current slide. This replaced the
+interim "⌘V on a slide → duplicate the *current* slide". Cross-deck, the slide's
+structure pastes but assets not present in the target deck come in broken (the
+clip carries JSON, not bytes — the asset-bytes-on-the-clipboard work is #167).
 
 ## Implementation stages
 
@@ -285,9 +288,11 @@ the cross-deck slide-paste in #167).
    ⌘⇧V "Keep Style" is still TODO — ⌘⇧V is now unbound ("Paste without
    Formatting" / the plain-text ⌘⇧V was removed 2026-07 as redundant with the
    in-editor default).
-5. **⌘D duplicate bypasses the clipboard** — DONE for element / multi / slide
-   (direct store actions). Remaining: slide-paste vs object-paste gated on focus
-   + slide flavor (the ⌘V half; ties to #167).
+5. **⌘D duplicate bypasses the clipboard** — DONE (element / multi / slide,
+   direct store actions). **⌘V slide-paste** now pastes the COPIED slide as a new
+   independent slide (`store.pasteSlide`), not a duplicate of the current — DONE.
+   Remaining: carrying asset bytes so a cross-deck slide/multi paste isn't broken
+   (#167).
 
 ## Testing
 
