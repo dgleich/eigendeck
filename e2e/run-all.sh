@@ -61,6 +61,8 @@ EMPTY='build_empty'
 MANIFEST=(
   # ── already-working entries (static example/fixture decks) ───────────────
   "present-clip-probe.mjs|examples/intro-slide.eigendeck||"
+  "present-navkey-probe.mjs|navkey.eigendeck||import_json \$EXFIX/internal-paste-deck.json"   # #155 present nav-key message routing (demo-swallowed Space/arrows)
+  "present-html-interactive-navkey-probe.mjs|htmlint.eigendeck||import_json \$ROOT/e2e/fixtures/html-interactive-deck.json"   # #155 CAVEAT: interactive html iframe is script-less + forwarder-less (nav keys swallowed) — regression guard
   "present-theme-parity-probe.mjs|examples/intro-slide.eigendeck||"
   "present-projector-probe.mjs|examples/intro-slide.eigendeck||"
   # #134 present-mode VISUAL check via the in-app seam capture (captureElement),

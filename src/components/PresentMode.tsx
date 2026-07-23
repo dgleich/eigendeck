@@ -180,8 +180,26 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
         case 'End': e.preventDefault(); goTo(totalSlides - 1); break;
       }
     };
+    // A focused demo iframe swallows Space/arrows (its keydown fires in the
+    // opaque-origin iframe, never reaching this window listener). The injected
+    // demo bridge forwards unconsumed nav keys to us as a postMessage (#155);
+    // route them into the same navigation.
+    const handleNavMessage = (e: MessageEvent) => {
+      const d = e.data as { __eigendeck?: number; type?: string; key?: string } | null;
+      if (!d || d.__eigendeck !== 1 || d.type !== 'nav-key') return;
+      switch (d.key) {
+        case 'ArrowRight': case 'ArrowDown': case ' ': case 'PageDown': goNext(); break;
+        case 'ArrowLeft': case 'ArrowUp': case 'PageUp': goPrev(); break;
+        case 'Home': goTo(0); break;
+        case 'End': goTo(totalSlides - 1); break;
+      }
+    };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('message', handleNavMessage);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('message', handleNavMessage);
+    };
   }, [goNext, goPrev, goTo, totalSlides, setPresenting, controlled, onExit, toggleZoom]);
 
   useEffect(() => {
