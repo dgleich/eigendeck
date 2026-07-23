@@ -32,15 +32,27 @@ await sleep(300);
 const shape = await exec(sid, `const e=window.__eigendeck.store.getState().presentation.slides[0].elements.find(x=>x.id==='img'); return JSON.stringify({assetId:!!e.assetId, src:e.src===undefined?'undef':e.src});`);
 console.log('  image element:', shape);
 
+// The self-contained export EMBEDS raster assets as base64 in a deckJson asset
+// map and emits `<img data-asset-id>` placeholders whose src is set at LOAD time
+// by a runtime resolver script (exportCore.mjs) — it does NOT write a literal
+// `src="data:image"` in the static HTML. So assert the image is embedded +
+// resolvable, not that the static markup carries a data: URL.
 const res = await execA(sid, `
   const done = arguments[arguments.length-1];
   Promise.resolve().then(() => window.__eigendeck.exportHtml())
-    .then(html => done({ ok:true, len: html.length, dataImgs: (html.match(/src="data:image/g)||[]).length }))
+    .then(html => done({
+      ok: true, len: html.length,
+      imgPlaceholder: /<img[^>]*data-asset-id/.test(html),          // the image element is emitted
+      hasResolveScript: /img\\[data-asset-id\\]/.test(html),         // + the runtime data: resolver
+      hasAssetBytes: html.includes('${PNG_B64.slice(0, 24)}'),      // + the PNG's base64 is embedded
+    }))
     .catch(e => done({ ok:false, err: String(e) }));`);
 if(!res || typeof res!=='object') fail('no result: '+JSON.stringify(res));
 if(!res.ok) fail('exportHtml threw: '+res.err);   // the reported crash
-if(res.dataImgs < 1) fail('image not inlined as data: URL — assetId→path resolution failed');
-console.log(`  export ok: ${res.len} chars, ${res.dataImgs} image(s) inlined from assetId ✓`);
+if(!res.imgPlaceholder) fail('no <img data-asset-id> emitted for the assetId-only image');
+if(!res.hasResolveScript) fail('export missing the data-asset-id → data: URL runtime resolver');
+if(!res.hasAssetBytes) fail('image bytes NOT embedded in the self-contained export');
+console.log(`  export ok: ${res.len} chars — image embedded (data-asset-id + base64 map + resolver) ✓`);
 
 await fetch(`${BASE}/session/${sid}`,{method:'DELETE'}).catch(()=>{});
 console.log('EXPORT_PASS: assetId-only image exports without the src.startsWith crash');
