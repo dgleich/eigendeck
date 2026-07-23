@@ -140,6 +140,18 @@ export function injectDemoBridge(html: string, hash: string, channelKey: string,
   function __report(msg, src){ try{ window.parent.postMessage({__eigendeck:1,type:'demo-error',message:String(msg),src:src}, '*'); }catch(_){} }
   window.addEventListener('error', function(e){ __report(e.message || e.error, 'error'); });
   window.addEventListener('unhandledrejection', function(e){ __report(e.reason, 'rejection'); });
+  // Forward slide-navigation keys to the parent (#155): a focused demo otherwise
+  // swallows Space/arrows in present mode so the deck can't advance. Bubble phase
+  // + !defaultPrevented + not-a-form-field means a genuinely interactive demo (a
+  // stepper that uses arrows) keeps them by calling preventDefault; the parent
+  // only acts on this in present mode (the editor ignores it).
+  var __NAVK = {' ':1,'ArrowLeft':1,'ArrowRight':1,'ArrowUp':1,'ArrowDown':1,'PageUp':1,'PageDown':1,'Home':1,'End':1};
+  window.addEventListener('keydown', function(e){
+    if(!__NAVK[e.key] || e.defaultPrevented) return;
+    var t=e.target;
+    if(t && (t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable)) return;
+    try{ window.parent.postMessage({__eigendeck:1,type:'nav-key',key:e.key}, '*'); }catch(_){}
+  }, false);
   var _ce=console.error, _cw=console.warn;
   console.error=function(){ __report([].slice.call(arguments).map(String).join(' '), 'console.error'); return _ce.apply(console,arguments); };
   console.warn=function(){ __report([].slice.call(arguments).map(String).join(' '), 'console.warn'); return _cw.apply(console,arguments); };
