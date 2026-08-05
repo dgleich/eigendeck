@@ -65,6 +65,7 @@ import { encodeClipHtml } from './lib/clipboardModel';
 import { linkPastedToSource } from './lib/pasteClip';
 import { eventInTextEditor } from './lib/editableTarget';
 import { PasteAsModal } from './components/PasteAsModal';
+import { selectAllTarget } from './lib/selectAll';
 import type { PasteRep } from './lib/pasteAs';
 import { buildEmbeddedFontFacesCSS, fontForPreset } from './lib/fonts';
 import { renderMathInHtml, containsMath } from './lib/mathjaxRenderer';
@@ -648,14 +649,20 @@ function App() {
   // the keydown fallback.
   const selectAllAction = useCallback(() => {
     const el = document.activeElement as HTMLElement | null;
-    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) { (el as HTMLInputElement).select?.(); return; }
-    if (el?.closest?.('[contenteditable="true"]')) { document.execCommand('selectAll'); return; }
+    const inField = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'
+      || !!el.closest?.('[contenteditable="true"]'));
     const state = usePresentationStore.getState();
     const slide = state.presentation.slides[state.currentSlideIndex];
-    const ids = slide ? slide.elements.map((e) => e.id) : [];
-    if (ids.length > 1) state.selectObject({ type: 'multi', ids });
-    else if (ids.length === 1) state.selectObject({ type: 'element', id: ids[0] });
-    else state.selectObject({ type: 'slide' });
+    const target = selectAllTarget(inField, slide ? slide.elements.map((e) => e.id) : []);
+    switch (target.kind) {
+      case 'field':
+        if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) (el as HTMLInputElement).select?.();
+        else document.execCommand('selectAll');
+        break;
+      case 'multi': state.selectObject({ type: 'multi', ids: target.ids }); break;
+      case 'element': state.selectObject({ type: 'element', id: target.id }); break;
+      case 'slide': state.selectObject({ type: 'slide' }); break;
+    }
   }, []);
   // Canvas context-menu "Paste as…" dispatches this DOM event (the native Edit
   // menu reaches openPasteAs via the Tauri menu-event path instead).
