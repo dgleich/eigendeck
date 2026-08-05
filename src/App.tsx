@@ -642,6 +642,21 @@ function App() {
     const { gatherClipboardTypes, clipboardRepresentations } = await import('./lib/pasteAs');
     setPasteAsReps(clipboardRepresentations(await gatherClipboardTypes()));
   }, []);
+  // Select All (Cmd+A / Edit menu): in a focused text field, select its text;
+  // otherwise select ALL elements on the current slide (not the browser's DOM
+  // select-all, which janks over the slide HTML). Shared by the menu-event and
+  // the keydown fallback.
+  const selectAllAction = useCallback(() => {
+    const el = document.activeElement as HTMLElement | null;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) { (el as HTMLInputElement).select?.(); return; }
+    if (el?.closest?.('[contenteditable="true"]')) { document.execCommand('selectAll'); return; }
+    const state = usePresentationStore.getState();
+    const slide = state.presentation.slides[state.currentSlideIndex];
+    const ids = slide ? slide.elements.map((e) => e.id) : [];
+    if (ids.length > 1) state.selectObject({ type: 'multi', ids });
+    else if (ids.length === 1) state.selectObject({ type: 'element', id: ids[0] });
+    else state.selectObject({ type: 'slide' });
+  }, []);
   // Canvas context-menu "Paste as…" dispatches this DOM event (the native Edit
   // menu reaches openPasteAs via the Tauri menu-event path instead).
   useEffect(() => {
@@ -1253,6 +1268,17 @@ function App() {
         if (key === 'i') { e.preventDefault(); document.execCommand('italic'); }
         if (key === 'e') { e.preventDefault(); document.execCommand('justifyCenter'); }
       }
+      // Cmd+A: the native "Select All" menu accelerator routes through the
+      // menu-event 'select-all' handler (selectAllAction) — which selects all
+      // ELEMENTS on the canvas, or the text in a focused field. A keydown fallback
+      // here covers any context the menu accelerator doesn't (and it's idempotent
+      // with the menu path). Skip when the browser default should win (a field).
+      if (e.key.toLowerCase() === 'a' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey
+          && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)
+          && !(e.target as HTMLElement).closest('[contenteditable]')) {
+        e.preventDefault();
+        selectAllAction();
+      }
       // Cmd+I outside text: toggle inspector
       if (e.key.toLowerCase() === 'i' && (e.ctrlKey || e.metaKey) && !inEditable) { e.preventDefault(); usePresentationStore.getState().toggleProperties(); }
       if (e.key === 'h' && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); usePresentationStore.getState().toggleHistory(); }
@@ -1655,6 +1681,7 @@ function App() {
         case 'export-pdf-screenshots': exportPdfScreenshots(); break;
         case 'import-html': importFromHtml(); break;
         case 'paste-as': void openPasteAs(); break;
+        case 'select-all': selectAllAction(); break;
         case 'install-llm-tools': void installLlmTools(); break;
         case 'present': startPresenting(); break;
         case 'screen-share-present': flushToSqlite().then(() => startScreenSharePresenting()); break;
