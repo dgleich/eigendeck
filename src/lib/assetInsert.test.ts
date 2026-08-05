@@ -36,6 +36,18 @@ vi.mock('./preferences', () => ({
   effectiveAutoReload: () => false,
   getPreference: () => null,
 }));
+// storeAssetWithCollisionCheck fires a FIRE-AND-FORGET autoApproveExternalPath
+// when externalPath is set (these tests pass one). That chain does
+// `await import('./watcherRegistry')`, which imports ./missingAssets → react.
+// Un-awaited, it can resolve AFTER the test env tears down → an intermittent
+// "Cannot load react after teardown" EnvironmentTeardownError that fails CI
+// (only in the full parallel run). Mock watcherRegistry so the fire-and-forget
+// resolves with no real (react-pulling) import. These tests are about
+// invalidation gating, not watcher approval, so this side-effect dep is moot here.
+vi.mock('./watcherRegistry', () => ({
+  resolvePosixPath: (_absDir: string, rel: string) => rel,
+  dirname: (p: string) => p,
+}));
 
 import { storeAssetWithCollisionCheck } from './assetInsert';
 import { invalidateRenderedAsset } from './assetRenderer';
