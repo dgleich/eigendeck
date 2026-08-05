@@ -65,5 +65,18 @@ await key('d', false, true); await sleep(200);
 const nSlAfter = Number(await exec(sid, `return window.__eigendeck.store.getState().presentation.slides.length;`));
 if (nSlAfter !== nSlBefore + 1) fail(`Cmd+D on a slide should duplicate it: ${nSlBefore} -> ${nSlAfter}`);
 
-console.log('KBD_PASS: nudge 1px/10px, Cmd+] z-order, Escape deselect, Cmd+D duplicate (element + slide)');
+// 7. Cmd+A outside a text field selects ALL elements on the slide (keydown path;
+//    the native Edit-menu Select All routes through the same selectAllAction on Mac).
+await exec(sid, `const s=window.__eigendeck.store.getState(); s.selectSlide(0); s.selectObject({type:'slide'});`);
+const slide0Ids = JSON.parse(await exec(sid, `const s=window.__eigendeck.store.getState(); return JSON.stringify(s.presentation.slides[0].elements.map(e=>e.id));`));
+await key('a', false, true); await sleep(200);
+const selAfterA = JSON.parse(await exec(sid, `return JSON.stringify(window.__eigendeck.store.getState().selectedObject);`));
+if (slide0Ids.length >= 2) {
+  if (selAfterA?.type !== 'multi') fail(`Cmd+A should multi-select all elements, got ${JSON.stringify(selAfterA)}`);
+  if ((selAfterA.ids || []).length !== slide0Ids.length) fail(`Cmd+A should select all ${slide0Ids.length} elements, got ${(selAfterA.ids||[]).length}`);
+} else if (slide0Ids.length === 1) {
+  if (selAfterA?.type !== 'element') fail(`Cmd+A with 1 element should select it, got ${JSON.stringify(selAfterA)}`);
+}
+
+console.log('KBD_PASS: nudge 1px/10px, Cmd+] z-order, Escape deselect, Cmd+D duplicate (element + slide), Cmd+A select-all');
 process.exit(0);

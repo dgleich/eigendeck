@@ -797,10 +797,16 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
     // catch-all menu-event to the JS `paste-as` handler, which opens the picker.
     let paste_as_item = MenuItemBuilder::new("Paste as…").id("paste-as")
         .build(app).map_err(|e| e.to_string())?;
+    // Custom Select All (NOT the predefined .select_all()): the predefined one's
+    // Cmd+A accelerator does the webview's DOM select-all, which janks over the
+    // slide HTML. Route Cmd+A through our menu-event so JS decides: select all
+    // ELEMENTS on the canvas, or the text in a focused field. (#select-all)
+    let select_all_item = MenuItemBuilder::new("Select All").id("select-all")
+        .accelerator("CmdOrCtrl+A").build(app).map_err(|e| e.to_string())?;
     let edit_base = SubmenuBuilder::new(app, "Edit")
         .undo().redo().separator().cut().copy().paste()
         .item(&paste_as_item)
-        .select_all();
+        .item(&select_all_item);
     // Linux (GTK): app Preferences live at the bottom of Edit. Windows puts them in
     // File; macOS in the app menu. Consume the builder per-cfg so there's no unused
     // `mut` on the platforms that add nothing here (the macOS build warned on it).
