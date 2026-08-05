@@ -644,6 +644,42 @@ describe('[simplify-guard] exportCore full-output snapshot (all element types)',
   });
 });
 
+describe('print layer (#109 — File→Print yields the print view)', () => {
+  const baseOpts = {
+    presentation: { title: 'T', theme: 'white', config: { width: 1920, height: 1080 },
+      slides: [{ id: 's1', elements: [{ id: 't', type: 'text', preset: 'body', html: 'Hi', position: { x: 0, y: 0, width: 100, height: 50 } }] }] },
+    readFile: async () => new Uint8Array([1]),
+    readTextFile: async () => '',
+    renderMath: (h) => h, applyMathPreamble: null,
+    getElementPreview: async () => null, resolveFont: () => 'PT Sans', resolveMathBundle: () => 'ptsans',
+  };
+
+  it('embeds the screen layer + the print layer + print CSS when print options are given', async () => {
+    const html = await buildExportHtml({
+      ...baseOpts,
+      printSlideHtmls: ['<div class="slide">PRINT-SLIDE-1</div>', '<div class="slide">PRINT-SLIDE-2</div>'],
+      printCss: '@media print { @page { size: letter landscape } .eig-print-layer .slide { width: 11in } }',
+    });
+    // screen layer wraps the interactive content
+    expect(html).toContain('<div class="eig-screen-layer">');
+    expect(html).toContain('id="viewport"');
+    // print layer carries the print slides
+    expect(html).toMatch(/<div class="eig-print-layer">[\s\S]*PRINT-SLIDE-1[\s\S]*PRINT-SLIDE-2[\s\S]*<\/div>/);
+    // print CSS present (so @media print swaps the layers)
+    expect(html).toContain('@page { size: letter landscape }');
+    // the print-layer DIV comes AFTER the screen-layer DIV in the body (the class
+    // name also appears earlier inside printCss in <head>, so compare the divs).
+    expect(html.indexOf('<div class="eig-screen-layer">')).toBeLessThan(html.indexOf('<div class="eig-print-layer">'));
+  });
+
+  it('omits the print layer entirely when no print options are given (back-compat)', async () => {
+    const html = await buildExportHtml(baseOpts);
+    expect(html).not.toContain('eig-print-layer');
+    // screen wrapper still present (harmless, always emitted)
+    expect(html).toContain('eig-screen-layer');
+  });
+});
+
 describe('eigendeck-deck block (single-store, re-importable with assets)', () => {
   it('embeds the with-assets deck JSON when deckJson is given, replacing the legacy comment', async () => {
     // An asset whose base64/metadata contains </script> and </div> — must not close
