@@ -1,35 +1,10 @@
 // Paste a copied FILE (from the OS file manager) onto the canvas (#160).
 //
-// The clipboard carries only a path/URI reference, not bytes — this module holds
-// the PURE logic for turning those references into insertable assets: parse the
-// platform clipboard shapes (macOS file-url / NSFilenames plist, Linux
-// text/uri-list / gnome-copied-files, Windows CF_HDROP paths) into file paths,
-// and decide which paths are asset-appropriate + their canonical mime/ext.
-// Reading the bytes (readFileNative, gated) and inserting (insertPastedAsset) live
-// in the paste handler; this is unit-tested in isolation.
-
-import { detectAssetKind, type AssetKind } from './assetCache';
-
-/** Accepted asset extensions → canonical mime. Anything else is rejected (we
- *  don't paste arbitrary files — only image/vector/pdf the app can render). */
-const EXT_MIME: Record<string, string> = {
-  png: 'image/png',
-  jpg: 'image/jpeg', jpeg: 'image/jpeg',
-  gif: 'image/gif',
-  webp: 'image/webp',
-  tif: 'image/tiff', tiff: 'image/tiff',
-  bmp: 'image/bmp',
-  svg: 'image/svg+xml', svgz: 'image/svg+xml',
-  pdf: 'application/pdf',
-};
-
-export interface PastedFileRef {
-  path: string;
-  fileName: string;
-  ext: string;
-  mime: string;
-  kind: AssetKind;
-}
+// PURE parsing of the platform clipboard shapes (macOS file-url / NSFilenames
+// plist, Linux text/uri-list / gnome-copied-files, Windows CF_HDROP paths) into
+// file PATHS. The paths are then inserted by the SAME insertFileFromPath that
+// drag-drop uses (SlideEditor), so copy-from-Finder paste and drag are equivalent.
+// This module is unit-tested in isolation.
 
 /** Decode a `file://` URL (or a bare path) to an absolute filesystem path.
  *  Percent-decodes, strips the scheme + host, and normalizes. Returns null for a
@@ -49,22 +24,6 @@ export function fileUrlToPath(ref: string): string | null {
   }
   // No scheme → treat as a bare absolute path (NSFilenames / CF_HDROP give these).
   return s.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(s) ? s : null;
-}
-
-/** Basename of a path (handles both / and \\ separators). */
-function baseName(path: string): string {
-  const parts = path.split(/[/\\]/);
-  return parts[parts.length - 1] || path;
-}
-
-/** Turn a resolved file path into an insertable asset ref, or null when the
- *  extension isn't an accepted asset type. */
-export function assetRefForPath(path: string): PastedFileRef | null {
-  const fileName = baseName(path);
-  const ext = (fileName.match(/\.([a-z0-9]+)$/i)?.[1] || '').toLowerCase();
-  const mime = EXT_MIME[ext];
-  if (!mime) return null;
-  return { path, fileName, ext, mime, kind: detectAssetKind(fileName, mime) };
 }
 
 function decodeXmlEntities(s: string): string {
@@ -116,16 +75,3 @@ export function parseGnomeCopiedFiles(text: string): string[] {
     .filter((p): p is string => !!p);
 }
 
-/** From a list of resolved paths, the asset-appropriate refs (in order, deduped
- *  by path). Non-asset files are silently skipped. */
-export function assetRefsFromPaths(paths: readonly string[]): PastedFileRef[] {
-  const seen = new Set<string>();
-  const out: PastedFileRef[] = [];
-  for (const p of paths) {
-    if (seen.has(p)) continue;
-    seen.add(p);
-    const ref = assetRefForPath(p);
-    if (ref) out.push(ref);
-  }
-  return out;
-}

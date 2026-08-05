@@ -31,6 +31,137 @@ const CANVAS_GAP = 0;
 
 // Layout constants moved to PropertiesPanel
 
+/**
+ * Insert ONE file (by absolute path) as the appropriate element — the SINGLE
+ * shared path for BOTH drag-drop and copy-from-Finder paste, so the two are
+ * equivalent by construction. Handles image/svg/pdf, .html (demo / demo-pieces /
+ * raw html element), .ipynb (notebook), and video. Stores each as a WATCHED
+ * external reference (externalPath = deck-relative), exactly like a drag.
+ * Returns true if it inserted an element (paste uses this to decide whether to
+ * consume the event or fall through to the text path). Adds to the live store.
+ */
+export async function insertFileFromPath(fullPath: string): Promise<boolean> {
+  const store = usePresentationStore.getState();
+  const name = fullPath.split('/').pop() || '';
+  const relativePath = relPath(store.projectPath, fullPath);
+  const isImage = /\.(png|jpg|jpeg|gif|svg|webp|pdf)$/i.test(name);
+  const isHtml = /\.html?$/i.test(name);
+  const isIpynb = /\.ipynb$/i.test(name);
+  const isVideo = /\.(mp4|webm|mov|m4v|ogv|ogg)$/i.test(name);
+  const { readAddFileCapped, storeAssetWithCollisionCheck } = await import('../lib/assetInsert');
+
+  if (isImage) {
+    try {
+      const bytes = await readAddFileCapped(fullPath);
+      if (!bytes) return false;  // over the size cap → toast shown, skip
+      const ext = name.split('.').pop()?.toLowerCase() || 'png';
+      const mime = ext === 'svg' ? 'image/svg+xml' : ext === 'pdf' ? 'application/pdf'
+        : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+      const r = await storeAssetWithCollisionCheck({
+        path: relativePath, data: bytes, mimeType: mime,
+        externalPath: relativePath, externalMtime: null,
+      });
+      if (r.cancelled) return false;
+      const assetId = r.assetId;
+      const kind = detectAssetKind(name, mime);
+      store.addElement({
+        id: crypto.randomUUID(), type: 'image', assetId, kind,
+        position: { x: 360, y: 200, width: 1200, height: 680 },
+      });
+      if (kind === 'svg') {
+        // We have the source path → offer to embed external image refs, then
+        // re-store the embedded bytes under the same assetId (severs the link).
+        const updated = await handleSvgExternalRefs(bytes, name, fullPath);
+        if (updated) {
+          const { invoke } = await import('@tauri-apps/api/core');
+          await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });
+          await invalidateRenderedAsset(assetId);
+        }
+      }
+      return true;
+    } catch (err) { console.error('Failed to insert image file:', err); return false; }
+  }
+
+  if (isHtml) {
+    try {
+      const bytes = await readAddFileCapped(fullPath);
+      if (!bytes) return false;
+      const html = await readTextFileNative(fullPath);
+      const { classifyDroppedHtml } = await import('../lib/htmlDropRoute');
+      const route = classifyDroppedHtml(html);
+      if (route.kind === 'demo' || route.kind === 'demo-pieces') {
+        const r = await storeAssetWithCollisionCheck({
+          path: relativePath, data: bytes, mimeType: 'text/html',
+          externalPath: relativePath, externalMtime: null,
+        });
+        if (r.cancelled) return false;
+        const assetId = r.assetId;
+        if (route.kind === 'demo-pieces') {
+          let x = 80;
+          for (const piece of route.pieces) {
+            const width = Math.floor((1760 - (route.pieces.length - 1) * 40) / route.pieces.length);
+            store.addElement({ id: crypto.randomUUID(), type: 'demo-piece' as any, piece, assetId, position: { x, y: 200, width, height: 700 } });
+            x += width + 40;
+          }
+        } else {
+          store.addElement({ id: crypto.randomUUID(), type: 'demo', assetId, position: { x: 80, y: 200, width: 1760, height: 700 } });
+        }
+        return true;
+      } else if (route.kind === 'html-element') {
+        store.addElement({
+          id: crypto.randomUUID(), type: 'html',
+          position: { x: 560, y: 300, width: 800, height: 500 },
+          html: route.html, ...(route.interactive ? { interactive: true } : {}),
+        });
+        return true;
+      } else {
+        const { showToast } = await import('../lib/toasts');
+        showToast({ kind: 'error', ttl: 9000, message: `That .html isn't a usable HTML element: ${route.problems.join('; ')}` });
+        return false;
+      }
+    } catch (err) { console.error('Failed to insert HTML file:', err); return false; }
+  }
+
+  if (isIpynb) {
+    try {
+      const bytes = await readAddFileCapped(fullPath);
+      if (!bytes) return false;
+      const r = await storeAssetWithCollisionCheck({
+        path: relativePath, data: bytes, mimeType: 'application/x-ipynb+json',
+        externalPath: relativePath, externalMtime: null,
+      });
+      if (r.cancelled) return false;
+      store.addElement({ id: crypto.randomUUID(), type: 'notebook', assetId: r.assetId, position: { x: 80, y: 200, width: 1760, height: 700 } });
+      return true;
+    } catch (err) { console.error('Failed to insert notebook file:', err); return false; }
+  }
+
+  if (isVideo) {
+    try {
+      const bytes = await readAddFileCapped(fullPath);
+      if (!bytes) return false;
+      const ext = name.split('.').pop()?.toLowerCase() || 'mp4';
+      const mime = ext === 'webm' ? 'video/webm' : ext === 'mov' ? 'video/quicktime'
+        : ext === 'm4v' ? 'video/x-m4v' : (ext === 'ogv' || ext === 'ogg') ? 'video/ogg' : 'video/mp4';
+      const mb = bytes.length / (1024 * 1024);
+      if (mb > 250) {
+        const { confirm } = await import('@tauri-apps/plugin-dialog');
+        const ok = await confirm(`This video is ${mb.toFixed(0)} MB. It will be embedded in the deck file, making it large. Continue?`, { title: 'Large video', kind: 'warning' });
+        if (!ok) return false;
+      }
+      const r = await storeAssetWithCollisionCheck({
+        path: relativePath, data: bytes, mimeType: mime,
+        externalPath: relativePath, externalMtime: null,
+      });
+      if (r.cancelled) return false;
+      store.addElement({ id: crypto.randomUUID(), type: 'video', kind: 'file', assetId: r.assetId, controls: true, position: { x: 360, y: 200, width: 1200, height: 680 } });
+      return true;
+    } catch (err) { console.error('Failed to insert video file:', err); return false; }
+  }
+
+  return false; // not a file type we insert
+}
+
 export function SlideEditor() {
   const {
     presentation, currentSlideIndex,
@@ -413,14 +544,12 @@ export function SlideEditor() {
       await insertPastedAsset(relativePath, bytes, pickedFormat.canonicalMime, fileName);
     };
 
-    /** Shared between sync + async paste paths. `sourcePath` (the file's real path,
-     *  for a copied-FILE paste) lets an SVG with external image refs be embedded —
-     *  same as drag-drop. A clipboard-image paste has no source, so it's null and
-     *  the SVG handler just warns. */
+    /** Insert a bitmap/vector/pdf from CLIPBOARD BYTES (no source file) — the
+     *  native-image / screenshot / async-clipboard paste paths. A copied FILE goes
+     *  through insertFileFromPath instead (it has a real path). */
     const insertPastedAsset = async (
       relativePath: string, bytes: Uint8Array, mime: string, fileName: string,
       position?: { x: number; y: number; width: number; height: number },
-      sourcePath?: string | null,
     ): Promise<void> => {
       let assetId: string;
       try {
@@ -446,17 +575,9 @@ export function SlideEditor() {
       });
       plog(`addElement: ${(performance.now() - tAdd).toFixed(0)}ms`);
       if (kind === 'svg') {
-        // With a real source path (copied FILE), offer to embed external image
-        // refs from the source folder — same as drag-drop. If embedded, re-store
-        // the updated bytes under the SAME assetId (severs the source link) and
-        // invalidate the cached render. Without a source (clipboard data), the
-        // handler just warns that refs can't be embedded.
-        const updated = await handleSvgExternalRefs(bytes, fileName, sourcePath ?? null);
-        if (updated) {
-          const { invoke } = await import('@tauri-apps/api/core');
-          await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });
-          await invalidateRenderedAsset(assetId);
-        }
+        // Clipboard bytes have no source folder → the handler just warns that
+        // external image refs can't be embedded.
+        void handleSvgExternalRefs(bytes, fileName, null);
       }
     };
 
@@ -493,27 +614,15 @@ export function SlideEditor() {
     // if at least one asset was inserted. Shared by the macOS (public.file-url)
     // and Linux (text/uri-list) paste branches. #160.
     const insertPastedFilePaths = async (paths: string[]): Promise<boolean> => {
-      const { assetRefsFromPaths } = await import('../lib/pasteFile');
-      const { readFileNative } = await import('../lib/nativeFs');
-      const refs = assetRefsFromPaths(paths);
-      if (!refs.length) return false;
-      let inserted = 0;
-      for (let i = 0; i < refs.length; i++) {
-        const ref = refs[i];
-        try {
-          const bytes = await readFileNative(ref.path);
-          if (!bytes.length) continue;
-          const outName = `pasted-${Date.now()}-${i}.${ref.ext}`;
-          plog(`pasted file ${ref.fileName} (${bytes.length}B, ${ref.mime}) → ${outName}`);
-          // Pass the file's real path so an SVG's external image refs can be
-          // embedded from the source folder (same as drag-drop). #160.
-          await insertPastedAsset(`images/${outName}`, bytes, ref.mime, outName, undefined, ref.path);
-          inserted++;
-        } catch (err) {
-          plog(`pasted file read failed for ${ref.path}:`, err);
-        }
+      // Route each pasted file through the SAME insertFileFromPath drag-drop uses,
+      // so copy-from-Finder → paste is equivalent to a drag (watched external ref,
+      // all file types, SVG external-ref embedding). #160.
+      let inserted = false;
+      for (const p of paths) {
+        try { if (await insertFileFromPath(p)) inserted = true; }
+        catch (err) { plog(`pasted file failed for ${p}:`, err); }
       }
-      return inserted > 0;
+      return inserted;
     };
 
     const insertPastedText = (html: string, plain: string): boolean => {
@@ -813,189 +922,9 @@ export function SlideEditor() {
         const win = getCurrentWebviewWindow();
         const u = await win.onDragDropEvent(async (event) => {
           if (event.payload.type === 'drop') {
-            const paths: string[] = event.payload.paths;
-            const store = usePresentationStore.getState();
-            for (const fullPath of paths) {
-              const name = fullPath.split('/').pop() || '';
-              const isImage = /\.(png|jpg|jpeg|gif|svg|webp|pdf)$/i.test(name);
-              const isHtml = /\.html?$/i.test(name);
-              const isIpynb = /\.ipynb$/i.test(name);
-              const isVideo = /\.(mp4|webm|mov|m4v|ogv|ogg)$/i.test(name);
-
-              if (isImage) {
-                try {
-                  const { invoke } = await import('@tauri-apps/api/core');
-                  const { readAddFileCapped } = await import('../lib/assetInsert');
-                  const relativePath = relPath(store.projectPath, fullPath);
-                  const bytes = await readAddFileCapped(fullPath);
-                  if (!bytes) continue;  // over the size cap → toast shown, skip this file
-                  const ext = name.split('.').pop()?.toLowerCase() || 'png';
-                  const mime = ext === 'svg' ? 'image/svg+xml'
-                    : ext === 'pdf' ? 'application/pdf'
-                    : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-                  // Drag-drop: relativePath IS the path-to-source-file from
-                  // the .eigendeck dir. Store it as externalPath so the
-                  // file-watcher can re-resolve to absolute at runtime and
-                  // notice when the source file changes on disk.
-                  // Routed through collision helper: hash-differing re-add
-                  // prompts the user; same-bytes silently dedups.
-                  const { storeAssetWithCollisionCheck } = await import('../lib/assetInsert');
-                  const r = await storeAssetWithCollisionCheck({
-                    path: relativePath, data: bytes, mimeType: mime,
-                    externalPath: relativePath, externalMtime: null,
-                  });
-                  if (r.cancelled) return;
-                  const assetId = r.assetId;
-                  const kind = detectAssetKind(name, mime);
-                  store.addElement({
-                    id: crypto.randomUUID(), type: 'image',
-                    assetId,
-                    kind,
-                    position: { x: 360, y: 200, width: 1200, height: 680 },
-                  });
-                  // unsaved-warning toast already fired by
-                  // storeAssetWithCollisionCheck if it applies.
-                  if (kind === 'svg') {
-                    // We have the original full path — handler can offer to embed.
-                    const updated = await handleSvgExternalRefs(bytes, name, fullPath);
-                    if (updated) {
-                      // Embed snapshot intentionally SEVERS the source link
-                      // (matches the dialog wording — "no longer references
-                      // the source files") by clearing external_path. This is
-                      // DISTINCT from merely turning off file-watching: that's
-                      // the per-asset auto_reload knob, which keeps
-                      // external_path so a manual reload still works. Here we
-                      // want no source link at all. Same assetId: the embed is
-                      // a new version of the same asset, not a new asset.
-                      // Direct db_store_asset (skip collision helper): we
-                      // KNOW this is a follow-up update to the asset we
-                      // just stored, not a real collision.
-                      await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });
-                      await invalidateRenderedAsset(assetId);
-                    }
-                  }
-                } catch (err) { console.error('Failed to handle dropped image:', err); }
-              } else if (isHtml) {
-                try {
-                  const { readAddFileCapped } = await import('../lib/assetInsert');
-                  const relativePath = relPath(store.projectPath, fullPath);
-                  const bytes = await readAddFileCapped(fullPath);
-                  if (!bytes) continue;  // over the size cap → toast shown, skip this file
-                  const html = await readTextFileNative(fullPath);
-
-                  // A dropped .html is ambiguous: an Eigendeck demo (embed as a
-                  // demo/demo-piece asset) or a plain HTML snippet the user
-                  // wants on the slide. classifyDroppedHtml() is the pure
-                  // decision (unit-tested); a non-demo .html falls back to a raw
-                  // `html` element (#137) instead of being rejected by the demo
-                  // gate.
-                  const { classifyDroppedHtml } = await import('../lib/htmlDropRoute');
-                  const route = classifyDroppedHtml(html);
-
-                  if (route.kind === 'demo' || route.kind === 'demo-pieces') {
-                    // Demo HTML — pass externalPath so the file watcher
-                    // can subscribe (auto-reload on disk edits). Same
-                    // pattern as image drag-drop above. externalMtime
-                    // stays null at insertion; scan-on-load will record
-                    // it without invalidating (post-fix watcher checks
-                    // hash before invalidating cache).
-                    const { storeAssetWithCollisionCheck } = await import('../lib/assetInsert');
-                    const r = await storeAssetWithCollisionCheck({
-                      path: relativePath, data: bytes, mimeType: 'text/html',
-                      externalPath: relativePath, externalMtime: null,
-                    });
-                    if (r.cancelled) return;
-                    const assetId = r.assetId;
-
-                    if (route.kind === 'demo-pieces') {
-                      let x = 80;
-                      for (const piece of route.pieces) {
-                        const width = Math.floor((1760 - (route.pieces.length - 1) * 40) / route.pieces.length);
-                        store.addElement({
-                          id: crypto.randomUUID(), type: 'demo-piece' as any,
-                          piece, assetId,
-                          position: { x, y: 200, width, height: 700 },
-                        });
-                        x += width + 40;
-                      }
-                    } else {
-                      store.addElement({
-                        id: crypto.randomUUID(), type: 'demo',
-                        assetId,
-                        position: { x: 80, y: 200, width: 1760, height: 700 },
-                      });
-                    }
-                  } else if (route.kind === 'html-element') {
-                    // Not an Eigendeck demo → insert as a raw HTML element (#137).
-                    store.addElement({
-                      id: crypto.randomUUID(), type: 'html',
-                      position: { x: 560, y: 300, width: 800, height: 500 },
-                      html: route.html,
-                      ...(route.interactive ? { interactive: true } : {}),
-                    });
-                  } else {
-                    // Not a demo and not a usable snippet (not HTML, scripts,
-                    // remote resources) — reject with the reasons, same gate as
-                    // the "Insert HTML Element from File" picker.
-                    const { showToast } = await import('../lib/toasts');
-                    showToast({ kind: 'error', ttl: 9000,
-                      message: `That .html isn't a usable HTML element: ${route.problems.join('; ')}` });
-                  }
-                } catch (err) { console.error('Failed to handle dropped HTML:', err); }
-              } else if (isIpynb) {
-                try {
-                  const { readAddFileCapped } = await import('../lib/assetInsert');
-                  const relativePath = relPath(store.projectPath, fullPath);
-                  const bytes = await readAddFileCapped(fullPath);
-                  if (!bytes) continue;  // over the size cap → toast shown, skip this file
-                  // .ipynb is JSON; store as application/x-ipynb+json so
-                  // isNotebookFile recognizes the asset on later loads.
-                  // externalPath set so the file-watcher reloads the
-                  // notebook when the user edits in JupyterLab/VSCode.
-                  const { storeAssetWithCollisionCheck } = await import('../lib/assetInsert');
-                  const r = await storeAssetWithCollisionCheck({
-                    path: relativePath, data: bytes,
-                    mimeType: 'application/x-ipynb+json',
-                    externalPath: relativePath, externalMtime: null,
-                  });
-                  if (r.cancelled) return;
-                  store.addElement({
-                    id: crypto.randomUUID(), type: 'notebook',
-                    assetId: r.assetId,
-                    position: { x: 80, y: 200, width: 1760, height: 700 },
-                  });
-                } catch (err) { console.error('Failed to handle dropped notebook:', err); }
-              } else if (isVideo) {
-                try {
-                  const { readAddFileCapped } = await import('../lib/assetInsert');
-                  const relativePath = relPath(store.projectPath, fullPath);
-                  const bytes = await readAddFileCapped(fullPath);
-                  if (!bytes) continue;  // over the size cap → toast shown, skip this file
-                  const ext = name.split('.').pop()?.toLowerCase() || 'mp4';
-                  const mime = ext === 'webm' ? 'video/webm' : ext === 'mov' ? 'video/quicktime'
-                    : ext === 'm4v' ? 'video/x-m4v' : (ext === 'ogv' || ext === 'ogg') ? 'video/ogg' : 'video/mp4';
-                  const mb = bytes.length / (1024 * 1024);
-                  if (mb > 250) {
-                    const { confirm } = await import('@tauri-apps/plugin-dialog');
-                    const ok = await confirm(`This video is ${mb.toFixed(0)} MB. It will be embedded in the deck file, making it large. Continue?`, { title: 'Large video', kind: 'warning' });
-                    if (!ok) return;
-                  }
-                  // Embed bytes as an asset; externalPath keeps the source link
-                  // for file-watching (same as image/demo drag-drop).
-                  const { storeAssetWithCollisionCheck } = await import('../lib/assetInsert');
-                  const r = await storeAssetWithCollisionCheck({
-                    path: relativePath, data: bytes, mimeType: mime,
-                    externalPath: relativePath, externalMtime: null,
-                  });
-                  if (r.cancelled) return;
-                  store.addElement({
-                    id: crypto.randomUUID(), type: 'video', kind: 'file',
-                    assetId: r.assetId, controls: true,
-                    position: { x: 360, y: 200, width: 1200, height: 680 },
-                  });
-                } catch (err) { console.error('Failed to handle dropped video:', err); }
-              }
-            }
+            // Shared with copy-from-Finder paste (insertFileFromPath) so drag and
+            // paste are equivalent by construction.
+            for (const fullPath of event.payload.paths) await insertFileFromPath(fullPath);
           }
         });
         // If the effect was cleaned up while we were awaiting the

@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  fileUrlToPath, assetRefForPath, parseUriList, parseGnomeCopiedFiles, assetRefsFromPaths,
-  parseNSFilenames,
+  fileUrlToPath, parseUriList, parseGnomeCopiedFiles, parseNSFilenames,
 } from './pasteFile';
 
 describe('fileUrlToPath', () => {
@@ -25,21 +24,6 @@ describe('fileUrlToPath', () => {
   });
 });
 
-describe('assetRefForPath', () => {
-  it('accepts image/svg/pdf and infers mime + kind + filename', () => {
-    expect(assetRefForPath('/a/b/pic.PNG')).toEqual({ path: '/a/b/pic.PNG', fileName: 'pic.PNG', ext: 'png', mime: 'image/png', kind: 'raster' });
-    expect(assetRefForPath('/a/b/logo.svg')).toMatchObject({ mime: 'image/svg+xml', kind: 'svg' });
-    expect(assetRefForPath('/a/b/doc.pdf')).toMatchObject({ mime: 'application/pdf', kind: 'pdf' });
-    expect(assetRefForPath('/a/b/photo.jpeg')).toMatchObject({ mime: 'image/jpeg', kind: 'raster' });
-    expect(assetRefForPath('C:\\x\\y\\z.webp')).toMatchObject({ fileName: 'z.webp', mime: 'image/webp' });
-  });
-  it('rejects non-asset extensions', () => {
-    expect(assetRefForPath('/a/b/notes.txt')).toBeNull();
-    expect(assetRefForPath('/a/b/movie.mp4')).toBeNull();   // video files are not pasted here (#172)
-    expect(assetRefForPath('/a/b/archive.zip')).toBeNull();
-    expect(assetRefForPath('/a/b/noext')).toBeNull();
-  });
-});
 
 describe('parseNSFilenames (real Finder plist)', () => {
   // The EXACT plist NSFilenamesPboardType carried when copying a PDF in Finder
@@ -52,13 +36,8 @@ describe('parseNSFilenames (real Finder plist)', () => {
     <string>/Users/dgleich/Dropbox/courses/cs520-2026/grades/midterm-density.pdf</string>
 </array>
 </plist>`;
-  it('extracts the real POSIX path from the plist', () => {
+  it('extracts the real POSIX path (the copied-PDF case that made a filename textbox)', () => {
     expect(parseNSFilenames(plist)).toEqual(['/Users/dgleich/Dropbox/courses/cs520-2026/grades/midterm-density.pdf']);
-  });
-  it('→ a pdf asset ref (the copied-PDF case that made a filename textbox)', () => {
-    const refs = assetRefsFromPaths(parseNSFilenames(plist));
-    expect(refs).toHaveLength(1);
-    expect(refs[0]).toMatchObject({ fileName: 'midterm-density.pdf', mime: 'application/pdf', kind: 'pdf' });
   });
   it('handles multiple files + file:// entries + XML entities', () => {
     const multi = '<plist><array>'
@@ -94,12 +73,3 @@ describe('parseGnomeCopiedFiles', () => {
   });
 });
 
-describe('assetRefsFromPaths', () => {
-  it('keeps asset files in order, dedups by path, skips non-assets', () => {
-    const refs = assetRefsFromPaths(['/a/x.png', '/a/notes.txt', '/a/y.svg', '/a/x.png']);
-    expect(refs.map((r) => r.fileName)).toEqual(['x.png', 'y.svg']);
-  });
-  it('empty when nothing is an asset', () => {
-    expect(assetRefsFromPaths(['/a/a.txt', '/a/b.mp4'])).toEqual([]);
-  });
-});
