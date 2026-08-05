@@ -33,6 +33,28 @@ const px2pt = (px: number) => (px * S * 72).toFixed(1) + 'pt'; // for font sizes
 const isLiveElement = (t: string) =>
   t === 'demo' || t === 'demo-piece' || t === 'video' || t === 'notebook';
 
+/** The letter-landscape @page + `.slide` print metrics, scoped under `scope`
+ *  (e.g. '.eig-print-layer ' for the interactive export's print layer; '' for the
+ *  standalone Print doc). One source of truth for the print geometry. */
+export function printPageCss(scope = ''): string {
+  return `@page { size: letter landscape; margin: 0; }
+${scope}.slide { width: 11in; height: 6.1875in; position: relative; overflow: hidden; box-sizing: border-box; break-after: page; margin-top: 1.15625in; }
+${scope}.slide:last-child { break-after: auto; }`;
+}
+
+/** Full print stylesheet for the interactive HTML export's embedded print layer:
+ *  hide the screen (interactive) layer + show the print layer when printing;
+ *  hide the print layer on screen. Built by the export CALLERS and passed into
+ *  buildExportHtml (exportCore is pure JS and can't import this). #109 */
+export function exportPrintCss(): string {
+  return `@media screen { .eig-print-layer { display: none; } }
+@media print {
+  .eig-screen-layer { display: none !important; }
+  .eig-print-layer { display: block; }
+  ${printPageCss('.eig-print-layer ')}
+}`;
+}
+
 /**
  * One slide as a print `<div class="slide">…</div>`, all positions in inches.
  * @param imageCache       assetId → data-URL for raster/pdf images

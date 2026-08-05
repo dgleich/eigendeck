@@ -27,9 +27,7 @@ import { CollisionDialog } from './components/CollisionDialog';
 import type { MenuEntry } from './components/ContextMenu';
 import { detachDelta } from './lib/syncLink';
 import { offsetElement } from './lib/offsetElement';
-import { buildPrintSlideHtml } from './lib/printSlideHtml';
-import { previewKey, loadPreviewDataUrl, isPreviewThemeStale } from './lib/previewCache';
-import { resolveTheme, previewThemeSalt } from './lib/themes';
+import { loadPreviewDataUrl } from './lib/previewCache';
 import { registerNotebookLifecycle } from './components/notebook/notebookLifecycle';
 import { runCopyHook } from './lib/elementLifecycle';
 import { loadOverlayFor } from './lib/useOverlay';
@@ -58,7 +56,6 @@ import { withBusy } from './store/busy';
 import { BusyOverlay } from './components/BusyOverlay';
 import './App.css';
 import { readFileNative, readTextFileNative, writeFileNative, writeTextFileNative } from './lib/nativeFs';
-import { bytesToBase64 } from './lib/base64';
 import { extractDemoPieceNames } from './lib/demoPieces';
 import { isCopyableAsset, copyAssetElement, clearInternalClip, pasteAssetElement, textElementClipboardHtml } from './lib/elementClipboard';
 import { encodeClipHtml } from './lib/clipboardModel';
@@ -67,8 +64,7 @@ import { eventInTextEditor } from './lib/editableTarget';
 import { PasteAsModal } from './components/PasteAsModal';
 import { selectAllTarget } from './lib/selectAll';
 import type { PasteRep } from './lib/pasteAs';
-import { buildEmbeddedFontFacesCSS, fontForPreset } from './lib/fonts';
-import { renderMathInHtml, containsMath } from './lib/mathjaxRenderer';
+import { buildEmbeddedFontFacesCSS } from './lib/fonts';
 import { getMissingAssets } from './lib/missingAssets';
 
 // Wire built-in element types into the sync/link lifecycle registry once, at
@@ -250,153 +246,23 @@ async function printToPdf() {
   });
   if (!selected) return;
 
-  // "Live" element types baked into the PDF as static screenshots (they can't
-  // be interactive in print). Notebook included (P0-2) — previously dropped.
-  const isLiveElement = (t: string) =>
-    t === 'demo' || t === 'demo-piece' || t === 'video' || t === 'notebook';
-
-  // Check if any slides have live elements
-  const hasDemos = presentation.slides.some(s =>
-    s.elements.some(e => isLiveElement(e.type)));
-
-  // Prefer the proactively-cached preview for each live element — no flip-through
-  // for those that already have one. Only the misses need a live capture.
-  const demoScreenshots = new Map<string, string>(); // slideId:elementId → dataUrl
-  if (hasDemos) {
-    for (const slide of presentation.slides) {
-      for (const el of slide.elements) {
-        if (!isLiveElement(el.type)) continue;
-        // A notebook's cached preview only re-captures while its slide is mounted,
-        // so a theme switch leaves the previews for OTHER slides stale. Skip a
-        // theme-stale one here so it drops into the needsLiveCapture flip-through
-        // below and gets re-rasterized with the live theme (#140).
-        if (el.type === 'notebook') {
-          const salt = previewThemeSalt(resolveTheme(presentation.theme, slide.theme));
-          if (await isPreviewThemeStale(previewKey(el), salt)) continue;
-        }
-        const cached = await loadPreviewDataUrl(previewKey(el));
-        if (cached) demoScreenshots.set(`${slide.id}:${el.id}`, cached);
-      }
-    }
-  }
-  const needsLiveCapture = presentation.slides.some(s =>
-    s.elements.some(e => isLiveElement(e.type)
-      && !demoScreenshots.has(`${s.id}:${e.id}`)));
-
-  if (needsLiveCapture) {
-    await message(
-      "Some demos don't have a cached preview yet and will be captured now — " +
-      'the view will flip through those slides briefly.\n\n' +
-      'Open the exported file in a browser and use Cmd+P to save as PDF.',
-      { title: 'Export for Print', kind: 'info' }
-    );
-  }
-
   try {
-    // Load image assets as data URLs (keyed by assetId).
-    const imageCache = new Map<string, string>();
-    const { invoke } = await import('@tauri-apps/api/core');
-    for (const slide of presentation.slides) {
-      for (const el of slide.elements) {
-        if (el.type === 'image' && !imageCache.has(el.assetId)) {
-          try {
-            // PDF-kind images can't inline as data:application/pdf in <img> —
-            // use the pdfium-rasterized PNG (asset_cache), same as the editor.
-            if (el.kind === 'pdf') {
-              const { renderAsset } = await import('./lib/assetRenderer');
-              const { ASSET_TIER } = await import('./lib/assetCache');
-              await renderAsset({
-                assetId: el.assetId, kind: 'pdf', variant: el.snapshotVariant ?? '_',
-                maxWidth: ASSET_TIER.full, maxHeight: ASSET_TIER.full,
-              });
-              const buf = await invoke<ArrayBuffer>('db_get_asset_cache_bytes', {
-                sourceId: el.assetId, variant: el.snapshotVariant ?? '_',
-                width: ASSET_TIER.full, height: ASSET_TIER.full,
-              });
-              const cbytes = new Uint8Array(buf);
-              if (cbytes.length) {
-                imageCache.set(el.assetId, `data:image/png;base64,${bytesToBase64(cbytes)}`);
-              }
-              continue;
-            }
-            const meta = await invoke<{ mime_type: string | null; path: string | null } | null>(
-              'db_get_asset_meta_by_id', { assetId: el.assetId },
-            );
-            const data = await invoke<ArrayBuffer>('db_get_asset_by_id', { assetId: el.assetId });
-            const bytes = new Uint8Array(data);
-            const ext = (meta?.path ?? '').split('.').pop()?.toLowerCase() || 'png';
-            const mime = meta?.mime_type
-              ?? (ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`);
-            imageCache.set(el.assetId, `data:${mime};base64,${bytesToBase64(bytes)}`);
-          } catch { /* skip */ }
-        }
-      }
-    }
-
-    // Live-capture ONLY the demos with no cached preview (flip through just
-    // those slides). Cached demos were already filled into demoScreenshots
-    // above — the common case is an empty flip-through here.
-    if (needsLiveCapture) {
-      const { domToDataUrl } = await import('modern-screenshot');
-      const originalSlideIndex = state.currentSlideIndex;
-      usePresentationStore.getState().selectObject({ type: 'slide' });
-      document.body.classList.add('pdf-capturing');
-
-      for (let i = 0; i < presentation.slides.length; i++) {
-        const slide = presentation.slides[i];
-        const demoEls = slide.elements.filter(e =>
-          isLiveElement(e.type)
-          && !demoScreenshots.has(`${slide.id}:${e.id}`));
-        if (demoEls.length === 0) continue;
-
-        usePresentationStore.getState().selectSlide(i);
-        await new Promise(r => setTimeout(r, 500)); // Extra time for demos to render
-
-        for (const el of demoEls) {
-          const domEl = document.querySelector(`[data-element-id="${el.id}"]`) as HTMLElement;
-          if (domEl) {
-            try {
-              const dataUrl = await domToDataUrl(domEl, {
-                width: el.position.width, height: el.position.height, scale: 1,
-              });
-              demoScreenshots.set(`${slide.id}:${el.id}`, dataUrl);
-            } catch (e) {
-              console.warn(`Failed to capture demo ${el.id}:`, e);
-            }
-          }
-        }
-      }
-
-      document.body.classList.remove('pdf-capturing');
-      usePresentationStore.getState().selectSlide(originalSlideIndex);
-    }
-
-    // Pre-render math per text element. The print path builds plain HTML (not the
-    // live SVG render), so $…$ has to be composited to inline SVG up front — the
-    // same thing the GUI export's makeTextElementRenderer does via the iframe pool.
-    // Keyed by `${slide.id}:${el.id}` (NOT el.id) because one element can appear
-    // on multiple slides (a linked/shared element) with a DIFFERENT font per slide
-    // — keying by el.id alone collides and every slide gets the last render.
-    const mathHtmlByKey = new Map<string, string>();
-    for (const slide of presentation.slides) {
-      for (const el of slide.elements) {
-        if (el.type === 'text' && el.html && containsMath(el.html)) {
-          const bundleId = fontForPreset(el.preset, slide, presentation.config).id;
-          const rendered = await renderMathInHtml(el.html, bundleId, presentation.config.mathPreamble || '')
-            .catch(() => el.html as string);
-          mathHtmlByKey.set(`${slide.id}:${el.id}`, rendered);
-        }
-      }
-    }
-
-    // Build print HTML: per-slide element rendering (all positions in inches)
-    // lives in buildPrintSlideHtml — a pure, snapshot-gated seam (render-path #6).
-    const slideHtmls = presentation.slides.map((slide, i) =>
-      buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots, mathHtmlByKey, i + 1));
-
-    // Embed @font-face data URLs for fonts used by this presentation.
+    const { preparePrintLayer } = await import('./lib/printLayer');
+    const { printPageCss } = await import('./lib/printSlideHtml');
+    let warned = false;
+    const { slideHtmls } = await preparePrintLayer(presentation, {
+      liveCapture: true,
+      onNeedsLiveCapture: async () => {
+        if (warned) return; warned = true;
+        await message(
+          "Some demos don't have a cached preview yet and will be captured now — " +
+          'the view will flip through those slides briefly.\n\n' +
+          'Open the exported file in a browser and use Cmd+P to save as PDF.',
+          { title: 'Export for Print', kind: 'info' }
+        );
+      },
+    });
     const fontFacesCss = await buildEmbeddedFontFacesCSS(presentation);
-
     const printHtml = `<!DOCTYPE html><html><head>
 <meta charset="utf-8">
 <title>${presentation.title}</title>
@@ -407,17 +273,7 @@ ${fontFacesCss}
 body { font-family: 'PT Sans', sans-serif; }
 html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-@media print {
-  @page { size: letter landscape; margin: 0; }
-  .slide {
-    width: 11in; height: 6.1875in;
-    position: relative; overflow: hidden;
-    box-sizing: border-box;
-    break-after: page;
-    margin-top: 1.15625in;
-  }
-  .slide:last-child { break-after: auto; }
-}
+@media print { ${printPageCss('')} }
 
 @media screen {
   body { background: #e0e0e0; padding: 20px 0; }
@@ -435,7 +291,6 @@ html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 ${slideHtmls.join('\n')}
 </body>
 </html>`;
-
     await writeTextFileNative(selected as string, printHtml);
   } catch (e) {
     console.error('PDF export failed:', e);
