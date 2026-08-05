@@ -129,6 +129,12 @@ export function SlideEditor() {
       // (#161). clipboardData is neutered by the awaits below, so reading it
       // there would come back empty for a plain-text (Keynote/Pages) paste.
       const plainEarly = e.clipboardData?.getData('text/plain') || '';
+      // A copied FILE (Finder/Explorer/Nautilus) exposes its path(s) as a URI
+      // list on Linux/Windows clipboardData (macOS uses the native public.file-url
+      // read above). Captured up front — clipboardData is neutered after awaits. #160.
+      const uriListEarly = e.clipboardData?.getData('text/uri-list')
+        || e.clipboardData?.getData('text/x-moz-url') || '';
+      const gnomeFilesEarly = e.clipboardData?.getData('x-special/gnome-copied-files') || '';
 
       // PRIVATE Eigendeck flavor FIRST (read private-first, per
       // docs/copy-and-paste.md): an internal element/slide/multi copy round-trips
@@ -214,6 +220,20 @@ export function SlideEditor() {
             return;
           }
         }
+        // A copied FILE from Finder puts public.file-url on the pasteboard (a
+        // path reference, not bytes) — none of the image UTIs above match it.
+        // Read the URL, resolve to a path, and insert the file as an asset. #160.
+        // (Legacy multi-file NSFilenamesPboardType is a follow-up; file-url is the
+        // first selected file, which covers the common single-file paste.)
+        if (nativeTypes.includes('public.file-url')) {
+          const urlBytes = await invoke<number[] | null>('pasteboard_read_type', { uti: 'public.file-url' });
+          if (urlBytes && urlBytes.length) {
+            const { fileUrlToPath } = await import('../lib/pasteFile');
+            const p = fileUrlToPath(new TextDecoder('utf-8').decode(new Uint8Array(urlBytes)).trim());
+            if (p && await insertPastedFilePaths([p])) { e.preventDefault(); return; }
+          }
+        }
+
         // No native IMAGE UTI taken → native TEXT. On macOS, WebKit does NOT
         // expose text/plain|text/html on clipboardData for a non-editable paste
         // target (the slide canvas), so every clipboard-based text path below is
@@ -328,6 +348,16 @@ export function SlideEditor() {
         }
       }
 
+      // Copied FILE (Linux/Windows): the clipboard carried a URI list / GNOME
+      // copied-files list of file paths. Resolve them and insert as assets. #160.
+      // (Before the rich-HTML/text fallbacks so a file paste isn't mistaken for a
+      // pasted URL string.)
+      if (!picked && (uriListEarly || gnomeFilesEarly)) {
+        const { parseUriList, parseGnomeCopiedFiles } = await import('../lib/pasteFile');
+        const paths = gnomeFilesEarly ? parseGnomeCopiedFiles(gnomeFilesEarly) : parseUriList(uriListEarly);
+        if (paths.length && await insertPastedFilePaths(paths)) { e.preventDefault(); return; }
+      }
+
       // Google Sheets / rich-HTML paste (tables, lists, formatted blocks): no
       // image on the clipboard, but a <table> etc. in text/html. Render it in the
       // deck font and screenshot to a PNG — the browser does the layout (far more
@@ -436,6 +466,33 @@ export function SlideEditor() {
     /** Plain / lightly-styled text → an editable text element (#161). Shared by
      *  the clipboardData path and the native-pasteboard (macOS) path. Returns
      *  true if it inserted. */
+    // Paste a copied FILE (from the OS file manager): resolve the referenced
+    // paths to asset refs, read each file's bytes (gated readFileNative), and
+    // insert as image/svg/pdf elements. Non-asset files are skipped. Returns true
+    // if at least one asset was inserted. Shared by the macOS (public.file-url)
+    // and Linux (text/uri-list) paste branches. #160.
+    const insertPastedFilePaths = async (paths: string[]): Promise<boolean> => {
+      const { assetRefsFromPaths } = await import('../lib/pasteFile');
+      const { readFileNative } = await import('../lib/nativeFs');
+      const refs = assetRefsFromPaths(paths);
+      if (!refs.length) return false;
+      let inserted = 0;
+      for (let i = 0; i < refs.length; i++) {
+        const ref = refs[i];
+        try {
+          const bytes = await readFileNative(ref.path);
+          if (!bytes.length) continue;
+          const outName = `pasted-${Date.now()}-${i}.${ref.ext}`;
+          plog(`pasted file ${ref.fileName} (${bytes.length}B, ${ref.mime}) → ${outName}`);
+          await insertPastedAsset(`images/${outName}`, bytes, ref.mime, outName);
+          inserted++;
+        } catch (err) {
+          plog(`pasted file read failed for ${ref.path}:`, err);
+        }
+      }
+      return inserted > 0;
+    };
+
     const insertPastedText = (html: string, plain: string): boolean => {
       // No marker guard: element/slide copies are handled by the private-flavor
       // path above (they return before we get here). Any marked html reaching
