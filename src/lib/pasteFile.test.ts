@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   fileUrlToPath, assetRefForPath, parseUriList, parseGnomeCopiedFiles, assetRefsFromPaths,
+  parseNSFilenames,
 } from './pasteFile';
 
 describe('fileUrlToPath', () => {
@@ -37,6 +38,39 @@ describe('assetRefForPath', () => {
     expect(assetRefForPath('/a/b/movie.mp4')).toBeNull();   // video files are not pasted here (#172)
     expect(assetRefForPath('/a/b/archive.zip')).toBeNull();
     expect(assetRefForPath('/a/b/noext')).toBeNull();
+  });
+});
+
+describe('parseNSFilenames (real Finder plist)', () => {
+  // The EXACT plist NSFilenamesPboardType carried when copying a PDF in Finder
+  // (captured via Debug → Dump Pasteboard Types). public.file-url there is a
+  // useless /.file/id= reference; this type has the real path.
+  const plist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+    <string>/Users/dgleich/Dropbox/courses/cs520-2026/grades/midterm-density.pdf</string>
+</array>
+</plist>`;
+  it('extracts the real POSIX path from the plist', () => {
+    expect(parseNSFilenames(plist)).toEqual(['/Users/dgleich/Dropbox/courses/cs520-2026/grades/midterm-density.pdf']);
+  });
+  it('→ a pdf asset ref (the copied-PDF case that made a filename textbox)', () => {
+    const refs = assetRefsFromPaths(parseNSFilenames(plist));
+    expect(refs).toHaveLength(1);
+    expect(refs[0]).toMatchObject({ fileName: 'midterm-density.pdf', mime: 'application/pdf', kind: 'pdf' });
+  });
+  it('handles multiple files + file:// entries + XML entities', () => {
+    const multi = '<plist><array>'
+      + '<string>/a/one.png</string>'
+      + '<string>file:///a/two%20b.svg</string>'
+      + '<string>/a/A&amp;B.jpg</string>'
+      + '</array></plist>';
+    expect(parseNSFilenames(multi)).toEqual(['/a/one.png', '/a/two b.svg', '/a/A&B.jpg']);
+  });
+  it('empty for a plist with no strings', () => {
+    expect(parseNSFilenames('<plist><array></array></plist>')).toEqual([]);
+    expect(parseNSFilenames('')).toEqual([]);
   });
 });
 

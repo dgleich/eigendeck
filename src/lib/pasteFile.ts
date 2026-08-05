@@ -67,6 +67,31 @@ export function assetRefForPath(path: string): PastedFileRef | null {
   return { path, fileName, ext, mime, kind: detectAssetKind(fileName, mime) };
 }
 
+function decodeXmlEntities(s: string): string {
+  return s
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&amp;/g, '&'); // last, so &amp;lt; doesn't double-decode
+}
+
+/** Parse macOS `NSFilenamesPboardType` (a plist `<array>` of `<string>` POSIX
+ *  paths or file:// URLs) into file paths. This is what Finder populates with the
+ *  REAL path on a file copy — `public.file-url` there is a /.file/id= reference
+ *  URL with no usable extension. Being an array, this also covers multi-file. */
+export function parseNSFilenames(plistXml: string): string[] {
+  const out: string[] = [];
+  const re = /<string>([\s\S]*?)<\/string>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(plistXml || ''))) {
+    const val = decodeXmlEntities(m[1].trim());
+    if (!val) continue;
+    const p = fileUrlToPath(val);
+    if (p) out.push(p);
+  }
+  return out;
+}
+
 /** Parse a `text/uri-list` payload (RFC 2483: CRLF-separated URIs, `#` comment
  *  lines ignored) into file paths. Non-file URIs are dropped. */
 export function parseUriList(text: string): string[] {

@@ -220,18 +220,26 @@ export function SlideEditor() {
             return;
           }
         }
-        // A copied FILE from Finder puts public.file-url on the pasteboard (a
-        // path reference, not bytes) — none of the image UTIs above match it.
-        // Read the URL, resolve to a path, and insert the file as an asset. #160.
-        // (Legacy multi-file NSFilenamesPboardType is a follow-up; file-url is the
-        // first selected file, which covers the common single-file paste.)
-        if (nativeTypes.includes('public.file-url')) {
-          const urlBytes = await invoke<number[] | null>('pasteboard_read_type', { uti: 'public.file-url' });
-          if (urlBytes && urlBytes.length) {
-            const { fileUrlToPath } = await import('../lib/pasteFile');
-            const p = fileUrlToPath(new TextDecoder('utf-8').decode(new Uint8Array(urlBytes)).trim());
-            if (p && await insertPastedFilePaths([p])) { e.preventDefault(); return; }
+        // A copied FILE from Finder → insert it as an asset. #160. Prefer
+        // NSFilenamesPboardType: it's a plist of the REAL POSIX paths (and an
+        // array, so multi-file works). Finder's public.file-url is a useless
+        // /.file/id= *reference* URL with no extension, so try it only as a
+        // fallback (for apps that put a real file:// path there).
+        {
+          const { parseNSFilenames, fileUrlToPath } = await import('../lib/pasteFile');
+          let filePaths: string[] = [];
+          if (nativeTypes.includes('NSFilenamesPboardType')) {
+            const b = await invoke<number[] | null>('pasteboard_read_type', { uti: 'NSFilenamesPboardType' });
+            if (b && b.length) filePaths = parseNSFilenames(new TextDecoder('utf-8').decode(new Uint8Array(b)));
           }
+          if (!filePaths.length && nativeTypes.includes('public.file-url')) {
+            const urlBytes = await invoke<number[] | null>('pasteboard_read_type', { uti: 'public.file-url' });
+            if (urlBytes && urlBytes.length) {
+              const p = fileUrlToPath(new TextDecoder('utf-8').decode(new Uint8Array(urlBytes)).trim());
+              if (p) filePaths = [p];
+            }
+          }
+          if (filePaths.length && await insertPastedFilePaths(filePaths)) { e.preventDefault(); return; }
         }
 
         // No native IMAGE UTI taken → native TEXT. On macOS, WebKit does NOT
