@@ -413,10 +413,14 @@ export function SlideEditor() {
       await insertPastedAsset(relativePath, bytes, pickedFormat.canonicalMime, fileName);
     };
 
-    /** Shared between sync + async paste paths. */
+    /** Shared between sync + async paste paths. `sourcePath` (the file's real path,
+     *  for a copied-FILE paste) lets an SVG with external image refs be embedded —
+     *  same as drag-drop. A clipboard-image paste has no source, so it's null and
+     *  the SVG handler just warns. */
     const insertPastedAsset = async (
       relativePath: string, bytes: Uint8Array, mime: string, fileName: string,
       position?: { x: number; y: number; width: number; height: number },
+      sourcePath?: string | null,
     ): Promise<void> => {
       let assetId: string;
       try {
@@ -442,8 +446,17 @@ export function SlideEditor() {
       });
       plog(`addElement: ${(performance.now() - tAdd).toFixed(0)}ms`);
       if (kind === 'svg') {
-        // Paste has no source folder — handler will just warn.
-        void handleSvgExternalRefs(bytes, fileName, null);
+        // With a real source path (copied FILE), offer to embed external image
+        // refs from the source folder — same as drag-drop. If embedded, re-store
+        // the updated bytes under the SAME assetId (severs the source link) and
+        // invalidate the cached render. Without a source (clipboard data), the
+        // handler just warns that refs can't be embedded.
+        const updated = await handleSvgExternalRefs(bytes, fileName, sourcePath ?? null);
+        if (updated) {
+          const { invoke } = await import('@tauri-apps/api/core');
+          await invoke('db_store_asset', { path: relativePath, data: Array.from(updated), mimeType: mime, externalPath: null, externalMtime: null, assetId });
+          await invalidateRenderedAsset(assetId);
+        }
       }
     };
 
@@ -492,7 +505,9 @@ export function SlideEditor() {
           if (!bytes.length) continue;
           const outName = `pasted-${Date.now()}-${i}.${ref.ext}`;
           plog(`pasted file ${ref.fileName} (${bytes.length}B, ${ref.mime}) → ${outName}`);
-          await insertPastedAsset(`images/${outName}`, bytes, ref.mime, outName);
+          // Pass the file's real path so an SVG's external image refs can be
+          // embedded from the source folder (same as drag-drop). #160.
+          await insertPastedAsset(`images/${outName}`, bytes, ref.mime, outName, undefined, ref.path);
           inserted++;
         } catch (err) {
           plog(`pasted file read failed for ${ref.path}:`, err);
