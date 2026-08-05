@@ -562,11 +562,11 @@ ${fontFacesCss ? '' : `@import url('https://fonts.googleapis.com/css2?family=PT+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #000; overflow: hidden; font-family: 'PT Sans', sans-serif; }
 #viewport { width: 100vw; height: 100vh; position: relative; }
-.slide {
+#viewport .slide {
   width: ${W}px; height: ${H}px; position: absolute;
   top: 50%; left: 50%; transform-origin: center center; display: none; overflow: hidden;
 }
-.slide.active { display: block; }
+#viewport .slide.active { display: block; }
 ul, ol { padding-left: 1.5em; margin: 0; list-style-type: none; }
 li { margin-bottom: 0.15em; position: relative; }
 ul li::before { content: '- '; position: absolute; right: 100%; white-space: pre; }
@@ -654,7 +654,7 @@ window.addEventListener('message', function(e) {
   }
 });
 
-const slides = document.querySelectorAll('.slide');
+const slides = document.querySelectorAll('#viewport .slide');
 let current = 0;
 const W = ${W}, H = ${H};
 const nb = document.getElementById('nav-bar');

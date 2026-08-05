@@ -38,6 +38,16 @@ const deckSlides = Number(await exec(sid,`return window.__eigendeck.store.getSta
 if(nSlides !== deckSlides) fail(`print layer has ${nSlides} slides, deck has ${deckSlides}`);
 console.log(`  print layer slide count matches the deck (${deckSlides})`);
 
+// REGRESSION (the "shows 90 slides" bug): the interactive nav must count ONLY the
+// screen-layer slides, not the print-layer copies. The base .slide CSS + nav JS
+// are scoped to #viewport so the print .slide divs don't leak into navigation.
+const totalSlideDivs = (html.match(/<div class="slide"/g)||[]).length;
+if(totalSlideDivs !== deckSlides * 2) fail(`expected ${deckSlides*2} total .slide divs (screen+print), got ${totalSlideDivs}`);
+const viewportSlides = (html.slice(html.indexOf('id="viewport"'), html.indexOf('<div class="eig-print-layer">')).match(/<div class="slide"/g)||[]).length;
+if(viewportSlides !== deckSlides) fail(`interactive #viewport has ${viewportSlides} slides, expected ${deckSlides} (print copies leaking in?)`);
+if(!/querySelectorAll\('#viewport \.slide'\)/.test(html)) fail('nav JS not scoped to #viewport → would count print-layer slides (the "90 slides" bug)');
+console.log(`  nav scoped to #viewport: ${viewportSlides} interactive slides (not ${totalSlideDivs}) ✓`);
+
 await fetch(`${BASE}/session/${sid}`,{method:'DELETE'}).catch(()=>{});
 console.log('PRINTLAYER_PASS: interactive export embeds a printable inch-based print layer (#109)');
 process.exit(0);
