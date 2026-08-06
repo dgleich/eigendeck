@@ -54,10 +54,21 @@ await exec(sid, "window.__eigendeck.store.getState().setPresenting(false);").cat
 // ---- HTML export (#4) ----
 const html = await execA(sid, `const d=arguments[arguments.length-1];Promise.resolve(window.__eigendeck.exportHtml()).then(h=>d(h)).catch(e=>d('ERR:'+e));`);
 if (typeof html !== 'string' || html.startsWith('ERR:')) fail('export failed: ' + html);
-const footerCount = (html.match(/class="slide-footer"/g) || []).length;
-if (footerCount !== 1) fail(`HTML export: expected exactly 1 footer (slide 1 omitted), got ${footerCount}`);
+// #109: the export embeds a print layer (a second slide copy behind @media print),
+// which ALSO renders footers — so count per layer, not globally. Each layer must
+// have exactly ONE footer (slide 0 shown, slide 1's omitFooter respected in BOTH
+// the interactive screen render AND the print render).
+const pIdx = html.indexOf('<div class="eig-print-layer">');
+const screenHtml = pIdx >= 0 ? html.slice(0, pIdx) : html;
+const printHtml = pIdx >= 0 ? html.slice(pIdx) : '';
+const screenFooters = (screenHtml.match(/class="slide-footer"/g) || []).length;
+if (screenFooters !== 1) fail(`HTML export screen layer: expected exactly 1 footer (slide 1 omitted), got ${screenFooters}`);
+if (pIdx >= 0) {
+  const printFooters = (printHtml.match(/class="slide-footer"/g) || []).length;
+  if (printFooters !== 1) fail(`HTML export print layer: expected exactly 1 footer (slide 1 omitted), got ${printFooters}`);
+}
 if (!/\.slide-footer\s*\{[^}]*font-family:\s*'Shantell Sans'/.test(html)) fail('HTML export: .slide-footer CSS is not Shantell');
-console.log('  HTML export: exactly 1 footer div (slide 1 omitted) + Shantell CSS ✓');
+console.log(`  HTML export: 1 footer in screen layer${pIdx >= 0 ? ' + 1 in print layer' : ''} (slide 1 omitted) + Shantell CSS ✓`);
 
 await quit(sid);
 console.log('FOOTER_PASS: footer presence/absence + footerFont correct in editor, present, and HTML export');

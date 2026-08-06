@@ -123,6 +123,28 @@ describe('[simplify-guard] buildPrintSlideHtml render snapshot', () => {
     expect(buildPrintSlideHtml(sB, presentation, new Map(), new Map(), mathHtmlByKey)).toContain('data-font="libertinus"');
   });
 
+  it('scales inline letter-spacing / word-spacing px to inches so tracked titles do not wrap (#174)', () => {
+    // A pasted/tracked uppercase title carries `letter-spacing: 3.84px` inline.
+    // The print path shrinks the font (px -> pt) + box (px -> in), but if the
+    // tracking stayed at 3.84 ABSOLUTE px its share of the em ~doubled and the
+    // title wrapped in print/PDF only. It must be scaled by the same S (px -> in).
+    const slide = {
+      id: 's1', layout: 'default', notes: '',
+      elements: [{ id: 't1', type: 'text', preset: 'title',
+        html: '<span style="letter-spacing: 3.84px; word-spacing: 2px; text-transform: uppercase">Powers of the Magnetic Matrix</span>',
+        position: { x: 60, y: 40, width: 1600, height: 120 } }],
+    } as unknown as Slide;
+    const presentation = { title: 'T', theme: 'white', config: { width: 1920, height: 1080 }, slides: [slide] } as unknown as Presentation;
+    const out = buildPrintSlideHtml(slide, presentation, new Map(), new Map());
+    const S = 11 / 1920;
+    expect(out).toContain(`letter-spacing:${(3.84 * S).toFixed(4)}in`);  // 0.0220in, not 3.84px
+    expect(out).toContain(`word-spacing:${(2 * S).toFixed(4)}in`);
+    expect(out).not.toContain('letter-spacing: 3.84px');
+    expect(out).not.toContain('3.84px');
+    // untouched styles survive
+    expect(out).toContain('text-transform: uppercase');
+  });
+
   // The slide footer (author·venue + number) must STAY IN the print export and
   // stay consistent with the HTML export — printed decks were missing it entirely.
   it('emits the slide footer (author·venue + number) when given a slide number', () => {

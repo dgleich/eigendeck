@@ -28,6 +28,22 @@ const S = 11 / 1920; // inches per pixel (11in-wide letter-landscape slide)
 const px2in = (px: number) => (px * S).toFixed(4) + 'in';
 const px2pt = (px: number) => (px * S * 72).toFixed(1) + 'pt'; // for font sizes
 
+// Absolute px lengths that live INSIDE a text element's rich-text inline styles
+// (letter-spacing / word-spacing on pasted or tracked runs — e.g. an uppercase
+// tracked title) don't get scaled when the print path converts the font-size to
+// points and the box to inches: only the caller-supplied font-size + box go
+// through px2pt/px2in, the inner span styles pass through verbatim. So a title
+// that fits on one line in the editor / HTML-export SVG (where EVERYTHING renders
+// in native px and scales uniformly) gets a font shrunk to print scale but the
+// SAME 3.84px of tracking — the tracking's share of the em roughly doubles, the
+// title widens, and it wraps in the print / PDF output only (#174). Scale those
+// two lengths by the same S the box uses (px -> in) so print matches the editor.
+const scaleTrackingForPrint = (html: string): string =>
+  html.replace(
+    /(letter-spacing|word-spacing)\s*:\s*(-?[\d.]+)px/gi,
+    (_m, prop: string, n: string) => `${prop}:${(parseFloat(n) * S).toFixed(4)}in`,
+  );
+
 // "Live" element types baked into the PDF as static screenshots (they can't be
 // interactive in print).
 const isLiveElement = (t: string) =>
@@ -85,7 +101,7 @@ export function buildPrintSlideHtml(
         color: resolveColor(el.color, theme, themeColorForPreset(theme, el.preset)),
         fontFamily: el.fontFamily || presetFontFamily,
         fontSize: effectiveFontSize(el, presentation.config),
-        content: markAsEigendeck(mathHtmlByKey?.get(`${slide.id}:${el.id}`) ?? el.html ?? ''),
+        content: markAsEigendeck(scaleTrackingForPrint(mathHtmlByKey?.get(`${slide.id}:${el.id}`) ?? el.html ?? '')),
         len: px2in,
         fsize: px2pt,
         theme,

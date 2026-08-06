@@ -13,7 +13,7 @@ after them covers what moves.
 ## Common submenus (all platforms)
 
 - **File**: New Project (Cmd/Ctrl+N), Open Project (Cmd/Ctrl+O), Open Recent ▸, Save
-  (Cmd/Ctrl+S), Save As… (⇧S), Import from HTML…, Export to HTML (⇧E) / Printable
+  (Cmd/Ctrl+S), Save As… (⇧S), Import from HTML…, Export to HTML… (⇧E) / Printable
   HTML… (⇧P) / PDF (Screenshots)…, Presentation Settings…, Compact (Free Unused
   Assets), Generate Missing Snapshots (`generate-snapshots`) / Refresh All
   Snapshots (`refresh-snapshots`), Install LLM Tools…, Close Window.
