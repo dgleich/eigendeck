@@ -74,6 +74,7 @@ MANIFEST=(
   "demo-theme-recapture-probe.mjs|examples/intro-slide.eigendeck||"
   "import-html-probe.mjs|examples/intro-slide.eigendeck||"   # #164 export->import round-trip (Unicode)
   "welcome-roundtrip-probe.mjs|examples/welcome.eigendeck||"   # HTML export->import restores assets (single-store)
+  "snapshot-command-probe.mjs|examples/graph-explorer.eigendeck||"   # Generate Missing Snapshots flips through + re-caches a live-element preview
   "element-fidelity-probe.mjs|examples/welcome.eigendeck||"   # every element PROPERTY survives import (asset types)
   "element-fidelity-probe.mjs|all-elements.eigendeck||import_json $ROOT/e2e/fixtures/all-elements-deck.json"   # video/html/cover/rich-text/arrow
   "element-fidelity-probe.mjs|stylematrix.eigendeck||python3 $EXFIX/make_style_matrix_deck.py \$DECKDIR/sm.json; import_json \$DECKDIR/sm.json"   # every export-matrix STYLE round-trips

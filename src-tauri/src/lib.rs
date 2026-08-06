@@ -750,6 +750,13 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build(app).map_err(|e| e.to_string())?;
     let gc_assets_item = MenuItemBuilder::new("Compact (Free Unused Assets)").id("gc-assets")
         .build(app).map_err(|e| e.to_string())?;
+    // Snapshot the deck's live elements (demo/notebook/video) to static images so
+    // exports/print/thumbnails show real content, not placeholders. Routed via
+    // menu-event to captureAllSnapshots.
+    let generate_snapshots_item = MenuItemBuilder::new("Generate Missing Snapshots").id("generate-snapshots")
+        .build(app).map_err(|e| e.to_string())?;
+    let refresh_snapshots_item = MenuItemBuilder::new("Refresh All Snapshots").id("refresh-snapshots")
+        .build(app).map_err(|e| e.to_string())?;
 
     let mut file_sub = SubmenuBuilder::new(app, "File")
         .item(&new_item)
@@ -769,7 +776,9 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .item(&export_pdf_ss_item)
         .separator()
         .item(&presentation_settings_item)
-        .item(&gc_assets_item);
+        .item(&gc_assets_item)
+        .item(&generate_snapshots_item)
+        .item(&refresh_snapshots_item);
     // Win/Linux have no Window menu, so Deck Security lives here in File.
     #[cfg(not(target_os = "macos"))]
     {

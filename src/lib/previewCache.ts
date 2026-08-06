@@ -146,6 +146,16 @@ export function onPreviewChange(fn: () => void): () => void {
   return () => listeners.delete(fn);
 }
 
+/** Drop a preview: forget the session hash AND delete the persisted cache row,
+ *  so the next capturePreview re-renders it even if the content is unchanged.
+ *  Used by "Refresh All Snapshots" to force a full re-render. Best-effort. */
+export async function clearPreview(key: string): Promise<void> {
+  lastHash.delete(key);
+  try { await invoke('db_clear_asset_cache', { sourceId: key }); }
+  catch (e) { console.warn('clearPreview failed:', e); }
+  bumpPreviewVersion(key);
+}
+
 interface CacheVariant { variant: string; width: number; height: number; source_hash?: string | null }
 
 /** Load the element's cached preview as an object URL, or null on a miss.
