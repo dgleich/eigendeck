@@ -75,6 +75,7 @@ MANIFEST=(
   "import-html-probe.mjs|examples/intro-slide.eigendeck||"   # #164 export->import round-trip (Unicode)
   "welcome-roundtrip-probe.mjs|examples/welcome.eigendeck||"   # HTML export->import restores assets (single-store)
   "export-print-layer-probe.mjs|examples/intro-slide.eigendeck||"   # #109 interactive HTML export embeds a printable inch-based print layer
+  "export-print-demo-probe.mjs|printdemo.eigendeck||python3 $EXFIX/make_e2e_decks.py printdemo \$DECKDIR/pd.json; import_json \$DECKDIR/pd.json"   # #109 print layer doesn't break the LIVE demo/html/notebook in the interactive export
   "element-fidelity-probe.mjs|examples/welcome.eigendeck||"   # every element PROPERTY survives import (asset types)
   "element-fidelity-probe.mjs|all-elements.eigendeck||import_json $ROOT/e2e/fixtures/all-elements-deck.json"   # video/html/cover/rich-text/arrow
   "element-fidelity-probe.mjs|stylematrix.eigendeck||python3 $EXFIX/make_style_matrix_deck.py \$DECKDIR/sm.json; import_json \$DECKDIR/sm.json"   # every export-matrix STYLE round-trips
