@@ -179,6 +179,51 @@ def make_hyphenpiece():
     }
 
 
+def make_printdemo():
+    # #109 print-layer / demo-interference guard. One slide carrying all three
+    # things the interactive HTML export puts LIVE (or iframe) content into, so a
+    # probe can prove the print layer didn't break them:
+    #   - a live `demo` (self-reports DEMO-RAN to the parent on boot) → the
+    #     interactive screen-layer iframe must still run;
+    #   - an `html` element → renders as a srcdoc <iframe> IN THE PRINT LAYER, the
+    #     new iframe the export's global querySelectorAll('iframe') sweeps (font
+    #     inject / BroadcastChannel relay) — the interference risk David flagged;
+    #   - a `notebook` → baked to a print-layer screenshot (or placeholder).
+    # The demo self-reports because its export iframe is sandboxed opaque-origin:
+    # the parent can't read its DOM, so a browser-level functional check listens
+    # for the postMessage instead.
+    demo_html = (
+        "<!DOCTYPE html><!--eigendeck-demo-v1--><html><head><meta charset=utf-8>"
+        "<style>html,body{width:100%;height:100%;margin:0}"
+        ".d{font:bold 32px sans-serif;padding:20px;color:#0a0}</style></head><body>"
+        "<div class=d id=out>booting</div><script>\n"
+        "var out=document.getElementById('out'); out.textContent='DEMO-RAN';\n"
+        "function rep(){try{window.parent.postMessage("
+        "{__eigendeck:1,type:'demo-report',text:'DEMO-RAN'},'*')}catch(e){}}\n"
+        "rep();\n"
+        "window.addEventListener('message',function(e){if(e.data&&e.data.__eigendeck===1"
+        "&&e.data.type==='request-demo-report')rep()});\n"
+        "</script></body></html>"
+    )
+    nb = ipynb([md_cell("# print demo notebook\n"), code_cell("x = 1\n")])
+    return {
+        "title": "print demo", "theme": "white", "config": {},
+        "slides": [{"id": "s1", "elements": [
+            {"id": "demo1", "type": "demo", "assetId": "dhtml",
+             "position": {"x": 40, "y": 40, "width": 700, "height": 360}},
+            {"id": "html1", "type": "html",
+             "html": "<div style='font:bold 28px sans-serif;color:#036'>HTML-ELEMENT-MARKER</div>",
+             "position": {"x": 40, "y": 440, "width": 500, "height": 180}},
+            nb_el("nb1", "ipy", position={"x": 780, "y": 40, "width": 460, "height": 580}),
+        ]}],
+        "assets": [
+            {"assetId": "dhtml", "mime": "text/html", "path": "demos/pd.html",
+             "data": base64.b64encode(demo_html.encode()).decode()},
+            {"assetId": "ipy", "mime": IPY, "path": "pd.ipynb", "data": b64(nb)},
+        ],
+    }
+
+
 MAKERS = {
     "shared": make_shared,
     "copypaste": make_copypaste,
@@ -187,6 +232,7 @@ MAKERS = {
     "empty": make_empty,
     "solo": make_solo,
     "hyphenpiece": make_hyphenpiece,
+    "printdemo": make_printdemo,
 }
 
 if __name__ == "__main__":

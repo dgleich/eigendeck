@@ -497,10 +497,20 @@ export async function buildPresentationExportHtml(
     deckJson = JSON.stringify({ ...presentation, assets: dbAssets });
   } catch (e) { console.warn('with-assets embed failed; export won\'t be re-importable with assets:', e); }
 
+  // #109: build the embedded print layer so File→Print on the exported HTML gives
+  // the print view. liveCapture omitted (false) — this path must not flip slides
+  // (it's called by the read-only seam/e2e too); uncached demos fall back to their
+  // cached preview or a placeholder. The dedicated Print export does the live capture.
+  const { preparePrintLayer } = await import('../lib/printLayer');
+  const { exportPrintCss } = await import('../lib/printSlideHtml');
+  const { slideHtmls: printSlideHtmls } = await preparePrintLayer(presentation);
+
   // Read assets from SQLite for inlining
   return buildExportHtml({
     presentation: hydrated,
     deckJson,
+    printSlideHtmls,
+    printCss: exportPrintCss(),
     // Export reads ONLY embedded/cached bytes from SQLite — it NEVER touches disk.
     // Assets are always embedded (ASSETS.md: the asset table is the source of
     // truth), so there is no legitimate need for a disk read here; and resolving

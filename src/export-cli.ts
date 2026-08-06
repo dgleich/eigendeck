@@ -158,9 +158,19 @@ async function main() {
     try { fontFacesCss = await buildEmbeddedFontFacesCSS(presentation); }
     catch (e) { console.warn('font embedding (cli) failed:', e); }
 
+    // #109: embed the print layer (cached previews only — headless CLI can't
+    // flip-through-capture; uncached demos get a placeholder in the print view).
+    const { preparePrintLayer } = await import('./lib/printLayer');
+    const { exportPrintCss } = await import('./lib/printSlideHtml');
+    let printSlideHtmls: string[] = [];
+    try { ({ slideHtmls: printSlideHtmls } = await preparePrintLayer(presentation, { renderMath: cachingRender })); }
+    catch (e) { console.warn('print layer (cli) failed:', e); }
+
     const html = await buildExportHtml({
       presentation,
       fontFacesCss,
+      printSlideHtmls,
+      printCss: exportPrintCss(),
       readFile: async (path: string) => {
         const data = await invoke<number[]>('db_get_asset', { path });
         return new Uint8Array(data);

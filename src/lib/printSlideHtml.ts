@@ -28,10 +28,48 @@ const S = 11 / 1920; // inches per pixel (11in-wide letter-landscape slide)
 const px2in = (px: number) => (px * S).toFixed(4) + 'in';
 const px2pt = (px: number) => (px * S * 72).toFixed(1) + 'pt'; // for font sizes
 
+// Absolute px lengths that live INSIDE a text element's rich-text inline styles
+// (letter-spacing / word-spacing on pasted or tracked runs — e.g. an uppercase
+// tracked title) don't get scaled when the print path converts the font-size to
+// points and the box to inches: only the caller-supplied font-size + box go
+// through px2pt/px2in, the inner span styles pass through verbatim. So a title
+// that fits on one line in the editor / HTML-export SVG (where EVERYTHING renders
+// in native px and scales uniformly) gets a font shrunk to print scale but the
+// SAME 3.84px of tracking — the tracking's share of the em roughly doubles, the
+// title widens, and it wraps in the print / PDF output only (#174). Scale those
+// two lengths by the same S the box uses (px -> in) so print matches the editor.
+const scaleTrackingForPrint = (html: string): string =>
+  html.replace(
+    /(letter-spacing|word-spacing)\s*:\s*(-?[\d.]+)px/gi,
+    (_m, prop: string, n: string) => `${prop}:${(parseFloat(n) * S).toFixed(4)}in`,
+  );
+
 // "Live" element types baked into the PDF as static screenshots (they can't be
 // interactive in print).
 const isLiveElement = (t: string) =>
   t === 'demo' || t === 'demo-piece' || t === 'video' || t === 'notebook';
+
+/** The letter-landscape @page + `.slide` print metrics, scoped under `scope`
+ *  (e.g. '.eig-print-layer ' for the interactive export's print layer; '' for the
+ *  standalone Print doc). One source of truth for the print geometry. */
+export function printPageCss(scope = ''): string {
+  return `@page { size: letter landscape; margin: 0; }
+${scope}.slide { width: 11in; height: 6.1875in; position: relative; overflow: hidden; box-sizing: border-box; break-after: page; margin-top: 1.15625in; }
+${scope}.slide:last-child { break-after: auto; }`;
+}
+
+/** Full print stylesheet for the interactive HTML export's embedded print layer:
+ *  hide the screen (interactive) layer + show the print layer when printing;
+ *  hide the print layer on screen. Built by the export CALLERS and passed into
+ *  buildExportHtml (exportCore is pure JS and can't import this). #109 */
+export function exportPrintCss(): string {
+  return `@media screen { .eig-print-layer { display: none; } }
+@media print {
+  .eig-screen-layer { display: none !important; }
+  .eig-print-layer { display: block; }
+  ${printPageCss('.eig-print-layer ')}
+}`;
+}
 
 /**
  * One slide as a print `<div class="slide">…</div>`, all positions in inches.
@@ -63,7 +101,7 @@ export function buildPrintSlideHtml(
         color: resolveColor(el.color, theme, themeColorForPreset(theme, el.preset)),
         fontFamily: el.fontFamily || presetFontFamily,
         fontSize: effectiveFontSize(el, presentation.config),
-        content: markAsEigendeck(mathHtmlByKey?.get(`${slide.id}:${el.id}`) ?? el.html ?? ''),
+        content: markAsEigendeck(scaleTrackingForPrint(mathHtmlByKey?.get(`${slide.id}:${el.id}`) ?? el.html ?? '')),
         len: px2in,
         fsize: px2pt,
         theme,

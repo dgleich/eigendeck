@@ -196,6 +196,13 @@ export function bytesToDataUrl(bytes, ext) {
 export async function buildExportHtml(opts) {
   const {
     presentation, readFile, readTextFile, renderMath, applyMathPreamble,
+    // #109: the inch-based print slides (buildPrintSlideHtml strings) + their
+    // @media-print CSS, built by the caller (printLayer.preparePrintLayer /
+    // printSlideHtml.exportPrintCss — exportCore is pure JS, can't build them).
+    // When present, the export embeds a hidden print layer so File→Print in a
+    // browser yields the print view. Omitted → no print layer (back-compat).
+    printSlideHtmls,
+    printCss,
     /**
      * Optional: the self-contained deck JSON WITH assets (base64), as produced by
      * the Rust `db_export_json_with_assets`. When provided, the export becomes
@@ -555,11 +562,11 @@ ${fontFacesCss ? '' : `@import url('https://fonts.googleapis.com/css2?family=PT+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #000; overflow: hidden; font-family: 'PT Sans', sans-serif; }
 #viewport { width: 100vw; height: 100vh; position: relative; }
-.slide {
+#viewport .slide {
   width: ${W}px; height: ${H}px; position: absolute;
   top: 50%; left: 50%; transform-origin: center center; display: none; overflow: hidden;
 }
-.slide.active { display: block; }
+#viewport .slide.active { display: block; }
 ul, ol { padding-left: 1.5em; margin: 0; list-style-type: none; }
 li { margin-bottom: 0.15em; position: relative; }
 ul li::before { content: '- '; position: absolute; right: 100%; white-space: pre; }
@@ -594,18 +601,22 @@ ol li::before { counter-increment: ol-counter; content: counter(ol-counter) '. '
   #nav-bar { padding: 12px 16px; font-size: 16px; }
   #nav-bar button { padding: 8px 16px; font-size: 16px; min-width: 44px; }
 }
+${printCss || ''}
 </style>
 </head>
 <body>
+<div class="eig-screen-layer">
 <div id="viewport">
 ${slideHtml.join('\n')}
 </div>
-${deckEmbed}
 <div id="nav-bar">
   <button id="nb-prev">&lsaquo;</button>
   <span class="nav-pos"><span id="nb-cur">1</span> / <span id="nb-total"></span></span>
   <button id="nb-next">&rsaquo;</button>
 </div>
+</div>
+${printSlideHtmls && printSlideHtmls.length ? `<div class="eig-print-layer">\n${printSlideHtmls.join('\n')}\n</div>` : ''}
+${deckEmbed}
 <script>
 // Font share: the deck fonts live ONCE in the parent's #eigendeck-fonts block.
 // Demo iframes are same-origin srcdoc docs, so inject that block into each at
@@ -643,7 +654,7 @@ window.addEventListener('message', function(e) {
   }
 });
 
-const slides = document.querySelectorAll('.slide');
+const slides = document.querySelectorAll('#viewport .slide');
 let current = 0;
 const W = ${W}, H = ${H};
 const nb = document.getElementById('nav-bar');

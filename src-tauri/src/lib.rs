@@ -734,7 +734,7 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
         .build(app).map_err(|e| e.to_string())?;
     let save_as_item = MenuItemBuilder::new("Save As...").id("save-as").accelerator("CmdOrCtrl+Shift+S")
         .build(app).map_err(|e| e.to_string())?;
-    let export_item = MenuItemBuilder::new("Export to HTML").id("export").accelerator("CmdOrCtrl+Shift+E")
+    let export_item = MenuItemBuilder::new("Export to HTML…").id("export").accelerator("CmdOrCtrl+Shift+E")
         .build(app).map_err(|e| e.to_string())?;
     let export_pdf_item = MenuItemBuilder::new("Export Printable HTML…").id("export-pdf").accelerator("CmdOrCtrl+Shift+P")
         .build(app).map_err(|e| e.to_string())?;
