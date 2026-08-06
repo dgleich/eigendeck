@@ -62,6 +62,19 @@ if(r2.captured!==0) fail(`run 2 should capture 0 (idempotent), captured ${r2.cap
 if(r2.slidesVisited!==0) fail(`run 2 should visit 0 slides (nothing missing), visited ${r2.slidesVisited}`);
 console.log(`  run 2: idempotent — captured 0, visited 0 (nothing missing) ✓`);
 
+// Refresh All (force): re-captures EVERYTHING even though nothing is missing.
+const rf=await execA(sid,`const done=arguments[arguments.length-1];
+  window.__eigendeck.captureSnapshots(true).then(r=>done(JSON.stringify(r))).catch(e=>done('ERR:'+e));`);
+if(typeof rf!=='string'||rf.startsWith('ERR:')) fail('Refresh All failed: '+rf);
+const r3=JSON.parse(rf);
+if(r3.captured!==r3.totalLive) fail(`Refresh All should capture ALL ${r3.totalLive}, captured ${r3.captured}`);
+if(r3.captured < 1 || r3.slidesVisited < 1) fail(`Refresh All should re-capture + visit (got captured ${r3.captured}, visited ${r3.slidesVisited})`);
+console.log(`  Refresh All: force re-captured all ${r3.captured}/${r3.totalLive} across ${r3.slidesVisited} slide(s) ✓`);
+// And the preview is still cached afterwards.
+let stillThere=false;
+for(let i=0;i<15;i++){ if(await hasPreview()){stillThere=true;break;} await sleep(400); }
+if(!stillThere) fail('preview missing after Refresh All');
+
 await fetch(`${BASE}/session/${sid}`,{method:'DELETE'}).catch(()=>{});
 console.log('SNAPSHOT_PASS: Generate Missing Snapshots re-captures a cleared live-element preview');
 process.exit(0);

@@ -29,16 +29,30 @@ const DWELL_MS = 1600;
 
 export interface SnapshotProgress { current: number; total: number }
 
-/** Does this element need a (re)capture? Missing (no current-theme preview — the
- *  export would show a placeholder) OR theme-stale. `force` short-circuits to
- *  always-yes. Content-drift staleness isn't detectable without rendering; those
- *  re-cache on view and via Refresh All. */
-async function needsCapture(el: SlideElement, presentation: Presentation, slideIdx: number, force: boolean): Promise<boolean> {
-  if (force) return true;
+/** One live element's capture status, resolved from the cache. */
+export interface LiveEntry { slideIdx: number; present: boolean; themeStale: boolean }
+
+/** PURE decision: given each live element's cache status, which slides to visit
+ *  and how many elements will be captured. An element is captured when `force`,
+ *  or it has no current preview (missing → export placeholder), or it's theme-
+ *  stale. Slides are the deduped, ascending indices of the captured elements.
+ *  (Unit-tested — this is the logic that had the "runs every time" idempotency bug.) */
+export function planSnapshotCapture(entries: readonly LiveEntry[], force: boolean): { slidesToVisit: number[]; captured: number } {
+  const needy = entries.filter((e) => force || !e.present || e.themeStale);
+  const slidesToVisit = [...new Set(needy.map((e) => e.slideIdx))].sort((a, b) => a - b);
+  return { slidesToVisit, captured: needy.length };
+}
+
+/** Resolve one live element's cache status: present (has a current preview — else
+ *  the export shows a placeholder) and theme-stale. (For a force run, clearPreview
+ *  already ran, so present reads false and it's captured regardless. Content-drift
+ *  staleness isn't detectable without rendering; those re-cache on view / Refresh All.) */
+async function liveEntry(el: SlideElement, presentation: Presentation, slideIdx: number): Promise<LiveEntry> {
   const key = previewKey(el);
-  if (!(await loadPreviewDataUrl(key))) return true; // missing → export placeholder
+  const present = !!(await loadPreviewDataUrl(key));
   const salt = previewThemeSalt(resolveTheme(presentation.theme, presentation.slides[slideIdx].theme));
-  return isPreviewThemeStale(key, salt);
+  const themeStale = present ? await isPreviewThemeStale(key, salt) : false;
+  return { slideIdx, present, themeStale };
 }
 
 /**
@@ -62,16 +76,15 @@ export async function captureAllSnapshots(
   // Refresh All: clear first so every one is "missing" → gets re-rendered.
   if (force) { for (const el of liveEls) await clearPreview(previewKey(el)); }
 
-  const slidesToVisit: number[] = [];
-  let captured = 0;
+  // Resolve each live element's cache status, then decide (pure) what to visit.
+  const entries: LiveEntry[] = [];
   for (let i = 0; i < presentation.slides.length; i++) {
-    let anyNeedy = false;
     for (const el of presentation.slides[i].elements) {
       if (!isLive(el.type)) continue;
-      if (await needsCapture(el, presentation, i, force)) { anyNeedy = true; captured++; }
+      entries.push(await liveEntry(el, presentation, i));
     }
-    if (anyNeedy) slidesToVisit.push(i);
   }
+  const { slidesToVisit, captured } = planSnapshotCapture(entries, force);
   if (!slidesToVisit.length) return { slidesVisited: 0, captured: 0, totalLive: liveEls.length };
 
   const store = usePresentationStore.getState();
