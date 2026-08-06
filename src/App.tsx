@@ -662,11 +662,13 @@ function App() {
         onProgress: ({ current, total }) =>
           useBusyStore.getState().setMessage(`${verb} snapshots… (slide ${current} of ${total})`),
       }));
-    if (res.liveElements === 0) {
+    if (res.totalLive === 0) {
       await message('This deck has no demos, notebooks, or videos to snapshot.', { title: 'Snapshots', kind: 'info' });
+    } else if (res.captured === 0) {
+      await message('All snapshots are already up to date.', { title: 'Snapshots', kind: 'info' });
     } else {
       await message(
-        `Snapshotted ${res.liveElements} element${res.liveElements === 1 ? '' : 's'} across ` +
+        `Snapshotted ${res.captured} element${res.captured === 1 ? '' : 's'} across ` +
         `${res.slidesVisited} slide${res.slidesVisited === 1 ? '' : 's'}. Exports and print now use these images.`,
         { title: 'Snapshots', kind: 'info' });
     }

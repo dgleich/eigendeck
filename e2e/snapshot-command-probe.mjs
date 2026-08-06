@@ -38,19 +38,29 @@ await exec(sid,`await window.__TAURI_INTERNALS__.invoke('db_clear_asset_cache',{
 if(await hasPreview()) fail('preview still present after clear');
 console.log('  cleared the preview (now missing)');
 
-// Run "Generate Missing Snapshots" via the seam (flips through + captures + persists).
-const res=await execA(sid,`const done=arguments[arguments.length-1];
-  window.__eigendeck.captureSnapshots(false).then(r=>done(JSON.stringify(r))).catch(e=>done('ERR:'+e));`);
-if(typeof res!=='string'||res.startsWith('ERR:')) fail('captureSnapshots failed: '+res);
-const r=JSON.parse(res);
-if(!r.liveElements) fail('captureSnapshots reported 0 live elements');
-console.log(`  captureSnapshots visited ${r.slidesVisited} slide(s), ${r.liveElements} live element(s)`);
+const runGen=async()=>{
+  const res=await execA(sid,`const done=arguments[arguments.length-1];
+    window.__eigendeck.captureSnapshots(false).then(r=>done(JSON.stringify(r))).catch(e=>done('ERR:'+e));`);
+  if(typeof res!=='string'||res.startsWith('ERR:')) fail('captureSnapshots failed: '+res);
+  return JSON.parse(res);
+};
+
+// Run 1: the cleared one is missing → captured.
+const r=await runGen();
+if(!r.captured) fail('captureSnapshots captured 0 (expected the cleared element)');
+console.log(`  run 1: visited ${r.slidesVisited} slide(s), captured ${r.captured}/${r.totalLive}`);
 
 // The preview should be back (with a short settle for the async persist).
 let back=false;
 for(let i=0;i<15;i++){ if(await hasPreview()){back=true;break;} await sleep(400); }
 if(!back) fail('preview was NOT re-cached after Generate Missing Snapshots');
 console.log('  preview re-cached ✓');
+
+// Run 2 (the reported bug): nothing missing now → captured 0, visits 0 slides.
+const r2=await runGen();
+if(r2.captured!==0) fail(`run 2 should capture 0 (idempotent), captured ${r2.captured}`);
+if(r2.slidesVisited!==0) fail(`run 2 should visit 0 slides (nothing missing), visited ${r2.slidesVisited}`);
+console.log(`  run 2: idempotent — captured 0, visited 0 (nothing missing) ✓`);
 
 await fetch(`${BASE}/session/${sid}`,{method:'DELETE'}).catch(()=>{});
 console.log('SNAPSHOT_PASS: Generate Missing Snapshots re-captures a cleared live-element preview');

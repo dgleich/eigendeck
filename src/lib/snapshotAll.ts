@@ -16,7 +16,8 @@
 
 import type { Presentation, SlideElement } from '../types/presentation';
 import { usePresentationStore } from '../store/presentation';
-import { previewKey, clearPreview } from './previewCache';
+import { previewKey, clearPreview, loadPreviewDataUrl, isPreviewThemeStale } from './previewCache';
+import { resolveTheme, previewThemeSalt } from './themes';
 
 const isLive = (t: string): boolean =>
   t === 'demo' || t === 'demo-piece' || t === 'video' || t === 'notebook';
@@ -28,41 +29,64 @@ const DWELL_MS = 1600;
 
 export interface SnapshotProgress { current: number; total: number }
 
+/** Does this element need a (re)capture? Missing (no current-theme preview — the
+ *  export would show a placeholder) OR theme-stale. `force` short-circuits to
+ *  always-yes. Content-drift staleness isn't detectable without rendering; those
+ *  re-cache on view and via Refresh All. */
+async function needsCapture(el: SlideElement, presentation: Presentation, slideIdx: number, force: boolean): Promise<boolean> {
+  if (force) return true;
+  const key = previewKey(el);
+  if (!(await loadPreviewDataUrl(key))) return true; // missing → export placeholder
+  const salt = previewThemeSalt(resolveTheme(presentation.theme, presentation.slides[slideIdx].theme));
+  return isPreviewThemeStale(key, salt);
+}
+
 /**
- * Visit every slide that has a live element so its snapshot is (re)captured.
- * `force` clears each live element's cached preview first (full re-render).
- * Restores the original slide + selection when done. Best-effort: an element that
- * fails to capture just stays missing (no worse than before). Returns counts.
+ * (Re)capture live-element snapshots. Only the slides that actually have a
+ * missing/stale element are visited — so a second "Generate Missing" run with
+ * nothing missing is a no-op (visits 0 slides, captures 0). `force` (Refresh All)
+ * clears every live element's preview first, so all are re-rendered. Restores the
+ * original slide + selection. Best-effort. Returns { slidesVisited, captured,
+ * totalLive }.
  */
 export async function captureAllSnapshots(
   presentation: Presentation,
   opts: { force?: boolean; onProgress?: (p: SnapshotProgress) => void } = {},
-): Promise<{ slidesVisited: number; liveElements: number }> {
-  const slideIdxs: number[] = [];
+): Promise<{ slidesVisited: number; captured: number; totalLive: number }> {
+  const force = !!opts.force;
+  // All live elements (for totalLive) + which slides have at least one that needs work.
   const liveEls: SlideElement[] = [];
-  presentation.slides.forEach((s, i) => {
-    const els = s.elements.filter((e) => isLive(e.type));
-    if (els.length) { slideIdxs.push(i); liveEls.push(...els); }
-  });
-  if (!slideIdxs.length) return { slidesVisited: 0, liveElements: 0 };
+  presentation.slides.forEach((s) => liveEls.push(...s.elements.filter((e) => isLive(e.type))));
+  if (!liveEls.length) return { slidesVisited: 0, captured: 0, totalLive: 0 };
 
-  if (opts.force) {
-    for (const el of liveEls) await clearPreview(previewKey(el));
+  // Refresh All: clear first so every one is "missing" → gets re-rendered.
+  if (force) { for (const el of liveEls) await clearPreview(previewKey(el)); }
+
+  const slidesToVisit: number[] = [];
+  let captured = 0;
+  for (let i = 0; i < presentation.slides.length; i++) {
+    let anyNeedy = false;
+    for (const el of presentation.slides[i].elements) {
+      if (!isLive(el.type)) continue;
+      if (await needsCapture(el, presentation, i, force)) { anyNeedy = true; captured++; }
+    }
+    if (anyNeedy) slidesToVisit.push(i);
   }
+  if (!slidesToVisit.length) return { slidesVisited: 0, captured: 0, totalLive: liveEls.length };
 
   const store = usePresentationStore.getState();
   const originalIdx = store.currentSlideIndex;
   const originalSel = store.selectedObject;
   usePresentationStore.getState().selectObject({ type: 'slide' });
   try {
-    for (let n = 0; n < slideIdxs.length; n++) {
-      opts.onProgress?.({ current: n + 1, total: slideIdxs.length });
-      usePresentationStore.getState().selectSlide(slideIdxs[n]);
+    for (let n = 0; n < slidesToVisit.length; n++) {
+      opts.onProgress?.({ current: n + 1, total: slidesToVisit.length });
+      usePresentationStore.getState().selectSlide(slidesToVisit[n]);
       await new Promise((r) => setTimeout(r, DWELL_MS));
     }
   } finally {
     usePresentationStore.getState().selectSlide(originalIdx);
     usePresentationStore.getState().selectObject(originalSel);
   }
-  return { slidesVisited: slideIdxs.length, liveElements: liveEls.length };
+  return { slidesVisited: slidesToVisit.length, captured, totalLive: liveEls.length };
 }
