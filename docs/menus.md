@@ -15,7 +15,8 @@ after them covers what moves.
 - **File**: New Project (Cmd/Ctrl+N), Open Project (Cmd/Ctrl+O), Open Recent ▸, Save
   (Cmd/Ctrl+S), Save As… (⇧S), Import from HTML…, Export to HTML (⇧E) / Printable
   HTML… (⇧P) / PDF (Screenshots)…, Presentation Settings…, Compact (Free Unused
-  Assets), Install LLM Tools…, Close Window.
+  Assets), Generate Missing Snapshots (`generate-snapshots`) / Refresh All
+  Snapshots (`refresh-snapshots`), Install LLM Tools…, Close Window.
 - **Edit**: Undo, Redo, Cut, Copy, Paste, Paste as… (`paste-as`), Select All.
 - **View**: Present Mode (F5), Screen Share Presentation, Present in This Window,
   Toggle Speaker Notes (⌥S), Toggle Inspector, History (⇧H), Snap to Grid / Show

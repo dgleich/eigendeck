@@ -52,7 +52,7 @@ import {
   syncRecentMenu,
 } from './store/fileOps';
 import { flushToSqlite, undoWithNav, redoWithNav, getDeckToken } from './store/presentation';
-import { withBusy } from './store/busy';
+import { withBusy, useBusyStore } from './store/busy';
 import { BusyOverlay } from './components/BusyOverlay';
 import './App.css';
 import { readFileNative, readTextFileNative, writeFileNative, writeTextFileNative } from './lib/nativeFs';
@@ -104,6 +104,11 @@ if (
       const s = usePresentationStore.getState();
       return buildPresentationExportHtml(s.presentation);
     },
+    // Snapshot capture (dialog-free) — lets E2E verify the flip-through actually
+    // caches live-element previews. Mirrors the Generate/Refresh menu commands.
+    captureSnapshots: (force?: boolean) =>
+      import('./lib/snapshotAll').then((m) =>
+        m.captureAllSnapshots(usePresentationStore.getState().presentation, { force: !!force })),
     // Import-from-HTML (dialog-free) — runs the REAL read->decode(#164)->import->
     // save->open path minus the native open/save-as pickers, so E2E can verify a
     // real exported HTML re-imports into a correct deck (Unicode intact).
@@ -497,6 +502,31 @@ function App() {
   const openPasteAs = useCallback(async () => {
     const { gatherClipboardTypes, clipboardRepresentations } = await import('./lib/pasteAs');
     setPasteAsReps(clipboardRepresentations(await gatherClipboardTypes()));
+  }, []);
+  // Generate Missing / Refresh All Snapshots (File menu): flip through the deck so
+  // each live element (demo/notebook/video) captures a static snapshot for
+  // export/print/thumbnails. `force` re-renders everything; else fills gaps.
+  const runSnapshots = useCallback(async (force: boolean) => {
+    const { captureAllSnapshots } = await import('./lib/snapshotAll');
+    const { message } = await import('@tauri-apps/plugin-dialog');
+    const presentation = usePresentationStore.getState().presentation;
+    const verb = force ? 'Refreshing all' : 'Generating missing';
+    const res = await withBusy(`${verb} snapshots…`, () =>
+      captureAllSnapshots(presentation, {
+        force,
+        onProgress: ({ current, total }) =>
+          useBusyStore.getState().setMessage(`${verb} snapshots… (slide ${current} of ${total})`),
+      }));
+    if (res.totalLive === 0) {
+      await message('This deck has no demos, notebooks, or videos to snapshot.', { title: 'Snapshots', kind: 'info' });
+    } else if (res.captured === 0) {
+      await message('All snapshots are already up to date.', { title: 'Snapshots', kind: 'info' });
+    } else {
+      await message(
+        `Snapshotted ${res.captured} element${res.captured === 1 ? '' : 's'} across ` +
+        `${res.slidesVisited} slide${res.slidesVisited === 1 ? '' : 's'}. Exports and print now use these images.`,
+        { title: 'Snapshots', kind: 'info' });
+    }
   }, []);
   // Select All (Cmd+A / Edit menu): in a focused text field, select its text;
   // otherwise select ALL elements on the current slide (not the browser's DOM
@@ -1544,6 +1574,8 @@ function App() {
         case 'import-html': importFromHtml(); break;
         case 'paste-as': void openPasteAs(); break;
         case 'select-all': selectAllAction(); break;
+        case 'generate-snapshots': void runSnapshots(false); break;
+        case 'refresh-snapshots': void runSnapshots(true); break;
         case 'install-llm-tools': void installLlmTools(); break;
         case 'present': startPresenting(); break;
         case 'screen-share-present': flushToSqlite().then(() => startScreenSharePresenting()); break;
