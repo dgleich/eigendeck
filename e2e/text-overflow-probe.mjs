@@ -18,6 +18,18 @@ console.log('  body-overflow badge:', over, '| fitting badge:', fit, '| title(bo
 if (!over) fail('overflowing text has NO cut-off badge');
 if (fit) fail('fitting text WRONGLY shows a cut-off badge');
 if (!titleOver) fail('bottom-aligned overflowing title has NO cut-off badge (flex top-overflow miss)');
+
+// #175: the cut-off badge is EDITOR chrome — during PDF (Screenshots) / print-layer
+// capture (body.pdf-capturing) it must be HIDDEN, or the orange "…" rasterizes into
+// the exported PDF / print output. Reproduce the capture state and assert it's gone.
+await exec(sid, "document.body.classList.add('pdf-capturing')");
+await sleep(120);
+const capDisplay = await exec(sid, `const b=document.querySelector('[data-element-id="t-overflow"] .text-overflow-badge'); return b ? getComputedStyle(b).display : 'MISSING';`);
+await exec(sid, "document.body.classList.remove('pdf-capturing')");
+console.log('  cut-off badge display under .pdf-capturing:', capDisplay);
+if (capDisplay !== 'none') fail(`#175: cut-off badge is NOT hidden during capture (display=${capDisplay}) — it leaks into the PDF/print output`);
+console.log('  #175: cut-off badge hidden under .pdf-capturing (no leak into PDF/print) ✓');
+
 await quit(sid);
 console.log('OVERFLOW_PASS: cut-off badge shows for clipped text (incl. bottom-aligned), absent when it fits');
 process.exit(0);
