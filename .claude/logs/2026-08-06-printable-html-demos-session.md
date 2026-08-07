@@ -38,18 +38,38 @@ broken again" false alarm.
 
 ## Branch state
 
-- `main` = `b7449d0` — snapshot commands (Generate Missing / Refresh All Snapshots)
-  merged + pushed.
-- `feat/printable-html-export` = `630f972` — #109 + a merge of `main` (so it has
-  BOTH #109 and the snapshot commands: snapshots bake demo/notebook/video previews
-  that the print layer then shows instead of placeholders). Full unit suite green
-  (1508 passed). Running the full e2e gate before merging to main.
+Everything landed on **`main` = `c84e60b`** (pushed 2026-08-06):
+- #109 printable HTML export (print layer),
+- Snapshot commands (Generate Missing / Refresh All),
+- #174 print title-wrap fix (letter-spacing/word-spacing px → in),
+- "Export to HTML…" menu ellipsis,
+- footer-probe scoped per-layer (#109 print layer has its own footer).
 
-## Deferred (David: "tag as release, add a repro test, fix AFTER these two")
+Gate before merge: full unit suite 1509 passed; full e2e 115/116 with the one
+failure (footer-probe double-count) fixed to count per-layer; cargo check clean.
+#109 and #174 CLOSED on GitHub.
 
-NOT yet filed as issues, NOT yet fixed — do these only after #109 lands:
-1. PDF export leaks the overflow "⋯" badge (`.text-overflow-badge`) into the
-   output. Fix likely: add `.pdf-capturing .text-overflow-badge { display:none }`
-   near App.css ~2149 (the `.pdf-capturing` chrome-hiding block).
-2. PDF export should use the same fade / step-through-with-counter UX as the
-   snapshot commands (unify `printToPdf` onto the snapshot capture pass).
+## Final verification (2026-08-07)
+
+A subagent hammered the export in **both WebKit and Chromium** across three real
+decks (magnetic-powers 45, graph-explorer 4, showcase 16). All PASS: screen+print
+layers present, `#viewport` slide count == deck (never 2×, no "90 slides"
+regression), demos genuinely LIVE (interactive UI works, zero pageerrors), print
+slide counts match, the tracked title renders 1 line (letter-spacing 2.112px, not
+3.84px), and `@page { size: letter landscape }` yields 792×612 landscape PDFs in
+chromium. Benign nuance: demo-*piece* decks show one ~0.7px hidden source iframe
+per demo slide (pre-existing, unrelated to #109).
+
+**Landscape default:** the export already emits `@page { size: letter landscape;
+margin: 0; }`. Chrome/Edge/Firefox honor it (default landscape); Safari/WebKit
+ignores `@page` orientation (long-standing) so it defaults to portrait — no
+reliable pure-CSS fix. The PDF (Screenshots) export rasterizes to a landscape
+canvas directly, so it is landscape regardless of browser.
+
+## Deferred, now FILED as release-tagged issues (fix next)
+
+1. **#175** — PDF export leaks the overflow "⋯" badge (`.text-overflow-badge`).
+   Likely fix: `.pdf-capturing .text-overflow-badge { display:none }` near
+   App.css ~2149 (the `.pdf-capturing` chrome-hiding block). Needs a repro test.
+2. **#176** — PDF export should use the fade / step-through-with-counter UX like
+   the snapshot commands (unify `printToPdf` onto the snapshot capture pass).
