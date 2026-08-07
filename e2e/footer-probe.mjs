@@ -4,7 +4,8 @@
 //   editor  (#1): footer present on slide 0 w/ Shantell font; absent on slide 1
 //   present (#2): footer present on slide 0; absent on slide 1
 //   HTML export (#4): exactly ONE .slide-footer div (slide 1 omitted) + Shantell CSS
-// (Print/PDF path #5 is covered by exportMatrix unit tests — same builder.)
+//   print layer (#110): the embedded print copy's footer uses the deck footerFont
+//     (inline font-family from printSlideHtml), NOT a hardcoded 'PT Sans'.
 import { openApp, waitSeam, exec, execA, sleep, quit } from './_ui.mjs';
 const APP = process.env.E2E_APP, DECK = process.env.E2E_DECK;
 const fail = (m) => { console.error('FOOTER_FAIL:', m); process.exit(1); };
@@ -69,6 +70,17 @@ if (pIdx >= 0) {
 }
 if (!/\.slide-footer\s*\{[^}]*font-family:\s*'Shantell Sans'/.test(html)) fail('HTML export: .slide-footer CSS is not Shantell');
 console.log(`  HTML export: 1 footer in screen layer${pIdx >= 0 ? ' + 1 in print layer' : ''} (slide 1 omitted) + Shantell CSS ✓`);
+
+// #110 regression: the PRINT-layer footer (printSlideHtml) carries an INLINE
+// font-family (it doesn't rely on the screen .slide-footer CSS rule) — it must
+// follow the deck footerFont (Shantell), never the old hardcoded 'PT Sans'.
+if (pIdx >= 0) {
+  const printFooter = printHtml.match(/<div class="slide-footer"[^>]*>/);
+  if (!printFooter) fail('#110: print layer has no .slide-footer div to check');
+  if (!/Shantell/i.test(printFooter[0])) fail(`#110: print-layer footer font is not the deck footerFont (Shantell): ${printFooter[0]}`);
+  if (/PT Sans/i.test(printFooter[0])) fail(`#110: print-layer footer still hardcodes PT Sans: ${printFooter[0]}`);
+  console.log('  #110: print-layer footer inline font follows config.footerFont (Shantell, not PT Sans) ✓');
+}
 
 await quit(sid);
 console.log('FOOTER_PASS: footer presence/absence + footerFont correct in editor, present, and HTML export');
