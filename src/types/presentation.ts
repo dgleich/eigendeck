@@ -437,7 +437,7 @@ export interface PresentationConfig {
   defaultBodyFont?: string;
   defaultHypeFont?: string;
   // Deck-level footer font (author·venue meta + slide number). Font package id;
-  // unset → PT Sans (historical default). See src/lib/footer.mjs. #135.
+  // unset → Lato (FOOTER_DEFAULT_FONT_ID in src/lib/footer.mjs). #135.
   footerFont?: string;
   // Default monospace font package id, used by notebook code cells.
   // Falls back to 'source-code' (bundled). Notebooks ALSO inherit

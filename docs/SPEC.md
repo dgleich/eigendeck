@@ -22,17 +22,17 @@ The core philosophy: **everything is a positioned element**. There is no fixed s
 
 ### File Format
 
-A presentation is a directory:
+A presentation is a single **`.eigendeck` file** — a SQLite database holding all
+slides, elements, assets (images/demos/notebooks/videos as BLOBs), and the full
+temporal edit history. There is no directory to manage and nothing to zip; the one
+file is what you share. (Historically a deck was a directory of `presentation.json`
++ `demos/` + `images/` + rotating JSON backups; that format was replaced by SQLite
+in April 2026 — see *SQLite Storage* under Architectural Decisions.)
 
-```
-my-presentation/
-  presentation.json       # All slide data
-  demos/                  # Self-contained HTML demos
-  images/                 # Image files
-  presentation.backup-*.json  # Auto-save backups (up to 20)
-```
+### Logical model
 
-### presentation.json
+The shape below is the **logical** deck the CLI `export json` emits and `import
+json` consumes (see LLM Editing). It is the conceptual model, not an on-disk file.
 
 ```json
 {
@@ -51,20 +51,43 @@ my-presentation/
 }
 ```
 
+The `config` object carries more deck-wide settings than shown: default fonts
+(`defaultTitleFont` / `defaultBodyFont` / `defaultHypeFont` / `defaultMonoFont` /
+`footerFont`, font-package ids), the named type scale (`textSizes`), a custom color
+palette (`customPalette`), a math macro string (`mathPreamble`), the notebook
+kernel default (`notebookKernel`), asset auto-reload (`autoReloadAssets`), and a
+`deckToken` identity used by the asset trust ledger. See `PresentationConfig` in
+`src/types/presentation.ts` for the authoritative list.
+
 ### Slide
 
 ```json
 {
   "id": "uuid",
-  "layout": "default",
   "elements": [...],
-  "notes": "Speaker notes text"
+  "notes": "Speaker notes text",
+  "groupId": "shared-group-uuid",
+  "theme": "white",
+  "titleFont": "lato",
+  "bodyFont": "lato",
+  "hypeFont": "shantell",
+  "omitFooter": false
 }
 ```
 
-- `layout`: `"default"` | `"centered"` | `"two-column"`
 - `elements`: ordered array — position in array = z-order (first = bottom)
 - `notes`: plain text speaker notes
+- `groupId` (optional): slides sharing a `groupId` form a group (see Slide Groups)
+- `theme` (optional): per-slide theme override; inherits `presentation.theme` if absent
+- `titleFont` / `bodyFont` / `hypeFont` (optional): per-slide font-package overrides
+  (ids from `src/lib/fonts.ts`); fall back to the deck `config.default*Font`, then to
+  the default font (Lato, or Shantell for `hype`)
+- `omitFooter` (optional): hide the author·venue + slide-number footer on this slide
+  (title slides, dividers, full-bleed HTML); numbering keeps counting through it (#135)
+
+> **No `layout` field.** Early versions had a per-slide `layout`
+> (`default` / `centered` / `two-column`); layouts were removed — every element is
+> freely positioned, so there is no template to switch.
 
 ### Elements
 
@@ -103,6 +126,11 @@ Jupyter/Pyodide), **video** (local file or YouTube/Vimeo/PeerTube embed), and **
 
 - Fonts follow the deck's title/body/hype font settings (per-deck `config.default{Title,Body}Font`, per-slide `Slide.{title,body,hype}Font`). The default is **Lato** for title/body and **Shantell** for hype (`DEFAULT_FONT_ID` / the `hype` fallback in `fontRegistry.mjs`). `footnote` uses the font's narrow variant when it defines one (e.g. PT Sans → PT Sans Narrow; Lato has none, so it stays Lato).
 - `fontSize`, `fontFamily`, `color` are optional overrides
+- Further optional style props (all absent = preset default): `fontSizeName` (named
+  type-scale size), `verticalAlign`, `backgroundColor` + `backgroundOpacity`, `boxTint`
+  (theme-relative "card" fill, #132), `borderRadius`, `padding` (per-side), `boxShadow`,
+  `textEffect` (`shadow` / `glow`, #73), and `rotation`. See `TextElement` in
+  `src/types/presentation.ts`.
 - `html` supports: `<b>`, `<i>`, `<u>`, `<br>`, `<span style="...">`, `<ul>/<li>`, `$...$` (LaTeX)
 - Inline math: `$f(x) = x^2$` — rendered via MathJax SVG
 - Display math: `$$\sum_{i=1}^n x_i$$` — centered block
@@ -113,12 +141,18 @@ Jupyter/Pyodide), **video** (local file or YouTube/Vimeo/PeerTube embed), and **
 {
   "id": "uuid",
   "type": "image",
-  "src": "images/diagram.png",
+  "assetId": "asset-uuid",
   "position": { "x": 360, "y": 200, "width": 1200, "height": 680 }
 }
 ```
 
-- `src`: relative path from project directory, or `data:` URL (from clipboard paste)
+- `assetId`: stable UUID binding to the stored asset — the image bytes live in the
+  SQLite `assets` table and the display path is looked up from the asset, never stored
+  on the element. There is no longer a `src`/`data:` field; legacy `src`-based elements
+  are backfilled to `assetId` on load.
+- `kind` (optional): `"raster"` (default) | `"svg"` | `"pdf"` — SVG/PDF sources are
+  rasterized on demand into a cache
+- Optional visual props: `shadow`, `borderRadius`, `opacity`, `rotation`
 
 #### Arrow Element
 
@@ -137,6 +171,8 @@ Jupyter/Pyodide), **video** (local file or YouTube/Vimeo/PeerTube embed), and **
 
 - Coordinates in slide space (1920×1080)
 - `position` field required but not used (arrow uses x1/y1/x2/y2)
+- Optional `heads` (`'end'` default | `'start'` | `'both'` | `'none'`) selects which ends
+  get an arrowhead; `opacity` (0–1) sets stroke/fill opacity (#98)
 - Rendered as SVG with triangular arrowhead
 - Optional cubic-Bézier control points `c1x/c1y/c2x/c2y` (#129) curve the arrow when all four are present (Inkscape-style handles in the editor; heads orient to the curve tangent). Absent → straight line. Interior `points[]` add waypoints (Catmull-Rom, no handles).
 - See **`docs/arrows.md`** for the full arrow spec: the cubic-Bézier-spline curve model (C¹, endpoint handles + Catmull-Rom interior), the endpoint-tangent-handle invariant, heads/inset, "+ Point", and editor interaction.
@@ -147,13 +183,14 @@ Jupyter/Pyodide), **video** (local file or YouTube/Vimeo/PeerTube embed), and **
 {
   "id": "uuid",
   "type": "demo",
-  "src": "demos/bfs-demo.html",
+  "assetId": "asset-uuid",
   "position": { "x": 80, "y": 200, "width": 1760, "height": 700 }
 }
 ```
 
-- `src`: relative path to a self-contained HTML file
-- Rendered in a sandboxed iframe
+- `assetId`: stable UUID binding to the stored demo HTML asset (bytes in the SQLite
+  `assets` table, same model as images — no `src` path on the element)
+- Rendered in a sandboxed, opaque-origin iframe (see `docs/DEMO-PLATFORM.md`)
 - Demo files must work standalone in a browser (inline CSS/JS or CDN)
 - Reload button in editor to refresh after external edits
 
@@ -216,7 +253,6 @@ Jupyter/Pyodide), **video** (local file or YouTube/Vimeo/PeerTube embed), and **
 
 ### Editor Toolbar (per-slide)
 
-- **Layout**: Default, Centered, Two Column
 - **Headings**: H1, H2, H3 (for body text preset)
 - **Formatting**: Bold, Italic, Bullet List
 - **Font Size**: 16–96px dropdown
@@ -228,7 +264,7 @@ Jupyter/Pyodide), **video** (local file or YouTube/Vimeo/PeerTube embed), and **
 
 Appears above a text element when double-clicked to edit:
 - Bold (Cmd+B), Italic (Cmd+I), Underline (Cmd+U)
-- Font: PT Sans, PT Sans Narrow, Monospace
+- Font: family picker (bundled families), narrow variant, monospace
 - Font size: 16–96px
 - Color: 14-color palette
 - Uppercase + letter spacing
@@ -250,8 +286,10 @@ Appears above a text element when double-clicked to edit:
 Contextual properties for selected object:
 
 **Slide selected:**
-- Layout dropdown
-- Author / Venue fields
+- Theme + per-slide font overrides (title / body / hype)
+- Omit-footer toggle
+- (Deck-wide settings — default fonts, footer font, custom palette, type scale — live in
+  the separate Deck inspector, not the per-slide panel)
 
 **Element selected:**
 - Z-order: ⇊ ↓ ↑ ⇈ (bottom, down, up, top)
@@ -294,24 +332,41 @@ Contextual properties for selected object:
 
 ## Export
 
-- **Standalone HTML file** — no external dependencies (except Google Fonts CDN for PT Sans)
-- Same rendering as editor and presenter
-- Arrow key navigation
-- Scale-to-fit viewport
-- Demos inlined as `<iframe srcdoc="...">`
-- All element types preserved with inline styles
-- Author/venue footer and slide numbers
+Three export commands (File menu):
+
+- **Export to HTML…** (Cmd+Shift+E) — a single **self-contained HTML file**:
+  - Same rendering as editor and presenter; scale-to-fit viewport; arrow-key navigation
+  - Fonts embedded as `@font-face` (no network; a PT Sans Google-Fonts `@import` remains
+    only as a legacy fallback when no font CSS is supplied)
+  - Demos inlined as `<iframe srcdoc="...">`; math pre-rendered to SVG
+  - All element types preserved with inline styles; author/venue footer and slide numbers
+- **Export Printable HTML…** (Cmd+Shift+P) — a paginated HTML file, one slide per page,
+  for the browser's Print-to-PDF (#109)
+- **Export to PDF (Screenshots)…** — rasterizes each slide and assembles a PDF
+
+Live elements (demos, notebooks, videos) can be frozen to static images for print/PDF via
+**Generate Missing Snapshots** / **Refresh All Snapshots** (File menu).
 
 ---
 
 ## Fonts
 
+Eigendeck bundles **10 text font families** (all SIL OFL 1.1), each paired with a
+matching MathJax math pack, plus **6 monospace code fonts** (no math) for notebook code
+cells. The registry is `src/lib/fontRegistry.mjs`.
+
 | Font | Usage | Bundled |
 |------|-------|---------|
-| PT Sans Regular/Bold/Italic | Default slide font | Yes (TTF in public/fonts/) |
-| PT Sans Narrow Regular/Bold | Condensed text preset | Yes (TTF in public/fonts/) |
-| System UI font stack | All UI elements | N/A (OS provides) |
-| MathJax PT Sans math font | LaTeX math rendering | Separate build (public/mathjax/) |
+| Lato | **Default** title/body font (`DEFAULT_FONT_ID`) | Yes (public/fonts/) |
+| Shantell | Default `hype` (sticky-note) font | Yes |
+| PT Sans, Libertinus, Libertinus Sans, Computer Modern Sans, Noto Sans, Source Sans 3, Source Code Pro, Computer Modern Concrete | Other selectable text families | Yes |
+| Fira Code, IBM Plex Mono, Inconsolata, JetBrains Mono, PT Mono, Computer Modern Typewriter | Monospace code fonts (notebooks) | Yes |
+| System UI font stack | App UI chrome | N/A (OS provides) |
+| Per-font MathJax math packs | LaTeX math rendering | Separate `-nosre` builds (public/mathjax/) |
+
+Fonts are chosen per deck (`config.default{Title,Body,Hype,Mono}Font`, `config.footerFont`)
+and can be overridden per slide (`Slide.{title,body,hype}Font`). The narrow variant of a
+family (when it has one, e.g. PT Sans → PT Sans Narrow) is used for the `footnote` preset.
 
 ---
 
@@ -319,20 +374,25 @@ Contextual properties for selected object:
 
 - Inline: `$...$` — rendered inline with text
 - Display: `$$...$$` — centered block
-- Custom MathJax build with PT Sans math font (x_height=0.500)
-- Rendered as SVG (requires SRE-free MathJax build for Tauri)
-- Currently falls back to browser MathML if SVG unavailable
+- Each text font has a matching custom MathJax math pack so math matches the surrounding
+  text metrics (x-height tuned per font)
+- Rendered as SVG (requires an SRE-free `-nosre` MathJax build for Tauri)
+- `config.mathPreamble` lets a deck define custom `\newcommand` macros
 
 ---
 
 ## Auto-Save & History
 
-- **Auto-save**: 3 seconds after last change (debounced)
-- **Save on blur**: when window loses focus
-- **Save before present**: force-save before entering presentation mode
-- **Backup files**: `presentation.backup-{ISO-timestamp}.json`
-- **Retention**: keeps last 20 backups, prunes older automatically
-- **Skip**: doesn't save if JSON unchanged
+Persistence is **SQLite incremental write-through** (April 2026), not JSON file
+rotation. See *SQLite Storage* under Architectural Decisions for the full model.
+
+- **Incremental save**: every change is diffed and written to the `.eigendeck` file within
+  ~1 second (only dirty rows, ~0.4 ms) — no full-file rewrite
+- **Temporal history**: each edit creates a new versioned row (`valid_from`/`valid_to`), so
+  history is retained in-file rather than as separate backup files; browse it via the
+  History panel (Cmd+Shift+H) or `eigendeck-cli … history`
+- **Retention**: exponential thinning of old versions; `compact` deletes history and VACUUMs
+- **WAL mode**: `-wal`/`-shm` sidecars are checkpointed and cleaned up on close
 
 ---
 
@@ -352,12 +412,17 @@ Contextual properties for selected object:
 | Shortcut | Action |
 |----------|--------|
 | Cmd+S | Save |
+| Cmd+Shift+S | Save As |
 | Cmd+N | New Project (via File menu) |
 | Cmd+O | Open Project (via File menu) |
-| Cmd+E | Export to HTML |
+| Cmd+Shift+E | Export to HTML |
+| Cmd+Shift+P | Export Printable HTML |
+| Cmd+Shift+N | New Slide |
+| Cmd+D | Duplicate Slide |
 | Cmd+Z | Undo |
 | Cmd+Shift+Z | Redo |
 | Cmd+I | Toggle Inspector/Properties panel |
+| Cmd+Shift+H | Toggle History panel |
 | Cmd+Shift+D | Toggle Debug Console |
 | F5 | Present |
 | Delete/Backspace | Delete selected element |
@@ -381,15 +446,19 @@ structure, per-OS placement table, item ids, and how it's wired: **[`docs/menus.
 
 ### Adding Elements
 
-Buttons in the editor actions bar:
-- **+ Title**: title preset text element
-- **+ Body**: body preset text element
-- **+ Text**: generic text box
-- **+ Note**: annotation (small, blue, italic)
-- **+ Footnote**: footnote (small, grey, narrow)
-- **+ Arrow**: red arrow with arrowhead
-- **+ Image**: file picker (copies to images/)
-- **+ Demo**: file picker for HTML demos
+From the editor's **Add** menu:
+- **Add Title / Add Body / Add Text Box / Add Annotation / Add Footnote** — the text presets
+- **Add Arrow** — arrow with arrowhead
+
+Media elements are inserted by picking a file (stored as a deck asset in the SQLite DB):
+- **Image** — PNG/JPEG/WebP/GIF, or SVG/PDF (rasterized on demand)
+- **Demo** — a self-contained HTML file
+- **Notebook** — a `.ipynb` (external Jupyter kernel or JupyterLite/Pyodide)
+- **Video** — a local video file, or paste a YouTube/Vimeo/PeerTube URL for an embed
+
+Other inserts:
+- **HTML Element** (Insert → HTML Element) — the raw-HTML escape hatch (#137)
+- Paste (Cmd+V) inserts an image/asset from the clipboard
 
 ### Editing Elements
 
@@ -436,7 +505,10 @@ Example:
 
 ## LLM Editing
 
-Presentations can be edited programmatically by modifying `presentation.json` directly. See [LLM-EDITING.md](LLM-EDITING.md) for the complete guide.
+Presentations can be edited programmatically through the CLI's JSON round-trip
+(`eigendeck-cli deck.eigendeck export json …` → edit → `import json …`) or the CLI's
+targeted edit commands — there is no loose `presentation.json` file to edit in place. See
+[LLM-EDITING.md](LLM-EDITING.md) for the complete guide.
 
 Key rules:
 - Preserve existing element IDs
@@ -454,8 +526,9 @@ Key rules:
 | App shell | Tauri v2 |
 | Frontend | React + TypeScript + Vite |
 | State management | Zustand + zundo (undo) |
-| Math rendering | MathJax 4 (custom PT Sans font) |
-| Fonts | PT Sans, PT Sans Narrow (bundled TTF) |
+| Storage | SQLite (`rusqlite`), single `.eigendeck` file |
+| Math rendering | MathJax 4 (per-font `-nosre` math packs, SVG) |
+| Fonts | 10 bundled OFL families + 6 mono (default Lato) |
 
 ---
 
@@ -481,7 +554,6 @@ Used for build animations, step-by-step demos, and linked object transitions.
 {
   "id": "uuid",
   "groupId": "shared-group-uuid",
-  "layout": "default",
   "elements": [...],
   "notes": ""
 }
@@ -513,8 +585,10 @@ Used for build animations, step-by-step demos, and linked object transitions.
 
 ## Future / Planned
 
-### Linked Objects (cross-slide animation)
+### Linked Objects (cross-slide animation) — now implemented
 - See `docs/sync-and-link.md` for the settled sync/link model and lifecycle
+- Position is governed by `syncId` (content link) and animation by `linkId` — both are
+  live fields on every element (`BaseElement` in `src/types/presentation.ts`)
 - Elements can have a `linkId` shared across slides
 - Duplicate slide within a group links all elements automatically
 - Linked elements in different positions → animate transition
@@ -538,20 +612,9 @@ Used for build animations, step-by-step demos, and linked object transitions.
 - Per-presentation CSS injection for branding
 - University/conference templates
 
-### PDF Export
-- Render each slide to PDF page
-
-### MathJax Tilde Fix
-- Tilde accent (`\tilde{x}`) positioned too high in PT Sans math font
-- Fix requires adjusting glyph metrics (y-coordinate 732) in the PT Sans font data (mathjax-fonts repo)
-
 ### Section Properties
 - Per-section styling and configuration
 - Sections group multiple slides with shared settings
-
-### Tacky Elements
-- Angled text boxes with hype fonts and fluorescent backgrounds
-- Fun callout/highlight boxes for emphasis
 
 ### Table Editor
 - Insert and edit tables within slides
@@ -762,11 +825,11 @@ Replaced the initial direct-DOM approach (v1) with iframe-based architecture (v2
 
 ### Overview
 
-MathJax 4 with a custom PT Sans math font renders `$...$` (inline) and `$$...$$` (display) LaTeX as SVG.
+MathJax 4 with per-font math packs (one per bundled text font) renders `$...$` (inline) and `$$...$$` (display) LaTeX as SVG. PT Sans is used as the running example below.
 
 ### Build & Setup
 
-All MathJax math packs — PT Sans (the default) included — are built in the
+All MathJax math packs — one per bundled text font — are built in the
 sibling **dgleich/mathjax-fonts** repo, one `-nosre` bundle per font. They are
 NOT committed here; `npm run setup` (`tools/setup-fonts.mjs`) copies the prebuilt
 bundles into `public/mathjax/` (both `public/mathjax/` and the bundles are
