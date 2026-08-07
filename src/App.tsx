@@ -166,8 +166,7 @@ if (
 /** Export slides as print-ready HTML: vector text + screenshots of demos */
 /** Export all slides as a PDF of screenshots (direct .pdf file) */
 async function exportPdfScreenshots() {
-  const state = usePresentationStore.getState();
-  const { presentation } = state;
+  const { presentation } = usePresentationStore.getState();
   const W = 1920, H = 1080;
 
   const { save, message } = await import('@tauri-apps/plugin-dialog');
@@ -182,54 +181,21 @@ async function exportPdfScreenshots() {
   await message(
     'Eigendeck will capture a screenshot of each slide to build the PDF. ' +
     'Interactive demos are captured as static images of their current state. ' +
-    'The view will flip through all slides briefly — this is normal.',
+    'A progress indicator will show while each slide is captured.',
     { title: 'Export to PDF', kind: 'info' }
   );
 
   try {
-    const { domToDataUrl } = await import('modern-screenshot');
-    const originalSlideIndex = state.currentSlideIndex;
-
-    usePresentationStore.getState().selectObject({ type: 'slide' });
-    document.body.classList.add('pdf-capturing');
-
-    const jpegImages: Uint8Array[] = [];
-
-    for (let i = 0; i < presentation.slides.length; i++) {
-      usePresentationStore.getState().selectSlide(i);
-      await new Promise(r => setTimeout(r, 400));
-
-      const canvas = document.querySelector('.slide-canvas') as HTMLElement;
-      let bytes = new Uint8Array(0);
-      if (canvas) {
-        try {
-          const dataUrl = await domToDataUrl(canvas, {
-            width: W, height: H, scale: 1,
-            style: { transform: 'none', transformOrigin: 'top left' },
-          });
-          // Convert to JPEG
-          const img = new Image();
-          await new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve(); img.src = dataUrl; });
-          const cvs = document.createElement('canvas');
-          cvs.width = W; cvs.height = H;
-          const ctx = cvs.getContext('2d')!;
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, W, H);
-          ctx.drawImage(img, 0, 0, W, H);
-          const jpegUrl = cvs.toDataURL('image/jpeg', 0.92);
-          const b64 = jpegUrl.split(',')[1];
-          const binary = atob(b64);
-          bytes = new Uint8Array(binary.length);
-          for (let j = 0; j < binary.length; j++) bytes[j] = binary.charCodeAt(j);
-        } catch (e) {
-          console.warn(`Failed to capture slide ${i + 1}:`, e);
-        }
-      }
-      jpegImages.push(bytes);
-    }
-
-    document.body.classList.remove('pdf-capturing');
-    usePresentationStore.getState().selectSlide(originalSlideIndex);
+    // Same fade/step-through-with-counter UX as the Snapshot commands (#176):
+    // the busy overlay dims + blurs the app (so the slide flipping isn't jarring)
+    // while a per-slide counter shows progress. captureSlideJpegs walks the deck.
+    const { captureSlideJpegs } = await import('./lib/pdfCapture');
+    const jpegImages = await withBusy('Exporting to PDF…', () =>
+      captureSlideJpegs(presentation, {
+        width: W, height: H,
+        onProgress: ({ current, total }) =>
+          useBusyStore.getState().setMessage(`Exporting to PDF… (slide ${current} of ${total})`),
+      }));
 
     const pdf = buildPdf(jpegImages, W, H);
     await writeFileNative(selected as string, pdf);
