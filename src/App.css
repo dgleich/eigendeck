@@ -2156,6 +2156,7 @@ body.presenting {
 .pdf-capturing .demo-overlay,
 .pdf-capturing .demo-lock-btn,
 .pdf-capturing .editor-toolbar,
+.pdf-capturing .text-overflow-badge,
 .pdf-capturing .slide-footer-meta,
 .pdf-capturing .slide-footer-number {
   display: none !important;
