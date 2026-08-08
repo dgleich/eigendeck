@@ -11,6 +11,9 @@ What a paste does depends on **where** you paste and **what's on the clipboard**
   richest form available, preferring **vector (SVG) → PDF → PNG/JPEG**, so a
   chart copied from Office comes in as crisp vector art rather than a bitmap when
   the app offers both.
+- **A file copied in Finder / Explorer / Files** (select an image, SVG, or PDF
+  file in the file manager and copy it) → inserted from the file's bytes, exactly
+  like dragging the file onto the slide.
 - **Rich HTML** with no image on the clipboard — a **Google Sheets / Excel
   range, a Google Docs or Word selection, a chunk of a web page** → Eigendeck
   renders that HTML **in your deck's font** and drops it in as a **picture**

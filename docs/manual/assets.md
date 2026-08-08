@@ -58,6 +58,28 @@ your in-deck cell edits, taking the file as-is).
 (For **videos**, both the movie file *and* an attached **captions `.vtt`** are
 watched independently — see [Videos](videos.md).)
 
+## Snapshots for export and print
+
+Live elements — demos, notebooks, and videos — only render while their slide is
+on screen, so a deck you open and export *without* clicking through every slide
+can have gaps (placeholder boxes) in its exports, the print view, and the sidebar
+thumbnails. Two **File menu** commands bake the live elements to static images
+("snapshots") that the deck keeps:
+
+- **Generate Missing Snapshots** — captures only the live elements that don't
+  have a current snapshot yet. Run it before exporting a deck you haven't clicked
+  all the way through. It's idempotent — a second run with nothing missing does
+  nothing.
+- **Refresh All Snapshots** — re-captures every live element (use it after you
+  change a demo/notebook or switch the deck theme).
+
+Both step through the slides behind a progress overlay and then restore your
+place. The three export commands — **File → Export to HTML**, **Export Printable
+HTML** (one slide per page, for the browser's Print-to-PDF), and **Export to PDF
+(Screenshots)** — plus the sidebar thumbnails all read these snapshots, so a
+snapshotted deck exports with real demo/notebook/video images instead of
+placeholders.
+
 ## Why
 
 Embedding makes decks portable; watching makes them live — most tools force you to

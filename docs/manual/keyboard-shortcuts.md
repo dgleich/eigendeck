@@ -28,6 +28,7 @@ this list says **⌘**.
 
 | Shortcut | Action |
 |---|---|
+| ⌘A | Select all elements on the slide |
 | Arrow keys | Nudge the selected element 1px |
 | ⇧ + Arrow | Nudge 10px |
 | ⌘] / ⌘[ | Bring forward / send backward |
