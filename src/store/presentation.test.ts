@@ -131,6 +131,41 @@ describe('presentation store', () => {
     expect(state.isDirty).toBe(true);
   });
 
+  it('adds a slide AFTER the whole build when on a grouped slide (#165)', () => {
+    const mk = (id: string, groupId?: string) =>
+      ({ id, notes: '', elements: [], ...(groupId ? { groupId } : {}) } as unknown as Slide);
+    usePresentationStore.setState({
+      presentation: {
+        ...createDefaultPresentation(),
+        slides: [mk('A'), mk('B1', 'build'), mk('B2', 'build'), mk('B3', 'build'), mk('C')],
+      },
+      currentSlideIndex: 1, // on B1 — the START of the build, mid-sequence
+    });
+    usePresentationStore.getState().addSlide();
+    const s = usePresentationStore.getState();
+    const ids = s.presentation.slides.map((x) => x.id);
+    // new blank slide lands after the whole build (B3), before C — not mid-build
+    expect(ids.slice(0, 4)).toEqual(['A', 'B1', 'B2', 'B3']);
+    expect(ids[5]).toBe('C');
+    expect(s.presentation.slides).toHaveLength(6);
+    expect(s.currentSlideIndex).toBe(4);                       // selects the new slide
+    expect(s.presentation.slides[4].groupId).toBeUndefined();  // new slide is ungrouped
+  });
+
+  it('adds a slide immediately after when the current slide has no group (#165 unchanged path)', () => {
+    const mk = (id: string, groupId?: string) =>
+      ({ id, notes: '', elements: [], ...(groupId ? { groupId } : {}) } as unknown as Slide);
+    usePresentationStore.setState({
+      presentation: { ...createDefaultPresentation(), slides: [mk('A'), mk('B1', 'build'), mk('B2', 'build')] },
+      currentSlideIndex: 0, // on A — ungrouped
+    });
+    usePresentationStore.getState().addSlide();
+    const ids = usePresentationStore.getState().presentation.slides.map((x) => x.id);
+    expect(ids[0]).toBe('A');
+    expect(ids[1]).not.toBe('B1');   // new slide inserted right after A
+    expect(ids.slice(2)).toEqual(['B1', 'B2']);
+  });
+
   it('deletes a slide and adjusts index', () => {
     const store = usePresentationStore.getState();
     store.addSlide(); store.addSlide();

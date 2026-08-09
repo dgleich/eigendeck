@@ -254,7 +254,15 @@ export const usePresentationStore = create<PresentationState>()(
       addSlide: () =>
         set((state) => {
           const slides = [...state.presentation.slides];
-          const insertAt = state.currentSlideIndex + 1;
+          // Insert after the current slide — but if it's part of a build (a run
+          // of slides sharing a groupId), insert after the WHOLE build so the new
+          // blank slide doesn't land mid-sequence and break the animation/
+          // numbering (#165). Same contiguous-group skip as duplicateSlide.
+          let insertAt = state.currentSlideIndex + 1;
+          const groupId = slides[state.currentSlideIndex]?.groupId;
+          if (groupId) {
+            while (insertAt < slides.length && slides[insertAt].groupId === groupId) insertAt++;
+          }
           slides.splice(insertAt, 0, createBlankSlide());
           return {
             presentation: { ...state.presentation, slides },
