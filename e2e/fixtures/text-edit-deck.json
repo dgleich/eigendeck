@@ -1,0 +1,9 @@
+{
+  "title": "text edit", "theme": "white", "config": {},
+  "slides": [
+    { "id": "s0", "elements": [
+      { "id": "t1", "type": "text", "preset": "body", "html": "ORIGINAL",
+        "position": { "x": 100, "y": 100, "width": 700, "height": 200 } }
+    ]}
+  ]
+}

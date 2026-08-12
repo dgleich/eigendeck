@@ -131,6 +131,29 @@ describe('presentation store', () => {
     expect(state.isDirty).toBe(true);
   });
 
+  it('updateElement targets the element OWN slide, not currentSlideIndex — text edit survives New Slide (#177)', () => {
+    // CRITICAL bug: a text edit commits on UNMOUNT. Clicking "New Slide" moves
+    // currentSlideIndex to the new blank slide FIRST, THEN the old text element
+    // unmounts and its commit fires updateElement — which used to look only on the
+    // current slide, not find the element, and silently drop the edit.
+    const textEl = { id: 't1', type: 'text', preset: 'body', html: 'ORIGINAL',
+      position: { x: 0, y: 0, width: 100, height: 50 } };
+    usePresentationStore.setState({
+      presentation: {
+        ...createDefaultPresentation(),
+        slides: [
+          { id: 's0', notes: '', elements: [textEl] } as unknown as Slide,
+          { id: 's1', notes: '', elements: [] } as unknown as Slide,
+        ],
+      },
+      currentSlideIndex: 1, // New Slide already moved us off the element's slide
+    });
+    // The unmount-commit fires here, while current index points at the NEW slide.
+    usePresentationStore.getState().updateElement('t1', { html: 'EDITED_ON_UNMOUNT' });
+    const t1 = usePresentationStore.getState().presentation.slides[0].elements.find((e) => e.id === 't1');
+    expect((t1 as unknown as { html: string }).html).toBe('EDITED_ON_UNMOUNT'); // kept on s0, not lost
+  });
+
   it('adds a slide AFTER the whole build when on a grouped slide (#165)', () => {
     const mk = (id: string, groupId?: string) =>
       ({ id, notes: '', elements: [], ...(groupId ? { groupId } : {}) } as unknown as Slide);

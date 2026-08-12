@@ -521,9 +521,19 @@ export const usePresentationStore = create<PresentationState>()(
 
       updateElement: (elementId, changes) => {
         set((state) => {
-          const currentSlide = state.presentation.slides[state.currentSlideIndex];
-          const element = currentSlide.elements.find((el) => el.id === elementId);
-          if (!element) return updateCurrentSlide(state, (s) => s);
+          // The element is usually on the current slide, but a commit can fire
+          // AFTER the slide changed: a text edit commits on UNMOUNT, so clicking
+          // "New Slide" moves currentSlideIndex to the new blank slide first, then
+          // the old element unmounts and commits. Target the element's OWN slide
+          // (ids are unique across the deck) so the edit lands there instead of
+          // no-oping on the new slide and being lost (#177).
+          let ownIndex = state.currentSlideIndex;
+          let element = state.presentation.slides[ownIndex]?.elements.find((el) => el.id === elementId);
+          if (!element) {
+            ownIndex = state.presentation.slides.findIndex((s) => s.elements.some((el) => el.id === elementId));
+            element = ownIndex >= 0 ? state.presentation.slides[ownIndex].elements.find((el) => el.id === elementId) : undefined;
+          }
+          if (!element) return updateCurrentSlide(state, (s) => s); // truly gone — no-op
 
           // Apply changes to the target element
           const updatedElement = { ...element, ...changes } as SlideElement;
@@ -558,13 +568,16 @@ export const usePresentationStore = create<PresentationState>()(
             }
           }
 
-          // No sync — just update current slide
-          return updateCurrentSlide(state, (slide) => ({
-            ...slide,
-            elements: slide.elements.map((el) =>
+          // No sync — update the element's OWN slide (ownIndex), which may differ
+          // from currentSlideIndex when a commit fires after the slide changed (#177).
+          const slides = [...state.presentation.slides];
+          slides[ownIndex] = {
+            ...slides[ownIndex],
+            elements: slides[ownIndex].elements.map((el) =>
               el.id === elementId ? updatedElement : el
             ),
-          }));
+          };
+          return { presentation: { ...state.presentation, slides }, isDirty: true };
         });
       },
 
