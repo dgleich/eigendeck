@@ -296,26 +296,36 @@ export function SlideEditor() {
       // com.microsoft.image-svg-xml from Office, com.adobe.pdf from
       // Adobe apps). Going through the Rust pasteboard_* commands gets
       // us the unfiltered list and can read the real bytes.
+      let nativeUtisForDiag: string[] = [];
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         const t1 = performance.now();
         const nativeTypes = await invoke<string[]>('pasteboard_list_types');
+        nativeUtisForDiag = nativeTypes;
         plog(`pasteboard_list_types: ${(performance.now() - t1).toFixed(0)}ms (${nativeTypes.length} UTIs)`);
         // Preference: SVG > PDF > raster (mirrors the web-API picker).
         // PDF will move ahead of SVG once pdfium renders.
-        const NATIVE_PREFER: Array<{ utis: string[]; ext: string; mime: string }> = [
+        const NATIVE_PREFER: Array<{ utis: string[]; ext: string; mime: string; transcodeFromMime?: string }> = [
           { utis: ['public.svg-image', 'com.microsoft.image-svg-xml', 'image/svg+xml'], ext: 'svg', mime: 'image/svg+xml' },
           { utis: ['com.adobe.pdf', 'application/pdf'], ext: 'pdf', mime: 'application/pdf' },
           { utis: ['public.png', 'image/png'], ext: 'png', mime: 'image/png' },
           { utis: ['public.jpeg', 'image/jpeg', 'public.jpg'], ext: 'jpg', mime: 'image/jpeg' },
+          // An image copied from Preview (and other macOS apps) is offered as HEIC
+          // and/or TIFF — formats a deck can't render everywhere. Decode → PNG via
+          // the WebView before storing (#178). ext:'png' also makes the
+          // preferOwnRender skip below apply to them (a browser-selection TIFF
+          // render must not preempt our crisp HTML render).
+          { utis: ['public.heic', 'public.heif', 'image/heic', 'image/heif'], ext: 'png', mime: 'image/png', transcodeFromMime: 'image/heic' },
+          { utis: ['public.tiff', 'image/tiff'], ext: 'png', mime: 'image/png', transcodeFromMime: 'image/tiff' },
         ];
         // A TEXT/document copy (Word, Pages, a browser selection) puts a PDF
         // *rendering* of the text on the pasteboard alongside the real rich text
         // — do NOT let that PDF hijack a text paste as an image. When rich text
         // (public.html/public.rtf) is present, skip the PDF preference so the
         // native text read below wins. A genuine graphic/vector copy carries no
-        // rich text, so its PDF is still taken. SVG/PNG/TIFF are untouched (real
-        // graphics from Office/Illustrator/screenshots). See #161 / pasteboard dump.
+        // rich text, so its PDF is still taken. SVG/PNG (and HEIC/TIFF, transcoded
+        // to PNG below) are still taken — real graphics from Office / Illustrator /
+        // screenshots / Preview. See #161 / pasteboard dump.
         const hasRichText = nativeTypes.includes('public.html') || nativeTypes.includes('public.rtf');
         const readNativeText = async (uti: string): Promise<string> => {
           if (!nativeTypes.includes(uti)) return '';
@@ -340,7 +350,16 @@ export function SlideEditor() {
             const bytesAsNumArray = await invoke<number[] | null>('pasteboard_read_type', { uti });
             plog(`pasteboard_read_type(${uti}): ${(performance.now() - tRead).toFixed(0)}ms${bytesAsNumArray ? ` → ${bytesAsNumArray.length}B` : ' → null'}`);
             if (!bytesAsNumArray || bytesAsNumArray.length === 0) continue;
-            const bytes = new Uint8Array(bytesAsNumArray);
+            let bytes = new Uint8Array(bytesAsNumArray);
+            if (pref.transcodeFromMime) {
+              // HEIC/TIFF → PNG so the asset renders everywhere. If the WebView
+              // can't decode it (e.g. no HEIC codec), fall through to the next
+              // candidate instead of storing an unrenderable blob.
+              const { transcodeImageToPng } = await import('../lib/imageTranscode');
+              const png = await transcodeImageToPng(bytes, pref.transcodeFromMime);
+              if (!png) { plog(`transcode ${uti} → PNG failed (WebView can't decode)`); continue; }
+              bytes = png;
+            }
             const fileName = `pasted-${Date.now()}.${pref.ext}`;
             const relativePath = `images/${fileName}`;
             plog(`native picked uti=${uti} → ${pref.mime} (${bytes.length} bytes) → ${fileName}`);
@@ -532,7 +551,13 @@ export function SlideEditor() {
       // leaves clipboardData empty for a non-editable paste there.)
       if (!picked && insertPastedText(htmlEarly, plainEarly)) { e.preventDefault(); return; }
 
-      if (!picked || !pickedFormat) { plog('nothing pasteable in clipboard'); return; }
+      if (!picked || !pickedFormat) {
+        // Nothing matched any paste path — surface WHAT was on the clipboard so an
+        // unhandled format (a new image type, an odd UTI) is diagnosable from the
+        // console without a rebuild (#178).
+        console.warn('[paste] nothing pasteable. native UTIs:', nativeUtisForDiag, '· clipboard items:', syncMimes);
+        return;
+      }
       e.preventDefault();
       const blob = picked.getAsFile();
       if (!blob) { plog('getAsFile() returned null for alias', pickedAlias); return; }
