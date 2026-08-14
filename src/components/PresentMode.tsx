@@ -10,6 +10,7 @@ import type { SlideElement } from '../types/presentation';
 // (src/presenter.tsx) via PresentSlide — one renderer, no drift.
 import { PresentElement, PresentControllerIframe, type PresentCtx } from './PresentSlide';
 import { useDemoHost } from '../lib/demoMount';
+import { useScreenWakeLock } from '../lib/useWakeLock';
 import { planPresentTransition } from '../lib/presentTransition';
 import { arrowGeometry, triPoints } from '../lib/arrowGeometry.mjs';
 import { listen } from '@tauri-apps/api/event';
@@ -38,6 +39,7 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
   const { presentation, setPresenting, selectSlide } =
     usePresentationStore();
   useDemoHost(); // relay + rAF pump — shared by the main present view AND the presenter window
+  useScreenWakeLock(true); // keep the display awake for the whole talk (#179)
   const controlled = controlledIndex !== undefined;
   const [localIndex, setLocalIndex] = useState(
     usePresentationStore.getState().currentSlideIndex
