@@ -155,6 +155,17 @@ export function PresentMode({ controlledIndex, onExit, onNavigate }: {
         if (wasZoomed) return;
         if (onExit) onExit(); else setPresenting(false); return;
       }
+      // Cmd/Ctrl + . — the macOS "cancel" chord — is a robust ALTERNATE exit for
+      // input layers that can't emit Escape into a native app (e.g. computer-use
+      // agents; #180). It isn't a text character, so it's safe to handle here
+      // (before the text-entry guard) regardless of focus. Mirrors Escape.
+      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
+        e.preventDefault();
+        let wasZoomed = false;
+        setZoom((z) => { wasZoomed = z > 1; return 1; });
+        if (wasZoomed) return;
+        if (onExit) onExit(); else setPresenting(false); return;
+      }
       // NOTE: controlled (projector) windows still navigate via the keyboard —
       // goTo() forwards the target to the speaker window when controlled.
       // When focus is in a text-entry context (a notebook code cell's
