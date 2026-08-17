@@ -70,6 +70,18 @@ await cycle(sid, 2, 'sel-el->2', "var s=window.__eigendeck.store.getState(); s.s
 // 5. inspector + history both open
 await cycle(sid, 1, 'insp+hist->1', "var s=window.__eigendeck.store.getState(); if(!s.showProperties) s.toggleProperties(); if(!s.showHistory && s.toggleHistory) s.toggleHistory();");
 
+// 6. the Cmd/Ctrl+. alternate exit chord (#180): a REAL keydown must exit present,
+// like Escape (some remote-input layers can't emit Escape into a native app).
+await exec(sid, "window.__eigendeck.store.getState().setPresenting(true);");
+if (!await waitFor(sid, "!!document.querySelector('.present-slide')")) { problems.push("[cmd+.] present did not mount"); }
+else {
+  await sleep(300);
+  await exec(sid, "window.dispatchEvent(new KeyboardEvent('keydown', { key: '.', metaKey: true, ctrlKey: true, bubbles: true }));");
+  if (!await waitFor(sid, "window.__eigendeck.store.getState().isPresenting", false)) problems.push("[cmd+.] the chord did NOT exit present (#180)");
+  if (!await waitFor(sid, "!document.querySelector('.present-slide')")) problems.push("[cmd+.] .present-slide still in DOM after the chord");
+  await exec(sid, "window.__eigendeck.store.getState().setPresenting(false);").catch(() => {});
+}
+
 await fetch(`${BASE}/session/${sid}`, { method: 'DELETE' }).catch(() => {});
 if (problems.length) { for (const p of problems) console.error('  •', p); fail(`${problems.length} problem(s)`); }
 console.log('ESCINV_PASS: present->navigate->escape leaves a clean editor (no leftover present DOM, hud var re-measured, correct slide) across states');
