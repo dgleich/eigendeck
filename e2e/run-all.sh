@@ -98,6 +98,7 @@ MANIFEST=(
   # title-shift-probe is NOT gated — see e2e/README.md "Not yet gated"
   # (headless SVG glyph-geometry measurement reads null in this WebKit build).
   "zorder-probe.mjs|empty.eigendeck||$EMPTY"
+  "insert-dup-keys-probe.mjs|empty.eigendeck||$EMPTY"   
   "paste-text-probe.mjs|empty.eigendeck||$EMPTY"   # #161 paste plain/styled text → text element (color kept, font-size dropped)
   "paste-file-probe.mjs|empty.eigendeck||$EMPTY"   # #160 paste a copied FILE (uri-list) → insert as an image asset
   "internal-paste-probe.mjs|ip.eigendeck||import_json $EXFIX/internal-paste-deck.json"   # copy/paste redesign: private-flavor round-trip + stale guard

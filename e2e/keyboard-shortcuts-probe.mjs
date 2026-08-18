@@ -58,12 +58,14 @@ await key('d', false, true); await sleep(200);
 const nElAfter = Number(await exec(sid, `const s=window.__eigendeck.store.getState(); return s.presentation.slides[s.currentSlideIndex].elements.length;`));
 if (nElAfter !== nElBefore + 1) fail(`Cmd+D on an element should duplicate it: ${nElBefore} -> ${nElAfter}`);
 
-// 6. Cmd+D on a SLIDE duplicates the slide (clipboard-free, the Stage-5 add).
-await exec(sid, `const s=window.__eigendeck.store.getState(); s.selectSlide(s.currentSlideIndex);`);
+// 6. Cmd+D duplicates the current slide (clipboard-free) — but ONLY when the slide
+// picker (sidebar) holds focus (#183). A real slide-select clicks a thumbnail,
+// which focuses it; the store select alone isn't enough.
+await exec(sid, `const s=window.__eigendeck.store.getState(); s.selectSlide(s.currentSlideIndex); s.selectObject({type:'slide'}); const t=document.querySelector('.slide-thumbnail.active')||document.querySelector('.slide-thumbnail'); t&&t.focus();`);
 const nSlBefore = Number(await exec(sid, `return window.__eigendeck.store.getState().presentation.slides.length;`));
 await key('d', false, true); await sleep(200);
 const nSlAfter = Number(await exec(sid, `return window.__eigendeck.store.getState().presentation.slides.length;`));
-if (nSlAfter !== nSlBefore + 1) fail(`Cmd+D on a slide should duplicate it: ${nSlBefore} -> ${nSlAfter}`);
+if (nSlAfter !== nSlBefore + 1) fail(`Cmd+D on a slide (sidebar focused) should duplicate it: ${nSlBefore} -> ${nSlAfter}`);
 
 // 7. Cmd+A outside a text field selects ALL elements on the slide (keydown path;
 //    the native Edit-menu Select All routes through the same selectAllAction on Mac).
