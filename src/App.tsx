@@ -693,6 +693,7 @@ function App() {
       case 'textbox': store.addElement(createTextElement('textbox')); break;
       case 'note': store.addElement(createTextElement('annotation')); break;
       case 'footnote': store.addElement(createTextElement('footnote')); break;
+      case 'hype': store.addElement(createTextElement('hype')); break;
       case 'card': {
         // A "card" is just a text element (no new type): a bold, all-caps-spaced
         // title line + a body line, in a rounded, shadowed box whose fill is a
@@ -748,6 +749,10 @@ function App() {
       case 'notebook': void addNotebookFromPicker(); break;
       case 'html-file': void addHtmlFromPicker(); break;
       case 'video': setVideoUrl(''); setVideoModalOpen(true); break;
+      default:
+        // A toolbar/menu item registered in insertItems.ts with no dispatcher case
+        // otherwise fails SILENTLY (the '+ Hype' dead-button bug, #182).
+        console.warn(`runInsert: unhandled insert id "${id}"`);
     }
   };
 
@@ -1152,8 +1157,9 @@ function App() {
         if (sel?.type === 'element') usePresentationStore.getState().deleteElement(sel.id);
         else if (sel?.type === 'multi') usePresentationStore.getState().deleteElements(sel.ids);
       }
-      // Duplicate element (Cmd+D)
-      if (e.key === 'd' && (e.ctrlKey || e.metaKey) && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
+      // Duplicate element (Cmd+D). Exclude Shift so Cmd+Shift+D (Debug Console)
+      // doesn't ALSO duplicate the selected slide/element (#183).
+      if (e.key === 'd' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName) && !(e.target as HTMLElement).closest('[contenteditable]')) {
         const state = usePresentationStore.getState();
         const sel = state.selectedObject;
         const slide = state.presentation.slides[state.currentSlideIndex];
@@ -1183,13 +1189,20 @@ function App() {
           if (newIds.length === 1) state.selectObject({ type: 'element', id: newIds[0] });
           else if (newIds.length > 1) state.selectObject({ type: 'multi', ids: newIds });
         } else if (sel?.type === 'slide') {
-          // Slide selected (sidebar) → duplicate the slide in place. Like the
-          // element/multi branches, this NEVER touches the clipboard — it's a
-          // direct store action, so a stale clipboard can't cause a surprise
-          // paste. duplicateSlide handles group insertion + animation links and
-          // selects the new slide. (⌘V on a slide is the clipboard PASTE path.)
-          e.preventDefault();
-          state.duplicateSlide(state.currentSlideIndex);
+          // Slide selected → duplicate the slide in place — but ONLY when the slide
+          // picker (sidebar) actually has focus. Clicking the editor canvas ALSO
+          // sets a 'slide' selection (to show slide properties in the inspector),
+          // yet the user has moved into the editor; Cmd+D there must NOT duplicate
+          // the whole slide — it should no-op (#183). Sidebar thumbnails
+          // (.slide-thumbnail, tabIndex 0) are the focusable slide-selection
+          // surface, so focus within .sidebar means "the slide is the target".
+          // Like the element/multi branches, duplicateSlide NEVER touches the
+          // clipboard (⌘V on a slide is the paste path); it handles group insertion
+          // + animation links and selects the new slide.
+          if ((document.activeElement as HTMLElement | null)?.closest('.sidebar')) {
+            e.preventDefault();
+            state.duplicateSlide(state.currentSlideIndex);
+          }
         }
       }
       // Arrow keys: nudge the selected element(s) (1px / 10px with Shift), else
