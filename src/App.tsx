@@ -614,12 +614,15 @@ function App() {
           store.addElement({
             id: crypto.randomUUID(), type: 'demo-piece' as any,
             piece, assetId,
-            position: { x, y: 200, width, height: 720 },
+            // y:240 = the title box's bottom edge (title is y:60 h:180), matching
+            // the body content region — so an insert clears a title instead of
+            // landing on top of it.
+            position: { x, y: 240, width, height: 720 },
           });
           x += width + 40;
         }
       } else {
-        store.addElement({ id: crypto.randomUUID(), type: 'demo', assetId, position: { x: 80, y: 200, width: 1760, height: 720 } });
+        store.addElement({ id: crypto.randomUUID(), type: 'demo', assetId, position: { x: 80, y: 240, width: 1760, height: 720 } });
       }
     } catch (err) {
       console.error('Failed to add demo:', err);
@@ -647,7 +650,8 @@ function App() {
       store.addElement({
         id: crypto.randomUUID(), type: 'notebook',
         assetId: r.assetId,
-        position: { x: 80, y: 200, width: 1760, height: 720 },
+        // y:240 clears a title box (y:60 h:180) instead of overlapping it.
+        position: { x: 80, y: 240, width: 1760, height: 720 },
       });
     } catch (err) {
       console.error('Failed to add notebook:', err);
@@ -1131,11 +1135,12 @@ function App() {
         if (key === 'i') { e.preventDefault(); document.execCommand('italic'); }
         if (key === 'e') { e.preventDefault(); document.execCommand('justifyCenter'); }
       }
-      // Cmd+A: the native "Select All" menu accelerator routes through the
-      // menu-event 'select-all' handler (selectAllAction) — which selects all
-      // ELEMENTS on the canvas, or the text in a focused field. A keydown fallback
-      // here covers any context the menu accelerator doesn't (and it's idempotent
-      // with the menu path). Skip when the browser default should win (a field).
+      // Cmd+A selects all ELEMENTS on the canvas. This keydown IS the primary path:
+      // the "Select All" menu item deliberately has no Cmd+A accelerator (binding it
+      // natively hijacked Cmd+A away from focused text fields — see lib.rs), so the
+      // menu-event handler only fires on an actual click. Skip when the browser
+      // default should win (a focused input/textarea/contentEditable → native
+      // select-all of its text).
       if (e.key.toLowerCase() === 'a' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey
           && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)
           && !(e.target as HTMLElement).closest('[contenteditable]')) {

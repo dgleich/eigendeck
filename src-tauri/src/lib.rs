@@ -806,12 +806,20 @@ fn build_app_menu(app: &tauri::AppHandle, recent_menu: Option<tauri::menu::Subme
     // catch-all menu-event to the JS `paste-as` handler, which opens the picker.
     let paste_as_item = MenuItemBuilder::new("Paste as…").id("paste-as")
         .build(app).map_err(|e| e.to_string())?;
-    // Custom Select All (NOT the predefined .select_all()): the predefined one's
-    // Cmd+A accelerator does the webview's DOM select-all, which janks over the
-    // slide HTML. Route Cmd+A through our menu-event so JS decides: select all
-    // ELEMENTS on the canvas, or the text in a focused field. (#select-all)
+    // Custom Select All (NOT the predefined .select_all(), whose Cmd+A does the
+    // webview's DOM select-all and janks over the slide HTML). Clicking it routes
+    // through our menu-event so JS selects all ELEMENTS on the canvas.
+    //
+    // NO accelerator: binding Cmd+A here hijacks it natively, so it never reaches
+    // a focused text field as the browser's own select-all — and in the toolbar
+    // title/author/venue inputs the menu-event path couldn't reliably re-select
+    // the field (activeElement wasn't the input when the accelerator fired), so
+    // Cmd+A did nothing there and a following keystroke mangled the value. Leaving
+    // Cmd+A to the webview gives native select-all in any focused field, while the
+    // App keydown fallback (src/App.tsx) still selects all canvas elements when no
+    // field is focused. (#select-all / toolbar-input Cmd+A)
     let select_all_item = MenuItemBuilder::new("Select All").id("select-all")
-        .accelerator("CmdOrCtrl+A").build(app).map_err(|e| e.to_string())?;
+        .build(app).map_err(|e| e.to_string())?;
     let edit_base = SubmenuBuilder::new(app, "Edit")
         .undo().redo().separator().cut().copy().paste()
         .item(&paste_as_item)
