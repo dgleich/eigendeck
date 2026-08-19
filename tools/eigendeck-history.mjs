@@ -10,7 +10,7 @@
 
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
-import { existsSync, rmSync } from 'node:fs';
+import { existsSync, rmSync, statSync } from 'node:fs';
 const require = createRequire(import.meta.url);
 const Database = require('better-sqlite3');
 
@@ -38,14 +38,20 @@ const shmPreexisted = existsSync(shmPath);
 const db = new Database(resolvedDbPath, { readonly: true });
 
 // Remove the WAL sidecars WE created on ANY exit (this viewer can crash mid-read
-// on a schema-drifted deck) — only ones that didn't pre-exist, so a live app
-// connection / real unclean-shutdown WAL is left untouched. Without this the
-// read-only open leaves `-wal`/`-shm` behind and eigendeck-cli refuses to write.
+// on a schema-drifted deck). Guards against clobbering a live writer: only touch
+// sidecars that didn't pre-exist AND only when the -wal is still EMPTY (0 bytes).
+// A read-only open leaves a 0-byte -wal; a non-empty -wal means a writer (the GUI
+// app) attached during our run, so deleting it would silently drop committed
+// edits. Without this the read-only open leaves `-wal`/`-shm` behind and
+// eigendeck-cli refuses to write.
 process.on('exit', () => {
   try { db.close(); } catch { /* already closed */ }
   try {
-    if (!walPreexisted && existsSync(walPath)) rmSync(walPath);
-    if (!shmPreexisted && existsSync(shmPath)) rmSync(shmPath);
+    const walEmpty = existsSync(walPath) && statSync(walPath).size === 0;
+    if (walEmpty) {
+      if (!walPreexisted) rmSync(walPath);
+      if (!shmPreexisted && existsSync(shmPath)) rmSync(shmPath);
+    }
   } catch { /* best-effort cleanup */ }
 });
 
