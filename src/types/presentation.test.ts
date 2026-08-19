@@ -78,7 +78,7 @@ describe('named text size system', () => {
     expect(DEFAULT_TEXT_SIZES.note).toBe(32);
     expect(DEFAULT_TEXT_SIZES.body).toBe(48);
     expect(DEFAULT_TEXT_SIZES.title).toBe(72);
-    expect(DEFAULT_TEXT_SIZES.hype).toBe(96);
+    expect(DEFAULT_TEXT_SIZES.hype).toBe(48);
   });
 
   it('resolveNamedSize returns deck override when set', () => {
@@ -97,7 +97,7 @@ describe('named text size system', () => {
     expect(effectiveTextPresetSize('body', null)).toBe(48);
     expect(effectiveTextPresetSize('annotation', null)).toBe(32); // annotation → 'note'
     expect(effectiveTextPresetSize('footnote', null)).toBe(24);
-    expect(effectiveTextPresetSize('hype', null)).toBe(96); // hype (sticky note) → 'hype'
+    expect(effectiveTextPresetSize('hype', null)).toBe(48); // hype → its own 'hype' size (default 48)
     // textbox shares the 'body' size — deck override on body propagates
     expect(effectiveTextPresetSize('textbox', { textSizes: { body: 50 } })).toBe(50);
     // annotation maps to 'note' — overriding body doesn't change annotation
@@ -105,7 +105,7 @@ describe('named text size system', () => {
     // hype maps to its own 'hype' size — the deck's Hype size row drives hype elements
     expect(effectiveTextPresetSize('hype', { textSizes: { hype: 120 } })).toBe(120);
     // ...and overriding body does NOT change hype (regression guard for the dead-control bug)
-    expect(effectiveTextPresetSize('hype', { textSizes: { body: 50 } })).toBe(96);
+    expect(effectiveTextPresetSize('hype', { textSizes: { body: 50 } })).toBe(48);
   });
 
   it('effectiveFontSize walks element override → fontSizeName → preset default', () => {

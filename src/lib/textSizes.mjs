@@ -16,7 +16,7 @@ export const DEFAULT_TEXT_SIZES = {
   note:     32,
   body:     48,
   title:    72,
-  hype:     96,
+  hype:     48,
 };
 
 /** Text preset → its named size in the type scale. Mirrors the `sizeName` field
