@@ -879,12 +879,32 @@ function TextContent({
   // Close editing when clicking outside this element
   useEffect(() => {
     if (!editing) return;
+    let scheduled = false;
     const handlePointerDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement;
       // Stay open if clicking within our element or the toolbar
       if (wrapperRef.current?.contains(target)) return;
       if (target.closest('.text-format-toolbar')) return;
-      commitAndClose();
+      // When the click lands on ANOTHER slide element, defer the commit to the
+      // next frame instead of committing synchronously in this pointerdown.
+      // Committing here re-renders (contentEditable→SVG swap + store update); when
+      // you double-click STRAIGHT from this box into another text box, that
+      // re-render lands BETWEEN the other box's two clicks and WebKit drops both
+      // its native dblclick AND its second React pointerdown — so it never entered
+      // edit and the typing was silently discarded. Deferring lets the whole
+      // click/double-click gesture finish first; the edit is still captured
+      // (commitHtml reads the live DOM when the frame fires; the unmount handler
+      // covers an earlier teardown). For clicks OUTSIDE the canvas (toolbar
+      // buttons like Save/Export, the inspector, menus) commit synchronously so
+      // that action sees the latest edit — a single click there can't be the
+      // disrupted double-click.
+      if (target.closest('.slide-element')) {
+        if (scheduled) return;
+        scheduled = true;
+        requestAnimationFrame(() => commitAndClose());
+      } else {
+        commitAndClose();
+      }
     };
     // Use capture so we see the event before stopPropagation in other handlers
     window.addEventListener('pointerdown', handlePointerDown, true);

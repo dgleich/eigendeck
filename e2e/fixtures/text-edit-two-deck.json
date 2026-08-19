@@ -1,0 +1,15 @@
+{
+  "title": "Text edit two",
+  "theme": "white",
+  "slides": [
+    {
+      "id": "s0",
+      "elements": [
+        { "id": "t1", "type": "text", "preset": "body", "html": "ORIGINAL_A", "position": { "x": 100, "y": 100, "width": 700, "height": 200 } },
+        { "id": "t2", "type": "text", "preset": "body", "html": "ORIGINAL_B", "position": { "x": 100, "y": 500, "width": 700, "height": 200 } }
+      ],
+      "notes": ""
+    }
+  ],
+  "config": { "transition": "slide", "backgroundTransition": "fade" }
+}

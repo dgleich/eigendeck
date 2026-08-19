@@ -94,6 +94,7 @@ MANIFEST=(
   "undo-seed-history-probe.mjs|empty.eigendeck||$EMPTY"
   "text-undo-probe.mjs|empty.eigendeck||$EMPTY"
   "text-edit-newslide-probe.mjs|textedit.eigendeck||import_json \$ROOT/e2e/fixtures/text-edit-deck.json"   # #177 CRITICAL: in-progress text edit survives New Slide (commit-after-slide-change)
+  "text-edit-crosselement-probe.mjs|xedit.eigendeck||import_json \$ROOT/e2e/fixtures/text-edit-two-deck.json"   # text edit survives double-clicking STRAIGHT into another text box (defer commit off the gesture)
   "snap-grid-probe.mjs|empty.eigendeck||$EMPTY"
   # title-shift-probe is NOT gated — see e2e/README.md "Not yet gated"
   # (headless SVG glyph-geometry measurement reads null in this WebKit build).
