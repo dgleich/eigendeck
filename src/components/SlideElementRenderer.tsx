@@ -901,6 +901,13 @@ function TextContent({
       if (target.closest('.slide-element')) {
         if (scheduled) return;
         scheduled = true;
+        // NOTE: intentionally NOT cancelled on effect cleanup. This effect
+        // re-subscribes on every render (commitAndClose's identity churns), so a
+        // cleanup-time cancelAnimationFrame would kill this legitimately-pending
+        // deferred commit mid-gesture (the very re-render that selecting the other
+        // box triggers). If the component unmounts before the frame, the rAF's
+        // setEditing(false) is a harmless no-op and the edit is still captured by
+        // the unmount handler (pendingCommit).
         requestAnimationFrame(() => commitAndClose());
       } else {
         commitAndClose();
