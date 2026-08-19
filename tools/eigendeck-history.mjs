@@ -10,6 +10,7 @@
 
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
+import { existsSync, rmSync } from 'node:fs';
 const require = createRequire(import.meta.url);
 const Database = require('better-sqlite3');
 
@@ -23,7 +24,30 @@ if (!dbPath) {
   process.exit(1);
 }
 
-const db = new Database(resolve(dbPath), { readonly: true });
+const resolvedDbPath = resolve(dbPath);
+// Opening a WAL-mode deck read-only spins up `-wal`/`-shm` sidecars that a
+// read-only connection can't checkpoint away on close, so they linger and make
+// eigendeck-cli refuse to write (it reads a sidecar as "open in the app"). Track
+// which sidecars existed BEFORE we open and remove only the ones we create — a
+// pre-existing sidecar (app open / real unclean-shutdown WAL) is left untouched.
+const walPath = `${resolvedDbPath}-wal`;
+const shmPath = `${resolvedDbPath}-shm`;
+const walPreexisted = existsSync(walPath);
+const shmPreexisted = existsSync(shmPath);
+
+const db = new Database(resolvedDbPath, { readonly: true });
+
+// Remove the WAL sidecars WE created on ANY exit (this viewer can crash mid-read
+// on a schema-drifted deck) — only ones that didn't pre-exist, so a live app
+// connection / real unclean-shutdown WAL is left untouched. Without this the
+// read-only open leaves `-wal`/`-shm` behind and eigendeck-cli refuses to write.
+process.on('exit', () => {
+  try { db.close(); } catch { /* already closed */ }
+  try {
+    if (!walPreexisted && existsSync(walPath)) rmSync(walPath);
+    if (!shmPreexisted && existsSync(shmPath)) rmSync(shmPath);
+  } catch { /* best-effort cleanup */ }
+});
 
 // ============================================================================
 // Collect all events from all temporal tables
@@ -252,4 +276,4 @@ if (jsonOutput) {
   }
 }
 
-db.close();
+db.close(); // sidecar cleanup runs in the process 'exit' handler (see the open)
