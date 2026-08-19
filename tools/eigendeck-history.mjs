@@ -101,7 +101,7 @@ for (const row of elStmt.all()) {
 
 // Slide changes
 const slideStmt = db.prepare(`
-  SELECT id, position, layout, notes, group_id, valid_from, valid_to
+  SELECT id, position, config, notes, group_id, valid_from, valid_to
   FROM slides
   ORDER BY valid_from
 `);
@@ -122,7 +122,7 @@ for (const row of slideStmt.all()) {
       timestamp: row.valid_from,
       action: 'update_slide',
       slideId: row.id,
-      detail: `position ${row.position}, layout: ${row.layout}`,
+      detail: `position ${row.position}${row.config ? `, config: ${row.config}` : ''}`,
     });
   }
 
