@@ -27,7 +27,7 @@ export const PRESET_SIZE_NAME = {
   textbox: 'body',
   annotation: 'note',
   footnote: 'footnote',
-  hype: 'body',
+  hype: 'hype',
 };
 
 /** Resolve a named size against the deck override + defaults. */

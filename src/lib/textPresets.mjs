@@ -34,7 +34,7 @@ export const TEXT_PRESET_STYLES = {
   hype: {
     // Sticky-note style: bright-yellow fill (set on creation), Shantell Sans
     // (hand-drawn) by default, dark text.
-    label: 'Hype', sizeName: 'body', fontSize: DEFAULT_TEXT_SIZES.body,
+    label: 'Hype', sizeName: 'hype', fontSize: DEFAULT_TEXT_SIZES.hype,
     fontFamily: "'Shantell Sans', sans-serif", fontWeight: 'normal', fontStyle: 'normal', color: '#1a1a1a',
   },
 };
