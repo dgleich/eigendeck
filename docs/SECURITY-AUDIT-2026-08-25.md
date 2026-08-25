@@ -347,10 +347,12 @@ defense-in-depth, done in phases.
 labels are static, none dynamic), so a stray/unexpected window label can no longer inherit
 IPC + these permissions. **This is also the `docs/COMMAND-LINE-ELEMENT.md` §7 Req 1
 prerequisite.** (b) `read_dir` (arbitrary directory enumeration; sole caller is the debug
-`dirPicker`) is now gated behind the runtime `DebugFlag` (`debug::require`), so it's
-unavailable in a normal release but still serves `Eigendeck.app --debug` batch tooling —
-a runtime gate, not `#[cfg(debug_assertions)]`, because debug mode is enable-able on a
-shipped build. Verified headlessly: `cargo check` + the settings / presenter / security
+`dirPicker`) is now `#[cfg(debug_assertions)]` (with its `DirEntryInfo` and its
+`generate_handler!` registration) — compiled OUT of a release binary entirely (`8b82ca2`).
+Note: the whole Debug menu/subsystem was ALREADY `#[cfg(debug_assertions)]` (lib.rs), so a
+shipped build has no debug tooling and `--debug` does nothing there; a stale debug.rs
+comment claiming otherwise was corrected. Verified: cargo check + clippy -D warnings clean
+on debug AND release profiles; and headlessly the `cargo check` + the settings / presenter / security
 window e2e probes all still open, render, and invoke. Mac sign-off still wanted.
 
 **Phase 2 (open)** — path-scope the write commands (`write_file`/`write_text_file`/
