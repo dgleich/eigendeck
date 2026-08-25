@@ -139,6 +139,11 @@ function installMessageListener() {
     const msg = ev.data;
     if (!msg || typeof msg !== 'object') return;
     if (msg.type === 'log') {
+      // Demo/notebook frames are intentionally script-capable and can post to
+      // their parent. Treat the claimed bundle as data: only the actual hidden
+      // renderer iframe for that bundle may speak the renderer protocol.
+      const sourcePool = typeof msg.bundle === 'string' ? pools.get(msg.bundle) : undefined;
+      if (!sourcePool || ev.source !== sourcePool.iframe.contentWindow) return;
       // Echo iframe-side dbg() messages. Iframe only sends these for
       // unexpected events (errors, missing SVG, preamble failures); they
       // surface here as console warnings so they're visible without opening
@@ -153,6 +158,10 @@ function installMessageListener() {
     for (const pool of pools.values()) {
       const pending = pool.pending.get(id);
       if (!pending) continue;
+      // A request id is not an authentication token (ids are deliberately small
+      // and predictable). Bind the reply to the window that owns the request so
+      // a sandboxed demo cannot forge a MathJax result into the privileged DOM.
+      if (ev.source !== pool.iframe.contentWindow) continue;
       pool.pending.delete(id);
       if (msg.type === 'rendered') {
         pending.resolve({
@@ -188,6 +197,7 @@ function getOrCreatePool(bundleId: string): Pool {
     const readyHandler = (ev: MessageEvent) => {
       const msg = ev.data;
       if (!msg || typeof msg !== 'object') return;
+      if (ev.source !== iframe.contentWindow) return;
       if (msg.type === 'ready' && msg.bundle === bundleId) {
         window.removeEventListener('message', readyHandler);
         resolve();
@@ -236,6 +246,7 @@ export async function setMathPreamble(preamble: string, bundleId: string): Promi
     await new Promise<void>((resolve) => {
       const handler = (ev: MessageEvent) => {
         const m = ev.data;
+        if (ev.source !== pool.iframe.contentWindow) return;
         if (m && m.type === 'preamble-applied' && m.bundle === bundleId) {
           window.removeEventListener('message', handler);
           resolve();

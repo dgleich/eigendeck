@@ -12,4 +12,11 @@ Also found normalization gaps in undo/history and clipboard ingestion, an affect
 DOMPurify production dependency, and an unauthenticated presenter navigation
 message. Recorded scope, evidence, remediation, verification, and follow-up phases
 in `docs/SECURITY-AUDIT-2026-08-25.md`. No application behavior was changed during
-this audit pass.
+the initial audit pass.
+
+Follow-up fixed the MathJax message-confusion issue by binding every renderer
+protocol message to the owning iframe via `MessageEvent.source`. Added an inert
+regression that uses only `data-proof` SVG markers: a correctly-shaped reply from
+the wrong window is ignored, while the owning iframe's reply resolves. This proves
+the boundary without constructing an executable payload. Production build and the
+full Vitest suite pass after the change.

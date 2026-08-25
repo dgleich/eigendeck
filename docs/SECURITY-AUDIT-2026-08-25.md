@@ -16,10 +16,10 @@ Tauri IPC.
 
 ## Findings
 
-### C-1 — sandboxed demo can forge MathJax replies and inject privileged SVG
+### C-1 — sandboxed demo could forge MathJax replies and inject privileged SVG
 
-**Severity: Critical. Confidence: High (code path confirmed; real-WebKit exploit
-test still required).**
+**Severity: Critical. Status: fixed 2026-08-25 with an inert provenance regression
+test; real-WebKit defense-in-depth coverage remains desirable.**
 
 `mathjaxRenderer` accepts `message` events based only on `msg.type` and a pending,
 predictable id (`r1`, `r2`, ...). It does not require `ev.source` to equal the
@@ -46,6 +46,13 @@ Recommended fix:
    expected iframe sent it (defense in depth).
 4. Add a real WebKit e2e fixture with a demo that forges renderer messages and
    assert that a marker cannot appear in the privileged DOM/global state.
+
+Implemented: renderer results, errors, readiness, preamble acknowledgements, and
+logs now require `MessageEvent.source` to be the owning hidden MathJax iframe.
+`src/lib/mathjaxRenderer.security.test.ts` sends a harmless `data-proof` SVG reply
+with the real predictable request id, first from a non-owning window (must remain
+pending) and then from the owning renderer window (must resolve). The test fails on
+the pre-fix listener without executing script or invoking Tauri.
 
 ### C-2 — unvalidated element properties break out of generated SVG attributes
 
