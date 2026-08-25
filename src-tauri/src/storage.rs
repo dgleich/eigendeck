@@ -605,9 +605,14 @@ fn persist_pending_project_id(conn: &Connection) -> SqlResult<()> {
 // Tauri commands
 // ============================================================================
 
-/// Open a .eigendeck file (or create if it doesn't exist)
+/// Open a .eigendeck file (or create if it doesn't exist).
+/// Main-window only (audit C-3): opens an arbitrary caller-provided path as the
+/// process-wide DB connection. Only the main editor (and the CLI export, which
+/// runs in the main window) opens decks; other windows read the already-open
+/// connection.
 #[tauri::command]
-pub fn db_open(path: String) -> Result<(), String> {
+pub fn db_open(window: tauri::WebviewWindow, path: String) -> Result<(), String> {
+    crate::fscmds::require_main(&window)?;
     open_db(&path).map_err(|e| e.to_string())
 }
 
@@ -617,9 +622,11 @@ pub fn db_open_memory() -> Result<(), String> {
     open_memory_db().map_err(|e| e.to_string())
 }
 
-/// Save in-memory DB to a file, then reopen from file
+/// Save in-memory DB to a file, then reopen from file.
+/// Main-window only (audit C-3): arbitrary-path writer.
 #[tauri::command]
-pub fn db_save_to_file(path: String) -> Result<(), String> {
+pub fn db_save_to_file(window: tauri::WebviewWindow, path: String) -> Result<(), String> {
+    crate::fscmds::require_main(&window)?;
     save_to_file(&path)
 }
 
@@ -628,7 +635,8 @@ pub fn db_save_to_file(path: String) -> Result<(), String> {
 /// app's running session continues as the new project). Caller chooses
 /// whether to keep editing the new file or reopen the original.
 #[tauri::command]
-pub fn db_save_as_to_file(path: String) -> Result<String, String> {
+pub fn db_save_as_to_file(window: tauri::WebviewWindow, path: String) -> Result<String, String> {
+    crate::fscmds::require_main(&window)?; // audit C-3: arbitrary-path writer
     let fresh_id = uuid::Uuid::new_v4().to_string();
     with_db(|conn| {
         conn.execute(

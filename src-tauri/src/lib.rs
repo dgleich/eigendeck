@@ -182,7 +182,13 @@ fn cli_export_args() -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
-fn cli_write_and_exit(path: String, content: String, error: Option<String>) -> Result<(), String> {
+fn cli_write_and_exit(
+    window: tauri::WebviewWindow,
+    path: String,
+    content: String,
+    error: Option<String>,
+) -> Result<(), String> {
+    fscmds::require_main(&window)?; // audit C-3: arbitrary-content file writer (CLI export runs in the main window)
     if let Some(e) = error {
         eprintln!("Export failed: {}", e);
         std::process::exit(1);
@@ -221,8 +227,24 @@ struct ResolvedRead {
 /// the caller wants a sniff or the full bytes, keeping the report's verdict in lockstep
 /// with the read gate. The type gate inspects at most a small prefix (except .ipynb,
 /// which the caller re-reads in full), so a bounded read yields the same verdict.
+/// Command wrapper: restrict the arbitrary-path read to the two windows that
+/// legitimately render assets — the main editor and the presenter (the CLI export
+/// runs in the main window). NOTE (audit C-3, read-side): the TRUST decision on the
+/// resolved path is still made in JS (assetGate.ts) AFTER the bytes cross into the
+/// webview; this window allowlist is blast-radius reduction, not a Rust-side trust
+/// gate. Moving the trust decision into Rust (or passing presenter assets by db id /
+/// app-issued grant) is deferred read-side hardening.
 #[tauri::command]
-fn resolve_and_read(path: String, max_bytes: Option<u64>) -> Result<ResolvedRead, String> {
+fn resolve_and_read(
+    window: tauri::WebviewWindow,
+    path: String,
+    max_bytes: Option<u64>,
+) -> Result<ResolvedRead, String> {
+    fscmds::require_windows(&window, &["main", "presenter"])?;
+    resolve_and_read_impl(path, max_bytes)
+}
+
+fn resolve_and_read_impl(path: String, max_bytes: Option<u64>) -> Result<ResolvedRead, String> {
     use std::io::Read;
     const MAX_BYTES: u64 = 512 * 1024 * 1024;
     let canonical = std::fs::canonicalize(&path)
@@ -1279,7 +1301,7 @@ mod resolve_read_tests {
     // whole realpath/symlink defense rests on this: it must resolve symlinks + `..` to
     // the REAL target (so the caller judges the resolved path), read only regular files,
     // and surface missing/oversized/non-file as errors ("unreadable → not watchable").
-    use super::resolve_and_read;
+    use super::resolve_and_read_impl;
     use std::env::temp_dir;
     use std::fs;
 
@@ -1291,7 +1313,7 @@ mod resolve_read_tests {
     fn reads_a_regular_file_and_returns_its_canonical_path() {
         let p = tmp("reg.png");
         fs::write(&p, b"hello").unwrap();
-        let r = resolve_and_read(p.to_string_lossy().into_owned(), None).unwrap();
+        let r = resolve_and_read_impl(p.to_string_lossy().into_owned(), None).unwrap();
         assert_eq!(r.bytes, b"hello");
         assert_eq!(r.canonical_path, fs::canonicalize(&p).unwrap().to_string_lossy());
         let _ = fs::remove_file(&p);
@@ -1299,17 +1321,17 @@ mod resolve_read_tests {
 
     #[test]
     fn a_missing_file_is_an_error() {
-        assert!(resolve_and_read(tmp("nope.png").to_string_lossy().into_owned(), None).is_err());
+        assert!(resolve_and_read_impl(tmp("nope.png").to_string_lossy().into_owned(), None).is_err());
     }
 
     #[test]
     fn max_bytes_reads_only_a_bounded_prefix_and_reports_full_size() {
         let p = tmp("big.png");
         fs::write(&p, vec![7u8; 10_000]).unwrap();
-        let r = resolve_and_read(p.to_string_lossy().into_owned(), Some(512)).unwrap();
+        let r = resolve_and_read_impl(p.to_string_lossy().into_owned(), Some(512)).unwrap();
         assert_eq!(r.bytes.len(), 512, "read only the requested prefix");
         assert_eq!(r.size, 10_000, "size is still the FULL file length");
-        let full = resolve_and_read(p.to_string_lossy().into_owned(), None).unwrap();
+        let full = resolve_and_read_impl(p.to_string_lossy().into_owned(), None).unwrap();
         assert_eq!(full.bytes.len(), 10_000);
         let _ = fs::remove_file(&p);
     }
@@ -1318,7 +1340,7 @@ mod resolve_read_tests {
     fn a_directory_is_rejected_as_not_a_regular_file() {
         let d = tmp("adir");
         fs::create_dir_all(&d).unwrap();
-        let err = resolve_and_read(d.to_string_lossy().into_owned(), None).unwrap_err();
+        let err = resolve_and_read_impl(d.to_string_lossy().into_owned(), None).unwrap_err();
         assert!(err.contains("not a regular file"), "got: {err}");
         let _ = fs::remove_dir_all(&d);
     }
@@ -1334,7 +1356,7 @@ mod resolve_read_tests {
         let link = tmp("a.png"); // looks like an image, actually points at the secret
         let _ = fs::remove_file(&link);
         symlink(&target, &link).unwrap();
-        let r = resolve_and_read(link.to_string_lossy().into_owned(), None).unwrap();
+        let r = resolve_and_read_impl(link.to_string_lossy().into_owned(), None).unwrap();
         // canonicalize followed the symlink → canonical is the TARGET, not the link name
         assert_eq!(r.bytes, b"SECRET");
         assert_eq!(r.canonical_path, fs::canonicalize(&target).unwrap().to_string_lossy());
@@ -1350,7 +1372,7 @@ mod resolve_read_tests {
         fs::write(&p, b"x").unwrap();
         let messy = temp_dir().join("sub").join("..").join(format!("rr-{}-trav.png", std::process::id()));
         fs::create_dir_all(temp_dir().join("sub")).ok();
-        let r = resolve_and_read(messy.to_string_lossy().into_owned(), None).unwrap();
+        let r = resolve_and_read_impl(messy.to_string_lossy().into_owned(), None).unwrap();
         assert_eq!(r.canonical_path, fs::canonicalize(&p).unwrap().to_string_lossy());
         let _ = fs::remove_file(&p);
     }

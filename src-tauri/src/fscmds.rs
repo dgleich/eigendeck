@@ -31,15 +31,26 @@ use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
 // The filesystem logic lives in window-free `*_impl` helpers so the unit tests can
 // exercise it without constructing a WebviewWindow; the `#[tauri::command]`
 // wrappers add the guard.
-fn require_main(window: &WebviewWindow) -> Result<(), String> {
-    if window.label() == "main" {
+//
+// These helpers are `pub(crate)` because the same caller boundary applies to the
+// other arbitrary-path commands elsewhere in the crate (storage.rs db_open/save,
+// lib.rs cli_write_and_exit/resolve_and_read, llmtools.rs install_llm_tools).
+
+/// Refuse unless the calling window's label is in `allowed`.
+pub(crate) fn require_windows(window: &WebviewWindow, allowed: &[&str]) -> Result<(), String> {
+    if allowed.contains(&window.label()) {
         Ok(())
     } else {
         Err(format!(
-            "filesystem command not permitted from window '{}'",
+            "command not permitted from window '{}'",
             window.label()
         ))
     }
+}
+
+/// The common case: only the main editor window may call.
+pub(crate) fn require_main(window: &WebviewWindow) -> Result<(), String> {
+    require_windows(window, &["main"])
 }
 
 // --- writes ------------------------------------------------------------------

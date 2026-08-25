@@ -236,7 +236,7 @@ status below reflects the post-review state (no open residuals under C-2).
 | C-2 | Critical | **Fixed** (privileged/on-open path); export builders hardened as accepted web-content risk | `329a1f3` `c10c94a` `0694b1c` `ed9e3b6` `0eecbbc` |
 | H-1 | High | **Fixed** (all three ingress paths) | `a162853`, `e65d8da`, unified in `329a1f3`/`c10c94a`/`0694b1c` |
 | M-1 | Moderate | **Fixed** | `5ff6449` |
-| C-3 | High / Critical-amplifier | **Resolved for current threat model** (wildcard dropped, read_dir compile-gated, `require_main` caller check on arbitrary-path fs commands); path-grant Phases 2–3 deferred | `ae9eaab`, `8b82ca2` |
+| C-3 | High / Critical-amplifier | **Resolved for current threat model** (wildcard dropped, read_dir compile-gated, `require_main`/`require_windows` caller check on ALL arbitrary-path commands — fs + db_open/save + cli_write + install_llm_tools + resolve_and_read; negative e2e regression); path-grant Phases 2–3 deferred | `ae9eaab`, `8b82ca2`, `ed5d0ca` |
 | M-2 | Moderate/Low | **Open** | — |
 
 ### C-1 — mathjax forged replies (fixed, `1e7d61f`)
@@ -357,20 +357,38 @@ Debug menu/subsystem was ALREADY `#[cfg(debug_assertions)]` (lib.rs), so a shipp
 has no debug tooling and `--debug` does nothing there; a stale debug.rs comment claiming
 otherwise was corrected.
 
-**Phase 1b — main-window caller check (done).** The arbitrary-path filesystem commands that
-do NO canonicalization — `write_file`, `write_text_file`, `make_dir`, `path_stat`,
-`path_exists`, `watch_path` — now take the calling `WebviewWindow` and refuse unless
-`window.label() == "main"` (`require_main` in `fscmds.rs`). Only the main editor legitimately
-drives arbitrary-path writes/stat/watch; the presenter/settings/security windows never call
-them (verified by tracing every frontend caller: App.tsx, fileOps.ts, AssetSection,
-WelcomeWindow, DebugConsole, watcherRegistry — all main-window UI). `resolve_and_read` is
-deliberately NOT guarded: the presenter renders assets through it, and it already does its
-own realpath + size-cap + trust gating. The fs logic moved to window-free `*_impl` helpers so
-the unit tests stay window-free; the `#[tauri::command]` wrappers add the guard. This is the
-central caller check the review flagged as the cheap, high-value C-3 fix. Verified: cargo
-check + clippy -D warnings clean on debug AND release profiles; the 4 fscmds unit tests pass;
-and headlessly the settings / presenter / security window e2e probes all still open, render,
-and invoke. Mac sign-off still wanted for the capability change.
+**Phase 1b — main-window caller check (done, `ed5d0ca` + follow-up).** Every registered command
+that acts on a caller-provided path now takes the calling `WebviewWindow` and refuses unless
+the caller is an authorized window. Two shared helpers in `fscmds.rs`: `require_main` (label
+`== "main"`) and `require_windows(&["main","presenter"])`.
+
+- **Main-window only** (`require_main`) — the arbitrary-path writers/stat/watch:
+  `write_file`, `write_text_file`, `make_dir`, `path_stat`, `path_exists`, `watch_path`
+  (`fscmds.rs`); `db_open`, `db_save_to_file`, `db_save_as_to_file` (`storage.rs`);
+  `cli_write_and_exit` (`lib.rs`, another arbitrary-content writer — the CLI export runs in
+  the main window, verified at `lib.rs` where export mode navigates the *main* window to
+  `/export-cli.html`); `install_llm_tools` (`llmtools.rs`, writes a kit into a caller-chosen
+  dir). Only the main editor legitimately drives these — verified by tracing every frontend
+  caller (App.tsx, fileOps.ts, AssetSection, WelcomeWindow, DebugConsole, watcherRegistry,
+  store/db.ts, export-cli.ts, the debug/* batch tools) — all main-window UI or the main-window
+  CLI export.
+- **Main + presenter** (`require_windows`) — `resolve_and_read` (`lib.rs`): the presenter
+  renders assets through it, so main-only would break present mode; the allowlist still
+  excludes settings/security. **Honest read-side note:** this is blast-radius reduction, NOT a
+  Rust-side trust gate — `resolve_and_read` canonicalizes, rejects non-files/oversized, and
+  returns the bytes; the TRUST decision is still made in JS (`assetGate.ts`) *after* the bytes
+  cross into the webview. Moving that decision into Rust (or handing the presenter assets by
+  db id / an app-issued path grant) is **deferred** read-side hardening, not built now.
+
+The fs/read logic moved to window-free `*_impl` helpers so the Rust unit tests stay
+window-free; the `#[tauri::command]` wrappers add the guard. Verified: `cargo check` +
+`cargo clippy -- -D warnings` clean on debug AND release; the 4 `fscmds` unit tests + the 7
+`resolve_and_read_impl` tests pass. **Negative regression (the test that proves the
+mitigation):** `e2e/security-fs-guard-probe.mjs` drives the REAL app headlessly — from the
+main window `write_text_file` succeeds and the file appears on disk; from the real Security
+window (label `security`, which *does* have IPC) `write_text_file` is **rejected** and the
+Node harness confirms **no file is created**, and `resolve_and_read` is likewise rejected.
+`FS_GUARD_PASS`. Mac sign-off still wanted for the capability change.
 
 **Resolution for the current threat model.** With Phase 1 + 1b, C-3 is considered **resolved**
 for the current threat model: there is no main-webview execution route (demo iframes are
@@ -406,8 +424,11 @@ demo-host frame-registry plumbing; deferred as a cleanup.
   delete legitimate content. (Scope: current element rows + config.textSizes; temporal
   history / slide config / assets are covered by the sink escaping, not this test.)
 - Rust (C-3): `cargo check` + `cargo clippy -- -D warnings` clean on **both** debug and
-  release profiles; the 4 `fscmds` unit tests pass (they exercise the window-free `*_impl`
-  helpers). Release confirms `read_dir`/`DirEntryInfo`/debug tooling all compile out.
+  release profiles; the 4 `fscmds` + 7 `resolve_and_read_impl` unit tests pass (they exercise
+  the window-free `*_impl` helpers). Release confirms `read_dir`/`DirEntryInfo`/debug tooling
+  all compile out. The `e2e/security-fs-guard-probe.mjs` negative regression passes in the
+  REAL headless app (`FS_GUARD_PASS`): the Security window's `write_text_file` and
+  `resolve_and_read` are rejected with no file written, while the main window's succeed.
 
 ### Recommended next steps
 

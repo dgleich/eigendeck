@@ -83,7 +83,12 @@ fn resolve_cli_path() -> Result<PathBuf, String> {
 /// Install the LLM tools kit into `<target_dir>/eigendeck-llm-tools/`.
 /// Returns the created directory path so the frontend can reveal it.
 #[tauri::command]
-pub fn install_llm_tools(app: tauri::AppHandle, target_dir: String) -> Result<String, String> {
+pub fn install_llm_tools(
+    window: tauri::WebviewWindow,
+    app: tauri::AppHandle,
+    target_dir: String,
+) -> Result<String, String> {
+    crate::fscmds::require_main(&window)?; // audit C-3: writes a tool kit into a caller-chosen directory
     let target = Path::new(&target_dir);
     if !target.is_dir() {
         return Err(format!("Target folder does not exist: {}", target_dir));
