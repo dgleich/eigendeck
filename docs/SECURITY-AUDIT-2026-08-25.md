@@ -194,6 +194,27 @@ privileged document through separate trusted-string assumptions.
 5. Audit export HTML as an independent browser artifact and clipboard/pasteboard
    parsing on each platform.
 
+## Scope & release criteria
+
+The exported `.html` is authored presentation content — it carries the **same trust
+boundary as any HTML file the sender could hand you directly**, and it runs in the
+exported page's browser origin with no Tauri/native privilege. (Presentations already
+contain deliberately-active web content via sandboxed demos.) So a bug that only
+produces active content *inside a deck you chose to export and then open/publish* is not
+an Eigendeck vulnerability.
+
+A finding is **release-relevant / stays open** only if it:
+
+1. gains Tauri/native privileges, **or**
+2. bypasses an advertised sandbox / security boundary, **or**
+3. executes merely by **opening or viewing a deck** (no export+publish step), **or**
+4. reads, modifies, or exposes unrelated local data.
+
+Anything confined to deliberately-exported HTML is **accepted web-content risk / ordinary
+robustness** — worth cheap, conventional hardening (attribute escaping, rejecting
+`javascript:` URLs), but not a blocking finding and not grounds to keep the audit open.
+This is the stopping rule that prevents indefinitely polishing malformed-input cases.
+
 ## Remediation (2026-08-25)
 
 Response to the findings above. Four of six are fixed and shipped to `main`; the two
@@ -212,7 +233,7 @@ status below reflects the post-review state (no open residuals under C-2).
 | # | Severity | Status | Commit |
 |---|----------|--------|--------|
 | C-1 | Critical | **Fixed** | `1e7d61f` |
-| C-2 | Critical | **Fixed** (review-hardened, 2 rounds) | `329a1f3` + `c10c94a` + `0694b1c` + `ed9e3b6` |
+| C-2 | Critical | **Fixed** (privileged/on-open path); export builders hardened as accepted web-content risk | `329a1f3` `c10c94a` `0694b1c` `ed9e3b6` `0eecbbc` |
 | H-1 | High | **Fixed** (all three ingress paths) | `a162853`, `e65d8da`, unified in `329a1f3`/`c10c94a`/`0694b1c` |
 | M-1 | Moderate | **Fixed** | `5ff6449` |
 | C-3 | High / Critical-amplifier | **Open** | — |
@@ -281,6 +302,20 @@ wasn't checking — dropping the element on anything that isn't a genuine color.
 across all 40 shipped decks (the transparency test now also runs `isSafeColor` over every
 color/background and drops nothing).
 
+**Non-text export builders (`0eecbbc`) — hardened as accepted web-content risk, not a
+release-blocking finding.** A third review round noted the shared export builders for
+image/cover/arrow, and the fallback video link, still interpolated values unescaped
+(image geometry/opacity/radius/rotation/`assetId`, cover, arrow color/stroke, a
+`javascript:` video href). Per the **Scope & release criteria** above these meet none of
+the four conditions — they require export → open/publish and run in the exported page's
+origin, not the app. Still cheap and conventional to fix, so: `escAttr` now escapes every
+value in `elementHtml.mjs`/`arrowGeometry.mjs` and the `assetId` at its source, a
+`safeExportUrl` scheme policy gates exported `href` to http(s) (a `javascript:` link is
+dropped), and the normalizer validates the optional numeric visual fields. **This closes
+C-2 for the desktop app's privileged/on-open path AND does the export-hygiene pass; C-2 is
+not held open for further export-builder polishing** unless a path meeting the four
+criteria is found.
+
 **Coverage of the normalizer's transparency test:** it covers current element rows +
 `config.textSizes`, not temporal history / slide config / assets. Those are covered by
 the *sink escaping* (which holds regardless of source), not by the transparency test.
@@ -317,7 +352,7 @@ demo-host frame-registry plumbing; deferred as a cleanup.
 
 ### Verification (remediation pass)
 
-- Full Vitest: **1551 passed, 1 skipped** (adds the C-1 provenance test, the C-2 unit +
+- Full Vitest: **1559 passed, 1 skipped** (adds the C-1 provenance test, the C-2 unit +
   robustness tests, the sink-escape test, and the shipped-deck transparency test).
 - `tsc --noEmit`: clean. `npm audit --omit=dev`: 0 vulnerabilities. The two shared text
   builders' escape is byte-identical on legit content (116 export/print tests unchanged).
