@@ -9,7 +9,7 @@ import { createRequire } from 'node:module';
 import { readdirSync, copyFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { normalizeUntrustedElement, normalizeUntrustedPresentation, isSafeCssValue } from './normalizePresentation';
+import { normalizeUntrustedElement, normalizeUntrustedPresentation, isSafeCssValue, isSafeColor } from './normalizePresentation';
 import type { SlideElement } from '../types/presentation';
 
 const require = createRequire(import.meta.url);
@@ -65,7 +65,9 @@ function dropReason(el: SlideElement): string | null {
   if (!p || !finite(p.x) || !finite(p.y) || !finite(p.width) || !finite(p.height)) return `non-finite geometry: ${JSON.stringify(p)}`;
   const pad = (a as { padding?: { top?: unknown; right?: unknown; bottom?: unknown; left?: unknown } }).padding;
   if (pad != null && (typeof pad !== 'object' || !finite(pad.top) || !finite(pad.right) || !finite(pad.bottom) || !finite(pad.left))) return `non-finite padding: ${JSON.stringify(pad)}`;
-  if (a.color != null && !isSafeCssValue(a.color)) return `unsafe color: ${JSON.stringify(a.color)}`;
+  const bc = (a as { backgroundColor?: unknown }).backgroundColor;
+  if (typeof a.color === 'string' && a.color.trim() !== '' && !isSafeColor(a.color)) return `unsafe color: ${JSON.stringify(a.color)}`;
+  if (typeof bc === 'string' && bc.trim() !== '' && !isSafeColor(bc)) return `unsafe backgroundColor: ${JSON.stringify(bc)}`;
   if (a.type === 'text') {
     if (a.fontFamily != null && !isSafeCssValue(a.fontFamily)) return `unsafe fontFamily: ${JSON.stringify(a.fontFamily)}`;
     if (a.fontSize != null && !finite(a.fontSize)) return `non-finite fontSize: ${JSON.stringify(a.fontSize)}`;

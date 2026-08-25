@@ -40,6 +40,23 @@ export function isSafeCssValue(s: unknown): boolean {
   return true;
 }
 
+// A REAL CSS color: hex, an rgb/rgba/hsl/hsla function with numeric args, or a bare
+// keyword (named colors, `transparent`, `currentColor`, theme tokens like `accent`).
+// Deliberately NOT breakout-char filtering — `isSafeCssValue` accepts `url(...)`, which
+// in a `color`/`background` field loads a network resource (a beacon in an exported
+// artifact). This rejects `url(`/`@import`/expressions and only permits real colors.
+const COLOR_HEX = /^#[0-9a-fA-F]{3,8}$/;
+const COLOR_FUNC = /^(?:rgb|rgba|hsl|hsla)\([0-9.,%\s/]*\)$/i;
+const COLOR_KEYWORD = /^[a-zA-Z][a-zA-Z0-9-]*$/;
+
+/** True when `v` is a genuine CSS color (not `url()`/`@import`/injection). */
+export function isSafeColor(v: unknown): boolean {
+  if (typeof v !== 'string') return false;
+  const s = v.trim();
+  if (s === '') return false;
+  return COLOR_HEX.test(s) || COLOR_FUNC.test(s) || COLOR_KEYWORD.test(s);
+}
+
 function isFiniteNum(n: unknown): n is number {
   return typeof n === 'number' && Number.isFinite(n);
 }
@@ -68,10 +85,12 @@ export function normalizeUntrustedElement(el: SlideElement): SlideElement | null
     if (typeof pad !== 'object' || !isFiniteNum(pp.top) || !isFiniteNum(pp.right) || !isFiniteNum(pp.bottom) || !isFiniteNum(pp.left)) return null;
   }
 
-  // `color` is a shared field (text, arrow, cover, …) that reaches CSS/markup —
-  // validate wherever present.
-  const anyEl = el as { color?: unknown; fontFamily?: unknown; fontSize?: unknown; html?: unknown; type?: string };
-  if (anyEl.color != null && !isSafeCssValue(anyEl.color)) return null;
+  // `color` and `backgroundColor` reach CSS `color:`/`background:` — they must be REAL
+  // colors, not `url()`/`@import` (which would load a network resource in an export
+  // artifact) and not a breakout. Validate wherever present (a non-empty string).
+  const anyEl = el as { color?: unknown; backgroundColor?: unknown; fontFamily?: unknown; fontSize?: unknown; html?: unknown; type?: string };
+  if (typeof anyEl.color === 'string' && anyEl.color.trim() !== '' && !isSafeColor(anyEl.color)) return null;
+  if (typeof anyEl.backgroundColor === 'string' && anyEl.backgroundColor.trim() !== '' && !isSafeColor(anyEl.backgroundColor)) return null;
 
   if (anyEl.type === 'text') {
     if (anyEl.fontFamily != null && !isSafeCssValue(anyEl.fontFamily)) return null;

@@ -4,6 +4,7 @@
 //   2. the export BUILDER escapes its own interpolations (absBox geometry, media urls,
 //      backgrounds) so attribute-context payloads can't break out even pre-normalize.
 import { describe, it, expect } from 'vitest';
+// @ts-ignore — pure JS module shared with the CLI tool
 import { buildExportHtml, escExportAttr } from './exportCore.mjs';
 import { normalizeUntrustedPresentation } from './normalizePresentation';
 import type { Presentation, SlideElement } from '../types/presentation';
