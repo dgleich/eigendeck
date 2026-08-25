@@ -200,11 +200,19 @@ Response to the findings above. Four of six are fixed and shipped to `main`; the
 remaining are the architectural one (C-3) and the lowest-severity one (M-2). Each
 finding below was independently re-confirmed against the code before fixing.
 
+**Review round (important):** the first C-2 attempt (`329a1f3`, ingress-only) was
+reviewed and found **incomplete** — it validated four properties but missed `padding`
+and deck-level `config.textSizes`, the normalizer threw (fail-open) on a malformed/null
+element, and a second sink (`textElementHtml`, used by HTML export + PDF) was
+unescaped. `c10c94a` closes all of these by **escaping at both shared builders** (the
+complete defense) and completing the normalizer. The status below reflects the
+post-review state.
+
 | # | Severity | Status | Commit |
 |---|----------|--------|--------|
 | C-1 | Critical | **Fixed** | `1e7d61f` |
-| C-2 | Critical | **Fixed** | `329a1f3` |
-| H-1 | High | **Fixed** (all three ingress paths) | `a162853`, `e65d8da`, unified in `329a1f3` |
+| C-2 | Critical | **Fixed** (review-hardened) | `329a1f3` + `c10c94a` |
+| H-1 | High | **Fixed** (all three ingress paths) | `a162853`, `e65d8da`, unified in `329a1f3`/`c10c94a` |
 | M-1 | Moderate | **Fixed** | `5ff6449` |
 | C-3 | High / Critical-amplifier | **Open** | — |
 | M-2 | Moderate/Low | **Open** | — |
@@ -221,21 +229,42 @@ optional DiD of sanitizing *fresh* replies (rec #3) was **not** taken — the so
 check fully closes the forge vector, and the cache-load path already sanitizes the same
 SVGs — but it remains a cheap future hardening.
 
-### C-2 — element-property SVG breakout (fixed, `329a1f3`)
+### C-2 — element-property SVG breakout (fixed, `329a1f3` + `c10c94a`)
 
-New `src/lib/normalizePresentation.ts` is the single fail-closed boundary the audit
-recommended (`normalizeUntrustedPresentation` / `normalizeUntrustedElement`). It
-sanitizes text html **and** validates each element property against its known-safe
-shape: `position.{x,y,width,height}` and `fontSize` must be finite numbers;
-`fontFamily`/`color` must contain no CSS/HTML breakout characters (`< > " \` ; { } \\`
-or control chars) — which every real font stack (`'PT Sans Narrow', sans-serif`) and
-color (`#hex`, `rgb()`, named) satisfies. Anything outside the shape **drops the whole
-element** (fail-closed). `fontFamily` uses a safe-character check rather than a strict
-registry allowlist so the documented per-element font override (LLM-EDITING) keeps
-working. This addressed the audit's two-part recommendation (validate ingress + stop
-trusting interpolated values) via ingress validation rather than escaping, because the
-values sit in a double HTML-attribute/CSS context and `buildTextElementSvgMarkup` is a
-pure-string function shared with the headless CLI export.
+Fixed in the two layers the audit recommended (validate ingress + stop trusting
+interpolated values), landed across two commits after a review round.
+
+**Primary defense — escape at the sinks (`c10c94a`).** Both shared text builders that
+string-concatenate element properties into a quoted `style`/attribute and then
+`dangerouslySetInnerHTML` — `buildTextElementSvgMarkup` (app display + HTML export) and
+`textElementHtml` (HTML export + PDF/print) — now escape **every** dynamic value
+(`" < > &`). Because `escAttr` leaves single-quotes, legit CSS (`'PT Sans', sans-serif`,
+`#hex`, `px`) is byte-identical (WYSIWYG; 116 export/print tests unchanged), while a
+crafted value cannot break out of the attribute. This closes the breakout for **all**
+interpolated fields regardless of which property or ingress — including the ones the
+first attempt missed (`padding`, and sizes flowing from `config.textSizes`), the
+hosted HTML-export and PDF artifacts, and any fail-open path (an un-normalized deck
+still cannot inject). The inner `content` is the already-sanitized html and is
+deliberately left as HTML.
+
+**Defense-in-depth — the ingress normalizer (`329a1f3`, completed in `c10c94a`).**
+`src/lib/normalizePresentation.ts` sanitizes text html and validates each property
+against its known-safe shape — `position.{x,y,width,height}`, `fontSize`, and every
+`padding` side must be finite numbers; `fontFamily`/`color` must carry no breakout
+character; deck-level `config.textSizes` entries that aren't finite are stripped —
+**dropping the whole element** on anything out of shape. `normalizeUntrustedElement`
+is **total**: `null`/non-object/malformed input returns `null` instead of throwing, so
+a malformed element can no longer abort the pass and leave an earlier unsafe element
+installed (the fail-open the review flagged). `fontFamily` uses a safe-character check,
+not a registry allowlist, so the documented per-element font override keeps working.
+
+**Honest coverage:** the escaping is the guarantee — it holds at the render sink for
+*any* source (current elements, temporal history, clipboard, config-derived sizes,
+slide config). The normalizer's shipped-deck transparency test (below) covers current
+element rows + `config.textSizes`, not temporal history / slide config / assets; those
+are safe by the sink escaping rather than by the transparency test. The export/print
+builder is now safe at the sink even though the headless export doesn't itself call the
+normalizer.
 
 ### H-1 — history/clipboard/undo ingress bypasses (fixed)
 
@@ -269,14 +298,17 @@ demo-host frame-registry plumbing; deferred as a cleanup.
 
 ### Verification (remediation pass)
 
-- Full Vitest: **1535 passed, 1 skipped** (added the C-1 provenance test, the C-2 unit
-  tests, and a shipped-deck transparency test).
-- `tsc --noEmit`: clean. `npm audit --omit=dev`: 0 vulnerabilities.
-- **Transparency guarantee for C-2/H-1:** `src/lib/normalizePresentation.decks.test.ts`
-  runs the normalizer over **every** `examples/` + `test-presentations/` deck (40, read
-  from temp copies so no `-wal` sidecar touches tracked files) and fails with a precise
-  deck+element+reason if any real element would be dropped. It currently drops nothing —
-  so the fail-closed rules cannot silently delete legitimate content.
+- Full Vitest: **1543 passed, 1 skipped** (adds the C-1 provenance test, the C-2 unit +
+  robustness tests, the sink-escape test, and the shipped-deck transparency test).
+- `tsc --noEmit`: clean. `npm audit --omit=dev`: 0 vulnerabilities. The two shared text
+  builders' escape is byte-identical on legit content (116 export/print tests unchanged).
+- **Transparency guarantee for the normalizer:** `src/lib/normalizePresentation.decks.test.ts`
+  runs it over **every** `examples/` + `test-presentations/` deck (40, read from temp
+  copies so no `-wal` sidecar touches tracked files) and fails with a precise
+  deck+element+reason if any real element would be dropped OR any `config.textSizes`
+  entry removed. It currently alters nothing — so the fail-closed rules cannot silently
+  delete legitimate content. (Scope: current element rows + config.textSizes; temporal
+  history / slide config / assets are covered by the sink escaping, not this test.)
 - Rust (C-3) not exercised — no Rust change was made this pass.
 
 ### Recommended next steps
