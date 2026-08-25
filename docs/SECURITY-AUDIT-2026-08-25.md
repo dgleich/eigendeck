@@ -236,7 +236,7 @@ status below reflects the post-review state (no open residuals under C-2).
 | C-2 | Critical | **Fixed** (privileged/on-open path); export builders hardened as accepted web-content risk | `329a1f3` `c10c94a` `0694b1c` `ed9e3b6` `0eecbbc` |
 | H-1 | High | **Fixed** (all three ingress paths) | `a162853`, `e65d8da`, unified in `329a1f3`/`c10c94a`/`0694b1c` |
 | M-1 | Moderate | **Fixed** | `5ff6449` |
-| C-3 | High / Critical-amplifier | **Phase 1 done** (wildcard dropped, read_dir gated); Phases 2–3 open | `ae9eaab` |
+| C-3 | High / Critical-amplifier | **Resolved for current threat model** (wildcard dropped, read_dir compile-gated, `require_main` caller check on arbitrary-path fs commands); path-grant Phases 2–3 deferred | `ae9eaab`, `8b82ca2` |
 | M-2 | Moderate/Low | **Open** | — |
 
 ### C-1 — mathjax forged replies (fixed, `1e7d61f`)
@@ -345,21 +345,46 @@ defense-in-depth, done in phases.
 `windows:["main","*"]` wildcard for the explicit set of labels the app actually creates,
 `["main","presenter","settings","security"]` (the CLI export reuses the main window; the
 labels are static, none dynamic), so a stray/unexpected window label can no longer inherit
-IPC + these permissions. **This is also the `docs/COMMAND-LINE-ELEMENT.md` §7 Req 1
-prerequisite.** (b) `read_dir` (arbitrary directory enumeration; sole caller is the debug
-`dirPicker`) is now `#[cfg(debug_assertions)]` (with its `DirEntryInfo` and its
-`generate_handler!` registration) — compiled OUT of a release binary entirely (`8b82ca2`).
-Note: the whole Debug menu/subsystem was ALREADY `#[cfg(debug_assertions)]` (lib.rs), so a
-shipped build has no debug tooling and `--debug` does nothing there; a stale debug.rs
-comment claiming otherwise was corrected. Verified: cargo check + clippy -D warnings clean
-on debug AND release profiles; and headlessly the `cargo check` + the settings / presenter / security
-window e2e probes all still open, render, and invoke. Mac sign-off still wanted.
+**this capability's core/plugin permissions.** (Scope note, per review: this governs only
+the listed `core:`/`opener:`/`dialog:` permissions. It does NOT by itself caller-authorize
+the app's own registered commands — a window that is in the list still reaches every
+`generate_handler!` command unless that command checks its caller. That check is Phase 1b.)
+**This is also the `docs/COMMAND-LINE-ELEMENT.md` §7 Req 1 prerequisite.** (b) `read_dir`
+(arbitrary directory enumeration; sole caller is the debug `dirPicker`) is now
+`#[cfg(debug_assertions)]` (with its `DirEntryInfo` and its `generate_handler!`
+registration) — compiled OUT of a release binary entirely (`8b82ca2`). Note: the whole
+Debug menu/subsystem was ALREADY `#[cfg(debug_assertions)]` (lib.rs), so a shipped build
+has no debug tooling and `--debug` does nothing there; a stale debug.rs comment claiming
+otherwise was corrected.
 
-**Phase 2 (open)** — path-scope the write commands (`write_file`/`write_text_file`/
-`make_dir`): confine to app-data + the open deck's directory + picker-minted grants,
-canonicalized, reject outside. Needs the frontend's real write-path usage mapped first.
-**Phase 3 (open)** — ensure `resolve_and_read` makes the trust decision in Rust before
-returning bytes, not after in JS.
+**Phase 1b — main-window caller check (done).** The arbitrary-path filesystem commands that
+do NO canonicalization — `write_file`, `write_text_file`, `make_dir`, `path_stat`,
+`path_exists`, `watch_path` — now take the calling `WebviewWindow` and refuse unless
+`window.label() == "main"` (`require_main` in `fscmds.rs`). Only the main editor legitimately
+drives arbitrary-path writes/stat/watch; the presenter/settings/security windows never call
+them (verified by tracing every frontend caller: App.tsx, fileOps.ts, AssetSection,
+WelcomeWindow, DebugConsole, watcherRegistry — all main-window UI). `resolve_and_read` is
+deliberately NOT guarded: the presenter renders assets through it, and it already does its
+own realpath + size-cap + trust gating. The fs logic moved to window-free `*_impl` helpers so
+the unit tests stay window-free; the `#[tauri::command]` wrappers add the guard. This is the
+central caller check the review flagged as the cheap, high-value C-3 fix. Verified: cargo
+check + clippy -D warnings clean on debug AND release profiles; the 4 fscmds unit tests pass;
+and headlessly the settings / presenter / security window e2e probes all still open, render,
+and invoke. Mac sign-off still wanted for the capability change.
+
+**Resolution for the current threat model.** With Phase 1 + 1b, C-3 is considered **resolved**
+for the current threat model: there is no main-webview execution route (demo iframes are
+opaque-origin and can't `invoke`; the privileged injection routes C-1/C-2 are fixed; no
+`remote` IPC), and the only window that *could* reach the arbitrary-path commands is now the
+main editor itself. The heavier **picker-minted path-grant machinery** (below) is deliberately
+**deferred** — not started — unless a main-webview execution route is discovered, per the
+review's proportionality recommendation.
+
+**Phase 2 (deferred, not required)** — path-scope the write commands so even the main window
+is confined to app-data + the open deck's directory + picker-minted grants, canonicalized,
+reject outside. Deeper defense-in-depth; only warranted if the main webview becomes
+attacker-reachable. **Phase 3 (deferred)** — ensure `resolve_and_read` makes the trust
+decision in Rust before returning bytes, not after in JS.
 
 ### M-2 — presenter nav-key source (OPEN)
 
@@ -380,12 +405,17 @@ demo-host frame-registry plumbing; deferred as a cleanup.
   entry removed. It currently alters nothing — so the fail-closed rules cannot silently
   delete legitimate content. (Scope: current element rows + config.textSizes; temporal
   history / slide config / assets are covered by the sink escaping, not this test.)
-- Rust (C-3) not exercised — no Rust change was made this pass.
+- Rust (C-3): `cargo check` + `cargo clippy -- -D warnings` clean on **both** debug and
+  release profiles; the 4 `fscmds` unit tests pass (they exercise the window-free `*_impl`
+  helpers). Release confirms `read_dir`/`DirEntryInfo`/debug tooling all compile out.
 
 ### Recommended next steps
 
 1. Add the real-WebKit e2e probes the audit asked for (C-1 forged-message-beside-live
    render; C-2 crafted-property deck) to lock the fixes end-to-end in the shipped engine.
-2. Scope C-3 as its own effort, folded together with the #184 capability-tightening
-   prerequisite.
+2. ~~Scope C-3 as its own effort, folded together with the #184 capability-tightening
+   prerequisite.~~ **Done** — Phase 1 (capability wildcard + read_dir gating) and Phase 1b
+   (`require_main` caller check) close C-3 for the current threat model; the #184 §7 Req 1
+   prerequisite is satisfied. Path-grant Phases 2–3 deferred unless a main-webview execution
+   route appears.
 3. Close M-2 as a small cleanup when convenient.

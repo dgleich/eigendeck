@@ -7,7 +7,9 @@
 //
 // Paths handed to write/stat/read_dir come from native dialogs or deck-relative
 // resolution — user-chosen, not attacker-chosen. Nothing here canonicalizes or
-// gates (that's `resolve_and_read`'s job for the security-sensitive byte reads).
+// gates (that's `resolve_and_read`'s job for the security-sensitive byte reads);
+// instead the write/stat/watch commands require the caller to be the MAIN editor
+// window (`require_main`) — see the caller-authorization note below.
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -15,35 +17,78 @@ use std::time::UNIX_EPOCH;
 
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
+
+// --- caller authorization ----------------------------------------------------
+// These commands act on whatever path the caller passes, with NO canonicalization
+// or trust check (that is `resolve_and_read`'s job for the security-sensitive byte
+// reads, which stays open to every window because the presenter renders assets
+// through it). Only the MAIN editor window has any legitimate reason to drive
+// arbitrary-path writes/stat/watch — the presenter/settings/security windows never
+// call them. Refusing from any other window means a stray or secondary webview
+// label can't turn its IPC access into arbitrary-path disk I/O. (audit C-3)
+//
+// The filesystem logic lives in window-free `*_impl` helpers so the unit tests can
+// exercise it without constructing a WebviewWindow; the `#[tauri::command]`
+// wrappers add the guard.
+fn require_main(window: &WebviewWindow) -> Result<(), String> {
+    if window.label() == "main" {
+        Ok(())
+    } else {
+        Err(format!(
+            "filesystem command not permitted from window '{}'",
+            window.label()
+        ))
+    }
+}
 
 // --- writes ------------------------------------------------------------------
 // No parent auto-create (mirrors the JS plugin: callers mkdir explicitly first).
 
-#[tauri::command]
-pub fn write_file(path: String, data: Vec<u8>) -> Result<(), String> {
-    std::fs::write(&path, data).map_err(|e| e.to_string())
+fn write_file_impl(path: &str, data: Vec<u8>) -> Result<(), String> {
+    std::fs::write(path, data).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn write_text_file(path: String, text: String, append: Option<bool>) -> Result<(), String> {
+pub fn write_file(window: WebviewWindow, path: String, data: Vec<u8>) -> Result<(), String> {
+    require_main(&window)?;
+    write_file_impl(&path, data)
+}
+
+fn write_text_file_impl(path: &str, text: String, append: Option<bool>) -> Result<(), String> {
     if append.unwrap_or(false) {
         use std::io::Write;
         std::fs::OpenOptions::new()
             .create(true)
             .append(true)
-            .open(&path)
+            .open(path)
             .and_then(|mut f| f.write_all(text.as_bytes()))
             .map_err(|e| e.to_string())
     } else {
-        std::fs::write(&path, text).map_err(|e| e.to_string())
+        std::fs::write(path, text).map_err(|e| e.to_string())
     }
 }
 
 #[tauri::command]
-pub fn make_dir(path: String) -> Result<(), String> {
+pub fn write_text_file(
+    window: WebviewWindow,
+    path: String,
+    text: String,
+    append: Option<bool>,
+) -> Result<(), String> {
+    require_main(&window)?;
+    write_text_file_impl(&path, text, append)
+}
+
+fn make_dir_impl(path: &str) -> Result<(), String> {
     // Always recursive — every current caller passes { recursive: true }.
-    std::fs::create_dir_all(&path).map_err(|e| e.to_string())
+    std::fs::create_dir_all(path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn make_dir(window: WebviewWindow, path: String) -> Result<(), String> {
+    require_main(&window)?;
+    make_dir_impl(&path)
 }
 
 // --- stat / exists -----------------------------------------------------------
@@ -58,9 +103,8 @@ pub struct StatInfo {
     is_dir: bool,
 }
 
-#[tauri::command]
-pub fn path_stat(path: String) -> Result<StatInfo, String> {
-    let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
+fn path_stat_impl(path: &str) -> Result<StatInfo, String> {
+    let meta = std::fs::metadata(path).map_err(|e| e.to_string())?;
     let mtime_ms = meta
         .modified()
         .ok()
@@ -75,8 +119,21 @@ pub fn path_stat(path: String) -> Result<StatInfo, String> {
 }
 
 #[tauri::command]
-pub fn path_exists(path: String) -> bool {
-    std::path::Path::new(&path).exists()
+pub fn path_stat(window: WebviewWindow, path: String) -> Result<StatInfo, String> {
+    require_main(&window)?;
+    path_stat_impl(&path)
+}
+
+fn path_exists_impl(path: &str) -> bool {
+    std::path::Path::new(path).exists()
+}
+
+// Returns Result (not bare bool) so the guard can reject a non-main caller; the
+// frontend's `invoke<boolean>` still resolves to the bool on Ok.
+#[tauri::command]
+pub fn path_exists(window: WebviewWindow, path: String) -> Result<bool, String> {
+    require_main(&window)?;
+    Ok(path_exists_impl(&path))
 }
 
 // --- read_dir (debug batch tools) --------------------------------------------
@@ -154,10 +211,12 @@ pub struct WatchState {
 
 #[tauri::command]
 pub fn watch_path(
+    window: WebviewWindow,
     app: AppHandle,
     state: State<Mutex<WatchState>>,
     path: String,
 ) -> Result<u32, String> {
+    require_main(&window)?;
     let id = {
         let mut s = state.lock().map_err(|e| e.to_string())?;
         let id = s.next_id;
@@ -206,13 +265,13 @@ mod tests {
     fn write_then_stat_roundtrips() {
         let p = tmp("w.bin");
         let _ = std::fs::remove_file(&p);
-        write_file(p.to_string_lossy().into_owned(), vec![1, 2, 3, 4]).unwrap();
-        let st = path_stat(p.to_string_lossy().into_owned()).unwrap();
+        write_file_impl(&p.to_string_lossy(), vec![1, 2, 3, 4]).unwrap();
+        let st = path_stat_impl(&p.to_string_lossy()).unwrap();
         assert_eq!(st.size, 4);
         assert!(st.is_file);
         assert!(!st.is_dir);
         assert!(st.mtime_ms.is_some());
-        assert!(path_exists(p.to_string_lossy().into_owned()));
+        assert!(path_exists_impl(&p.to_string_lossy()));
         let _ = std::fs::remove_file(&p);
     }
 
@@ -220,7 +279,7 @@ mod tests {
     fn write_text_roundtrips() {
         let p = tmp("t.txt");
         let _ = std::fs::remove_file(&p);
-        write_text_file(p.to_string_lossy().into_owned(), "héllo".into(), None).unwrap();
+        write_text_file_impl(&p.to_string_lossy(), "héllo".into(), None).unwrap();
         assert_eq!(std::fs::read_to_string(&p).unwrap(), "héllo");
         let _ = std::fs::remove_file(&p);
     }
@@ -229,8 +288,8 @@ mod tests {
     fn stat_missing_errors_and_exists_false() {
         let p = tmp("nope.bin");
         let _ = std::fs::remove_file(&p);
-        assert!(path_stat(p.to_string_lossy().into_owned()).is_err());
-        assert!(!path_exists(p.to_string_lossy().into_owned()));
+        assert!(path_stat_impl(&p.to_string_lossy()).is_err());
+        assert!(!path_exists_impl(&p.to_string_lossy()));
     }
 
     #[test]
@@ -238,7 +297,7 @@ mod tests {
         let base = tmp("d");
         let _ = std::fs::remove_dir_all(&base);
         let nested = base.join("a/b");
-        make_dir(nested.to_string_lossy().into_owned()).unwrap();
+        make_dir_impl(&nested.to_string_lossy()).unwrap();
         assert!(nested.is_dir());
         std::fs::write(nested.join("x.eigendeck"), b"x").unwrap();
         let entries = read_dir(nested.to_string_lossy().into_owned()).unwrap();
