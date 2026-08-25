@@ -204,15 +204,16 @@ finding below was independently re-confirmed against the code before fixing.
 reviewed and found **incomplete** — it validated four properties but missed `padding`
 and deck-level `config.textSizes`, the normalizer threw (fail-open) on a malformed/null
 element, and a second sink (`textElementHtml`, used by HTML export + PDF) was
-unescaped. `c10c94a` closes all of these by **escaping at both shared builders** (the
-complete defense) and completing the normalizer. The status below reflects the
-post-review state.
+unescaped. `c10c94a` closes all of these by **escaping at both shared builders** and
+completing the normalizer. A **second** review round then found the EXPORT path still
+open (unescaped `absBox`/media attrs + an un-normalized CLI); `0694b1c` closes that. The
+status below reflects the post-review state, with one Medium residual noted under C-2.
 
 | # | Severity | Status | Commit |
 |---|----------|--------|--------|
 | C-1 | Critical | **Fixed** | `1e7d61f` |
-| C-2 | Critical | **Fixed** (review-hardened) | `329a1f3` + `c10c94a` |
-| H-1 | High | **Fixed** (all three ingress paths) | `a162853`, `e65d8da`, unified in `329a1f3`/`c10c94a` |
+| C-2 | Critical | **Fixed** (review-hardened, 2 rounds) | `329a1f3` + `c10c94a` + `0694b1c` |
+| H-1 | High | **Fixed** (all three ingress paths) | `a162853`, `e65d8da`, unified in `329a1f3`/`c10c94a`/`0694b1c` |
 | M-1 | Moderate | **Fixed** | `5ff6449` |
 | C-3 | High / Critical-amplifier | **Open** | — |
 | M-2 | Moderate/Low | **Open** | — |
@@ -258,13 +259,28 @@ a malformed element can no longer abort the pass and leave an earlier unsafe ele
 installed (the fail-open the review flagged). `fontFamily` uses a safe-character check,
 not a registry allowlist, so the documented per-element font override keeps working.
 
-**Honest coverage:** the escaping is the guarantee — it holds at the render sink for
-*any* source (current elements, temporal history, clipboard, config-derived sizes,
-slide config). The normalizer's shipped-deck transparency test (below) covers current
-element rows + `config.textSizes`, not temporal history / slide config / assets; those
-are safe by the sink escaping rather than by the transparency test. The export/print
-builder is now safe at the sink even though the headless export doesn't itself call the
-normalizer.
+**Export path (`0694b1c`) — a second review round found "both text builders" was NOT
+the whole export defense.** The HTML export is a self-contained, often *hosted* artifact
+with its own render path: `buildExportHtml`'s shared `absBox()` (the wrapper for EVERY
+element type) and the media `href`/`src`/`background` attributes were unescaped, and the
+CLI export (`export-cli.ts`) read the deck straight from SQLite and never normalized —
+so a crafted deck exported by the CLI could emit active HTML. Fixed in two layers: (1)
+`normalizeUntrustedPresentation` now runs at **both** export entries — the CLI (a hidden
+webview, so DOMParser is available) and the GUI (`fileOps`, DiD) — sanitizing text html
+and dropping out-of-shape elements; (2) `escExportAttr` escapes the export builder's own
+interpolations (absBox geometry, video/image/iframe urls, text-box background/shadow/
+radius/rotation). WYSIWYG preserved (116 export/print tests unchanged).
+
+**Remaining residual (Medium, tracked):** escaping attribute delimiters stops HTML
+breakout but is **not CSS-value validation** — a `url()` / `@import` in a color/background
+field that carries no `;` (so the normalizer's breakout-char check doesn't reject it, and
+escaping leaves it intact) can still load a network resource in the exported artifact
+(a beacon, not code execution). Closing it needs color-shape validation of `color`/
+`backgroundColor` (accept hex/rgb/hsl/named, reject `url(`). Not yet done.
+
+**Coverage of the normalizer's transparency test:** it covers current element rows +
+`config.textSizes`, not temporal history / slide config / assets. Those are covered by
+the *sink escaping* (which holds regardless of source), not by the transparency test.
 
 ### H-1 — history/clipboard/undo ingress bypasses (fixed)
 
@@ -298,7 +314,7 @@ demo-host frame-registry plumbing; deferred as a cleanup.
 
 ### Verification (remediation pass)
 
-- Full Vitest: **1543 passed, 1 skipped** (adds the C-1 provenance test, the C-2 unit +
+- Full Vitest: **1547 passed, 1 skipped** (adds the C-1 provenance test, the C-2 unit +
   robustness tests, the sink-escape test, and the shipped-deck transparency test).
 - `tsc --noEmit`: clean. `npm audit --omit=dev`: 0 vulnerabilities. The two shared text
   builders' escape is byte-identical on legit content (116 export/print tests unchanged).
