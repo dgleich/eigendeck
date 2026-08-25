@@ -1066,6 +1066,13 @@ const UNDO_SEED_LIMIT = 40;
 export async function seedUndoHistory(): Promise<number> {
   try {
     const { invoke } = await import('@tauri-apps/api/core');
+    // Reconstructed history is a SECOND deck-content ingress, separate from the
+    // on-open sweep — so it must run the SAME toolbar-allowlist sanitize. Otherwise
+    // a crafted/shared deck can hide executable markup (onerror=/js: URLs) in an old
+    // temporal row that the current-content sanitize never sees; pressing Undo would
+    // install it into a raw dangerouslySetInnerHTML sink in the privileged frame
+    // (stored XSS). Normalize each snapshot before seeding.
+    const { sanitizePresentationHtml } = await import('../lib/sanitizeRichText');
     const raw = await invoke<string>('db_get_history_timestamps');
     const points = JSON.parse(raw) as { timestamp: string }[];
     if (!Array.isArray(points) || points.length <= 1) return 0;
@@ -1075,7 +1082,10 @@ export async function seedUndoHistory(): Promise<number> {
     for (const p of prior) {
       try {
         const pres = JSON.parse(await invoke<string>('db_get_state_at', { at: p.timestamp })) as Presentation;
-        if (pres && Array.isArray(pres.slides)) snapshots.push({ presentation: pres });
+        if (pres && Array.isArray(pres.slides)) {
+          sanitizePresentationHtml(pres);
+          snapshots.push({ presentation: pres });
+        }
       } catch { /* skip an unreconstructable point */ }
     }
     if (snapshots.length === 0) return 0;
