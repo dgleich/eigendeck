@@ -81,6 +81,8 @@ pub fn path_exists(path: String) -> bool {
 
 // --- read_dir (debug batch tools) --------------------------------------------
 
+// Only the debug-only `read_dir` returns this, so it's compiled out of release too.
+#[cfg(debug_assertions)]
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DirEntryInfo {
@@ -89,13 +91,15 @@ pub struct DirEntryInfo {
     is_dir: bool,
 }
 
-// Debug-gated: arbitrary directory enumeration is dev/batch tooling only (its sole
-// caller is the debug dirPicker), so it must not be a normal-release command — reject
-// unless debug mode is on (--debug / EIGENDECK_DEBUG=1). This still serves the intended
-// `Eigendeck.app --debug` batch actions on real decks. (audit C-3)
+// Debug-builds-only: arbitrary directory enumeration is dev/batch tooling (its sole
+// caller is the debug `dirPicker`). `#[cfg(debug_assertions)]` compiles it OUT of a
+// release build entirely — a shipped binary has no `read_dir` command at all — matching
+// the rest of the debug subsystem, which is already debug-builds-only (lib.rs). The
+// registration in lib.rs's `generate_handler!` is `#[cfg(debug_assertions)]` to match.
+// (audit C-3)
+#[cfg(debug_assertions)]
 #[tauri::command]
-pub fn read_dir(path: String, flag: State<'_, crate::debug::DebugFlag>) -> Result<Vec<DirEntryInfo>, String> {
-    crate::debug::require(&flag)?;
+pub fn read_dir(path: String) -> Result<Vec<DirEntryInfo>, String> {
     let mut out = Vec::new();
     for entry in std::fs::read_dir(&path).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;

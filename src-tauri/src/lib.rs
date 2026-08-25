@@ -1110,6 +1110,7 @@ pub fn run() {
             fscmds::make_dir,
             fscmds::path_stat,
             fscmds::path_exists,
+            #[cfg(debug_assertions)]
             fscmds::read_dir,
             fscmds::read_trust_ledger,
             fscmds::write_trust_ledger,

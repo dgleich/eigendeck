@@ -27,14 +27,16 @@ pub struct DebugFlag(pub bool);
 
 /// Detect the debug flag once at startup. THE ONLY env read for this flag.
 ///
-/// Two paths:
-///   - `--debug` in argv — works for the released binary launched from
-///     terminal (`./Eigendeck.app/Contents/MacOS/Eigendeck --debug`).
-///   - `EIGENDECK_DEBUG=1` env var — needed for `tauri dev`, because the
-///     Tauri CLI's argv passthrough places args BEFORE cargo's `--`
-///     separator, so they reach cargo (which rejects them) instead of the
-///     binary. tools/mac-build.sh translates its own `--debug` arg into the env
-///     var so the user only ever types `bash tools/mac-build.sh --debug`.
+/// DEBUG BUILDS ONLY. The entire debug subsystem — this call, `DebugFlag`, the Debug
+/// submenu, `debug_enabled`, and `read_dir` — is `#[cfg(debug_assertions)]`, so a
+/// shipped release build has NO debug tooling and `--debug` / `EIGENDECK_DEBUG` do
+/// nothing there (audit C-3). Within a debug build, either enables it:
+///   - `--debug` in argv (a debug binary run from the terminal), or
+///   - `EIGENDECK_DEBUG=1` env var — needed for `tauri dev`, because the Tauri CLI's
+///     argv passthrough places args BEFORE cargo's `--` separator, so they reach cargo
+///     (which rejects them) instead of the binary. tools/mac-build.sh translates its
+///     own `--debug` into the env var so `bash tools/mac-build.sh --debug` is all the
+///     user types.
 pub fn parse_debug_flag() -> bool {
     if std::env::args().any(|a| a == "--debug") {
         return true;
@@ -48,11 +50,12 @@ pub fn debug_enabled(flag: State<'_, DebugFlag>) -> bool {
     flag.0
 }
 
-/// Self-gate helper for debug-only commands: returns an error unless debug mode is
-/// on (`--debug` / `EIGENDECK_DEBUG=1`). `read_dir` is the first user (arbitrary
-/// directory enumeration is dev/batch tooling, so it must not be a normal-release
-/// command — audit C-3).
-pub fn require(flag: &DebugFlag) -> Result<(), String> {
+/// Self-gate helper for any future debug-only *command that must still exist in a
+/// debug build but refuse without `--debug`*. Kept (with `#[allow(dead_code)]`) so the
+/// pattern is in place. (`read_dir` doesn't need it — it's `#[cfg(debug_assertions)]`,
+/// so it's compiled out of release entirely rather than gated at runtime.)
+#[allow(dead_code)]
+fn require(flag: &DebugFlag) -> Result<(), String> {
     if flag.0 {
         Ok(())
     } else {
