@@ -1067,12 +1067,12 @@ export async function seedUndoHistory(): Promise<number> {
   try {
     const { invoke } = await import('@tauri-apps/api/core');
     // Reconstructed history is a SECOND deck-content ingress, separate from the
-    // on-open sweep — so it must run the SAME toolbar-allowlist sanitize. Otherwise
-    // a crafted/shared deck can hide executable markup (onerror=/js: URLs) in an old
-    // temporal row that the current-content sanitize never sees; pressing Undo would
-    // install it into a raw dangerouslySetInnerHTML sink in the privileged frame
-    // (stored XSS). Normalize each snapshot before seeding.
-    const { sanitizePresentationHtml } = await import('../lib/sanitizeRichText');
+    // on-open normalize — so it must run the SAME boundary. Otherwise a crafted deck
+    // can hide executable markup (onerror=/js: URLs) or a breakout property
+    // (fontFamily/color) in an old temporal row that the current-content normalize
+    // never sees; pressing Undo would install it into a raw dangerouslySetInnerHTML
+    // sink in the privileged frame (stored XSS). Normalize each snapshot before seeding.
+    const { normalizeUntrustedPresentation } = await import('../lib/normalizePresentation');
     const raw = await invoke<string>('db_get_history_timestamps');
     const points = JSON.parse(raw) as { timestamp: string }[];
     if (!Array.isArray(points) || points.length <= 1) return 0;
@@ -1083,7 +1083,7 @@ export async function seedUndoHistory(): Promise<number> {
       try {
         const pres = JSON.parse(await invoke<string>('db_get_state_at', { at: p.timestamp })) as Presentation;
         if (pres && Array.isArray(pres.slides)) {
-          sanitizePresentationHtml(pres);
+          normalizeUntrustedPresentation(pres);
           snapshots.push({ presentation: pres });
         }
       } catch { /* skip an unreconstructable point */ }
@@ -1475,17 +1475,18 @@ export async function openSqliteProject(dbPath: string): Promise<void> {
       console.warn('Notebook token migration failed (non-fatal):', e);
     }
 
-    // Reduce every text element's html to the toolbar allowlist — strips unsafe
-    // markup (handlers / js: URLs / scripts) and any styling the editor can't
-    // author, so opening a JSON-authored, pasted, or shared deck is both safe
-    // and consistent with what the UI can edit. Mutates in place; idempotent.
+    // Normalize untrusted deck content: reduce text html to the toolbar allowlist
+    // AND validate element properties (fontFamily/color/geometry) against their
+    // known-safe shape, dropping any element outside it. Both html and PROPERTIES
+    // reach privileged dangerouslySetInnerHTML sinks, so a JSON-authored / pasted /
+    // shared deck must pass through this one boundary (audit H-1 + C-2). Transparent
+    // to real decks (see normalizePresentation.decks.test); mutates in place.
     try {
-      const { sanitizePresentationHtml } = await import('../lib/sanitizeRichText');
-      if (sanitizePresentationHtml(presentation)) {
-        olog('sanitized text-element html to the toolbar allowlist on load');
-      }
+      const { normalizeUntrustedPresentation } = await import('../lib/normalizePresentation');
+      const dropped = normalizeUntrustedPresentation(presentation);
+      olog(`normalized untrusted content on load${dropped ? ` (dropped ${dropped} unsafe element(s))` : ''}`);
     } catch (e) {
-      console.warn('Rich-text sanitization failed (non-fatal):', e);
+      console.warn('Presentation normalization failed (non-fatal):', e);
     }
 
     t = performance.now();

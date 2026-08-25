@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { usePresentationStore, flushToSqlite } from '../store/presentation';
-import { sanitizeRichText, sanitizePresentationHtml } from '../lib/sanitizeRichText';
+import { sanitizeRichText } from '../lib/sanitizeRichText';
+import { normalizeUntrustedPresentation } from '../lib/normalizePresentation';
 import { askConfirm } from '../lib/confirmDialog';
 import type { Presentation } from '../types/presentation';
 
@@ -184,10 +185,10 @@ export function HistoryPanel() {
                 await flushToSqlite();
                 // History restore is an untrusted ingress: previewData is a state
                 // reconstructed from the deck's temporal rows (db_get_state_at), which
-                // a crafted deck controls — and setPresentation does NOT sanitize (the
-                // sanitize lives in openSqliteProject). Normalize to the toolbar
-                // allowlist here, same boundary as deck open / undo seeding (audit H-1).
-                sanitizePresentationHtml(previewData);
+                // a crafted deck controls — and setPresentation does NOT normalize (that
+                // lives in openSqliteProject). Run the same boundary here as deck open /
+                // undo seeding (audit H-1 + C-2): sanitize html + validate properties.
+                normalizeUntrustedPresentation(previewData);
                 setPresentation(previewData);
                 toggleHistory();
               }

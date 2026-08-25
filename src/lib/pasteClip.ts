@@ -11,20 +11,18 @@ import { usePresentationStore } from '../store/presentation';
 import { pasteElementDelta } from './syncLink';
 import { offsetElement } from './offsetElement';
 import { runCopyHook } from './elementLifecycle';
-import { sanitizeRichText } from './sanitizeRichText';
+import { normalizeUntrustedElement } from './normalizePresentation';
 import type { EigendeckClip } from './clipboardModel';
 import type { SlideElement } from '../types/presentation';
 
 // A clipboard clip is untrusted: any app can put HTML on the clipboard carrying the
 // public, unauthenticated eigendeck marker (clipboardModel), so decoded elements can
-// hold arbitrary html. Normalize text html to the toolbar allowlist on ingress —
-// same boundary as deck open / undo seeding / history restore (audit H-1). Mutates
-// in place, before the paste path clones/installs the elements.
-function sanitizeClipElements(els: readonly SlideElement[] | undefined): void {
-  for (const el of els || []) {
-    const t = el as { type?: string; html?: unknown };
-    if (t.type === 'text' && typeof t.html === 'string') t.html = sanitizeRichText(t.html);
-  }
+// hold arbitrary html AND arbitrary properties (fontFamily/color/geometry). Run the
+// same normalize boundary as deck open / undo seeding / history restore (audit H-1 +
+// C-2): sanitize html and DROP any element with an out-of-safe-shape property. Mutates
+// html in place; returns only the elements safe to install.
+function normalizeClipElements(els: readonly SlideElement[] | undefined): SlideElement[] {
+  return (els || []).filter((el) => normalizeUntrustedElement(el) !== null);
 }
 
 /** Create the cross-slide animation LINK between a freshly-pasted element and its
@@ -47,14 +45,16 @@ export function pasteInternalClip(clip: EigendeckClip): void {
     // current slide/group — NOT a duplicate of the current slide. Same-deck this
     // is "copy slide 2, paste it"; cross-deck it inserts the slide (assets that
     // aren't in the target deck come in broken — the clip is JSON, not bytes; #167).
-    sanitizeClipElements((clip.slide as { elements?: SlideElement[] } | undefined)?.elements);
+    const s = clip.slide as { elements?: SlideElement[] } | undefined;
+    if (s?.elements) s.elements = normalizeClipElements(s.elements); // drop unsafe els before install
     state.pasteSlide(clip.slide);
     return;
   }
 
-  const els = (clip.elements || []) as SlideElement[];
+  // Normalize (sanitize html + validate properties) and drop any unsafe element
+  // before the loop clones/installs (audit H-1 + C-2).
+  const els = normalizeClipElements((clip.elements || []) as SlideElement[]);
   if (!els.length) return;
-  sanitizeClipElements(els); // normalize before the loop clones/installs (H-1)
 
   const targetSlide = state.presentation.slides[state.currentSlideIndex];
   // Same slide if pasting back onto the slide we copied from (by id, so slide
