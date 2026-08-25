@@ -106,12 +106,28 @@ export function buildTextElementSvgMarkup(
   // out-of-box ink to reveal late. Italic/integral GLYPH ink overhang is preserved
   // by the INNER MathJax <svg> keeping overflow:visible (see mathjaxRenderer.ts) —
   // that ink stays within the box, so this outer clip doesn't touch it.
+  // Escape EVERY dynamic value spliced into an attribute or the style="" string:
+  // neutralize " < > & — the characters that break out of the quoted attribute. A
+  // crafted property (padding/fontFamily/color/geometry, or a size that came from an
+  // unvalidated config.textSizes) can't then inject markup into this privileged
+  // dangerouslySetInnerHTML output (audit C-2). escAttr leaves single-quotes alone, so
+  // legit CSS (single-quoted font stacks, #hex, px numbers) is byte-identical — WYSIWYG
+  // preserved. This is the sink defense that backs up the ingress normalizer and also
+  // protects the headless export, which shares this builder.
+  const e = (v: unknown): string => escAttr(String(v));
+  const eW = e(w), eH = e(h);
+  const outerStyle = `width:${eW}px;height:${eH}px;${e(valignToCss(ctx.valign))};overflow:hidden;box-sizing:border-box;`;
+  const innerStyle =
+    `width:100%;font-family:${e(ctx.fontFamily)};font-size:${e(ctx.fontSize)}px;` +
+    `font-weight:${e(ctx.fontWeight)};font-style:${e(ctx.fontStyle)};color:${e(ctx.color)};` +
+    `line-height:${e(box.lineHeight)};padding:${e(textPaddingCss(element, element.preset))};` +
+    `${textShadow ? `text-shadow:${e(textShadow)};` : ''}`;
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="${w}" height="${h}" overflow="hidden" role="img" aria-label="${escAttr(alt)}" style="display:block;overflow:hidden;">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${eW} ${eH}" preserveAspectRatio="none" width="${eW}" height="${eH}" overflow="hidden" role="img" aria-label="${escAttr(alt)}" style="display:block;overflow:hidden;">` +
       `<title>${escText(alt)}</title>` +
-      `<foreignObject x="0" y="0" width="${w}" height="${h}" overflow="hidden">` +
-        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;${valignToCss(ctx.valign)};overflow:hidden;box-sizing:border-box;">` +
-          `<div style="width:100%;font-family:${ctx.fontFamily};font-size:${ctx.fontSize}px;font-weight:${ctx.fontWeight};font-style:${ctx.fontStyle};color:${ctx.color};line-height:${box.lineHeight};padding:${textPaddingCss(element, element.preset)};${textShadow ? `text-shadow:${textShadow};` : ''}">` +
+      `<foreignObject x="0" y="0" width="${eW}" height="${eH}" overflow="hidden">` +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="${outerStyle}">` +
+          `<div style="${innerStyle}">` +
             applyCodeFont(renderedHtml || '', ctx.mono) +
           `</div>` +
         `</div>` +

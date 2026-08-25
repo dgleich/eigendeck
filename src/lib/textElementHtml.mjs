@@ -36,18 +36,27 @@ export function textElementHtml(el, { color, fontFamily, fontSize, content, len,
   const valignStyle = valign === 'middle' ? 'display:flex;flex-direction:column;justify-content:center;' :
                       valign === 'bottom' ? 'display:flex;flex-direction:column;justify-content:flex-end;' : '';
 
+  // Escape every dynamic value spliced into the style/attribute strings — neutralize
+  // " < > & so a crafted property (padding/rotation/borderRadius/color/fontFamily/
+  // geometry, or a size from an unvalidated config.textSizes) can't break out of the
+  // quoted attribute and inject markup. This builder feeds BOTH the HTML export (a
+  // possibly-hosted artifact) and the PDF path (audit C-2). `content` is the already-
+  // sanitized inner HTML and is intentionally NOT escaped. Legit values have none of
+  // these chars, so output is byte-identical (WYSIWYG). Mirrors escAttr in TextElementSvg.
+  const e = (v) => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
   const pad = el.padding
-    ? `${len(el.padding.top)} ${len(el.padding.right)} ${len(el.padding.bottom)} ${len(el.padding.left)}`
-    : `${len(box.padY)} ${len(box.padX)}`;
+    ? `${e(len(el.padding.top))} ${e(len(el.padding.right))} ${e(len(el.padding.bottom))} ${e(len(el.padding.left))}`
+    : `${e(len(box.padY))} ${e(len(box.padX))}`;
 
   const bg = textBackgroundResolved(el, theme);   // theme-aware (boxTint) fill; falls back to the fixed color
   const sh = textBoxShadowCss(el);
   const fx = textShadowCss(el, color);
-  const rot = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
-  const rad = el.borderRadius ? `border-radius:${len(el.borderRadius)};` : '';
+  const rot = el.rotation ? `transform:rotate(${e(el.rotation)}deg);` : '';
+  const rad = el.borderRadius ? `border-radius:${e(len(el.borderRadius))};` : '';
 
-  return `<div style="position:absolute;left:${len(p.x)};top:${len(p.y)};width:${len(p.width)};height:${len(p.height)};overflow:hidden;${bg ? `background:${bg};` : ''}${sh ? `box-shadow:${sh};` : ''}${rad}${rot}">` +
+  return `<div style="position:absolute;left:${e(len(p.x))};top:${e(len(p.y))};width:${e(len(p.width))};height:${e(len(p.height))};overflow:hidden;${bg ? `background:${e(bg)};` : ''}${sh ? `box-shadow:${e(sh)};` : ''}${rad}${rot}">` +
     `<div style="width:100%;height:100%;${valignStyle}">` +
-    `<div style="font-family:${fontFamily};font-weight:${ps.fontWeight};font-style:${ps.fontStyle};font-size:${fsize(fontSize)};color:${color};line-height:${box.lineHeight};padding:${pad};${fx ? `text-shadow:${fx};` : ''}">${content}</div>` +
+    `<div style="font-family:${e(fontFamily)};font-weight:${e(ps.fontWeight)};font-style:${e(ps.fontStyle)};font-size:${e(fsize(fontSize))};color:${e(color)};line-height:${e(box.lineHeight)};padding:${pad};${fx ? `text-shadow:${e(fx)};` : ''}">${content}</div>` +
     `</div></div>`;
 }

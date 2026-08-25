@@ -50,10 +50,23 @@ function isFiniteNum(n: unknown): n is number {
  * (a value outside its known-safe shape).
  */
 export function normalizeUntrustedElement(el: SlideElement): SlideElement | null {
+  // Never THROW on malformed structure (null / non-object / a string where an object
+  // is expected) — drop it. A throw would abort the whole normalize pass mid-slide and
+  // (per the non-fatal deck-open catch) leave EARLIER unsafe elements installed.
+  if (!el || typeof el !== 'object') return null;
+
   // Geometry is string-concatenated into text SVG (viewBox/width/height) and used
   // as layout everywhere; require finite numbers for every element type.
-  const p = (el as { position?: { x?: unknown; y?: unknown; width?: unknown; height?: unknown } }).position;
-  if (!p || !isFiniteNum(p.x) || !isFiniteNum(p.y) || !isFiniteNum(p.width) || !isFiniteNum(p.height)) return null;
+  const p = (el as { position?: unknown }).position as { x?: unknown; y?: unknown; width?: unknown; height?: unknown } | undefined;
+  if (!p || typeof p !== 'object' || !isFiniteNum(p.x) || !isFiniteNum(p.y) || !isFiniteNum(p.width) || !isFiniteNum(p.height)) return null;
+
+  // `padding`, when present, is spliced into the SVG style (textPaddingCss) — every
+  // side must be a finite number.
+  const pad = (el as { padding?: unknown }).padding;
+  if (pad != null) {
+    const pp = pad as { top?: unknown; right?: unknown; bottom?: unknown; left?: unknown };
+    if (typeof pad !== 'object' || !isFiniteNum(pp.top) || !isFiniteNum(pp.right) || !isFiniteNum(pp.bottom) || !isFiniteNum(pp.left)) return null;
+  }
 
   // `color` is a shared field (text, arrow, cover, …) that reaches CSS/markup —
   // validate wherever present.
@@ -74,16 +87,27 @@ export function normalizeUntrustedElement(el: SlideElement): SlideElement | null
  * Returns the number of elements dropped (0 for a clean deck).
  */
 export function normalizeUntrustedPresentation(presentation: {
-  slides?: Array<{ elements?: SlideElement[] }>;
+  slides?: unknown;
+  config?: { textSizes?: Record<string, unknown> };
 }): number {
   let dropped = 0;
-  for (const slide of presentation.slides || []) {
-    if (!slide.elements) continue;
-    const kept = slide.elements.filter((el) => normalizeUntrustedElement(el) !== null);
-    if (kept.length !== slide.elements.length) {
-      dropped += slide.elements.length - kept.length;
-      slide.elements = kept;
+  const slides = Array.isArray(presentation.slides) ? (presentation.slides as Array<{ elements?: unknown }>) : [];
+  for (const slide of slides) {
+    if (!slide || !Array.isArray(slide.elements)) continue;
+    const els = slide.elements as SlideElement[];
+    const kept = els.filter((el) => normalizeUntrustedElement(el) !== null);
+    if (kept.length !== els.length) {
+      dropped += els.length - kept.length;
+      (slide as { elements: SlideElement[] }).elements = kept;
     }
+  }
+  // Deck-level config.textSizes feeds effectiveFontSize() → the same SVG style, so a
+  // named size (element.fontSizeName / a preset's size) can resolve to an UNTRUSTED
+  // value here. Drop any non-finite entry so it can never reach the sink as a string;
+  // effectiveFontSize then falls back to the built-in default for that name.
+  const ts = presentation.config?.textSizes;
+  if (ts && typeof ts === 'object') {
+    for (const k of Object.keys(ts)) if (!isFiniteNum((ts as Record<string, unknown>)[k])) delete (ts as Record<string, unknown>)[k];
   }
   return dropped;
 }
