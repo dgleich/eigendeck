@@ -17,10 +17,10 @@
           "html": "<div>hello</div>",
           "id": "txt-1",
           "position": {
-            "h": 100,
-            "w": 400,
             "x": 100,
-            "y": 100
+            "y": 100,
+            "width": 400,
+            "height": 100
           },
           "preset": "body",
           "type": "text"
@@ -28,10 +28,10 @@
         {
           "id": "img-1",
           "position": {
-            "h": 200,
-            "w": 300,
             "x": 200,
-            "y": 200
+            "y": 200,
+            "width": 300,
+            "height": 200
           },
           "type": "image"
         },
@@ -39,10 +39,10 @@
           "color": "#000000",
           "id": "arr-1",
           "position": {
-            "h": 0,
-            "w": 0,
             "x": 0,
-            "y": 0
+            "y": 0,
+            "width": 0,
+            "height": 0
           },
           "type": "arrow",
           "x1": 100,
@@ -54,10 +54,10 @@
           "color": "#112233",
           "id": "cover-1",
           "position": {
-            "h": 300,
-            "w": 400,
             "x": 0,
-            "y": 0
+            "y": 0,
+            "width": 400,
+            "height": 300
           },
           "type": "cover"
         }
@@ -71,10 +71,10 @@
           "html": "<div>hello</div>",
           "id": "txt-2",
           "position": {
-            "h": 100,
-            "w": 400,
             "x": 300,
-            "y": 300
+            "y": 300,
+            "width": 400,
+            "height": 100
           },
           "preset": "body",
           "type": "text"
