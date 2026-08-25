@@ -48,11 +48,11 @@ pub fn debug_enabled(flag: State<'_, DebugFlag>) -> bool {
     flag.0
 }
 
-/// Self-gate helper for any future debug-only commands. Kept (with
-/// `#[allow(dead_code)]`) so the documented defense-in-depth pattern is
-/// already in place when the first such command is added.
-#[allow(dead_code)]
-fn require(flag: &DebugFlag) -> Result<(), String> {
+/// Self-gate helper for debug-only commands: returns an error unless debug mode is
+/// on (`--debug` / `EIGENDECK_DEBUG=1`). `read_dir` is the first user (arbitrary
+/// directory enumeration is dev/batch tooling, so it must not be a normal-release
+/// command — audit C-3).
+pub fn require(flag: &DebugFlag) -> Result<(), String> {
     if flag.0 {
         Ok(())
     } else {

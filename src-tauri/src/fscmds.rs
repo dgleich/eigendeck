@@ -89,8 +89,13 @@ pub struct DirEntryInfo {
     is_dir: bool,
 }
 
+// Debug-gated: arbitrary directory enumeration is dev/batch tooling only (its sole
+// caller is the debug dirPicker), so it must not be a normal-release command — reject
+// unless debug mode is on (--debug / EIGENDECK_DEBUG=1). This still serves the intended
+// `Eigendeck.app --debug` batch actions on real decks. (audit C-3)
 #[tauri::command]
-pub fn read_dir(path: String) -> Result<Vec<DirEntryInfo>, String> {
+pub fn read_dir(path: String, flag: State<'_, crate::debug::DebugFlag>) -> Result<Vec<DirEntryInfo>, String> {
+    crate::debug::require(&flag)?;
     let mut out = Vec::new();
     for entry in std::fs::read_dir(&path).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;

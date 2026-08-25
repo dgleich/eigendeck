@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window",
-  "windows": ["main", "*"],
+  "description": "Capability for the app's own windows (no wildcard — only the labels the app actually creates, so a stray/unexpected window label can't inherit IPC + these permissions; also the #184 command-line prerequisite). The CLI export reuses the main window navigated to export-cli.html, so it needs no separate label.",
+  "windows": ["main", "presenter", "settings", "security"],
   "permissions": [
     "core:default",
     "core:window:default",
