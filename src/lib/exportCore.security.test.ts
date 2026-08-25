@@ -65,6 +65,15 @@ describe('export entry normalize (text html + out-of-shape properties)', () => {
     expect(html).toContain('ok'); // the legit part is kept
   });
 
+  it('a javascript: video url is not emitted as an active href/src', async () => {
+    const html = await build(pres([
+      { id: 'jv', type: 'video', kind: 'embed', provider: 'other',
+        url: 'javascript:alert(document.domain)',
+        position: { x: 10, y: 10, width: 100, height: 50 } } as unknown as SlideElement,
+    ]));
+    expect(html).not.toContain('javascript:'); // no active href/src survives the URL policy
+  });
+
   it('drops a text element with a breakout fontFamily', async () => {
     const p = pres([
       { id: 'f', type: 'text', preset: 'body', html: 'gone',

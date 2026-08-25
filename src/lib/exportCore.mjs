@@ -4,7 +4,7 @@ import { resolveMonoFontPackage } from './fontRegistry.mjs';
 import { showFooter, footerFontFamily } from './footer.mjs';
 import { coverHtml, arrowSvgHtml, imageHtml } from './elementHtml.mjs';
 import { htmlElementIframeHtml, htmlElementScaledIframeHtml, htmlIsScaled, htmlScaleLayout } from './htmlElement.mjs';
-import { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
+import { htmlEscapeForSrcdoc, escAttr, safeExportUrl } from './htmlEscape.mjs';
 import { ELEMENT_PLACEHOLDERS as PH } from './elementPlaceholders.mjs';
 // Re-exported so existing importers (incl. exportCore.test.mjs) are unaffected.
 export { htmlEscapeForSrcdoc } from './htmlEscape.mjs';
@@ -88,7 +88,7 @@ function themeBackground(presentation, slide) {
 // should ALSO normalizeUntrustedPresentation() before export (sanitizes html + drops
 // bad-shape elements); this is the sink defense for the values the normalizer doesn't
 // cover (audit C-2 export path). (esc mirrors escAttr in TextElementSvg.)
-export const escExportAttr = (v) => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+export const escExportAttr = escAttr;
 
 /** Absolute-position CSS fragment shared by every exported element's wrapper. */
 const absBox = (p) => `position:absolute;left:${escExportAttr(p.x)}px;top:${escExportAttr(p.y)}px;width:${escExportAttr(p.width)}px;height:${escExportAttr(p.height)}px`;
@@ -385,7 +385,7 @@ export async function buildExportHtml(opts) {
           } else if (deckJson && el.assetId) {
             // Single-store: don't inline the bytes here — the #eigendeck-deck block
             // already carries them; emit a placeholder the loader paints.
-            inner += imageHtml('', el, (n) => `${n}px`, `data-asset-id="${el.assetId}"`);
+            inner += imageHtml('', el, (n) => `${n}px`, `data-asset-id="${escExportAttr(el.assetId)}"`);
             break;
           } else {
             imgSrc = await getImageDataUrl(el.src);
@@ -460,7 +460,11 @@ export async function buildExportHtml(opts) {
             if (embedSrc) {
               inner += `<iframe src="${escExportAttr(embedSrc)}" style="${absBox(p)};border:none;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
             } else {
-              inner += `<a href="${escExportAttr(el.url)}" style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;text-decoration:none;">&#9654; Video</a>`;
+              // Unrecognized provider → a fallback link. Escaping doesn't stop a
+              // `javascript:` URL (no breakout chars), so gate the scheme: only
+              // http(s) stays a link; anything else drops the href and renders inert.
+              const safeUrl = safeExportUrl(el.url);
+              inner += `<a ${safeUrl ? `href="${escExportAttr(safeUrl)}" ` : ''}style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;text-decoration:none;">&#9654; Video</a>`;
             }
           } else if (el.kind === 'file' && el.src) {
             // Local file: inline the asset as a playable <video>.

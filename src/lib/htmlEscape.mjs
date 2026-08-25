@@ -9,3 +9,23 @@ export function htmlEscapeForSrcdoc(s) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 }
+
+/** Escape ANY value for an HTML attribute / style ("<>& → entities). Coerces to
+ *  string first, so geometry numbers are safe too. The canonical attribute escaper
+ *  shared by the export builders (elementHtml / arrowGeometry / exportCore). */
+export function escAttr(v) {
+  return htmlEscapeForSrcdoc(String(v));
+}
+
+/** URL policy for an exported href/src. Attribute-escaping does NOT stop a
+ *  `javascript:`/`vbscript:` URL (no breakout chars), so restrict schemes: only
+ *  http(s) — and `data:` for images when `allowData` — pass; anything else returns
+ *  '' so the exported link/media is inert. Protocol-relative `//host` → https. */
+export function safeExportUrl(url, { allowData = false } = {}) {
+  if (typeof url !== 'string') return '';
+  const s = url.trim();
+  if (/^https?:\/\//i.test(s)) return s;
+  if (/^\/\//.test(s)) return 'https:' + s;
+  if (allowData && /^data:/i.test(s)) return s;
+  return '';
+}

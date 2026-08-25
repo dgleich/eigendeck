@@ -5,6 +5,8 @@
 //   • the head triangle(s).
 // `heads`: 'end' (default) | 'start' | 'both' | 'none'.
 
+import { escAttr } from './htmlEscape.mjs';
+
 const ARROW_HA = Math.PI / 6;   // head half-angle (30°)
 
 export function arrowGeometry(x1, y1, x2, y2, headSize, heads, c1x, c1y, c2x, c2y, points) {
@@ -122,11 +124,16 @@ export function triPoints(t) {
  *  export + App.tsx print-to-PDF), which built this identically. The caller
  *  supplies its own `<svg>` wrapper. */
 export function arrowSvgInner(geo, color, strokeWidth, opacity) {
-  const op = opacity != null && opacity < 1 ? ` opacity="${opacity}"` : '';
+  // Escape values spliced into SVG attributes — a crafted color/strokeWidth reaching
+  // the exported artifact must not create a new attribute/tag (audit C-2 export). geo
+  // path/coords are computed numerics (a crafted coord becomes NaN, not markup), but
+  // escaping is uniform and cheap.
+  const c = escAttr(color), sw = escAttr(strokeWidth);
+  const op = opacity != null && opacity < 1 ? ` opacity="${escAttr(opacity)}"` : '';
   const stroke = geo.path
-    ? `<path d="${geo.path}" fill="none" stroke="${color}" stroke-width="${strokeWidth}"/>`
-    : `<line x1="${geo.line.x1}" y1="${geo.line.y1}" x2="${geo.line.x2}" y2="${geo.line.y2}" stroke="${color}" stroke-width="${strokeWidth}"/>`;
-  const heads = geo.triangles.map((t) => `<polygon points="${triPoints(t)}" fill="${color}"/>`).join('');
+    ? `<path d="${escAttr(geo.path)}" fill="none" stroke="${c}" stroke-width="${sw}"/>`
+    : `<line x1="${escAttr(geo.line.x1)}" y1="${escAttr(geo.line.y1)}" x2="${escAttr(geo.line.x2)}" y2="${escAttr(geo.line.y2)}" stroke="${c}" stroke-width="${sw}"/>`;
+  const heads = geo.triangles.map((t) => `<polygon points="${escAttr(triPoints(t))}" fill="${c}"/>`).join('');
   return `<g${op}>${stroke}${heads}</g>`;
 }
 

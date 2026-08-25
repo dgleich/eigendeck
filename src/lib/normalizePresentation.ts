@@ -88,9 +88,15 @@ export function normalizeUntrustedElement(el: SlideElement): SlideElement | null
   // `color` and `backgroundColor` reach CSS `color:`/`background:` — they must be REAL
   // colors, not `url()`/`@import` (which would load a network resource in an export
   // artifact) and not a breakout. Validate wherever present (a non-empty string).
-  const anyEl = el as { color?: unknown; backgroundColor?: unknown; fontFamily?: unknown; fontSize?: unknown; html?: unknown; type?: string };
-  if (typeof anyEl.color === 'string' && anyEl.color.trim() !== '' && !isSafeColor(anyEl.color)) return null;
-  if (typeof anyEl.backgroundColor === 'string' && anyEl.backgroundColor.trim() !== '' && !isSafeColor(anyEl.backgroundColor)) return null;
+  const anyEl = el as unknown as Record<string, unknown> & { fontFamily?: unknown; fontSize?: unknown; html?: unknown; type?: string };
+  if (typeof anyEl.color === 'string' && (anyEl.color as string).trim() !== '' && !isSafeColor(anyEl.color)) return null;
+  if (typeof anyEl.backgroundColor === 'string' && (anyEl.backgroundColor as string).trim() !== '' && !isSafeColor(anyEl.backgroundColor)) return null;
+
+  // Optional numeric visual fields that reach a CSS/SVG numeric (opacity, rotate(),
+  // border-radius, rgba() alpha, arrow stroke/head) — finite if present, else drop.
+  for (const k of ['rotation', 'borderRadius', 'opacity', 'backgroundOpacity', 'strokeWidth', 'headSize']) {
+    if (anyEl[k] != null && !isFiniteNum(anyEl[k])) return null;
+  }
 
   if (anyEl.type === 'text') {
     if (anyEl.fontFamily != null && !isSafeCssValue(anyEl.fontFamily)) return null;
