@@ -193,3 +193,96 @@ privileged document through separate trusted-string assumptions.
    lifecycle, and response headers).
 5. Audit export HTML as an independent browser artifact and clipboard/pasteboard
    parsing on each platform.
+
+## Remediation (2026-08-25)
+
+Response to the findings above. Four of six are fixed and shipped to `main`; the two
+remaining are the architectural one (C-3) and the lowest-severity one (M-2). Each
+finding below was independently re-confirmed against the code before fixing.
+
+| # | Severity | Status | Commit |
+|---|----------|--------|--------|
+| C-1 | Critical | **Fixed** | `1e7d61f` |
+| C-2 | Critical | **Fixed** | `329a1f3` |
+| H-1 | High | **Fixed** (all three ingress paths) | `a162853`, `e65d8da`, unified in `329a1f3` |
+| M-1 | Moderate | **Fixed** | `5ff6449` |
+| C-3 | High / Critical-amplifier | **Open** | — |
+| M-2 | Moderate/Low | **Open** | — |
+
+### C-1 — mathjax forged replies (fixed, `1e7d61f`)
+
+Every renderer message — `rendered`, `error`, `ready`, `preamble-applied`, and `log` —
+now requires `ev.source === pool.iframe.contentWindow`, so a sandboxed demo can no
+longer forge a reply with a guessed request id. `rendered`/`error` share the one
+source-checked reply loop. Regression test `src/lib/mathjaxRenderer.security.test.ts`
+sends a real predictable id from a non-owning window (must stay pending) and then from
+the owning iframe (must resolve); it is inert (a `data-proof` marker, no script). The
+optional DiD of sanitizing *fresh* replies (rec #3) was **not** taken — the source
+check fully closes the forge vector, and the cache-load path already sanitizes the same
+SVGs — but it remains a cheap future hardening.
+
+### C-2 — element-property SVG breakout (fixed, `329a1f3`)
+
+New `src/lib/normalizePresentation.ts` is the single fail-closed boundary the audit
+recommended (`normalizeUntrustedPresentation` / `normalizeUntrustedElement`). It
+sanitizes text html **and** validates each element property against its known-safe
+shape: `position.{x,y,width,height}` and `fontSize` must be finite numbers;
+`fontFamily`/`color` must contain no CSS/HTML breakout characters (`< > " \` ; { } \\`
+or control chars) — which every real font stack (`'PT Sans Narrow', sans-serif`) and
+color (`#hex`, `rgb()`, named) satisfies. Anything outside the shape **drops the whole
+element** (fail-closed). `fontFamily` uses a safe-character check rather than a strict
+registry allowlist so the documented per-element font override (LLM-EDITING) keeps
+working. This addressed the audit's two-part recommendation (validate ingress + stop
+trusting interpolated values) via ingress validation rather than escaping, because the
+values sit in a double HTML-attribute/CSS context and `buildTextElementSvgMarkup` is a
+pure-string function shared with the headless CLI export.
+
+### H-1 — history/clipboard/undo ingress bypasses (fixed)
+
+All three paths the finding lists now run the normalize boundary: undo seeding
+(`seedUndoHistory`, first in `a162853`, now `normalizeUntrustedPresentation`), history
+restore (`HistoryPanel`), and clipboard paste (`pasteClip`, per-element with drop).
+This realises the finding's "one boundary called at every ingress" recommendation — the
+same `normalizeUntrustedPresentation` runs at deck open, undo-seed, history restore, and
+clipboard, and C-2's property validation rides along. The clipboard marker is still
+treated as data, not an authenticity boundary.
+
+### M-1 — DOMPurify advisory (fixed, `5ff6449`)
+
+Bumped `dompurify` 3.4.12 → 3.4.14 (GHSA-55q2-fjhq-7xh7). `npm audit --omit=dev` now
+reports **0 vulnerabilities**; sanitizer + notebook-output tests green.
+
+### C-3 — ambient fs + capability wildcard (OPEN)
+
+Not yet addressed — it is architectural (per-window capability split; short-lived,
+narrowly-scoped path grants instead of ambient caller-provided paths) and warrants its
+own focused pass, ideally co-verified. **Note:** the `capabilities/default.json`
+`windows:["main","*"]` wildcard this finding calls out is the *same* prerequisite the
+command-line (live-terminal) design lists as blocking — see
+`docs/COMMAND-LINE-ELEMENT.md` §7 Req 1. Tighten it before either ships.
+
+### M-2 — presenter nav-key source (OPEN)
+
+Not yet addressed — lowest severity (deck-navigation integrity only; no privileged-code
+path). The fix (accept `nav-key` only from the set of mounted demo-bridge frames) needs
+demo-host frame-registry plumbing; deferred as a cleanup.
+
+### Verification (remediation pass)
+
+- Full Vitest: **1535 passed, 1 skipped** (added the C-1 provenance test, the C-2 unit
+  tests, and a shipped-deck transparency test).
+- `tsc --noEmit`: clean. `npm audit --omit=dev`: 0 vulnerabilities.
+- **Transparency guarantee for C-2/H-1:** `src/lib/normalizePresentation.decks.test.ts`
+  runs the normalizer over **every** `examples/` + `test-presentations/` deck (40, read
+  from temp copies so no `-wal` sidecar touches tracked files) and fails with a precise
+  deck+element+reason if any real element would be dropped. It currently drops nothing —
+  so the fail-closed rules cannot silently delete legitimate content.
+- Rust (C-3) not exercised — no Rust change was made this pass.
+
+### Recommended next steps
+
+1. Add the real-WebKit e2e probes the audit asked for (C-1 forged-message-beside-live
+   render; C-2 crafted-property deck) to lock the fixes end-to-end in the shipped engine.
+2. Scope C-3 as its own effort, folded together with the #184 capability-tightening
+   prerequisite.
+3. Close M-2 as a small cleanup when convenient.
