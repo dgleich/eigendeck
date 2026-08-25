@@ -1201,23 +1201,37 @@ export async function flushToSqlite(): Promise<void> {
     const state = usePresentationStore.getState();
 
     // --- Reconcile structural add/delete that CANCEL within this one flush ---
-    // Deletions run before adds (so an add can re-create a deleted row's
-    // junction), but a slide/element created AND removed before its first
-    // flush must not be resurrected: the delete is a no-op on a not-yet-written
-    // row, then the stale "added" entry would re-materialize it. Drop both.
-    // (Fixes: delete a freshly-duplicated mirror / its slide → it came back.)
+    // A never-flushed row (queued in addedSlides/addedElements) has no DB row, so its
+    // DELETE is always a no-op → always drop the delete. The only decision is whether to
+    // keep the ADD, and that must follow the FINAL state, not mere queue membership:
+    //   - absent from the final state → genuine create-then-delete → cancel the add
+    //     (e.g. delete a freshly-duplicated mirror / its slide — must not resurrect;
+    //     dca9005 / #65), and
+    //   - present in the final state → undo→redo churned a still-present row into both
+    //     queues → KEEP the add so it gets written (dropping it here silently lost the
+    //     row on save — #185).
+    const finalSlideIds = new Set(state.presentation.slides.map((s) => s.id));
+    const finalElemKeys = new Set<string>();
+    for (const s of state.presentation.slides)
+      for (const el of s.elements) finalElemKeys.add(jkey(s.id, el.id));
+
     for (const slideId of [...deletedSlides]) {
       if (addedSlides.has(slideId)) {
-        addedSlides.delete(slideId);
         deletedSlides.delete(slideId);
-        // …and any element junctions queued onto that never-persisted slide.
-        for (const k of [...addedElements.keys()]) {
-          if (addedElements.get(k)!.slideId === slideId) addedElements.delete(k);
+        if (!finalSlideIds.has(slideId)) {
+          addedSlides.delete(slideId);
+          // …and any element junctions queued onto that never-persisted slide.
+          for (const k of [...addedElements.keys()]) {
+            if (addedElements.get(k)!.slideId === slideId) addedElements.delete(k);
+          }
         }
       }
     }
     for (const k of [...deletedElements.keys()]) {
-      if (addedElements.has(k)) { addedElements.delete(k); deletedElements.delete(k); }
+      if (addedElements.has(k)) {
+        deletedElements.delete(k);
+        if (!finalElemKeys.has(k)) addedElements.delete(k);
+      }
     }
 
     // Structural changes: delete slides + element junctions first, then add.
