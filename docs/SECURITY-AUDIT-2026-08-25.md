@@ -207,12 +207,12 @@ element, and a second sink (`textElementHtml`, used by HTML export + PDF) was
 unescaped. `c10c94a` closes all of these by **escaping at both shared builders** and
 completing the normalizer. A **second** review round then found the EXPORT path still
 open (unescaped `absBox`/media attrs + an un-normalized CLI); `0694b1c` closes that. The
-status below reflects the post-review state, with one Medium residual noted under C-2.
+status below reflects the post-review state (no open residuals under C-2).
 
 | # | Severity | Status | Commit |
 |---|----------|--------|--------|
 | C-1 | Critical | **Fixed** | `1e7d61f` |
-| C-2 | Critical | **Fixed** (review-hardened, 2 rounds) | `329a1f3` + `c10c94a` + `0694b1c` |
+| C-2 | Critical | **Fixed** (review-hardened, 2 rounds) | `329a1f3` + `c10c94a` + `0694b1c` + `ed9e3b6` |
 | H-1 | High | **Fixed** (all three ingress paths) | `a162853`, `e65d8da`, unified in `329a1f3`/`c10c94a`/`0694b1c` |
 | M-1 | Moderate | **Fixed** | `5ff6449` |
 | C-3 | High / Critical-amplifier | **Open** | — |
@@ -271,12 +271,15 @@ and dropping out-of-shape elements; (2) `escExportAttr` escapes the export build
 interpolations (absBox geometry, video/image/iframe urls, text-box background/shadow/
 radius/rotation). WYSIWYG preserved (116 export/print tests unchanged).
 
-**Remaining residual (Medium, tracked):** escaping attribute delimiters stops HTML
-breakout but is **not CSS-value validation** — a `url()` / `@import` in a color/background
-field that carries no `;` (so the normalizer's breakout-char check doesn't reject it, and
-escaping leaves it intact) can still load a network resource in the exported artifact
-(a beacon, not code execution). Closing it needs color-shape validation of `color`/
-`backgroundColor` (accept hex/rgb/hsl/named, reject `url(`). Not yet done.
+**CSS-value residual — CLOSED (`ed9e3b6`).** Escaping attribute delimiters stops HTML
+breakout but is not CSS-value validation, so a `url()`/`@import` in a `color`/`background`
+field with no `;` could still load a network resource in an exported artifact (a beacon).
+Added `isSafeColor` (accept only hex / `rgb()`/`hsl()` with numeric args / a bare keyword;
+reject `url(`/`@import`/expressions) and the normalizer now validates **both**
+`element.color` and `element.backgroundColor` — the actual `background:url()` vector it
+wasn't checking — dropping the element on anything that isn't a genuine color. Transparent
+across all 40 shipped decks (the transparency test now also runs `isSafeColor` over every
+color/background and drops nothing).
 
 **Coverage of the normalizer's transparency test:** it covers current element rows +
 `config.textSizes`, not temporal history / slide config / assets. Those are covered by
@@ -314,7 +317,7 @@ demo-host frame-registry plumbing; deferred as a cleanup.
 
 ### Verification (remediation pass)
 
-- Full Vitest: **1547 passed, 1 skipped** (adds the C-1 provenance test, the C-2 unit +
+- Full Vitest: **1551 passed, 1 skipped** (adds the C-1 provenance test, the C-2 unit +
   robustness tests, the sink-escape test, and the shipped-deck transparency test).
 - `tsc --noEmit`: clean. `npm audit --omit=dev`: 0 vulnerabilities. The two shared text
   builders' escape is byte-identical on legit content (116 export/print tests unchanged).
