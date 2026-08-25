@@ -236,7 +236,7 @@ status below reflects the post-review state (no open residuals under C-2).
 | C-2 | Critical | **Fixed** (privileged/on-open path); export builders hardened as accepted web-content risk | `329a1f3` `c10c94a` `0694b1c` `ed9e3b6` `0eecbbc` |
 | H-1 | High | **Fixed** (all three ingress paths) | `a162853`, `e65d8da`, unified in `329a1f3`/`c10c94a`/`0694b1c` |
 | M-1 | Moderate | **Fixed** | `5ff6449` |
-| C-3 | High / Critical-amplifier | **Open** | — |
+| C-3 | High / Critical-amplifier | **Phase 1 done** (wildcard dropped, read_dir gated); Phases 2–3 open | `ae9eaab` |
 | M-2 | Moderate/Low | **Open** | — |
 
 ### C-1 — mathjax forged replies (fixed, `1e7d61f`)
@@ -335,14 +335,29 @@ treated as data, not an authenticity boundary.
 Bumped `dompurify` 3.4.12 → 3.4.14 (GHSA-55q2-fjhq-7xh7). `npm audit --omit=dev` now
 reports **0 vulnerabilities**; sanitizer + notebook-output tests green.
 
-### C-3 — ambient fs + capability wildcard (OPEN)
+### C-3 — ambient fs + capability wildcard (Phase 1 done; Phases 2–3 open)
 
-Not yet addressed — it is architectural (per-window capability split; short-lived,
-narrowly-scoped path grants instead of ambient caller-provided paths) and warrants its
-own focused pass, ideally co-verified. **Note:** the `capabilities/default.json`
-`windows:["main","*"]` wildcard this finding calls out is the *same* prerequisite the
-command-line (live-terminal) design lists as blocking — see
-`docs/COMMAND-LINE-ELEMENT.md` §7 Req 1. Tighten it before either ships.
+Not an exploitable path today (a sandboxed demo can't invoke; the privileged injection
+routes C-1/C-2 are fixed; no `remote` IPC) — so this is blast-radius reduction /
+defense-in-depth, done in phases.
+
+**Phase 1 — done (`ae9eaab`).** (a) Dropped the `capabilities/default.json`
+`windows:["main","*"]` wildcard for the explicit set of labels the app actually creates,
+`["main","presenter","settings","security"]` (the CLI export reuses the main window; the
+labels are static, none dynamic), so a stray/unexpected window label can no longer inherit
+IPC + these permissions. **This is also the `docs/COMMAND-LINE-ELEMENT.md` §7 Req 1
+prerequisite.** (b) `read_dir` (arbitrary directory enumeration; sole caller is the debug
+`dirPicker`) is now gated behind the runtime `DebugFlag` (`debug::require`), so it's
+unavailable in a normal release but still serves `Eigendeck.app --debug` batch tooling —
+a runtime gate, not `#[cfg(debug_assertions)]`, because debug mode is enable-able on a
+shipped build. Verified headlessly: `cargo check` + the settings / presenter / security
+window e2e probes all still open, render, and invoke. Mac sign-off still wanted.
+
+**Phase 2 (open)** — path-scope the write commands (`write_file`/`write_text_file`/
+`make_dir`): confine to app-data + the open deck's directory + picker-minted grants,
+canonicalized, reject outside. Needs the frontend's real write-path usage mapped first.
+**Phase 3 (open)** — ensure `resolve_and_read` makes the trust decision in Rust before
+returning bytes, not after in JS.
 
 ### M-2 — presenter nav-key source (OPEN)
 
