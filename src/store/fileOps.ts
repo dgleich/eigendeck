@@ -31,6 +31,7 @@ async function markNewDeckTrusted(presentation: Presentation): Promise<void> {
 }
 // @ts-ignore — pure JS module shared with the CLI tool
 import { buildExportHtml, parseEigendeckSource, extractEigendeckDeckJson } from '../lib/exportCore.mjs';
+import { normalizeUntrustedPresentation } from '../lib/normalizePresentation';
 import { readTextFileNative, writeTextFileNative, existsNative, mkdirNative } from '../lib/nativeFs';
 import {
   fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS, resolveMonoFontPackage,
@@ -506,6 +507,9 @@ export async function buildPresentationExportHtml(
   const { slideHtmls: printSlideHtmls } = await preparePrintLayer(presentation);
 
   // Read assets from SQLite for inlining
+  // The in-memory deck was already normalized on open, but run the boundary again on
+  // the exact structure we're about to render (defense-in-depth, matches the CLI path).
+  normalizeUntrustedPresentation(hydrated);
   return buildExportHtml({
     presentation: hydrated,
     deckJson,

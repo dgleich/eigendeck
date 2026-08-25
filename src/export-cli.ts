@@ -13,6 +13,7 @@
 import { invoke } from '@tauri-apps/api/core';
 // @ts-ignore — pure JS module
 import { buildExportHtml } from './lib/exportCore.mjs';
+import { normalizeUntrustedPresentation } from './lib/normalizePresentation';
 import { renderMathInHtml, applyMathPreamble } from './lib/mathjax';
 import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from './lib/fonts';
 import { mathCacheKey } from './lib/mathjaxRenderer';
@@ -138,6 +139,13 @@ async function main() {
     await invoke('db_open', { path: args.dbPath });
     const json = await invoke<string>('db_export_json');
     const presentation = JSON.parse(json);
+
+    // The CLI reads the deck straight from SQLite — it never went through the
+    // on-open normalize the GUI does. Run the same untrusted-content boundary here
+    // (this CLI runs in a hidden webview, so DOMParser/sanitize is available) so a
+    // crafted deck can't emit an active/hostile HTML artifact: sanitizes text html
+    // and drops elements with out-of-shape properties (audit C-2 export path).
+    normalizeUntrustedPresentation(presentation);
 
     console.log(`Exporting "${presentation.title}" (${presentation.slides.length} slides)...`);
 

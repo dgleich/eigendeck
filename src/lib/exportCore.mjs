@@ -81,8 +81,17 @@ function themeBackground(presentation, slide) {
   return themeColorsByName(presentation && presentation.theme, slide && slide.theme).background;
 }
 
+// Escape a dynamic value spliced into an exported attribute / style ("<>& → entities).
+// The export builds a self-contained, often HOSTED HTML artifact, so untrusted deck
+// values (geometry, urls, backgrounds, media attrs) must not break out of the quoted
+// attribute. Legit values (px numbers, https urls, #hex) are byte-identical. Callers
+// should ALSO normalizeUntrustedPresentation() before export (sanitizes html + drops
+// bad-shape elements); this is the sink defense for the values the normalizer doesn't
+// cover (audit C-2 export path). (esc mirrors escAttr in TextElementSvg.)
+export const escExportAttr = (v) => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 /** Absolute-position CSS fragment shared by every exported element's wrapper. */
-const absBox = (p) => `position:absolute;left:${p.x}px;top:${p.y}px;width:${p.width}px;height:${p.height}px`;
+const absBox = (p) => `position:absolute;left:${escExportAttr(p.x)}px;top:${escExportAttr(p.y)}px;width:${escExportAttr(p.width)}px;height:${escExportAttr(p.height)}px`;
 
 /** A demo / demo-piece iframe: splice the slide's theme vars into the demo HTML,
  *  escape it for srcdoc, and position it. (demo-piece passes html already run
@@ -327,7 +336,7 @@ export async function buildExportHtml(opts) {
             const sh = textBoxShadowCss(el);
             const rot = el.rotation ? `transform:rotate(${el.rotation}deg);` : '';
             const rad = el.borderRadius ? `border-radius:${el.borderRadius}px;` : '';
-            inner += `<div style="${absBox(p)};${bg ? `background:${bg};` : ''}${sh ? `box-shadow:${sh};` : ''}${rad}${rot}">` +
+            inner += `<div style="${absBox(p)};${bg ? `background:${escExportAttr(bg)};` : ''}${sh ? `box-shadow:${escExportAttr(sh)};` : ''}${escExportAttr(rad)}${escExportAttr(rot)}">` +
               svgMarkup + `</div>`;
             break;
           }
@@ -435,7 +444,7 @@ export async function buildExportHtml(opts) {
           // bytes SlideThumbnail shows).
           const previewSrc = getElementPreview ? await getElementPreview(el, slide) : null;
           if (previewSrc) {
-            inner += `<img src="${previewSrc}" style="${absBox(p)};object-fit:contain;" />`;
+            inner += `<img src="${escExportAttr(previewSrc)}" style="${absBox(p)};object-fit:contain;" />`;
           } else {
             // No cached preview (deck never opened / exported cold). Emit a
             // visible placeholder so the element isn't silently dropped.
@@ -449,9 +458,9 @@ export async function buildExportHtml(opts) {
             // the video is playable in the exported HTML.
             const embedSrc = buildEmbedSrc(el, { jsApi: false });
             if (embedSrc) {
-              inner += `<iframe src="${embedSrc}" style="${absBox(p)};border:none;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+              inner += `<iframe src="${escExportAttr(embedSrc)}" style="${absBox(p)};border:none;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
             } else {
-              inner += `<a href="${el.url}" style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;text-decoration:none;">&#9654; Video</a>`;
+              inner += `<a href="${escExportAttr(el.url)}" style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;text-decoration:none;">&#9654; Video</a>`;
             }
           } else if (el.kind === 'file' && el.src) {
             // Local file: inline the asset as a playable <video>.
@@ -462,13 +471,13 @@ export async function buildExportHtml(opts) {
               if (el.loop) attrs.push('loop');
               if (el.autoplay) attrs.push('autoplay');
               if (el.muted || el.autoplay) attrs.push('muted');
-              inner += `<video src="${videoSrc}" ${attrs.join(' ')} style="${absBox(p)};object-fit:contain;background:#000;"></video>`;
+              inner += `<video src="${escExportAttr(videoSrc)}" ${attrs.join(' ')} style="${absBox(p)};object-fit:contain;background:#000;"></video>`;
             } catch (e) { console.error('Video export failed:', e); }
           } else {
             // Unknown/poster-only: try a cached preview, else a placeholder.
             const previewSrc = getElementPreview ? await getElementPreview(el, slide) : null;
             if (previewSrc) {
-              inner += `<img src="${previewSrc}" style="${absBox(p)};object-fit:contain;background:#000;" />`;
+              inner += `<img src="${escExportAttr(previewSrc)}" style="${absBox(p)};object-fit:contain;background:#000;" />`;
             } else {
               inner += `<div style="${absBox(p)};display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-size:24px;font-family:sans-serif;">&#9654; Video</div>`;
             }
