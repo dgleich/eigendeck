@@ -38,6 +38,20 @@ describe('pasteInternalClip', () => {
     expect((els[0] as { html?: string }).html).toBe('hi');
   });
 
+  it('sanitizes untrusted element html on paste (H-1 clipboard ingress bypass)', () => {
+    // A clip carries the public, unauthenticated eigendeck marker, so its element
+    // html is attacker-controlled and must be normalized to the toolbar allowlist —
+    // otherwise an <img onerror> payload lands raw in a privileged render sink.
+    pasteInternalClip({
+      v: 1, kind: 'elements', fromSlideId: 's0', fromSlideIndex: 0,
+      elements: [el('x', { html: '<img src=x onerror="window.__PWNED=1"><b>ok</b>' } as Partial<SlideElement>)],
+    });
+    const html = (slide(1).elements[0] as { html?: string }).html || '';
+    expect(html).not.toMatch(/onerror/i);
+    expect(html).not.toMatch(/<img/i);
+    expect(html).toContain('ok');
+  });
+
   it('CROSS-slide paste creates an animation link (shared linkId with the source)', () => {
     pasteInternalClip({ v: 1, kind: 'elements', elements: [slide(0).elements[0]], fromSlideId: 's0', fromSlideIndex: 0 });
     const pasted = slide(1).elements[0];

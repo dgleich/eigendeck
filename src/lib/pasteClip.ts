@@ -11,8 +11,21 @@ import { usePresentationStore } from '../store/presentation';
 import { pasteElementDelta } from './syncLink';
 import { offsetElement } from './offsetElement';
 import { runCopyHook } from './elementLifecycle';
+import { sanitizeRichText } from './sanitizeRichText';
 import type { EigendeckClip } from './clipboardModel';
 import type { SlideElement } from '../types/presentation';
+
+// A clipboard clip is untrusted: any app can put HTML on the clipboard carrying the
+// public, unauthenticated eigendeck marker (clipboardModel), so decoded elements can
+// hold arbitrary html. Normalize text html to the toolbar allowlist on ingress —
+// same boundary as deck open / undo seeding / history restore (audit H-1). Mutates
+// in place, before the paste path clones/installs the elements.
+function sanitizeClipElements(els: readonly SlideElement[] | undefined): void {
+  for (const el of els || []) {
+    const t = el as { type?: string; html?: unknown };
+    if (t.type === 'text' && typeof t.html === 'string') t.html = sanitizeRichText(t.html);
+  }
+}
 
 /** Create the cross-slide animation LINK between a freshly-pasted element and its
  *  source (shared linkId), IF the source still exists. Shared by the element
@@ -34,12 +47,14 @@ export function pasteInternalClip(clip: EigendeckClip): void {
     // current slide/group — NOT a duplicate of the current slide. Same-deck this
     // is "copy slide 2, paste it"; cross-deck it inserts the slide (assets that
     // aren't in the target deck come in broken — the clip is JSON, not bytes; #167).
+    sanitizeClipElements((clip.slide as { elements?: SlideElement[] } | undefined)?.elements);
     state.pasteSlide(clip.slide);
     return;
   }
 
   const els = (clip.elements || []) as SlideElement[];
   if (!els.length) return;
+  sanitizeClipElements(els); // normalize before the loop clones/installs (H-1)
 
   const targetSlide = state.presentation.slides[state.currentSlideIndex];
   // Same slide if pasting back onto the slide we copied from (by id, so slide
