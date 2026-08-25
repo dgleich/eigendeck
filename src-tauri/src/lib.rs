@@ -227,20 +227,22 @@ struct ResolvedRead {
 /// the caller wants a sniff or the full bytes, keeping the report's verdict in lockstep
 /// with the read gate. The type gate inspects at most a small prefix (except .ipynb,
 /// which the caller re-reads in full), so a bounded read yields the same verdict.
-/// Command wrapper: restrict the arbitrary-path read to the two windows that
-/// legitimately render assets — the main editor and the presenter (the CLI export
-/// runs in the main window). NOTE (audit C-3, read-side): the TRUST decision on the
-/// resolved path is still made in JS (assetGate.ts) AFTER the bytes cross into the
-/// webview; this window allowlist is blast-radius reduction, not a Rust-side trust
-/// gate. Moving the trust decision into Rust (or passing presenter assets by db id /
-/// app-issued grant) is deferred read-side hardening.
+/// Command wrapper: restrict the arbitrary-path read to the windows that legitimately
+/// resolve deck-referenced files — the main editor, the presenter (both render assets;
+/// the CLI export runs in the main window), and the SECURITY window (securityReport.ts
+/// → resolveAndGate resolves every linked file to show its gate decision). Settings is
+/// excluded (it renders no assets). NOTE (audit C-3, read-side): the TRUST decision on
+/// the resolved path is still made in JS (assetGate.ts) AFTER the bytes cross into the
+/// webview; this window allowlist is blast-radius reduction, not a Rust-side trust gate.
+/// Moving the trust decision into Rust (or passing assets by db id / app-issued grant)
+/// is deferred read-side hardening.
 #[tauri::command]
 fn resolve_and_read(
     window: tauri::WebviewWindow,
     path: String,
     max_bytes: Option<u64>,
 ) -> Result<ResolvedRead, String> {
-    fscmds::require_windows(&window, &["main", "presenter"])?;
+    fscmds::require_windows(&window, &["main", "presenter", "security"])?;
     resolve_and_read_impl(path, max_bytes)
 }
 

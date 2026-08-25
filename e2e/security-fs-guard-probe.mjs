@@ -6,7 +6,8 @@
 //
 //   - write_text_file from the main window     → SUCCEEDS, file appears on disk
 //   - write_text_file from the Security window  → REJECTED, and NO file is created
-//   - resolve_and_read from the Security window  → REJECTED (allowlist is main+presenter)
+//   - resolve_and_read from the Security window  → ALLOWED (it resolves the deck's linked
+//     files to build the security report; the arbitrary-WRITE guard is what matters here)
 //
 // The invoke goes through window.__TAURI_INTERNALS__.invoke (reaches the real Rust
 // command); the Node harness checks the filesystem directly (it, unlike the webview,
@@ -48,11 +49,11 @@ if (!String(secRes).includes("not permitted from window 'security'")) fail(`unex
 if (existsSync(secPath)) fail('security-window write was rejected but a file was created anyway — guard leaked');
 console.log('  1) security window → write_text_file rejected, NO file created ✓');
 
-// resolve_and_read allowlist is main+presenter, so the Security window is refused too.
+// resolve_and_read allowlist includes security (it resolves the deck's linked files
+// for the report), so it must be ALLOWED here — only arbitrary WRITES are blocked.
 const readRes = await invokeIn(sid, 'resolve_and_read', { path: mainPath, maxBytes: null });
-if (!String(readRes).startsWith('ERR:')) fail(`security-window resolve_and_read should be REJECTED, got ${readRes}`);
-if (!String(readRes).includes("not permitted from window 'security'")) fail(`unexpected read rejection message: ${readRes}`);
-console.log('  2) security window → resolve_and_read rejected (allowlist main+presenter) ✓');
+if (String(readRes).includes("not permitted from window 'security'")) fail(`security-window resolve_and_read should be ALLOWED (needed for the security report), got ${readRes}`);
+console.log('  2) security window → resolve_and_read allowed (needed for its report; writes still blocked) ✓');
 
 for (const p of [mainPath, secPath]) { try { rmSync(p); } catch { /* absent */ } }
 await quit(sid);

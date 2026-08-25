@@ -372,9 +372,12 @@ the caller is an authorized window. Two shared helpers in `fscmds.rs`: `require_
   caller (App.tsx, fileOps.ts, AssetSection, WelcomeWindow, DebugConsole, watcherRegistry,
   store/db.ts, export-cli.ts, the debug/* batch tools) — all main-window UI or the main-window
   CLI export.
-- **Main + presenter** (`require_windows`) — `resolve_and_read` (`lib.rs`): the presenter
-  renders assets through it, so main-only would break present mode; the allowlist still
-  excludes settings/security. **Honest read-side note:** this is blast-radius reduction, NOT a
+- **Main + presenter + security** (`require_windows`) — `resolve_and_read` (`lib.rs`): the
+  presenter renders assets through it, and the **security** window resolves every linked
+  file to build its report (`securityReport.ts` → `resolveAndGate`), so those windows must
+  be allowed; only **settings** (which renders no assets) is excluded. (Initially set to
+  main+presenter only, which broke the security window's approve/watch flow — caught by the
+  e2e regression run and corrected.) **Honest read-side note:** this is blast-radius reduction, NOT a
   Rust-side trust gate — `resolve_and_read` canonicalizes, rejects non-files/oversized, and
   returns the bytes; the TRUST decision is still made in JS (`assetGate.ts`) *after* the bytes
   cross into the webview. Moving that decision into Rust (or handing the presenter assets by
