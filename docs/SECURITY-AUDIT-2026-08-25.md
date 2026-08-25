@@ -1,0 +1,188 @@
+# Security audit — privileged webview boundary (2026-08-25)
+
+Status: **phase 1 complete — source review and existing-test verification.** This
+pass covers Tauri commands/capabilities, privileged HTML/SVG sinks, iframe message
+boundaries, and alternate presentation-ingress paths. It does not yet cover
+malformed-SQLite resource exhaustion, Jupyter protocol behavior, or the YouTube
+loopback shim in depth.
+
+## Threat model used
+
+A received `.eigendeck` file, pasted clipboard HTML, demo HTML, notebook output,
+and persisted cache/history rows are untrusted. The privileged app document can
+invoke registered Tauri commands. A sandboxed demo is expected to execute script,
+but must not be able to cause script execution in the privileged document or call
+Tauri IPC.
+
+## Findings
+
+### C-1 — sandboxed demo can forge MathJax replies and inject privileged SVG
+
+**Severity: Critical. Confidence: High (code path confirmed; real-WebKit exploit
+test still required).**
+
+`mathjaxRenderer` accepts `message` events based only on `msg.type` and a pending,
+predictable id (`r1`, `r2`, ...). It does not require `ev.source` to equal the
+corresponding MathJax iframe (`src/lib/mathjaxRenderer.ts:135-166,275-289`). Every
+sandboxed demo can call `window.parent.postMessage`. A hostile demo can therefore
+race/flood a forged `{type:"rendered", id:"rN", svg:"..."}` response while a
+slide containing uncached math is rendering.
+
+Fresh renderer replies deliberately skip `sanitizeSvg`; only SVG loaded from the
+SQLite cache is sanitized. The forged SVG consequently flows through
+`buildTextElementSvgMarkup` and then `dangerouslySetInnerHTML` in the privileged
+document (`src/components/TextElementSvg.tsx:88-120,185-197`).
+
+Because the privileged document has Tauri IPC, successful script execution can
+reach commands including arbitrary-path writes (C-3), making this a sandbox escape
+rather than a display-only injection.
+
+Recommended fix:
+
+1. Store the expected source window with every pending request and reject unless
+   `ev.source === pool.iframe.contentWindow`.
+2. Apply the same source check to `ready`, `preamble-applied`, errors, and logs.
+3. Sanitize every returned SVG at the renderer-to-parent boundary even when the
+   expected iframe sent it (defense in depth).
+4. Add a real WebKit e2e fixture with a demo that forges renderer messages and
+   assert that a marker cannot appear in the privileged DOM/global state.
+
+### C-2 — unvalidated element properties break out of generated SVG attributes
+
+**Severity: Critical. Confidence: High (string construction confirmed; real-WebKit
+event execution still required).**
+
+The SQLite loader parses element `data` as arbitrary JSON and performs no runtime
+schema validation. TypeScript types do not constrain a crafted deck at runtime.
+`buildTextElementSvgMarkup` interpolates `position.width`, `position.height`,
+`fontFamily`, color, and other values directly into quoted markup/style strings.
+The resulting string is installed with `dangerouslySetInnerHTML`.
+
+For example, a nonnumeric width containing a quote creates an additional SVG
+attribute at `src/components/TextElementSvg.tsx:110-114`. This bypasses the rich-
+text sanitizer because the payload is in an element property, not `element.html`.
+It is reached automatically when the affected slide is displayed.
+
+Recommended fix:
+
+- Validate and normalize the entire presentation at every untrusted ingress.
+  Require finite bounded numbers for geometry/visual numeric fields, enums for
+  discriminants, known font identifiers (or safely escaped family strings), and
+  syntactically valid colors.
+- Stop assembling DOM markup with unescaped values. At minimum XML-attribute
+  escape every attribute and CSS-escape/validate every style value; preferably
+  build the outer SVG with React/DOM APIs.
+- Add malicious-property tests covering quotes, control characters, `NaN`,
+  infinities, huge values, and wrong JSON types.
+
+### C-3 — registered commands provide ambient arbitrary filesystem mutation
+
+**Severity: High independently; Critical as an impact amplifier. Confidence: High.**
+
+`write_file`, `write_text_file`, `make_dir`, `path_stat`, `path_exists`,
+`read_dir`, `watch_path`, and `resolve_and_read` accept caller-provided paths.
+The write commands perform no path or caller-window authorization
+(`src-tauri/src/fscmds.rs:23-104`). The command handler is shared by all app
+windows. Tauri capability configuration also applies broad permissions to
+`["main", "*"]` (`src-tauri/capabilities/default.json:5`).
+
+Removing the fs-plugin permission is useful, but does not remove ambient disk
+access when equivalent unrestricted custom commands remain registered. Any
+privileged-document injection therefore becomes arbitrary read/write with the
+app user's permissions.
+
+Recommended fix:
+
+- Split commands by purpose and authorize the invoking window.
+- Replace arbitrary paths with short-lived, app-side grants minted after a native
+  picker or with narrowly scoped app-data/deck paths.
+- Keep external asset reads behind one Rust-side authorization operation; do not
+  rely on JavaScript performing the trust decision after `resolve_and_read` has
+  already returned bytes.
+- Remove release registration of `read_dir` if it is genuinely debug-only.
+- Define explicit per-window Tauri capabilities instead of `"*"`.
+
+### H-1 — history and clipboard paths bypass presentation normalization
+
+**Severity: High. Confidence: High.**
+
+The current presentation is rich-text sanitized during normal deck open. However:
+
+- Cross-session undo snapshots returned by `db_get_state_at` are inserted directly
+  into zundo (`src/store/presentation.ts:1081-1087`). Undo can restore their raw
+  element data.
+- History restore passes `previewData` directly to `setPresentation`
+  (`src/components/HistoryPanel.tsx:180-187`).
+- Clipboard HTML can self-identify as an Eigendeck clip by carrying a public,
+  unauthenticated base64 attribute (`src/lib/clipboardModel.ts:57-69`). Elements
+  and slides decoded from it are cloned directly into the store
+  (`src/lib/pasteClip.ts:29-57`, `src/store/presentation.ts:351-360`).
+
+These paths bypass even the current `element.html` sanitizer and would also bypass
+the full schema validation required for C-2.
+
+Recommended fix: create one fail-closed `normalizeUntrustedPresentation` /
+`normalizeUntrustedElement` boundary and call it for open/import, history preview
+and restore, undo seeding, clipboard elements/slides, and any cross-window payload.
+Do not treat the clipboard marker as an authenticity boundary.
+
+### M-1 — production DOMPurify version has a published XSS advisory
+
+**Severity: Moderate. Confidence: High (`npm audit --omit=dev`).**
+
+The lockfile resolves `dompurify` 3.4.12. `npm audit` reports
+GHSA-55q2-fjhq-7xh7 (affected range `<=3.4.12`) and a fix is available. DOMPurify
+is a direct production security dependency used at privileged injection sinks.
+
+Recommended fix: update DOMPurify to a fixed release, review upstream behavioral
+changes, then rerun all sanitizer and notebook-output tests plus malicious corpus
+tests in WebKit.
+
+### M-2 — presenter navigation messages do not authenticate their source
+
+**Severity: Moderate/Low. Confidence: High.**
+
+`PresentMode` accepts any window message shaped as
+`{__eigendeck:1,type:"nav-key",key:...}` without checking that its source is one
+of the mounted demo frames (`src/components/PresentMode.tsx:198-218`). A framed
+third-party video/provider can therefore navigate the deck if it sends that shape.
+This is an integrity/availability issue, not currently a privileged-code path.
+
+Recommended fix: maintain the set of mounted bridge iframe windows and accept
+bridge messages only from that set. Apply the same policy centrally to all demo
+message types.
+
+## Existing controls that held up in this pass
+
+- Demo frames use opaque-origin `sandbox="allow-scripts"`, without
+  `allow-same-origin`.
+- Raw HTML elements omit `allow-scripts` and inject a no-network CSP.
+- Notebook static HTML/SVG and markdown are routed through DOMPurify; executable
+  output is placed in an opaque-origin iframe.
+- Cached MathJax SVG is sanitized when loaded from SQLite.
+- External asset type gates have a substantial existing unit-test matrix.
+- The Tauri asset protocol is disabled and no fs-plugin capability is granted.
+
+These controls do not mitigate C-1/C-2 because those findings cross into the
+privileged document through separate trusted-string assumptions.
+
+## Verification performed
+
+- Focused security suites: 352 tests passed.
+- Full Vitest suite: 109 files passed, 1 skipped; 1521 tests passed, 1 skipped.
+- `npm audit --omit=dev`: one moderate production vulnerability (DOMPurify).
+- Rust verification was not run because `cargo` is not installed in this
+  container (`/bin/sh: cargo: not found`).
+
+## Next audit phases
+
+1. Add safe regression/e2e probes for C-1 and C-2, then fix them before deeper
+   review because they invalidate assumptions made by lower layers.
+2. Audit malformed SQLite, JSON shape/size limits, decompression/image/PDF limits,
+   and denial-of-service behavior.
+3. Audit Jupyter token migration/storage, REST/WebSocket origin handling, and
+   kernel execution UX.
+4. Audit the loopback YouTube shim (token, Host/Origin checks, DNS rebinding,
+   lifecycle, and response headers).
+5. Audit export HTML as an independent browser artifact and clipboard/pasteboard
+   parsing on each platform.
