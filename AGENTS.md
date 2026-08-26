@@ -48,6 +48,23 @@ setup` flow. There is no auto-build; `npm run setup` only copies the bundles int
 cd src-tauri && cargo check && cargo clippy -- -D warnings
 ```
 
+**Running cargo in the dev container.** The crate *does* compile here: the GTK/WebKit
+dev libraries Tauri needs are already installed (`pkg-config --exists webkit2gtk-4.1`
+returns true) and `sudo` is passwordless. Two non-obvious things make cargo *look*
+broken, and get misread as "GLib/GTK metadata not present":
+
+- **`cargo` is not on `PATH`.** `export PATH="$HOME/.cargo/bin:$PATH"` (reinstall with
+  `rustup` if a container reset wiped `~/.cargo`).
+- **`/work` is a `noexec` mount**, so build-scripts can't execute there and cargo fails
+  with `Permission denied (os error 13) … build-script-build (never executed)`. Point
+  the target dir at an exec-capable location: `export CARGO_TARGET_DIR="$HOME/el-target"`.
+
+Storage tests share one global SQLite connection, so run them serially —
+`cargo test --lib -- --test-threads=1` (parallel runs race and fail spuriously). If a
+fresh container is genuinely missing the native libs: `sudo apt-get install -y
+pkg-config build-essential libglib2.0-dev libgtk-3-dev libwebkit2gtk-4.1-dev
+libjavascriptcoregtk-4.1-dev libsoup-3.0-dev librsvg2-dev`.
+
 ## Headless verification (don't defer to a Mac too fast)
 
 A lot that feels "app-only" **can** be checked headlessly in this Linux container:
@@ -120,6 +137,20 @@ propagated (the #98/#85 bug class).
 ## Hooks
 
 PostToolUse hook on Write|Edit reminds to update `docs/LLM-EDITING.md` when src/types/presentation.ts changes. (In .claude/settings.local.json)
+
+## Committing
+
+- One reviewed change is one commit, made before reporting back. Split unrelated fixes
+  into separate, **independently-green** commits (each one builds and passes on its own).
+- Message: a conventional header `type(scope): imperative summary` (lowercase — `fix`,
+  `feat`, `security`, `test`, `docs`, `chore`, `refactor`), then a prose body in full
+  sentences saying *what and why*. End with the `Co-Authored-By:` + `Claude-Session:`
+  trailer your harness provides.
+- **Never put backticks in `git commit -m`** — bash runs them as command substitution and
+  silently blanks those words. Use `git commit -F -` with a heredoc, or a message file.
+- Run the gates green first: frontend `npx tsc --noEmit` + `npx vitest run`; Rust
+  `cargo check` + `cargo clippy -- -D warnings` + `cargo fmt --check` +
+  `cargo test --lib -- --test-threads=1` (see **Rust check** above for the container setup).
 
 ## Session logs
 

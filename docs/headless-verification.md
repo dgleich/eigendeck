@@ -60,6 +60,22 @@ unless it hits the genuinely-Mac-only list at the bottom.
 - Compiles/lints the **non-macOS** Rust here. Code behind
   `#[cfg(target_os = "macos")]` (the NSToolbar, native menu) does **not** compile
   on Linux — that part is Mac-only (below).
+- **The dev container CAN build the Tauri crate** — do not report "GLib/GTK dev
+  metadata not present" without checking. The native libs are installed
+  (`pkg-config --exists webkit2gtk-4.1` → true) and `sudo` is passwordless, so it's
+  almost always one of two setup gotchas, not a missing dependency:
+  - **`cargo` isn't on `PATH`:** `export PATH="$HOME/.cargo/bin:$PATH"`.
+  - **`/work` is a `noexec` mount**, so build-scripts can't run there and cargo aborts
+    with `Permission denied (os error 13) … build-script-build (never executed)`. Set
+    `export CARGO_TARGET_DIR="$HOME/el-target"` (any exec-capable dir; `/tmp/el-target`,
+    which the e2e rig already uses, works too).
+  - **Storage tests share a global SQLite connection** → run serially with
+    `cargo test --lib -- --test-threads=1`, or they race and fail spuriously.
+  - If a *fresh* container is genuinely missing the libs (rare): `sudo apt-get install
+    -y pkg-config build-essential libglib2.0-dev libgtk-3-dev libwebkit2gtk-4.1-dev
+    libjavascriptcoregtk-4.1-dev libsoup-3.0-dev librsvg2-dev`.
+  - Full gate set before committing Rust: `cargo check`, `cargo clippy -- -D warnings`,
+    `cargo fmt --check`, `cargo test --lib -- --test-threads=1`.
 
 ## What genuinely needs a Mac
 
