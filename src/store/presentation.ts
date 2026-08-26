@@ -1111,6 +1111,7 @@ export async function seedUndoHistory(): Promise<number> {
 
 let sqliteDbPath: string | null = null;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
+let flushInFlight: Promise<void> | null = null;
 
 // Dirty tracking: which items need to be written to SQLite
 const dirtyElements = new Set<string>();    // element IDs whose data changed
@@ -1185,10 +1186,31 @@ export function slideMeta(s: Slide): { notes: string; groupId: string; config: R
   return { notes: s.notes || '', groupId: s.groupId || '', config };
 }
 
-/** Force an immediate flush (called on explicit save, pointerup, text commit) */
-export async function flushToSqlite(): Promise<void> {
-  if (!sqliteDbPath) return;
-  if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+function hasPendingSqliteChanges(): boolean {
+  return dirtyPresentation
+    || dirtyElements.size > 0
+    || dirtySlides.size > 0
+    || dirtyZOrder.size > 0
+    || addedSlides.size > 0
+    || deletedSlides.size > 0
+    || addedElements.size > 0
+    || deletedElements.size > 0;
+}
+
+/** Write one detached batch. New edits accumulate in the live queues while the
+ * awaited database calls below are in flight, so completing this batch can
+ * never clear work that arrived after it started (#186). */
+async function flushSqliteBatch(): Promise<boolean> {
+  if (!sqliteDbPath) return true;
+
+  let batchDirtyPresentation = false;
+  let batchDirtyElements = new Set<string>();
+  let batchDirtySlides = new Set<string>();
+  let batchDirtyZOrder = new Set<string>();
+  let batchAddedSlides = new Map<string, { position: number; groupId?: string }>();
+  let batchDeletedSlides = new Set<string>();
+  let batchAddedElements = new Map<string, { slideId: string; element: any; zOrder: number }>();
+  let batchDeletedElements = new Map<string, { slideId: string; junctionId: string }>();
 
   // Force any pending notebook overlays to disk as part of the same save, so a
   // deck saved/autosaved within the overlay's 800ms debounce can't drop it
@@ -1198,6 +1220,27 @@ export async function flushToSqlite(): Promise<void> {
   try {
     const { invoke } = await import('@tauri-apps/api/core');
     const state = usePresentationStore.getState();
+
+    // Detach every pending queue before the first database await. The store
+    // subscriber continues writing to the live queues; a same-ID edit made
+    // during this flush is therefore retained for the next batch instead of
+    // being erased by a later clear().
+    batchDirtyPresentation = dirtyPresentation;
+    dirtyPresentation = false;
+    batchDirtyElements = new Set(dirtyElements);
+    for (const id of batchDirtyElements) dirtyElements.delete(id);
+    batchDirtySlides = new Set(dirtySlides);
+    for (const id of batchDirtySlides) dirtySlides.delete(id);
+    batchDirtyZOrder = new Set(dirtyZOrder);
+    for (const id of batchDirtyZOrder) dirtyZOrder.delete(id);
+    batchAddedSlides = new Map(addedSlides);
+    for (const id of batchAddedSlides.keys()) addedSlides.delete(id);
+    batchDeletedSlides = new Set(deletedSlides);
+    for (const id of batchDeletedSlides) deletedSlides.delete(id);
+    batchAddedElements = new Map(addedElements);
+    for (const id of batchAddedElements.keys()) addedElements.delete(id);
+    batchDeletedElements = new Map(deletedElements);
+    for (const id of batchDeletedElements.keys()) deletedElements.delete(id);
 
     // --- Reconcile structural add/delete that CANCEL within this one flush ---
     // A never-flushed row (queued in addedSlides/addedElements) has no DB row, so its
@@ -1214,48 +1257,45 @@ export async function flushToSqlite(): Promise<void> {
     for (const s of state.presentation.slides)
       for (const el of s.elements) finalElemKeys.add(jkey(s.id, el.id));
 
-    for (const slideId of [...deletedSlides]) {
-      if (addedSlides.has(slideId)) {
-        deletedSlides.delete(slideId);
+    for (const slideId of [...batchDeletedSlides]) {
+      if (batchAddedSlides.has(slideId)) {
+        batchDeletedSlides.delete(slideId);
         if (!finalSlideIds.has(slideId)) {
-          addedSlides.delete(slideId);
+          batchAddedSlides.delete(slideId);
           // …and any element junctions queued onto that never-persisted slide.
-          for (const k of [...addedElements.keys()]) {
-            if (addedElements.get(k)!.slideId === slideId) addedElements.delete(k);
+          for (const k of [...batchAddedElements.keys()]) {
+            if (batchAddedElements.get(k)!.slideId === slideId) batchAddedElements.delete(k);
           }
         }
       }
     }
-    for (const k of [...deletedElements.keys()]) {
-      if (addedElements.has(k)) {
-        deletedElements.delete(k);
-        if (!finalElemKeys.has(k)) addedElements.delete(k);
+    for (const k of [...batchDeletedElements.keys()]) {
+      if (batchAddedElements.has(k)) {
+        batchDeletedElements.delete(k);
+        if (!finalElemKeys.has(k)) batchAddedElements.delete(k);
       }
     }
 
     // Structural changes: delete slides + element junctions first, then add.
-    for (const slideId of deletedSlides) {
+    for (const slideId of batchDeletedSlides) {
       try { await invoke('db_delete_slide', { slideId }); } catch (e) { console.warn('delete slide failed:', e); }
     }
-    deletedSlides.clear();
 
-    for (const [slideId, info] of addedSlides) {
+    for (const [slideId, info] of batchAddedSlides) {
       try {
         await invoke('db_add_slide', { id: slideId, position: info.position, groupId: info.groupId || null });
       } catch (e) { console.warn('add slide failed:', e); }
     }
-    addedSlides.clear();
 
     // Close junctions by the CANONICAL row id (syncId ?? id). A duplicated
     // synced instance has a fresh in-session id but its DB junction was written
     // under the canonical id, so removing by the instance id would miss the
     // junction and the element would resurrect on reload.
-    for (const { slideId, junctionId } of deletedElements.values()) {
+    for (const { slideId, junctionId } of batchDeletedElements.values()) {
       try {
         await invoke('db_remove_element_from_slide', { slideId, elementId: junctionId });
       } catch (e) { console.warn('remove element failed:', e); }
     }
-    deletedElements.clear();
 
     // Added elements in TWO passes so junctions never precede their row:
     //   pass 1 — instances that OWN their row (canonical === own id) → db_add_element
@@ -1284,7 +1324,7 @@ export async function flushToSqlite(): Promise<void> {
     const liveOf = (info: { slideId: string; element: any }) =>
       state.presentation.slides.find((s) => s.id === info.slideId)
         ?.elements.find((e) => e.id === info.element.id) ?? info.element;
-    for (const info of addedElements.values()) {
+    for (const info of batchAddedElements.values()) {
       const el = liveOf(info);
       const canonical = el.syncId ?? el.id;
       if (canonical === el.id) {
@@ -1292,7 +1332,7 @@ export async function flushToSqlite(): Promise<void> {
         catch (e) { console.warn('add element row failed:', e); }
       }
     }
-    for (const info of addedElements.values()) {
+    for (const info of batchAddedElements.values()) {
       const el = liveOf(info);
       const syncId: string | undefined = el.syncId;
       const canonical = syncId ?? el.id;
@@ -1312,17 +1352,15 @@ export async function flushToSqlite(): Promise<void> {
         }
       } catch (e) { console.warn('add element junction failed:', e); }
     }
-    addedElements.clear();
 
     // Incremental: only write dirty items
-    if (dirtyPresentation) {
+    if (batchDirtyPresentation) {
       for (const [key, value] of Object.entries(presentationRows(state.presentation))) {
         await invoke('db_update_presentation', { key, value });
       }
-      dirtyPresentation = false;
     }
 
-    for (const elementId of dirtyElements) {
+    for (const elementId of batchDirtyElements) {
       // Find the element in the current state
       for (const slide of state.presentation.slides) {
         const el = slide.elements.find((e) => e.id === elementId);
@@ -1342,14 +1380,13 @@ export async function flushToSqlite(): Promise<void> {
         }
       }
     }
-    dirtyElements.clear();
 
     // Slide metadata changes (notes, groupId, position, config)
     // The `config` JSON holds per-slide overrides (theme + per-preset
     // font slots). Build it from the slide's override fields and pass:
     // - JSON string when there are overrides
     // - empty string to CLEAR overrides (storage maps to NULL column)
-    for (const slideId of dirtySlides) {
+    for (const slideId of batchDirtySlides) {
       const idx = state.presentation.slides.findIndex((s) => s.id === slideId);
       const slide = state.presentation.slides[idx];
       if (slide) {
@@ -1364,10 +1401,9 @@ export async function flushToSqlite(): Promise<void> {
         });
       }
     }
-    dirtySlides.clear();
 
     // Z-order changes — update all element positions on affected slides
-    for (const slideId of dirtyZOrder) {
+    for (const slideId of batchDirtyZOrder) {
       const slide = state.presentation.slides.find((s) => s.id === slideId);
       if (slide) {
         for (let j = 0; j < slide.elements.length; j++) {
@@ -1382,12 +1418,40 @@ export async function flushToSqlite(): Promise<void> {
         }
       }
     }
-    dirtyZOrder.clear();
 
+    return true;
   } catch (e) {
+    // A failed batch remains pending. Prefer any newer map value already queued
+    // for the same key; it describes a later state than this detached batch.
+    dirtyPresentation ||= batchDirtyPresentation;
+    for (const id of batchDirtyElements) dirtyElements.add(id);
+    for (const id of batchDirtySlides) dirtySlides.add(id);
+    for (const id of batchDirtyZOrder) dirtyZOrder.add(id);
+    for (const [id, value] of batchAddedSlides) if (!addedSlides.has(id)) addedSlides.set(id, value);
+    for (const id of batchDeletedSlides) deletedSlides.add(id);
+    for (const [id, value] of batchAddedElements) if (!addedElements.has(id)) addedElements.set(id, value);
+    for (const [id, value] of batchDeletedElements) if (!deletedElements.has(id)) deletedElements.set(id, value);
     console.error('SQLite flush failed:', e);
     // Don't wipe history on failure — just log and retry next flush
+    return false;
   }
+}
+
+/** Force an immediate flush (called on explicit save, pointerup, text commit).
+ * Flushes are serialized, and the owner drains edits that arrive while a batch
+ * is in flight before resolving. */
+export async function flushToSqlite(): Promise<void> {
+  if (!sqliteDbPath) return;
+  if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+
+  if (!flushInFlight) {
+    flushInFlight = (async () => {
+      do {
+        if (!await flushSqliteBatch()) break;
+      } while (sqliteDbPath && hasPendingSqliteChanges());
+    })().finally(() => { flushInFlight = null; });
+  }
+  await flushInFlight;
 }
 
 /** Debounced flush — called when dirty items accumulate */

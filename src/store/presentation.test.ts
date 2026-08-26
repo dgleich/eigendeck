@@ -1,5 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { usePresentationStore, presentationRows, slideMeta } from './presentation';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { invoke } from '@tauri-apps/api/core';
+import {
+  closeSqliteProject,
+  flushToSqlite,
+  markElementDirty,
+  presentationRows,
+  setSqliteDbPath,
+  slideMeta,
+  usePresentationStore,
+} from './presentation';
 import { createDefaultPresentation } from '../types/presentation';
 import type { Presentation, Slide } from '../types/presentation';
 
@@ -89,6 +98,61 @@ describe('slideMeta — slide flush/diff single source', () => {
     for (const patch of [{ notes: 'x' }, { groupId: 'h' }, { theme: 'black' }, { titleFont: 'ptsans' }, { bodyFont: 'ptsans' }, { hypeFont: 'lato' }]) {
       expect(ser({ ...slide, ...patch } as S)).not.toBe(b);
     }
+  });
+});
+
+describe('SQLite flush concurrency (#186)', () => {
+  it('drains a same-element edit that arrives while its prior write is in flight', async () => {
+    const mockedInvoke = vi.mocked(invoke);
+    mockedInvoke.mockReset();
+
+    usePresentationStore.setState({
+      presentation: {
+        ...createDefaultPresentation(),
+        slides: [{
+          id: 's-race', notes: '', elements: [{
+            id: 'e-race', type: 'image', assetId: 'asset-pdf',
+            position: { x: 360, y: 100, width: 400, height: 300 },
+          }],
+        } as Slide],
+      },
+      currentSlideIndex: 0,
+    });
+    setSqliteDbPath('/tmp/flush-race.eigendeck');
+
+    let releaseFirstWrite!: () => void;
+    const firstWriteStarted = new Promise<void>((resolve) => {
+      mockedInvoke.mockImplementation(async (command) => {
+        if (command === 'db_update_element' && !releaseFirstWrite) {
+          resolve();
+          await new Promise<void>((release) => { releaseFirstWrite = release; });
+        }
+        return undefined;
+      });
+    });
+
+    markElementDirty('e-race');
+    const flush = flushToSqlite();
+    await firstWriteStarted;
+
+    usePresentationStore.getState().updateElement('e-race', {
+      position: { x: 482, y: 100, width: 400, height: 300 },
+    });
+    // openSqliteProject normally establishes the subscriber's private
+    // prevPresentation baseline. This isolated unit setup skips open, so model
+    // the subscriber's queue event explicitly.
+    markElementDirty('e-race');
+    releaseFirstWrite();
+    await flush;
+
+    const writes = mockedInvoke.mock.calls
+      .filter(([command]) => command === 'db_update_element')
+      .map(([, args]) => JSON.parse((args as { data: string }).data));
+    expect(writes).toHaveLength(2);
+    expect(writes[0].position.x).toBe(360);
+    expect(writes[1].position.x).toBe(482);
+
+    await closeSqliteProject();
   });
 });
 
