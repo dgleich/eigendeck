@@ -372,8 +372,19 @@ export const usePresentationStore = create<PresentationState>()(
           const slides = [...state.presentation.slides];
           const slide = slides[from];
 
-          // If both slides are in the same group, reorder within the group
-          if (slide.groupId && slides[to]?.groupId === slide.groupId) {
+          // A build is the CONTIGUOUS run around the dragged slide. A standalone
+          // slide may split one groupId into two runs; those halves operate
+          // independently until the divider moves away, at which point adjacency
+          // naturally rejoins them. Never collect same-id slides across a gap.
+          let runStart = from;
+          let runEnd = from;
+          if (slide.groupId) {
+            while (runStart > 0 && slides[runStart - 1].groupId === slide.groupId) runStart--;
+            while (runEnd + 1 < slides.length && slides[runEnd + 1].groupId === slide.groupId) runEnd++;
+          }
+
+          // Reorder a slide only when the drop remains inside its contiguous run.
+          if (slide.groupId && to >= runStart && to <= runEnd) {
             const [moved] = slides.splice(from, 1);
             slides.splice(to, 0, moved);
             return {
@@ -383,26 +394,14 @@ export const usePresentationStore = create<PresentationState>()(
             };
           }
 
-          // If this slide has a group and we're moving outside it, move the whole group
+          // Moving outside the run moves only that contiguous build half.
           if (slide.groupId) {
-            const groupId = slide.groupId;
-            // Collect all group members
-            const groupSlides: Slide[] = [];
-            const otherSlides: Slide[] = [];
-            let firstGroupIdx = -1;
-            slides.forEach((s, i) => {
-              if (s.groupId === groupId) {
-                if (firstGroupIdx === -1) firstGroupIdx = i;
-                groupSlides.push(s);
-              } else {
-                otherSlides.push(s);
-              }
-            });
+            const groupSlides = slides.slice(runStart, runEnd + 1);
+            const otherSlides = [...slides.slice(0, runStart), ...slides.slice(runEnd + 1)];
 
-            // Compute target position in the "others" array
-            // Adjust 'to' for removed group slides
+            // Compute target position in the "others" array.
             let adjustedTo = to;
-            if (to > from) {
+            if (to > runEnd) {
               adjustedTo = Math.max(0, to - groupSlides.length + 1);
             }
             adjustedTo = Math.min(adjustedTo, otherSlides.length);
