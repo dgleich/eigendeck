@@ -60,3 +60,54 @@ focused regressions cover independent-half movement and divider-removal rejoinin
 Verification after the narrowed slice: the focused state-machine + existing store suite
 passed (74 tests), `npm run build` passed, and the full Vitest run passed with 1567 tests
 and 1 skipped. The generated portion exercised 960 state transitions in that run.
+
+## Real-user presentation build
+
+Provisioned the Linux Tauri e2e rig and added `user-build-hunt-probe.mjs`, a broad
+exploratory workflow that authors a four-slide talk through the real editor controls:
+toolbar insertion, native WebDriver double-click into contentEditable, speaker notes,
+element dragging, sidebar duplication, Add Build Slide through the context menu, Add
+Slide, the video URL modal, and keyboard undo/redo. The automation seam is used only
+to observe state and save in place, standing in for the native dialog WebDriver cannot
+drive.
+
+The probe saves and reopens the real SQLite deck, checks the authored text, notes,
+video, slide structure, and then edits a synced duplicate after reload. This last step
+also confirmed that the live distinct element IDs becoming one canonical persisted ID
+is intentional sync normalization: the post-reopen UI edit correctly propagated to all
+three synced instances. The first attempt's synthetic double-click failures were a
+harness artifact; switching to native WebDriver pointer actions made the user gesture
+faithful. The final run passed without uncaught JavaScript errors or reproducible
+product defects.
+
+## Asset-heavy presentation build
+
+Extended the user workflow with `user-asset-build-hunt-probe.mjs`: a raster PNG,
+an authored SVG diagram, and a 3.6 MB PDF are placed through the real canvas file-
+paste handler, moved across three slides, and the raster is resized through its real
+handle. The probe waits for the PDF to rasterize through Pdfium, saves/reopens the
+SQLite deck, and checks element kind, asset identity, exact geometry, and embedded
+byte availability. `run-probe.sh` now passes an optional `E2E_PDF`, and the shared
+drag helper now follows the current slide instead of being hard-coded to slide zero.
+
+An accelerated first draft moved the PDF while an autosave flush was in flight and
+observed its position revert on reopen. A focused follow-up confirmed the underlying
+race (#186): `flushToSqlite` iterated global dirty queues across awaited database calls,
+then cleared them wholesale, so a same-ID edit added during the await was erased.
+
+The fix serializes flushes and detaches each pending queue into a private batch before
+the first database write. Concurrent edits accumulate in fresh queues, and the flush
+drains those follow-up batches before resolving. Failed batches are merged back for a
+later retry without overwriting newer same-key work. A deterministic Vitest regression
+holds the first element write in flight, changes and re-queues that element, then checks
+that both the original and newer geometry are written in order.
+
+The asset probe retains its 1.4-second human cadence by default and accepts
+`E2E_ASSET_SETTLE_MS` for explicit stress runs. At 50 ms, the real Tauri/WebKitGTK app
+preserved exact raster/SVG/PDF geometry and bytes after save/reopen; the PDF remained at
+`x=482` instead of reverting to its default `x=360`. The earlier text/build/video
+workflow also passes.
+
+Final verification for the flush fix: the focused store file passed 67 tests,
+`npx tsc --noEmit` passed, the full Vitest suite passed with 1568 tests and 1 skipped,
+and the accelerated real-app asset round trip passed at a 50 ms settle interval.

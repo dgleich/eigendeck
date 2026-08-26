@@ -7,7 +7,8 @@
 #   PROBE     (required) path to the probe .mjs
 #   E2E_DECK  (required) .eigendeck to open via launch arg
 #   E2E_APP   app binary (default /tmp/el-target/debug/eigendeck — see eigendeck-e2e skill)
-#   PROBE_OUT / E2E_NB / E2E_VTT / E2E_MODE  optional, passed through to the probe
+#   PROBE_OUT / E2E_NB / E2E_VTT / E2E_PDF / E2E_MODE /
+#   E2E_ASSET_SETTLE_MS  optional, passed through to the probe
 #
 # HOME is set to the deck's directory so the deck + watched sidecars fall under
 # the app's fs:allow-watch (scope-home-recursive) scope.
@@ -66,7 +67,9 @@ xvfb-run -a -s "-screen 0 1280x900x24" bash -c "
   export XDG_CACHE_HOME=\$(mktemp -d) XDG_DATA_HOME=\$(mktemp -d)
   export HOME='$DECKHOME'
   export E2E_APP='$E2E_APP' E2E_DECK='$DECK' \
-         PROBE_OUT='${PROBE_OUT:-}' E2E_NB='${E2E_NB:-}' E2E_VTT='${E2E_VTT:-}' E2E_MODE='${E2E_MODE:-}'
+         PROBE_OUT='${PROBE_OUT:-}' E2E_NB='${E2E_NB:-}' E2E_VTT='${E2E_VTT:-}' \
+         E2E_PDF='${E2E_PDF:-}' E2E_MODE='${E2E_MODE:-}' \
+         E2E_ASSET_SETTLE_MS='${E2E_ASSET_SETTLE_MS:-}'
   python3 -m http.server 1420 --directory '$ROOT/dist' >/tmp/e2e-http.log 2>&1 & HS=\$!
   '$TAURI_DRIVER' --native-driver /usr/bin/WebKitWebDriver >/tmp/e2e-td.log 2>&1 & TD=\$!
   sleep 3

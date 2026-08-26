@@ -36,6 +36,21 @@ decks).
 
 These live in `e2e/` but are NOT in `run-all.sh`, by design:
 
+- **user-build-hunt-probe.mjs** — broad exploratory workflow that authors a
+  four-slide talk through the real insert toolbar, contentEditable surface,
+  notes textarea, drag gesture, sidebar actions/context menu, video URL modal,
+  and undo/redo. It then saves/reopens and edits a synced duplicate after the
+  normalized reload. It is intentionally broader than a narrow regression gate;
+  run it against the `empty` fixture with `run-probe.sh` while hunting editor
+  boundary bugs.
+- **user-asset-build-hunt-probe.mjs** — creates a raster image and SVG beside
+  the temporary deck, copies a PDF supplied via `E2E_PDF`, and pastes all three
+  as copied files through the real canvas ingest handler. It moves/resizes the
+  elements at human-scale cadence, waits for Pdfium rendering, then verifies
+  geometry and embedded bytes after save/reopen. The bare debug rig needs the
+  Pdfium setup described in the e2e skill. Set `E2E_ASSET_SETTLE_MS=50` to
+  exercise the accelerated in-flight autosave race regression from #186; the
+  default remains a 1.4-second human-scale pause after each insertion.
 - **overflow-hunt.mjs** — audit/diagnostic: walks a deck and *reports* overflowing
   text; no PASS/FAIL, always exits 0.
 - **check.mjs** — the generic parameterized DOM asserter; needs `E2E_EXPECT`/

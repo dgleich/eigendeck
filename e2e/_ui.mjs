@@ -73,7 +73,8 @@ export async function dragElementToX(sid, elementId, targetX) {
     const node = document.querySelector('[data-element-id="${elementId}"]');
     if (!node) return 'no-node';
     const st = window.__eigendeck.store.getState();
-    const el = st.presentation.slides[0].elements.find(x => x.id === '${elementId}');
+    const slide = st.presentation.slides[st.currentSlideIndex];
+    const el = slide && slide.elements.find(x => x.id === '${elementId}');
     if (!el) return 'no-el';
     const r = node.getBoundingClientRect();
     const scale = r.width / el.position.width;         // screen px per logical px
@@ -84,7 +85,8 @@ export async function dragElementToX(sid, elementId, targetX) {
     const N = 6;
     for (let i = 1; i <= N; i++) window.dispatchEvent(new PointerEvent('pointermove', opt(x0 + (dxScreen * i / N), y0)));
     window.dispatchEvent(new PointerEvent('pointerup', opt(x0 + dxScreen, y0)));
-    const after = window.__eigendeck.store.getState().presentation.slides[0].elements.find(x => x.id === '${elementId}');
+    const afterState = window.__eigendeck.store.getState();
+    const after = afterState.presentation.slides[afterState.currentSlideIndex]?.elements.find(x => x.id === '${elementId}');
     return after ? after.position.x : 'gone';
   `);
 }
