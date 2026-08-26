@@ -783,8 +783,6 @@ pub fn db_import_json(json: String) -> Result<(), String> {
                         let mut data = el.clone();
                         if let Some(obj) = data.as_object_mut() {
                             obj.remove("syncId");
-                            obj.remove("_syncId");
-                            obj.remove("_linkId");
                             obj.remove("linkId");
                             obj.remove("assetId");
                             obj.remove("src");
@@ -3362,6 +3360,109 @@ mod tests {
         teardown_global_db();
     }
 
+    /// Persistence matrix/checklist for the typed presentation model. This
+    /// deliberately gives every current element type and optional field a
+    /// non-default value; update it alongside presentation.ts so SQLite field
+    /// loss fails one exact comparison instead of surfacing later through Save As.
+    #[test]
+    fn all_element_and_config_fields_round_trip() {
+        setup_global_db();
+
+        let input: Value = serde_json::from_str(r####"{
+            "title": "All fields — café",
+            "theme": "matrix",
+            "config": {
+                "transition": "fade", "backgroundTransition": "slide",
+                "width": 1600, "height": 900, "showSlideNumber": true,
+                "author": "Ada", "venue": "Purdue", "mathPreamble": "\\\\newcommand{\\\\R}{\\\\mathbb R}",
+                "defaultTitleFont": "libertinus", "defaultBodyFont": "lato",
+                "defaultHypeFont": "shantell", "footerFont": "source-sans",
+                "defaultMonoFont": "fira-code",
+                "textSizes": { "title": 72, "body": 34, "note": 25 },
+                "customPalette": ["#112233", "#abcdef"],
+                "autoReloadAssets": "off",
+                "notebookKernel": { "kind": "external", "kernelName": "julia-1.10" },
+                "deckToken": "deck-token-123"
+            },
+            "slides": [{
+                "id": "slide-all", "notes": "speaker notes", "groupId": "group-1",
+                "theme": "dark", "titleFont": "ptsans", "bodyFont": "lato",
+                "hypeFont": "shantell", "omitFooter": true,
+                "elements": [
+                    {
+                        "id": "text", "type": "text", "preset": "textbox",
+                        "html": "<b>Rich</b> text", "position": { "x": 11, "y": 12, "width": 301, "height": 102 },
+                        "_syncId": "remember-sync", "_linkId": "remember-link",
+                        "fontSizeName": "note", "fontSize": 31, "fontFamily": "Lato",
+                        "color": "#123456", "verticalAlign": "bottom",
+                        "backgroundColor": "#fedcba", "backgroundOpacity": 0.7,
+                        "boxTint": "accent", "textEffect": "glow", "boxShadow": true,
+                        "borderRadius": 13, "padding": { "top": 1, "right": 2, "bottom": 3, "left": 4 },
+                        "rotation": -7
+                    },
+                    {
+                        "id": "image", "type": "image", "assetId": "asset-image",
+                        "position": { "x": 21, "y": 22, "width": 302, "height": 103 },
+                        "shadow": true, "borderRadius": 14, "opacity": 0.6,
+                        "rotation": 8, "kind": "pdf", "snapshotVariant": "page-3"
+                    },
+                    {
+                        "id": "arrow", "type": "arrow", "position": { "x": 31, "y": 32, "width": 303, "height": 104 },
+                        "x1": 1, "y1": 2, "x2": 300, "y2": 90, "color": "#334455",
+                        "strokeWidth": 7, "headSize": 19, "heads": "both", "opacity": 0.5,
+                        "c1x": 41, "c1y": 42, "c2x": 243, "c2y": 82,
+                        "points": [{ "x": 100, "y": 40 }, { "x": 180, "y": 70 }]
+                    },
+                    {
+                        "id": "demo", "type": "demo", "assetId": "asset-demo",
+                        "position": { "x": 41, "y": 42, "width": 304, "height": 105 }
+                    },
+                    {
+                        "id": "demo-piece", "type": "demo-piece", "assetId": "asset-demo",
+                        "position": { "x": 51, "y": 52, "width": 305, "height": 106 },
+                        "piece": "graph-2", "demoState": { "step": 4, "nested": { "ok": true } }
+                    },
+                    {
+                        "id": "cover", "type": "cover", "position": { "x": 61, "y": 62, "width": 306, "height": 107 },
+                        "color": "#556677", "boxTint": "#778899"
+                    },
+                    {
+                        "id": "notebook", "type": "notebook", "assetId": "asset-notebook",
+                        "position": { "x": 71, "y": 72, "width": 307, "height": 108 },
+                        "kernel": { "kind": "lite" }, "preamble": "using LinearAlgebra",
+                        "autoRun": true, "visibleCells": [0, 2, 5], "syntaxHighlight": false,
+                        "showLineNumbers": true, "hideMarkdown": true, "hideHeader": true,
+                        "showBorder": true, "fontSizeName": "footnote", "fontSize": 23,
+                        "editable": true, "cellEdits": { "2": "legacy edit" },
+                        "recordingAssetId": "asset-recording"
+                    },
+                    {
+                        "id": "video", "type": "video", "position": { "x": 81, "y": 82, "width": 308, "height": 109 },
+                        "kind": "file", "assetId": "asset-video", "captionsAssetId": "asset-vtt",
+                        "captionsLabel": "English", "provider": "peertube", "url": "https://video.example/watch/1",
+                        "loop": true, "pingPong": true, "playbackRate": 1.25,
+                        "autoplay": true, "controls": true, "muted": true, "captions": true
+                    },
+                    {
+                        "id": "html", "type": "html", "position": { "x": 91, "y": 92, "width": 309, "height": 110 },
+                        "html": "<section>hello</section>", "background": "#aabbcc",
+                        "interactive": true, "scaleMode": true, "scaleW": 640, "scaleH": 360,
+                        "vars": { "count": 3, "label": "alpha" }
+                    }
+                ]
+            }]
+        }"####).unwrap();
+
+        db_import_json(input.to_string()).unwrap();
+        let output: Value = serde_json::from_str(&db_export_json().unwrap()).unwrap();
+        assert_eq!(
+            output, input,
+            "typed presentation fields must survive import/export"
+        );
+
+        teardown_global_db();
+    }
+
     // ---- Get slides ----
 
     #[test]
@@ -3940,7 +4041,7 @@ mod tests {
     }
 
     #[test]
-    fn test_import_strips_sync_link_fields_from_data() {
+    fn test_import_promotes_live_ids_but_preserves_remembered_ids() {
         setup_global_db();
 
         let input = json!({
@@ -3970,8 +4071,11 @@ mod tests {
         let parsed: Value = serde_json::from_str(&data).unwrap();
         assert!(parsed.get("syncId").is_none());
         assert!(parsed.get("linkId").is_none());
-        assert!(parsed.get("_syncId").is_none());
-        assert!(parsed.get("_linkId").is_none());
+        // Remembered IDs are ordinary persisted element state. They drive the
+        // Re-sync/Re-link actions after a temporary unlink and must survive
+        // Save As, whose path runs through db_import_json.
+        assert_eq!(parsed["_syncId"], "old");
+        assert_eq!(parsed["_linkId"], "old");
         assert_eq!(parsed["content"], "test");
 
         let link_id: Option<String> = c
