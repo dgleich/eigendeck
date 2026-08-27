@@ -403,6 +403,14 @@ define_class!(
                     field.setTarget(Some(target));
                     field.setAction(Some(sel!(onTitleEdit:)));
                 }
+                // Commit on focus-loss, not just Return/Tab. NSTextField sends its
+                // action only on Return/Tab by default, so clicking AWAY from the
+                // title dropped the edit: no onTitleEdit: → no toolbar:field → no
+                // setTitle → the deck never went dirty and Save wrote the OLD title.
+                // sendsActionOnEndEditing makes end-editing fire the action too.
+                if let Some(cell) = field.cell() {
+                    cell.setSendsActionOnEndEditing(true);
+                }
                 *self.ivars().title_field.borrow_mut() = Some(field.clone());
                 // Pin width AND intrinsic height. Height is required so the toolbar
                 // can't stretch the field taller than its text (a single-line field
@@ -432,6 +440,10 @@ define_class!(
                 unsafe {
                     field.setTarget(Some(target));
                     field.setAction(Some(action));
+                }
+                // Same as the title: commit on focus-loss, not just Return/Tab.
+                if let Some(cell) = field.cell() {
+                    cell.setSendsActionOnEndEditing(true);
                 }
                 *slot.borrow_mut() = Some(field.clone());
                 field.setTranslatesAutoresizingMaskIntoConstraints(false);

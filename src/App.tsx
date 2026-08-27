@@ -1084,9 +1084,16 @@ function App() {
     void import('@tauri-apps/api/event').then(({ listen }) =>
       listen<{ id: string; value: string }>('toolbar:field', ({ payload }) => {
         const s = usePresentationStore.getState();
-        if (payload.id === 'title') s.setTitle(payload.value);
-        else if (payload.id === 'author') s.updateConfig({ author: payload.value });
-        else if (payload.id === 'venue') s.updateConfig({ venue: payload.value });
+        // Apply only on a real change: with sendsActionOnEndEditing the native field
+        // now fires on focus-loss too, so tabbing/clicking through an unchanged field
+        // must NOT mark the deck dirty.
+        if (payload.id === 'title') {
+          if (payload.value !== s.presentation.title) s.setTitle(payload.value);
+        } else if (payload.id === 'author') {
+          if (payload.value !== (s.presentation.config.author ?? '')) s.updateConfig({ author: payload.value });
+        } else if (payload.id === 'venue') {
+          if (payload.value !== (s.presentation.config.venue ?? '')) s.updateConfig({ venue: payload.value });
+        }
       }).then((u) => { unlisten = u; }),
     ).catch(() => {});
     return () => unlisten?.();
