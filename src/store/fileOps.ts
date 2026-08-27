@@ -270,6 +270,12 @@ export async function saveProject(): Promise<void> {
   try {
     await flushToSqlite();
     store.markClean();
+    // Refresh the recent-projects entry with the CURRENT title so a rename shows up
+    // in the recent list + native Open Recent menu on save, instead of keeping the
+    // open-time title until the app is reopened. Recent entries are keyed by the FULL
+    // .eigendeck path (store.projectPath has the extension stripped — presentation.ts),
+    // so re-add the extension to REPLACE the existing entry rather than duplicate it.
+    addRecentProject(`${store.projectPath}.eigendeck`, store.presentation.title);
     void reconcileDeckApprovals();   // ledger hygiene: drop approvals for dropped assets
   } catch (e) {
     console.error('Save failed:', e);
