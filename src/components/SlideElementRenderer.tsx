@@ -1069,6 +1069,16 @@ function TextContent({
         } : undefined}
         onKeyDown={editing ? (e) => {
           if (e.key === 'Escape') commitAndClose();
+          // Cmd/Ctrl+A: select all text in THIS box, explicitly. WebKit doesn't give
+          // contentEditable the automatic select-all that inputs get, and the app's
+          // "Select All" menu item deliberately has no Cmd+A accelerator (it hijacked
+          // the toolbar inputs — see lib.rs / fe3b3bd), so nothing else does it. The
+          // App keydown handler skips contentEditable, so this is the only place.
+          else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a' && !e.shiftKey && !e.altKey) {
+            e.preventDefault();
+            const sel = window.getSelection();
+            if (sel && ref.current) sel.selectAllChildren(ref.current);
+          }
           // Let Cmd+key shortcuts bubble for document-level handling,
           // but stop regular keys from triggering slide shortcuts (delete, etc.)
           if (!(e.metaKey || e.ctrlKey)) e.stopPropagation();
