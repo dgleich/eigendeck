@@ -62,3 +62,38 @@ describe('CodeCell visual distinction', () => {
     expect(screen.getByText(/hello/)).toBeInTheDocument();
   });
 });
+
+describe('CodeCell execution-count prompt', () => {
+  const promptOf = (c: HTMLElement) => c.querySelector('.nb-cell-prompt')?.textContent;
+
+  it('shows [*] while running', () => {
+    const { container } = render(<CodeCell cell={cell} highlight={false} running />);
+    expect(promptOf(container)).toBe('[*]');
+  });
+
+  it('shows the LIVE count [N] once a run finishes', () => {
+    // The regression the user hit: a run that produced no execute_result still
+    // gets its count from execute_reply → liveExecutionCount, so [ ] → [N].
+    const noCountCell: CodeCellT = { ...cell, source: 'k = 5', executionCount: null, outputs: [] };
+    const { container } = render(
+      <CodeCell cell={noCountCell} highlight={false} liveExecutionCount={7} />
+    );
+    expect(promptOf(container)).toBe('[7]');
+  });
+
+  it('falls back to the persisted count when there is no live count', () => {
+    const { container } = render(<CodeCell cell={cell} highlight={false} />); // cell.executionCount = 1
+    expect(promptOf(container)).toBe('[1]');
+  });
+
+  it('shows an empty prompt [ ] when the cell has never run', () => {
+    const neverRun: CodeCellT = { ...cell, executionCount: null, outputs: [] };
+    const { container } = render(<CodeCell cell={neverRun} highlight={false} />);
+    expect(promptOf(container)).toBe('[ ]');
+  });
+
+  it('treats a live "*" placeholder as running', () => {
+    const { container } = render(<CodeCell cell={cell} highlight={false} liveExecutionCount="*" />);
+    expect(promptOf(container)).toBe('[*]');
+  });
+});

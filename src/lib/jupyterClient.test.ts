@@ -106,6 +106,37 @@ describe('JupyterClient connection-readiness handshake', () => {
     expect(replies).toEqual([{ status: 'ok', executionCount: 7 }]); // count still delivered
   });
 
+  it('a kernel_info_reply for a DIFFERENT request does not mark ready — only ours does', async () => {
+    const client = new JupyterClient({ baseUrl: 'http://h:8888', token: 't' });
+    let resolved = false;
+    const started = client.startKernel('python3').then(() => { resolved = true; });
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    const ws = FakeWebSocket.instances[0];
+    ws.open();
+    const ourId = ws.lastSent().header.msg_id;
+
+    // A stray kernel_info_reply parented to some OTHER msg id must be ignored.
+    ws.deliver({ header: { msg_type: 'kernel_info_reply' }, parent_header: { msg_id: 'someone-else' }, channel: 'shell', content: {} });
+    await Promise.resolve();
+    expect(resolved).toBe(false);
+
+    // Ours resolves it.
+    ws.deliver({ header: { msg_type: 'kernel_info_reply' }, parent_header: { msg_id: ourId }, channel: 'shell', content: {} });
+    await started;
+    expect(resolved).toBe(true);
+  });
+
+  it('rejects startKernel if the WS closes before the kernel is ready', async () => {
+    const client = new JupyterClient({ baseUrl: 'http://h:8888', token: 't' });
+    const started = client.startKernel('python3');
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    const ws = FakeWebSocket.instances[0];
+    ws.open();
+    // Close before any kernel_info_reply arrives.
+    ws.close();
+    await expect(started).rejects.toThrow(/closed before the kernel was ready/);
+  });
+
   it('falls back to ready after 5s if no kernel_info_reply arrives (never hangs)', async () => {
     vi.useFakeTimers();
     const client = new JupyterClient({ baseUrl: 'http://h:8888', token: '' });
