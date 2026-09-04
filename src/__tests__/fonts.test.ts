@@ -9,6 +9,7 @@ import {
   allFontFacesCSS,
   collectUsedFontIds,
   DEFAULT_FONT_ID,
+  HYPE_DEFAULT_FONT_ID,
 } from '../lib/fonts';
 
 describe('FONT_PACKAGES', () => {
@@ -61,6 +62,18 @@ describe('fontForPreset resolution priority', () => {
   it('body preset uses bodyFont when set', () => {
     const f = fontForPreset('body', { bodyFont: 'noto-sans' }, {});
     expect(f.id).toBe('noto-sans');
+  });
+
+  it('hype preset falls back to Shantell (NOT the app default) when nothing overrides it', () => {
+    // The inspector's "Default Hype Font" inherit label is derived from
+    // HYPE_DEFAULT_FONT_ID, so this fallback must stay in lockstep with it — else
+    // the panel claims one font while the canvas renders another (the welcome-deck
+    // "Lato label but Shantell canvas" confusion).
+    expect(fontForPreset('hype', {}, {}).id).toBe(HYPE_DEFAULT_FONT_ID);
+    expect(HYPE_DEFAULT_FONT_ID).toBe('shantell');
+    // The whole point of the special-case: hype's fallback differs from title/body.
+    expect(HYPE_DEFAULT_FONT_ID).not.toBe(DEFAULT_FONT_ID);
+    expect(fontForPreset('body', {}, {}).id).toBe(DEFAULT_FONT_ID);
   });
 
   it('hype preset uses hypeFont when set', () => {

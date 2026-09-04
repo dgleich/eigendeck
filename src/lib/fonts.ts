@@ -23,6 +23,7 @@ export {
   MONO_FONT_PACKAGES,
   MONO_FONT_PACKAGE_MAP,
   DEFAULT_FONT_ID,
+  HYPE_DEFAULT_FONT_ID,
   resolveFontPackage,
   resolveMonoFontPackage,
   resolveAnyFontPackage,

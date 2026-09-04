@@ -57,6 +57,7 @@ export function resolveMonoFontPackage(id: string | undefined): MonoFontPackage;
 export const FONT_PACKAGES: FontPackage[];
 export const FONT_PACKAGE_MAP: Record<string, FontPackage>;
 export const DEFAULT_FONT_ID: string;
+export const HYPE_DEFAULT_FONT_ID: string;
 
 export function resolveFontPackage(id: string | undefined): FontPackage;
 export function resolveAnyFontPackage(id: string | undefined): FontPackage | MonoFontPackage;

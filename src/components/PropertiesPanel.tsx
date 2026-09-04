@@ -3,7 +3,7 @@ import { usePresentationStore, pauseUndo, resumeUndo } from '../store/presentati
 import { TEXT_PRESET_STYLES, resolveNamedSize, effectiveFontSize, DEFAULT_TEXT_SIZES, parsePalette, textPresetBoxCss, type NamedSize } from '../types/presentation';
 import { BUILT_IN_THEMES, resolveTheme, type ThemeColors } from '../lib/themes';
 import { extractDemoPieceNames } from '../lib/demoPieces';
-import { FONT_PACKAGES, DEFAULT_FONT_ID } from '../lib/fonts';
+import { FONT_PACKAGES, DEFAULT_FONT_ID, HYPE_DEFAULT_FONT_ID } from '../lib/fonts';
 import { listMonoEligible } from '../lib/notebookFonts';
 import type { VerticalAlign } from '../types/presentation';
 import { AssetSection } from './AssetSection';
@@ -123,10 +123,14 @@ export function PropertiesPanel() {
     }
   };
 
-  // Label for the app default text font (title/body/hype fall back to it when the
+  // Label for the app default text font (title + body fall back to it when the
   // deck stores no override) — derived from DEFAULT_FONT_ID, not hard-coded, so it
   // tracks the real default (Lato) instead of drifting (was stuck on "PT Sans").
   const defaultTextFontLabel = FONT_PACKAGES.find((p) => p.id === DEFAULT_FONT_ID)?.label ?? DEFAULT_FONT_ID;
+  // The 'hype' preset does NOT fall back to the app default — it has its own
+  // Shantell fallback (fontForPreset), so its inherit label must track that
+  // instead, or the inspector claims "Lato" while the canvas renders Shantell.
+  const hypeDefaultFontLabel = FONT_PACKAGES.find((p) => p.id === HYPE_DEFAULT_FONT_ID)?.label ?? HYPE_DEFAULT_FONT_ID;
 
   // Reusable font dropdown. `inheritLabel` is shown as the empty option;
   // when set to undefined the value falls through to the parent default.
@@ -269,7 +273,7 @@ export function PropertiesPanel() {
             <PropSection label="Default Hype Font">
               <FontSelect value={presentation.config.defaultHypeFont}
                 onChange={(v) => updateConfig({ defaultHypeFont: v })}
-                inheritLabel={`${defaultTextFontLabel} (default)`} />
+                inheritLabel={`${hypeDefaultFontLabel} (default)`} />
             </PropSection>
             <PropSection label="Default Mono Font">
               <FontSelect value={presentation.config.defaultMonoFont}

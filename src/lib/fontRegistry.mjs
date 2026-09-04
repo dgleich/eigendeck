@@ -163,6 +163,11 @@ export const FONT_PACKAGE_MAP = Object.fromEntries(
 // ships a matching MathJax pack (mathjax-lato) so math pairs cleanly with body.
 export const DEFAULT_FONT_ID = 'lato';
 
+// The 'hype' preset (yellow sticky note) is special-cased: when nothing overrides
+// it, it falls back to Shantell Sans — NOT DEFAULT_FONT_ID like title/body. Named
+// so the inspector's "Default Hype Font" inherit label tracks the real fallback.
+export const HYPE_DEFAULT_FONT_ID = 'shantell';
+
 /**
  * Separate registry for code-cell-only fonts. The Default Mono Font
  * picker (Inspector + Settings) reads from this list, NOT from a
@@ -313,7 +318,7 @@ export function fontForPreset(preset, slide, presentationDefaults) {
   const slideKey = role === 'title' ? 'titleFont' : role === 'hype' ? 'hypeFont' : 'bodyFont';
   const presKey = role === 'title' ? 'defaultTitleFont' : role === 'hype' ? 'defaultHypeFont' : 'defaultBodyFont';
   // Hype (sticky note) defaults to Shantell Sans when nothing overrides it.
-  const fallback = role === 'hype' ? 'shantell' : undefined;
+  const fallback = role === 'hype' ? HYPE_DEFAULT_FONT_ID : undefined;
   return resolveFontPackage((slide && slide[slideKey]) ?? (presentationDefaults && presentationDefaults[presKey]) ?? fallback);
 }
 
