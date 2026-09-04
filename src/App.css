@@ -782,23 +782,32 @@ body.window-inactive .welcome-root {
    Unified slide elements
    ============================================ */
 .slide-element {
-  border: 2px solid transparent;
+  /* Selection/hover chrome as an INSET outline, not a border: it paints in the same
+     place (outline-offset:-2px draws it 2px inside the edge, following border-radius)
+     but consumes NO layout. A border here + box-sizing:border-box shrank the content
+     box to (w-4)×(h-4), which the edit contentEditable valigned within, while the
+     display SVG (authored at exactly w×h) valigned within the full h — so middle/bottom
+     text shifted 2px/4px between display and edit (and 2px/4px vs present/export, which
+     have no chrome). With outline the content box is the element's true w×h and all
+     render paths agree. See .claude/logs/2026-09-04-valign-edit-shift-session.md. */
+  outline: 2px solid transparent;
+  outline-offset: -2px;
   border-radius: 4px;
   user-select: none;
   -webkit-user-select: none;
 }
 
 .slide-element:hover {
-  border-color: #93c5fd;
+  outline-color: #93c5fd;
 }
 
 .slide-element.is-selected {
-  border-color: #3b82f6;
+  outline-color: #3b82f6;
 }
 
 .slide-element.is-synced {
   box-shadow: 0 0 0 3px #f97316, 0 0 24px 6px rgba(249, 115, 22, 0.5);
-  border-color: #f97316;
+  outline-color: #f97316;
 }
 
 .slide-element.is-selected .el-delete-btn,
@@ -811,7 +820,7 @@ body.window-inactive .welcome-root {
 }
 
 .slide-element.is-dragging {
-  border-color: #3b82f6;
+  outline-color: #3b82f6;
   opacity: 0.9;
 }
 
@@ -2148,6 +2157,7 @@ body.presenting {
 /* PDF capture mode — hide all editor chrome */
 .pdf-capturing .slide-element {
   border-color: transparent !important;
+  outline-color: transparent !important;  /* selection chrome is now an outline, not a border */
   box-shadow: none !important;
 }
 .pdf-capturing .el-delete-btn,

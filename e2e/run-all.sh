@@ -241,6 +241,9 @@ MANIFEST=(
   "a4-text-cover.mjs|a4txt.eigendeck||import_json \$ROOT/e2e/fixtures/a4-textcover-deck.json"
   "a3-output-themes.mjs|a3out.eigendeck||python3 $EXFIX/make_a3_output_deck.py dark \$DECKDIR/a3out.json; import_json \$DECKDIR/a3out.json"
   "a3-discard-reload.mjs|a3ov.eigendeck||python3 $EXFIX/make_overlay_deck.py single \$DECKDIR/a3ov.json; import_json \$DECKDIR/a3ov.json"
+  # Text with middle/bottom vertical-align must NOT shift on double-click-to-edit.
+  # Regression guard for the border+box-sizing geometry fix (chrome → inset outline).
+  "valign-edit-shift-probe.mjs|valign.eigendeck||import_json \$ROOT/e2e/fixtures/valign-shift-deck.json"
 )
 
 # Live-kernel probe: boots a REAL jupyter server (via uv). Included whenever this
