@@ -722,16 +722,6 @@ function TextContent({
     overflow: 'hidden',
     textShadow: textShadowCss(element, color),
     cursor: editing ? 'text' : 'inherit',
-    // Match the DISPLAY SVG's own vertical-align: buildTextElementSvgMarkup fills the
-    // box and aligns the text with an internal flex column (valignToCss). In edit the
-    // SVG is gone, so relying on the CSS [data-valign] wrapper flex positions a
-    // CONTENT-height contentEditable through a different flex layer — which drifts the
-    // text a few px on macOS WebKit for middle/bottom (top is immune). Fill the box and
-    // valign internally here too, so both modes position the text identically. (#…)
-    ...(valign === 'middle' || valign === 'bottom'
-      ? { height: '100%', display: 'flex', flexDirection: 'column',
-          justifyContent: valign === 'middle' ? 'center' : 'flex-end' }
-      : null),
   };
 
   // Display: pre-render math (via iframe pool) into a string we splice into
