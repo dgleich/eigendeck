@@ -32,6 +32,10 @@ export interface ExecuteCallbacks {
   onExecuteResult?: (r: { data: MimeBundle; executionCount: number | null }) => void;
   onError?: (e: { ename: string; evalue: string; traceback: string[] }) => void;
   onStatus?: (s: 'busy' | 'idle' | 'dead') => void;
+  /** Fires on execute_reply (the authoritative source of the cell's `[N]`
+   *  count). Unlike onExecuteResult it fires for EVERY cell — including ones
+   *  that produce no output (print-only / assignments) — so the prompt updates. */
+  onReply?: (r: { status: 'ok' | 'error' | 'aborted'; executionCount: number | null }) => void;
 }
 
 export interface ExecuteHandle {
@@ -246,6 +250,10 @@ export class JupyterClient {
       const status = c.status as string;
       const norm: 'ok' | 'error' | 'aborted' =
         status === 'ok' || status === 'error' || status === 'aborted' ? status : 'aborted';
+      cb.onReply?.({
+        status: norm,
+        executionCount: typeof c.execution_count === 'number' ? c.execution_count : null,
+      });
       pending.resolve(norm);
       this.pending.delete(parentId);
     }

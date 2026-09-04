@@ -67,6 +67,18 @@ async function pollDom(sid,needle,ms=20000){for(let t=0;t<ms;t+=500){if((await d
   }
   console.log('E2E_OK live-run');
 
+  // The edited cell is a print() — it emits stream output but NO execute_result,
+  // so its `[N]` prompt only updates if the client surfaces execute_reply's
+  // execution_count (regression guard: this used to stay `[ ]`).
+  let promptCount = null;
+  for (let t = 0; t < 10000; t += 500) {
+    promptCount = await execSync(sid, `return (document.querySelector('.nb-cell-prompt')?.textContent || '').trim();`);
+    if (/^\[\d+\]$/.test(String(promptCount))) break;
+    await sleep(500);
+  }
+  if (!/^\[\d+\]$/.test(String(promptCount))) fail('cell prompt did not update to [N] after a no-result run (got ' + promptCount + ')');
+  console.log('E2E_OK prompt-count ' + promptCount);
+
   // The overlay (cellEdits + cellOutputs) persists via its OWN debounced flush
   // (useOverlay FLUSH_DEBOUNCE_MS=800, writes db_store_asset directly — NOT via
   // window.__eigendeck.save). Wait out the debounce + async write while the

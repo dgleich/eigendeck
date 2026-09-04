@@ -334,6 +334,9 @@ function ExternalKernelBody({
         onDisplayData: (d) => push({ kind: 'display_data', data: d.data }),
         onExecuteResult: (r) => { count = r.executionCount; push({ kind: 'execute_result', data: r.data, executionCount: r.executionCount }); },
         onError: (e) => push({ kind: 'error', ename: e.ename, evalue: e.evalue, traceback: e.traceback }),
+        // Authoritative `[N]` count — fires for every cell, including ones with
+        // no output, so an assignment / print-only cell still updates its prompt.
+        onReply: (r) => { if (r.executionCount != null) { count = r.executionCount; record(outs, count); } },
       });
       await handle.done;
       record(outs, count);

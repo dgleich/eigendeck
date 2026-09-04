@@ -81,6 +81,31 @@ describe('JupyterClient connection-readiness handshake', () => {
     expect(ws.typesSent()).toEqual(['kernel_info_request', 'execute_request']);
   });
 
+  it('surfaces execution_count via onReply for a cell with NO output', async () => {
+    const client = new JupyterClient({ baseUrl: 'http://h:8888', token: '' });
+    const started = client.startKernel('python3');
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    const ws = FakeWebSocket.instances[0];
+    ws.open();
+    ws.deliver({ header: { msg_type: 'kernel_info_reply' }, parent_header: { msg_id: ws.lastSent().header.msg_id }, channel: 'shell', content: {} });
+    await started;
+
+    const replies: Array<{ status: string; executionCount: number | null }> = [];
+    const results: unknown[] = [];
+    const handle = client.execute('k = 5', {
+      onExecuteResult: (r) => results.push(r),
+      onReply: (r) => replies.push(r),
+    });
+    const execId = ws.lastSent().header.msg_id;
+    // An assignment produces NO execute_result — only a shell execute_reply
+    // carrying the count. onReply must still fire so the prompt gets its [N].
+    ws.deliver({ header: { msg_type: 'execute_reply' }, parent_header: { msg_id: execId }, channel: 'shell', content: { status: 'ok', execution_count: 7 } });
+    await handle.done;
+
+    expect(results).toEqual([]);                                   // no execute_result
+    expect(replies).toEqual([{ status: 'ok', executionCount: 7 }]); // count still delivered
+  });
+
   it('falls back to ready after 5s if no kernel_info_reply arrives (never hangs)', async () => {
     vi.useFakeTimers();
     const client = new JupyterClient({ baseUrl: 'http://h:8888', token: '' });
