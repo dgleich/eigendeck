@@ -759,7 +759,14 @@ function TextContent({
       const box = wrapperRef.current?.querySelector('foreignObject > div') as HTMLElement | null;
       const content = box?.firstElementChild as HTMLElement | null;
       if (!box || !content) { setOverflowing(false); return; }
-      setOverflowing(content.scrollHeight > box.clientHeight + 1 || content.scrollWidth > box.clientWidth + 1);
+      // Slop before we flag a clip: sub-pixel rounding, descenders, and
+      // line-height rounding routinely push scrollHeight a few px past
+      // clientHeight even when nothing is visually cut off, so a 1px threshold
+      // fired constantly. Scale the tolerance with the font size (bigger text →
+      // bigger rounding) with a small floor; it stays well under one line, so a
+      // genuinely clipped line (~1.2× font size) is still caught.
+      const slop = Math.max(2, Math.round(fontSize * 0.2));
+      setOverflowing(content.scrollHeight > box.clientHeight + slop || content.scrollWidth > box.clientWidth + slop);
     };
     const raf = requestAnimationFrame(measure);
     document.fonts?.ready.then(() => requestAnimationFrame(measure)).catch(() => {});
