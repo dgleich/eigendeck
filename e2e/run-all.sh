@@ -156,10 +156,9 @@ MANIFEST=(
   "nb-overlay-save-flush-probe.mjs|saveflush.eigendeck||python3 $EXFIX/make_live_nb_deck.py \$DECKDIR/saveflush.json; import_json \$DECKDIR/saveflush.json"
   # notebook-watch-takecontrol is NOT gated — see e2e/README.md "Not yet gated"
   # (real fs-watch depends on the per-user auto-reload preference run-probe wipes).
-  # nb-live-run-persist is NOT gated — needs a REAL jupyter server (uv + network
-  # for the first venv build), so it's non-hermetic. Enable when the CI image
-  # ships jupyter. To run standalone see e2e/README.md "Live kernel".
-  # "nb-live-run-persist.mjs|live.eigendeck|E2E_JUPYTER=1|python3 $EXFIX/make_live_nb_deck.py \$DECKDIR/live.json; import_json \$DECKDIR/live.json"
+  # nb-live-run-persist (the only probe that boots a REAL jupyter kernel) is
+  # appended conditionally just below — it's non-hermetic (needs uv), so it can't
+  # live in the always-on list.
 
   # ── video (codec-INDEPENDENT: round-trip + byte-level file/caption watch) ─
   # #152 YouTube loopback shim: the Rust server's security hardening (id/Host/
@@ -243,6 +242,16 @@ MANIFEST=(
   "a3-output-themes.mjs|a3out.eigendeck||python3 $EXFIX/make_a3_output_deck.py dark \$DECKDIR/a3out.json; import_json \$DECKDIR/a3out.json"
   "a3-discard-reload.mjs|a3ov.eigendeck||python3 $EXFIX/make_overlay_deck.py single \$DECKDIR/a3ov.json; import_json \$DECKDIR/a3ov.json"
 )
+
+# Live-kernel probe: boots a REAL jupyter server (via uv). Included whenever this
+# machine can run it — uv on PATH — or when forced with E2E_LIVE_JUPYTER=1; skip
+# explicitly with E2E_NO_LIVE_JUPYTER=1. Kept out of the array above so a box
+# without uv/jupyter still runs the hermetic suite green.
+if [ "${E2E_NO_LIVE_JUPYTER:-}" != "1" ] && { [ "${E2E_LIVE_JUPYTER:-}" = "1" ] || command -v uv >/dev/null 2>&1; }; then
+  MANIFEST+=("nb-live-run-persist.mjs|live.eigendeck|E2E_JUPYTER=1|python3 $EXFIX/make_live_nb_deck.py \$DECKDIR/live.json; import_json \$DECKDIR/live.json")
+else
+  echo "note: skipping nb-live-run-persist (no uv on PATH). Set E2E_LIVE_JUPYTER=1 to force it."
+fi
 
 pass=0; fail=0; failed=()
 for entry in "${MANIFEST[@]}"; do

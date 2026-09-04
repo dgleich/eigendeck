@@ -69,10 +69,25 @@ export class JupyterClient {
   private kernel: { id: string; name: string } | null = null;
   private ws: WebSocket | null = null;
   private pending = new Map<string, PendingExecution>();
+  // Connection-readiness handshake state (see openChannels).
+  private kernelInfoMsgId: string | null = null;
+  private markReady: (() => void) | null = null;
+  private readyTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(opts: JupyterClientOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/$/, '');
     this.token = opts.token;
+  }
+
+  private buildHeader(msgType: string, msgId: string): Record<string, string> {
+    return {
+      msg_id: msgId,
+      session: this.session,
+      username: 'eigendeck',
+      msg_type: msgType,
+      version: '5.3',
+      date: new Date().toISOString(),
+    };
   }
 
   get isConnected(): boolean {
@@ -132,10 +147,39 @@ export class JupyterClient {
     const wsBase = this.baseUrl.replace(/^http/, 'ws');
     const url = `${wsBase}/api/kernels/${this.kernel.id}/channels${this.authQuery()}`;
     return new Promise((resolve, reject) => {
+      let settled = false;
       const ws = new WebSocket(url);
       this.ws = ws;
-      ws.onopen = () => resolve();
-      ws.onerror = () => reject(new Error('WebSocket error during open'));
+      // Resolve connect() only once the kernel is confirmed ready — never on bare
+      // ws.onopen. jupyter_server runs a connection "nudge" (a kernel_info
+      // handshake) on every new channels WebSocket and does not reliably deliver
+      // shell messages that arrive before it completes. Sending execute_request in
+      // onopen therefore races that nudge and the first cell run is silently
+      // dropped (no output). We force the handshake ourselves and gate readiness
+      // on kernel_info_reply.
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        if (this.readyTimer != null) { clearTimeout(this.readyTimer); this.readyTimer = null; }
+        this.markReady = null;
+        this.kernelInfoMsgId = null;
+        resolve();
+      };
+      this.markReady = finish;
+      ws.onopen = () => {
+        const mid = uuid();
+        this.kernelInfoMsgId = mid;
+        try {
+          ws.send(JSON.stringify({
+            header: this.buildHeader('kernel_info_request', mid),
+            parent_header: {}, metadata: {}, content: {}, channel: 'shell',
+          }));
+        } catch { /* fall through to the timeout fallback */ }
+        // Fallback: proceed anyway if no reply arrives (an older server or a
+        // kernel slow to answer kernel_info) so connect() never hangs.
+        this.readyTimer = setTimeout(finish, 5000);
+      };
+      ws.onerror = () => { if (!settled) { settled = true; reject(new Error('WebSocket error during open')); } };
       ws.onmessage = (ev) => this.handleMessage(ev.data);
       ws.onclose = () => {
         // Notify all pending executions that the kernel went away.
@@ -145,6 +189,11 @@ export class JupyterClient {
         }
         this.pending.clear();
         this.ws = null;
+        if (!settled) {
+          settled = true;
+          if (this.readyTimer != null) { clearTimeout(this.readyTimer); this.readyTimer = null; }
+          reject(new Error('WebSocket closed before the kernel was ready'));
+        }
       };
     });
   }
@@ -161,6 +210,12 @@ export class JupyterClient {
     const t = msg.header?.msg_type;
     const parentId = msg.parent_header?.msg_id;
     const c = msg.content ?? {};
+    // Readiness handshake (see openChannels): our kernel_info_request has been
+    // answered → the channel is wired and safe for execute_request.
+    if (t === 'kernel_info_reply' && parentId && parentId === this.kernelInfoMsgId) {
+      this.markReady?.();
+      return;
+    }
     if (!parentId) return;
     const pending = this.pending.get(parentId);
     if (!pending) return;
@@ -204,14 +259,7 @@ export class JupyterClient {
     }
     const msgId = uuid();
     const msg = {
-      header: {
-        msg_id: msgId,
-        session: this.session,
-        username: 'eigendeck',
-        msg_type: 'execute_request',
-        version: '5.3',
-        date: new Date().toISOString(),
-      },
+      header: this.buildHeader('execute_request', msgId),
       parent_header: {},
       metadata: {},
       content: {
@@ -243,6 +291,9 @@ export class JupyterClient {
 
   /** DELETE /api/kernels/:id and close the WS. Safe to call any time. */
   async stopKernel(): Promise<void> {
+    if (this.readyTimer != null) { clearTimeout(this.readyTimer); this.readyTimer = null; }
+    this.markReady = null;
+    this.kernelInfoMsgId = null;
     if (this.ws) { try { this.ws.close(); } catch { /* ignore */ } this.ws = null; }
     if (this.kernel) {
       try {
