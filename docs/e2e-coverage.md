@@ -44,11 +44,38 @@ npx vitest run --coverage            # only needed for the unified fold (writes 
 COV_WITH_VITEST=1 node e2e/coverage-merge.mjs
 ```
 
-## Status (spike)
+## Results (full suite)
 
-Validated end to end: a 3-probe subset already covers **App.tsx 24%**,
-SlideElementRenderer 14%, SlideEditor 15%, store/presentation 47% — files vitest
-reports at ~0–2%. The full 119-probe suite lifts these substantially. Not yet in
-CI; the next step is a dedicated coverage job that runs the instrumented e2e suite
-and publishes the merged report (it's slower than the plain e2e run, so likely its
-own scheduled/opt-in job rather than every PR).
+The full instrumented suite (122 checks: all 119 probes + python + R live kernels)
+passed green under instrumentation and produced 149 page maps. Merged:
+
+| Metric | vitest-only (jsdom) | **Unified (unit + e2e)** |
+| --- | --- | --- |
+| Lines | 42.7% | **56.5%** |
+| Statements | 40.7% | **49.8%** |
+| Functions | 40.1% | **57.3%** |
+| Branches | 40.8% | **45.7%** |
+
+(E2e-only is 58.0% lines over the 143 files the app actually loads; the unified
+figure is over all 179 frontend files.) The point is the render/interaction layer
+that jsdom can't reach — now measured in the real engine:
+
+| File | vitest | full e2e |
+| --- | --- | --- |
+| components/SlideElementRenderer.tsx | ~0% | 55% |
+| components/PresentMode.tsx | 0% | 62% |
+| App.tsx | 2% | 43% |
+| components/SlideEditor.tsx | — | 47% |
+| components/notebook/NotebookContent.tsx | — | 82% |
+| lib/demoMount.ts | 34% | 82% |
+| store/fileOps.ts (Tauri I/O) | 9% | 47% |
+| store/presentation.ts | 47% | 79% |
+
+## Not yet in CI
+
+The instrumented run is slower than plain e2e (a counter bump per statement), so
+the intended shape is a dedicated coverage job (scheduled / opt-in) that runs the
+instrumented suite and publishes the merged lcov — not every PR. Remaining lows
+are genuinely cross-context: `lib/mathjax.ts` renders in an iframe pool (separate
+JS context, its own `__coverage__`), so the main-thread orchestration shows but
+the render itself doesn't; the same applies to demo/notebook output iframes.
