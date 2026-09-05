@@ -69,8 +69,16 @@ xvfb-run -a -s "-screen 0 1280x900x24" bash -c "
   export E2E_APP='$E2E_APP' E2E_DECK='$DECK' \
          PROBE_OUT='${PROBE_OUT:-}' E2E_NB='${E2E_NB:-}' E2E_VTT='${E2E_VTT:-}' \
          E2E_PDF='${E2E_PDF:-}' E2E_MODE='${E2E_MODE:-}' \
-         E2E_ASSET_SETTLE_MS='${E2E_ASSET_SETTLE_MS:-}'
-  python3 -m http.server 1420 --directory '$ROOT/dist' >/tmp/e2e-http.log 2>&1 & HS=\$!
+         E2E_ASSET_SETTLE_MS='${E2E_ASSET_SETTLE_MS:-}' \
+         COVERAGE_INSTRUMENT='${COVERAGE_INSTRUMENT:-}'
+  # Serve dist/ on :1420. With COVERAGE_INSTRUMENT=1 the collector server also
+  # accepts the instrumented app's coverage beacons and writes them to COV_NYC_DIR.
+  if [ \"\$COVERAGE_INSTRUMENT\" = '1' ]; then
+    COV_DIST='$ROOT/dist' COV_PORT=1420 COV_NYC_DIR='${COV_NYC_DIR:-$ROOT/.nyc_output}' \
+      node '$ROOT/e2e/coverage-server.mjs' >/tmp/e2e-http.log 2>&1 & HS=\$!
+  else
+    python3 -m http.server 1420 --directory '$ROOT/dist' >/tmp/e2e-http.log 2>&1 & HS=\$!
+  fi
   '$TAURI_DRIVER' --native-driver /usr/bin/WebKitWebDriver >/tmp/e2e-td.log 2>&1 & TD=\$!
   sleep 3
   node '$PROBE'; RC=\$?

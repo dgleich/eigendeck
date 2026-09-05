@@ -1,13 +1,35 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
 import react from "@vitejs/plugin-react";
+import istanbul from "vite-plugin-istanbul";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
+// @ts-expect-error process is a nodejs global
+const INSTRUMENT = process.env.COVERAGE_INSTRUMENT === "1";
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // E2E coverage spike: with COVERAGE_INSTRUMENT=1 the built bundle is
+    // Istanbul-instrumented, so running it in the REAL WebKitGTK app (the e2e
+    // Tauri rig) accumulates line hits into window.__coverage__ — engine-agnostic
+    // (unlike V8/CDP coverage, which is Chromium-only). Probes extract that global
+    // through the seam; the report is merged offline. Off by default → normal
+    // builds and `tauri dev` are unaffected.
+    ...(INSTRUMENT
+      ? [istanbul({
+          include: "src/**/*.{ts,tsx}",
+          exclude: ["node_modules", "src/test/**", "**/*.test.*", "**/*.d.mts"],
+          extension: [".ts", ".tsx"],
+          requireEnv: false,
+          // The e2e rig serves a `vite build` bundle, not the dev server, so we
+          // MUST instrument the production build (off by default in this plugin).
+          forceBuildInstrument: true,
+        })]
+      : []),
+  ],
 
   // Relative asset paths so the packaged Tauri app resolves bundled assets
   // against the loaded HTML (absolute "/assets/..." can blank-screen in the
@@ -37,7 +59,9 @@ export default defineConfig(async () => ({
     // No hard thresholds yet — establish a baseline first, then ratchet (see #114).
     coverage: {
       provider: "v8",
-      reporter: ["text-summary", "text", "html", "json-summary"],
+      // 'json' → coverage/coverage-final.json (istanbul shape) so e2e/coverage-merge.mjs
+      // can fold the jsdom unit coverage into the real-WebKit e2e maps for one number.
+      reporter: ["text-summary", "text", "html", "json-summary", "json"],
       reportsDirectory: "./coverage",
       include: ["src/**/*.{ts,tsx,mjs}"],
       exclude: [

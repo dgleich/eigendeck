@@ -93,3 +93,7 @@ coverage/
 # separately; never part of the app repo. See skills-public/README.md.
 skills-public/
 public/fonts/**/*.woff2
+
+# e2e coverage spike
+.nyc_output/
+coverage-e2e/

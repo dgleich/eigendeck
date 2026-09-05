@@ -53,6 +53,7 @@
     "jsdom": "^29.0.1",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
+    "vite-plugin-istanbul": "^9.0.1",
     "vitest": "^4.1.2",
     "yauzl": "^3.3.0",
     "yazl": "^3.3.1"
