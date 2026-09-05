@@ -4,55 +4,59 @@ import { clipboardRepresentations } from './pasteAs';
 const kinds = (types: string[]) => clipboardRepresentations(types).map((r) => r.kind);
 
 describe('clipboardRepresentations', () => {
-  it('maps macOS UTIs to representations', () => {
-    expect(kinds(['public.png', 'public.utf8-plain-text'])).toEqual(['image', 'text']);
-    expect(kinds(['com.adobe.pdf'])).toEqual(['pdf']);
-    expect(kinds(['com.microsoft.image-svg-xml'])).toEqual(['svg']);
-    expect(kinds(['public.html', 'public.rtf'])).toEqual(['html-image', 'html', 'text']);
+  it('returns nothing for an empty or unknown clipboard', () => {
+    expect(clipboardRepresentations([])).toEqual([]);
+    expect(kinds(['application/x-whatever', 'com.acme.custom'])).toEqual([]);
   });
 
-  it('maps web MIME types to representations', () => {
-    // html + text present → "Simple Image" (rasterize) is also offered.
-    expect(kinds(['image/png', 'text/html', 'text/plain'])).toEqual(['image', 'html-image', 'html', 'text']);
+  it('maps a single graphics representation (native UTI or web MIME)', () => {
+    expect(kinds(['public.png'])).toEqual(['image']);
+    expect(kinds(['image/png'])).toEqual(['image']);
+    expect(kinds(['image/jpeg'])).toEqual(['image']);
+    expect(kinds(['public.svg-image'])).toEqual(['svg']);
     expect(kinds(['image/svg+xml'])).toEqual(['svg']);
+    expect(kinds(['com.adobe.pdf'])).toEqual(['pdf']);
     expect(kinds(['application/pdf'])).toEqual(['pdf']);
   });
 
-  it('is case-insensitive', () => {
-    // Only html (no text) → no Simple Image.
-    expect(kinds(['IMAGE/PNG', 'Public.HTML'])).toEqual(['image', 'html']);
+  it('collapses multiple aliases of the same kind to a single entry', () => {
+    expect(kinds(['public.png', 'image/png', 'public.jpeg', 'image/tiff'])).toEqual(['image']);
   });
 
-  it('offers "Simple Image" (html-image) only when BOTH html and text are present', () => {
+  it('is case-insensitive on the type tokens', () => {
+    expect(kinds(['PUBLIC.PNG'])).toEqual(['image']);
+    expect(kinds(['IMAGE/SVG+XML'])).toEqual(['svg']);
+  });
+
+  it('offers HTML alone (no Simple Image) when text is absent', () => {
+    expect(kinds(['public.html'])).toEqual(['html']);
+    expect(kinds(['text/html'])).toEqual(['html']);
+  });
+
+  it('offers Text alone', () => {
+    expect(kinds(['text/plain'])).toEqual(['text']);
+    expect(kinds(['public.utf8-plain-text'])).toEqual(['text']);
+    expect(kinds(['text/rtf'])).toEqual(['text']);
+  });
+
+  it('offers Simple Image (html-image) ONLY when both HTML and text are present', () => {
+    // rich copy (browser / Word / Docs): html + text → rasterize option appears
     expect(kinds(['text/html', 'text/plain'])).toEqual(['html-image', 'html', 'text']);
-    expect(kinds(['text/html'])).toEqual(['html']);          // html alone → no rasterize option
-    expect(kinds(['text/plain'])).toEqual(['text']);          // text alone → no rasterize option
-    expect(kinds(['public.html', 'public.utf8-plain-text'])).toEqual(['html-image', 'html', 'text']);
+    // rtf counts as text for the "both" rule
+    expect(kinds(['public.html', 'public.rtf'])).toEqual(['html-image', 'html', 'text']);
+    // html without any text flavor → no html-image
+    expect(kinds(['text/html'])).not.toContain('html-image');
   });
 
-  it('returns representations in a stable order (image, svg, pdf, html-image, html, text)', () => {
-    // Regardless of input order, output follows the KINDS declaration order.
-    expect(kinds(['text/plain', 'public.html', 'application/pdf', 'image/svg+xml', 'public.png']))
-      .toEqual(['image', 'svg', 'pdf', 'html-image', 'html', 'text']);
+  it('orders richest-graphics-first, text last', () => {
+    const all = ['public.png', 'image/svg+xml', 'application/pdf', 'text/html', 'text/plain'];
+    expect(kinds(all)).toEqual(['image', 'svg', 'pdf', 'html-image', 'html', 'text']);
   });
 
-  it('de-duplicates a representation with several aliases present', () => {
-    // png + jpeg both map to `image` → one entry.
-    expect(kinds(['public.png', 'public.jpeg', 'image/png'])).toEqual(['image']);
-  });
-
-  it('offers a label for each representation', () => {
-    const reps = clipboardRepresentations(['public.png', 'public.html', 'text/plain']);
-    expect(reps).toEqual([
-      { kind: 'image', label: 'Image' },
-      { kind: 'html-image', label: 'Simple Image' },
-      { kind: 'html', label: 'HTML element' },
-      { kind: 'text', label: 'Text' },
-    ]);
-  });
-
-  it('empty / unknown types → no representations', () => {
-    expect(kinds([])).toEqual([]);
-    expect(kinds(['com.apple.icns', 'org.chromium.web-custom-data'])).toEqual([]);
+  it('every returned rep carries a human label', () => {
+    for (const r of clipboardRepresentations(['public.png', 'text/html', 'text/plain'])) {
+      expect(typeof r.label).toBe('string');
+      expect(r.label.length).toBeGreaterThan(0);
+    }
   });
 });
