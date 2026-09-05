@@ -8,7 +8,7 @@ on:
 
 jobs:
   check-frontend:
-    name: Frontend typecheck + build
+    name: Frontend typecheck + tests + coverage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -25,14 +25,23 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
 
-      - name: Unit tests
-        run: npm test
+      # Runs the unit/component suite WITH v8 coverage and enforces the ratcheting
+      # thresholds in vite.config.ts — CI fails if coverage regresses.
+      - name: Unit tests + coverage
+        run: npm run test:coverage
+
+      - name: Upload frontend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: coverage/
 
       - name: Vite build
         run: npx vite build
 
   check-rust:
-    name: Rust check
+    name: Rust check + tests + coverage
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v5
@@ -45,17 +54,30 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          components: clippy, llvm-tools-preview
 
       - name: Cache Rust
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Cargo check
-        working-directory: src-tauri
-        run: cargo check
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Cargo clippy
         working-directory: src-tauri
         run: cargo clippy -- -D warnings
+
+      # Runs the lib tests under coverage and enforces a line floor (raise as
+      # tests are added). --test-threads=1: the storage tests share one global
+      # SQLite connection and race in parallel.
+      - name: Cargo test + coverage
+        working-directory: src-tauri
+        run: cargo llvm-cov --lib --fail-under-lines 60 --lcov --output-path lcov.info -- --test-threads=1
+
+      - name: Upload Rust coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-coverage
+          path: src-tauri/lcov.info

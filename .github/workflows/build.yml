@@ -7,7 +7,45 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Release gate: a tagged build must pass the same coverage floors CI enforces,
+  # so we never ship a release whose tests regressed. build-tauri `needs` this.
+  coverage:
+    name: Coverage gate
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Frontend coverage (enforces thresholds)
+        run: npm run test:coverage
+
+      - name: Rust coverage (enforces floor)
+        working-directory: src-tauri
+        run: cargo llvm-cov --lib --fail-under-lines 60 -- --test-threads=1
+
   build-tauri:
+    needs: coverage
     permissions:
       contents: write
     strategy:

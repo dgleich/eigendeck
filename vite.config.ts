@@ -37,7 +37,7 @@ export default defineConfig(async () => ({
     // No hard thresholds yet — establish a baseline first, then ratchet (see #114).
     coverage: {
       provider: "v8",
-      reporter: ["text-summary", "html"],
+      reporter: ["text-summary", "text", "html", "json-summary"],
       reportsDirectory: "./coverage",
       include: ["src/**/*.{ts,tsx,mjs}"],
       exclude: [
@@ -48,6 +48,16 @@ export default defineConfig(async () => ({
         "src/presenter.tsx",
         "src/security.tsx",
       ],
+      // Ratcheting floor — CI (and `npm run test:coverage`) FAILS if coverage
+      // drops below these. Raise them as tests are added; never lower. Much of
+      // the render/interaction layer is covered by the e2e suite (real WebKit),
+      // which v8 can't see, so these track the UNIT-testable surface. See #114.
+      thresholds: {
+        statements: 36,
+        branches: 36,
+        functions: 36,
+        lines: 38,
+      },
     },
   },
 
