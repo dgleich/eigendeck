@@ -73,7 +73,7 @@ jobs:
       # SQLite connection and race in parallel.
       - name: Cargo test + coverage
         working-directory: src-tauri
-        run: cargo llvm-cov --lib --fail-under-lines 60 --lcov --output-path lcov.info -- --test-threads=1
+        run: cargo llvm-cov --lib --fail-under-lines 63 --lcov --output-path lcov.info -- --test-threads=1
 
       - name: Upload Rust coverage report
         if: always()

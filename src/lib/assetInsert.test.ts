@@ -1,172 +1,562 @@
-// Tests for storeAssetWithCollisionCheck's invalidation gating.
+// Unit tests for the asset-insertion helper (drag-drop / file-picker path).
 //
-// Re-adding the same bytes that are already current MUST NOT call
-// invalidateRenderedAsset — that nukes the asset_cache, which means
-// the next render re-parses the asset from scratch. For Asset 2.pdf
-// (the 40+ second pdfium worst case) that's a multi-second pause on
-// what should be a no-op file-picker re-add. If anyone simplifies the
-// three `if (newHash !== meta.hash)` guards back to unconditional
-// invalidation, the bug reappears silently — no error, just a
-// surprising stall — so these tests are the regression net.
+// The interesting logic here is (a) the raw-body IPC header encoding, (b) the
+// size-cap precheck, (c) the trusted-deck path-approval gate, and (d) the
+// storeAssetWithCollisionCheck STATE MACHINE — new vs existing vs orphan vs
+// divergence, the collision-dialog accept/revert/cancel branches, session-level
+// suppression, PowerPoint mode, and the whyNotLive reason strings.
+//
+// We keep assetTypes.mjs REAL (it's pure) so the type-gate verdicts are genuine,
+// and mock every stateful boundary: Tauri invoke, the Zustand store, the hash,
+// the collision dialog, preferences/toasts, and the dynamically-imported
+// trust/gate/fs modules.
 
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
-import { invoke } from '@tauri-apps/api/core';
-import { webcrypto } from 'node:crypto';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock the modules with side effects before importing the
-// system-under-test, so the SUT picks up the mocked versions.
-vi.mock('./assetRenderer', () => ({
-  invalidateRenderedAsset: vi.fn(async () => {}),
-}));
-vi.mock('./toasts', () => ({
-  showToast: vi.fn(),
-}));
-vi.mock('./collisionDialog', () => ({
-  showCollisionDialog: vi.fn(async () => 'accept' as const),
-}));
-vi.mock('./assetUsage', () => ({
-  computeAssetUsage: vi.fn(() => new Map()),
-}));
-vi.mock('../store/presentation', () => ({
-  usePresentationStore: {
-    getState: () => ({ projectPath: '/tmp/test.eigendeck', presentation: { config: {} } }),
-  },
-}));
-vi.mock('./preferences', () => ({
-  effectiveAutoReload: () => false,
-  getPreference: () => null,
-}));
-// storeAssetWithCollisionCheck fires a FIRE-AND-FORGET autoApproveExternalPath
-// when externalPath is set (these tests pass one). That chain does
-// `await import('./watcherRegistry')`, which imports ./missingAssets → react.
-// Un-awaited, it can resolve AFTER the test env tears down → an intermittent
-// "Cannot load react after teardown" EnvironmentTeardownError that fails CI
-// (only in the full parallel run). Mock watcherRegistry so the fire-and-forget
-// resolves with no real (react-pulling) import. These tests are about
-// invalidation gating, not watcher approval, so this side-effect dep is moot here.
-vi.mock('./watcherRegistry', () => ({
-  resolvePosixPath: (_absDir: string, rel: string) => rel,
-  dirname: (p: string) => p,
-}));
+// --- mocks for the static imports ------------------------------------------
 
-import { storeAssetWithCollisionCheck } from './assetInsert';
-import { invalidateRenderedAsset } from './assetRenderer';
-
-const mockedInvoke = vi.mocked(invoke);
-const mockedInvalidate = vi.mocked(invalidateRenderedAsset);
-
-// jsdom's crypto.subtle.digest rejects sliced ArrayBuffers across
-// realms (which is exactly what sha256Hex passes it). Real browsers
-// don't have this bug; it's a jsdom-only issue. Monkeypatch the
-// digest method to forward to the real (pre-replacement) implementation
-// with a clean copy of the input bytes — sidesteps the cross-realm
-// instanceof check. Capture the bound reference BEFORE the assignment;
-// otherwise our wrapper calls itself.
-beforeAll(() => {
-  const realDigest = webcrypto.subtle.digest.bind(webcrypto.subtle);
-  globalThis.crypto.subtle.digest = (async (algo: AlgorithmIdentifier, data: BufferSource) => {
-    const view = data instanceof ArrayBuffer
-      ? new Uint8Array(data)
-      : new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-    return realDigest(algo, new Uint8Array(view));
-  }) as typeof globalThis.crypto.subtle.digest;
+const invokeHandlers: Record<string, (...args: unknown[]) => unknown> = {};
+const invokeMock = vi.fn(async (cmd: string, ...rest: unknown[]) => {
+  const h = invokeHandlers[cmd];
+  if (!h) throw new Error(`unhandled invoke: ${cmd}`);
+  return h(...rest);
 });
+vi.mock('@tauri-apps/api/core', () => ({ invoke: (...a: unknown[]) => invokeMock(...(a as [string])) }));
+
+const sha256HexMock = vi.fn(async (_: Uint8Array) => 'NEWHASH');
+vi.mock('./hash', () => ({ sha256Hex: (d: Uint8Array) => sha256HexMock(d) }));
+
+// Mutable fake store state, reset per test.
+let storeState: {
+  presentation: { config?: { autoReloadAssets?: string | null } } | null;
+  projectPath: string | null;
+  updateConfig: ReturnType<typeof vi.fn>;
+};
+const getStateMock = vi.fn(() => storeState);
+let deckToken: string | null = 'tok-1';
+vi.mock('../store/presentation', () => ({
+  usePresentationStore: { getState: () => getStateMock() },
+  getDeckToken: () => deckToken,
+}));
+
+const invalidateRenderedAssetMock = vi.fn(async (_id: string) => {});
+vi.mock('./assetRenderer', () => ({ invalidateRenderedAsset: (id: string) => invalidateRenderedAssetMock(id) }));
+
+const showCollisionDialogMock = vi.fn(async (_r: unknown) => 'cancel' as string);
+vi.mock('./collisionDialog', () => ({ showCollisionDialog: (r: unknown) => showCollisionDialogMock(r) }));
+
+const effectiveAutoReloadMock = vi.fn(() => true);
+const getPreferenceMock = vi.fn(() => 'on');
+vi.mock('./preferences', () => ({
+  effectiveAutoReload: (...a: unknown[]) => effectiveAutoReloadMock(...(a as [])),
+  getPreference: (...a: unknown[]) => getPreferenceMock(...(a as [])),
+}));
+
+const showToastMock = vi.fn((_t: unknown) => {});
+vi.mock('./toasts', () => ({ showToast: (t: unknown) => showToastMock(t) }));
+
+const computeAssetUsageMock = vi.fn(() => ({ slideNumbers: [] as number[] }));
+vi.mock('./assetUsage', () => ({ computeAssetUsage: (...a: unknown[]) => computeAssetUsageMock(...(a as [])) }));
+
+// --- mocks for the dynamically-imported modules ----------------------------
+
+const isTrustedMock = vi.fn(async (_t: string) => true);
+const approvePathMock = vi.fn(async () => {});
+vi.mock('./trustStore', () => ({
+  isTrusted: (t: string) => isTrustedMock(t),
+  approvePath: (...a: unknown[]) => approvePathMock(...(a as [])),
+}));
+
+const resolveAndGateMock = vi.fn(async (_p: string) => ({ ok: true, canonicalPath: '/canon/x.png' }));
+vi.mock('./assetGate', () => ({ resolveAndGate: (p: string) => resolveAndGateMock(p) }));
+
+vi.mock('./watcherRegistry', () => ({
+  resolvePosixPath: (dir: string, rel: string) => `${dir}/${rel}`,
+  dirname: (p: string) => p.replace(/\/[^/]*$/, ''),
+}));
+
+const statNativeMock = vi.fn(async (_: string) => ({ size: 10 }));
+const readFileNativeMock = vi.fn(async (_: string) => new Uint8Array([1, 2, 3]));
+vi.mock('./nativeFs', () => ({
+  statNative: (p: string) => statNativeMock(p),
+  readFileNative: (p: string) => readFileNativeMock(p),
+}));
+
+const saveProjectMock = vi.fn(async () => {});
+vi.mock('../store/fileOps', () => ({ saveProject: () => saveProjectMock() }));
+
+// Import AFTER the mocks are registered.
+import {
+  storeAssetRaw,
+  readAddFileCapped,
+  approveExternalAbsPath,
+  storeAssetWithCollisionCheck,
+} from './assetInsert';
+import { MAX_ASSET_BYTES } from './assetTypes.mjs';
+
+// --- test fixtures ----------------------------------------------------------
+
+// A valid PNG (magic bytes) so the REAL assetTypeGate passes for `*.png`.
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
+
+/** Records of every db_store_asset_raw call, with the decoded metadata. */
+let storeCalls: Array<{ meta: Record<string, unknown>; data: unknown }>;
+
+function decodeMetaHeader(opts: unknown): Record<string, unknown> {
+  const b64 = (opts as { headers: { 'x-asset-meta': string } }).headers['x-asset-meta'];
+  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+const flush = () => new Promise((r) => setTimeout(r, 0));
 
 beforeEach(() => {
-  mockedInvoke.mockReset();
-  mockedInvalidate.mockReset();
+  vi.clearAllMocks();
+  for (const k of Object.keys(invokeHandlers)) delete invokeHandlers[k];
+  storeState = { presentation: { config: {} }, projectPath: null, updateConfig: vi.fn() };
+  deckToken = 'tok-1';
+  sha256HexMock.mockResolvedValue('NEWHASH');
+  effectiveAutoReloadMock.mockReturnValue(true);
+  getPreferenceMock.mockReturnValue('on');
+  computeAssetUsageMock.mockReturnValue({ slideNumbers: [] });
+  isTrustedMock.mockResolvedValue(true);
+  resolveAndGateMock.mockResolvedValue({ ok: true, canonicalPath: '/canon/x.png' });
+  statNativeMock.mockResolvedValue({ size: 10 });
+  readFileNativeMock.mockResolvedValue(new Uint8Array([1, 2, 3]));
+  showCollisionDialogMock.mockResolvedValue('cancel');
+
+  storeCalls = [];
+  // Default IPC dispatch: the raw store echoes the passed assetId (or mints one),
+  // recording the decoded metadata for assertions.
+  invokeHandlers['db_store_asset_raw'] = (data: unknown, opts: unknown) => {
+    const meta = decodeMetaHeader(opts);
+    storeCalls.push({ meta, data });
+    return (meta.assetId as string) ?? `fresh-${storeCalls.length}`;
+  };
 });
 
-describe('storeAssetWithCollisionCheck — invalidation gating', () => {
-  it('re-adding IDENTICAL bytes to existing asset does NOT invalidate cache', async () => {
-    // Compute the hash of the bytes we'll "re-add" so the mock returns
-    // it consistently for both `meta.hash` (current) and the
-    // single-version history (original).
-    // Valid PNG magic — the add-gate now validates that bytes match the .png
-    // extension, so fixtures must be real (this test is about invalidation, not type).
-    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
-    const hashBuf = await crypto.subtle.digest('SHA-256', bytes);
-    const hash = Array.from(new Uint8Array(hashBuf))
-      .map((b) => b.toString(16).padStart(2, '0')).join('');
+// ---------------------------------------------------------------------------
 
-    mockedInvoke.mockImplementation(async (cmd: string) => {
-      if (cmd === 'db_get_asset_meta_by_path') {
-        return { asset_id: 'existing-id', path: 'images/x.png', external_path: null, external_mtime: null, mime_type: 'image/png', auto_reload: null, hash };
-      }
-      if (cmd === 'db_get_asset_history') {
-        // Single-version history; original = current; original.hash === newHash.
-        return [{ asset_id: 'existing-id', valid_from: 't0', valid_to: null, size: bytes.length, hash, mime_type: 'image/png', external_mtime: null }];
-      }
-      // storeAssetRaw → invoke('db_store_asset_raw', dataUint8Array, {headers}).
-      // The mock keys on the command name (first arg), so the new call
-      // shape (cmd, data, options) still resolves here.
-      if (cmd === 'db_store_asset_raw') return 'existing-id';
-      if (cmd === 'db_get_project_id') return 'project-1';
-      throw new Error(`unexpected invoke: ${cmd}`);
-    });
-
-    const result = await storeAssetWithCollisionCheck({
-      path: 'images/x.png',
-      data: bytes,
-      mimeType: 'image/png',
-      externalPath: 'images/x.png',
-      externalMtime: null,
-    });
-
-    expect(result.cancelled).toBe(false);
-    expect(result.assetId).toBe('existing-id');
-    // New call shape: bytes are the raw 2nd arg (memcpy body), metadata
-    // rides in the x-asset-meta header — not the old (cmd, {path,data,…}).
-    expect(mockedInvoke).toHaveBeenCalledWith(
-      'db_store_asset_raw',
-      bytes,
-      expect.objectContaining({ headers: expect.objectContaining({ 'x-asset-meta': expect.any(String) }) }),
+describe('storeAssetRaw', () => {
+  it('encodes metadata as a base64 x-asset-meta header and passes bytes as the body', async () => {
+    const data = new Uint8Array([9, 8, 7]);
+    const id = await storeAssetRaw(
+      { path: 'a.png', mimeType: 'image/png', externalPath: '/ext/a.png', externalMtime: '123', assetId: 'A1' },
+      data,
     );
-    // The critical assertion: cache was NOT invalidated because the
-    // bytes didn't change. If this regresses, every no-op re-add of a
-    // big PDF triggers a 40s pdfium re-parse on next render.
-    expect(mockedInvalidate).not.toHaveBeenCalled();
+    expect(id).toBe('A1');
+    expect(storeCalls).toHaveLength(1);
+    expect(storeCalls[0].data).toBe(data); // raw body, not nested
+    expect(storeCalls[0].meta).toMatchObject({
+      path: 'a.png',
+      mimeType: 'image/png',
+      externalPath: '/ext/a.png',
+      externalMtime: '123',
+      assetId: 'A1',
+    });
   });
 
-  it('reverting current bytes to original (different from current) DOES invalidate', async () => {
-    // Different hash for "current" (drift from original); new bytes
-    // match the ORIGINAL hash. This is the "user is reverting to the
-    // file they originally added" scenario. db_store_asset writes
-    // the original bytes back, and the cache MUST be invalidated
-    // because the bytes did change (current → original).
-    const originalBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 9, 8]); // valid PNG magic
-    const originalHashBuf = await crypto.subtle.digest('SHA-256', originalBytes);
-    const originalHash = Array.from(new Uint8Array(originalHashBuf))
-      .map((b) => b.toString(16).padStart(2, '0')).join('');
-    const driftedCurrentHash = 'deadbeef'.repeat(8);  // any non-matching hash
+  it('round-trips non-ASCII metadata through the base64 header', async () => {
+    await storeAssetRaw({ path: 'résumé—π.png', mimeType: 'image/png' }, new Uint8Array());
+    expect(storeCalls[0].meta.path).toBe('résumé—π.png');
+  });
+});
 
-    mockedInvoke.mockImplementation(async (cmd: string) => {
-      if (cmd === 'db_get_asset_meta_by_path') {
-        return { asset_id: 'existing-id', path: 'images/x.png', external_path: null, external_mtime: null, mime_type: 'image/png', auto_reload: null, hash: driftedCurrentHash };
-      }
-      if (cmd === 'db_get_asset_history') {
-        return [
-          { asset_id: 'existing-id', valid_from: 't1', valid_to: null, size: 5, hash: driftedCurrentHash, mime_type: 'image/png', external_mtime: null },
-          { asset_id: 'existing-id', valid_from: 't0', valid_to: 't1', size: 5, hash: originalHash, mime_type: 'image/png', external_mtime: null },
-        ];
-      }
-      // storeAssetRaw → invoke('db_store_asset_raw', dataUint8Array, {headers}).
-      // The mock keys on the command name (first arg), so the new call
-      // shape (cmd, data, options) still resolves here.
-      if (cmd === 'db_store_asset_raw') return 'existing-id';
-      if (cmd === 'db_get_project_id') return 'project-1';
-      throw new Error(`unexpected invoke: ${cmd}`);
+describe('readAddFileCapped', () => {
+  it('rejects an oversized file BEFORE reading it, showing the too-large toast', async () => {
+    statNativeMock.mockResolvedValue({ size: MAX_ASSET_BYTES + 1 });
+    const out = await readAddFileCapped('/big.mp4');
+    expect(out).toBeNull();
+    expect(readFileNativeMock).not.toHaveBeenCalled();
+    expect(showToastMock).toHaveBeenCalledTimes(1);
+    const toast = (showToastMock.mock.calls as unknown[][])[0][0] as { kind: string; message: string };
+    expect(toast.kind).toBe('error');
+    expect(toast.message).toContain('512 MB');
+  });
+
+  it('reads and returns the bytes when the file is under the cap', async () => {
+    const bytes = new Uint8Array([4, 5, 6]);
+    readFileNativeMock.mockResolvedValue(bytes);
+    const out = await readAddFileCapped('/ok.png');
+    expect(out).toBe(bytes);
+    expect(showToastMock).not.toHaveBeenCalled();
+  });
+
+  it('falls through to the read when stat throws (real error surfaces there)', async () => {
+    statNativeMock.mockRejectedValue(new Error('stat boom'));
+    const bytes = new Uint8Array([7]);
+    readFileNativeMock.mockResolvedValue(bytes);
+    const out = await readAddFileCapped('/weird.png');
+    expect(out).toBe(bytes);
+    expect(showToastMock).not.toHaveBeenCalled();
+  });
+
+  it('does not reject when stat reports a non-numeric size', async () => {
+    statNativeMock.mockResolvedValue({ size: undefined as unknown as number });
+    const out = await readAddFileCapped('/nosize.png');
+    expect(out).not.toBeNull();
+    expect(readFileNativeMock).toHaveBeenCalled();
+  });
+});
+
+describe('approveExternalAbsPath', () => {
+  it('no-ops when there is no deck token', async () => {
+    deckToken = null;
+    await approveExternalAbsPath('A1', '/x.png', 'add');
+    expect(approvePathMock).not.toHaveBeenCalled();
+    expect(isTrustedMock).not.toHaveBeenCalled();
+  });
+
+  it('no-ops when the asset id is empty', async () => {
+    await approveExternalAbsPath('', '/x.png', 'add');
+    expect(approvePathMock).not.toHaveBeenCalled();
+  });
+
+  it('no-ops on an untrusted deck (never records a path)', async () => {
+    isTrustedMock.mockResolvedValue(false);
+    await approveExternalAbsPath('A1', '/x.png', 'add');
+    expect(resolveAndGateMock).not.toHaveBeenCalled();
+    expect(approvePathMock).not.toHaveBeenCalled();
+  });
+
+  it('records the CANONICAL path via approvePath on a trusted deck', async () => {
+    resolveAndGateMock.mockResolvedValue({ ok: true, canonicalPath: '/canon/real.png' });
+    await approveExternalAbsPath('A1', '/x.png', 'relocate');
+    expect(approvePathMock).toHaveBeenCalledWith('tok-1', 'A1', '/canon/real.png', 'relocate');
+  });
+
+  it('does not approve when the gate rejects the target', async () => {
+    resolveAndGateMock.mockResolvedValue({ ok: false, canonicalPath: null as unknown as string });
+    await approveExternalAbsPath('A1', '/x.png', 'add');
+    expect(approvePathMock).not.toHaveBeenCalled();
+  });
+
+  it('swallows errors (non-fatal)', async () => {
+    isTrustedMock.mockRejectedValue(new Error('trust boom'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(approveExternalAbsPath('A1', '/x.png', 'add')).resolves.toBeUndefined();
+    expect(approvePathMock).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});
+
+describe('storeAssetWithCollisionCheck — type gate', () => {
+  it('refuses a bad extension: error toast, cancelled, no store', async () => {
+    const r = await storeAssetWithCollisionCheck({
+      path: 'thing.xyz', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
     });
+    expect(r.cancelled).toBe(true);
+    expect(r.assetId).toBe('');
+    expect(storeCalls).toHaveLength(0);
+    const msg = ((showToastMock.mock.calls as unknown[][])[0][0] as { message: string }).message;
+    expect(msg).toContain("isn’t a supported asset type");
+  });
 
+  it('refuses bytes that do not match the extension (content-mismatch)', async () => {
+    const notPng = new Uint8Array([0, 1, 2, 3, 4, 5]);
+    const r = await storeAssetWithCollisionCheck({
+      path: 'thing.png', data: notPng, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    expect(r.cancelled).toBe(true);
+    const msg = ((showToastMock.mock.calls as unknown[][])[0][0] as { message: string }).message;
+    expect(msg).toContain("isn’t a valid PNG");
+  });
+
+  it('gives the demo-specific message for a non-demo .html', async () => {
+    const html = new TextEncoder().encode('<html><body>not a demo</body></html>');
+    const r = await storeAssetWithCollisionCheck({
+      path: 'page.html', data: html, mimeType: 'text/html', externalPath: null, externalMtime: null,
+    });
+    expect(r.cancelled).toBe(true);
+    const msg = ((showToastMock.mock.calls as unknown[][])[0][0] as { message: string }).message;
+    expect(msg).toContain('Eigendeck demo');
+  });
+});
+
+describe('storeAssetWithCollisionCheck — PowerPoint mode (per-pres auto-reload OFF)', () => {
+  it('stores a fresh independent asset with no meta lookup and no dialog', async () => {
+    storeState.presentation = { config: { autoReloadAssets: 'off' } };
+    const r = await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: '/ext/a.png', externalMtime: 'm',
+    });
+    expect(r.cancelled).toBe(false);
+    expect(storeCalls).toHaveLength(1);
+    // A brand-new UUID was minted (crypto.randomUUID), NOT reused from any meta.
+    expect(typeof storeCalls[0].meta.assetId).toBe('string');
+    expect(showCollisionDialogMock).not.toHaveBeenCalled();
+    // db_get_asset_meta_by_path must not even be consulted in PowerPoint mode.
+    expect(invokeMock).not.toHaveBeenCalledWith('db_get_asset_meta_by_path', expect.anything());
+  });
+});
+
+describe('storeAssetWithCollisionCheck — no existing asset', () => {
+  it('stores a new asset and returns its id', async () => {
+    invokeHandlers['db_get_asset_meta_by_path'] = () => null;
+    const r = await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    expect(r.cancelled).toBe(false);
+    expect(r.assetId).toBe('fresh-1');
+    expect(storeCalls[0].meta.assetId).toBeUndefined(); // fresh insert, no explicit id
+    expect(showCollisionDialogMock).not.toHaveBeenCalled();
+  });
+
+  it('warns about an unsaved project when a linked asset is added with tracking on', async () => {
+    invokeHandlers['db_get_asset_meta_by_path'] = () => null;
+    storeState.projectPath = null; // unsaved
+    effectiveAutoReloadMock.mockReturnValue(true);
     await storeAssetWithCollisionCheck({
-      path: 'images/x.png',
-      data: originalBytes,  // matches ORIGINAL hash, not current
-      mimeType: 'image/png',
-      externalPath: 'images/x.png',
-      externalMtime: null,
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: '/ext/a.png', externalMtime: null,
     });
+    const keys = (showToastMock.mock.calls as unknown[][]).map((c) => (c[0] as { key?: string }).key);
+    expect(keys).toContain('unsaved-project-tracking');
+  });
 
-    // Invalidate IS expected here: bytes changed (current → original).
-    expect(mockedInvalidate).toHaveBeenCalledWith('existing-id');
+  it('does NOT warn when the asset is unlinked (externalPath null)', async () => {
+    invokeHandlers['db_get_asset_meta_by_path'] = () => null;
+    await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    expect(showToastMock).not.toHaveBeenCalled();
+  });
+
+  it('does NOT warn when the project is already saved', async () => {
+    invokeHandlers['db_get_asset_meta_by_path'] = () => null;
+    storeState.projectPath = '/proj/deck.eigendeck';
+    await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: '/ext/a.png', externalMtime: null,
+    });
+    const keys = (showToastMock.mock.calls as unknown[][]).map((c) => (c[0] as { key?: string }).key);
+    expect(keys).not.toContain('unsaved-project-tracking');
+  });
+
+  it('does NOT warn when effective auto-reload is off', async () => {
+    invokeHandlers['db_get_asset_meta_by_path'] = () => null;
+    effectiveAutoReloadMock.mockReturnValue(false);
+    await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: '/ext/a.png', externalMtime: null,
+    });
+    const keys = (showToastMock.mock.calls as unknown[][]).map((c) => (c[0] as { key?: string }).key);
+    expect(keys).not.toContain('unsaved-project-tracking');
+  });
+});
+
+describe('storeAssetWithCollisionCheck — existing asset, bytes match original', () => {
+  function existing(metaHash: string, originalHash: string | null) {
+    invokeHandlers['db_get_asset_meta_by_path'] = () => ({
+      asset_id: 'EXIST', path: 'a.png', external_path: null, external_mtime: null,
+      mime_type: 'image/png', auto_reload: null, hash: metaHash,
+    });
+    invokeHandlers['db_get_asset_history'] = () => [
+      { asset_id: 'EXIST', valid_from: 't1', valid_to: null, size: 1, hash: originalHash, mime_type: null, external_mtime: null },
+    ];
+  }
+
+  it('silently stores on the existing id and invalidates when current bytes change', async () => {
+    // original hash == new hash, but the CURRENT stored hash differs → invalidate.
+    sha256HexMock.mockResolvedValue('ORIG');
+    existing('CURRENT_DIFFERS', 'ORIG');
+    const r = await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    expect(r.cancelled).toBe(false);
+    expect(storeCalls[0].meta.assetId).toBe('EXIST');
+    expect(invalidateRenderedAssetMock).toHaveBeenCalledWith('EXIST');
+    expect(showCollisionDialogMock).not.toHaveBeenCalled();
+  });
+
+  it('does NOT invalidate when re-adding the identical current bytes (no-op)', async () => {
+    // original == current == new → nothing changed, avoid the expensive re-render.
+    sha256HexMock.mockResolvedValue('SAME');
+    existing('SAME', 'SAME');
+    await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    expect(invalidateRenderedAssetMock).not.toHaveBeenCalled();
+  });
+
+  it('treats a missing/hashless original as "matches" (no dialog)', async () => {
+    existing('CUR', null); // original.hash is null
+    const r = await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    expect(r.cancelled).toBe(false);
+    expect(showCollisionDialogMock).not.toHaveBeenCalled();
+    expect(storeCalls[0].meta.assetId).toBe('EXIST');
+  });
+});
+
+describe('storeAssetWithCollisionCheck — divergence', () => {
+  // meta.hash / original.hash / new(sha) all controllable.
+  function diverge(opts: { metaHash: string; originalHash: string; autoReload?: string | null; slides?: number[] }) {
+    invokeHandlers['db_get_asset_meta_by_path'] = () => ({
+      asset_id: 'EXIST', path: 'a.png', external_path: null, external_mtime: null,
+      mime_type: 'image/png', auto_reload: opts.autoReload ?? null, hash: opts.metaHash,
+    });
+    invokeHandlers['db_get_asset_history'] = () => [
+      { asset_id: 'EXIST', valid_from: 't2', valid_to: null, size: 1, hash: 'v2', mime_type: null, external_mtime: null },
+      { asset_id: 'EXIST', valid_from: 't1', valid_to: null, size: 1, hash: opts.originalHash, mime_type: null, external_mtime: null },
+    ];
+    // Unique per call: acceptedProjects is a module-level Set that persists
+    // across tests, so a shared id would let one test's "accept" suppress
+    // another's dialog. Tests that need a STABLE id override this afterwards.
+    invokeHandlers['db_get_project_id'] = () => `proj-${crypto.randomUUID()}`;
+    invokeHandlers['db_restore_asset_version'] = () => undefined;
+    computeAssetUsageMock.mockReturnValue({ slideNumbers: opts.slides ?? [2, 4] });
+    sha256HexMock.mockResolvedValue('NEW');
+  }
+
+  it('orphan (no slides use the asset) stores a new version with NO dialog', async () => {
+    diverge({ metaHash: 'CUR', originalHash: 'ORIG', slides: [] });
+    const r = await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    expect(r.cancelled).toBe(false);
+    expect(showCollisionDialogMock).not.toHaveBeenCalled();
+    expect(storeCalls[0].meta.assetId).toBe('EXIST');
+    expect(invalidateRenderedAssetMock).toHaveBeenCalledWith('EXIST'); // CUR != NEW
+  });
+
+  it('cancel from the dialog aborts the add (no store)', async () => {
+    diverge({ metaHash: 'CUR', originalHash: 'ORIG' });
+    showCollisionDialogMock.mockResolvedValue('cancel');
+    const r = await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    expect(r.cancelled).toBe(true);
+    expect(r.assetId).toBe('');
+    expect(storeCalls).toHaveLength(0);
+  });
+
+  it('accept stores on the existing id, invalidates, and passes slide numbers to the dialog', async () => {
+    diverge({ metaHash: 'CUR', originalHash: 'ORIG', slides: [2, 4, 7] });
+    showCollisionDialogMock.mockResolvedValue('accept');
+    const r = await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    expect(r.cancelled).toBe(false);
+    expect(storeCalls[0].meta.assetId).toBe('EXIST');
+    expect(invalidateRenderedAssetMock).toHaveBeenCalledWith('EXIST');
+    const req = (showCollisionDialogMock.mock.calls as unknown[][])[0][0] as { slideNumbers: number[]; existingChanged: boolean };
+    expect(req.slideNumbers).toEqual([2, 4, 7]);
+    expect(req.existingChanged).toBe(true); // meta.hash(CUR) != original(ORIG)
+  });
+
+  it('accepting once suppresses the dialog for the rest of the session (same project)', async () => {
+    diverge({ metaHash: 'CUR', originalHash: 'ORIG' });
+    invokeHandlers['db_get_project_id'] = () => 'proj-suppress-me';
+    showCollisionDialogMock.mockResolvedValue('accept');
+    await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    expect(showCollisionDialogMock).toHaveBeenCalledTimes(1);
+    // Second insert with a fresh divergence on the SAME project id → no dialog.
+    showCollisionDialogMock.mockClear();
+    await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    expect(showCollisionDialogMock).not.toHaveBeenCalled();
+    expect(storeCalls[storeCalls.length - 1].meta.assetId).toBe('EXIST');
+  });
+
+  it('revert restores the original, mints a NEW asset id, and turns per-pres auto-reload OFF', async () => {
+    diverge({ metaHash: 'CUR', originalHash: 'ORIG' });
+    showCollisionDialogMock.mockResolvedValue('revert');
+    const restoreCalls: unknown[] = [];
+    invokeHandlers['db_restore_asset_version'] = (arg: unknown) => { restoreCalls.push(arg); };
+    const r = await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    expect(r.cancelled).toBe(false);
+    // Restored the existing asset to its ORIGINAL version (valid_from t1).
+    expect(restoreCalls[0]).toEqual({ assetId: 'EXIST', validFrom: 't1' });
+    // The new asset carries a FRESH uuid, not EXIST.
+    const stored = storeCalls[storeCalls.length - 1].meta.assetId as string;
+    expect(stored).toBeTruthy();
+    expect(stored).not.toBe('EXIST');
+    expect(r.assetId).toBe(stored);
+    // Per-presentation auto-reload flipped off.
+    expect(storeState.updateConfig).toHaveBeenCalledWith({ autoReloadAssets: 'off' });
+  });
+
+  it('whyNotLive: untrusted deck yields the "isn’t trusted" reason when existing is unchanged', async () => {
+    diverge({ metaHash: 'ORIG', originalHash: 'ORIG' }); // meta==original → existingChanged false
+    isTrustedMock.mockResolvedValue(false);
+    showCollisionDialogMock.mockResolvedValue('cancel');
+    await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    const req = (showCollisionDialogMock.mock.calls as unknown[][])[0][0] as { existingChanged: boolean; notLiveReason?: string };
+    expect(req.existingChanged).toBe(false);
+    expect(req.notLiveReason).toContain('isn’t trusted');
+  });
+
+  it('whyNotLive: auto-reload-off yields the "turned off" reason (trusted, unchanged)', async () => {
+    diverge({ metaHash: 'ORIG', originalHash: 'ORIG' });
+    isTrustedMock.mockResolvedValue(true);
+    effectiveAutoReloadMock.mockReturnValue(false);
+    showCollisionDialogMock.mockResolvedValue('cancel');
+    await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    const req = (showCollisionDialogMock.mock.calls as unknown[][])[0][0] as { notLiveReason?: string };
+    expect(req.notLiveReason).toContain('turned off');
+  });
+
+  it('whyNotLive: neutral fallback when trusted and auto-reload on (unchanged)', async () => {
+    diverge({ metaHash: 'ORIG', originalHash: 'ORIG' });
+    isTrustedMock.mockResolvedValue(true);
+    effectiveAutoReloadMock.mockReturnValue(true);
+    showCollisionDialogMock.mockResolvedValue('cancel');
+    await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    const req = (showCollisionDialogMock.mock.calls as unknown[][])[0][0] as { notLiveReason?: string };
+    expect(req.notLiveReason).toContain("isn’t auto-updating");
+  });
+
+  it('existingChanged true (meta != original) omits notLiveReason', async () => {
+    diverge({ metaHash: 'CUR', originalHash: 'ORIG' });
+    showCollisionDialogMock.mockResolvedValue('cancel');
+    await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    const req = (showCollisionDialogMock.mock.calls as unknown[][])[0][0] as { existingChanged: boolean; notLiveReason?: string };
+    expect(req.existingChanged).toBe(true);
+    expect(req.notLiveReason).toBeUndefined();
+  });
+});
+
+describe('storeAssetWithCollisionCheck — trusted-deck auto-approval side effect', () => {
+  it('auto-approves the linked path after a successful add on a saved trusted deck', async () => {
+    invokeHandlers['db_get_asset_meta_by_path'] = () => null;
+    storeState.projectPath = '/proj/deck.eigendeck';
+    isTrustedMock.mockResolvedValue(true);
+    resolveAndGateMock.mockResolvedValue({ ok: true, canonicalPath: '/canon/a.png' });
+    const r = await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: 'assets/a.png', externalMtime: null,
+    });
+    expect(r.cancelled).toBe(false);
+    await flush(); // let the fire-and-forget autoApprove chain resolve
+    expect(approvePathMock).toHaveBeenCalledWith('tok-1', r.assetId, '/canon/a.png', 'add');
+  });
+
+  it('does not auto-approve when the add was cancelled', async () => {
+    // bad extension → cancelled, so no external path approval
+    await storeAssetWithCollisionCheck({
+      path: 'a.xyz', data: PNG, mimeType: 'image/png', externalPath: 'assets/a.xyz', externalMtime: null,
+    });
+    await flush();
+    expect(approvePathMock).not.toHaveBeenCalled();
+  });
+
+  it('does not auto-approve when there is no linked externalPath', async () => {
+    invokeHandlers['db_get_asset_meta_by_path'] = () => null;
+    storeState.projectPath = '/proj/deck.eigendeck';
+    await storeAssetWithCollisionCheck({
+      path: 'a.png', data: PNG, mimeType: 'image/png', externalPath: null, externalMtime: null,
+    });
+    await flush();
+    expect(approvePathMock).not.toHaveBeenCalled();
   });
 });

@@ -53,10 +53,10 @@ export default defineConfig(async () => ({
       // the render/interaction layer is covered by the e2e suite (real WebKit),
       // which v8 can't see, so these track the UNIT-testable surface. See #114.
       thresholds: {
-        statements: 36,
-        branches: 36,
-        functions: 36,
-        lines: 38,
+        statements: 40,
+        branches: 40,
+        functions: 39,
+        lines: 42,
       },
     },
   },

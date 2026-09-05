@@ -368,3 +368,33 @@ fn mac_write_multi(app: &tauri::AppHandle, reps: Vec<(String, Vec<u8>)>) -> Resu
     });
     rx.recv().unwrap_or_else(|_| Err("main-thread dispatch failed".into()))
 }
+
+#[cfg(test)]
+mod to_png_tests {
+    use super::*;
+
+    // to_png decodes raster bytes and re-encodes them as PNG. The crate is built
+    // with only the `png` image feature (see Cargo.toml), so PNG is the one format
+    // it can round-trip; feed a real in-memory PNG and assert the output is a valid
+    // PNG of the same dimensions. Display-independent (no arboard) → headless-safe.
+    #[test]
+    fn to_png_reencodes_a_raster_to_valid_png() {
+        let src = image::RgbaImage::from_fn(4, 3, |x, y| {
+            image::Rgba([(x * 60) as u8, (y * 80) as u8, 120, 255])
+        });
+        let mut buf = std::io::Cursor::new(Vec::new());
+        image::DynamicImage::ImageRgba8(src)
+            .write_to(&mut buf, image::ImageFormat::Png)
+            .expect("encode source png");
+        let png = to_png(&buf.into_inner()).expect("png should re-encode to png");
+        // PNG magic bytes.
+        assert_eq!(&png[..8], &[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+        let decoded = image::load_from_memory(&png).expect("output is a valid png");
+        assert_eq!((decoded.width(), decoded.height()), (4, 3));
+    }
+
+    #[test]
+    fn to_png_errors_on_non_image_bytes() {
+        assert!(to_png(b"definitely not an image").is_err());
+    }
+}

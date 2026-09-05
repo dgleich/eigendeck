@@ -42,7 +42,7 @@ jobs:
 
       - name: Rust coverage (enforces floor)
         working-directory: src-tauri
-        run: cargo llvm-cov --lib --fail-under-lines 60 -- --test-threads=1
+        run: cargo llvm-cov --lib --fail-under-lines 63 -- --test-threads=1
 
   build-tauri:
     needs: coverage
