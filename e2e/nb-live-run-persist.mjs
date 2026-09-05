@@ -18,6 +18,16 @@ async function waitSeam(sid){for(let i=0;i<20;i++){await sleep(800);if(await exe
 const fail=(m)=>{console.error('E2E_FAIL '+m);process.exit(1);};
 async function pollDom(sid,needle,ms=20000){for(let t=0;t<ms;t+=500){if((await dom(sid)).includes(needle))return true;await sleep(500);}return false;}
 
+// Language-parametrized (defaults = Python). run-live-kernels.sh sets these per
+// kernel so ONE probe covers python3 / R (ir) / … — the client is language-neutral,
+// only the fixture kernel + cell source + expected marker differ.
+const LANG        = process.env.E2E_LANG        || 'python';
+const KERNEL_NAME = process.env.E2E_KERNEL_NAME || 'python3';
+const CELL_SRC    = process.env.E2E_CELL_SRC    || 'print("E2E_LIVE_%d" % (6*7))';
+const EXPECT      = process.env.E2E_EXPECT      || 'E2E_LIVE_42';  // computed output that must appear
+const SET_MARKER  = process.env.E2E_SET_MARKER  || 'E2E_LIVE';     // substring proving the editor took the source
+const SRC_MARKER  = process.env.E2E_SRC_MARKER  || 'E2E_LIVE_%d';  // source substring that must persist on reopen
+
 (async () => {
   const sid = await open();
   if (!sid) fail('no session');
@@ -26,7 +36,7 @@ async function pollDom(sid,needle,ms=20000){for(let t=0;t<ms;t+=500){if((await d
   // so usePreference('jupyterServers') re-reads (a raw setItem alone doesn't
   // notify subscribers, so the already-mounted notebook keeps its empty registry).
   await execSync(sid, `localStorage.setItem('eigendeck:pref:jupyterServers', JSON.stringify(
-    [{ label: 'e2e', baseUrl: ${JSON.stringify(JUP_URL)}, token: ${JSON.stringify(JUP_TOKEN)}, availableKernels: ['python3'] }]));
+    [{ label: 'e2e', baseUrl: ${JSON.stringify(JUP_URL)}, token: ${JSON.stringify(JUP_TOKEN)}, availableKernels: [${JSON.stringify(KERNEL_NAME)}] }]));
     window.dispatchEvent(new CustomEvent('eigendeck:pref-changed', { detail: { key: 'jupyterServers' } }));`);
   if (!await pollDom(sid, 'k = 5')) fail('cell source k = 5 not rendered');
 
@@ -35,7 +45,7 @@ async function pollDom(sid,needle,ms=20000){for(let t=0;t<ms;t+=500){if((await d
   // wait for the CodeMirror editor to mount (lazy-loaded)
   for (let t = 0; t < 15000 && !(await execSync(sid, `return !!document.querySelector('.cm-content')`)); t += 500) await sleep(500);
   // edit: replace the CodeMirror doc with a computed-output line
-  const NEWSRC = 'print("E2E_LIVE_%d" % (6*7))';
+  const NEWSRC = CELL_SRC;
   const setOk = await execSync(sid, `return (() => {
     const cm = document.querySelector('.cm-content');
     if (!cm) return 'no-cm';
@@ -43,7 +53,7 @@ async function pollDom(sid,needle,ms=20000){for(let t=0;t<ms;t+=500){if((await d
     const sel = window.getSelection(); const r = document.createRange();
     r.selectNodeContents(cm); sel.removeAllRanges(); sel.addRange(r);
     document.execCommand('insertText', false, ${JSON.stringify(NEWSRC)});
-    return document.querySelector('.cm-content')?.textContent?.includes('E2E_LIVE') ? 'ok' : 'no-set';
+    return document.querySelector('.cm-content')?.textContent?.includes(${JSON.stringify(SET_MARKER)}) ? 'ok' : 'no-set';
   })();`);
   if (setOk !== 'ok') fail('could not set cell source via CodeMirror (' + setOk + ') — see FALLBACK in plan');
   // blur the editor → onCommit → ov.setEdit → the source edit lands in cellEdits
@@ -53,7 +63,7 @@ async function pollDom(sid,needle,ms=20000){for(let t=0;t<ms;t+=500){if((await d
   // run the cell (lazy WS connect happens here)
   const runBtn = await execSync(sid, `return !!document.querySelector('.nb-cell-run')`);
   await execSync(sid, `document.querySelector('.nb-cell-run')?.click();`);
-  if (!await pollDom(sid, 'E2E_LIVE_42', 30000)) {
+  if (!await pollDom(sid, EXPECT, 30000)) {
     const diag = await execSync(sid, `return JSON.stringify({
       runBtnPresent: ${runBtn},
       pref: localStorage.getItem('eigendeck:pref:jupyterServers'),
@@ -63,9 +73,9 @@ async function pollDom(sid,needle,ms=20000){for(let t=0;t<ms;t+=500){if((await d
       nbText: (document.querySelector('.nb-body')?.textContent || '').slice(0, 400),
     })`);
     console.error('DIAG ' + diag);
-    fail('live kernel output E2E_LIVE_42 not seen');
+    fail(`live kernel output ${EXPECT} not seen (${LANG})`);
   }
-  console.log('E2E_OK live-run');
+  console.log(`E2E_OK live-run (${LANG})`);
 
   // The edited cell is a print() — it emits stream output but NO execute_result,
   // so its `[N]` prompt only updates if the client surfaces execute_reply's
@@ -99,9 +109,9 @@ async function pollDom(sid,needle,ms=20000){for(let t=0;t<ms;t+=500){if((await d
   const sid2 = await open();
   if (!sid2) fail('no reopen session');
   if (!await waitSeam(sid2)) fail('no seam on reopen');
-  if (!await pollDom(sid2, 'E2E_LIVE_42')) fail('live output did NOT persist across reopen');
-  if (!await pollDom(sid2, 'E2E_LIVE_%d')) fail('edited source did NOT persist across reopen');
+  if (!await pollDom(sid2, EXPECT)) fail(`live output did NOT persist across reopen (${LANG})`);
+  if (!await pollDom(sid2, SRC_MARKER)) fail(`edited source did NOT persist across reopen (${LANG})`);
   await fetch(`${BASE}/session/${sid2}`, { method: 'DELETE' }).catch(() => {});
-  console.log('E2E_PASS live edit+run+persist');
+  console.log(`E2E_PASS live edit+run+persist (${LANG})`);
   process.exit(0);
 })();

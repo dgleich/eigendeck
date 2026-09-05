@@ -246,15 +246,11 @@ MANIFEST=(
   "valign-edit-shift-probe.mjs|valign.eigendeck||import_json \$ROOT/e2e/fixtures/valign-shift-deck.json"
 )
 
-# Live-kernel probe: boots a REAL jupyter server (via uv). Included whenever this
-# machine can run it — uv on PATH — or when forced with E2E_LIVE_JUPYTER=1; skip
-# explicitly with E2E_NO_LIVE_JUPYTER=1. Kept out of the array above so a box
-# without uv/jupyter still runs the hermetic suite green.
-if [ "${E2E_NO_LIVE_JUPYTER:-}" != "1" ] && { [ "${E2E_LIVE_JUPYTER:-}" = "1" ] || command -v uv >/dev/null 2>&1; }; then
-  MANIFEST+=("nb-live-run-persist.mjs|live.eigendeck|E2E_JUPYTER=1|python3 $EXFIX/make_live_nb_deck.py \$DECKDIR/live.json; import_json \$DECKDIR/live.json")
-else
-  echo "note: skipping nb-live-run-persist (no uv on PATH). Set E2E_LIVE_JUPYTER=1 to force it."
-fi
+# Live-kernel probes run as part of the DEFAULT suite (maintainer's call) — they
+# boot a REAL jupyter kernel and drive the live path across languages (python + R).
+# They're non-hermetic (need uv, and R needs IRkernel), so a language is skipped
+# with a note when its tooling is absent rather than failing a bare box. Disable
+# them entirely with E2E_NO_LIVE_JUPYTER=1. See e2e/_live-kernels.sh.
 
 pass=0; fail=0; failed=()
 for entry in "${MANIFEST[@]}"; do
@@ -304,6 +300,30 @@ for entry in "${MANIFEST[@]}"; do
   if [ "$rc" -eq 0 ]; then echo "  ✓ $label"; pass=$((pass+1)); else echo "  ✗ $label (rc=$rc)"; fail=$((fail+1)); failed+=("$label"); fi
 done
 unset DECK DECKDIR
+
+# ── live-kernel probes (default; multi-language) ────────────────────────────
+if [ "${E2E_NO_LIVE_JUPYTER:-}" != "1" ] && { [ -z "${E2E_FILTER:-}" ] || printf 'nb-live-run-persist' | grep -Eq "$E2E_FILTER"; }; then
+  # shellcheck source=/dev/null
+  source "$ROOT/e2e/_live-kernels.sh"
+  for cfg in "${LIVE_KERNEL_CONFIGS[@]}"; do
+    IFS='|' read -r lang kernel disp src expect <<< "$cfg"
+    label="live-kernel:$lang ($kernel)"
+    echo "──── $label ────"
+    if ! live_kernel_available "$kernel"; then
+      echo "  ⊘ SKIP — '$kernel' tooling not installed (uv$([ "$kernel" != python3 ] && echo " + $kernel kernelspec") required)"
+      continue
+    fi
+    # One retry — the live path boots a fresh jupyter + WebKit session; ride out a
+    # transient rig hiccup like the manifest loop does.
+    rc=1
+    for try in 1 2; do
+      run_live_kernel "$lang" "$kernel" "$disp" "$src" "$expect"; rc=$?
+      [ "$rc" -eq 0 ] && break
+      [ "$try" -lt 2 ] && { echo "  … $label rc=$rc — retry 2/2 in 10s"; sleep 10; }
+    done
+    if [ "$rc" -eq 0 ]; then echo "  ✓ $label"; pass=$((pass+1)); else echo "  ✗ $label (rc=$rc)"; fail=$((fail+1)); failed+=("$label"); fi
+  done
+fi
 
 echo "════════════════════════════"
 echo "e2e: $pass passed, $fail failed (of $((pass+fail)))"

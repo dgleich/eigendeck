@@ -85,25 +85,37 @@ These live in `e2e/` but are NOT in `run-all.sh`, by design:
   save-path force-flush (`src/lib/overlayFlushRegistry`, called from
   `flushToSqlite` + the clean-quit handler), fails without it. Kernel-free (edits
   + blurs, never runs a cell), so it's in the gated `run-all.sh` set.
-- **nb-live-run-persist.mjs** — the only probe that boots a REAL Jupyter kernel
-  and runs a cell. Proves the live path unit/overlay tests can't: edit a cell's
-  source in-app (CodeMirror), run it against an external `python3` kernel, and
-  assert the computed output (`E2E_LIVE_42` = `6*7`, un-fakeable) plus the edited
-  source both survive save→quit→reopen (via the overlay). Excluded from the gate
-  because it's non-hermetic: it needs `uv` and a real `jupyter server` (network
-  for the first venv build). Run it standalone:
+- **nb-live-run-persist.mjs** — boots a REAL Jupyter kernel and runs a cell.
+  Proves the live path unit/overlay tests can't: edit a cell's source in-app
+  (CodeMirror), run it against an external kernel, assert the computed output
+  (`E2E_LIVE_42` = `6*7`, un-fakeable) **and** the `[N]` execution-count prompt,
+  then confirm the edited source + output survive save→quit→reopen (via the
+  overlay). It is **language-parametrized** (env: `E2E_KERNEL_NAME`,
+  `E2E_CELL_SRC`, `E2E_EXPECT`, `E2E_LANG`) so ONE probe covers python3, R (`ir`),
+  … — the client is language-neutral; only the fixture kernel + cell source +
+  expected marker differ.
+
+  These run as part of the **default** `run-all.sh` (multi-language: python + R),
+  driven by `e2e/_live-kernels.sh`. A language is skipped with a note when its
+  tooling isn't installed (so a bare box still finishes); disable the whole
+  live-kernel section with `E2E_NO_LIVE_JUPYTER=1`. For faster feedback on just
+  the live path:
 
   ```bash
-  python3 e2e/fixtures/make_live_nb_deck.py /tmp/live-nb.json
-  eigendeck-cli /tmp/live-nb.eigendeck import json /tmp/live-nb.json
-  PROBE=e2e/nb-live-run-persist.mjs E2E_DECK=/tmp/live-nb.eigendeck \
-    E2E_JUPYTER=1 bash e2e/run-probe.sh   # -> E2E_PASS live edit+run+persist
+  bash e2e/run-live-kernels.sh          # python + R (whichever kernels are present)
   ```
 
-  `E2E_JUPYTER=1` makes `run-probe.sh` source `e2e/jupyter-server.sh`, which
-  boots (and tears down) a `jupyter server` on `127.0.0.1:8888` (token
-  `e2e-token`) via a cached `uv` venv. Enable the commented `run-all.sh` entry
-  once the CI image ships jupyter.
+  `E2E_JUPYTER=1` makes `run-probe.sh` source `e2e/jupyter-server.sh`, which boots
+  (and tears down) a `jupyter server` on `127.0.0.1:8888` (token `e2e-token`) via
+  a cached `uv` venv. **Enabling R:** install R + IRkernel and register a
+  kernelspec named `ir` into the venv prefix:
+
+  ```bash
+  sudo apt-get install -y r-base-core libzmq3-dev
+  sudo R -e 'install.packages("IRkernel", repos="https://cloud.r-project.org")'
+  # register: create $JUP_VENV/share/jupyter/kernels/ir/kernel.json with argv
+  #   ["R","--slave","-e","IRkernel::main()","--args","{connection_file}"]
+  ```
 
 ## Platform
 
