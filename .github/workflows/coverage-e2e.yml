@@ -13,6 +13,10 @@ jobs:
     name: Instrumented e2e coverage (frontend + Rust)
     runs-on: ubuntu-22.04
     timeout-minutes: 120
+    env:
+      # An instrument-coverage build is one heavy rustc per job; the default
+      # (= CPU count) OOMs a memory-constrained runner. Cap it.
+      CARGO_BUILD_JOBS: '2'
     steps:
       - uses: actions/checkout@v5
 

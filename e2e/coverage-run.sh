@@ -14,6 +14,12 @@ set -uo pipefail
 export PATH="$HOME/.cargo/bin:$PATH"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
 
+# Cap parallel cargo jobs. An `-C instrument-coverage` build spawns ONE heavy rustc
+# per job; the default (= host CPU count) launches ~16-32 instrumented compilers at
+# once and blew past 30 GiB → the OOM killer took the whole container down. 4 jobs
+# keeps the build peak around 6-8 GiB. Override with CARGO_BUILD_JOBS.
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-4}"
+
 step() { echo; echo "==== $* ===="; }
 
 step "1/6  vitest unit coverage (jsdom) + fold data (coverage/coverage-final.json)"
