@@ -51,13 +51,13 @@ passed green under instrumentation and produced 149 page maps. Merged:
 
 | Metric | vitest-only (jsdom) | **Unified (unit + e2e)** |
 | --- | --- | --- |
-| Lines | 42.7% | **56.5%** |
-| Statements | 40.7% | **49.8%** |
-| Functions | 40.1% | **57.3%** |
-| Branches | 40.8% | **45.7%** |
+| Lines | 46.4% | **58.5%** |
+| Statements | 44.4% | **51.8%** |
+| Functions | 43.6% | **59.0%** |
+| Branches | 43.6% | **47.1%** |
 
-(E2e-only is 58.0% lines over the 143 files the app actually loads; the unified
-figure is over all 179 frontend files.) The point is the render/interaction layer
+(Numbers after the round-2/2b unit push, +160 tests; e2e-only is 57.8% lines over
+the ~143 files the app loads, the unified figure over all 179 frontend files.) The point is the render/interaction layer
 that jsdom can't reach — now measured in the real engine:
 
 | File | vitest | full e2e |
