@@ -1,0 +1,70 @@
+name: E2E Coverage
+
+# The instrumented e2e coverage run (frontend real-WebKit + Rust command handlers)
+# is slow (~1h) and non-hermetic, so it is NOT part of per-PR CI. Run it on demand
+# or weekly; it publishes the merged reports as artifacts.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC
+
+jobs:
+  e2e-coverage:
+    name: Instrumented e2e coverage (frontend + Rust)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: System deps (WebKitGTK + driver + xvfb)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev \
+            librsvg2-dev libappindicator3-dev patchelf webkit2gtk-driver xvfb
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install cargo-llvm-cov + tauri-driver
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov,tauri-driver
+
+      - name: uv (for the live-kernel probe; skips gracefully if absent)
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Setup MathJax bundle
+        run: npm run setup
+
+      # Run the same orchestrator used locally. E2E toolchain provisioned above;
+      # the default target dir is fine in CI (checkout is exec-capable, unlike the
+      # /work noexec mount used in the dev container).
+      - name: Run instrumented e2e coverage
+        run: bash e2e/coverage-run.sh
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-coverage-reports
+          path: |
+            coverage-unified/
+            coverage-rust-e2e.lcov
+            coverage/
