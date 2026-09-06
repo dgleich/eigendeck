@@ -70,7 +70,8 @@ xvfb-run -a -s "-screen 0 1280x900x24" bash -c "
          PROBE_OUT='${PROBE_OUT:-}' E2E_NB='${E2E_NB:-}' E2E_VTT='${E2E_VTT:-}' \
          E2E_PDF='${E2E_PDF:-}' E2E_MODE='${E2E_MODE:-}' \
          E2E_ASSET_SETTLE_MS='${E2E_ASSET_SETTLE_MS:-}' \
-         COVERAGE_INSTRUMENT='${COVERAGE_INSTRUMENT:-}'
+         COVERAGE_INSTRUMENT='${COVERAGE_INSTRUMENT:-}' \
+         LLVM_PROFILE_FILE='${LLVM_PROFILE_FILE:-}'
   # Serve dist/ on :1420. With COVERAGE_INSTRUMENT=1 the collector server also
   # accepts the instrumented app's coverage beacons and writes them to COV_NYC_DIR.
   if [ \"\$COVERAGE_INSTRUMENT\" = '1' ]; then
