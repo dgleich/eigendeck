@@ -134,6 +134,20 @@ MANIFEST=(
   # and a fileOps save-in-place round-trip (reopen + compare). Targets App.tsx +
   # store/fileOps.ts + PresentMode.
   "user-journey-probe.mjs|journey.eigendeck||python3 $EXFIX/make_journey_deck.py \$DECKDIR/journey.json; import_json \$DECKDIR/journey.json"
+  # coverage spike (deep editor gestures): the COLD keyboard + multi-select paths
+  # the interaction/keyboard probes leave uncovered — keyboard nudge in all four
+  # directions (1px / 10px), z-order to-top/bottom, Cmd+A select-all → real-pointer
+  # GROUP drag (moveElementsBy) + group nudge, shift-click additive select, Escape,
+  # keyboard delete (single + multi), the resize handle, a snap-to-grid drag, and
+  # marquee. Targets App.tsx keydown branches + SlideElementRenderer's DraggableBox.
+  "deep-editor-gestures-probe.mjs|de.eigendeck||python3 $EXFIX/make_deep_editor_deck.py \$DECKDIR/de.json; import_json \$DECKDIR/de.json"
+  # coverage spike (asset layer): mounts AssetSection (source/linked-file/watch-
+  # toggle/Reload/version-history/hover-preview/resize-to-image) for a stored raster
+  # asset, and lays down raster + svg + pdf + MISSING-asset image elements so
+  # assetRenderer's per-kind render paths and its fetch-failure placeholder fallback
+  # all fire. Targets AssetSection.tsx + lib/assetRenderer.ts. (The pdf branch is
+  # soft-guarded — it renders only when the pdfium dylib is present in the rig.)
+  "asset-layer-probe.mjs|al.eigendeck||python3 $EXFIX/make_asset_layer_deck.py \$DECKDIR/al.json; import_json \$DECKDIR/al.json"
   "demo-mount-gate-probe.mjs|empty.eigendeck||$EMPTY"
 
   # ── sync / link / promote round-trips (built fixture decks) ─────────────
