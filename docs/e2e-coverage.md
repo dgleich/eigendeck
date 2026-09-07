@@ -46,33 +46,33 @@ COV_WITH_VITEST=1 node e2e/coverage-merge.mjs
 
 ## Results (full suite)
 
-The full instrumented suite (122 checks: all 120 probes + python + R live kernels)
-passed green under instrumentation and produced 165 page maps. Merged:
+The full instrumented suite (123 checks: all 121 probes + python + R live kernels)
+passed green under instrumentation and produced 167 page maps. Merged:
 
 | Metric | vitest-only (jsdom) | **Unified (unit + e2e)** |
 | --- | --- | --- |
-| Lines | 48.6% | **61.6%** |
-| Statements | 46.6% | **54.6%** |
-| Functions | 45.3% | **62.7%** |
-| Branches | 45.5% | **49.1%** |
+| Lines | 48.6% | **62.2%** |
+| Statements | 46.6% | **55.0%** |
+| Functions | 45.3% | **62.9%** |
+| Branches | 45.5% | **49.4%** |
 
 (After the round-2/2b unit push + the store lifecycle exercise test + installing
-the coverage beacon in ALL window entries + the **interaction-exercise probe** —
-see below. The multi-window fix alone recovered SecurityPanel 0→49%, security.tsx
-0→94%, presenter.tsx 0→78%, SettingsModal 0→45%, since those webviews each have
-their own `window.__coverage__`.) The point is the render/interaction layer that
-jsdom can't reach — now measured in the real engine:
+the coverage beacon in ALL window entries + the **interaction-exercise** and
+**user-journey** probes — see below. The multi-window fix alone recovered
+SecurityPanel 0→49%, security.tsx 0→94%, presenter.tsx 0→78%, SettingsModal 0→45%,
+since those webviews each have their own `window.__coverage__`.) The point is the
+render/interaction layer that jsdom can't reach — now measured in the real engine:
 
 | File | vitest | full e2e |
 | --- | --- | --- |
 | components/SlideElementRenderer.tsx | ~0% | 57% |
-| components/PresentMode.tsx | 0% | 62% |
-| App.tsx | 2% | 43% |
+| components/PresentMode.tsx | 0% | 50% |
+| App.tsx | 2% | 42% |
 | components/SlideEditor.tsx | — | 41% |
 | components/PropertiesPanel.tsx | 12% | 55% |
 | components/notebook/NotebookContent.tsx | — | 82% |
 | lib/demoMount.ts | 34% | 82% |
-| store/fileOps.ts (Tauri I/O) | 9% | 47% |
+| store/fileOps.ts (Tauri I/O) | 9% | 35% |
 | store/presentation.ts | 47% | 79% |
 
 ### The interaction-exercise probe
@@ -89,6 +89,36 @@ the Settings + Security windows. That single probe took `PropertiesPanel.tsx` 12
 `SlideElementRenderer.tsx` up to 57%, and lifted the unified line number 60.0→61.6%
 (functions 59.7→62.7% — interaction handlers are functions). It asserts a no-crash
 invariant rather than pinning every detail, so it's an *exercise*, not a unit spec.
+
+### The user-journey probe
+
+The other giant cold region was `App.tsx` (~900 uncovered lines): the native-menu
+command handlers, present/window orchestration, and the save/export flow. The
+whole native menu routes through a single `listen('menu-event', e => switch(e.payload))`,
+so `e2e/user-journey-probe.mjs` sweeps it by *self-emitting* every dialog-free
+menu id and asserting the real effect — slide new/duplicate/delete (count changes),
+the insert dispatcher for each element type (count grows), view/panel toggles,
+snapshot + gc commands, the present enter→navigate→exit flow, the native-toolbar
+`toolbar:action`/`toolbar:field` listeners, and a `save` round-trip through
+`fileOps.ts` (file mtime bumps, reopens with the edit intact). This took `App.tsx`
+34→42% and `PresentMode.tsx` to 50%, lifting the unified line number to 62.2%.
+
+Two mechanics matter (both cost real debugging):
+
+- **Emitting a menu event from the page.** A probe-side `import('@tauri-apps/api/event')`
+  is a bare specifier that doesn't resolve at runtime (the `_ui.mjs` gotcha), so
+  `emit()` silently no-ops. The working call is the Tauri event plugin directly —
+  `window.__TAURI_INTERNALS__.invoke('plugin:event|emit', { event, payload })` —
+  and the payload must be the **raw** value the listener expects (a plain string
+  for `menu-event`, an object for `toolbar:*`; a `JSON.stringify`'d string won't match).
+- **Ordering.** Global-emit delivery to the main window degrades once a pile of
+  secondary windows / native pickers has been opened, so the delivery-dependent
+  assertions (present, toolbar) run first in a clean single-window state and the
+  window-openers / pickers / screen-share run last as guarded no-crash steps.
+
+What stays cold in `App.tsx`/`fileOps.ts` is genuinely native-dialog-gated
+(`save-as`, open/import, PDF export, image/video pickers) or macOS-only, so it
+can't run in the headless Linux rig.
 
 ## Rust: unit coverage is the better metric
 
