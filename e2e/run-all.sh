@@ -126,6 +126,7 @@ MANIFEST=(
   "settings-window-probe.mjs|examples/intro-slide.eigendeck||"
   "keyboard-shortcuts-probe.mjs|examples/intro-slide.eigendeck||"
   "context-menu-target-probe.mjs|examples/intro-slide.eigendeck||"
+  "interaction-exercise-probe.mjs|ix.eigendeck||python3 $EXFIX/make_interaction_deck.py \$DECKDIR/ix.json; import_json \$DECKDIR/ix.json"   # coverage spike: drive REAL UI — per-type inspector, pointer drag/resize/arrow/marquee, context-menu DOM, text toolbar, Settings+Security windows
   "demo-mount-gate-probe.mjs|empty.eigendeck||$EMPTY"
 
   # ── sync / link / promote round-trips (built fixture decks) ─────────────
