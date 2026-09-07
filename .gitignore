@@ -98,3 +98,4 @@ public/fonts/**/*.woff2
 .nyc_output/
 coverage-e2e/
 coverage-unified/
+coverage-rust-e2e.lcov

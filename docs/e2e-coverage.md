@@ -71,11 +71,37 @@ that jsdom can't reach — now measured in the real engine:
 | store/fileOps.ts (Tauri I/O) | 9% | 47% |
 | store/presentation.ts | 47% | 79% |
 
+## Rust: unit coverage is the better metric
+
+Running the instrumented app binary under the e2e suite (LLVM_PROFILE_FILE →
+.profraw, merged with the unit-test profraws) does technically cover the command
+handlers, but the merged Rust number came out *lower* (56.9% lines) than
+unit-only (65%): merging the app + CLI binaries drags in a large amount of
+uncovered `lib.rs` — the native menu, `#[cfg(target_os="macos")]` code, and
+`setup()`/`run()` glue that the Linux e2e can't exercise — faster than it adds
+covered handler lines. So the **unit `cargo llvm-cov --lib` number (65%) over the
+testable surface is the truer Rust metric**; the e2e-merge helps the frontend a
+lot but not Rust. `e2e/coverage-run.sh` still produces both if you want the full
+picture.
+
+## Operational gotchas
+
+- **Never run `cargo llvm-cov <subcmd>` inside a `cargo llvm-cov show-env` shell.**
+  show-env installs cargo-llvm-cov's rustc wrapper into the env; a nested
+  `cargo llvm-cov` re-installs it recursively → a fork bomb (process count
+  explodes, OOM). Use a normal `cargo test`/`cargo build` there — the env already
+  makes them emit profraws — and only `cargo llvm-cov report`/`clean` afterward.
+  (This is why coverage-run.sh uses `cargo test --lib`, not `cargo llvm-cov --lib`.)
+- The container is memory-shared; a `run-probe` SIGKILL means the app's Rust
+  profile is flushed via LLVM continuous mode (`%c` in LLVM_PROFILE_FILE).
+
 ## Not yet in CI
 
-The instrumented run is slower than plain e2e (a counter bump per statement), so
-the intended shape is a dedicated coverage job (scheduled / opt-in) that runs the
-instrumented suite and publishes the merged lcov — not every PR. Remaining lows
-are genuinely cross-context: `lib/mathjax.ts` renders in an iframe pool (separate
-JS context, its own `__coverage__`), so the main-thread orchestration shows but
-the render itself doesn't; the same applies to demo/notebook output iframes.
+`.github/workflows/coverage-e2e.yml` is written (manual/weekly, `apt-get update`
+first, CARGO_BUILD_JOBS capped) but `workflow_dispatch` can only be triggered once
+the workflow file lands on the default branch — so it activates when this branch
+merges. The instrumented run is slower than plain e2e, so it stays a dedicated
+opt-in job, not per-PR. Other remaining lows are cross-context: `lib/mathjax.ts`
+renders in an iframe pool (separate JS context, its own `__coverage__`), so the
+main-thread orchestration shows but the render itself doesn't; same for
+demo/notebook output iframes.
