@@ -15,9 +15,12 @@ import type { Presentation } from './types/presentation';
 import { usePresentationStore } from './store/presentation';
 import { SecurityWindowApp } from './components/SecurityPanel';
 import { initRuntime } from './lib/runtime';
+import { installCoverageBeacon } from './lib/coverageBeacon';
 import './styles/chip.css';
 
 initRuntime();
+// E2E coverage: this window's own __coverage__ → collector (no-op in normal builds).
+installCoverageBeacon();
 
 function SecurityRoot(): React.ReactElement {
   const [ready, setReady] = useState(false);

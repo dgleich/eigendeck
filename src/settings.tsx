@@ -15,8 +15,11 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import { SettingsPanel } from './components/SettingsModal';
 import { initRuntime } from './lib/runtime';
+import { installCoverageBeacon } from './lib/coverageBeacon';
 
 initRuntime();
+// E2E coverage: this window's own __coverage__ → collector (no-op in normal builds).
+installCoverageBeacon();
 
 // Deep-link: when the window is already open, the main window emits `settings-tab`
 // to switch tabs (e.g. View → Customize Toolbar… → `ui`). Bridge it to the plain
