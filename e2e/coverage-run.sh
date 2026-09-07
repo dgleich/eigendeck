@@ -14,10 +14,9 @@ set -uo pipefail
 export PATH="$HOME/.cargo/bin:$PATH"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
 
-# Cap parallel cargo jobs. An `-C instrument-coverage` build spawns ONE heavy rustc
-# per job; the default (= host CPU count) launches ~16-32 instrumented compilers at
-# once and blew past 30 GiB → the OOM killer took the whole container down. 4 jobs
-# keeps the build peak around 6-8 GiB. Override with CARGO_BUILD_JOBS.
+# A modest job cap (harmless; this host has 4 CPUs anyway). The real OOM culprit
+# was NOT parallelism but a fork bomb from nesting `cargo llvm-cov` inside a
+# show-env context — see step 3.
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-4}"
 
 step() { echo; echo "==== $* ===="; }
@@ -33,8 +32,13 @@ step "3/6  instrumented app binary + unit-test profraws"
   cargo llvm-cov clean --workspace
   eval "$(cargo llvm-cov show-env --export-prefix)"
   cargo build --bin eigendeck --bin eigendeck-cli
-  # unit-test profraws so the Rust report merges unit + e2e handler coverage
-  cargo llvm-cov --lib --no-report -- --test-threads=1
+  # Unit-test profraws so the Rust report merges unit + e2e handler coverage.
+  # MUST be a NORMAL cargo command here: the show-env eval above installed
+  # cargo-llvm-cov's rustc wrapper, and running `cargo llvm-cov <subcmd>` inside
+  # that context re-installs the wrapper recursively → a fork bomb (cargo-llvm-cov
+  # even warns about this). `cargo test` under the show-env env emits profraws
+  # directly, which `cargo llvm-cov report` (step 6) then collects.
+  cargo test --lib -- --test-threads=1
 )
 
 step "4/6  full e2e suite (instrumented dist + binary)"
