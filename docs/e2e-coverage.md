@@ -46,26 +46,29 @@ COV_WITH_VITEST=1 node e2e/coverage-merge.mjs
 
 ## Results (full suite)
 
-The full instrumented suite (123 checks: all 121 probes + python + R live kernels)
-passed green under instrumentation and produced 167 page maps. Merged:
+The full instrumented suite (125 checks: all 123 probes + python + R live kernels)
+passed green under instrumentation and produced 169 page maps. Merged:
 
 | Metric | vitest-only (jsdom) | **Unified (unit + e2e)** |
 | --- | --- | --- |
-| Lines | 48.6% | **62.2%** |
-| Statements | 46.6% | **55.0%** |
-| Functions | 45.3% | **62.9%** |
-| Branches | 45.5% | **49.4%** |
+| Lines | 48.6% | **62.8%** |
+| Statements | 46.6% | **55.6%** |
+| Functions | 45.3% | **63.3%** |
+| Branches | 45.5% | **50.1%** |
 
 (After the round-2/2b unit push + the store lifecycle exercise test + installing
-the coverage beacon in ALL window entries + the **interaction-exercise** and
-**user-journey** probes — see below. The multi-window fix alone recovered
-SecurityPanel 0→49%, security.tsx 0→94%, presenter.tsx 0→78%, SettingsModal 0→45%,
-since those webviews each have their own `window.__coverage__`.) The point is the
-render/interaction layer that jsdom can't reach — now measured in the real engine:
+the coverage beacon in ALL window entries + the **interaction-exercise**,
+**user-journey**, **deep-editor-gestures**, and **asset-layer** probes — see below.
+The multi-window fix alone recovered SecurityPanel 0→49%, security.tsx 0→94%,
+presenter.tsx 0→78%, SettingsModal 0→45%, since those webviews each have their own
+`window.__coverage__`.) The point is the render/interaction layer that jsdom can't
+reach — now measured in the real engine:
 
 | File | vitest | full e2e |
 | --- | --- | --- |
-| components/SlideElementRenderer.tsx | ~0% | 57% |
+| components/SlideElementRenderer.tsx | ~0% | 59% |
+| components/AssetSection.tsx | — | 68% |
+| lib/assetRenderer.ts | — | 70% |
 | components/PresentMode.tsx | 0% | 50% |
 | App.tsx | 2% | 42% |
 | components/SlideEditor.tsx | — | 41% |
@@ -119,6 +122,31 @@ Two mechanics matter (both cost real debugging):
 What stays cold in `App.tsx`/`fileOps.ts` is genuinely native-dialog-gated
 (`save-as`, open/import, PDF export, image/video pickers) or macOS-only, so it
 can't run in the headless Linux rig.
+
+### The deep-editor-gestures and asset-layer probes
+
+Two more probes on the reachable band:
+
+- `e2e/deep-editor-gestures-probe.mjs` drives the keyboard + multi-select paths
+  in `SlideEditor.tsx`/`DraggableBox` that the interaction probe leaves cold:
+  arrow-key nudge (1px + 10px Shift), z-order shortcuts, `Cmd+A` → real-pointer
+  **group drag** (`moveElementsBy`), shift-click additive select, Escape deselect,
+  keyboard delete of single + multi-selection, resize, snap-to-grid drag, `Cmd+D`.
+- `e2e/asset-layer-probe.mjs` mounts `AssetSection` for a stored asset and drives
+  its source-file / linked-file / watch-toggle / reload / version-history /
+  hover-preview branches, renders raster + SVG + PDF assets through
+  `assetRenderer.renderAsset` (thumbnails), and — via a deck referencing a MISSING
+  asset id — exercises assetRenderer's fetch-failure **placeholder fallback** and
+  the "Not yet stored" branch. This took `AssetSection.tsx` to 68% and
+  `assetRenderer.ts` to 70%.
+
+Note the `SlideEditor.tsx` **floor**: its largest single uncovered block is the
+~470-line clipboard **paste** handler (image / HTML / screenshot paste), which
+needs real OS-clipboard `paste` events the headless rig can't synthesize — so
+SlideEditor stays ~41% even after driving every reachable gesture. That block,
+`fileOps`'s dialog-gated open/export, `lib/mathjax.ts`'s iframe render, the
+multi-monitor code, and the macOS-only paths are the genuine headless floor;
+the reachable band above is where the e2e number still has room to climb.
 
 ## Rust: unit coverage is the better metric
 
