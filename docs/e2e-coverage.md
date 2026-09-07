@@ -51,13 +51,15 @@ passed green under instrumentation and produced 149 page maps. Merged:
 
 | Metric | vitest-only (jsdom) | **Unified (unit + e2e)** |
 | --- | --- | --- |
-| Lines | 46.4% | **58.5%** |
-| Statements | 44.4% | **51.8%** |
-| Functions | 43.6% | **59.0%** |
-| Branches | 43.6% | **47.1%** |
+| Lines | 48.6% | **60.0%** |
+| Statements | 46.6% | **53.2%** |
+| Functions | 45.3% | **59.7%** |
+| Branches | 45.5% | **48.2%** |
 
-(Numbers after the round-2/2b unit push, +160 tests; e2e-only is 57.8% lines over
-the ~143 files the app loads, the unified figure over all 179 frontend files.) The point is the render/interaction layer
+(After the round-2/2b unit push + the store lifecycle exercise test + installing
+the coverage beacon in ALL window entries — see below. The multi-window fix alone
+recovered SecurityPanel 0→48%, security.tsx 0→94%, presenter.tsx 0→78%,
+SettingsModal 0→32%, since those webviews each have their own `window.__coverage__`.) The point is the render/interaction layer
 that jsdom can't reach — now measured in the real engine:
 
 | File | vitest | full e2e |
