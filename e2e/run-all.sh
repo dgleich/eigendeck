@@ -127,6 +127,13 @@ MANIFEST=(
   "keyboard-shortcuts-probe.mjs|examples/intro-slide.eigendeck||"
   "context-menu-target-probe.mjs|examples/intro-slide.eigendeck||"
   "interaction-exercise-probe.mjs|ix.eigendeck||python3 $EXFIX/make_interaction_deck.py \$DECKDIR/ix.json; import_json \$DECKDIR/ix.json"   # coverage spike: drive REAL UI — per-type inspector, pointer drag/resize/arrow/marquee, context-menu DOM, text toolbar, Settings+Security windows
+  # coverage spike (menu/file/present counterpart to interaction-exercise): fire
+  # the REAL native-menu command router via emitted menu-events — view/panel
+  # toggles, slide new/dup/delete, the insert dispatcher, present enter/nav/exit,
+  # native toolbar:action/field listeners, snapshots/gc + window-open branches,
+  # and a fileOps save-in-place round-trip (reopen + compare). Targets App.tsx +
+  # store/fileOps.ts + PresentMode.
+  "user-journey-probe.mjs|journey.eigendeck||python3 $EXFIX/make_journey_deck.py \$DECKDIR/journey.json; import_json \$DECKDIR/journey.json"
   "demo-mount-gate-probe.mjs|empty.eigendeck||$EMPTY"
 
   # ── sync / link / promote round-trips (built fixture decks) ─────────────
