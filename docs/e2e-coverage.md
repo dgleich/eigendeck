@@ -17,7 +17,7 @@ Istanbul-instrumenting the bundle and harvesting hits from the running app.
 2. **Harvest** — `src/lib/coverageBeacon.ts` (a no-op unless `__coverage__`
    exists) streams the map to a collector on an interval + on `pagehide`. This is
    engine-agnostic — no V8/CDP dependency — so it works in the real WebKitGTK app.
-   Zero per-probe changes: every one of the ~119 probes contributes automatically.
+   Zero per-probe changes: every one of the ~120 probes contributes automatically.
 3. **Collect** — `run-probe.sh`, when `COVERAGE_INSTRUMENT=1`, serves dist via
    `e2e/coverage-server.mjs` instead of `python -m http.server`; it accepts the
    beacons and writes one `cov-<page>.json` per page to `$COV_NYC_DIR`
@@ -46,32 +46,49 @@ COV_WITH_VITEST=1 node e2e/coverage-merge.mjs
 
 ## Results (full suite)
 
-The full instrumented suite (122 checks: all 119 probes + python + R live kernels)
-passed green under instrumentation and produced 149 page maps. Merged:
+The full instrumented suite (122 checks: all 120 probes + python + R live kernels)
+passed green under instrumentation and produced 165 page maps. Merged:
 
 | Metric | vitest-only (jsdom) | **Unified (unit + e2e)** |
 | --- | --- | --- |
-| Lines | 48.6% | **60.0%** |
-| Statements | 46.6% | **53.2%** |
-| Functions | 45.3% | **59.7%** |
-| Branches | 45.5% | **48.2%** |
+| Lines | 48.6% | **61.6%** |
+| Statements | 46.6% | **54.6%** |
+| Functions | 45.3% | **62.7%** |
+| Branches | 45.5% | **49.1%** |
 
 (After the round-2/2b unit push + the store lifecycle exercise test + installing
-the coverage beacon in ALL window entries — see below. The multi-window fix alone
-recovered SecurityPanel 0→48%, security.tsx 0→94%, presenter.tsx 0→78%,
-SettingsModal 0→32%, since those webviews each have their own `window.__coverage__`.) The point is the render/interaction layer
-that jsdom can't reach — now measured in the real engine:
+the coverage beacon in ALL window entries + the **interaction-exercise probe** —
+see below. The multi-window fix alone recovered SecurityPanel 0→49%, security.tsx
+0→94%, presenter.tsx 0→78%, SettingsModal 0→45%, since those webviews each have
+their own `window.__coverage__`.) The point is the render/interaction layer that
+jsdom can't reach — now measured in the real engine:
 
 | File | vitest | full e2e |
 | --- | --- | --- |
-| components/SlideElementRenderer.tsx | ~0% | 55% |
+| components/SlideElementRenderer.tsx | ~0% | 57% |
 | components/PresentMode.tsx | 0% | 62% |
 | App.tsx | 2% | 43% |
-| components/SlideEditor.tsx | — | 47% |
+| components/SlideEditor.tsx | — | 41% |
+| components/PropertiesPanel.tsx | 12% | 55% |
 | components/notebook/NotebookContent.tsx | — | 82% |
 | lib/demoMount.ts | 34% | 82% |
 | store/fileOps.ts (Tauri I/O) | 9% | 47% |
 | store/presentation.ts | 47% | 79% |
+
+### The interaction-exercise probe
+
+Most probes drive state through the `window.__eigendeck` store seam, so the
+real *interaction* layer — pointer gestures, per-element-type inspector sections,
+context menus, the format toolbar — stayed cold even though the store logic was
+covered. `e2e/interaction-exercise-probe.mjs` closes that gap: against the real
+app it selects one of each element type (mounting every `PropertiesPanel`
+per-type section + `SlideElementRenderer` selection branch), drags/resizes/marquee-
+selects via real pointer events, drives arrow control points, fires context-menu
+actions through the menu DOM, exercises the inline text toolbar, and clicks through
+the Settings + Security windows. That single probe took `PropertiesPanel.tsx` 12→55%,
+`SlideElementRenderer.tsx` up to 57%, and lifted the unified line number 60.0→61.6%
+(functions 59.7→62.7% — interaction handlers are functions). It asserts a no-crash
+invariant rather than pinning every detail, so it's an *exercise*, not a unit spec.
 
 ## Rust: unit coverage is the better metric
 
