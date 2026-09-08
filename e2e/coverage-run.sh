@@ -38,7 +38,7 @@ step "3/6  instrumented app binary + unit-test profraws"
   # that context re-installs the wrapper recursively → a fork bomb (cargo-llvm-cov
   # even warns about this). `cargo test` under the show-env env emits profraws
   # directly, which `cargo llvm-cov report` (step 6) then collects.
-  cargo test --lib -- --test-threads=1
+  cargo test --lib -- --include-ignored --test-threads=1
 )
 
 step "4/6  full e2e suite (instrumented dist + binary)"

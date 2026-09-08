@@ -51,7 +51,7 @@ echo "== clean + build instrumented CLI =="
 cargo llvm-cov clean --workspace
 eval "$(cargo llvm-cov show-env --export-prefix)"
 cargo build --bin eigendeck-cli 2>&1 | tail -1
-cargo test --lib -- --test-threads=1 >/dev/null 2>&1 && echo "  unit tests ok" || echo "  unit tests: some failures (continuing)"
+cargo test --lib -- --include-ignored --test-threads=1 >/dev/null 2>&1 && echo "  unit tests ok" || echo "  unit tests: some failures (continuing)"
 BIN="$CARGO_TARGET_DIR/debug/eigendeck-cli"
 [ -x "$BIN" ] || { echo "FATAL: CLI not built at $BIN"; exit 2; }
 
