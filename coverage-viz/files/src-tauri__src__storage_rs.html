@@ -5,13 +5,13 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src-tauri/src/storage.rs </h1>
   <div class="stats">
-    <span class="stat"><b>86%</b> covered</span>
-    <span class="stat">2682/3131 line</span>
-    <span class="stat unc-txt">449 uncovered</span>
+    <span class="stat"><b>84%</b> covered</span>
+    <span class="stat">3030/3590 lines</span>
+    <span class="stat unc-txt">560 uncovered</span>
     <span class="stat">5533 raw lines</span>
     <span class="stat">12.95% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:85.660%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:14.340%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:84.401%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:15.599%"></span></span>
   <div class="metricnote">llvm-cov <b>line</b> coverage (region-precise). A red <code>)?;</code> = the <code>?</code> error path was never taken.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <a href="src-tauri__src__lib_rs.html">lib.rs</a></div>
@@ -1379,8 +1379,8 @@
 <tr class="cov"><td class="ln">1361</td><td class="code">                r.replace(&quot;&amp;nbsp;&quot;, &quot; &quot;).replace(&quot;&amp;amp;&quot;, &quot;&amp;&quot;)</td></tr>
 <tr class="nil"><td class="ln">1362</td><td class="code">            };</td></tr>
 <tr class="cov"><td class="ln">1363</td><td class="code">            let preview = if text.chars().count() &gt; 60 {</td></tr>
-<tr class="unc"><td class="ln">1364</td><td class="code">                let s: String = text.chars().take(60).collect();</td></tr>
-<tr class="unc"><td class="ln">1365</td><td class="code">                format!(&quot;{}...&quot;, s)</td></tr>
+<tr class="cov"><td class="ln">1364</td><td class="code">                let s: String = text.chars().take(60).collect();</td></tr>
+<tr class="cov"><td class="ln">1365</td><td class="code">                format!(&quot;{}...&quot;, s)</td></tr>
 <tr class="cov"><td class="ln">1366</td><td class="code">            } else { text };</td></tr>
 <tr class="nil"><td class="ln">1367</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">1368</td><td class="code">            let is_current = valid_to.is_none();</td></tr>
@@ -1788,10 +1788,10 @@
 <tr class="nil"><td class="ln">1770</td><td class="code">        } else {</td></tr>
 <tr class="nil"><td class="ln">1771</td><td class="code">            // Exponential thinning (keep recent, thin old)</td></tr>
 <tr class="nil"><td class="ln">1772</td><td class="code">            // For now, just delete history older than 1 hour</td></tr>
-<tr class="unc"><td class="ln">1773</td><td class="code">            tx.execute_batch(</td></tr>
-<tr class="unc"><td class="ln">1774</td><td class="code">                &quot;DELETE FROM elements WHERE valid_to IS NOT NULL AND valid_from &lt; datetime(&#x27;now&#x27;, &#x27;-1 hour&#x27;);</td></tr>
-<tr class="unc"><td class="ln">1775</td><td class="code">                 DELETE FROM slide_elements WHERE valid_to IS NOT NULL AND valid_from &lt; datetime(&#x27;now&#x27;, &#x27;-1 hour&#x27;);</td></tr>
-<tr class="unc"><td class="ln">1776</td><td class="code">                 DELETE FROM slides WHERE valid_to IS NOT NULL AND valid_from &lt; datetime(&#x27;now&#x27;, &#x27;-1 hour&#x27;);&quot;,</td></tr>
+<tr class="cov"><td class="ln">1773</td><td class="code">            tx.execute_batch(</td></tr>
+<tr class="cov"><td class="ln">1774</td><td class="code">                &quot;DELETE FROM elements WHERE valid_to IS NOT NULL AND valid_from &lt; datetime(&#x27;now&#x27;, &#x27;-1 hour&#x27;);</td></tr>
+<tr class="cov"><td class="ln">1775</td><td class="code">                 DELETE FROM slide_elements WHERE valid_to IS NOT NULL AND valid_from &lt; datetime(&#x27;now&#x27;, &#x27;-1 hour&#x27;);</td></tr>
+<tr class="cov"><td class="ln">1776</td><td class="code">                 DELETE FROM slides WHERE valid_to IS NOT NULL AND valid_from &lt; datetime(&#x27;now&#x27;, &#x27;-1 hour&#x27;);&quot;,</td></tr>
 <tr class="nil"><td class="ln">1777</td><td class="code">            )?;</td></tr>
 <tr class="nil"><td class="ln">1778</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">1779</td><td class="code">&nbsp;</td></tr>
@@ -2508,25 +2508,25 @@
 <tr class="nil"><td class="ln">2490</td><td class="code">/// db_get_asset_meta_by_path but always unambiguous — preferred by the</td></tr>
 <tr class="nil"><td class="ln">2491</td><td class="code">/// renderer/watcher hooks when the element has an assetId binding.</td></tr>
 <tr class="nil"><td class="ln">2492</td><td class="code">#[tauri::command]</td></tr>
-<tr class="unc"><td class="ln">2493</td><td class="code">pub fn db_get_asset_meta_by_id(asset_id: String) -&gt; Result&lt;Option&lt;AssetMeta&gt;, String&gt; {</td></tr>
-<tr class="unc"><td class="ln">2494</td><td class="code">    with_db(|conn| {</td></tr>
-<tr class="unc"><td class="ln">2495</td><td class="code">        let result: rusqlite::Result&lt;AssetMeta&gt; = conn.query_row(</td></tr>
-<tr class="unc"><td class="ln">2496</td><td class="code">            &quot;SELECT asset_id, path, external_path, external_mtime, mime_type, auto_reload, hash, size \</td></tr>
-<tr class="unc"><td class="ln">2497</td><td class="code">             FROM assets WHERE asset_id = ?1 AND valid_to IS NULL&quot;,</td></tr>
-<tr class="unc"><td class="ln">2498</td><td class="code">            params![&amp;asset_id],</td></tr>
+<tr class="cov"><td class="ln">2493</td><td class="code">pub fn db_get_asset_meta_by_id(asset_id: String) -&gt; Result&lt;Option&lt;AssetMeta&gt;, String&gt; {</td></tr>
+<tr class="cov"><td class="ln">2494</td><td class="code">    with_db(|conn| {</td></tr>
+<tr class="cov"><td class="ln">2495</td><td class="code">        let result: rusqlite::Result&lt;AssetMeta&gt; = conn.query_row(</td></tr>
+<tr class="cov"><td class="ln">2496</td><td class="code">            &quot;SELECT asset_id, path, external_path, external_mtime, mime_type, auto_reload, hash, size \</td></tr>
+<tr class="cov"><td class="ln">2497</td><td class="code">             FROM assets WHERE asset_id = ?1 AND valid_to IS NULL&quot;,</td></tr>
+<tr class="cov"><td class="ln">2498</td><td class="code">            params![&amp;asset_id],</td></tr>
 <tr class="nil"><td class="ln">2499</td><td class="code">            |row| Ok(AssetMeta {</td></tr>
-<tr class="unc"><td class="ln">2500</td><td class="code">                asset_id: row.get(0)?,</td></tr>
-<tr class="unc"><td class="ln">2501</td><td class="code">                path: row.get(1)?,</td></tr>
-<tr class="unc"><td class="ln">2502</td><td class="code">                external_path: row.get(2)?,</td></tr>
-<tr class="unc"><td class="ln">2503</td><td class="code">                external_mtime: row.get(3)?,</td></tr>
-<tr class="unc"><td class="ln">2504</td><td class="code">                mime_type: row.get(4)?,</td></tr>
-<tr class="unc"><td class="ln">2505</td><td class="code">                auto_reload: row.get(5)?,</td></tr>
-<tr class="unc"><td class="ln">2506</td><td class="code">                hash: row.get(6)?,</td></tr>
-<tr class="unc"><td class="ln">2507</td><td class="code">                size: row.get(7)?,</td></tr>
+<tr class="cov"><td class="ln">2500</td><td class="code">                asset_id: row.get(0)?,</td></tr>
+<tr class="cov"><td class="ln">2501</td><td class="code">                path: row.get(1)?,</td></tr>
+<tr class="cov"><td class="ln">2502</td><td class="code">                external_path: row.get(2)?,</td></tr>
+<tr class="cov"><td class="ln">2503</td><td class="code">                external_mtime: row.get(3)?,</td></tr>
+<tr class="cov"><td class="ln">2504</td><td class="code">                mime_type: row.get(4)?,</td></tr>
+<tr class="cov"><td class="ln">2505</td><td class="code">                auto_reload: row.get(5)?,</td></tr>
+<tr class="cov"><td class="ln">2506</td><td class="code">                hash: row.get(6)?,</td></tr>
+<tr class="cov"><td class="ln">2507</td><td class="code">                size: row.get(7)?,</td></tr>
 <tr class="nil"><td class="ln">2508</td><td class="code">            }),</td></tr>
 <tr class="nil"><td class="ln">2509</td><td class="code">        );</td></tr>
 <tr class="unc"><td class="ln">2510</td><td class="code">        match result {</td></tr>
-<tr class="unc"><td class="ln">2511</td><td class="code">            Ok(m) =&gt; Ok(Some(m)),</td></tr>
+<tr class="cov"><td class="ln">2511</td><td class="code">            Ok(m) =&gt; Ok(Some(m)),</td></tr>
 <tr class="unc"><td class="ln">2512</td><td class="code">            Err(rusqlite::Error::QueryReturnedNoRows) =&gt; Ok(None),</td></tr>
 <tr class="unc"><td class="ln">2513</td><td class="code">            Err(e) =&gt; Err(e),</td></tr>
 <tr class="nil"><td class="ln">2514</td><td class="code">        }</td></tr>

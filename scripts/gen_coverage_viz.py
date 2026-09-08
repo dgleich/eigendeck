@@ -275,23 +275,25 @@ def classify_rust(path, dam):
     like `)?;` reading 0 means the `?` error path was never taken — real info."""
     src = read_src(path)
     instrumented = dam is not None
-    kinds = []; cov = unc = 0
+    kinds = []
     for i, line in enumerate(src, 1):
         code = is_codeish(line)
-        if instrumented and i in dam and code:   # gate: never color a comment/blank
-            if dam[i] > 0:
-                kinds.append("cov"); cov += 1
-            else:
-                kinds.append("unc"); unc += 1
+        if instrumented and i in dam and code:   # gate: never COLOR a comment/blank/brace
+            kinds.append("cov" if dam[i] > 0 else "unc")
         elif instrumented:
             kinds.append("nil")
         elif code:
-            kinds.append("unc"); unc += 1     # not instrumented at all -> all code red
+            kinds.append("unc")                  # not instrumented at all -> all code red
         else:
             kinds.append("nil")
-    execu = cov + unc
+    # NUMBER matches llvm-cov exactly (all DA lines, not the gated colored subset);
+    # the coloring above just keeps brace/comment lines neutral.
+    if instrumented:
+        execu = len(dam); cov = sum(1 for v in dam.values() if v > 0)
+    else:
+        execu = sum(1 for k in kinds if k in ("cov", "unc")); cov = 0
     return src, kinds, dict(raw=len(src), execu=execu, covered=cov, partial=0,
-                            uncov=unc, instrumented=instrumented, metric="line")
+                            uncov=execu - cov, instrumented=instrumented, metric="lines")
 
 def classify(path, ist, rust_da):
     if lang_of(path) == "rust":

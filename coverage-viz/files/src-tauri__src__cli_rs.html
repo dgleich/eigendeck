@@ -5,13 +5,13 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src-tauri/src/cli.rs </h1>
   <div class="stats">
-    <span class="stat"><b>68%</b> covered</span>
-    <span class="stat">364/539 line</span>
-    <span class="stat unc-txt">175 uncovered</span>
+    <span class="stat"><b>94%</b> covered</span>
+    <span class="stat">578/613 lines</span>
+    <span class="stat unc-txt">35 uncovered</span>
     <span class="stat">860 raw lines</span>
     <span class="stat">2.01% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:67.532%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:32.468%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:94.290%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:5.710%"></span></span>
   <div class="metricnote">llvm-cov <b>line</b> coverage (region-precise). A red <code>)?;</code> = the <code>?</code> error path was never taken.</div>
   <div class="links"><span>imports:</span> <i>none</i></div>
   <div class="links"><span>imported by:</span> <i>none</i></div>
@@ -86,8 +86,8 @@
 <tr class="nil"><td class="ln">68</td><td class="code">    // its own DB. All other verbs require the file to be there.</td></tr>
 <tr class="cov"><td class="ln">69</td><td class="code">    if verb != &quot;import&quot; {</td></tr>
 <tr class="cov"><td class="ln">70</td><td class="code">        if let Err(e) = storage::open_db(db_path) {</td></tr>
-<tr class="unc"><td class="ln">71</td><td class="code">            eprintln!(&quot;Error opening {}: {}&quot;, db_path, e);</td></tr>
-<tr class="unc"><td class="ln">72</td><td class="code">            process::exit(1);</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">            eprintln!(&quot;Error opening {}: {}&quot;, db_path, e);</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">            process::exit(1);</td></tr>
 <tr class="nil"><td class="ln">73</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">74</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">75</td><td class="code">&nbsp;</td></tr>
@@ -262,19 +262,19 @@
 <tr class="nil"><td class="ln">244</td><td class="code">        }</td></tr>
 <tr class="cov"><td class="ln">245</td><td class="code">        &quot;elements&quot; =&gt; {</td></tr>
 <tr class="cov"><td class="ln">246</td><td class="code">            let num: usize = args.get(1).and_then(|s| s.parse().ok()).ok_or(&quot;Usage: list elements &lt;N&gt;&quot;)?;</td></tr>
-<tr class="unc"><td class="ln">247</td><td class="code">            let slide = slides.get(num - 1).ok_or(&quot;Slide not found&quot;)?;</td></tr>
-<tr class="unc"><td class="ln">248</td><td class="code">            let elements = slide.get(&quot;elements&quot;).and_then(|v| v.as_array()).ok_or(&quot;No elements&quot;)?;</td></tr>
-<tr class="unc"><td class="ln">249</td><td class="code">            for (i, el) in elements.iter().enumerate() {</td></tr>
-<tr class="unc"><td class="ln">250</td><td class="code">                let id = el.get(&quot;id&quot;).and_then(|v| v.as_str()).unwrap_or(&quot;?&quot;);</td></tr>
-<tr class="unc"><td class="ln">251</td><td class="code">                let t = el.get(&quot;type&quot;).and_then(|v| v.as_str()).unwrap_or(&quot;?&quot;);</td></tr>
-<tr class="unc"><td class="ln">252</td><td class="code">                let preset = el.get(&quot;preset&quot;).and_then(|v| v.as_str()).map(|p| format!(&quot; ({})&quot;, p)).unwrap_or_default();</td></tr>
-<tr class="unc"><td class="ln">253</td><td class="code">                let html = el.get(&quot;html&quot;).and_then(|v| v.as_str()).unwrap_or(&quot;&quot;);</td></tr>
-<tr class="unc"><td class="ln">254</td><td class="code">                let text = strip_html(html);</td></tr>
-<tr class="unc"><td class="ln">255</td><td class="code">                let preview = if text.len() &gt; 50 { format!(&quot;{}...&quot;, &amp;text[..50]) } else { text };</td></tr>
-<tr class="unc"><td class="ln">256</td><td class="code">                println!(&quot;  {:&gt;2}. {} {}{} \&quot;{}\&quot;&quot;, i, &amp;id[..8.min(id.len())], t, preset, preview);</td></tr>
+<tr class="cov"><td class="ln">247</td><td class="code">            let slide = slides.get(num - 1).ok_or(&quot;Slide not found&quot;)?;</td></tr>
+<tr class="cov"><td class="ln">248</td><td class="code">            let elements = slide.get(&quot;elements&quot;).and_then(|v| v.as_array()).ok_or(&quot;No elements&quot;)?;</td></tr>
+<tr class="cov"><td class="ln">249</td><td class="code">            for (i, el) in elements.iter().enumerate() {</td></tr>
+<tr class="cov"><td class="ln">250</td><td class="code">                let id = el.get(&quot;id&quot;).and_then(|v| v.as_str()).unwrap_or(&quot;?&quot;);</td></tr>
+<tr class="cov"><td class="ln">251</td><td class="code">                let t = el.get(&quot;type&quot;).and_then(|v| v.as_str()).unwrap_or(&quot;?&quot;);</td></tr>
+<tr class="cov"><td class="ln">252</td><td class="code">                let preset = el.get(&quot;preset&quot;).and_then(|v| v.as_str()).map(|p| format!(&quot; ({})&quot;, p)).unwrap_or_default();</td></tr>
+<tr class="cov"><td class="ln">253</td><td class="code">                let html = el.get(&quot;html&quot;).and_then(|v| v.as_str()).unwrap_or(&quot;&quot;);</td></tr>
+<tr class="cov"><td class="ln">254</td><td class="code">                let text = strip_html(html);</td></tr>
+<tr class="cov"><td class="ln">255</td><td class="code">                let preview = if text.len() &gt; 50 { format!(&quot;{}...&quot;, &amp;text[..50]) } else { text };</td></tr>
+<tr class="cov"><td class="ln">256</td><td class="code">                println!(&quot;  {:&gt;2}. {} {}{} \&quot;{}\&quot;&quot;, i, &amp;id[..8.min(id.len())], t, preset, preview);</td></tr>
 <tr class="nil"><td class="ln">257</td><td class="code">            }</td></tr>
 <tr class="nil"><td class="ln">258</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">259</td><td class="code">        _ =&gt; return Err(format!(&quot;Unknown: list {}&quot;, what)),</td></tr>
+<tr class="cov"><td class="ln">259</td><td class="code">        _ =&gt; return Err(format!(&quot;Unknown: list {}&quot;, what)),</td></tr>
 <tr class="nil"><td class="ln">260</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">261</td><td class="code">    Ok(())</td></tr>
 <tr class="nil"><td class="ln">262</td><td class="code">}</td></tr>
@@ -307,7 +307,7 @@
 <tr class="nil"><td class="ln">289</td><td class="code">            }</td></tr>
 <tr class="unc"><td class="ln">290</td><td class="code">            return Err(format!(&quot;Element {} not found&quot;, id_prefix));</td></tr>
 <tr class="nil"><td class="ln">291</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">292</td><td class="code">        _ =&gt; return Err(format!(&quot;Unknown: show {}&quot;, what)),</td></tr>
+<tr class="cov"><td class="ln">292</td><td class="code">        _ =&gt; return Err(format!(&quot;Unknown: show {}&quot;, what)),</td></tr>
 <tr class="nil"><td class="ln">293</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">294</td><td class="code">    Ok(())</td></tr>
 <tr class="nil"><td class="ln">295</td><td class="code">}</td></tr>
@@ -342,12 +342,12 @@
 <tr class="nil"><td class="ln">324</td><td class="code">                        }</td></tr>
 <tr class="nil"><td class="ln">325</td><td class="code">                    }</td></tr>
 <tr class="cov"><td class="ln">326</td><td class="code">                    &quot;image&quot; =&gt; {</td></tr>
-<tr class="unc"><td class="ln">327</td><td class="code">                        let label = asset_path_for_element(el);</td></tr>
-<tr class="unc"><td class="ln">328</td><td class="code">                        println!(&quot;    [image: {}]&quot;, label);</td></tr>
+<tr class="cov"><td class="ln">327</td><td class="code">                        let label = asset_path_for_element(el);</td></tr>
+<tr class="cov"><td class="ln">328</td><td class="code">                        println!(&quot;    [image: {}]&quot;, label);</td></tr>
 <tr class="nil"><td class="ln">329</td><td class="code">                    }</td></tr>
 <tr class="cov"><td class="ln">330</td><td class="code">                    &quot;demo&quot; | &quot;demo-piece&quot; =&gt; {</td></tr>
-<tr class="unc"><td class="ln">331</td><td class="code">                        let label = asset_path_for_element(el);</td></tr>
-<tr class="unc"><td class="ln">332</td><td class="code">                        println!(&quot;    [demo: {}]&quot;, label);</td></tr>
+<tr class="cov"><td class="ln">331</td><td class="code">                        let label = asset_path_for_element(el);</td></tr>
+<tr class="cov"><td class="ln">332</td><td class="code">                        println!(&quot;    [demo: {}]&quot;, label);</td></tr>
 <tr class="nil"><td class="ln">333</td><td class="code">                    }</td></tr>
 <tr class="nil"><td class="ln">334</td><td class="code">                    _ =&gt; {}</td></tr>
 <tr class="nil"><td class="ln">335</td><td class="code">                }</td></tr>
@@ -378,32 +378,32 @@
 <tr class="cov"><td class="ln">360</td><td class="code">                let html = el.get(&quot;html&quot;).and_then(|v| v.as_str()).unwrap_or(&quot;&quot;);</td></tr>
 <tr class="cov"><td class="ln">361</td><td class="code">                let text = strip_html(html);</td></tr>
 <tr class="cov"><td class="ln">362</td><td class="code">                if text.to_lowercase().contains(&amp;query_lower) {</td></tr>
-<tr class="unc"><td class="ln">363</td><td class="code">                    let id = el.get(&quot;id&quot;).and_then(|v| v.as_str()).unwrap_or(&quot;?&quot;);</td></tr>
-<tr class="unc"><td class="ln">364</td><td class="code">                    let preset = el.get(&quot;preset&quot;).and_then(|v| v.as_str()).unwrap_or(&quot;?&quot;);</td></tr>
-<tr class="unc"><td class="ln">365</td><td class="code">                    let lower = text.to_lowercase();</td></tr>
-<tr class="unc"><td class="ln">366</td><td class="code">                    if let Some(idx) = lower.find(&amp;query_lower) {</td></tr>
-<tr class="unc"><td class="ln">367</td><td class="code">                        let start = idx.saturating_sub(20);</td></tr>
-<tr class="unc"><td class="ln">368</td><td class="code">                        let end = (idx + query.len() + 20).min(text.len());</td></tr>
-<tr class="unc"><td class="ln">369</td><td class="code">                        if is_json() {</td></tr>
-<tr class="unc"><td class="ln">370</td><td class="code">                            results.push(serde_json::json!({</td></tr>
-<tr class="unc"><td class="ln">371</td><td class="code">                                &quot;slide&quot;: i + 1, &quot;elementId&quot;: id, &quot;preset&quot;: preset,</td></tr>
-<tr class="unc"><td class="ln">372</td><td class="code">                                &quot;context&quot;: &amp;text[start..end], &quot;element&quot;: el,</td></tr>
+<tr class="cov"><td class="ln">363</td><td class="code">                    let id = el.get(&quot;id&quot;).and_then(|v| v.as_str()).unwrap_or(&quot;?&quot;);</td></tr>
+<tr class="cov"><td class="ln">364</td><td class="code">                    let preset = el.get(&quot;preset&quot;).and_then(|v| v.as_str()).unwrap_or(&quot;?&quot;);</td></tr>
+<tr class="cov"><td class="ln">365</td><td class="code">                    let lower = text.to_lowercase();</td></tr>
+<tr class="cov"><td class="ln">366</td><td class="code">                    if let Some(idx) = lower.find(&amp;query_lower) {</td></tr>
+<tr class="cov"><td class="ln">367</td><td class="code">                        let start = idx.saturating_sub(20);</td></tr>
+<tr class="cov"><td class="ln">368</td><td class="code">                        let end = (idx + query.len() + 20).min(text.len());</td></tr>
+<tr class="cov"><td class="ln">369</td><td class="code">                        if is_json() {</td></tr>
+<tr class="cov"><td class="ln">370</td><td class="code">                            results.push(serde_json::json!({</td></tr>
+<tr class="cov"><td class="ln">371</td><td class="code">                                &quot;slide&quot;: i + 1, &quot;elementId&quot;: id, &quot;preset&quot;: preset,</td></tr>
+<tr class="cov"><td class="ln">372</td><td class="code">                                &quot;context&quot;: &amp;text[start..end], &quot;element&quot;: el,</td></tr>
 <tr class="nil"><td class="ln">373</td><td class="code">                            }));</td></tr>
-<tr class="unc"><td class="ln">374</td><td class="code">                        } else {</td></tr>
-<tr class="unc"><td class="ln">375</td><td class="code">                            println!(&quot;  Slide {}, {} ({}): ...{}...&quot;, i + 1, &amp;id[..8.min(id.len())], preset, &amp;text[start..end]);</td></tr>
+<tr class="cov"><td class="ln">374</td><td class="code">                        } else {</td></tr>
+<tr class="cov"><td class="ln">375</td><td class="code">                            println!(&quot;  Slide {}, {} ({}): ...{}...&quot;, i + 1, &amp;id[..8.min(id.len())], preset, &amp;text[start..end]);</td></tr>
 <tr class="nil"><td class="ln">376</td><td class="code">                        }</td></tr>
-<tr class="unc"><td class="ln">377</td><td class="code">                        found += 1;</td></tr>
+<tr class="cov"><td class="ln">377</td><td class="code">                        found += 1;</td></tr>
 <tr class="nil"><td class="ln">378</td><td class="code">                    }</td></tr>
 <tr class="nil"><td class="ln">379</td><td class="code">                }</td></tr>
 <tr class="nil"><td class="ln">380</td><td class="code">            }</td></tr>
 <tr class="nil"><td class="ln">381</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">382</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">383</td><td class="code">    if is_json() {</td></tr>
-<tr class="unc"><td class="ln">384</td><td class="code">        println!(&quot;{}&quot;, serde_json::to_string_pretty(&amp;results).unwrap());</td></tr>
+<tr class="cov"><td class="ln">384</td><td class="code">        println!(&quot;{}&quot;, serde_json::to_string_pretty(&amp;results).unwrap());</td></tr>
 <tr class="cov"><td class="ln">385</td><td class="code">    } else if found == 0 {</td></tr>
 <tr class="cov"><td class="ln">386</td><td class="code">        println!(&quot;No results for \&quot;{}\&quot;&quot;, query);</td></tr>
 <tr class="cov"><td class="ln">387</td><td class="code">    } else {</td></tr>
-<tr class="unc"><td class="ln">388</td><td class="code">        println!(&quot;\n{} match(es)&quot;, found);</td></tr>
+<tr class="cov"><td class="ln">388</td><td class="code">        println!(&quot;\n{} match(es)&quot;, found);</td></tr>
 <tr class="nil"><td class="ln">389</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">390</td><td class="code">    Ok(())</td></tr>
 <tr class="nil"><td class="ln">391</td><td class="code">}</td></tr>
@@ -427,15 +427,15 @@
 <tr class="nil"><td class="ln">409</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">410</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">411</td><td class="code">    for (lid, count) in &amp;link_counts {</td></tr>
-<tr class="unc"><td class="ln">412</td><td class="code">        if *count == 1 {</td></tr>
-<tr class="unc"><td class="ln">413</td><td class="code">            println!(&quot;  WARN: orphan linkId {}&quot;, &amp;lid[..8.min(lid.len())]);</td></tr>
-<tr class="unc"><td class="ln">414</td><td class="code">            warnings += 1;</td></tr>
+<tr class="cov"><td class="ln">412</td><td class="code">        if *count == 1 {</td></tr>
+<tr class="cov"><td class="ln">413</td><td class="code">            println!(&quot;  WARN: orphan linkId {}&quot;, &amp;lid[..8.min(lid.len())]);</td></tr>
+<tr class="cov"><td class="ln">414</td><td class="code">            warnings += 1;</td></tr>
 <tr class="nil"><td class="ln">415</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">416</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">417</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">418</td><td class="code">    println!();</td></tr>
 <tr class="cov"><td class="ln">419</td><td class="code">    if warnings == 0 { println!(&quot;✓ No issues found&quot;); }</td></tr>
-<tr class="unc"><td class="ln">420</td><td class="code">    else { println!(&quot;0 error(s), {} warning(s)&quot;, warnings); }</td></tr>
+<tr class="cov"><td class="ln">420</td><td class="code">    else { println!(&quot;0 error(s), {} warning(s)&quot;, warnings); }</td></tr>
 <tr class="cov"><td class="ln">421</td><td class="code">    Ok(())</td></tr>
 <tr class="nil"><td class="ln">422</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">423</td><td class="code">&nbsp;</td></tr>
@@ -447,8 +447,8 @@
 <tr class="nil"><td class="ln">429</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">430</td><td class="code">    let json_str = storage::db_get_history(limit)?;</td></tr>
 <tr class="cov"><td class="ln">431</td><td class="code">    if is_json() {</td></tr>
-<tr class="unc"><td class="ln">432</td><td class="code">        println!(&quot;{}&quot;, json_str);</td></tr>
-<tr class="unc"><td class="ln">433</td><td class="code">        return Ok(());</td></tr>
+<tr class="cov"><td class="ln">432</td><td class="code">        println!(&quot;{}&quot;, json_str);</td></tr>
+<tr class="cov"><td class="ln">433</td><td class="code">        return Ok(());</td></tr>
 <tr class="nil"><td class="ln">434</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">435</td><td class="code">    let events: Vec&lt;Value&gt; = serde_json::from_str(&amp;json_str).unwrap_or_default();</td></tr>
 <tr class="nil"><td class="ln">436</td><td class="code">&nbsp;</td></tr>
@@ -517,53 +517,53 @@
 <tr class="unc"><td class="ln">499</td><td class="code">    Err(format!(&quot;Element {} not found&quot;, id_prefix))</td></tr>
 <tr class="nil"><td class="ln">500</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">501</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">502</td><td class="code">fn cmd_add(args: &amp;[String]) -&gt; Result&lt;(), String&gt; {</td></tr>
-<tr class="unc"><td class="ln">503</td><td class="code">    let what = args.first().map(|s| s.as_str()).ok_or(&quot;Usage: add &lt;slide|text&gt; ...&quot;)?;</td></tr>
-<tr class="unc"><td class="ln">504</td><td class="code">    match what {</td></tr>
-<tr class="unc"><td class="ln">505</td><td class="code">        &quot;slide&quot; =&gt; {</td></tr>
-<tr class="unc"><td class="ln">506</td><td class="code">            let json_str = storage::db_get_slides()?;</td></tr>
-<tr class="unc"><td class="ln">507</td><td class="code">            let slides: Vec&lt;Value&gt; = serde_json::from_str(&amp;json_str).unwrap_or_default();</td></tr>
-<tr class="unc"><td class="ln">508</td><td class="code">            let pos = slides.len() as i32;</td></tr>
-<tr class="unc"><td class="ln">509</td><td class="code">            let id = uuid::Uuid::new_v4().to_string();</td></tr>
-<tr class="unc"><td class="ln">510</td><td class="code">            storage::db_add_slide(id.clone(), pos, None)?;</td></tr>
-<tr class="unc"><td class="ln">511</td><td class="code">            println!(&quot;Added slide {} at position {}&quot;, &amp;id[..8], pos + 1);</td></tr>
+<tr class="cov"><td class="ln">502</td><td class="code">fn cmd_add(args: &amp;[String]) -&gt; Result&lt;(), String&gt; {</td></tr>
+<tr class="cov"><td class="ln">503</td><td class="code">    let what = args.first().map(|s| s.as_str()).ok_or(&quot;Usage: add &lt;slide|text&gt; ...&quot;)?;</td></tr>
+<tr class="cov"><td class="ln">504</td><td class="code">    match what {</td></tr>
+<tr class="cov"><td class="ln">505</td><td class="code">        &quot;slide&quot; =&gt; {</td></tr>
+<tr class="cov"><td class="ln">506</td><td class="code">            let json_str = storage::db_get_slides()?;</td></tr>
+<tr class="cov"><td class="ln">507</td><td class="code">            let slides: Vec&lt;Value&gt; = serde_json::from_str(&amp;json_str).unwrap_or_default();</td></tr>
+<tr class="cov"><td class="ln">508</td><td class="code">            let pos = slides.len() as i32;</td></tr>
+<tr class="cov"><td class="ln">509</td><td class="code">            let id = uuid::Uuid::new_v4().to_string();</td></tr>
+<tr class="cov"><td class="ln">510</td><td class="code">            storage::db_add_slide(id.clone(), pos, None)?;</td></tr>
+<tr class="cov"><td class="ln">511</td><td class="code">            println!(&quot;Added slide {} at position {}&quot;, &amp;id[..8], pos + 1);</td></tr>
 <tr class="nil"><td class="ln">512</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">513</td><td class="code">        &quot;text&quot; =&gt; {</td></tr>
-<tr class="unc"><td class="ln">514</td><td class="code">            let slide_num: usize = args.get(1).and_then(|s| s.parse().ok()).ok_or(&quot;Usage: add text &lt;slide_num&gt; &lt;text&gt;&quot;)?;</td></tr>
-<tr class="unc"><td class="ln">515</td><td class="code">            let text = args[2..].join(&quot; &quot;);</td></tr>
-<tr class="unc"><td class="ln">516</td><td class="code">            let slides_json = storage::db_get_slides()?;</td></tr>
-<tr class="unc"><td class="ln">517</td><td class="code">            let slides: Vec&lt;Value&gt; = serde_json::from_str(&amp;slides_json).unwrap_or_default();</td></tr>
-<tr class="unc"><td class="ln">518</td><td class="code">            let slide = slides.get(slide_num - 1).ok_or(&quot;Slide not found&quot;)?;</td></tr>
-<tr class="unc"><td class="ln">519</td><td class="code">            let slide_id = slide.get(&quot;id&quot;).and_then(|v| v.as_str()).ok_or(&quot;Bad slide&quot;)?;</td></tr>
+<tr class="cov"><td class="ln">513</td><td class="code">        &quot;text&quot; =&gt; {</td></tr>
+<tr class="cov"><td class="ln">514</td><td class="code">            let slide_num: usize = args.get(1).and_then(|s| s.parse().ok()).ok_or(&quot;Usage: add text &lt;slide_num&gt; &lt;text&gt;&quot;)?;</td></tr>
+<tr class="cov"><td class="ln">515</td><td class="code">            let text = args[2..].join(&quot; &quot;);</td></tr>
+<tr class="cov"><td class="ln">516</td><td class="code">            let slides_json = storage::db_get_slides()?;</td></tr>
+<tr class="cov"><td class="ln">517</td><td class="code">            let slides: Vec&lt;Value&gt; = serde_json::from_str(&amp;slides_json).unwrap_or_default();</td></tr>
+<tr class="cov"><td class="ln">518</td><td class="code">            let slide = slides.get(slide_num - 1).ok_or(&quot;Slide not found&quot;)?;</td></tr>
+<tr class="cov"><td class="ln">519</td><td class="code">            let slide_id = slide.get(&quot;id&quot;).and_then(|v| v.as_str()).ok_or(&quot;Bad slide&quot;)?;</td></tr>
 <tr class="nil"><td class="ln">520</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">521</td><td class="code">            let el_id = uuid::Uuid::new_v4().to_string();</td></tr>
-<tr class="unc"><td class="ln">522</td><td class="code">            let el_json = serde_json::json!({</td></tr>
-<tr class="unc"><td class="ln">523</td><td class="code">                &quot;id&quot;: el_id, &quot;type&quot;: &quot;text&quot;, &quot;preset&quot;: &quot;body&quot;, &quot;html&quot;: text,</td></tr>
-<tr class="unc"><td class="ln">524</td><td class="code">                &quot;position&quot;: { &quot;x&quot;: 80, &quot;y&quot;: 240, &quot;width&quot;: 1760, &quot;height&quot;: 200 }</td></tr>
+<tr class="cov"><td class="ln">521</td><td class="code">            let el_id = uuid::Uuid::new_v4().to_string();</td></tr>
+<tr class="cov"><td class="ln">522</td><td class="code">            let el_json = serde_json::json!({</td></tr>
+<tr class="cov"><td class="ln">523</td><td class="code">                &quot;id&quot;: el_id, &quot;type&quot;: &quot;text&quot;, &quot;preset&quot;: &quot;body&quot;, &quot;html&quot;: text,</td></tr>
+<tr class="cov"><td class="ln">524</td><td class="code">                &quot;position&quot;: { &quot;x&quot;: 80, &quot;y&quot;: 240, &quot;width&quot;: 1760, &quot;height&quot;: 200 }</td></tr>
 <tr class="nil"><td class="ln">525</td><td class="code">            });</td></tr>
-<tr class="unc"><td class="ln">526</td><td class="code">            let elements_json = storage::db_get_slide_elements(slide_id.to_string())?;</td></tr>
-<tr class="unc"><td class="ln">527</td><td class="code">            let elements: Vec&lt;Value&gt; = serde_json::from_str(&amp;elements_json).unwrap_or_default();</td></tr>
+<tr class="cov"><td class="ln">526</td><td class="code">            let elements_json = storage::db_get_slide_elements(slide_id.to_string())?;</td></tr>
+<tr class="cov"><td class="ln">527</td><td class="code">            let elements: Vec&lt;Value&gt; = serde_json::from_str(&amp;elements_json).unwrap_or_default();</td></tr>
 <tr class="nil"><td class="ln">528</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">529</td><td class="code">            storage::db_add_element(</td></tr>
-<tr class="unc"><td class="ln">530</td><td class="code">                slide_id.to_string(), el_id.clone(), &quot;text&quot;.to_string(),</td></tr>
-<tr class="unc"><td class="ln">531</td><td class="code">                el_json.to_string(), None, None, elements.len() as i32</td></tr>
+<tr class="cov"><td class="ln">529</td><td class="code">            storage::db_add_element(</td></tr>
+<tr class="cov"><td class="ln">530</td><td class="code">                slide_id.to_string(), el_id.clone(), &quot;text&quot;.to_string(),</td></tr>
+<tr class="cov"><td class="ln">531</td><td class="code">                el_json.to_string(), None, None, elements.len() as i32</td></tr>
 <tr class="nil"><td class="ln">532</td><td class="code">            )?;</td></tr>
-<tr class="unc"><td class="ln">533</td><td class="code">            println!(&quot;Added text element {} to slide {}&quot;, &amp;el_id[..8], slide_num);</td></tr>
+<tr class="cov"><td class="ln">533</td><td class="code">            println!(&quot;Added text element {} to slide {}&quot;, &amp;el_id[..8], slide_num);</td></tr>
 <tr class="nil"><td class="ln">534</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">535</td><td class="code">        _ =&gt; return Err(format!(&quot;Unknown: add {}&quot;, what)),</td></tr>
+<tr class="cov"><td class="ln">535</td><td class="code">        _ =&gt; return Err(format!(&quot;Unknown: add {}&quot;, what)),</td></tr>
 <tr class="nil"><td class="ln">536</td><td class="code">    }</td></tr>
-<tr class="unc"><td class="ln">537</td><td class="code">    Ok(())</td></tr>
+<tr class="cov"><td class="ln">537</td><td class="code">    Ok(())</td></tr>
 <tr class="nil"><td class="ln">538</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">539</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">540</td><td class="code">fn cmd_insert(args: &amp;[String]) -&gt; Result&lt;(), String&gt; {</td></tr>
-<tr class="unc"><td class="ln">541</td><td class="code">    if args.first().map(|s| s.as_str()) != Some(&quot;slide&quot;) {</td></tr>
-<tr class="unc"><td class="ln">542</td><td class="code">        return Err(&quot;Usage: insert slide &lt;N&gt;&quot;.to_string());</td></tr>
+<tr class="cov"><td class="ln">540</td><td class="code">fn cmd_insert(args: &amp;[String]) -&gt; Result&lt;(), String&gt; {</td></tr>
+<tr class="cov"><td class="ln">541</td><td class="code">    if args.first().map(|s| s.as_str()) != Some(&quot;slide&quot;) {</td></tr>
+<tr class="cov"><td class="ln">542</td><td class="code">        return Err(&quot;Usage: insert slide &lt;N&gt;&quot;.to_string());</td></tr>
 <tr class="nil"><td class="ln">543</td><td class="code">    }</td></tr>
-<tr class="unc"><td class="ln">544</td><td class="code">    let pos: i32 = args.get(1).and_then(|s| s.parse().ok()).ok_or(&quot;Usage: insert slide &lt;N&gt;&quot;)?;</td></tr>
-<tr class="unc"><td class="ln">545</td><td class="code">    let id = uuid::Uuid::new_v4().to_string();</td></tr>
-<tr class="unc"><td class="ln">546</td><td class="code">    storage::db_add_slide(id.clone(), pos - 1, None)?;</td></tr>
-<tr class="unc"><td class="ln">547</td><td class="code">    println!(&quot;Inserted slide {} at position {}&quot;, &amp;id[..8], pos);</td></tr>
-<tr class="unc"><td class="ln">548</td><td class="code">    Ok(())</td></tr>
+<tr class="cov"><td class="ln">544</td><td class="code">    let pos: i32 = args.get(1).and_then(|s| s.parse().ok()).ok_or(&quot;Usage: insert slide &lt;N&gt;&quot;)?;</td></tr>
+<tr class="cov"><td class="ln">545</td><td class="code">    let id = uuid::Uuid::new_v4().to_string();</td></tr>
+<tr class="cov"><td class="ln">546</td><td class="code">    storage::db_add_slide(id.clone(), pos - 1, None)?;</td></tr>
+<tr class="cov"><td class="ln">547</td><td class="code">    println!(&quot;Inserted slide {} at position {}&quot;, &amp;id[..8], pos);</td></tr>
+<tr class="cov"><td class="ln">548</td><td class="code">    Ok(())</td></tr>
 <tr class="nil"><td class="ln">549</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">550</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">551</td><td class="code">fn cmd_remove(args: &amp;[String]) -&gt; Result&lt;(), String&gt; {</td></tr>
@@ -588,15 +588,15 @@
 <tr class="cov"><td class="ln">570</td><td class="code">                for el in s.get(&quot;elements&quot;).and_then(|v| v.as_array()).unwrap_or(&amp;vec![]) {</td></tr>
 <tr class="cov"><td class="ln">571</td><td class="code">                    let eid = el.get(&quot;id&quot;).and_then(|v| v.as_str()).unwrap_or(&quot;&quot;);</td></tr>
 <tr class="cov"><td class="ln">572</td><td class="code">                    if eid.starts_with(id_prefix.as_str()) {</td></tr>
-<tr class="unc"><td class="ln">573</td><td class="code">                        storage::db_remove_element_from_slide(sid.to_string(), eid.to_string())?;</td></tr>
-<tr class="unc"><td class="ln">574</td><td class="code">                        println!(&quot;Removed {} from slide&quot;, &amp;eid[..8.min(eid.len())]);</td></tr>
-<tr class="unc"><td class="ln">575</td><td class="code">                        return Ok(());</td></tr>
+<tr class="cov"><td class="ln">573</td><td class="code">                        storage::db_remove_element_from_slide(sid.to_string(), eid.to_string())?;</td></tr>
+<tr class="cov"><td class="ln">574</td><td class="code">                        println!(&quot;Removed {} from slide&quot;, &amp;eid[..8.min(eid.len())]);</td></tr>
+<tr class="cov"><td class="ln">575</td><td class="code">                        return Ok(());</td></tr>
 <tr class="nil"><td class="ln">576</td><td class="code">                    }</td></tr>
 <tr class="nil"><td class="ln">577</td><td class="code">                }</td></tr>
 <tr class="nil"><td class="ln">578</td><td class="code">            }</td></tr>
 <tr class="cov"><td class="ln">579</td><td class="code">            return Err(format!(&quot;Element {} not found&quot;, id_prefix));</td></tr>
 <tr class="nil"><td class="ln">580</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">581</td><td class="code">        _ =&gt; return Err(format!(&quot;Unknown: remove {}&quot;, what)),</td></tr>
+<tr class="cov"><td class="ln">581</td><td class="code">        _ =&gt; return Err(format!(&quot;Unknown: remove {}&quot;, what)),</td></tr>
 <tr class="nil"><td class="ln">582</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">583</td><td class="code">    Ok(())</td></tr>
 <tr class="nil"><td class="ln">584</td><td class="code">}</td></tr>
@@ -605,14 +605,14 @@
 <tr class="cov"><td class="ln">587</td><td class="code">    let what = args.first().map(|s| s.as_str()).ok_or(&quot;Usage: move &lt;slide|element&gt; ...&quot;)?;</td></tr>
 <tr class="cov"><td class="ln">588</td><td class="code">    match what {</td></tr>
 <tr class="cov"><td class="ln">589</td><td class="code">        &quot;slide&quot; =&gt; {</td></tr>
-<tr class="unc"><td class="ln">590</td><td class="code">            let from: usize = args.get(1).and_then(|s| s.parse().ok()).ok_or(&quot;Usage: move slide &lt;from&gt; &lt;to&gt;&quot;)?;</td></tr>
-<tr class="unc"><td class="ln">591</td><td class="code">            let to: i32 = args.get(2).and_then(|s| s.parse().ok()).ok_or(&quot;Usage: move slide &lt;from&gt; &lt;to&gt;&quot;)?;</td></tr>
-<tr class="unc"><td class="ln">592</td><td class="code">            let slides_json = storage::db_get_slides()?;</td></tr>
-<tr class="unc"><td class="ln">593</td><td class="code">            let slides: Vec&lt;Value&gt; = serde_json::from_str(&amp;slides_json).unwrap_or_default();</td></tr>
-<tr class="unc"><td class="ln">594</td><td class="code">            let slide = slides.get(from - 1).ok_or(&quot;Slide not found&quot;)?;</td></tr>
-<tr class="unc"><td class="ln">595</td><td class="code">            let slide_id = slide.get(&quot;id&quot;).and_then(|v| v.as_str()).ok_or(&quot;Bad slide&quot;)?;</td></tr>
-<tr class="unc"><td class="ln">596</td><td class="code">            storage::db_move_slide(slide_id.to_string(), to - 1)?;</td></tr>
-<tr class="unc"><td class="ln">597</td><td class="code">            println!(&quot;Moved slide {} to position {}&quot;, from, to);</td></tr>
+<tr class="cov"><td class="ln">590</td><td class="code">            let from: usize = args.get(1).and_then(|s| s.parse().ok()).ok_or(&quot;Usage: move slide &lt;from&gt; &lt;to&gt;&quot;)?;</td></tr>
+<tr class="cov"><td class="ln">591</td><td class="code">            let to: i32 = args.get(2).and_then(|s| s.parse().ok()).ok_or(&quot;Usage: move slide &lt;from&gt; &lt;to&gt;&quot;)?;</td></tr>
+<tr class="cov"><td class="ln">592</td><td class="code">            let slides_json = storage::db_get_slides()?;</td></tr>
+<tr class="cov"><td class="ln">593</td><td class="code">            let slides: Vec&lt;Value&gt; = serde_json::from_str(&amp;slides_json).unwrap_or_default();</td></tr>
+<tr class="cov"><td class="ln">594</td><td class="code">            let slide = slides.get(from - 1).ok_or(&quot;Slide not found&quot;)?;</td></tr>
+<tr class="cov"><td class="ln">595</td><td class="code">            let slide_id = slide.get(&quot;id&quot;).and_then(|v| v.as_str()).ok_or(&quot;Bad slide&quot;)?;</td></tr>
+<tr class="cov"><td class="ln">596</td><td class="code">            storage::db_move_slide(slide_id.to_string(), to - 1)?;</td></tr>
+<tr class="cov"><td class="ln">597</td><td class="code">            println!(&quot;Moved slide {} to position {}&quot;, from, to);</td></tr>
 <tr class="nil"><td class="ln">598</td><td class="code">        }</td></tr>
 <tr class="cov"><td class="ln">599</td><td class="code">        &quot;element&quot; =&gt; {</td></tr>
 <tr class="cov"><td class="ln">600</td><td class="code">            let id_prefix = args.get(1).ok_or(&quot;Usage: move element &lt;id&gt; &lt;x&gt; &lt;y&gt;&quot;)?;</td></tr>
@@ -640,9 +640,9 @@
 <tr class="nil"><td class="ln">622</td><td class="code">            }</td></tr>
 <tr class="unc"><td class="ln">623</td><td class="code">            return Err(format!(&quot;Element {} not found&quot;, id_prefix));</td></tr>
 <tr class="nil"><td class="ln">624</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">625</td><td class="code">        _ =&gt; return Err(format!(&quot;Unknown: move {}&quot;, what)),</td></tr>
+<tr class="cov"><td class="ln">625</td><td class="code">        _ =&gt; return Err(format!(&quot;Unknown: move {}&quot;, what)),</td></tr>
 <tr class="nil"><td class="ln">626</td><td class="code">    }</td></tr>
-<tr class="unc"><td class="ln">627</td><td class="code">    Ok(())</td></tr>
+<tr class="cov"><td class="ln">627</td><td class="code">    Ok(())</td></tr>
 <tr class="nil"><td class="ln">628</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">629</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">630</td><td class="code">fn cmd_edit(args: &amp;[String]) -&gt; Result&lt;(), String&gt; {</td></tr>
@@ -680,18 +680,18 @@
 <tr class="cov"><td class="ln">662</td><td class="code">    match format {</td></tr>
 <tr class="cov"><td class="ln">663</td><td class="code">        &quot;json&quot; =&gt; {</td></tr>
 <tr class="cov"><td class="ln">664</td><td class="code">            let json = if with_assets {</td></tr>
-<tr class="unc"><td class="ln">665</td><td class="code">                storage::db_export_json_with_assets()?</td></tr>
+<tr class="cov"><td class="ln">665</td><td class="code">                storage::db_export_json_with_assets()?</td></tr>
 <tr class="nil"><td class="ln">666</td><td class="code">            } else {</td></tr>
 <tr class="cov"><td class="ln">667</td><td class="code">                storage::db_export_json()?</td></tr>
 <tr class="nil"><td class="ln">668</td><td class="code">            };</td></tr>
 <tr class="cov"><td class="ln">669</td><td class="code">            if let Some(path) = output {</td></tr>
 <tr class="cov"><td class="ln">670</td><td class="code">                std::fs::write(path, &amp;json).map_err(|e| e.to_string())?;</td></tr>
 <tr class="cov"><td class="ln">671</td><td class="code">                println!(&quot;Exported{} to {}&quot;, if with_assets { &quot; (with assets)&quot; } else { &quot;&quot; }, path);</td></tr>
-<tr class="unc"><td class="ln">672</td><td class="code">            } else {</td></tr>
-<tr class="unc"><td class="ln">673</td><td class="code">                println!(&quot;{}&quot;, json);</td></tr>
+<tr class="cov"><td class="ln">672</td><td class="code">            } else {</td></tr>
+<tr class="cov"><td class="ln">673</td><td class="code">                println!(&quot;{}&quot;, json);</td></tr>
 <tr class="nil"><td class="ln">674</td><td class="code">            }</td></tr>
 <tr class="nil"><td class="ln">675</td><td class="code">        }</td></tr>
-<tr class="unc"><td class="ln">676</td><td class="code">        _ =&gt; return Err(format!(&quot;Unknown format: {} (supported: json)&quot;, format)),</td></tr>
+<tr class="cov"><td class="ln">676</td><td class="code">        _ =&gt; return Err(format!(&quot;Unknown format: {} (supported: json)&quot;, format)),</td></tr>
 <tr class="nil"><td class="ln">677</td><td class="code">    }</td></tr>
 <tr class="cov"><td class="ln">678</td><td class="code">    Ok(())</td></tr>
 <tr class="nil"><td class="ln">679</td><td class="code">}</td></tr>
@@ -718,45 +718,45 @@
 <tr class="cov"><td class="ln">700</td><td class="code">    Ok(())</td></tr>
 <tr class="nil"><td class="ln">701</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">702</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">703</td><td class="code">fn cmd_store_asset(args: &amp;[String]) -&gt; Result&lt;(), String&gt; {</td></tr>
-<tr class="unc"><td class="ln">704</td><td class="code">    let file_path = args.first().ok_or(&quot;Usage: store-asset &lt;file&gt; [--as &lt;path&gt;]&quot;)?;</td></tr>
-<tr class="unc"><td class="ln">705</td><td class="code">    let as_path = args.iter()</td></tr>
-<tr class="unc"><td class="ln">706</td><td class="code">        .position(|a| a == &quot;--as&quot;)</td></tr>
-<tr class="unc"><td class="ln">707</td><td class="code">        .and_then(|i| args.get(i + 1))</td></tr>
-<tr class="unc"><td class="ln">708</td><td class="code">        .map(|s| s.as_str());</td></tr>
+<tr class="cov"><td class="ln">703</td><td class="code">fn cmd_store_asset(args: &amp;[String]) -&gt; Result&lt;(), String&gt; {</td></tr>
+<tr class="cov"><td class="ln">704</td><td class="code">    let file_path = args.first().ok_or(&quot;Usage: store-asset &lt;file&gt; [--as &lt;path&gt;]&quot;)?;</td></tr>
+<tr class="cov"><td class="ln">705</td><td class="code">    let as_path = args.iter()</td></tr>
+<tr class="cov"><td class="ln">706</td><td class="code">        .position(|a| a == &quot;--as&quot;)</td></tr>
+<tr class="cov"><td class="ln">707</td><td class="code">        .and_then(|i| args.get(i + 1))</td></tr>
+<tr class="cov"><td class="ln">708</td><td class="code">        .map(|s| s.as_str());</td></tr>
 <tr class="nil"><td class="ln">709</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">710</td><td class="code">    let data = std::fs::read(file_path).map_err(|e| format!(&quot;Failed to read {}: {}&quot;, file_path, e))?;</td></tr>
+<tr class="cov"><td class="ln">710</td><td class="code">    let data = std::fs::read(file_path).map_err(|e| format!(&quot;Failed to read {}: {}&quot;, file_path, e))?;</td></tr>
 <tr class="nil"><td class="ln">711</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">712</td><td class="code">    let rel_path = as_path.unwrap_or_else(|| {</td></tr>
+<tr class="cov"><td class="ln">712</td><td class="code">    let rel_path = as_path.unwrap_or_else(|| {</td></tr>
 <tr class="nil"><td class="ln">713</td><td class="code">        // Derive relative path from filename</td></tr>
-<tr class="unc"><td class="ln">714</td><td class="code">        let name = std::path::Path::new(file_path.as_str()).file_name()</td></tr>
-<tr class="unc"><td class="ln">715</td><td class="code">            .and_then(|n| n.to_str()).unwrap_or(&quot;unknown&quot;);</td></tr>
-<tr class="unc"><td class="ln">716</td><td class="code">        if file_path.contains(&quot;demo&quot;) || file_path.ends_with(&quot;.html&quot;) {</td></tr>
+<tr class="cov"><td class="ln">714</td><td class="code">        let name = std::path::Path::new(file_path.as_str()).file_name()</td></tr>
+<tr class="cov"><td class="ln">715</td><td class="code">            .and_then(|n| n.to_str()).unwrap_or(&quot;unknown&quot;);</td></tr>
+<tr class="cov"><td class="ln">716</td><td class="code">        if file_path.contains(&quot;demo&quot;) || file_path.ends_with(&quot;.html&quot;) {</td></tr>
 <tr class="nil"><td class="ln">717</td><td class="code">            // Leak a string for the borrow checker</td></tr>
-<tr class="unc"><td class="ln">718</td><td class="code">            Box::leak(format!(&quot;demos/{}&quot;, name).into_boxed_str())</td></tr>
+<tr class="cov"><td class="ln">718</td><td class="code">            Box::leak(format!(&quot;demos/{}&quot;, name).into_boxed_str())</td></tr>
 <tr class="nil"><td class="ln">719</td><td class="code">        } else {</td></tr>
-<tr class="unc"><td class="ln">720</td><td class="code">            Box::leak(format!(&quot;images/{}&quot;, name).into_boxed_str())</td></tr>
+<tr class="cov"><td class="ln">720</td><td class="code">            Box::leak(format!(&quot;images/{}&quot;, name).into_boxed_str())</td></tr>
 <tr class="nil"><td class="ln">721</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">722</td><td class="code">    });</td></tr>
 <tr class="nil"><td class="ln">723</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">724</td><td class="code">    let ext = std::path::Path::new(rel_path).extension()</td></tr>
-<tr class="unc"><td class="ln">725</td><td class="code">        .and_then(|e| e.to_str()).unwrap_or(&quot;bin&quot;);</td></tr>
-<tr class="unc"><td class="ln">726</td><td class="code">    let mime = match ext {</td></tr>
-<tr class="unc"><td class="ln">727</td><td class="code">        &quot;png&quot; =&gt; &quot;image/png&quot;,</td></tr>
-<tr class="unc"><td class="ln">728</td><td class="code">        &quot;jpg&quot; | &quot;jpeg&quot; =&gt; &quot;image/jpeg&quot;,</td></tr>
-<tr class="unc"><td class="ln">729</td><td class="code">        &quot;gif&quot; =&gt; &quot;image/gif&quot;,</td></tr>
-<tr class="unc"><td class="ln">730</td><td class="code">        &quot;svg&quot; =&gt; &quot;image/svg+xml&quot;,</td></tr>
-<tr class="unc"><td class="ln">731</td><td class="code">        &quot;webp&quot; =&gt; &quot;image/webp&quot;,</td></tr>
-<tr class="unc"><td class="ln">732</td><td class="code">        &quot;html&quot; =&gt; &quot;text/html&quot;,</td></tr>
-<tr class="unc"><td class="ln">733</td><td class="code">        &quot;js&quot; =&gt; &quot;application/javascript&quot;,</td></tr>
-<tr class="unc"><td class="ln">734</td><td class="code">        &quot;json&quot; =&gt; &quot;application/json&quot;,</td></tr>
-<tr class="unc"><td class="ln">735</td><td class="code">        &quot;css&quot; =&gt; &quot;text/css&quot;,</td></tr>
-<tr class="unc"><td class="ln">736</td><td class="code">        _ =&gt; &quot;application/octet-stream&quot;,</td></tr>
+<tr class="cov"><td class="ln">724</td><td class="code">    let ext = std::path::Path::new(rel_path).extension()</td></tr>
+<tr class="cov"><td class="ln">725</td><td class="code">        .and_then(|e| e.to_str()).unwrap_or(&quot;bin&quot;);</td></tr>
+<tr class="cov"><td class="ln">726</td><td class="code">    let mime = match ext {</td></tr>
+<tr class="cov"><td class="ln">727</td><td class="code">        &quot;png&quot; =&gt; &quot;image/png&quot;,</td></tr>
+<tr class="cov"><td class="ln">728</td><td class="code">        &quot;jpg&quot; | &quot;jpeg&quot; =&gt; &quot;image/jpeg&quot;,</td></tr>
+<tr class="cov"><td class="ln">729</td><td class="code">        &quot;gif&quot; =&gt; &quot;image/gif&quot;,</td></tr>
+<tr class="cov"><td class="ln">730</td><td class="code">        &quot;svg&quot; =&gt; &quot;image/svg+xml&quot;,</td></tr>
+<tr class="cov"><td class="ln">731</td><td class="code">        &quot;webp&quot; =&gt; &quot;image/webp&quot;,</td></tr>
+<tr class="cov"><td class="ln">732</td><td class="code">        &quot;html&quot; =&gt; &quot;text/html&quot;,</td></tr>
+<tr class="cov"><td class="ln">733</td><td class="code">        &quot;js&quot; =&gt; &quot;application/javascript&quot;,</td></tr>
+<tr class="cov"><td class="ln">734</td><td class="code">        &quot;json&quot; =&gt; &quot;application/json&quot;,</td></tr>
+<tr class="cov"><td class="ln">735</td><td class="code">        &quot;css&quot; =&gt; &quot;text/css&quot;,</td></tr>
+<tr class="cov"><td class="ln">736</td><td class="code">        _ =&gt; &quot;application/octet-stream&quot;,</td></tr>
 <tr class="nil"><td class="ln">737</td><td class="code">    };</td></tr>
 <tr class="nil"><td class="ln">738</td><td class="code">&nbsp;</td></tr>
-<tr class="unc"><td class="ln">739</td><td class="code">    let _asset_id = storage::db_store_asset(rel_path.to_string(), data, mime.to_string(), None, None, None, None, None)?;</td></tr>
-<tr class="unc"><td class="ln">740</td><td class="code">    println!(&quot;Stored {} ({} bytes)&quot;, rel_path, std::fs::metadata(file_path).map(|m| m.len()).unwrap_or(0));</td></tr>
-<tr class="unc"><td class="ln">741</td><td class="code">    Ok(())</td></tr>
+<tr class="cov"><td class="ln">739</td><td class="code">    let _asset_id = storage::db_store_asset(rel_path.to_string(), data, mime.to_string(), None, None, None, None, None)?;</td></tr>
+<tr class="cov"><td class="ln">740</td><td class="code">    println!(&quot;Stored {} ({} bytes)&quot;, rel_path, std::fs::metadata(file_path).map(|m| m.len()).unwrap_or(0));</td></tr>
+<tr class="cov"><td class="ln">741</td><td class="code">    Ok(())</td></tr>
 <tr class="nil"><td class="ln">742</td><td class="code">}</td></tr>
 <tr class="nil"><td class="ln">743</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">744</td><td class="code">fn cmd_compact(args: &amp;[String]) -&gt; Result&lt;(), String&gt; {</td></tr>
@@ -798,7 +798,7 @@
 <tr class="cov"><td class="ln">780</td><td class="code">            if let Some(els) = s.get(&quot;elements&quot;).and_then(|v| v.as_array()) {</td></tr>
 <tr class="cov"><td class="ln">781</td><td class="code">                for el in els {</td></tr>
 <tr class="cov"><td class="ln">782</td><td class="code">                    if let Some(id) = el.get(&quot;assetId&quot;).and_then(|v| v.as_str()) {</td></tr>
-<tr class="unc"><td class="ln">783</td><td class="code">                        asset_ids.insert(id.to_string());</td></tr>
+<tr class="cov"><td class="ln">783</td><td class="code">                        asset_ids.insert(id.to_string());</td></tr>
 <tr class="nil"><td class="ln">784</td><td class="code">                    }</td></tr>
 <tr class="nil"><td class="ln">785</td><td class="code">                }</td></tr>
 <tr class="nil"><td class="ln">786</td><td class="code">            }</td></tr>
@@ -807,26 +807,26 @@
 <tr class="nil"><td class="ln">789</td><td class="code">&nbsp;</td></tr>
 <tr class="cov"><td class="ln">790</td><td class="code">    let mut count = 0;</td></tr>
 <tr class="cov"><td class="ln">791</td><td class="code">    for asset_id in &amp;asset_ids {</td></tr>
-<tr class="unc"><td class="ln">792</td><td class="code">        let meta = match storage::db_get_asset_meta_by_id(asset_id.clone()) {</td></tr>
-<tr class="unc"><td class="ln">793</td><td class="code">            Ok(Some(m)) =&gt; m,</td></tr>
+<tr class="cov"><td class="ln">792</td><td class="code">        let meta = match storage::db_get_asset_meta_by_id(asset_id.clone()) {</td></tr>
+<tr class="cov"><td class="ln">793</td><td class="code">            Ok(Some(m)) =&gt; m,</td></tr>
 <tr class="unc"><td class="ln">794</td><td class="code">            Ok(None) =&gt; { eprintln!(&quot;  Warning: asset {} not found in DB&quot;, &amp;asset_id[..8.min(asset_id.len())]); continue; }</td></tr>
 <tr class="unc"><td class="ln">795</td><td class="code">            Err(e) =&gt; { eprintln!(&quot;  Warning: asset meta lookup failed: {}&quot;, e); continue; }</td></tr>
 <tr class="nil"><td class="ln">796</td><td class="code">        };</td></tr>
-<tr class="unc"><td class="ln">797</td><td class="code">        let path = match meta.path.as_deref() {</td></tr>
-<tr class="unc"><td class="ln">798</td><td class="code">            Some(p) =&gt; p,</td></tr>
+<tr class="cov"><td class="ln">797</td><td class="code">        let path = match meta.path.as_deref() {</td></tr>
+<tr class="cov"><td class="ln">798</td><td class="code">            Some(p) =&gt; p,</td></tr>
 <tr class="unc"><td class="ln">799</td><td class="code">            None =&gt; { eprintln!(&quot;  Warning: asset {} has no path label — skipping&quot;, &amp;asset_id[..8.min(asset_id.len())]); continue; }</td></tr>
 <tr class="nil"><td class="ln">800</td><td class="code">        };</td></tr>
-<tr class="unc"><td class="ln">801</td><td class="code">        let is_demo = path.starts_with(&quot;demos/&quot;);</td></tr>
-<tr class="unc"><td class="ln">802</td><td class="code">        let is_image = path.starts_with(&quot;images/&quot;);</td></tr>
-<tr class="unc"><td class="ln">803</td><td class="code">        if demos_only &amp;&amp; !is_demo { continue; }</td></tr>
-<tr class="unc"><td class="ln">804</td><td class="code">        if images_only &amp;&amp; !is_image { continue; }</td></tr>
-<tr class="unc"><td class="ln">805</td><td class="code">        match storage::db_get_asset_bytes_by_id(asset_id.clone()) {</td></tr>
-<tr class="unc"><td class="ln">806</td><td class="code">            Ok(data) =&gt; {</td></tr>
-<tr class="unc"><td class="ln">807</td><td class="code">                let full_path = format!(&quot;{}/{}&quot;, base_dir, path);</td></tr>
-<tr class="unc"><td class="ln">808</td><td class="code">                let dir = std::path::Path::new(&amp;full_path).parent().unwrap();</td></tr>
-<tr class="unc"><td class="ln">809</td><td class="code">                std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;</td></tr>
-<tr class="unc"><td class="ln">810</td><td class="code">                std::fs::write(&amp;full_path, &amp;data).map_err(|e| e.to_string())?;</td></tr>
-<tr class="unc"><td class="ln">811</td><td class="code">                count += 1;</td></tr>
+<tr class="cov"><td class="ln">801</td><td class="code">        let is_demo = path.starts_with(&quot;demos/&quot;);</td></tr>
+<tr class="cov"><td class="ln">802</td><td class="code">        let is_image = path.starts_with(&quot;images/&quot;);</td></tr>
+<tr class="cov"><td class="ln">803</td><td class="code">        if demos_only &amp;&amp; !is_demo { continue; }</td></tr>
+<tr class="cov"><td class="ln">804</td><td class="code">        if images_only &amp;&amp; !is_image { continue; }</td></tr>
+<tr class="cov"><td class="ln">805</td><td class="code">        match storage::db_get_asset_bytes_by_id(asset_id.clone()) {</td></tr>
+<tr class="cov"><td class="ln">806</td><td class="code">            Ok(data) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">807</td><td class="code">                let full_path = format!(&quot;{}/{}&quot;, base_dir, path);</td></tr>
+<tr class="cov"><td class="ln">808</td><td class="code">                let dir = std::path::Path::new(&amp;full_path).parent().unwrap();</td></tr>
+<tr class="cov"><td class="ln">809</td><td class="code">                std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;</td></tr>
+<tr class="cov"><td class="ln">810</td><td class="code">                std::fs::write(&amp;full_path, &amp;data).map_err(|e| e.to_string())?;</td></tr>
+<tr class="cov"><td class="ln">811</td><td class="code">                count += 1;</td></tr>
 <tr class="nil"><td class="ln">812</td><td class="code">            }</td></tr>
 <tr class="unc"><td class="ln">813</td><td class="code">            Err(_) =&gt; eprintln!(&quot;  Warning: asset {} bytes not found in DB&quot;, path),</td></tr>
 <tr class="nil"><td class="ln">814</td><td class="code">        }</td></tr>
@@ -839,12 +839,12 @@
 <tr class="nil"><td class="ln">821</td><td class="code">/// the assetId column → assets table. Falls back to the (truncated)</td></tr>
 <tr class="nil"><td class="ln">822</td><td class="code">/// assetId when there&#x27;s no path label, and &quot;?&quot; when the element has</td></tr>
 <tr class="nil"><td class="ln">823</td><td class="code">/// no assetId at all.</td></tr>
-<tr class="unc"><td class="ln">824</td><td class="code">fn asset_path_for_element(el: &amp;Value) -&gt; String {</td></tr>
-<tr class="unc"><td class="ln">825</td><td class="code">    let Some(asset_id) = el.get(&quot;assetId&quot;).and_then(|v| v.as_str()) else {</td></tr>
+<tr class="cov"><td class="ln">824</td><td class="code">fn asset_path_for_element(el: &amp;Value) -&gt; String {</td></tr>
+<tr class="cov"><td class="ln">825</td><td class="code">    let Some(asset_id) = el.get(&quot;assetId&quot;).and_then(|v| v.as_str()) else {</td></tr>
 <tr class="unc"><td class="ln">826</td><td class="code">        return &quot;?&quot;.to_string();</td></tr>
 <tr class="nil"><td class="ln">827</td><td class="code">    };</td></tr>
-<tr class="unc"><td class="ln">828</td><td class="code">    match storage::db_get_asset_meta_by_id(asset_id.to_string()) {</td></tr>
-<tr class="unc"><td class="ln">829</td><td class="code">        Ok(Some(m)) =&gt; m.path.unwrap_or_else(|| format!(&quot;(asset {})&quot;, &amp;asset_id[..8.min(asset_id.len())])),</td></tr>
+<tr class="cov"><td class="ln">828</td><td class="code">    match storage::db_get_asset_meta_by_id(asset_id.to_string()) {</td></tr>
+<tr class="cov"><td class="ln">829</td><td class="code">        Ok(Some(m)) =&gt; m.path.unwrap_or_else(|| format!(&quot;(asset {})&quot;, &amp;asset_id[..8.min(asset_id.len())])),</td></tr>
 <tr class="unc"><td class="ln">830</td><td class="code">        _ =&gt; format!(&quot;(asset {})&quot;, &amp;asset_id[..8.min(asset_id.len())]),</td></tr>
 <tr class="nil"><td class="ln">831</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">832</td><td class="code">}</td></tr>
@@ -854,25 +854,25 @@
 <tr class="nil"><td class="ln">836</td><td class="code">    use std::fmt;</td></tr>
 <tr class="nil"><td class="ln">837</td><td class="code">    pub struct Uuid;</td></tr>
 <tr class="nil"><td class="ln">838</td><td class="code">    impl Uuid {</td></tr>
-<tr class="unc"><td class="ln">839</td><td class="code">        pub fn new_v4() -&gt; UuidResult {</td></tr>
+<tr class="cov"><td class="ln">839</td><td class="code">        pub fn new_v4() -&gt; UuidResult {</td></tr>
 <tr class="nil"><td class="ln">840</td><td class="code">            use std::time::{SystemTime, UNIX_EPOCH};</td></tr>
-<tr class="unc"><td class="ln">841</td><td class="code">            let d = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();</td></tr>
-<tr class="unc"><td class="ln">842</td><td class="code">            let a = d.as_nanos();</td></tr>
+<tr class="cov"><td class="ln">841</td><td class="code">            let d = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();</td></tr>
+<tr class="cov"><td class="ln">842</td><td class="code">            let a = d.as_nanos();</td></tr>
 <tr class="nil"><td class="ln">843</td><td class="code">            use std::sync::atomic::{AtomicU64, Ordering};</td></tr>
 <tr class="nil"><td class="ln">844</td><td class="code">            static CTR: AtomicU64 = AtomicU64::new(0);</td></tr>
-<tr class="unc"><td class="ln">845</td><td class="code">            let c = CTR.fetch_add(1, Ordering::Relaxed);</td></tr>
-<tr class="unc"><td class="ln">846</td><td class="code">            UuidResult(format!(&quot;{:08x}-{:04x}-4{:03x}-{:04x}-{:012x}&quot;,</td></tr>
-<tr class="unc"><td class="ln">847</td><td class="code">                ((a &gt;&gt; 96) as u32).wrapping_add(c as u32),</td></tr>
-<tr class="unc"><td class="ln">848</td><td class="code">                ((a &gt;&gt; 80) as u16) &amp; 0xfff,</td></tr>
-<tr class="unc"><td class="ln">849</td><td class="code">                ((a &gt;&gt; 64) as u16) &amp; 0xfff,</td></tr>
-<tr class="unc"><td class="ln">850</td><td class="code">                0x8000 | (((a &gt;&gt; 48) as u16) &amp; 0x3fff),</td></tr>
-<tr class="unc"><td class="ln">851</td><td class="code">                (a as u64) &amp; 0xffffffffffff))</td></tr>
+<tr class="cov"><td class="ln">845</td><td class="code">            let c = CTR.fetch_add(1, Ordering::Relaxed);</td></tr>
+<tr class="cov"><td class="ln">846</td><td class="code">            UuidResult(format!(&quot;{:08x}-{:04x}-4{:03x}-{:04x}-{:012x}&quot;,</td></tr>
+<tr class="cov"><td class="ln">847</td><td class="code">                ((a &gt;&gt; 96) as u32).wrapping_add(c as u32),</td></tr>
+<tr class="cov"><td class="ln">848</td><td class="code">                ((a &gt;&gt; 80) as u16) &amp; 0xfff,</td></tr>
+<tr class="cov"><td class="ln">849</td><td class="code">                ((a &gt;&gt; 64) as u16) &amp; 0xfff,</td></tr>
+<tr class="cov"><td class="ln">850</td><td class="code">                0x8000 | (((a &gt;&gt; 48) as u16) &amp; 0x3fff),</td></tr>
+<tr class="cov"><td class="ln">851</td><td class="code">                (a as u64) &amp; 0xffffffffffff))</td></tr>
 <tr class="nil"><td class="ln">852</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">853</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">854</td><td class="code">    pub struct UuidResult(String);</td></tr>
 <tr class="nil"><td class="ln">855</td><td class="code">    impl fmt::Display for UuidResult {</td></tr>
-<tr class="unc"><td class="ln">856</td><td class="code">        fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;&#x27;_&gt;) -&gt; fmt::Result {</td></tr>
-<tr class="unc"><td class="ln">857</td><td class="code">            write!(f, &quot;{}&quot;, self.0)</td></tr>
+<tr class="cov"><td class="ln">856</td><td class="code">        fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;&#x27;_&gt;) -&gt; fmt::Result {</td></tr>
+<tr class="cov"><td class="ln">857</td><td class="code">            write!(f, &quot;{}&quot;, self.0)</td></tr>
 <tr class="nil"><td class="ln">858</td><td class="code">        }</td></tr>
 <tr class="nil"><td class="ln">859</td><td class="code">    }</td></tr>
 <tr class="nil"><td class="ln">860</td><td class="code">}</td></tr></table>
