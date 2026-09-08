@@ -140,13 +140,17 @@ Two more probes on the reachable band:
   the "Not yet stored" branch. This took `AssetSection.tsx` to 68% and
   `assetRenderer.ts` to 70%.
 
-Note the `SlideEditor.tsx` **floor**: its largest single uncovered block is the
-~470-line clipboard **paste** handler (image / HTML / screenshot paste), which
-needs real OS-clipboard `paste` events the headless rig can't synthesize — so
-SlideEditor stays ~41% even after driving every reachable gesture. That block,
-`fileOps`'s dialog-gated open/export, `lib/mathjax.ts`'s iframe render, the
-multi-monitor code, and the macOS-only paths are the genuine headless floor;
-the reachable band above is where the e2e number still has room to climb.
+The `SlideEditor.tsx` ~470-line clipboard **paste** handler looked like a floor,
+but most of it is reachable: WebKitGTK honors a synthetic `ClipboardEvent('paste',
+{clipboardData})` with a populated `DataTransfer`, which drives the real
+`handlePaste` with no OS clipboard (`e2e/editor-paste-probe.mjs` pastes rich HTML →
+`insertRichHtmlScreenshot`/`captureHtmlToPng` — which genuinely rasterizes headless
+— plus an image `File`, `text/uri-list`, and `x-special/gnome-copied-files`). That
+took `SlideEditor.tsx` 41% → 57%. The *narrow* remaining floor is the macOS native
+`NSPasteboard` paths and the async `navigator.clipboard.read()` vector (reads the
+real OS clipboard, not a synthetic `DataTransfer`). Alongside `fileOps`'s
+dialog-gated open/export, `lib/mathjax.ts`'s iframe render, the multi-monitor code,
+and the macOS-only paths, those are the genuine headless floor.
 
 ## Rust: unit coverage is the better metric
 

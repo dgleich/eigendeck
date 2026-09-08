@@ -5,13 +5,13 @@
   <div class="crumb"><a href="../index.html">◂ overview</a></div>
   <h1>src/components/SlideEditor.tsx </h1>
   <div class="stats">
-    <span class="stat"><b>55%</b> covered</span>
-    <span class="stat">327/596 statements</span>
-    <span class="stat unc-txt">269 uncovered</span>
+    <span class="stat"><b>57%</b> covered</span>
+    <span class="stat">340/596 statements</span>
+    <span class="stat unc-txt">256 uncovered</span>
     <span class="stat">1097 raw lines</span>
     <span class="stat">2.57% of codebase</span>
   </div>
-  <span class="bar"><span class="seg cov" style="width:54.866%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:45.134%"></span></span>
+  <span class="bar"><span class="seg cov" style="width:57.047%"></span><span class="seg part" style="width:0.000%"></span><span class="seg unc" style="width:42.953%"></span></span>
   <div class="metricnote">Istanbul <b>statement</b> coverage (exact). Line colors are illustrative — positions snapped ±lines; comments/blanks are grey.</div>
   <div class="links"><span>imports:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__ContextMenu_tsx.html">ContextMenu.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__lib__assetCache_ts.html">assetCache.ts</a> <a href="src__lib__assetInsert_ts.html">assetInsert.ts</a> <a href="src__lib__assetRenderer_ts.html">assetRenderer.ts</a> <a href="src__lib__clipboard_ts.html">clipboard.ts</a> <a href="src__lib__clipboardModel_ts.html">clipboardModel.ts</a> <a href="src__lib__contextTarget_ts.html">contextTarget.ts</a> <a href="src__lib__demoMount_ts.html">demoMount.ts</a> <a href="src__lib__demoThemeInject_ts.html">demoThemeInject.ts</a> <a href="src__lib__editableTarget_ts.html">editableTarget.ts</a> <a href="src__lib__elementClipboard_ts.html">elementClipboard.ts</a> <a href="src__lib__fonts_ts.html">fonts.ts</a> <a href="src__lib__footer_mjs.html">footer.mjs</a> <a href="src__lib__grid_ts.html">grid.ts</a> <a href="src__lib__htmlDropRoute_ts.html">htmlDropRoute.ts</a> <a href="src__lib__htmlPasteCapture_ts.html">htmlPasteCapture.ts</a> <a href="src__lib__imageTranscode_ts.html">imageTranscode.ts</a> <a href="src__lib__nativeFs_ts.html">nativeFs.ts</a> <a href="src__lib__pasteAs_ts.html">pasteAs.ts</a> <a href="src__lib__pasteClip_ts.html">pasteClip.ts</a> <a href="src__lib__pasteFile_ts.html">pasteFile.ts</a> <a href="src__lib__pasteText_ts.html">pasteText.ts</a> <a href="src__lib__preferences_ts.html">preferences.ts</a> <a href="src__lib__themes_ts.html">themes.ts</a> <a href="src__lib__toasts_ts.html">toasts.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
   <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
@@ -373,8 +373,8 @@
 <tr class="nil"><td class="ln">355</td><td class="code">              // HEIC/TIFF → PNG so the asset renders everywhere. If the WebView</td></tr>
 <tr class="nil"><td class="ln">356</td><td class="code">              // can&#x27;t decode it (e.g. no HEIC codec), fall through to the next</td></tr>
 <tr class="nil"><td class="ln">357</td><td class="code">              // candidate instead of storing an unrenderable blob.</td></tr>
-<tr class="unc"><td class="ln">358</td><td class="code">              const { transcodeImageToPng } = await import(&#x27;../lib/imageTranscode&#x27;);<a class="jump" href="src__lib__imageTranscode_ts.html" title="src/lib/imageTranscode.ts">→ imageTranscode.ts</a></td></tr>
-<tr class="unc"><td class="ln">359</td><td class="code">              const png = await transcodeImageToPng(bytes, pref.transcodeFromMime);</td></tr>
+<tr class="cov"><td class="ln">358</td><td class="code">              const { transcodeImageToPng } = await import(&#x27;../lib/imageTranscode&#x27;);<a class="jump" href="src__lib__imageTranscode_ts.html" title="src/lib/imageTranscode.ts">→ imageTranscode.ts</a></td></tr>
+<tr class="cov"><td class="ln">359</td><td class="code">              const png = await transcodeImageToPng(bytes, pref.transcodeFromMime);</td></tr>
 <tr class="nil"><td class="ln">360</td><td class="code">              if (!png) { plog(`transcode ${uti} → PNG failed (WebView can&#x27;t decode)`); continue; }</td></tr>
 <tr class="nil"><td class="ln">361</td><td class="code">              bytes = png;</td></tr>
 <tr class="nil"><td class="ln">362</td><td class="code">            }</td></tr>
@@ -450,21 +450,21 @@
 <tr class="nil"><td class="ln">432</td><td class="code">      // Flip SVG and PDF here once PDF display works.</td></tr>
 <tr class="part"><td class="ln">433</td><td class="code">      type Format = { aliases: readonly string[]; ext: string; canonicalMime: string };</td></tr>
 <tr class="nil"><td class="ln">434</td><td class="code">      const PREFERRED_FORMATS: readonly Format[] = [</td></tr>
-<tr class="unc"><td class="ln">435</td><td class="code">        { aliases: [&#x27;image/svg+xml&#x27;, &#x27;public.svg-image&#x27;, &#x27;com.microsoft.image-svg-xml&#x27;], ext: &#x27;svg&#x27;, canonicalMime: &#x27;image/svg+xml&#x27; },</td></tr>
-<tr class="unc"><td class="ln">436</td><td class="code">        { aliases: [&#x27;application/pdf&#x27;, &#x27;com.adobe.pdf&#x27;], ext: &#x27;pdf&#x27;, canonicalMime: &#x27;application/pdf&#x27; },</td></tr>
+<tr class="cov"><td class="ln">435</td><td class="code">        { aliases: [&#x27;image/svg+xml&#x27;, &#x27;public.svg-image&#x27;, &#x27;com.microsoft.image-svg-xml&#x27;], ext: &#x27;svg&#x27;, canonicalMime: &#x27;image/svg+xml&#x27; },</td></tr>
+<tr class="cov"><td class="ln">436</td><td class="code">        { aliases: [&#x27;application/pdf&#x27;, &#x27;com.adobe.pdf&#x27;], ext: &#x27;pdf&#x27;, canonicalMime: &#x27;application/pdf&#x27; },</td></tr>
 <tr class="nil"><td class="ln">437</td><td class="code">        { aliases: [&#x27;image/png&#x27;, &#x27;public.png&#x27;], ext: &#x27;png&#x27;, canonicalMime: &#x27;image/png&#x27; },</td></tr>
 <tr class="unc"><td class="ln">438</td><td class="code">        { aliases: [&#x27;image/jpeg&#x27;, &#x27;public.jpeg&#x27;, &#x27;public.jpg&#x27;], ext: &#x27;jpg&#x27;, canonicalMime: &#x27;image/jpeg&#x27; },</td></tr>
 <tr class="unc"><td class="ln">439</td><td class="code">        { aliases: [&#x27;image/gif&#x27;, &#x27;com.compuserve.gif&#x27;], ext: &#x27;gif&#x27;, canonicalMime: &#x27;image/gif&#x27; },</td></tr>
 <tr class="nil"><td class="ln">440</td><td class="code">        { aliases: [&#x27;image/webp&#x27;, &#x27;org.webmproject.webp&#x27;], ext: &#x27;webp&#x27;, canonicalMime: &#x27;image/webp&#x27; },</td></tr>
 <tr class="nil"><td class="ln">441</td><td class="code">      ];</td></tr>
-<tr class="unc"><td class="ln">442</td><td class="code">      let picked: DataTransferItem | null = null;</td></tr>
-<tr class="unc"><td class="ln">443</td><td class="code">      let pickedFormat: Format | null = null;</td></tr>
-<tr class="unc"><td class="ln">444</td><td class="code">      let pickedAlias: string | null = null;</td></tr>
+<tr class="cov"><td class="ln">442</td><td class="code">      let picked: DataTransferItem | null = null;</td></tr>
+<tr class="cov"><td class="ln">443</td><td class="code">      let pickedFormat: Format | null = null;</td></tr>
+<tr class="cov"><td class="ln">444</td><td class="code">      let pickedAlias: string | null = null;</td></tr>
 <tr class="nil"><td class="ln">445</td><td class="code">      // Same rule as the native path: when the HTML is block content we render</td></tr>
 <tr class="nil"><td class="ln">446</td><td class="code">      // better ourselves (a table etc.), don&#x27;t let a low-res RASTER selection</td></tr>
 <tr class="nil"><td class="ln">447</td><td class="code">      // bitmap the browser also put on the clipboard preempt our HTML→PNG render.</td></tr>
 <tr class="nil"><td class="ln">448</td><td class="code">      // Vector (svg) is still taken — it&#x27;s sharp.</td></tr>
-<tr class="unc"><td class="ln">449</td><td class="code">      const preferOwnRenderWeb = htmlNeedsScreenshot(htmlEarly);</td></tr>
+<tr class="cov"><td class="ln">449</td><td class="code">      const preferOwnRenderWeb = htmlNeedsScreenshot(htmlEarly);</td></tr>
 <tr class="cov"><td class="ln">450</td><td class="code">      outer: for (const format of PREFERRED_FORMATS) {</td></tr>
 <tr class="cov"><td class="ln">451</td><td class="code">        if (preferOwnRenderWeb &amp;&amp; format.ext !== &#x27;svg&#x27;) continue;</td></tr>
 <tr class="cov"><td class="ln">452</td><td class="code">        for (const alias of format.aliases) {</td></tr>
