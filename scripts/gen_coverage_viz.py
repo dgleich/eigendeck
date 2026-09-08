@@ -9,9 +9,14 @@ Inputs:
   - coverage/coverage-final.json            frontend vitest (jsdom) Istanbul map.
       Per file we color from whichever of the two covers it more (coherent, not
       unioned — their statement maps differ).
-  - $HOME/rust-lcov.info (or argv[1])       Rust lcov INCLUDING the CLI binary.
-      Produce it with:  bash e2e/cli-coverage.sh   (lib + cli.rs; --lib alone
-      misses the binary, which is why cli.rs otherwise reads 0%).
+  - $HOME/rust-lcov.info (or argv[1])       Rust lcov. For the full picture it is
+      the UNION of two llvm-cov runs (concatenate them — parse_lcov merges dup SF
+      blocks by max-per-line):
+        bash e2e/cli-coverage.sh $HOME/rust-lcov-cli.info   # lib + cli.rs (workflows)
+        bash e2e/coverage-run.sh                            # + app invoke-handlers
+        cat coverage-rust-e2e.lcov $HOME/rust-lcov-cli.info > $HOME/rust-lcov.info
+      cli.rs comes from the CLI workflows; storage.rs/fscmds.rs from the app e2e;
+      lib.rs/clip.rs/pdf.rs stay low (native menu / macOS / pdfium — no headless).
 
 Output (default: coverage-viz/):
   - index.html          overview: totals, a treemap sized by executable lines &
