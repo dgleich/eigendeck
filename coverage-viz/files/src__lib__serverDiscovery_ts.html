@@ -1,0 +1,72 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/serverDiscovery.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/serverDiscovery.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">28/28 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">54 raw lines</span>
+    <span class="stat">0.13% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:51.852%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:48.148%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__lib__runtime_ts.html">runtime.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Background auto-discovery of available kernels on every registered</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// Jupyter server. Runs once on app start (so the topbar pill shows</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// fresh status without the user having to click &quot;Test connection&quot;</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// or &quot;Refresh all&quot; in Settings) and one-shot whenever a new server</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// is saved (handled inline in SettingsModal&#x27;s row).</td></tr>
+<tr class="cov"><td class="ln">6</td><td class="code">//</td></tr>
+<tr class="cov"><td class="ln">7</td><td class="code">// We DON&#x27;T poll continuously. Doing so would write to the user&#x27;s</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">// terminal logs (each Jupyter request is a line) and add network</td></tr>
+<tr class="cov"><td class="ln">9</td><td class="code">// noise during talks. The presenter can manually refresh from the</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// pill dropdown when they want fresh status.</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">//</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">// Result of a successful ping: updates the entry&#x27;s availableKernels</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">// + lastSeenAt and writes the registry back. A failed ping leaves</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">// the entry alone — the pill&#x27;s staleness derives from lastSeenAt,</td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">// so users can see &quot;haven&#x27;t been able to reach this in a while.&quot;</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">import {</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">  getPreference, setPreference, type JupyterServerEntry,</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">} from &#x27;./preferences&#x27;;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">/** Probe one server. On success, returns the updated entry (with</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code"> *  fresh availableKernels + lastSeenAt). On failure, returns the</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code"> *  original entry untouched. Never throws. */</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">async function probeServer(s: JupyterServerEntry): Promise&lt;JupyterServerEntry&gt; {</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">    const url = s.baseUrl.replace(/\/$/, &#x27;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">    const q = s.token ? `?token=${encodeURIComponent(s.token)}` : &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">    const r = await fetch(`${url}/api/kernelspecs${q}`, {</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">      headers: s.token ? { Authorization: `token ${s.token}` } : {},</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">    });</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">    if (!r.ok) return s;</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">    const data = await r.json();</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">    const kernels = Object.keys(data.kernelspecs ?? {});</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">    return { ...s, availableKernels: kernels, lastSeenAt: Date.now() };</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">  } catch {</td></tr>
+<tr class="cov"><td class="ln">36</td><td class="code">    return s;</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">/** Probe every registered server in parallel, then write the new</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code"> *  registry. Silent — no UI feedback. The topbar pill picks up the</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code"> *  change via its usePreference subscription. */</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">export async function discoverAllServers(): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">  const servers = getPreference(&#x27;jupyterServers&#x27;);</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  if (servers.length === 0) return;</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">  const updated = await Promise.all(servers.map(probeServer));</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">  // Only write if anything actually changed — avoids a no-op</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">  // pref-changed event that triggers re-renders for nothing.</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">  const changed = updated.some((u, i) =&gt;</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">    u.lastSeenAt !== servers[i].lastSeenAt</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">    || JSON.stringify(u.availableKernels) !== JSON.stringify(servers[i].availableKernels)</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">  );</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">  if (changed) setPreference(&#x27;jupyterServers&#x27;, updated);</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">}</td></tr></table>
+</body></html>

@@ -1,0 +1,93 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/serverHealth.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/serverHealth.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">51/51 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">75 raw lines</span>
+    <span class="stat">0.18% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:68.000%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:32.000%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__notebookKernel_ts.html">notebookKernel.ts</a> <a href="src__lib__preferences_ts.html">preferences.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__ServerStatusPill_tsx.html">ServerStatusPill.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Aggregate Jupyter server health for the open deck — the same computation the</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// topbar ServerStatusPill does, factored out so the native macOS toolbar can</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// mirror it (issue #128). Returns a coarse status + a human tooltip.</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">//</td></tr>
+<tr class="cov"><td class="ln">5</td><td class="code">//   green  — every kernel the deck needs has a server reached recently (≤30 min)</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//   yellow — kernels matched but the server is stale (&gt;30 min) or never tested</td></tr>
+<tr class="cov"><td class="ln">7</td><td class="code">//   red    — at least one needed kernel has no registered server</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">//   gray   — nothing to report (no notebooks in the deck, or presenting)</td></tr>
+<tr class="cov"><td class="ln">9</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">import { useMemo } from &#x27;react&#x27;;</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">import { usePresentationStore } from &#x27;../store/presentation&#x27;;<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">import { usePreference } from &#x27;./preferences&#x27;;<a class="jump" href="src__lib__preferences_ts.html" title="src/lib/preferences.ts">→ preferences.ts</a></td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">import { findServerForKernel } from &#x27;./notebookKernel&#x27;;<a class="jump" href="src__lib__notebookKernel_ts.html" title="src/lib/notebookKernel.ts">→ notebookKernel.ts</a></td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">import type { Slide, PresentationConfig } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">export type ServerHealth = &#x27;green&#x27; | &#x27;yellow&#x27; | &#x27;red&#x27; | &#x27;gray&#x27;;</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">const STALE_MS = 30 * 60 * 1000;</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">// Unique external kernel names the deck&#x27;s notebooks need. Lite/pyodide</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">// notebooks need no server and are skipped; a notebook with no kernelName</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">// falls back to the deck default, then &#x27;python3&#x27;. Shared by ServerStatusPill</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">// (the HTML topbar) and useAggregateServerHealth (the native toolbar icon) so</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">// the two surfaces can&#x27;t drift.</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">export function deckExternalKernels(slides: Slide[], config: PresentationConfig | undefined): string[] {</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">  const names = new Set&lt;string&gt;();</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">  for (const slide of slides) {</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">    for (const el of slide.elements) {</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">      if (el.type !== &#x27;notebook&#x27;) continue;</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">      if (el.kernel?.kind === &#x27;lite&#x27;) continue;</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">      const name =</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">        (el.kernel?.kind === &#x27;external&#x27; ? el.kernel.kernelName : undefined)</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">        ?? (config?.notebookKernel?.kind === &#x27;external&#x27; ? config.notebookKernel.kernelName : undefined)</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">        ?? &#x27;python3&#x27;;</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">      names.add(name);</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">  return [...names];</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">41</td><td class="code">export function useAggregateServerHealth(): { status: ServerHealth; tooltip: string } {</td></tr>
+<tr class="cov"><td class="ln">42</td><td class="code">  const isPresenting = usePresentationStore((s) =&gt; s.isPresenting);</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">  const slides = usePresentationStore((s) =&gt; s.presentation?.slides ?? []);</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">  const config = usePresentationStore((s) =&gt; s.presentation?.config);</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  const [servers] = usePreference(&#x27;jupyterServers&#x27;);</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">  return useMemo(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">    const deckKernels = deckExternalKernels(slides, config);</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">    if (isPresenting || deckKernels.length === 0) {</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">      return { status: &#x27;gray&#x27; as const, tooltip: &#x27;Jupyter: no live notebooks in this deck&#x27; };</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">    const requirements = deckKernels.map((k) =&gt; ({ kernelName: k, matched: findServerForKernel(k, servers) }));</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">    const missing = requirements.filter((r) =&gt; r.matched == null);</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">    const matched = requirements.map((r) =&gt; r.matched).filter(Boolean) as { lastSeenAt?: number }[];</td></tr>
+<tr class="cov"><td class="ln">57</td><td class="code">    const now = Date.now();</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">    const allFresh = matched.every((m) =&gt; m.lastSeenAt != null &amp;&amp; now - m.lastSeenAt &lt; STALE_MS);</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">    const freshCount = matched.filter((m) =&gt; m.lastSeenAt != null &amp;&amp; now - m.lastSeenAt &lt; STALE_MS).length;</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">    if (missing.length &gt; 0) {</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">      return {</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">        status: &#x27;red&#x27; as const,</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">        tooltip: `Jupyter: no server for ${missing.map((m) =&gt; m.kernelName).join(&#x27;, &#x27;)} (click to configure)`,</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">      };</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">    if (allFresh) {</td></tr>
+<tr class="cov"><td class="ln">68</td><td class="code">      return { status: &#x27;green&#x27; as const, tooltip: `Jupyter: all ${matched.length} server(s) reachable` };</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">    return {</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">      status: &#x27;yellow&#x27; as const,</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">      tooltip: `Jupyter: ${freshCount}/${matched.length} server(s) reachable recently (click to refresh)`,</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">  }, [slides, config, servers, isPresenting]);</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code">}</td></tr></table>
+</body></html>

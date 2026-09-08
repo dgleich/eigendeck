@@ -1,0 +1,32 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/overriddenStyle.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/overriddenStyle.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">4/4 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">14 raw lines</span>
+    <span class="stat">0.03% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:28.571%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:71.429%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__AssetSection_tsx.html">AssetSection.tsx</a> <a href="src__components__PropertiesPanel_tsx.html">PropertiesPanel.tsx</a> <a href="src__components__SecurityPanel_tsx.html">SecurityPanel.tsx</a></div>
+</header>
+<table class="src"><tr class="cov"><td class="ln">1</td><td class="code">import type { CSSProperties } from &#x27;react&#x27;;</td></tr>
+<tr class="cov"><td class="ln">2</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// UI MOTIF — a control that is OVERRIDDEN by a higher-priority setting or state</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// (global watching off, global demo-internet off, per-deck block, untrusted deck,</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// unapproved file, …) renders GREYED + STRUCK-THROUGH on its label and DIMMED on</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// its container, with a short reason nearby. Shared so &quot;this control is real but</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// currently has no effect, and here&#x27;s why&quot; reads identically across every panel.</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// See docs/USER-FACING-MESSAGES.md → &quot;Overridden by a higher-priority setting&quot;.</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// Reserve it for the &quot;no effect right now&quot; case — NOT for a control the user</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">// simply left off themselves (that&#x27;s its own state, shown plainly).</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">export const OVERRIDDEN_DIM = 0.55;</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">export const overriddenLabel: CSSProperties = { textDecoration: &#x27;line-through&#x27;, color: &#x27;#9ca3af&#x27; };</td></tr></table>
+</body></html>

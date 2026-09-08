@@ -1,0 +1,111 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/notebookKernel.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/notebookKernel.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">20/20 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">93 raw lines</span>
+    <span class="stat">0.22% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:21.505%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:78.495%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__notebookFormat_ts.html">notebookFormat.ts</a> <a href="src__lib__preferences_ts.html">preferences.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__ServerStatusPill_tsx.html">ServerStatusPill.tsx</a> <a href="src__components__notebook__NotebookContent_tsx.html">NotebookContent.tsx</a> <a href="src__lib__serverHealth_ts.html">serverHealth.ts</a> <a href="src__lib__useKernel_ts.html">useKernel.ts</a></div>
+</header>
+<table class="src"><tr class="cov"><td class="ln">1</td><td class="code">// Resolve the kernel + server for a NotebookElement.</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">//</td></tr>
+<tr class="cov"><td class="ln">3</td><td class="code">// Two-step resolution:</td></tr>
+<tr class="cov"><td class="ln">4</td><td class="code">//   1. The CASCADE picks the requested kernel name. Default-setting</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//      flavor per DESIGN_DECISIONS.md &quot;Preferences cascade&quot;:</td></tr>
+<tr class="cov"><td class="ln">6</td><td class="code">//         element.kernel.kernelName</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">//           ?? config.notebookKernel.kernelName</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">//           ?? notebook.metadata.kernelspec.name</td></tr>
+<tr class="cov"><td class="ln">9</td><td class="code">//           ?? &#x27;python3&#x27; (final fallback)</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">//      Kernel kind (&#x27;external&#x27; | &#x27;lite&#x27;) walks the same cascade.</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">//</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">//   2. The REGISTRY picks the server. Notebook elements never carry</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">//      baseUrl + token (those are auth artifacts; decks are</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">//      git-committable). Instead we scan PrefSchema.jupyterServers</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">//      for the first entry whose `availableKernels` contains the</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">//      requested kernel name. No match → ResolvedExternal.server is</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">//      null and the status pill (Phase 3) shows red.</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">import {</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">  NotebookElement, PresentationConfig,</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">} from &#x27;../types/presentation&#x27;;</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">import { Notebook } from &#x27;./notebookFormat&#x27;;<a class="jump" href="src__lib__notebookFormat_ts.html" title="src/lib/notebookFormat.ts">→ notebookFormat.ts</a></td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">import type { JupyterServerEntry } from &#x27;./preferences&#x27;;<a class="jump" href="src__lib__preferences_ts.html" title="src/lib/preferences.ts">→ preferences.ts</a></td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">/** Hardcoded fallback kernel name when no tier expressed a preference</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code"> *  and the notebook lacks kernelspec metadata. */</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">const DEFAULT_KERNEL_NAME = &#x27;python3&#x27;;</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">export interface ResolvedExternal {</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">  kind: &#x27;external&#x27;;</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">  /** The kernel name to start (e.g., &#x27;python3&#x27;, &#x27;julia-1.10&#x27;). */</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">  kernelName: string;</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">  /** The registered server we&#x27;ll dial, or null if no entry in the</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">   *  registry advertises the requested kernel. Consumers should</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">   *  render a &quot;no matching server&quot; state when null rather than</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">   *  attempting to connect. */</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">  server: JupyterServerEntry | null;</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">export interface ResolvedLite {</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">  kind: &#x27;lite&#x27;;</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">export type ResolvedKernel = ResolvedExternal | ResolvedLite;</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">/** Pick the first server in `registry` advertising `kernelName`. The</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code"> *  registry order is the user&#x27;s preference order; reorder in Settings</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code"> *  to change the default match. A server with no `availableKernels`</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code"> *  field (never tested) is skipped — discovery hasn&#x27;t confirmed it</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code"> *  has the kernel, so we don&#x27;t gamble during a talk. */</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">export function findServerForKernel(</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">  kernelName: string,</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">  registry: JupyterServerEntry[],</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">): JupyterServerEntry | null {</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">  for (const s of registry) {</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">    if (s.availableKernels?.includes(kernelName)) return s;</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">  return null;</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">export function resolveNotebookKernel(</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">  element: NotebookElement,</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">  config: PresentationConfig | undefined,</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">  notebook: Notebook | null,</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">  registry: JupyterServerEntry[],</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">): ResolvedKernel {</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">  // Step 1a — pick the kind via the standard cascade.</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">  const kind =</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">    element.kernel?.kind</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">    ?? config?.notebookKernel?.kind</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">    ?? &#x27;external&#x27;;</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">  if (kind === &#x27;lite&#x27;) return { kind: &#x27;lite&#x27; };</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code">  // Step 1b — pick the kernel name via the cascade.</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code">  const elemExt = element.kernel?.kind === &#x27;external&#x27; ? element.kernel : undefined;</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">  const deckExt = config?.notebookKernel?.kind === &#x27;external&#x27;</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">    ? config.notebookKernel : undefined;</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">  const kernelName =</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">    elemExt?.kernelName</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">    ?? deckExt?.kernelName</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">    ?? notebook?.kernelspecName</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">    ?? DEFAULT_KERNEL_NAME;</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">  // Step 2 — registry lookup. Decoupled from the cascade so server</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">  // selection lives entirely on the local machine; deck files never</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">  // know the URL or token.</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code">  return {</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">    kind: &#x27;external&#x27;,</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">    kernelName,</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">    server: findServerForKernel(kernelName, registry),</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">}</td></tr></table>
+</body></html>

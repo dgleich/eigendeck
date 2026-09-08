@@ -1,0 +1,69 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/textSizes.mjs · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/textSizes.mjs </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">8/8 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">51 raw lines</span>
+    <span class="stat">0.12% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:15.686%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:84.314%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__textPresets_mjs.html">textPresets.mjs</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// SINGLE SOURCE for the text type-scale: the named sizes, each preset&#x27;s named</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// size, and the &quot;effective size&quot; cascade. Pure `.mjs` so BOTH the TS data model</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// (types/presentation.ts) and the headless CLI export (exportCore.mjs) share one</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// copy across the .mjs/.ts boundary — the same split themeColors.mjs uses.</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// Why this exists: exportCore&#x27;s legacy text path reimplemented size resolution as</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// `el.fontSize || ps.fontSize`, which ignored BOTH element.fontSizeName and the</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// deck&#x27;s `config.textSizes` override. So CLI-exported text using a named size, or</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">// a deck with a customized type scale, came out at the wrong (preset-default)</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// size — the editor/app-export (effectiveFontSize) and the PDF path got it right.</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">// Routing the CLI through effectiveFontSize here closes that drift at the root.</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">/** Built-in defaults for the type scale (px). */</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">export const DEFAULT_TEXT_SIZES = {</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">  footnote: 24,</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">  note:     32,</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">  body:     48,</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">  title:    72,</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">  hype:     48,</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">};</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">/** Text preset → its named size in the type scale. Mirrors the `sizeName` field</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code"> *  of TEXT_PRESET_STYLES (guard-tested to stay in sync). */</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">export const PRESET_SIZE_NAME = {</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">  title: &#x27;title&#x27;,</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">  body: &#x27;body&#x27;,</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">  textbox: &#x27;body&#x27;,</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">  annotation: &#x27;note&#x27;,</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">  footnote: &#x27;footnote&#x27;,</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">  hype: &#x27;hype&#x27;,</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">};</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">/** Resolve a named size against the deck override + defaults. */</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">export function resolveNamedSize(name, config) {</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">  return config?.textSizes?.[name] ?? DEFAULT_TEXT_SIZES[name];</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">/** Effective px size for a text preset, honoring the deck&#x27;s textSizes override. */</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">export function effectiveTextPresetSize(preset, config) {</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">  return resolveNamedSize(PRESET_SIZE_NAME[preset], config);</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">/** Single resolver for &quot;what px size should this element render at?&quot;</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code"> *  Cascade: explicit numeric fontSize &gt; named size via textSizes &gt; preset default</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code"> *  (text) / &#x27;note&#x27; (notebook). */</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">export function effectiveFontSize(element, config) {</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">  if (element.fontSize != null) return element.fontSize;</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">  if (element.fontSizeName) return resolveNamedSize(element.fontSizeName, config);</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">  if (element.type === &#x27;text&#x27;) return effectiveTextPresetSize(element.preset, config);</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">  return resolveNamedSize(&#x27;note&#x27;, config);</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">}</td></tr></table>
+</body></html>

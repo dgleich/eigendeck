@@ -1,0 +1,48 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/components/VideoThumb.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/components/VideoThumb.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>86%</b> covered</span>
+    <span class="stat">12/14 executable</span>
+    <span class="stat unc-txt">2 uncovered</span>
+    <span class="stat">30 raw lines</span>
+    <span class="stat">0.07% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:40.000%"></span><span class="seg unc" style="width:6.667%"></span><span class="seg nil" style="width:53.333%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__components__ElementPreviewImg_tsx.html">ElementPreviewImg.tsx</a> <a href="src__lib__videoEmbed_ts.html">videoEmbed.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__LinkOverlay_tsx.html">LinkOverlay.tsx</a> <a href="src__components__SlideThumbnail_tsx.html">SlideThumbnail.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Thumbnail for a video element: a file&#x27;s cached poster frame (previewCache),</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// or an embed&#x27;s provider thumbnail (live oEmbed/CDN URL). Falls back to a ▶ box.</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">import { useEffect, useState } from &#x27;react&#x27;;</td></tr>
+<tr class="cov"><td class="ln">5</td><td class="code">import type { SlideElement } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">import { ElementPreviewImg } from &#x27;./ElementPreviewImg&#x27;;<a class="jump" href="src__components__ElementPreviewImg_tsx.html" title="src/components/ElementPreviewImg.tsx">→ ElementPreviewImg.tsx</a></td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">import { fetchEmbedThumbnail } from &#x27;../lib/videoEmbed&#x27;;<a class="jump" href="src__lib__videoEmbed_ts.html" title="src/lib/videoEmbed.ts">→ videoEmbed.ts</a></td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">const FALLBACK = (</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">  &lt;div style={{ width: &#x27;100%&#x27;, height: &#x27;100%&#x27;, display: &#x27;flex&#x27;, alignItems: &#x27;center&#x27;,</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">    justifyContent: &#x27;center&#x27;, fontSize: 18, color: &#x27;#fff&#x27;, background: &#x27;#1f2937&#x27; }}&gt;▶&lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">);</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">export function VideoThumb({ element }: { element: Extract&lt;SlideElement, { type: &#x27;video&#x27; }&gt; }) {</td></tr>
+<tr class="unc"><td class="ln">15</td><td class="code">  if (element.kind === &#x27;file&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">    return &lt;ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={FALLBACK} /&gt;;</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">  }</td></tr>
+<tr class="unc"><td class="ln">18</td><td class="code">  return &lt;EmbedThumb element={element} /&gt;;</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">function EmbedThumb({ element }: { element: Extract&lt;SlideElement, { type: &#x27;video&#x27; }&gt; }) {</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">  const [url, setUrl] = useState&lt;string | null&gt;(null);</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">    let cancelled = false;</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">    void fetchEmbedThumbnail(element).then((u) =&gt; { if (!cancelled) setUrl(u); });</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">    return () =&gt; { cancelled = true; };</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">  }, [element.url, element.provider]);</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">  if (!url) return FALLBACK;</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">  return &lt;img src={url} alt=&quot;&quot; style={{ width: &#x27;100%&#x27;, height: &#x27;100%&#x27;, objectFit: &#x27;cover&#x27; }} /&gt;;</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">}</td></tr></table>
+</body></html>

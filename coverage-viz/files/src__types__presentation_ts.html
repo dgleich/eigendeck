@@ -1,0 +1,616 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/types/presentation.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/types/presentation.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>79%</b> covered</span>
+    <span class="stat">57/72 executable</span>
+    <span class="stat unc-txt">15 uncovered</span>
+    <span class="stat">598 raw lines</span>
+    <span class="stat">1.40% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:9.532%"></span><span class="seg unc" style="width:2.508%"></span><span class="seg nil" style="width:87.960%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__textBox_mjs.html">textBox.mjs</a> <a href="src__lib__textPresets_mjs.html">textPresets.mjs</a> <a href="src__lib__textSizes_mjs.html">textSizes.mjs</a> <a href="src__lib__textStyle_mjs.html">textStyle.mjs</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__HistoryPanel_tsx.html">HistoryPanel.tsx</a> <a href="src__components__LinkOverlay_tsx.html">LinkOverlay.tsx</a> <a href="src__components__PresentMode_tsx.html">PresentMode.tsx</a> <a href="src__components__PresentSlide_tsx.html">PresentSlide.tsx</a> <a href="src__components__PropertiesPanel_tsx.html">PropertiesPanel.tsx</a> <a href="src__components__SettingsModal_tsx.html">SettingsModal.tsx</a> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__components__SlideSidebar_tsx.html">SlideSidebar.tsx</a> <a href="src__components__SlideThumbnail_tsx.html">SlideThumbnail.tsx</a> <a href="src__components__SpeakerMode_tsx.html">SpeakerMode.tsx</a> <a href="src__components__TextElementSvg_tsx.html">TextElementSvg.tsx</a> <a href="src__components__VideoThumb_tsx.html">VideoThumb.tsx</a> <a href="src__components__notebook__NotebookContent_tsx.html">NotebookContent.tsx</a> <a href="src__lib__assetUsage_ts.html">assetUsage.ts</a> <a href="src__lib__clipboardModel_ts.html">clipboardModel.ts</a> <a href="src__lib__demoThemeInject_ts.html">demoThemeInject.ts</a> <a href="src__lib__elementClipboard_ts.html">elementClipboard.ts</a> <a href="src__lib__elementLifecycle_ts.html">elementLifecycle.ts</a> <a href="src__lib__multiMonitor_ts.html">multiMonitor.ts</a> <a href="src__lib__normalizePresentation_ts.html">normalizePresentation.ts</a> <a href="src__lib__notebookFonts_ts.html">notebookFonts.ts</a> <a href="src__lib__notebookMigrate_ts.html">notebookMigrate.ts</a> <a href="src__lib__offsetElement_ts.html">offsetElement.ts</a> <a href="src__lib__pasteClip_ts.html">pasteClip.ts</a> <a href="src__lib__pdfCapture_ts.html">pdfCapture.ts</a> <a href="src__lib__presentTransition_ts.html">presentTransition.ts</a> <a href="src__lib__previewCache_ts.html">previewCache.ts</a> <a href="src__lib__printLayer_ts.html">printLayer.ts</a> <a href="src__lib__printSlideHtml_ts.html">printSlideHtml.ts</a> <a href="src__lib__serverHealth_ts.html">serverHealth.ts</a> <a href="src__lib__snapshotAll_ts.html">snapshotAll.ts</a> <a href="src__lib__syncLink_ts.html">syncLink.ts</a> <a href="src__presenter_tsx.html">presenter.tsx</a> <a href="src__security_tsx.html">security.tsx</a> <a href="src__store__db_ts.html">db.ts</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// The text type-scale (named sizes + the effective-size cascade) lives in the</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// framework-free lib/textSizes.mjs so it is shared with the headless CLI export</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// (exportCore.mjs) across the .mjs/.ts boundary. Re-exported here so the rest of</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// the app keeps importing it from the data model unchanged.</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">import {</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">  DEFAULT_TEXT_SIZES, resolveNamedSize, effectiveTextPresetSize, effectiveFontSize,</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">} from &#x27;../lib/textSizes.mjs&#x27;;</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">import type { NamedSize } from &#x27;../lib/textSizes.mjs&#x27;;<a class="jump" href="src__lib__textSizes_mjs.html" title="src/lib/textSizes.mjs">→ textSizes.mjs</a></td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">export type { NamedSize };</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">export { DEFAULT_TEXT_SIZES, resolveNamedSize, effectiveTextPresetSize, effectiveFontSize };</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">// Text inner-box layout (line-height + padding), shared with the static exports.</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">export { textPresetBoxCss, textPaddingCss } from &#x27;../lib/textBox.mjs&#x27;;<a class="jump" href="src__lib__textBox_mjs.html" title="src/lib/textBox.mjs">→ textBox.mjs</a></td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">// Text visual-style helpers (fill / effect / box-shadow), shared with the exports.</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">export { textBackgroundCss, textBackgroundResolved, mixHex, TINT_STRENGTH, textEffectCss, textShadowCss, textBoxShadowCss, resolveColor, boxShadowExtents } from &#x27;../lib/textStyle.mjs&#x27;;<a class="jump" href="src__lib__textStyle_mjs.html" title="src/lib/textStyle.mjs">→ textStyle.mjs</a></td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">// Per-preset style table (label/size/font/weight/style/color), shared with the exports.</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">export { TEXT_PRESET_STYLES } from &#x27;../lib/textPresets.mjs&#x27;;<a class="jump" href="src__lib__textPresets_mjs.html" title="src/lib/textPresets.mjs">→ textPresets.mjs</a></td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">export type { TextPresetStyle } from &#x27;../lib/textPresets.mjs&#x27;;<a class="jump" href="src__lib__textPresets_mjs.html" title="src/lib/textPresets.mjs">→ textPresets.mjs</a></td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">19</td><td class="code">export interface ElementPosition {</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">  x: number;</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">  y: number;</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">  width: number;</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">  height: number;</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">// ============================================</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">// Text box presets</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">// ============================================</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">export type TextPreset = &#x27;title&#x27; | &#x27;body&#x27; | &#x27;textbox&#x27; | &#x27;annotation&#x27; | &#x27;footnote&#x27; | &#x27;hype&#x27;;</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">// TEXT_PRESET_STYLES (the per-preset style table) lives in lib/textPresets.mjs so</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">// it is shared with the CLI export across the .mjs/.ts boundary; re-exported at</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">// the top of this file.</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">// textPresetBoxCss + textPaddingCss (the text inner-box layout) live in</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">// lib/textBox.mjs so they are shared with the static HTML exports across the</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">// .mjs/.ts boundary, and are re-exported at the top of this file.</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">// effectiveTextPresetSize + effectiveFontSize are defined in lib/textSizes.mjs</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">// (shared with the CLI export) and re-exported at the top of this file.</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">// ============================================</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">// Unified element types</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">// ============================================</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">interface BaseElement {</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">  id: string;</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">  position: ElementPosition;</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">  linkId?: string;   // animation link: animate between positions in presenter</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">  syncId?: string;   // content link: sync position/text across slides</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">  _linkId?: string;  // stored linkId when temporarily unlinked (for re-linking)</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">  _syncId?: string;  // stored syncId when temporarily unsynced (for re-syncing)</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">export type VerticalAlign = &#x27;top&#x27; | &#x27;middle&#x27; | &#x27;bottom&#x27;;</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">export interface TextElement extends BaseElement {</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">  type: &#x27;text&#x27;;</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">  preset: TextPreset;</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">  html: string;</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">  // Optional overrides (if user customizes beyond the preset)</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">  /** Named size override for THIS element. Picks from the deck&#x27;s</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">   *  type scale rather than the preset&#x27;s default. &#x27;title&#x27; and &#x27;hype&#x27;</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">   *  are intentionally excluded — title is reserved for title text</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">   *  elements (which already get title size from their preset), and</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">   *  hype is a decoration style, not a size to opt into. */</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">  fontSizeName?: Exclude&lt;NamedSize, &#x27;title&#x27; | &#x27;hype&#x27;&gt;;</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">  /** Explicit numeric override. Beats fontSizeName when both set. */</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">  fontSize?: number;</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">  fontFamily?: string;</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">  color?: string;</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">  verticalAlign?: VerticalAlign;</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code">  /** Fill behind the text (e.g. a caption panel over a busy background). A CSS</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">   *  color; combined with backgroundOpacity at render. Unset = transparent. */</td></tr>
+<tr class="nil"><td class="ln">77</td><td class="code">  backgroundColor?: string;</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">  /** Opacity of backgroundColor, 0–1 (default 1). Lets text sit on a</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">   *  translucent panel without fading the text itself. */</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">  backgroundOpacity?: number;</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">  /** Themed box fill (#132 &quot;card&quot;): tint the fill RELATIVE TO THE SLIDE THEME</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">   *  instead of a fixed color. &#x27;accent&#x27; mixes the theme&#x27;s accent into the slide</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">   *  background (~15%), so a card stays colored AND contrasting on ANY theme; a</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">   *  hex value tints that color instead. Takes precedence over backgroundColor</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">   *  when set. Pairs with boxShadow + borderRadius for a Beamer-block look.</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">   *  Resolved per-theme at render (textBackgroundResolved). */</td></tr>
+<tr class="cov"><td class="ln">87</td><td class="code">  boxTint?: string;</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code">  /** Optional text decoration for legibility over busy backgrounds (#73):</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">   *  &#x27;shadow&#x27; = a soft drop shadow; &#x27;glow&#x27; = a high-contrast halo (color is</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">   *  auto-chosen opposite the text luminance). Unset = none. */</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">  textEffect?: &#x27;shadow&#x27; | &#x27;glow&#x27;;</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">  /** Drop shadow on the box itself (the background panel) — independent of</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">   *  textEffect. Only meaningful when backgroundColor is set; the inspector only</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">   *  offers it then. Unset = no box shadow. */</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code">  boxShadow?: boolean;</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">  /** Corner radius (px, slide coords) of the background panel — lets a tinted</td></tr>
+<tr class="cov"><td class="ln">97</td><td class="code">   *  fill read as a rounded card. Only meaningful when backgroundColor is set;</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">   *  the inspector only offers it then. Unset/0 = square corners. Mirrors the</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">   *  image element&#x27;s borderRadius so both round consistently across render</td></tr>
+<tr class="cov"><td class="ln">100</td><td class="code">   *  paths (editor, present/presenter, export). */</td></tr>
+<tr class="cov"><td class="ln">101</td><td class="code">  borderRadius?: number;</td></tr>
+<tr class="cov"><td class="ln">102</td><td class="code">  /** Per-side inner padding (px, slide coords) overriding the preset&#x27;s default</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">   *  (8/12, or 0 for footnote). Pairs with backgroundColor + borderRadius to give</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">   *  a tinted rounded card breathing room. The inspector edits all four with an</td></tr>
+<tr class="cov"><td class="ln">105</td><td class="code">   *  optional &quot;link&quot; toggle. Unset = preset default. */</td></tr>
+<tr class="nil"><td class="ln">106</td><td class="code">  padding?: { top: number; right: number; bottom: number; left: number };</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">  /** Rotation in degrees (clockwise) for the whole text box — the background</td></tr>
+<tr class="cov"><td class="ln">108</td><td class="code">   *  panel tilts with the text (e.g. an angled sticky-note Hype callout, #8).</td></tr>
+<tr class="cov"><td class="ln">109</td><td class="code">   *  Unset/0 = upright. */</td></tr>
+<tr class="cov"><td class="ln">110</td><td class="code">  rotation?: number;</td></tr>
+<tr class="cov"><td class="ln">111</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">113</td><td class="code">// textBackgroundCss / textEffectCss / textShadowCss / textBoxShadowCss (the text</td></tr>
+<tr class="unc"><td class="ln">114</td><td class="code">// visual-style helpers) live in lib/textStyle.mjs so they&#x27;re shared with the</td></tr>
+<tr class="unc"><td class="ln">115</td><td class="code">// static HTML exports across the .mjs/.ts boundary; re-exported at the top.</td></tr>
+<tr class="unc"><td class="ln">116</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">117</td><td class="code">/**</td></tr>
+<tr class="unc"><td class="ln">118</td><td class="code"> * Parse a pasted color palette (#2) into a normalized list of #rrggbb hex</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code"> * strings. Accepts colors separated by commas / whitespace / newlines /</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code"> * semicolons, with or without a leading &#x27;#&#x27;, in 3- or 6-digit hex. Expands</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code"> * shorthand (#abc → #aabbcc), lowercases, dedupes (order-preserving), and</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code"> * caps the count so a giant paste can&#x27;t blow up the toolbar.</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">export function parsePalette(input: string, max = 24): string[] {</td></tr>
+<tr class="cov"><td class="ln">125</td><td class="code">  if (!input) return [];</td></tr>
+<tr class="cov"><td class="ln">126</td><td class="code">  const out: string[] = [];</td></tr>
+<tr class="cov"><td class="ln">127</td><td class="code">  const seen = new Set&lt;string&gt;();</td></tr>
+<tr class="cov"><td class="ln">128</td><td class="code">  for (const raw of input.split(/[\s,;]+/)) {</td></tr>
+<tr class="cov"><td class="ln">129</td><td class="code">    const tok = raw.trim().replace(/^#/, &#x27;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">130</td><td class="code">    let hex: string | null = null;</td></tr>
+<tr class="cov"><td class="ln">131</td><td class="code">    if (/^[0-9a-fA-F]{6}$/.test(tok)) hex = tok.toLowerCase();</td></tr>
+<tr class="cov"><td class="ln">132</td><td class="code">    else if (/^[0-9a-fA-F]{3}$/.test(tok)) hex = tok.toLowerCase().split(&#x27;&#x27;).map((c) =&gt; c + c).join(&#x27;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">133</td><td class="code">    if (!hex) continue;</td></tr>
+<tr class="cov"><td class="ln">134</td><td class="code">    const norm = &#x27;#&#x27; + hex;</td></tr>
+<tr class="cov"><td class="ln">135</td><td class="code">    if (seen.has(norm)) continue;</td></tr>
+<tr class="cov"><td class="ln">136</td><td class="code">    seen.add(norm);</td></tr>
+<tr class="cov"><td class="ln">137</td><td class="code">    out.push(norm);</td></tr>
+<tr class="cov"><td class="ln">138</td><td class="code">    if (out.length &gt;= max) break;</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">140</td><td class="code">  return out;</td></tr>
+<tr class="nil"><td class="ln">141</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">export interface ImageElement extends BaseElement {</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">  type: &#x27;image&#x27;;</td></tr>
+<tr class="nil"><td class="ln">145</td><td class="code">  /**</td></tr>
+<tr class="nil"><td class="ln">146</td><td class="code">   * Stable asset_id (UUID) binding. Single source of truth for which</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">   * asset this element renders — display path comes from asset.path</td></tr>
+<tr class="nil"><td class="ln">148</td><td class="code">   * via lookup, never lives on the element. Set at insert time from</td></tr>
+<tr class="nil"><td class="ln">149</td><td class="code">   * db_store_asset; legacy elements without assetId are backfilled</td></tr>
+<tr class="nil"><td class="ln">150</td><td class="code">   * at schema-migration time (Rust path-lookup in storage.rs).</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code">   */</td></tr>
+<tr class="nil"><td class="ln">152</td><td class="code">  assetId: string;</td></tr>
+<tr class="nil"><td class="ln">153</td><td class="code">  shadow?: boolean;</td></tr>
+<tr class="nil"><td class="ln">154</td><td class="code">  borderRadius?: number;</td></tr>
+<tr class="nil"><td class="ln">155</td><td class="code">  opacity?: number;</td></tr>
+<tr class="nil"><td class="ln">156</td><td class="code">  rotation?: number;</td></tr>
+<tr class="nil"><td class="ln">157</td><td class="code">  /**</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code">   * Source format. Auto-detected from MIME/extension on insertion.</td></tr>
+<tr class="nil"><td class="ln">159</td><td class="code">   *   - &#x27;raster&#x27; (default): PNG/JPEG/WebP/GIF — used directly.</td></tr>
+<tr class="nil"><td class="ln">160</td><td class="code">   *   - &#x27;svg&#x27; / &#x27;pdf&#x27;: vector sources rasterized on demand into</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">   *     asset_cache so display + thumbnails are fast and can be</td></tr>
+<tr class="nil"><td class="ln">162</td><td class="code">   *     re-rendered at higher resolution when needed.</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">   * Absent value means &#x27;raster&#x27; (backwards-compatible with v2 files).</td></tr>
+<tr class="nil"><td class="ln">164</td><td class="code">   */</td></tr>
+<tr class="nil"><td class="ln">165</td><td class="code">  kind?: &#x27;raster&#x27; | &#x27;svg&#x27; | &#x27;pdf&#x27;;</td></tr>
+<tr class="nil"><td class="ln">166</td><td class="code">  /**</td></tr>
+<tr class="nil"><td class="ln">167</td><td class="code">   * For sources with multiple cached variants (PDF pages, demo snapshots),</td></tr>
+<tr class="nil"><td class="ln">168</td><td class="code">   * which variant should display here. Defaults to &#x27;_&#x27; (single-page /</td></tr>
+<tr class="nil"><td class="ln">169</td><td class="code">   * single-variant). Reserved for future demo-snapshot work; ignored for</td></tr>
+<tr class="nil"><td class="ln">170</td><td class="code">   * SVG and single-page PDFs.</td></tr>
+<tr class="nil"><td class="ln">171</td><td class="code">   */</td></tr>
+<tr class="nil"><td class="ln">172</td><td class="code">  snapshotVariant?: string;</td></tr>
+<tr class="nil"><td class="ln">173</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">174</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">175</td><td class="code">export interface ArrowElement extends BaseElement {</td></tr>
+<tr class="nil"><td class="ln">176</td><td class="code">  type: &#x27;arrow&#x27;;</td></tr>
+<tr class="nil"><td class="ln">177</td><td class="code">  x1: number;</td></tr>
+<tr class="nil"><td class="ln">178</td><td class="code">  y1: number;</td></tr>
+<tr class="nil"><td class="ln">179</td><td class="code">  x2: number;</td></tr>
+<tr class="nil"><td class="ln">180</td><td class="code">  y2: number;</td></tr>
+<tr class="nil"><td class="ln">181</td><td class="code">  color?: string;</td></tr>
+<tr class="nil"><td class="ln">182</td><td class="code">  strokeWidth?: number;</td></tr>
+<tr class="nil"><td class="ln">183</td><td class="code">  headSize?: number;</td></tr>
+<tr class="nil"><td class="ln">184</td><td class="code">  /** Which ends get an arrowhead. Default &#x27;end&#x27;. (#98) */</td></tr>
+<tr class="nil"><td class="ln">185</td><td class="code">  heads?: &#x27;end&#x27; | &#x27;start&#x27; | &#x27;both&#x27; | &#x27;none&#x27;;</td></tr>
+<tr class="nil"><td class="ln">186</td><td class="code">  /** Stroke/fill opacity, 0–1. Default 1. (#98) */</td></tr>
+<tr class="nil"><td class="ln">187</td><td class="code">  opacity?: number;</td></tr>
+<tr class="nil"><td class="ln">188</td><td class="code">  /** Cubic-Bézier control points (#129, Inkscape-style handles): c1 is the handle</td></tr>
+<tr class="nil"><td class="ln">189</td><td class="code">   *  off the start, c2 off the end. When ALL four are present the arrow curves</td></tr>
+<tr class="nil"><td class="ln">190</td><td class="code">   *  (M x1 y1 C c1x c1y c2x c2y x2 y2); absent → a straight line. Heads orient to</td></tr>
+<tr class="nil"><td class="ln">191</td><td class="code">   *  the curve tangent. */</td></tr>
+<tr class="nil"><td class="ln">192</td><td class="code">  c1x?: number;</td></tr>
+<tr class="nil"><td class="ln">193</td><td class="code">  c1y?: number;</td></tr>
+<tr class="nil"><td class="ln">194</td><td class="code">  c2x?: number;</td></tr>
+<tr class="nil"><td class="ln">195</td><td class="code">  c2y?: number;</td></tr>
+<tr class="nil"><td class="ln">196</td><td class="code">  /** Interior interpolation points (#129): the curve passes smoothly THROUGH each,</td></tr>
+<tr class="nil"><td class="ln">197</td><td class="code">   *  between the handled endpoints (no handles on these — just draggable dots, added</td></tr>
+<tr class="nil"><td class="ln">198</td><td class="code">   *  via &quot;+ Point&quot;). Only used when the arrow is curved (c1/c2 present). */</td></tr>
+<tr class="nil"><td class="ln">199</td><td class="code">  points?: Array&lt;{ x: number; y: number }&gt;;</td></tr>
+<tr class="nil"><td class="ln">200</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">201</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">202</td><td class="code">export interface DemoElement extends BaseElement {</td></tr>
+<tr class="nil"><td class="ln">203</td><td class="code">  type: &#x27;demo&#x27;;</td></tr>
+<tr class="nil"><td class="ln">204</td><td class="code">  /** Stable asset_id binding — see ImageElement.assetId. */</td></tr>
+<tr class="nil"><td class="ln">205</td><td class="code">  assetId: string;</td></tr>
+<tr class="nil"><td class="ln">206</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">207</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">208</td><td class="code">/** Raw-HTML escape hatch (#137): a general HTML element for arbitrary design/layout</td></tr>
+<tr class="nil"><td class="ln">209</td><td class="code"> *  markup (especially LLM-authored). NOT the text element (no rich-text presets)</td></tr>
+<tr class="nil"><td class="ln">210</td><td class="code"> *  and NOT a demo (no bridge/capture). Rendered in a locked-down sandboxed iframe:</td></tr>
+<tr class="nil"><td class="ln">211</td><td class="code"> *  no scripts run and an injected CSP blocks all network (data: URIs only), so the</td></tr>
+<tr class="nil"><td class="ln">212</td><td class="code"> *  markup can &quot;go wild&quot; safely — it can&#x27;t script, escape its box, or phone home.</td></tr>
+<tr class="nil"><td class="ln">213</td><td class="code"> *  The editor uses an `allow-same-origin` (still script-less) sandbox so double-</td></tr>
+<tr class="nil"><td class="ln">214</td><td class="code"> *  click can make it contentEditable; every other path uses a fully-locked one. */</td></tr>
+<tr class="nil"><td class="ln">215</td><td class="code">export interface HtmlElement extends BaseElement {</td></tr>
+<tr class="nil"><td class="ln">216</td><td class="code">  type: &#x27;html&#x27;;</td></tr>
+<tr class="nil"><td class="ln">217</td><td class="code">  /** The raw HTML rendered inside the sandboxed iframe (srcdoc body). */</td></tr>
+<tr class="nil"><td class="ln">218</td><td class="code">  html: string;</td></tr>
+<tr class="nil"><td class="ln">219</td><td class="code">  /** Optional box background (CSS color). Default transparent so it composites</td></tr>
+<tr class="nil"><td class="ln">220</td><td class="code">   *  onto the slide. */</td></tr>
+<tr class="nil"><td class="ln">221</td><td class="code">  background?: string;</td></tr>
+<tr class="nil"><td class="ln">222</td><td class="code">  /** Opt-in: let the element receive real mouse events so native, script-less</td></tr>
+<tr class="nil"><td class="ln">223</td><td class="code">   *  interactivity works — `&lt;input type=range&gt;`, radios/`:checked`, `&lt;details&gt;`,</td></tr>
+<tr class="nil"><td class="ln">224</td><td class="code">   *  `:hover` (#137). When true it&#x27;s clickable in present mode, and double-click</td></tr>
+<tr class="nil"><td class="ln">225</td><td class="code">   *  in the editor enters an &quot;interact&quot; mode (like a demo) instead of editing.</td></tr>
+<tr class="nil"><td class="ln">226</td><td class="code">   *  Default false → plain static design HTML (never captures clicks). */</td></tr>
+<tr class="nil"><td class="ln">227</td><td class="code">  interactive?: boolean;</td></tr>
+<tr class="nil"><td class="ln">228</td><td class="code">  /** Opt-in: scale the content to fit the box (uniform &quot;contain&quot; — aspect</td></tr>
+<tr class="nil"><td class="ln">229</td><td class="code">   *  preserved, letterboxed), so resizing the box grows/shrinks fixed-size markup</td></tr>
+<tr class="nil"><td class="ln">230</td><td class="code">   *  instead of clipping it. The content is laid out at its DESIGN size</td></tr>
+<tr class="nil"><td class="ln">231</td><td class="code">   *  (`scaleW`×`scaleH`, captured when scale mode is enabled) and CSS-transformed</td></tr>
+<tr class="nil"><td class="ln">232</td><td class="code">   *  to fit. Default false → content renders 1:1 at the box&#x27;s top-left. */</td></tr>
+<tr class="nil"><td class="ln">233</td><td class="code">  scaleMode?: boolean;</td></tr>
+<tr class="nil"><td class="ln">234</td><td class="code">  /** Design width/height (slide px) the content is authored at, captured when</td></tr>
+<tr class="nil"><td class="ln">235</td><td class="code">   *  scaleMode is enabled. The box→design ratio is the scale factor. */</td></tr>
+<tr class="nil"><td class="ln">236</td><td class="code">  scaleW?: number;</td></tr>
+<tr class="nil"><td class="ln">237</td><td class="code">  scaleH?: number;</td></tr>
+<tr class="nil"><td class="ln">238</td><td class="code">  /** Typed-variable VALUES (#138), keyed by variable name. The DECLARATION</td></tr>
+<tr class="nil"><td class="ln">239</td><td class="code">   *  (type/default/range/help) lives in an `application/eigendeck-vars+json`</td></tr>
+<tr class="nil"><td class="ln">240</td><td class="code">   *  manifest inside `html`; this only overrides defaults. Spliced at render as</td></tr>
+<tr class="nil"><td class="ln">241</td><td class="code">   *  CSS custom properties (`var(--name)`) and `{{name}}` tokens. See</td></tr>
+<tr class="nil"><td class="ln">242</td><td class="code">   *  `src/lib/htmlVars.mjs` and `docs/html-element-variables.md`. */</td></tr>
+<tr class="nil"><td class="ln">243</td><td class="code">  vars?: Record&lt;string, string | number&gt;;</td></tr>
+<tr class="nil"><td class="ln">244</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">245</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">246</td><td class="code">export interface DemoPieceElement extends BaseElement {</td></tr>
+<tr class="nil"><td class="ln">247</td><td class="code">  type: &#x27;demo-piece&#x27;;</td></tr>
+<tr class="nil"><td class="ln">248</td><td class="code">  piece: string;</td></tr>
+<tr class="nil"><td class="ln">249</td><td class="code">  demoState?: Record&lt;string, unknown&gt;;</td></tr>
+<tr class="nil"><td class="ln">250</td><td class="code">  /** Stable asset_id binding — see ImageElement.assetId. */</td></tr>
+<tr class="nil"><td class="ln">251</td><td class="code">  assetId: string;</td></tr>
+<tr class="nil"><td class="ln">252</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">253</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">254</td><td class="code">export interface CoverElement extends BaseElement {</td></tr>
+<tr class="nil"><td class="ln">255</td><td class="code">  type: &#x27;cover&#x27;;</td></tr>
+<tr class="nil"><td class="ln">256</td><td class="code">  color?: string;  // default white</td></tr>
+<tr class="nil"><td class="ln">257</td><td class="code">  /** Themed tint fill (#132): &#x27;accent&#x27; or a hex base, resolved as a wash relative</td></tr>
+<tr class="nil"><td class="ln">258</td><td class="code">   *  to the slide theme (describeCover) so a colored mask stays on-theme. Takes</td></tr>
+<tr class="nil"><td class="ln">259</td><td class="code">   *  precedence over `color`. */</td></tr>
+<tr class="nil"><td class="ln">260</td><td class="code">  boxTint?: string;</td></tr>
+<tr class="nil"><td class="ln">261</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">262</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">263</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">264</td><td class="code"> * Jupyter kernel binding for a notebook element. Two backends:</td></tr>
+<tr class="nil"><td class="ln">265</td><td class="code"> *   - &#x27;external&#x27;: REST + WebSocket to a user-run jupyter server.</td></tr>
+<tr class="nil"><td class="ln">266</td><td class="code"> *     Supports any installed kernel (python3, julia-1.10, ir, ...).</td></tr>
+<tr class="nil"><td class="ln">267</td><td class="code"> *     The notebook element ONLY says which kernel it needs; the</td></tr>
+<tr class="nil"><td class="ln">268</td><td class="code"> *     baseUrl + token come from the per-machine server registry in</td></tr>
+<tr class="nil"><td class="ln">269</td><td class="code"> *     PrefSchema.jupyterServers, matched by `availableKernels`. Decks</td></tr>
+<tr class="nil"><td class="ln">270</td><td class="code"> *     therefore stay portable + git-committable — no auth artifacts.</td></tr>
+<tr class="nil"><td class="ln">271</td><td class="code"> *   - &#x27;lite&#x27;: JupyterLite/Pyodide running entirely in the WebView.</td></tr>
+<tr class="nil"><td class="ln">272</td><td class="code"> *     Python-only; self-contained (&quot;portable demo for anyone who</td></tr>
+<tr class="nil"><td class="ln">273</td><td class="code"> *     opens the deck&quot;). ~30 MB bundle on first use.</td></tr>
+<tr class="nil"><td class="ln">274</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">275</td><td class="code"> * Cascade per DESIGN_DECISIONS.md &quot;Preferences cascade&quot;:</td></tr>
+<tr class="nil"><td class="ln">276</td><td class="code"> *   NotebookElement.kernel ?? PresentationConfig.notebookKernel</td></tr>
+<tr class="nil"><td class="ln">277</td><td class="code"> *     ?? app default ?? { kind: &#x27;external&#x27;, kernelName: &#x27;python3&#x27; }</td></tr>
+<tr class="nil"><td class="ln">278</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">279</td><td class="code"> * Server selection (the URL to dial) is NOT part of this cascade —</td></tr>
+<tr class="nil"><td class="ln">280</td><td class="code"> * it&#x27;s resolved separately from the registry by kernelName matching.</td></tr>
+<tr class="nil"><td class="ln">281</td><td class="code"> * See src/lib/notebookKernel.ts.</td></tr>
+<tr class="nil"><td class="ln">282</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">283</td><td class="code">export type NotebookKernel =</td></tr>
+<tr class="nil"><td class="ln">284</td><td class="code">  | { kind: &#x27;external&#x27;; kernelName?: string }</td></tr>
+<tr class="nil"><td class="ln">285</td><td class="code">  | { kind: &#x27;lite&#x27; };</td></tr>
+<tr class="nil"><td class="ln">286</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">287</td><td class="code">export interface NotebookElement extends BaseElement {</td></tr>
+<tr class="nil"><td class="ln">288</td><td class="code">  type: &#x27;notebook&#x27;;</td></tr>
+<tr class="nil"><td class="ln">289</td><td class="code">  /** Stable asset_id binding — .ipynb stored in assets table.</td></tr>
+<tr class="nil"><td class="ln">290</td><td class="code">   *  See ImageElement.assetId. */</td></tr>
+<tr class="nil"><td class="ln">291</td><td class="code">  assetId: string;</td></tr>
+<tr class="nil"><td class="ln">292</td><td class="code">  /** Per-element kernel override; cascades through deck and app</td></tr>
+<tr class="nil"><td class="ln">293</td><td class="code">   *  defaults when absent. See NotebookKernel docstring. */</td></tr>
+<tr class="nil"><td class="ln">294</td><td class="code">  kernel?: NotebookKernel;</td></tr>
+<tr class="nil"><td class="ln">295</td><td class="code">  /** Setup code run before the user&#x27;s cells fire. Useful for keeping</td></tr>
+<tr class="nil"><td class="ln">296</td><td class="code">   *  the visible cells short — imports + helper fns go here. */</td></tr>
+<tr class="nil"><td class="ln">297</td><td class="code">  preamble?: string;</td></tr>
+<tr class="nil"><td class="ln">298</td><td class="code">  /** Auto-run all visible cells when the slide becomes active in</td></tr>
+<tr class="nil"><td class="ln">299</td><td class="code">   *  PresentMode. Default false (presenter triggers manually). */</td></tr>
+<tr class="nil"><td class="ln">300</td><td class="code">  autoRun?: boolean;</td></tr>
+<tr class="nil"><td class="ln">301</td><td class="code">  /** Optional cell whitelist (zero-indexed). When absent, all cells</td></tr>
+<tr class="nil"><td class="ln">302</td><td class="code">   *  from the .ipynb are shown. */</td></tr>
+<tr class="nil"><td class="ln">303</td><td class="code">  visibleCells?: number[];</td></tr>
+<tr class="nil"><td class="ln">304</td><td class="code">  /** Syntax-highlight code cells. Default true. Set to false when</td></tr>
+<tr class="nil"><td class="ln">305</td><td class="code">   *  the highlighter mis-identifies the language or monochrome code</td></tr>
+<tr class="nil"><td class="ln">306</td><td class="code">   *  reads better on a particular slide. Highlighter grammar is</td></tr>
+<tr class="nil"><td class="ln">307</td><td class="code">   *  picked from notebook.kernelspec.language; common kernels</td></tr>
+<tr class="nil"><td class="ln">308</td><td class="code">   *  (python / julia / r / bash / cpp / rust / js / ts / sql / etc.)</td></tr>
+<tr class="nil"><td class="ln">309</td><td class="code">   *  work out of the box, others render unhighlighted. */</td></tr>
+<tr class="nil"><td class="ln">310</td><td class="code">  syntaxHighlight?: boolean;</td></tr>
+<tr class="nil"><td class="ln">311</td><td class="code">  /** Show a line-number gutter in editable code cells (CodeMirror).</td></tr>
+<tr class="nil"><td class="ln">312</td><td class="code">   *  Default false — line numbers add visual noise on a slide; opt in</td></tr>
+<tr class="nil"><td class="ln">313</td><td class="code">   *  when referring to &quot;line N&quot; while presenting. */</td></tr>
+<tr class="nil"><td class="ln">314</td><td class="code">  showLineNumbers?: boolean;</td></tr>
+<tr class="nil"><td class="ln">315</td><td class="code">  /** Hide markdown cells, showing only code (+ outputs). Default</td></tr>
+<tr class="nil"><td class="ln">316</td><td class="code">   *  false. For &quot;focus on the code&quot; decks where prose cells are just</td></tr>
+<tr class="nil"><td class="ln">317</td><td class="code">   *  authoring scaffolding. */</td></tr>
+<tr class="nil"><td class="ln">318</td><td class="code">  hideMarkdown?: boolean;</td></tr>
+<tr class="nil"><td class="ln">319</td><td class="code">  /** Hide the kernel-name header row. Default false. The small busy</td></tr>
+<tr class="nil"><td class="ln">320</td><td class="code">   *  indicator dot stays regardless — it&#x27;s the only status cue a</td></tr>
+<tr class="nil"><td class="ln">321</td><td class="code">   *  presenter needs mid-talk. */</td></tr>
+<tr class="nil"><td class="ln">322</td><td class="code">  hideHeader?: boolean;</td></tr>
+<tr class="nil"><td class="ln">323</td><td class="code">  /** Draw a thin frame border around the notebook. Default false —</td></tr>
+<tr class="nil"><td class="ln">324</td><td class="code">   *  the notebook blends into the slide (theme background, no box).</td></tr>
+<tr class="nil"><td class="ln">325</td><td class="code">   *  Turn on for a contained, card-like look. */</td></tr>
+<tr class="nil"><td class="ln">326</td><td class="code">  showBorder?: boolean;</td></tr>
+<tr class="nil"><td class="ln">327</td><td class="code">  /** Named size from the deck&#x27;s type scale (footnote / note / body</td></tr>
+<tr class="nil"><td class="ln">328</td><td class="code">   *  are exposed in the picker; &#x27;title&#x27; is reserved for title text</td></tr>
+<tr class="nil"><td class="ln">329</td><td class="code">   *  elements). When absent, falls back to &#x27;note&#x27; (32 px default).</td></tr>
+<tr class="nil"><td class="ln">330</td><td class="code">   *  Lower precedence than `fontSize` — explicit numeric override</td></tr>
+<tr class="nil"><td class="ln">331</td><td class="code">   *  wins. */</td></tr>
+<tr class="nil"><td class="ln">332</td><td class="code">  fontSizeName?: Exclude&lt;NamedSize, &#x27;title&#x27; | &#x27;hype&#x27;&gt;;</td></tr>
+<tr class="nil"><td class="ln">333</td><td class="code">  /** Explicit numeric override (slide-pixels). When set, beats</td></tr>
+<tr class="nil"><td class="ln">334</td><td class="code">   *  `fontSizeName`. The picker exposes this as the custom-input</td></tr>
+<tr class="nil"><td class="ln">335</td><td class="code">   *  field alongside the named buttons. */</td></tr>
+<tr class="nil"><td class="ln">336</td><td class="code">  fontSize?: number;</td></tr>
+<tr class="nil"><td class="ln">337</td><td class="code">  /** Whether code cells are editable. Default false (read-only — the</td></tr>
+<tr class="nil"><td class="ln">338</td><td class="code">   *  common &quot;canned demo&quot; case). Turning this ON disables file-watching</td></tr>
+<tr class="nil"><td class="ln">339</td><td class="code">   *  (auto-reload) for the bound asset, so in-deck edits can&#x27;t be</td></tr>
+<tr class="nil"><td class="ln">340</td><td class="code">   *  clobbered by a disk-change reload; the asset keeps its</td></tr>
+<tr class="nil"><td class="ln">341</td><td class="code">   *  external_path so a MANUAL reload still works. See</td></tr>
+<tr class="nil"><td class="ln">342</td><td class="code">   *  docs/manual/notebook-servers.md sibling note + NotebookProperties</td></tr>
+<tr class="nil"><td class="ln">343</td><td class="code">   *  which flips the asset&#x27;s auto_reload when this toggles. */</td></tr>
+<tr class="nil"><td class="ln">344</td><td class="code">  editable?: boolean;</td></tr>
+<tr class="nil"><td class="ln">345</td><td class="code">  /** LEGACY (pre-recording-asset). Per-cell source edits as a deck</td></tr>
+<tr class="nil"><td class="ln">346</td><td class="code">   *  overlay keyed by .ipynb index. Superseded by the recording asset</td></tr>
+<tr class="nil"><td class="ln">347</td><td class="code">   *  (recordingAssetId). On load, migrateRecording folds any value</td></tr>
+<tr class="nil"><td class="ln">348</td><td class="code">   *  here into the recording and strips this field. Do not write new</td></tr>
+<tr class="nil"><td class="ln">349</td><td class="code">   *  values; kept only so old decks migrate. */</td></tr>
+<tr class="nil"><td class="ln">350</td><td class="code">  cellEdits?: Record&lt;number, string&gt;;</td></tr>
+<tr class="nil"><td class="ln">351</td><td class="code">  /** Eigendeck-owned &quot;recording&quot; asset (mime</td></tr>
+<tr class="nil"><td class="ln">352</td><td class="code">   *  application/x-eigendeck-nb-recording+json) bound to this element.</td></tr>
+<tr class="nil"><td class="ln">353</td><td class="code">   *  Holds the live session: source edits, recorded outputs, and</td></tr>
+<tr class="nil"><td class="ln">354</td><td class="code">   *  live-authored (appended) cells. Versioned via the temporal asset</td></tr>
+<tr class="nil"><td class="ln">355</td><td class="code">   *  history. The .ipynb asset stays pristine — eigendeck records, it</td></tr>
+<tr class="nil"><td class="ln">356</td><td class="code">   *  doesn&#x27;t edit the source notebook. Absent until the first thing</td></tr>
+<tr class="nil"><td class="ln">357</td><td class="code">   *  worth recording happens. See src/lib/notebookRecording.ts. */</td></tr>
+<tr class="nil"><td class="ln">358</td><td class="code">  recordingAssetId?: string;</td></tr>
+<tr class="nil"><td class="ln">359</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">360</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">361</td><td class="code">/** A movie element: either a local video file stored as an asset (kind</td></tr>
+<tr class="nil"><td class="ln">362</td><td class="code"> *  &#x27;file&#x27;) or a hosted embed by URL (kind &#x27;embed&#x27; — YouTube/Vimeo/PeerTube).</td></tr>
+<tr class="nil"><td class="ln">363</td><td class="code"> *  All playback toggles default OFF; playbackRate defaults to 1. */</td></tr>
+<tr class="nil"><td class="ln">364</td><td class="code">export interface VideoElement extends BaseElement {</td></tr>
+<tr class="nil"><td class="ln">365</td><td class="code">  type: &#x27;video&#x27;;</td></tr>
+<tr class="nil"><td class="ln">366</td><td class="code">  kind: &#x27;file&#x27; | &#x27;embed&#x27;;</td></tr>
+<tr class="nil"><td class="ln">367</td><td class="code">  /** file kind: the stored video asset (promoted assetId column). */</td></tr>
+<tr class="nil"><td class="ln">368</td><td class="code">  assetId?: string;</td></tr>
+<tr class="nil"><td class="ln">369</td><td class="code">  /** file kind: optional WebVTT captions sidecar asset (browser &lt;track&gt;). */</td></tr>
+<tr class="nil"><td class="ln">370</td><td class="code">  captionsAssetId?: string;</td></tr>
+<tr class="nil"><td class="ln">371</td><td class="code">  /** file kind: a label for the captions track (e.g. &quot;English&quot;). */</td></tr>
+<tr class="nil"><td class="ln">372</td><td class="code">  captionsLabel?: string;</td></tr>
+<tr class="nil"><td class="ln">373</td><td class="code">  /** embed kind: detected provider + the original pasted URL. */</td></tr>
+<tr class="nil"><td class="ln">374</td><td class="code">  provider?: &#x27;youtube&#x27; | &#x27;vimeo&#x27; | &#x27;peertube&#x27;;</td></tr>
+<tr class="nil"><td class="ln">375</td><td class="code">  url?: string;</td></tr>
+<tr class="nil"><td class="ln">376</td><td class="code">  // --- playback options (defaults: all toggles off, rate 1) ---</td></tr>
+<tr class="nil"><td class="ln">377</td><td class="code">  loop?: boolean;</td></tr>
+<tr class="nil"><td class="ln">378</td><td class="code">  /** ping-pong reverse loop. FILE ONLY, best-effort (smooth only for short</td></tr>
+<tr class="nil"><td class="ln">379</td><td class="code">   *  clips — reverse is done by reverse-seeking). */</td></tr>
+<tr class="nil"><td class="ln">380</td><td class="code">  pingPong?: boolean;</td></tr>
+<tr class="nil"><td class="ln">381</td><td class="code">  playbackRate?: number;</td></tr>
+<tr class="nil"><td class="ln">382</td><td class="code">  autoplay?: boolean;</td></tr>
+<tr class="nil"><td class="ln">383</td><td class="code">  controls?: boolean;</td></tr>
+<tr class="nil"><td class="ln">384</td><td class="code">  muted?: boolean;</td></tr>
+<tr class="nil"><td class="ln">385</td><td class="code">  /** Show captions: a &lt;track&gt; for files, provider CC param for embeds. */</td></tr>
+<tr class="nil"><td class="ln">386</td><td class="code">  captions?: boolean;</td></tr>
+<tr class="nil"><td class="ln">387</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">388</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">389</td><td class="code">export type SlideElement =</td></tr>
+<tr class="nil"><td class="ln">390</td><td class="code">  | TextElement</td></tr>
+<tr class="nil"><td class="ln">391</td><td class="code">  | ImageElement</td></tr>
+<tr class="nil"><td class="ln">392</td><td class="code">  | ArrowElement</td></tr>
+<tr class="nil"><td class="ln">393</td><td class="code">  | DemoElement</td></tr>
+<tr class="nil"><td class="ln">394</td><td class="code">  | DemoPieceElement</td></tr>
+<tr class="nil"><td class="ln">395</td><td class="code">  | CoverElement</td></tr>
+<tr class="nil"><td class="ln">396</td><td class="code">  | NotebookElement</td></tr>
+<tr class="nil"><td class="ln">397</td><td class="code">  | VideoElement</td></tr>
+<tr class="nil"><td class="ln">398</td><td class="code">  | HtmlElement;</td></tr>
+<tr class="nil"><td class="ln">399</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">400</td><td class="code">// ============================================</td></tr>
+<tr class="nil"><td class="ln">401</td><td class="code">// Slide and Presentation</td></tr>
+<tr class="nil"><td class="ln">402</td><td class="code">// ============================================</td></tr>
+<tr class="nil"><td class="ln">403</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">404</td><td class="code">export interface Slide {</td></tr>
+<tr class="nil"><td class="ln">405</td><td class="code">  id: string;</td></tr>
+<tr class="nil"><td class="ln">406</td><td class="code">  // Per-slide theme + font overrides (each inherits from the</td></tr>
+<tr class="nil"><td class="ln">407</td><td class="code">  // presentation default if absent). On the storage side these are</td></tr>
+<tr class="nil"><td class="ln">408</td><td class="code">  // bundled into a single optional `config` JSON column on slides.</td></tr>
+<tr class="nil"><td class="ln">409</td><td class="code">  theme?: string;</td></tr>
+<tr class="nil"><td class="ln">410</td><td class="code">  elements: SlideElement[];</td></tr>
+<tr class="nil"><td class="ln">411</td><td class="code">  notes: string;</td></tr>
+<tr class="nil"><td class="ln">412</td><td class="code">  groupId?: string; // slides with same groupId form a group</td></tr>
+<tr class="nil"><td class="ln">413</td><td class="code">  // Per-slide font overrides (font package id from src/lib/fonts.ts).</td></tr>
+<tr class="nil"><td class="ln">414</td><td class="code">  // Falls back to presentation.config.default*Font, then &#x27;ptsans&#x27;.</td></tr>
+<tr class="nil"><td class="ln">415</td><td class="code">  titleFont?: string;</td></tr>
+<tr class="nil"><td class="ln">416</td><td class="code">  bodyFont?: string;</td></tr>
+<tr class="nil"><td class="ln">417</td><td class="code">  hypeFont?: string;</td></tr>
+<tr class="nil"><td class="ln">418</td><td class="code">  // Hide the slide footer (author·venue meta + slide number) on this slide —</td></tr>
+<tr class="nil"><td class="ln">419</td><td class="code">  // e.g. title slides, section dividers, full-bleed html slides. Numbering keeps</td></tr>
+<tr class="nil"><td class="ln">420</td><td class="code">  // counting through an omitted slide (see getSlideNumber). #135.</td></tr>
+<tr class="nil"><td class="ln">421</td><td class="code">  omitFooter?: boolean;</td></tr>
+<tr class="nil"><td class="ln">422</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">423</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">424</td><td class="code">export interface PresentationConfig {</td></tr>
+<tr class="nil"><td class="ln">425</td><td class="code">  transition: string;</td></tr>
+<tr class="nil"><td class="ln">426</td><td class="code">  backgroundTransition: string;</td></tr>
+<tr class="nil"><td class="ln">427</td><td class="code">  width: number;</td></tr>
+<tr class="nil"><td class="ln">428</td><td class="code">  height: number;</td></tr>
+<tr class="nil"><td class="ln">429</td><td class="code">  showSlideNumber?: boolean;</td></tr>
+<tr class="nil"><td class="ln">430</td><td class="code">  author?: string;</td></tr>
+<tr class="nil"><td class="ln">431</td><td class="code">  venue?: string;</td></tr>
+<tr class="nil"><td class="ln">432</td><td class="code">  mathPreamble?: string;</td></tr>
+<tr class="nil"><td class="ln">433</td><td class="code">  // Default font package ids (see src/lib/fonts.ts FONT_PACKAGES).</td></tr>
+<tr class="nil"><td class="ln">434</td><td class="code">  // Slides may override via Slide.{titleFont,bodyFont,hypeFont}.</td></tr>
+<tr class="nil"><td class="ln">435</td><td class="code">  // Missing values resolve to &#x27;ptsans&#x27; at render time.</td></tr>
+<tr class="nil"><td class="ln">436</td><td class="code">  defaultTitleFont?: string;</td></tr>
+<tr class="nil"><td class="ln">437</td><td class="code">  defaultBodyFont?: string;</td></tr>
+<tr class="nil"><td class="ln">438</td><td class="code">  defaultHypeFont?: string;</td></tr>
+<tr class="nil"><td class="ln">439</td><td class="code">  // Deck-level footer font (author·venue meta + slide number). Font package id;</td></tr>
+<tr class="nil"><td class="ln">440</td><td class="code">  // unset → Lato (FOOTER_DEFAULT_FONT_ID in src/lib/footer.mjs). #135.</td></tr>
+<tr class="nil"><td class="ln">441</td><td class="code">  footerFont?: string;</td></tr>
+<tr class="nil"><td class="ln">442</td><td class="code">  // Default monospace font package id, used by notebook code cells.</td></tr>
+<tr class="nil"><td class="ln">443</td><td class="code">  // Falls back to &#x27;source-code&#x27; (bundled). Notebooks ALSO inherit</td></tr>
+<tr class="nil"><td class="ln">444</td><td class="code">  // the body font for markdown cells via the slide/presentation</td></tr>
+<tr class="nil"><td class="ln">445</td><td class="code">  // cascade — defaultMono only governs the code path.</td></tr>
+<tr class="nil"><td class="ln">446</td><td class="code">  defaultMonoFont?: string;</td></tr>
+<tr class="nil"><td class="ln">447</td><td class="code">  // Deck-level overrides for the named type scale (see NamedSize).</td></tr>
+<tr class="nil"><td class="ln">448</td><td class="code">  // Partial — any keys absent fall back to DEFAULT_TEXT_SIZES.</td></tr>
+<tr class="nil"><td class="ln">449</td><td class="code">  // Affects text presets (via effectiveTextPresetSize) AND notebook</td></tr>
+<tr class="nil"><td class="ln">450</td><td class="code">  // fontSizeName resolution AND anything else that picks by name.</td></tr>
+<tr class="nil"><td class="ln">451</td><td class="code">  textSizes?: Partial&lt;Record&lt;NamedSize, number&gt;&gt;;</td></tr>
+<tr class="nil"><td class="ln">452</td><td class="code">  // Per-presentation custom color palette (#2). Hex colors (#rrggbb) the user</td></tr>
+<tr class="nil"><td class="ln">453</td><td class="code">  // pastes in the Deck inspector — e.g. university brand colors. Surfaced as an</td></tr>
+<tr class="nil"><td class="ln">454</td><td class="code">  // extra swatch row in the text-color toolbar. Absent = just the built-ins.</td></tr>
+<tr class="nil"><td class="ln">455</td><td class="code">  customPalette?: string[];</td></tr>
+<tr class="nil"><td class="ln">456</td><td class="code">  // Per-presentation override for the file-watching auto-reload behavior.</td></tr>
+<tr class="nil"><td class="ln">457</td><td class="code">  // &#x27;on&#x27;/&#x27;off&#x27; override the global pref; absent = follow global. Per-asset</td></tr>
+<tr class="nil"><td class="ln">458</td><td class="code">  // assets.auto_reload still overrides this. See effectiveAutoReload().</td></tr>
+<tr class="nil"><td class="ln">459</td><td class="code">  autoReloadAssets?: &#x27;on&#x27; | &#x27;off&#x27;;</td></tr>
+<tr class="nil"><td class="ln">460</td><td class="code">  // Deck-level default kernel for notebook elements. Cascades per</td></tr>
+<tr class="nil"><td class="ln">461</td><td class="code">  // DESIGN_DECISIONS.md &quot;Preferences cascade&quot; — default-setting flavor:</td></tr>
+<tr class="nil"><td class="ln">462</td><td class="code">  // NotebookElement.kernel overrides this; absent here means &quot;use the</td></tr>
+<tr class="nil"><td class="ln">463</td><td class="code">  // app-pref default&quot; then &quot;use the hardcoded fallback (external,</td></tr>
+<tr class="nil"><td class="ln">464</td><td class="code">  // localhost:8888, python3)&quot;.</td></tr>
+<tr class="nil"><td class="ln">465</td><td class="code">  notebookKernel?: NotebookKernel;</td></tr>
+<tr class="nil"><td class="ln">466</td><td class="code">  // Deck identity token for the asset-security trust ledger (docs/ASSETS-SECURITY.md).</td></tr>
+<tr class="nil"><td class="ln">467</td><td class="code">  // A random id stamped when the app CREATES a deck (File → New / scratch). Trust is</td></tr>
+<tr class="nil"><td class="ln">468</td><td class="code">  // keyed by this token in the app-side ledger; a received deck&#x27;s token isn&#x27;t in your</td></tr>
+<tr class="nil"><td class="ln">469</td><td class="code">  // ledger, so it opens untrusted. Lives here (in config) so it round-trips through</td></tr>
+<tr class="nil"><td class="ln">470</td><td class="code">  // the persisted config blob. Absent = a deck with no identity (never author-trusted).</td></tr>
+<tr class="nil"><td class="ln">471</td><td class="code">  deckToken?: string;</td></tr>
+<tr class="nil"><td class="ln">472</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">473</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">474</td><td class="code">export interface Presentation {</td></tr>
+<tr class="nil"><td class="ln">475</td><td class="code">  title: string;</td></tr>
+<tr class="nil"><td class="ln">476</td><td class="code">  theme: string;</td></tr>
+<tr class="nil"><td class="ln">477</td><td class="code">  slides: Slide[];</td></tr>
+<tr class="nil"><td class="ln">478</td><td class="code">  config: PresentationConfig;</td></tr>
+<tr class="nil"><td class="ln">479</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">480</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">481</td><td class="code">// ============================================</td></tr>
+<tr class="nil"><td class="ln">482</td><td class="code">// Factories</td></tr>
+<tr class="nil"><td class="ln">483</td><td class="code">// ============================================</td></tr>
+<tr class="nil"><td class="ln">484</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">485</td><td class="code">export function createTextElement(preset: TextPreset, overrides?: Partial&lt;ElementPosition&gt;): TextElement {</td></tr>
+<tr class="nil"><td class="ln">486</td><td class="code">  // All positions are multiples of 30 — the default alignment-grid spacing — with</td></tr>
+<tr class="nil"><td class="ln">487</td><td class="code">  // a 60px (2-cell) outer margin, so freshly-inserted elements sit on the grid</td></tr>
+<tr class="nil"><td class="ln">488</td><td class="code">  // and the standard template breathes evenly from the slide edges.</td></tr>
+<tr class="nil"><td class="ln">489</td><td class="code">  // Body starts flush at the title&#x27;s bottom (no gap) and grows down to the</td></tr>
+<tr class="nil"><td class="ln">490</td><td class="code">  // footnote. The footnote renders TIGHT (no padding, single line-height — see</td></tr>
+<tr class="nil"><td class="ln">491</td><td class="code">  // textPresetBoxCss), so its 24px text fits a slim 30px box flush on the 60px</td></tr>
+<tr class="nil"><td class="ln">492</td><td class="code">  // bottom margin.</td></tr>
+<tr class="cov"><td class="ln">493</td><td class="code">  const defaults: Record&lt;TextPreset, ElementPosition&gt; = {</td></tr>
+<tr class="nil"><td class="ln">494</td><td class="code">    title:      { x: 60,  y: 60,   width: 1800, height: 180 },</td></tr>
+<tr class="nil"><td class="ln">495</td><td class="code">    body:       { x: 60,  y: 240,  width: 1800, height: 750 },</td></tr>
+<tr class="nil"><td class="ln">496</td><td class="code">    textbox:    { x: 210, y: 330,  width: 810,  height: 330 },</td></tr>
+<tr class="nil"><td class="ln">497</td><td class="code">    annotation: { x: 210, y: 720,  width: 600,  height: 150 },</td></tr>
+<tr class="nil"><td class="ln">498</td><td class="code">    footnote:   { x: 60,  y: 990,  width: 1020, height: 30  },</td></tr>
+<tr class="nil"><td class="ln">499</td><td class="code">    hype:       { x: 720, y: 360,  width: 570,  height: 360 },</td></tr>
+<tr class="nil"><td class="ln">500</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">501</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">502</td><td class="code">  const defaultText: Record&lt;TextPreset, string&gt; = {</td></tr>
+<tr class="nil"><td class="ln">503</td><td class="code">    title: &#x27;Title&#x27;,</td></tr>
+<tr class="nil"><td class="ln">504</td><td class="code">    body: &#x27;&#x27;,</td></tr>
+<tr class="nil"><td class="ln">505</td><td class="code">    textbox: &#x27;Text&#x27;,</td></tr>
+<tr class="nil"><td class="ln">506</td><td class="code">    annotation: &#x27;Annotation&#x27;,</td></tr>
+<tr class="nil"><td class="ln">507</td><td class="code">    footnote: &#x27;Footnote&#x27;,</td></tr>
+<tr class="nil"><td class="ln">508</td><td class="code">    hype: &#x27;HYPE!&#x27;,</td></tr>
+<tr class="nil"><td class="ln">509</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">510</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">511</td><td class="code">  return {</td></tr>
+<tr class="nil"><td class="ln">512</td><td class="code">    id: crypto.randomUUID(),</td></tr>
+<tr class="nil"><td class="ln">513</td><td class="code">    type: &#x27;text&#x27;,</td></tr>
+<tr class="nil"><td class="ln">514</td><td class="code">    preset,</td></tr>
+<tr class="nil"><td class="ln">515</td><td class="code">    html: defaultText[preset],</td></tr>
+<tr class="nil"><td class="ln">516</td><td class="code">    position: { ...defaults[preset], ...overrides },</td></tr>
+<tr class="nil"><td class="ln">517</td><td class="code">    // Hype = sticky note: seed the bright-yellow fill (Shantell font comes from</td></tr>
+<tr class="nil"><td class="ln">518</td><td class="code">    // the preset / hype font role) + a jaunty tilt so it reads as a tacked-on</td></tr>
+<tr class="nil"><td class="ln">519</td><td class="code">    // callout (#8). Per-element rotation is editable in the inspector.</td></tr>
+<tr class="nil"><td class="ln">520</td><td class="code">    ...(preset === &#x27;hype&#x27; ? { backgroundColor: &#x27;#fde047&#x27;, rotation: -4 } : {}),</td></tr>
+<tr class="nil"><td class="ln">521</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">522</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">523</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">524</td><td class="code">export function createDefaultPresentation(): Presentation {</td></tr>
+<tr class="cov"><td class="ln">525</td><td class="code">  return {</td></tr>
+<tr class="nil"><td class="ln">526</td><td class="code">    title: &#x27;Untitled Presentation&#x27;,</td></tr>
+<tr class="nil"><td class="ln">527</td><td class="code">    theme: &#x27;white&#x27;,</td></tr>
+<tr class="nil"><td class="ln">528</td><td class="code">    slides: [</td></tr>
+<tr class="nil"><td class="ln">529</td><td class="code">      {</td></tr>
+<tr class="nil"><td class="ln">530</td><td class="code">        id: crypto.randomUUID(),</td></tr>
+<tr class="nil"><td class="ln">531</td><td class="code">        elements: [</td></tr>
+<tr class="nil"><td class="ln">532</td><td class="code">          createTextElement(&#x27;title&#x27;, { x: 150, y: 390, width: 1620, height: 180 }),</td></tr>
+<tr class="nil"><td class="ln">533</td><td class="code">        ],</td></tr>
+<tr class="nil"><td class="ln">534</td><td class="code">        notes: &#x27;&#x27;,</td></tr>
+<tr class="nil"><td class="ln">535</td><td class="code">      },</td></tr>
+<tr class="nil"><td class="ln">536</td><td class="code">    ],</td></tr>
+<tr class="nil"><td class="ln">537</td><td class="code">    config: {</td></tr>
+<tr class="nil"><td class="ln">538</td><td class="code">      transition: &#x27;slide&#x27;,</td></tr>
+<tr class="nil"><td class="ln">539</td><td class="code">      backgroundTransition: &#x27;fade&#x27;,</td></tr>
+<tr class="nil"><td class="ln">540</td><td class="code">      width: 1920,</td></tr>
+<tr class="nil"><td class="ln">541</td><td class="code">      height: 1080,</td></tr>
+<tr class="nil"><td class="ln">542</td><td class="code">      showSlideNumber: true,</td></tr>
+<tr class="nil"><td class="ln">543</td><td class="code">      author: &#x27;&#x27;,</td></tr>
+<tr class="nil"><td class="ln">544</td><td class="code">      venue: &#x27;&#x27;,</td></tr>
+<tr class="nil"><td class="ln">545</td><td class="code">      // New decks STORE their font (Lato) rather than leaning on the global</td></tr>
+<tr class="nil"><td class="ln">546</td><td class="code">      // default, so their look is stable if the default ever changes again.</td></tr>
+<tr class="nil"><td class="ln">547</td><td class="code">      defaultTitleFont: &#x27;lato&#x27;,</td></tr>
+<tr class="nil"><td class="ln">548</td><td class="code">      defaultBodyFont: &#x27;lato&#x27;,</td></tr>
+<tr class="nil"><td class="ln">549</td><td class="code">    },</td></tr>
+<tr class="nil"><td class="ln">550</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">551</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">552</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">553</td><td class="code">export function createBlankSlide(): Slide {</td></tr>
+<tr class="cov"><td class="ln">554</td><td class="code">  return {</td></tr>
+<tr class="nil"><td class="ln">555</td><td class="code">    id: crypto.randomUUID(),</td></tr>
+<tr class="nil"><td class="ln">556</td><td class="code">    elements: [</td></tr>
+<tr class="nil"><td class="ln">557</td><td class="code">      createTextElement(&#x27;title&#x27;),</td></tr>
+<tr class="nil"><td class="ln">558</td><td class="code">      createTextElement(&#x27;body&#x27;),</td></tr>
+<tr class="nil"><td class="ln">559</td><td class="code">    ],</td></tr>
+<tr class="nil"><td class="ln">560</td><td class="code">    notes: &#x27;&#x27;,</td></tr>
+<tr class="nil"><td class="ln">561</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">562</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">563</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">564</td><td class="code">// ============================================</td></tr>
+<tr class="nil"><td class="ln">565</td><td class="code">// Slide group helpers</td></tr>
+<tr class="nil"><td class="ln">566</td><td class="code">// ============================================</td></tr>
+<tr class="nil"><td class="ln">567</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">568</td><td class="code">/** Get the display slide number for a given slide index (groups share a number) */</td></tr>
+<tr class="nil"><td class="ln">569</td><td class="code">export function getSlideNumber(slides: Slide[], index: number): number {</td></tr>
+<tr class="cov"><td class="ln">570</td><td class="code">  let num = 0;</td></tr>
+<tr class="cov"><td class="ln">571</td><td class="code">  for (let i = 0; i &lt;= index; i++) {</td></tr>
+<tr class="cov"><td class="ln">572</td><td class="code">    const slide = slides[i];</td></tr>
+<tr class="cov"><td class="ln">573</td><td class="code">    const prev = i &gt; 0 ? slides[i - 1] : null;</td></tr>
+<tr class="nil"><td class="ln">574</td><td class="code">    // Increment number if this slide starts a new group or has no group</td></tr>
+<tr class="cov"><td class="ln">575</td><td class="code">    if (!slide.groupId || !prev || prev.groupId !== slide.groupId) {</td></tr>
+<tr class="cov"><td class="ln">576</td><td class="code">      num++;</td></tr>
+<tr class="nil"><td class="ln">577</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">578</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">579</td><td class="code">  return num;</td></tr>
+<tr class="nil"><td class="ln">580</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">581</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">582</td><td class="code">/** Check if a slide is a child (not the first) in its group */</td></tr>
+<tr class="nil"><td class="ln">583</td><td class="code">export function isGroupChild(slides: Slide[], index: number): boolean {</td></tr>
+<tr class="unc"><td class="ln">584</td><td class="code">  const slide = slides[index];</td></tr>
+<tr class="unc"><td class="ln">585</td><td class="code">  if (!slide.groupId) return false;</td></tr>
+<tr class="unc"><td class="ln">586</td><td class="code">  if (index === 0) return false;</td></tr>
+<tr class="unc"><td class="ln">587</td><td class="code">  return slides[index - 1].groupId === slide.groupId;</td></tr>
+<tr class="nil"><td class="ln">588</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">589</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">590</td><td class="code">/** Get all slide indices in the same group */</td></tr>
+<tr class="nil"><td class="ln">591</td><td class="code">export function getGroupIndices(slides: Slide[], index: number): number[] {</td></tr>
+<tr class="unc"><td class="ln">592</td><td class="code">  const slide = slides[index];</td></tr>
+<tr class="unc"><td class="ln">593</td><td class="code">  if (!slide.groupId) return [index];</td></tr>
+<tr class="unc"><td class="ln">594</td><td class="code">  return slides.reduce&lt;number[]&gt;((acc, s, i) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">595</td><td class="code">    if (s.groupId === slide.groupId) acc.push(i);</td></tr>
+<tr class="unc"><td class="ln">596</td><td class="code">    return acc;</td></tr>
+<tr class="nil"><td class="ln">597</td><td class="code">  }, []);</td></tr>
+<tr class="nil"><td class="ln">598</td><td class="code">}</td></tr></table>
+</body></html>

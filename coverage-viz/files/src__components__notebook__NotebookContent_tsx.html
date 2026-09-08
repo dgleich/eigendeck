@@ -1,0 +1,459 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/components/notebook/NotebookContent.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/components/notebook/NotebookContent.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>54%</b> covered</span>
+    <span class="stat">134/248 executable</span>
+    <span class="stat unc-txt">114 uncovered</span>
+    <span class="stat">441 raw lines</span>
+    <span class="stat">1.03% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:30.385%"></span><span class="seg unc" style="width:25.850%"></span><span class="seg nil" style="width:43.764%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__components__notebook__CodeCell_tsx.html">CodeCell.tsx</a> <a href="src__components__notebook__MarkdownCell_tsx.html">MarkdownCell.tsx</a> <a href="src__components__notebook__NotebookCells_tsx.html">NotebookCells.tsx</a> <a href="src__components__notebook__RawCell_tsx.html">RawCell.tsx</a> <a href="src__components__notebook__notebook_css.html">notebook.css</a> <a href="src__lib__notebookFonts_ts.html">notebookFonts.ts</a> <a href="src__lib__notebookFormat_ts.html">notebookFormat.ts</a> <a href="src__lib__notebookKernel_ts.html">notebookKernel.ts</a> <a href="src__lib__preferences_ts.html">preferences.ts</a> <a href="src__lib__previewCache_ts.html">previewCache.ts</a> <a href="src__lib__themes_ts.html">themes.ts</a> <a href="src__lib__useKernel_ts.html">useKernel.ts</a> <a href="src__lib__useNotebook_ts.html">useNotebook.ts</a> <a href="src__lib__useOverlay_ts.html">useOverlay.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__NotebookBox_tsx.html">NotebookBox.tsx</a> <a href="src__components__PresentSlide_tsx.html">PresentSlide.tsx</a> <a href="src__lib__notebookExport_tsx.html">notebookExport.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// The notebook&#x27;s interactive body — header + scrollable cell area</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// with optional Run buttons. Used by both NotebookBox (editor,</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// wrapped in DraggableBox) and PresentNotebook (PresentMode,</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// wrapped in an absolute-positioned div).</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// Display = the pristine .ipynb merged with the element&#x27;s &quot;overlay&quot;</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// (source edits, recorded outputs, live-authored appended cells) via</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// mergeNotebook. The overlay is an owner-tagged asset managed by</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">// useOverlay — the .ipynb is never mutated. See</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// .claude/notes/notebook-recording-decisions.md.</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">// `interactive: false` disables the pointer-events gate so cells</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">// accept clicks immediately in PresentMode.</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">import { useCallback, useEffect, useRef, useState } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">import &#x27;./notebook.css&#x27;;<a class="jump" href="src__components__notebook__notebook_css.html" title="src/components/notebook/notebook.css">→ notebook.css</a></td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">import { CodeCell } from &#x27;./CodeCell&#x27;;<a class="jump" href="src__components__notebook__CodeCell_tsx.html" title="src/components/notebook/CodeCell.tsx">→ CodeCell.tsx</a></td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">import { MarkdownCell } from &#x27;./MarkdownCell&#x27;;<a class="jump" href="src__components__notebook__MarkdownCell_tsx.html" title="src/components/notebook/MarkdownCell.tsx">→ MarkdownCell.tsx</a></td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">import { RawCell } from &#x27;./RawCell&#x27;;<a class="jump" href="src__components__notebook__RawCell_tsx.html" title="src/components/notebook/RawCell.tsx">→ RawCell.tsx</a></td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">import { NotebookCells, RunningState } from &#x27;./NotebookCells&#x27;;<a class="jump" href="src__components__notebook__NotebookCells_tsx.html" title="src/components/notebook/NotebookCells.tsx">→ NotebookCells.tsx</a></td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">import { useNotebook } from &#x27;../../lib/useNotebook&#x27;;<a class="jump" href="src__lib__useNotebook_ts.html" title="src/lib/useNotebook.ts">→ useNotebook.ts</a></td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">import { useOverlay } from &#x27;../../lib/useOverlay&#x27;;<a class="jump" href="src__lib__useOverlay_ts.html" title="src/lib/useOverlay.ts">→ useOverlay.ts</a></td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">import { capturePreview } from &#x27;../../lib/previewCache&#x27;;<a class="jump" href="src__lib__previewCache_ts.html" title="src/lib/previewCache.ts">→ previewCache.ts</a></td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">import { useKernel, KernelStatus } from &#x27;../../lib/useKernel&#x27;;<a class="jump" href="src__lib__useKernel_ts.html" title="src/lib/useKernel.ts">→ useKernel.ts</a></td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">import { resolveNotebookKernel, ResolvedExternal } from &#x27;../../lib/notebookKernel&#x27;;<a class="jump" href="src__lib__notebookKernel_ts.html" title="src/lib/notebookKernel.ts">→ notebookKernel.ts</a></td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">import { usePreference } from &#x27;../../lib/preferences&#x27;;<a class="jump" href="src__lib__preferences_ts.html" title="src/lib/preferences.ts">→ preferences.ts</a></td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">import { Cell, CellOutput, Notebook } from &#x27;../../lib/notebookFormat&#x27;;<a class="jump" href="src__lib__notebookFormat_ts.html" title="src/lib/notebookFormat.ts">→ notebookFormat.ts</a></td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">import {</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">  mergeNotebook, MergedCell, notebookSourceSignature, overlaySourceChanged,</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">  serializeOverlay,</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">} from &#x27;../../lib/notebookOverlay&#x27;;</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">import { NotebookElement, effectiveFontSize } from &#x27;../../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">import { usePresentationStore } from &#x27;../../store/presentation&#x27;;<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">import { fontForNotebookProse, fontForNotebookCode } from &#x27;../../lib/notebookFonts&#x27;;<a class="jump" href="src__lib__notebookFonts_ts.html" title="src/lib/notebookFonts.ts">→ notebookFonts.ts</a></td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">import { resolveTheme, isDarkTheme, previewThemeSalt } from &#x27;../../lib/themes&#x27;;<a class="jump" href="src__lib__themes_ts.html" title="src/lib/themes.ts">→ themes.ts</a></td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">export function NotebookContent({ element, interactive, mode = &#x27;editor&#x27; }: {</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">  element: NotebookElement;</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">  interactive: boolean;</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">  /** &#x27;editor&#x27; suppresses autoRun (the inspector toggle is meaningful</td></tr>
+<tr class="cov"><td class="ln">41</td><td class="code">   *  only in PresentMode). Defaults to &#x27;editor&#x27;. */</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">  mode?: &#x27;editor&#x27; | &#x27;present&#x27;;</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">}) {</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">  const { notebook, error, loading } = useNotebook(element.assetId);</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  const config = usePresentationStore((s) =&gt; s.presentation?.config);</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">  const slide = usePresentationStore((s) =&gt; s.presentation?.slides?.[s.currentSlideIndex]);</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">  const [jupyterServers] = usePreference(&#x27;jupyterServers&#x27;);</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">  const [defaultEditable] = usePreference(&#x27;defaultNotebookEditable&#x27;);</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">  const resolved = resolveNotebookKernel(element, config, notebook, jupyterServers);</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">  // Effective editability cascades: element override → global pref → false.</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">  const editable = element.editable ?? defaultEditable;</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">  // BUG-2: a notebook that&#x27;s EFFECTIVELY editable — whether via the per-element</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">  // toggle or the global default — must not be file-watched, else a disk reload</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">  // clobbers in-deck edits. The toggle already sets auto_reload=&#x27;off&#x27;; this also</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">  // covers the default-on case (element.editable left undefined). Editor only,</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">  // so we never write during a presentation. One-directional BY DESIGN: making</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">  // a notebook editable stops watching, and un-editing LEAVES it stopped —</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">  // taking control is sticky; the user re-enables Watch explicitly (Asset</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">  // section) when ready. So nothing here re-enables on editable=false.</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">    if (mode !== &#x27;editor&#x27; || !editable || !element.assetId) return;</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">    const assetId = element.assetId;</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">    void import(&#x27;@tauri-apps/api/core&#x27;)</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">      .then(({ invoke }) =&gt; invoke(&#x27;db_set_asset_auto_reload&#x27;, { assetId, value: &#x27;off&#x27; }))</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">      // Fire asset-changed so the file watcher re-evaluates the cascade and</td></tr>
+<tr class="cov"><td class="ln">68</td><td class="code">      // UNSUBSCRIBES — without this the watcher keeps firing and a disk change</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">      // clobbers the in-deck edits despite &quot;taking control&quot; (matches what</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">      // AssetSection.setAutoReload does).</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">      .then(() =&gt; window.dispatchEvent(new CustomEvent(&#x27;eigendeck:asset-changed&#x27;, { detail: { assetId } })))</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">      .catch(() =&gt; {});</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">  }, [editable, element.assetId, mode]);</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">75</td><td class="code">  // Typography + theme → CSS variables on the frame. (See the detailed</td></tr>
+<tr class="unc"><td class="ln">76</td><td class="code">  // notes in the prior revision; unchanged.)</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">  const proseFont = fontForNotebookProse(slide, config);</td></tr>
+<tr class="cov"><td class="ln">78</td><td class="code">  const codeFont = fontForNotebookCode(config);</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">  const baseSize = effectiveFontSize(element, config);</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">  const theme = resolveTheme(</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">    usePresentationStore.getState().presentation?.theme ?? &#x27;white&#x27;,</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">    slide?.theme,</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">  );</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">  const dark = isDarkTheme(theme);</td></tr>
+<tr class="cov"><td class="ln">85</td><td class="code">  const tint = dark ? &#x27;rgba(255,255,255,0.07)&#x27; : &#x27;rgba(0,0,0,0.045)&#x27;;</td></tr>
+<tr class="cov"><td class="ln">86</td><td class="code">  const borderColor = dark ? &#x27;rgba(255,255,255,0.18)&#x27; : &#x27;rgba(0,0,0,0.12)&#x27;;</td></tr>
+<tr class="cov"><td class="ln">87</td><td class="code">  const fontStyle: React.CSSProperties = {</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code">    &#x27;--nb-prose-family&#x27;: proseFont.family,</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">    &#x27;--nb-mono-family&#x27;: codeFont.family,</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">    &#x27;--nb-base-size&#x27;: `${baseSize}px`,</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">    &#x27;--nb-fg&#x27;: theme.text,</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">    &#x27;--nb-bg&#x27;: theme.background,</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">    &#x27;--nb-code-bg&#x27;: tint,</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">    &#x27;--nb-muted&#x27;: theme.muted,</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code">    &#x27;--nb-accent&#x27;: theme.accent,</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">    &#x27;--nb-border&#x27;: borderColor,</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">  } as React.CSSProperties;</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">  const frameClass = [</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">    &#x27;nb-frame&#x27;,</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">    dark ? &#x27;nb-theme-dark&#x27; : &#x27;nb-theme-light&#x27;,</td></tr>
+<tr class="nil"><td class="ln">101</td><td class="code">    element.showBorder ? &#x27;nb-frame--bordered&#x27; : &#x27;&#x27;,</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">  ].filter(Boolean).join(&#x27; &#x27;);</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">  // A signature that changes with the deck THEME. The preview-capture effects key</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">  // on element/overlay, and the theme is applied as CSS vars on .nb-frame — but a</td></tr>
+<tr class="nil"><td class="ln">106</td><td class="code">  // theme switch doesn&#x27;t change `element`, so without this term the effect never</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">  // re-fires and the PDF/print export bakes the STALE (old-theme) preview → wrong</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">  // colours on a dark slide (the live / present / HTML-export paths render fresh, so</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">  // only print was broken). It also feeds capturePreview&#x27;s backdrop (the theme</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">  // background, so the rasterized PNG matches the slide) + its dedup key — the same</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">  // theme-salt + background a demo already passes.</td></tr>
+<tr class="cov"><td class="ln">112</td><td class="code">  const themeSalt = previewThemeSalt(theme);</td></tr>
+<tr class="unc"><td class="ln">113</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">114</td><td class="code">  // Cache a PNG preview of the rendered notebook so other places (the sidebar</td></tr>
+<tr class="unc"><td class="ln">115</td><td class="code">  // mini-slide, link picker, and the PDF/print export) can show an image instead of</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">  // a live render. Debounced + editor-only; re-fires on element edits AND theme</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">  // changes. The .nb-frame target excludes the DraggableBox authoring chrome.</td></tr>
+<tr class="cov"><td class="ln">118</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">119</td><td class="code">    if (mode !== &#x27;editor&#x27;) return;</td></tr>
+<tr class="cov"><td class="ln">120</td><td class="code">    const t = setTimeout(() =&gt; { void capturePreview(element, &#x27;.nb-frame&#x27;, themeSalt, theme.background); }, 700);</td></tr>
+<tr class="cov"><td class="ln">121</td><td class="code">    return () =&gt; clearTimeout(t);</td></tr>
+<tr class="cov"><td class="ln">122</td><td class="code">  }, [element, mode, themeSalt, theme.background]);</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">124</td><td class="code">  const highlight = element.syntaxHighlight !== false;</td></tr>
+<tr class="cov"><td class="ln">125</td><td class="code">  const language = notebook?.language ?? null;</td></tr>
+<tr class="cov"><td class="ln">126</td><td class="code">  const hideHeader = element.hideHeader === true;</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">128</td><td class="code">  // Lite backend stays display-only (no overlay/kernel) in v1.</td></tr>
+<tr class="cov"><td class="ln">129</td><td class="code">  if (resolved.kind === &#x27;lite&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">130</td><td class="code">    return (</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">      &lt;div className={frameClass} style={fontStyle}&gt;</td></tr>
+<tr class="nil"><td class="ln">132</td><td class="code">        &lt;LiteKernelPlaceholder</td></tr>
+<tr class="nil"><td class="ln">133</td><td class="code">          cells={filterCells(notebook?.cells ?? [], element)}</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">          interactive={interactive}</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">          highlight={highlight}</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">          language={language}</td></tr>
+<tr class="nil"><td class="ln">137</td><td class="code">          hideHeader={hideHeader}</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">          kernelDisplayName={notebook?.kernelDisplayName ?? notebook?.kernelspecName ?? null}</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code">        /&gt;</td></tr>
+<tr class="nil"><td class="ln">140</td><td class="code">      &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">141</td><td class="code">    );</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">  }</td></tr>
+<tr class="unc"><td class="ln">143</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">    &lt;div className={frameClass} style={fontStyle}&gt;</td></tr>
+<tr class="nil"><td class="ln">145</td><td class="code">      &lt;ExternalKernelBody</td></tr>
+<tr class="nil"><td class="ln">146</td><td class="code">        element={element}</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">        mode={mode}</td></tr>
+<tr class="cov"><td class="ln">148</td><td class="code">        notebook={notebook}</td></tr>
+<tr class="cov"><td class="ln">149</td><td class="code">        loading={loading}</td></tr>
+<tr class="cov"><td class="ln">150</td><td class="code">        error={error}</td></tr>
+<tr class="cov"><td class="ln">151</td><td class="code">        interactive={interactive}</td></tr>
+<tr class="cov"><td class="ln">152</td><td class="code">        editable={editable}</td></tr>
+<tr class="cov"><td class="ln">153</td><td class="code">        resolved={resolved}</td></tr>
+<tr class="cov"><td class="ln">154</td><td class="code">        preamble={element.preamble}</td></tr>
+<tr class="cov"><td class="ln">155</td><td class="code">        autoRun={mode === &#x27;present&#x27; &amp;&amp; !!element.autoRun}</td></tr>
+<tr class="cov"><td class="ln">156</td><td class="code">        highlight={highlight}</td></tr>
+<tr class="cov"><td class="ln">157</td><td class="code">        dark={dark}</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code">        language={language}</td></tr>
+<tr class="cov"><td class="ln">159</td><td class="code">        baseSize={baseSize}</td></tr>
+<tr class="nil"><td class="ln">160</td><td class="code">        hideHeader={hideHeader}</td></tr>
+<tr class="cov"><td class="ln">161</td><td class="code">        kernelDisplayName={notebook?.kernelDisplayName ?? notebook?.kernelspecName ?? null}</td></tr>
+<tr class="cov"><td class="ln">162</td><td class="code">        themeSalt={themeSalt}</td></tr>
+<tr class="cov"><td class="ln">163</td><td class="code">        previewBg={theme.background}</td></tr>
+<tr class="cov"><td class="ln">164</td><td class="code">      /&gt;</td></tr>
+<tr class="cov"><td class="ln">165</td><td class="code">    &lt;/div&gt;</td></tr>
+<tr class="unc"><td class="ln">166</td><td class="code">  );</td></tr>
+<tr class="unc"><td class="ln">167</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">168</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">169</td><td class="code">/** Apply the element&#x27;s visibleCells whitelist + hideMarkdown filter to</td></tr>
+<tr class="unc"><td class="ln">170</td><td class="code"> *  a plain Cell[] (lite path). */</td></tr>
+<tr class="nil"><td class="ln">171</td><td class="code">function filterCells(cells: Cell[], element: NotebookElement): Cell[] {</td></tr>
+<tr class="cov"><td class="ln">172</td><td class="code">  let out = (element.visibleCells &amp;&amp; element.visibleCells.length &gt; 0)</td></tr>
+<tr class="cov"><td class="ln">173</td><td class="code">    ? cells.filter((c) =&gt; element.visibleCells!.includes(c.index))</td></tr>
+<tr class="cov"><td class="ln">174</td><td class="code">    : cells;</td></tr>
+<tr class="cov"><td class="ln">175</td><td class="code">  if (element.hideMarkdown) out = out.filter((c) =&gt; c.kind !== &#x27;markdown&#x27;);</td></tr>
+<tr class="cov"><td class="ln">176</td><td class="code">  return out;</td></tr>
+<tr class="cov"><td class="ln">177</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">178</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">179</td><td class="code">/** Apply the same filters to the merged render list (external path). */</td></tr>
+<tr class="cov"><td class="ln">180</td><td class="code">export function filterMerged(merged: MergedCell[], element: NotebookElement): MergedCell[] {</td></tr>
+<tr class="cov"><td class="ln">181</td><td class="code">  return merged.filter((m) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">182</td><td class="code">    if (m.origin === &#x27;ipynb&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">183</td><td class="code">      if (element.visibleCells &amp;&amp; element.visibleCells.length &gt; 0</td></tr>
+<tr class="cov"><td class="ln">184</td><td class="code">          &amp;&amp; !element.visibleCells.includes(m.cell.index)) return false;</td></tr>
+<tr class="cov"><td class="ln">185</td><td class="code">      if (element.hideMarkdown &amp;&amp; m.cell.kind === &#x27;markdown&#x27;) return false;</td></tr>
+<tr class="cov"><td class="ln">186</td><td class="code">      return true;</td></tr>
+<tr class="nil"><td class="ln">187</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">188</td><td class="code">    // appended cells are always shown (user-authored), except markdown</td></tr>
+<tr class="cov"><td class="ln">189</td><td class="code">    // when hideMarkdown.</td></tr>
+<tr class="unc"><td class="ln">190</td><td class="code">    if (element.hideMarkdown &amp;&amp; m.appended.cellType === &#x27;markdown&#x27;) return false;</td></tr>
+<tr class="cov"><td class="ln">191</td><td class="code">    return true;</td></tr>
+<tr class="cov"><td class="ln">192</td><td class="code">  });</td></tr>
+<tr class="cov"><td class="ln">193</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">194</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">195</td><td class="code">function ExternalKernelBody({</td></tr>
+<tr class="cov"><td class="ln">196</td><td class="code">  element, mode, notebook, loading, error, interactive, editable, resolved, preamble, autoRun,</td></tr>
+<tr class="cov"><td class="ln">197</td><td class="code">  highlight, dark, language, baseSize, hideHeader, kernelDisplayName, themeSalt, previewBg,</td></tr>
+<tr class="nil"><td class="ln">198</td><td class="code">}: {</td></tr>
+<tr class="nil"><td class="ln">199</td><td class="code">  element: NotebookElement;</td></tr>
+<tr class="cov"><td class="ln">200</td><td class="code">  mode: &#x27;editor&#x27; | &#x27;present&#x27;;</td></tr>
+<tr class="cov"><td class="ln">201</td><td class="code">  notebook: Notebook | null;</td></tr>
+<tr class="cov"><td class="ln">202</td><td class="code">  loading: boolean; error: Error | null;</td></tr>
+<tr class="nil"><td class="ln">203</td><td class="code">  interactive: boolean;</td></tr>
+<tr class="cov"><td class="ln">204</td><td class="code">  editable: boolean;</td></tr>
+<tr class="nil"><td class="ln">205</td><td class="code">  resolved: ResolvedExternal;</td></tr>
+<tr class="nil"><td class="ln">206</td><td class="code">  preamble: string | undefined;</td></tr>
+<tr class="nil"><td class="ln">207</td><td class="code">  autoRun: boolean;</td></tr>
+<tr class="cov"><td class="ln">208</td><td class="code">  highlight: boolean;</td></tr>
+<tr class="cov"><td class="ln">209</td><td class="code">  dark: boolean;</td></tr>
+<tr class="cov"><td class="ln">210</td><td class="code">  language: string | null;</td></tr>
+<tr class="cov"><td class="ln">211</td><td class="code">  baseSize: number;</td></tr>
+<tr class="cov"><td class="ln">212</td><td class="code">  hideHeader: boolean;</td></tr>
+<tr class="cov"><td class="ln">213</td><td class="code">  kernelDisplayName: string | null;</td></tr>
+<tr class="cov"><td class="ln">214</td><td class="code">  themeSalt: string;</td></tr>
+<tr class="nil"><td class="ln">215</td><td class="code">  previewBg: string;</td></tr>
+<tr class="cov"><td class="ln">216</td><td class="code">}) {</td></tr>
+<tr class="cov"><td class="ln">217</td><td class="code">  const kernel = useKernel(resolved);</td></tr>
+<tr class="unc"><td class="ln">218</td><td class="code">  // Overlay identity is the element&#x27;s SYNC identity, not its per-slide id:</td></tr>
+<tr class="unc"><td class="ln">219</td><td class="code">  // synced instances (the same notebook shown on multiple slides) are the</td></tr>
+<tr class="unc"><td class="ln">220</td><td class="code">  // SAME thing and must share ONE overlay. syncId is set to the original</td></tr>
+<tr class="nil"><td class="ln">221</td><td class="code">  // element&#x27;s id on first duplicate, so the whole group resolves here to a</td></tr>
+<tr class="cov"><td class="ln">222</td><td class="code">  // single stable key — consistent across Save and Save As. A lone notebook</td></tr>
+<tr class="cov"><td class="ln">223</td><td class="code">  // has no syncId and keys by its own id (unchanged).</td></tr>
+<tr class="unc"><td class="ln">224</td><td class="code">  const ov = useOverlay(element.syncId ?? element.id);</td></tr>
+<tr class="cov"><td class="ln">225</td><td class="code">  const updateElement = usePresentationStore((s) =&gt; s.updateElement);</td></tr>
+<tr class="cov"><td class="ln">226</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">227</td><td class="code">  // Keep the cached PNG preview fresh when the RECORDING changes (cell edits,</td></tr>
+<tr class="unc"><td class="ln">228</td><td class="code">  // recorded outputs, appended cells). Those live in the overlay, not the</td></tr>
+<tr class="nil"><td class="ln">229</td><td class="code">  // element, so the element-keyed capture in NotebookContent misses them and the</td></tr>
+<tr class="cov"><td class="ln">230</td><td class="code">  // sidebar/picker thumbnail would go stale. Debounced + editor-only; the</td></tr>
+<tr class="nil"><td class="ln">231</td><td class="code">  // element comes via a ref so this fires only on overlay changes (the</td></tr>
+<tr class="nil"><td class="ln">232</td><td class="code">  // NotebookContent effect already covers element/prop changes).</td></tr>
+<tr class="unc"><td class="ln">233</td><td class="code">  const elForCapture = useRef(element);</td></tr>
+<tr class="unc"><td class="ln">234</td><td class="code">  elForCapture.current = element;</td></tr>
+<tr class="unc"><td class="ln">235</td><td class="code">  const ovSig = serializeOverlay(ov.overlay);</td></tr>
+<tr class="unc"><td class="ln">236</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">237</td><td class="code">    if (mode !== &#x27;editor&#x27;) return;</td></tr>
+<tr class="cov"><td class="ln">238</td><td class="code">    const t = setTimeout(() =&gt; { void capturePreview(elForCapture.current, &#x27;.nb-frame&#x27;, themeSalt, previewBg); }, 700);</td></tr>
+<tr class="unc"><td class="ln">239</td><td class="code">    return () =&gt; clearTimeout(t);</td></tr>
+<tr class="nil"><td class="ln">240</td><td class="code">  }, [ovSig, mode, themeSalt, previewBg]);</td></tr>
+<tr class="nil"><td class="ln">241</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">242</td><td class="code">  // Migrate legacy element.cellEdits (pre-overlay) into the overlay</td></tr>
+<tr class="cov"><td class="ln">243</td><td class="code">  // once, then strip the field. cellEdits is being retired in favor of</td></tr>
+<tr class="cov"><td class="ln">244</td><td class="code">  // the overlay asset.</td></tr>
+<tr class="unc"><td class="ln">245</td><td class="code">  const migratedRef = useRef(false);</td></tr>
+<tr class="unc"><td class="ln">246</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">247</td><td class="code">    if (migratedRef.current) return;</td></tr>
+<tr class="cov"><td class="ln">248</td><td class="code">    const legacy = element.cellEdits;</td></tr>
+<tr class="cov"><td class="ln">249</td><td class="code">    if (legacy &amp;&amp; Object.keys(legacy).length &gt; 0) {</td></tr>
+<tr class="unc"><td class="ln">250</td><td class="code">      migratedRef.current = true;</td></tr>
+<tr class="unc"><td class="ln">251</td><td class="code">      for (const [k, v] of Object.entries(legacy)) {</td></tr>
+<tr class="unc"><td class="ln">252</td><td class="code">        ov.setEdit(Number(k), v, &#x27;&#x27;);   // savedSource &#x27;&#x27; → always set</td></tr>
+<tr class="cov"><td class="ln">253</td><td class="code">      }</td></tr>
+<tr class="unc"><td class="ln">254</td><td class="code">      updateElement(element.id, { cellEdits: undefined } as Partial&lt;NotebookElement&gt;);</td></tr>
+<tr class="nil"><td class="ln">255</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">256</td><td class="code">  }, [element.cellEdits, element.id, ov, updateElement]);</td></tr>
+<tr class="cov"><td class="ln">257</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">258</td><td class="code">  // Drop the overlay ONLY when the .ipynb source genuinely changes</td></tr>
+<tr class="unc"><td class="ln">259</td><td class="code">  // (deliberate reload-from-disk / restore-version) — detected by the</td></tr>
+<tr class="unc"><td class="ln">260</td><td class="code">  // parsed notebook&#x27;s CONTENT changing, not by the generic</td></tr>
+<tr class="unc"><td class="ln">261</td><td class="code">  // `eigendeck:asset-changed` event. That event fires for many incidental</td></tr>
+<tr class="unc"><td class="ln">262</td><td class="code">  // reasons (preview/cache invalidation, watcher re-eval, auto-reload</td></tr>
+<tr class="unc"><td class="ln">263</td><td class="code">  // toggle); reacting to it wiped recorded outputs + edits during plain</td></tr>
+<tr class="unc"><td class="ln">264</td><td class="code">  // editing. Same bytes re-parse to identical content, so a spurious event</td></tr>
+<tr class="unc"><td class="ln">265</td><td class="code">  // is a no-op here; a real reload re-parses to different content → clear.</td></tr>
+<tr class="unc"><td class="ln">266</td><td class="code">  const clearOverlay = ov.clear;</td></tr>
+<tr class="unc"><td class="ln">267</td><td class="code">  const nbSigRef = useRef&lt;{ id: string; sig: string } | null&gt;(null);</td></tr>
+<tr class="unc"><td class="ln">268</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">269</td><td class="code">    if (!notebook) return;</td></tr>
+<tr class="unc"><td class="ln">270</td><td class="code">    const sig = notebookSourceSignature(notebook);</td></tr>
+<tr class="unc"><td class="ln">271</td><td class="code">    const prev = nbSigRef.current;</td></tr>
+<tr class="unc"><td class="ln">272</td><td class="code">    nbSigRef.current = { id: element.id, sig };</td></tr>
+<tr class="unc"><td class="ln">273</td><td class="code">    if (overlaySourceChanged(prev, element.id, sig)) clearOverlay();</td></tr>
+<tr class="nil"><td class="ln">274</td><td class="code">  }, [notebook, element.id, clearOverlay]);</td></tr>
+<tr class="cov"><td class="ln">275</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">276</td><td class="code">  // Trust-independent &quot;Discard Changes&quot; (#121): the asset inspector fires this</td></tr>
+<tr class="nil"><td class="ln">277</td><td class="code">  // to drop the run-cell overlay and re-render the notebook as stored in the</td></tr>
+<tr class="nil"><td class="ln">278</td><td class="code">  // deck. No disk read, no trust gate (unlike Reload Now) — ov.clear() re-merges</td></tr>
+<tr class="nil"><td class="ln">279</td><td class="code">  // against the embedded .ipynb bytes every untrusted deck already renders.</td></tr>
+<tr class="unc"><td class="ln">280</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">281</td><td class="code">    if (!element.assetId) return;</td></tr>
+<tr class="unc"><td class="ln">282</td><td class="code">    const assetId = element.assetId;</td></tr>
+<tr class="unc"><td class="ln">283</td><td class="code">    const handler = (e: Event) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">284</td><td class="code">      if ((e as CustomEvent).detail?.assetId === assetId) clearOverlay();</td></tr>
+<tr class="nil"><td class="ln">285</td><td class="code">    };</td></tr>
+<tr class="unc"><td class="ln">286</td><td class="code">    window.addEventListener(&#x27;eigendeck:discard-overlay&#x27;, handler);</td></tr>
+<tr class="unc"><td class="ln">287</td><td class="code">    return () =&gt; window.removeEventListener(&#x27;eigendeck:discard-overlay&#x27;, handler);</td></tr>
+<tr class="nil"><td class="ln">288</td><td class="code">  }, [element.assetId, clearOverlay]);</td></tr>
+<tr class="nil"><td class="ln">289</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">290</td><td class="code">  // Transient running status, keyed by cell key.</td></tr>
+<tr class="unc"><td class="ln">291</td><td class="code">  const [running, setRunning] = useState&lt;Map&lt;string, RunningState&gt;&gt;(new Map());</td></tr>
+<tr class="unc"><td class="ln">292</td><td class="code">  const setRun = useCallback((key: string, s: RunningState | null) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">293</td><td class="code">    setRunning((prev) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">294</td><td class="code">      const next = new Map(prev);</td></tr>
+<tr class="unc"><td class="ln">295</td><td class="code">      if (s === null) next.delete(key); else next.set(key, s);</td></tr>
+<tr class="cov"><td class="ln">296</td><td class="code">      return next;</td></tr>
+<tr class="nil"><td class="ln">297</td><td class="code">    });</td></tr>
+<tr class="unc"><td class="ln">298</td><td class="code">  }, []);</td></tr>
+<tr class="nil"><td class="ln">299</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">300</td><td class="code">  // Working buffers for in-progress typing, so each keystroke doesn&#x27;t</td></tr>
+<tr class="nil"><td class="ln">301</td><td class="code">  // touch the overlay state/flush. Committed to the overlay on blur.</td></tr>
+<tr class="unc"><td class="ln">302</td><td class="code">  const [working, setWorking] = useState&lt;Map&lt;string, string&gt;&gt;(new Map());</td></tr>
+<tr class="nil"><td class="ln">303</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">304</td><td class="code">  const preambleFiredRef = useRef(false);</td></tr>
+<tr class="cov"><td class="ln">305</td><td class="code">  useEffect(() =&gt; { preambleFiredRef.current = false; },</td></tr>
+<tr class="unc"><td class="ln">306</td><td class="code">    [resolved.server?.baseUrl, resolved.server?.token, resolved.kernelName]);</td></tr>
+<tr class="nil"><td class="ln">307</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">308</td><td class="code">  // Execute `source`; stream outputs into the overlay live. `record`</td></tr>
+<tr class="nil"><td class="ln">309</td><td class="code">  // writes the accumulating outputs (ipynb index or appended id).</td></tr>
+<tr class="cov"><td class="ln">310</td><td class="code">  const execute = useCallback(async (</td></tr>
+<tr class="nil"><td class="ln">311</td><td class="code">    key: string,</td></tr>
+<tr class="nil"><td class="ln">312</td><td class="code">    source: string,</td></tr>
+<tr class="nil"><td class="ln">313</td><td class="code">    record: (outs: CellOutput[], count: number | null) =&gt; void,</td></tr>
+<tr class="cov"><td class="ln">314</td><td class="code">  ) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">315</td><td class="code">    setRun(key, { running: true, count: &#x27;*&#x27; });</td></tr>
+<tr class="unc"><td class="ln">316</td><td class="code">    let outs: CellOutput[] = [];</td></tr>
+<tr class="unc"><td class="ln">317</td><td class="code">    let count: number | null = null;</td></tr>
+<tr class="unc"><td class="ln">318</td><td class="code">    const push = (o: CellOutput) =&gt; { outs = [...outs, o]; record(outs, count); };</td></tr>
+<tr class="unc"><td class="ln">319</td><td class="code">    try {</td></tr>
+<tr class="unc"><td class="ln">320</td><td class="code">      if (preamble &amp;&amp; !preambleFiredRef.current) {</td></tr>
+<tr class="unc"><td class="ln">321</td><td class="code">        preambleFiredRef.current = true;</td></tr>
+<tr class="unc"><td class="ln">322</td><td class="code">        const ph = await kernel.runCell(preamble, {});</td></tr>
+<tr class="unc"><td class="ln">323</td><td class="code">        await ph.done;</td></tr>
+<tr class="nil"><td class="ln">324</td><td class="code">      }</td></tr>
+<tr class="unc"><td class="ln">325</td><td class="code">      record([], null);  // clear prior outputs at run start</td></tr>
+<tr class="unc"><td class="ln">326</td><td class="code">      const handle = await kernel.runCell(source, {</td></tr>
+<tr class="nil"><td class="ln">327</td><td class="code">        onStream: (s) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">328</td><td class="code">          const last = outs[outs.length - 1];</td></tr>
+<tr class="unc"><td class="ln">329</td><td class="code">          if (last &amp;&amp; last.kind === &#x27;stream&#x27; &amp;&amp; last.name === s.name) {</td></tr>
+<tr class="unc"><td class="ln">330</td><td class="code">            outs = [...outs.slice(0, -1), { ...last, text: last.text + s.text }];</td></tr>
+<tr class="unc"><td class="ln">331</td><td class="code">            record(outs, count);</td></tr>
+<tr class="unc"><td class="ln">332</td><td class="code">          } else { push({ kind: &#x27;stream&#x27;, ...s }); }</td></tr>
+<tr class="unc"><td class="ln">333</td><td class="code">        },</td></tr>
+<tr class="unc"><td class="ln">334</td><td class="code">        onDisplayData: (d) =&gt; push({ kind: &#x27;display_data&#x27;, data: d.data }),</td></tr>
+<tr class="unc"><td class="ln">335</td><td class="code">        onExecuteResult: (r) =&gt; { count = r.executionCount; push({ kind: &#x27;execute_result&#x27;, data: r.data, executionCount: r.executionCount }); },</td></tr>
+<tr class="unc"><td class="ln">336</td><td class="code">        onError: (e) =&gt; push({ kind: &#x27;error&#x27;, ename: e.ename, evalue: e.evalue, traceback: e.traceback }),</td></tr>
+<tr class="nil"><td class="ln">337</td><td class="code">        // Authoritative `[N]` count — fires for every cell, including ones with</td></tr>
+<tr class="nil"><td class="ln">338</td><td class="code">        // no output, so an assignment / print-only cell still updates its prompt.</td></tr>
+<tr class="unc"><td class="ln">339</td><td class="code">        onReply: (r) =&gt; { if (r.executionCount != null) { count = r.executionCount; record(outs, count); } },</td></tr>
+<tr class="nil"><td class="ln">340</td><td class="code">      });</td></tr>
+<tr class="unc"><td class="ln">341</td><td class="code">      await handle.done;</td></tr>
+<tr class="unc"><td class="ln">342</td><td class="code">      record(outs, count);</td></tr>
+<tr class="unc"><td class="ln">343</td><td class="code">    } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">344</td><td class="code">      record([...outs, { kind: &#x27;error&#x27;, ename: &#x27;KernelError&#x27;, evalue: e instanceof Error ? e.message : String(e), traceback: [] }], count);</td></tr>
+<tr class="unc"><td class="ln">345</td><td class="code">    } finally {</td></tr>
+<tr class="unc"><td class="ln">346</td><td class="code">      setRun(key, null);</td></tr>
+<tr class="nil"><td class="ln">347</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">348</td><td class="code">  }, [kernel, preamble, setRun]);</td></tr>
+<tr class="nil"><td class="ln">349</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">350</td><td class="code">  const merged = filterMerged(mergeNotebook(notebook, ov.overlay), element);</td></tr>
+<tr class="nil"><td class="ln">351</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">352</td><td class="code">  // autoRun: fire all visible code cells in order (present mode).</td></tr>
+<tr class="unc"><td class="ln">353</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">354</td><td class="code">    if (!autoRun) return;</td></tr>
+<tr class="unc"><td class="ln">355</td><td class="code">    let cancelled = false;</td></tr>
+<tr class="unc"><td class="ln">356</td><td class="code">    (async () =&gt; {</td></tr>
+<tr class="unc"><td class="ln">357</td><td class="code">      for (const m of merged) {</td></tr>
+<tr class="unc"><td class="ln">358</td><td class="code">        if (cancelled) break;</td></tr>
+<tr class="unc"><td class="ln">359</td><td class="code">        if (m.origin === &#x27;ipynb&#x27; &amp;&amp; m.cell.kind === &#x27;code&#x27;) {</td></tr>
+<tr class="unc"><td class="ln">360</td><td class="code">          await execute(`i${m.cell.index}`, m.source, (o, c) =&gt; ov.recordOutput(m.cell.index, o, c));</td></tr>
+<tr class="unc"><td class="ln">361</td><td class="code">        } else if (m.origin === &#x27;appended&#x27; &amp;&amp; m.appended.cellType === &#x27;code&#x27;) {</td></tr>
+<tr class="unc"><td class="ln">362</td><td class="code">          const a = m.appended;</td></tr>
+<tr class="unc"><td class="ln">363</td><td class="code">          await execute(`a${a.id}`, a.source, (o, c) =&gt; ov.recordAppendedOutput(a.id, o, c));</td></tr>
+<tr class="nil"><td class="ln">364</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">365</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">366</td><td class="code">    })();</td></tr>
+<tr class="unc"><td class="ln">367</td><td class="code">    return () =&gt; { cancelled = true; };</td></tr>
+<tr class="nil"><td class="ln">368</td><td class="code">    // eslint-disable-next-line react-hooks/exhaustive-deps</td></tr>
+<tr class="nil"><td class="ln">369</td><td class="code">  }, [autoRun]);</td></tr>
+<tr class="nil"><td class="ln">370</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">371</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">372</td><td class="code">    &lt;&gt;</td></tr>
+<tr class="nil"><td class="ln">373</td><td class="code">      &lt;StatusDot status={kernel.status} /&gt;</td></tr>
+<tr class="nil"><td class="ln">374</td><td class="code">      &lt;NotebookCells</td></tr>
+<tr class="nil"><td class="ln">375</td><td class="code">        merged={merged}</td></tr>
+<tr class="nil"><td class="ln">376</td><td class="code">        language={language}</td></tr>
+<tr class="nil"><td class="ln">377</td><td class="code">        highlight={highlight}</td></tr>
+<tr class="nil"><td class="ln">378</td><td class="code">        dark={dark}</td></tr>
+<tr class="nil"><td class="ln">379</td><td class="code">        baseSize={baseSize}</td></tr>
+<tr class="nil"><td class="ln">380</td><td class="code">        showLineNumbers={element.showLineNumbers}</td></tr>
+<tr class="nil"><td class="ln">381</td><td class="code">        hideHeader={hideHeader}</td></tr>
+<tr class="nil"><td class="ln">382</td><td class="code">        kernelDisplayName={kernelDisplayName || resolved.kernelName}</td></tr>
+<tr class="nil"><td class="ln">383</td><td class="code">        loading={loading}</td></tr>
+<tr class="nil"><td class="ln">384</td><td class="code">        error={error}</td></tr>
+<tr class="nil"><td class="ln">385</td><td class="code">        live={{ running, working, editable: editable &amp;&amp; interactive, interactive, execute, setWorking, ov }}</td></tr>
+<tr class="nil"><td class="ln">386</td><td class="code">      /&gt;</td></tr>
+<tr class="nil"><td class="ln">387</td><td class="code">    &lt;/&gt;</td></tr>
+<tr class="nil"><td class="ln">388</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">389</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">390</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">391</td><td class="code">/** Human-readable status, used only as the dot&#x27;s hover title. */</td></tr>
+<tr class="nil"><td class="ln">392</td><td class="code">function labelForStatus(s: KernelStatus): string {</td></tr>
+<tr class="unc"><td class="ln">393</td><td class="code">  switch (s) {</td></tr>
+<tr class="unc"><td class="ln">394</td><td class="code">    case &#x27;disconnected&#x27;: return &#x27;not connected&#x27;;</td></tr>
+<tr class="unc"><td class="ln">395</td><td class="code">    case &#x27;connecting&#x27;: return &#x27;connecting…&#x27;;</td></tr>
+<tr class="unc"><td class="ln">396</td><td class="code">    case &#x27;idle&#x27;: return &#x27;idle&#x27;;</td></tr>
+<tr class="unc"><td class="ln">397</td><td class="code">    case &#x27;busy&#x27;: return &#x27;running&#x27;;</td></tr>
+<tr class="unc"><td class="ln">398</td><td class="code">    case &#x27;error&#x27;: return &#x27;error&#x27;;</td></tr>
+<tr class="unc"><td class="ln">399</td><td class="code">    case &#x27;dead&#x27;: return &#x27;kernel died&#x27;;</td></tr>
+<tr class="unc"><td class="ln">400</td><td class="code">    case &#x27;no-server&#x27;: return &#x27;no matching server&#x27;;</td></tr>
+<tr class="nil"><td class="ln">401</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">402</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">403</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">404</td><td class="code">function StatusDot({ status }: { status: KernelStatus }) {</td></tr>
+<tr class="unc"><td class="ln">405</td><td class="code">  if (status === &#x27;idle&#x27; || status === &#x27;disconnected&#x27;) return null;</td></tr>
+<tr class="unc"><td class="ln">406</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">407</td><td class="code">    &lt;span className={`nb-status-dot nb-status-dot-${status}`} title={labelForStatus(status)} /&gt;</td></tr>
+<tr class="nil"><td class="ln">408</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">409</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">410</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">411</td><td class="code">function LiteKernelPlaceholder({</td></tr>
+<tr class="nil"><td class="ln">412</td><td class="code">  cells, interactive, highlight, language, hideHeader, kernelDisplayName,</td></tr>
+<tr class="nil"><td class="ln">413</td><td class="code">}: {</td></tr>
+<tr class="nil"><td class="ln">414</td><td class="code">  cells: Cell[];</td></tr>
+<tr class="nil"><td class="ln">415</td><td class="code">  interactive: boolean;</td></tr>
+<tr class="nil"><td class="ln">416</td><td class="code">  highlight: boolean;</td></tr>
+<tr class="nil"><td class="ln">417</td><td class="code">  language: string | null;</td></tr>
+<tr class="nil"><td class="ln">418</td><td class="code">  hideHeader: boolean;</td></tr>
+<tr class="nil"><td class="ln">419</td><td class="code">  kernelDisplayName: string | null;</td></tr>
+<tr class="nil"><td class="ln">420</td><td class="code">}) {</td></tr>
+<tr class="cov"><td class="ln">421</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">422</td><td class="code">    &lt;&gt;</td></tr>
+<tr class="nil"><td class="ln">423</td><td class="code">      {!hideHeader &amp;&amp; (</td></tr>
+<tr class="nil"><td class="ln">424</td><td class="code">        &lt;div className=&quot;nb-header&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">425</td><td class="code">          &lt;span className=&quot;nb-kernel-label&quot;&gt;{kernelDisplayName || &#x27;Notebook&#x27;}&lt;/span&gt;</td></tr>
+<tr class="nil"><td class="ln">426</td><td class="code">          &lt;span className=&quot;nb-lite-tag&quot;&gt;lite&lt;/span&gt;</td></tr>
+<tr class="nil"><td class="ln">427</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">428</td><td class="code">      )}</td></tr>
+<tr class="nil"><td class="ln">429</td><td class="code">      &lt;div className=&quot;nb-body&quot; style={{ pointerEvents: interactive ? &#x27;auto&#x27; : &#x27;none&#x27; }}&gt;</td></tr>
+<tr class="nil"><td class="ln">430</td><td class="code">        {cells.map((c) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">431</td><td class="code">          switch (c.kind) {</td></tr>
+<tr class="unc"><td class="ln">432</td><td class="code">            case &#x27;code&#x27;: return &lt;CodeCell key={c.index} cell={c}</td></tr>
+<tr class="nil"><td class="ln">433</td><td class="code">              language={language} highlight={highlight} /&gt;;</td></tr>
+<tr class="unc"><td class="ln">434</td><td class="code">            case &#x27;markdown&#x27;: return &lt;MarkdownCell key={c.index} cell={c} /&gt;;</td></tr>
+<tr class="unc"><td class="ln">435</td><td class="code">            case &#x27;raw&#x27;: return &lt;RawCell key={c.index} cell={c} /&gt;;</td></tr>
+<tr class="nil"><td class="ln">436</td><td class="code">          }</td></tr>
+<tr class="nil"><td class="ln">437</td><td class="code">        })}</td></tr>
+<tr class="nil"><td class="ln">438</td><td class="code">      &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">439</td><td class="code">    &lt;/&gt;</td></tr>
+<tr class="nil"><td class="ln">440</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">441</td><td class="code">}</td></tr></table>
+</body></html>

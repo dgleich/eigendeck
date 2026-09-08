@@ -1,0 +1,197 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/components/SpeakerMode.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/components/SpeakerMode.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>50%</b> covered</span>
+    <span class="stat">45/90 executable</span>
+    <span class="stat unc-txt">45 uncovered</span>
+    <span class="stat">179 raw lines</span>
+    <span class="stat">0.42% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:25.140%"></span><span class="seg unc" style="width:25.140%"></span><span class="seg nil" style="width:49.721%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__components__SlideThumbnail_tsx.html">SlideThumbnail.tsx</a> <a href="src__lib__assetCache_ts.html">assetCache.ts</a> <a href="src__lib__clamp01_ts.html">clamp01.ts</a> <a href="src__lib__multiMonitor_ts.html">multiMonitor.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code"> * Speaker mode — shown on the primary monitor while the presenter</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code"> * window runs on the secondary monitor (projector).</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code"> * Shows: current slide notes, timer, next slide preview, slide count,</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code"> * navigation controls.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">import { useState, useEffect, useCallback, useRef } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">import { listen } from &#x27;@tauri-apps/api/event&#x27;;</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">import { usePresentationStore } from &#x27;../store/presentation&#x27;;<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">import { getSlideNumber } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">import { navigatePresenter, closePresenterWindow, swapPresenterDisplay, zoomPresenter } from &#x27;../lib/multiMonitor&#x27;;<a class="jump" href="src__lib__multiMonitor_ts.html" title="src/lib/multiMonitor.ts">→ multiMonitor.ts</a></td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">import { clamp01 } from &#x27;../lib/clamp01&#x27;;<a class="jump" href="src__lib__clamp01_ts.html" title="src/lib/clamp01.ts">→ clamp01.ts</a></td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">import { availableMonitors } from &#x27;@tauri-apps/api/window&#x27;;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">import { SlideThumbnail } from &#x27;./SlideThumbnail&#x27;;<a class="jump" href="src__components__SlideThumbnail_tsx.html" title="src/components/SlideThumbnail.tsx">→ SlideThumbnail.tsx</a></td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">import { ASSET_TIER } from &#x27;../lib/assetCache&#x27;;<a class="jump" href="src__lib__assetCache_ts.html" title="src/lib/assetCache.ts">→ assetCache.ts</a></td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">export function SpeakerMode() {</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">  const { presentation, setPresenting } = usePresentationStore();</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">  const [currentIndex, setCurrentIndex] = useState(</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">    usePresentationStore.getState().currentSlideIndex</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">  );</td></tr>
+<tr class="unc"><td class="ln">23</td><td class="code">  const [elapsed, setElapsed] = useState(0);</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">  const [timerRunning, setTimerRunning] = useState(true);</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">  // #29 — zoom the AUDIENCE (projector) slide from here; the audience slide</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">  // itself has no zoom chrome. Toggle = center zoom; then move over the Current</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">  // Slide preview to pan the focal point.</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">  const ZOOM = 2.2;</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">  const [zoomed, setZoomed] = useState(false);</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">  // Swap Displays only makes sense with a real second monitor (the dual-screen</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">  // projector path), not the single-screen screen-share window.</td></tr>
+<tr class="unc"><td class="ln">32</td><td class="code">  const [canSwap, setCanSwap] = useState(false);</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">    availableMonitors().then((m) =&gt; setCanSwap(m.length &gt;= 2)).catch(() =&gt; setCanSwap(false));</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">  }, []);</td></tr>
+<tr class="unc"><td class="ln">36</td><td class="code">  const startTime = useRef(Date.now());</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">  const timerRef = useRef&lt;number | null&gt;(null);</td></tr>
+<tr class="unc"><td class="ln">38</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">39</td><td class="code">  const totalSlides = presentation.slides.length;</td></tr>
+<tr class="unc"><td class="ln">40</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">41</td><td class="code">  // Timer</td></tr>
+<tr class="unc"><td class="ln">42</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">43</td><td class="code">    if (timerRunning) {</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">      timerRef.current = window.setInterval(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">        setElapsed(Math.floor((Date.now() - startTime.current) / 1000));</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">      }, 1000);</td></tr>
+<tr class="unc"><td class="ln">47</td><td class="code">    }</td></tr>
+<tr class="unc"><td class="ln">48</td><td class="code">    return () =&gt; { if (timerRef.current) clearInterval(timerRef.current); };</td></tr>
+<tr class="unc"><td class="ln">49</td><td class="code">  }, [timerRunning]);</td></tr>
+<tr class="unc"><td class="ln">50</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">51</td><td class="code">  const goTo = useCallback((index: number) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">52</td><td class="code">    if (index &lt; 0 || index &gt;= totalSlides) return;</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">    setCurrentIndex(index);</td></tr>
+<tr class="unc"><td class="ln">54</td><td class="code">    setZoomed(false);               // a new slide starts un-zoomed (the projector resets too)</td></tr>
+<tr class="unc"><td class="ln">55</td><td class="code">    navigatePresenter(index);</td></tr>
+<tr class="unc"><td class="ln">56</td><td class="code">    usePresentationStore.getState().selectSlide(index);</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">  }, [totalSlides]);</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">  const goNext = useCallback(() =&gt; goTo(currentIndex + 1), [currentIndex, goTo]);</td></tr>
+<tr class="unc"><td class="ln">60</td><td class="code">  const goPrev = useCallback(() =&gt; goTo(currentIndex - 1), [currentIndex, goTo]);</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">62</td><td class="code">  // Toggle audience zoom (center). Pan happens via the preview move handler.</td></tr>
+<tr class="unc"><td class="ln">63</td><td class="code">  const toggleZoom = useCallback(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">64</td><td class="code">    setZoomed((on) =&gt; { const next = !on; void zoomPresenter(next ? ZOOM : 1, 0.5, 0.5); return next; });</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">  }, []);</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">  // While zoomed, moving over the Current-Slide preview steers the projector&#x27;s</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">  // focal point (normalized [0,1] over the preview, which shows the whole slide).</td></tr>
+<tr class="unc"><td class="ln">68</td><td class="code">  const panFromPreview = useCallback((e: React.MouseEvent) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">69</td><td class="code">    if (!zoomed) return;</td></tr>
+<tr class="unc"><td class="ln">70</td><td class="code">    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();</td></tr>
+<tr class="unc"><td class="ln">71</td><td class="code">    void zoomPresenter(ZOOM, clamp01((e.clientX - r.left) / r.width), clamp01((e.clientY - r.top) / r.height));</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">  }, [zoomed]);</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">  // Keyboard navigation</td></tr>
+<tr class="unc"><td class="ln">75</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">76</td><td class="code">    const handleKeyDown = (e: KeyboardEvent) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">77</td><td class="code">      switch (e.key) {</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">        case &#x27;Escape&#x27;:</td></tr>
+<tr class="unc"><td class="ln">79</td><td class="code">          closePresenterWindow();</td></tr>
+<tr class="unc"><td class="ln">80</td><td class="code">          setPresenting(false);</td></tr>
+<tr class="unc"><td class="ln">81</td><td class="code">          break;</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">        case &#x27;ArrowRight&#x27;: case &#x27;ArrowDown&#x27;: case &#x27; &#x27;: case &#x27;PageDown&#x27;:</td></tr>
+<tr class="unc"><td class="ln">83</td><td class="code">          e.preventDefault(); goNext(); break;</td></tr>
+<tr class="unc"><td class="ln">84</td><td class="code">        case &#x27;ArrowLeft&#x27;: case &#x27;ArrowUp&#x27;: case &#x27;PageUp&#x27;:</td></tr>
+<tr class="unc"><td class="ln">85</td><td class="code">          e.preventDefault(); goPrev(); break;</td></tr>
+<tr class="cov"><td class="ln">86</td><td class="code">        case &#x27;Home&#x27;: e.preventDefault(); goTo(0); break;</td></tr>
+<tr class="cov"><td class="ln">87</td><td class="code">        case &#x27;End&#x27;: e.preventDefault(); goTo(totalSlides - 1); break;</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code">      }</td></tr>
+<tr class="cov"><td class="ln">89</td><td class="code">    };</td></tr>
+<tr class="unc"><td class="ln">90</td><td class="code">    window.addEventListener(&#x27;keydown&#x27;, handleKeyDown);</td></tr>
+<tr class="cov"><td class="ln">91</td><td class="code">    return () =&gt; window.removeEventListener(&#x27;keydown&#x27;, handleKeyDown);</td></tr>
+<tr class="cov"><td class="ln">92</td><td class="code">  }, [goNext, goPrev, goTo, totalSlides, setPresenting]);</td></tr>
+<tr class="cov"><td class="ln">93</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">94</td><td class="code">  // The projector window forwards its own keyboard/clicker presses here (it</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code">  // doesn&#x27;t own the index). Drive the same goTo so both windows stay in sync.</td></tr>
+<tr class="unc"><td class="ln">96</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">97</td><td class="code">    const unlistenP = listen&lt;{ index: number }&gt;(&#x27;presenter:nav&#x27;, (e) =&gt; goTo(e.payload.index));</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">    return () =&gt; { unlistenP.then((fn) =&gt; fn()); };</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">  }, [goTo]);</td></tr>
+<tr class="cov"><td class="ln">100</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">101</td><td class="code">  const slide = presentation.slides[currentIndex];</td></tr>
+<tr class="cov"><td class="ln">102</td><td class="code">  const nextSlide = currentIndex &lt; totalSlides - 1 ? presentation.slides[currentIndex + 1] : null;</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">104</td><td class="code">  const formatTime = (s: number) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">105</td><td class="code">    const m = Math.floor(s / 60);</td></tr>
+<tr class="unc"><td class="ln">106</td><td class="code">    const sec = s % 60;</td></tr>
+<tr class="unc"><td class="ln">107</td><td class="code">    return `${m}:${sec.toString().padStart(2, &#x27;0&#x27;)}`;</td></tr>
+<tr class="unc"><td class="ln">108</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">110</td><td class="code">  return (</td></tr>
+<tr class="unc"><td class="ln">111</td><td class="code">    &lt;div className=&quot;speaker-mode&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">      &lt;div className=&quot;speaker-header&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">113</td><td class="code">        &lt;div className=&quot;speaker-timer&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">          &lt;span className=&quot;speaker-time&quot;&gt;{formatTime(elapsed)}&lt;/span&gt;</td></tr>
+<tr class="unc"><td class="ln">115</td><td class="code">          &lt;button onClick={() =&gt; setTimerRunning(!timerRunning)}&gt;</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">            {timerRunning ? &#x27;Pause&#x27; : &#x27;Resume&#x27;}</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">          &lt;/button&gt;</td></tr>
+<tr class="cov"><td class="ln">118</td><td class="code">          &lt;button onClick={() =&gt; { startTime.current = Date.now(); setElapsed(0); }}&gt;</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">            Reset</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">          &lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">        &lt;div className=&quot;speaker-slide-count&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">          Slide {currentIndex + 1} / {totalSlides}</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">          {&#x27; &#x27;}(#{getSlideNumber(presentation.slides, currentIndex)})</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="unc"><td class="ln">126</td><td class="code">        &lt;div style={{ display: &#x27;flex&#x27;, gap: 8 }}&gt;</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">          {canSwap &amp;&amp; (</td></tr>
+<tr class="cov"><td class="ln">128</td><td class="code">            &lt;button className=&quot;speaker-swap&quot; onClick={() =&gt; { void swapPresenterDisplay(); }} title=&quot;Swap which display shows the slides vs the speaker view&quot;&gt;</td></tr>
+<tr class="cov"><td class="ln">129</td><td class="code">              Swap Displays</td></tr>
+<tr class="cov"><td class="ln">130</td><td class="code">            &lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">          )}</td></tr>
+<tr class="cov"><td class="ln">132</td><td class="code">          &lt;button className=&quot;speaker-exit&quot; onClick={() =&gt; { closePresenterWindow(); setPresenting(false); }}&gt;</td></tr>
+<tr class="nil"><td class="ln">133</td><td class="code">            End Presentation</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">          &lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">      &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">137</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">      &lt;div className=&quot;speaker-body&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code">        {/* Current slide preview */}</td></tr>
+<tr class="nil"><td class="ln">140</td><td class="code">        &lt;div className=&quot;speaker-current&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">141</td><td class="code">          &lt;div className=&quot;speaker-preview-label&quot; style={{ display: &#x27;flex&#x27;, alignItems: &#x27;center&#x27;, justifyContent: &#x27;space-between&#x27; }}&gt;</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">            &lt;span&gt;Current Slide{zoomed &amp;&amp; &lt;span className=&quot;speaker-zoom-hint&quot;&gt; — move to pan the audience view&lt;/span&gt;}&lt;/span&gt;</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">            &lt;button className=&quot;speaker-zoom-btn&quot; onClick={toggleZoom} aria-pressed={zoomed}</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">              title=&quot;Zoom the audience slide (then move over this preview to pan)&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">145</td><td class="code">              {zoomed ? &#x27;Zoom out&#x27; : &#x27;Zoom in&#x27;}</td></tr>
+<tr class="nil"><td class="ln">146</td><td class="code">            &lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">          &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">148</td><td class="code">          &lt;div className=&quot;speaker-preview&quot; style={zoomed ? { cursor: &#x27;crosshair&#x27; } : undefined} onMouseMove={panFromPreview}&gt;</td></tr>
+<tr class="nil"><td class="ln">149</td><td class="code">            {slide &amp;&amp; &lt;SlideThumbnail presentation={presentation} slide={slide} imageTier={ASSET_TIER.full} /&gt;}</td></tr>
+<tr class="nil"><td class="ln">150</td><td class="code">          &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code">          {/* Notes */}</td></tr>
+<tr class="nil"><td class="ln">152</td><td class="code">          &lt;div className=&quot;speaker-notes&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">153</td><td class="code">            &lt;div className=&quot;speaker-notes-label&quot;&gt;Notes&lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">154</td><td class="code">            &lt;div className=&quot;speaker-notes-text&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">155</td><td class="code">              {slide?.notes || &lt;span style={{ color: &#x27;#999&#x27;, fontStyle: &#x27;italic&#x27; }}&gt;No notes for this slide&lt;/span&gt;}</td></tr>
+<tr class="nil"><td class="ln">156</td><td class="code">            &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">157</td><td class="code">          &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">159</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">160</td><td class="code">        {/* Next slide preview */}</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">        &lt;div className=&quot;speaker-next&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">162</td><td class="code">          &lt;div className=&quot;speaker-preview-label&quot;&gt;Next Slide&lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">          {nextSlide ? (</td></tr>
+<tr class="nil"><td class="ln">164</td><td class="code">            &lt;div className=&quot;speaker-preview speaker-preview-small&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">165</td><td class="code">              &lt;SlideThumbnail presentation={presentation} slide={nextSlide} imageTier={ASSET_TIER.full} /&gt;</td></tr>
+<tr class="nil"><td class="ln">166</td><td class="code">            &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">167</td><td class="code">          ) : (</td></tr>
+<tr class="nil"><td class="ln">168</td><td class="code">            &lt;div className=&quot;speaker-preview-empty&quot;&gt;End of presentation&lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">169</td><td class="code">          )}</td></tr>
+<tr class="nil"><td class="ln">170</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">171</td><td class="code">      &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">172</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">173</td><td class="code">      &lt;div className=&quot;speaker-nav&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">174</td><td class="code">        &lt;button onClick={goPrev} disabled={currentIndex === 0}&gt;&amp;larr; Previous&lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">175</td><td class="code">        &lt;button onClick={goNext} disabled={currentIndex &gt;= totalSlides - 1}&gt;Next &amp;rarr;&lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">176</td><td class="code">      &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">177</td><td class="code">    &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">178</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">179</td><td class="code">}</td></tr></table>
+</body></html>

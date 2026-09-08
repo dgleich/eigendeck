@@ -1,0 +1,475 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/assetInsert.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/assetInsert.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>67%</b> covered</span>
+    <span class="stat">162/242 executable</span>
+    <span class="stat unc-txt">80 uncovered</span>
+    <span class="stat">457 raw lines</span>
+    <span class="stat">1.07% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:35.449%"></span><span class="seg unc" style="width:17.505%"></span><span class="seg nil" style="width:47.046%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__assetGate_ts.html">assetGate.ts</a> <a href="src__lib__assetRenderer_ts.html">assetRenderer.ts</a> <a href="src__lib__assetTypes_mjs.html">assetTypes.mjs</a> <a href="src__lib__assetUsage_ts.html">assetUsage.ts</a> <a href="src__lib__collisionDialog_ts.html">collisionDialog.ts</a> <a href="src__lib__hash_ts.html">hash.ts</a> <a href="src__lib__nativeFs_ts.html">nativeFs.ts</a> <a href="src__lib__preferences_ts.html">preferences.ts</a> <a href="src__lib__toasts_ts.html">toasts.ts</a> <a href="src__lib__trustStore_ts.html">trustStore.ts</a> <a href="src__lib__watcherRegistry_ts.html">watcherRegistry.ts</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__AssetSection_tsx.html">AssetSection.tsx</a> <a href="src__components__PropertiesPanel_tsx.html">PropertiesPanel.tsx</a> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a> <a href="src__lib__watcherRegistry_ts.html">watcherRegistry.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Wraps db_store_asset with &quot;asset has silently changed since first</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// add&quot; detection. Used by drag-drop and file-picker insertion paths.</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// Clipboard paste skips this helper — paste creates synthetic</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// `pasted-&lt;ts&gt;.svg` paths, so this scenario never applies.</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// See docs/ASSETS.md → &quot;Path collision dialog&quot; for the full design.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">import { invoke } from &#x27;@tauri-apps/api/core&#x27;;</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">import { sha256Hex } from &#x27;./hash&#x27;;<a class="jump" href="src__lib__hash_ts.html" title="src/lib/hash.ts">→ hash.ts</a></td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">import { usePresentationStore, getDeckToken } from &#x27;../store/presentation&#x27;;<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="unc"><td class="ln">11</td><td class="code">import { invalidateRenderedAsset } from &#x27;./assetRenderer&#x27;;<a class="jump" href="src__lib__assetRenderer_ts.html" title="src/lib/assetRenderer.ts">→ assetRenderer.ts</a></td></tr>
+<tr class="unc"><td class="ln">12</td><td class="code">import { showCollisionDialog } from &#x27;./collisionDialog&#x27;;<a class="jump" href="src__lib__collisionDialog_ts.html" title="src/lib/collisionDialog.ts">→ collisionDialog.ts</a></td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">import { effectiveAutoReload, getPreference } from &#x27;./preferences&#x27;;<a class="jump" href="src__lib__preferences_ts.html" title="src/lib/preferences.ts">→ preferences.ts</a></td></tr>
+<tr class="unc"><td class="ln">14</td><td class="code">import { showToast } from &#x27;./toasts&#x27;;<a class="jump" href="src__lib__toasts_ts.html" title="src/lib/toasts.ts">→ toasts.ts</a></td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">import { computeAssetUsage } from &#x27;./assetUsage&#x27;;<a class="jump" href="src__lib__assetUsage_ts.html" title="src/lib/assetUsage.ts">→ assetUsage.ts</a></td></tr>
+<tr class="unc"><td class="ln">16</td><td class="code">import { assetTypeGate, extensionOf, MAX_ASSET_BYTES } from &#x27;./assetTypes.mjs&#x27;;<a class="jump" href="src__lib__assetTypes_mjs.html" title="src/lib/assetTypes.mjs">→ assetTypes.mjs</a></td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">import type { GateReason } from &#x27;./assetTypes.mjs&#x27;;<a class="jump" href="src__lib__assetTypes_mjs.html" title="src/lib/assetTypes.mjs">→ assetTypes.mjs</a></td></tr>
+<tr class="unc"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">/** User-facing reason an add was refused by the asset-type gate. */</td></tr>
+<tr class="unc"><td class="ln">20</td><td class="code">function addRejectMessage(reason: GateReason | null, path: string): string {</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">  const ext = extensionOf(path).toUpperCase() || &#x27;this&#x27;;</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">  switch (reason) {</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">    case &#x27;bad-extension&#x27;:</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">      return `“${extensionOf(path) || path}” isn’t a supported asset type. Eigendeck supports images, PDFs, videos, notebooks, captions, and demos.`;</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">    case &#x27;unsupported-demo-version&#x27;:</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">      return &#x27;This demo was built for a newer version of Eigendeck and can’t be added here.&#x27;;</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">    case &#x27;content-mismatch&#x27;:</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">      return extensionOf(path) === &#x27;html&#x27;</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">        ? &#x27;That .html isn’t an Eigendeck demo, so it can’t be added. Only demos authored for Eigendeck can be embedded (see DEMO_AUTHORING) — an arbitrary web page or HTML file can’t.&#x27;</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">        : `That file isn’t a valid ${ext} (its contents don’t match its name), so it can’t be added.`;</td></tr>
+<tr class="unc"><td class="ln">31</td><td class="code">    case &#x27;too-large&#x27;:</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">      return &#x27;That file is over Eigendeck’s 512 MB per-file limit, so it can’t be added. &#x27;</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">        + &#x27;If you need larger files (for example long videos), please open an issue at &#x27;</td></tr>
+<tr class="unc"><td class="ln">34</td><td class="code">        + &#x27;https://github.com/dgleich/eigendeck describing the file so we can look at raising the limit.&#x27;;</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">    default:</td></tr>
+<tr class="unc"><td class="ln">36</td><td class="code">      return &#x27;That file couldn’t be added.&#x27;;</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">// Verbose log of insertion + collision-check decisions. Visible in the</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">// in-app Debug Console (View menu). Toggle off when no longer useful.</td></tr>
+<tr class="cov"><td class="ln">42</td><td class="code">const INSERT_LOG = false;  // flip true to trace insertion + collision-check decisions</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">const ilog = (...a: unknown[]): void =&gt; {</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">  if (INSERT_LOG) console.log(`[insert ${new Date().toISOString().slice(11, 23)}]`, ...a);</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">};</td></tr>
+<tr class="unc"><td class="ln">46</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">47</td><td class="code">// Per-presentation, per-app-session memory of &quot;user clicked</td></tr>
+<tr class="unc"><td class="ln">48</td><td class="code">// &#x27;I understand and want this auto-updating behavior&#x27; on the</td></tr>
+<tr class="unc"><td class="ln">49</td><td class="code">// collision dialog.&quot; Once accepted, subsequent inserts at any path in</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">// that presentation skip the dialog and silently update. Cleared on</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">// app restart (NOT persisted to localStorage / project config) — the</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">// commitment is conceptual: &quot;I get what&#x27;s happening&quot; — not &quot;lock in</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">// auto-update forever.&quot; Reset on next launch so a user who returns</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">// later still gets the awareness prompt if it applies.</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">const acceptedProjects = new Set&lt;string&gt;();</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">async function currentProjectId(): Promise&lt;string | null&gt; {</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">    return await invoke&lt;string&gt;(&#x27;db_get_project_id&#x27;);</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">  } catch {</td></tr>
+<tr class="unc"><td class="ln">61</td><td class="code">    return null;</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">interface StoreArgs {</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">  path: string;</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">  data: Uint8Array;</td></tr>
+<tr class="cov"><td class="ln">68</td><td class="code">  mimeType: string;</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">  externalPath: string | null;</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">  externalMtime: string | null;</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">73</td><td class="code">/** Store asset bytes via the raw-body IPC (memcpy) — bytes in the request</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code"> *  body, metadata in a base64 JSON header. Avoids the ~300ms/MB args path</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code"> *  that froze the UI on large assets (#174). */</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">export async function storeAssetRaw(meta: {</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">  path: string; mimeType: string;</td></tr>
+<tr class="cov"><td class="ln">78</td><td class="code">  externalPath?: string | null; externalMtime?: string | null;</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">  assetId?: string | null; autoReload?: string | null; ownerElementId?: string | null;</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">}, data: Uint8Array): Promise&lt;string&gt; {</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code">  const json = JSON.stringify(meta);</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">  // base64(UTF-8(json)); json is small (paths/strings), so this is cheap.</td></tr>
+<tr class="cov"><td class="ln">83</td><td class="code">  const metaB64 = btoa(String.fromCharCode(...new TextEncoder().encode(json)));</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">  // The Uint8Array is the PAYLOAD (not nested in an object) → Tauri sends it</td></tr>
+<tr class="cov"><td class="ln">85</td><td class="code">  // as the raw request body (memcpy). Metadata rides in the header.</td></tr>
+<tr class="cov"><td class="ln">86</td><td class="code">  return invoke&lt;string&gt;(&#x27;db_store_asset_raw&#x27;, data, { headers: { &#x27;x-asset-meta&#x27;: metaB64 } });</td></tr>
+<tr class="unc"><td class="ln">87</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">88</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">interface StoreResult {</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">  /** Asset id under which the bytes are stored. Caller puts this on the</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">   *  new element so future renders bind unambiguously. */</td></tr>
+<tr class="cov"><td class="ln">92</td><td class="code">  assetId: string;</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">  /** Path label the new element should reference. Always equals the</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">   *  input `path` today (no path mutation). */</td></tr>
+<tr class="unc"><td class="ln">95</td><td class="code">  path: string;</td></tr>
+<tr class="unc"><td class="ln">96</td><td class="code">  /** True when the user cancelled the dialog (Esc / clicked outside).</td></tr>
+<tr class="unc"><td class="ln">97</td><td class="code">   *  Caller should NOT add an element to the slide in that case. */</td></tr>
+<tr class="unc"><td class="ln">98</td><td class="code">  cancelled: boolean;</td></tr>
+<tr class="unc"><td class="ln">99</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">100</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">101</td><td class="code">interface AssetMeta {</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">  asset_id: string;</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">  path: string | null;</td></tr>
+<tr class="unc"><td class="ln">104</td><td class="code">  external_path: string | null;</td></tr>
+<tr class="unc"><td class="ln">105</td><td class="code">  external_mtime: string | null;</td></tr>
+<tr class="unc"><td class="ln">106</td><td class="code">  mime_type: string | null;</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">  auto_reload: string | null;</td></tr>
+<tr class="unc"><td class="ln">108</td><td class="code">  hash: string | null;</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">111</td><td class="code">interface AssetVersion {</td></tr>
+<tr class="cov"><td class="ln">112</td><td class="code">  asset_id: string;</td></tr>
+<tr class="cov"><td class="ln">113</td><td class="code">  valid_from: string;</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">  valid_to: string | null;</td></tr>
+<tr class="cov"><td class="ln">115</td><td class="code">  size: number;</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">  hash: string | null;</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">  mime_type: string | null;</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code">  external_mtime: string | null;</td></tr>
+<tr class="cov"><td class="ln">119</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">120</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">121</td><td class="code">/**</td></tr>
+<tr class="unc"><td class="ln">122</td><td class="code"> * Store an asset, prompting only when the bytes being added DIFFER</td></tr>
+<tr class="unc"><td class="ln">123</td><td class="code"> * from what the user originally added at this path.</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code"> *   No existing asset at this path</td></tr>
+<tr class="cov"><td class="ln">126</td><td class="code"> *     → db_store_asset, return fresh assetId. No dialog.</td></tr>
+<tr class="cov"><td class="ln">127</td><td class="code"> *</td></tr>
+<tr class="unc"><td class="ln">128</td><td class="code"> *   Existing asset, new bytes match the existing asset&#x27;s ORIGINAL</td></tr>
+<tr class="unc"><td class="ln">129</td><td class="code"> *   bytes (oldest version&#x27;s hash). User is re-adding the same file</td></tr>
+<tr class="unc"><td class="ln">130</td><td class="code"> *   they first added; no surprise to surface.</td></tr>
+<tr class="unc"><td class="ln">131</td><td class="code"> *     → db_store_asset reusing existing assetId, no dialog. Internal</td></tr>
+<tr class="unc"><td class="ln">132</td><td class="code"> *       hash dedup keeps it a no-op when current also equals original.</td></tr>
+<tr class="nil"><td class="ln">133</td><td class="code"> *</td></tr>
+<tr class="cov"><td class="ln">134</td><td class="code"> *   Existing asset, new bytes differ from the existing asset&#x27;s</td></tr>
+<tr class="cov"><td class="ln">135</td><td class="code"> *   original bytes. User is putting different content at a path</td></tr>
+<tr class="cov"><td class="ln">136</td><td class="code"> *   they already used — whether the divergence came from a silent</td></tr>
+<tr class="cov"><td class="ln">137</td><td class="code"> *   watcher update, an external edit with auto-reload off, or a</td></tr>
+<tr class="cov"><td class="ln">138</td><td class="code"> *   user-initiated change.</td></tr>
+<tr class="cov"><td class="ln">139</td><td class="code"> *     → dialog. User opts into one of two intents (see CollisionDialog).</td></tr>
+<tr class="nil"><td class="ln">140</td><td class="code"> *</td></tr>
+<tr class="unc"><td class="ln">141</td><td class="code"> * Orphan assets (path exists but no element references the asset_id)</td></tr>
+<tr class="unc"><td class="ln">142</td><td class="code"> * skip the dialog.</td></tr>
+<tr class="unc"><td class="ln">143</td><td class="code"> *</td></tr>
+<tr class="unc"><td class="ln">144</td><td class="code"> * All &quot;store on existing assetId&quot; paths invalidate the asset cache</td></tr>
+<tr class="unc"><td class="ln">145</td><td class="code"> * afterward — other slides bound to the same assetId have stale blob</td></tr>
+<tr class="unc"><td class="ln">146</td><td class="code"> * URLs / cached PNGs from the prior bytes; without invalidation they</td></tr>
+<tr class="unc"><td class="ln">147</td><td class="code"> * keep showing the old content until next reload.</td></tr>
+<tr class="unc"><td class="ln">148</td><td class="code"> */</td></tr>
+<tr class="unc"><td class="ln">149</td><td class="code">/** Warn the user when they&#x27;re inserting a &quot;trackable&quot; asset (one with</td></tr>
+<tr class="unc"><td class="ln">150</td><td class="code"> *  an external source file we&#x27;d subscribe the watcher to) into an</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code"> *  unsaved presentation. Without a project dir on disk, external_path</td></tr>
+<tr class="unc"><td class="ln">152</td><td class="code"> *  can&#x27;t be resolved — the asset still gets stored, but the watcher</td></tr>
+<tr class="unc"><td class="ln">153</td><td class="code"> *  won&#x27;t subscribe and there&#x27;s no Save…→re-add round trip the user</td></tr>
+<tr class="unc"><td class="ln">154</td><td class="code"> *  needs to take. Suppressed when effective auto-reload for this</td></tr>
+<tr class="unc"><td class="ln">155</td><td class="code"> *  presentation is OFF (user opted out — no point nagging).</td></tr>
+<tr class="unc"><td class="ln">156</td><td class="code"> *</td></tr>
+<tr class="unc"><td class="ln">157</td><td class="code"> *  Fires from the helper itself so every insertion path that passes a</td></tr>
+<tr class="unc"><td class="ln">158</td><td class="code"> *  non-null externalPath is covered automatically. Paste / synthetic-</td></tr>
+<tr class="unc"><td class="ln">159</td><td class="code"> *  name paths (which store with externalPath=null) are correctly</td></tr>
+<tr class="nil"><td class="ln">160</td><td class="code"> *  excluded — they&#x27;d never be watched even after Save.</td></tr>
+<tr class="unc"><td class="ln">161</td><td class="code"> */</td></tr>
+<tr class="unc"><td class="ln">162</td><td class="code">function maybeWarnUnsavedProject(externalPath: string | null): void {</td></tr>
+<tr class="cov"><td class="ln">163</td><td class="code">  if (!externalPath) return;</td></tr>
+<tr class="cov"><td class="ln">164</td><td class="code">  const store = usePresentationStore.getState();</td></tr>
+<tr class="cov"><td class="ln">165</td><td class="code">  if (store.projectPath) return;</td></tr>
+<tr class="cov"><td class="ln">166</td><td class="code">  const presOverride = store.presentation?.config?.autoReloadAssets ?? null;</td></tr>
+<tr class="cov"><td class="ln">167</td><td class="code">  const globalDefault = getPreference(&#x27;autoReloadAssets&#x27;);</td></tr>
+<tr class="cov"><td class="ln">168</td><td class="code">  if (!effectiveAutoReload(null, presOverride, globalDefault)) return;</td></tr>
+<tr class="cov"><td class="ln">169</td><td class="code">  showToast({</td></tr>
+<tr class="unc"><td class="ln">170</td><td class="code">    key: &#x27;unsaved-project-tracking&#x27;,  // dedup repeat inserts in same session</td></tr>
+<tr class="unc"><td class="ln">171</td><td class="code">    kind: &#x27;warning&#x27;,</td></tr>
+<tr class="nil"><td class="ln">172</td><td class="code">    ttl: 12000,</td></tr>
+<tr class="nil"><td class="ln">173</td><td class="code">    message: &#x27;Asset added, but file-watching is disabled until the presentation is saved. Save now, then re-add to enable live updates from the source file.&#x27;,</td></tr>
+<tr class="nil"><td class="ln">174</td><td class="code">    action: {</td></tr>
+<tr class="nil"><td class="ln">175</td><td class="code">      label: &#x27;Save…&#x27;,</td></tr>
+<tr class="nil"><td class="ln">176</td><td class="code">      onClick: () =&gt; {</td></tr>
+<tr class="unc"><td class="ln">177</td><td class="code">        void import(&#x27;../store/fileOps&#x27;).then(({ saveProject }) =&gt; saveProject());<a class="jump" href="src__store__fileOps_ts.html" title="src/store/fileOps.ts">→ fileOps.ts</a></td></tr>
+<tr class="unc"><td class="ln">178</td><td class="code">      },</td></tr>
+<tr class="unc"><td class="ln">179</td><td class="code">    },</td></tr>
+<tr class="nil"><td class="ln">180</td><td class="code">  });</td></tr>
+<tr class="unc"><td class="ln">181</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">182</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">183</td><td class="code">/**</td></tr>
+<tr class="unc"><td class="ln">184</td><td class="code"> * Approve an ABSOLUTE external path for watching on the current TRUSTED deck:</td></tr>
+<tr class="nil"><td class="ln">185</td><td class="code"> * resolve→realpath via the SAME gate the watcher uses, then record the canonical in</td></tr>
+<tr class="unc"><td class="ln">186</td><td class="code"> * the ledger. No-op for untrusted decks (must be trusted first) or unresolvable /</td></tr>
+<tr class="unc"><td class="ln">187</td><td class="code"> * wrong-type targets. This is the SINGLE approval code path shared by every user act</td></tr>
+<tr class="unc"><td class="ln">188</td><td class="code"> * that points at a specific file — add, relocate, and offset-relocate — so a picked</td></tr>
+<tr class="unc"><td class="ln">189</td><td class="code"> * file &quot;just works&quot; on a trusted deck without a separate approval step (a native</td></tr>
+<tr class="unc"><td class="ln">190</td><td class="code"> * file-pick is itself the consent). See docs/ASSETS-SECURITY.md.</td></tr>
+<tr class="nil"><td class="ln">191</td><td class="code"> */</td></tr>
+<tr class="unc"><td class="ln">192</td><td class="code">export async function approveExternalAbsPath(assetId: string, absPath: string, reason: string): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">193</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">194</td><td class="code">    const token = getDeckToken();</td></tr>
+<tr class="cov"><td class="ln">195</td><td class="code">    if (!token || !assetId) return;</td></tr>
+<tr class="cov"><td class="ln">196</td><td class="code">    const { isTrusted, approvePath } = await import(&#x27;./trustStore&#x27;);<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
+<tr class="cov"><td class="ln">197</td><td class="code">    if (!(await isTrusted(token))) return;</td></tr>
+<tr class="cov"><td class="ln">198</td><td class="code">    const { resolveAndGate } = await import(&#x27;./assetGate&#x27;);<a class="jump" href="src__lib__assetGate_ts.html" title="src/lib/assetGate.ts">→ assetGate.ts</a></td></tr>
+<tr class="cov"><td class="ln">199</td><td class="code">    const gate = await resolveAndGate(absPath);</td></tr>
+<tr class="cov"><td class="ln">200</td><td class="code">    if (gate.ok &amp;&amp; gate.canonicalPath) await approvePath(token, assetId, gate.canonicalPath, reason);</td></tr>
+<tr class="unc"><td class="ln">201</td><td class="code">  } catch (e) {</td></tr>
+<tr class="cov"><td class="ln">202</td><td class="code">    console.warn(&#x27;[approveExternalAbsPath] failed (non-fatal):&#x27;, e);</td></tr>
+<tr class="unc"><td class="ln">203</td><td class="code">  }</td></tr>
+<tr class="unc"><td class="ln">204</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">205</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">206</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">207</td><td class="code"> * Auto-approve a just-added linked asset (keyed by its asset id). Resolves its</td></tr>
+<tr class="nil"><td class="ln">208</td><td class="code"> * (possibly relative) external_path against the project dir, then defers to</td></tr>
+<tr class="unc"><td class="ln">209</td><td class="code"> * approveExternalAbsPath with reason &#x27;add&#x27;.</td></tr>
+<tr class="unc"><td class="ln">210</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">211</td><td class="code">async function autoApproveExternalPath(assetId: string, externalPath: string): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">212</td><td class="code">  const store = usePresentationStore.getState();</td></tr>
+<tr class="cov"><td class="ln">213</td><td class="code">  if (!store.projectPath) return;</td></tr>
+<tr class="cov"><td class="ln">214</td><td class="code">  const { resolvePosixPath, dirname } = await import(&#x27;./watcherRegistry&#x27;);<a class="jump" href="src__lib__watcherRegistry_ts.html" title="src/lib/watcherRegistry.ts">→ watcherRegistry.ts</a></td></tr>
+<tr class="cov"><td class="ln">215</td><td class="code">  await approveExternalAbsPath(assetId, resolvePosixPath(dirname(store.projectPath), externalPath), &#x27;add&#x27;);</td></tr>
+<tr class="nil"><td class="ln">216</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">217</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">218</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">219</td><td class="code"> * Read a file to add as an asset, rejecting oversized ones BEFORE loading them into</td></tr>
+<tr class="nil"><td class="ln">220</td><td class="code"> * memory. Every add-from-disk site should use this instead of a raw `readFile`: a</td></tr>
+<tr class="nil"><td class="ln">221</td><td class="code"> * multi-GB pick would otherwise be slurped whole (choking the app) only to be rejected</td></tr>
+<tr class="nil"><td class="ln">222</td><td class="code"> * by the gate afterwards. Stats first; over the cap → shows the &quot;too large&quot; toast and</td></tr>
+<tr class="nil"><td class="ln">223</td><td class="code"> * returns null (caller should bail). Returns the bytes otherwise.</td></tr>
+<tr class="nil"><td class="ln">224</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">225</td><td class="code">export async function readAddFileCapped(fullPath: string): Promise&lt;Uint8Array | null&gt; {</td></tr>
+<tr class="cov"><td class="ln">226</td><td class="code">  const { statNative, readFileNative } = await import(&#x27;./nativeFs&#x27;);<a class="jump" href="src__lib__nativeFs_ts.html" title="src/lib/nativeFs.ts">→ nativeFs.ts</a></td></tr>
+<tr class="cov"><td class="ln">227</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">228</td><td class="code">    const st = await statNative(fullPath);</td></tr>
+<tr class="cov"><td class="ln">229</td><td class="code">    if (typeof st.size === &#x27;number&#x27; &amp;&amp; st.size &gt; MAX_ASSET_BYTES) {</td></tr>
+<tr class="cov"><td class="ln">230</td><td class="code">      showToast({ kind: &#x27;error&#x27;, ttl: 9000, message: addRejectMessage(&#x27;too-large&#x27;, fullPath) });</td></tr>
+<tr class="cov"><td class="ln">231</td><td class="code">      return null;</td></tr>
+<tr class="nil"><td class="ln">232</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">233</td><td class="code">  } catch { /* stat failed → let the read surface the real error below */ }</td></tr>
+<tr class="nil"><td class="ln">234</td><td class="code">  // readFileNative goes through resolve_and_read (same MAX_ASSET_BYTES cap); the</td></tr>
+<tr class="nil"><td class="ln">235</td><td class="code">  // stat precheck above just gives the nicer &quot;too large&quot; toast before reading.</td></tr>
+<tr class="cov"><td class="ln">236</td><td class="code">  return readFileNative(fullPath);</td></tr>
+<tr class="nil"><td class="ln">237</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">238</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">239</td><td class="code">/** Why the existing embedded copy was never live-updated from its source file —</td></tr>
+<tr class="nil"><td class="ln">240</td><td class="code"> *  the concrete reason for the collision dialog (see CollisionRequest.notLiveReason).</td></tr>
+<tr class="nil"><td class="ln">241</td><td class="code"> *  Checked in precedence order; falls back to a neutral phrasing. `perAsset` is the</td></tr>
+<tr class="nil"><td class="ln">242</td><td class="code"> *  asset row&#x27;s auto_reload override. (No &quot;unsaved&quot; case: since #66 every deck has a</td></tr>
+<tr class="nil"><td class="ln">243</td><td class="code"> *  path — scratch decks save to ~/Documents/Eigendeck, no untitled in-memory deck.) */</td></tr>
+<tr class="nil"><td class="ln">244</td><td class="code">async function whyNotLive(perAsset: string | null): Promise&lt;string&gt; {</td></tr>
+<tr class="cov"><td class="ln">245</td><td class="code">  const store = usePresentationStore.getState();</td></tr>
+<tr class="cov"><td class="ln">246</td><td class="code">  const token = getDeckToken();</td></tr>
+<tr class="cov"><td class="ln">247</td><td class="code">  if (token) {</td></tr>
+<tr class="cov"><td class="ln">248</td><td class="code">    try {</td></tr>
+<tr class="cov"><td class="ln">249</td><td class="code">      const { isTrusted } = await import(&#x27;./trustStore&#x27;);<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
+<tr class="cov"><td class="ln">250</td><td class="code">      if (!(await isTrusted(token))) return &quot;This deck isn’t trusted, so Eigendeck doesn’t watch its source files for changes.&quot;;</td></tr>
+<tr class="nil"><td class="ln">251</td><td class="code">    } catch { /* non-Tauri / test context */ }</td></tr>
+<tr class="nil"><td class="ln">252</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">253</td><td class="code">  const presOverride = store.presentation?.config?.autoReloadAssets ?? null;</td></tr>
+<tr class="cov"><td class="ln">254</td><td class="code">  if (!effectiveAutoReload(perAsset, presOverride, getPreference(&#x27;autoReloadAssets&#x27;))) {</td></tr>
+<tr class="cov"><td class="ln">255</td><td class="code">    return &quot;Auto-updating from source files is turned off for this deck.&quot;;</td></tr>
+<tr class="nil"><td class="ln">256</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">257</td><td class="code">  return &quot;Eigendeck isn’t auto-updating this file from its source.&quot;;</td></tr>
+<tr class="nil"><td class="ln">258</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">259</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">260</td><td class="code">export async function storeAssetWithCollisionCheck(args: StoreArgs): Promise&lt;StoreResult&gt; {</td></tr>
+<tr class="cov"><td class="ln">261</td><td class="code">  const result = await storeAssetWithCollisionCheckImpl(args);</td></tr>
+<tr class="nil"><td class="ln">262</td><td class="code">  // Added a linked asset to a trusted deck → approve its path (keyed by the asset id</td></tr>
+<tr class="nil"><td class="ln">263</td><td class="code">  // actually stored) so it watches.</td></tr>
+<tr class="cov"><td class="ln">264</td><td class="code">  if (!result.cancelled &amp;&amp; args.externalPath &amp;&amp; result.assetId) {</td></tr>
+<tr class="cov"><td class="ln">265</td><td class="code">    void autoApproveExternalPath(result.assetId, args.externalPath);</td></tr>
+<tr class="nil"><td class="ln">266</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">267</td><td class="code">  return result;</td></tr>
+<tr class="nil"><td class="ln">268</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">269</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">270</td><td class="code">async function storeAssetWithCollisionCheckImpl(args: StoreArgs): Promise&lt;StoreResult&gt; {</td></tr>
+<tr class="nil"><td class="ln">271</td><td class="code">  // Validate EVERY add against the same asset-type gate the watcher uses</td></tr>
+<tr class="nil"><td class="ln">272</td><td class="code">  // (docs/ASSETS-SECURITY.md): the bytes must actually be the type the extension</td></tr>
+<tr class="nil"><td class="ln">273</td><td class="code">  // claims (native magic for interchange types; the eigendeck-demo marker for</td></tr>
+<tr class="nil"><td class="ln">274</td><td class="code">  // .html). This makes &quot;what you can add&quot; == &quot;what the watcher will later accept&quot;,</td></tr>
+<tr class="nil"><td class="ln">275</td><td class="code">  // so a file can never be added-but-then-silently-rejected-on-reload. On refusal we</td></tr>
+<tr class="nil"><td class="ln">276</td><td class="code">  // surface a toast and report `cancelled` (callers&#x27; existing skip-add path), no</td></tr>
+<tr class="nil"><td class="ln">277</td><td class="code">  // throw. Runs on args.data (the bytes we hold) keyed by args.path&#x27;s extension — no</td></tr>
+<tr class="nil"><td class="ln">278</td><td class="code">  // realpath needed here since we already have the user-chosen bytes.</td></tr>
+<tr class="nil"><td class="ln">279</td><td class="code">  {</td></tr>
+<tr class="cov"><td class="ln">280</td><td class="code">    const gate = assetTypeGate(args.data, args.path);</td></tr>
+<tr class="cov"><td class="ln">281</td><td class="code">    if (!gate.ok) {</td></tr>
+<tr class="cov"><td class="ln">282</td><td class="code">      showToast({ kind: &#x27;error&#x27;, ttl: 9000, message: addRejectMessage(gate.reason, args.path) });</td></tr>
+<tr class="cov"><td class="ln">283</td><td class="code">      ilog(`refused add &quot;${args.path}&quot; (${gate.reason})`);</td></tr>
+<tr class="cov"><td class="ln">284</td><td class="code">      return { assetId: &#x27;&#x27;, path: args.path, cancelled: true };</td></tr>
+<tr class="nil"><td class="ln">285</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">286</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">287</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">288</td><td class="code">  // PowerPoint mode: when per-presentation auto-reload is OFF (set</td></tr>
+<tr class="nil"><td class="ln">289</td><td class="code">  // explicitly by the user, or carried over from a prior &quot;I don&#x27;t want</td></tr>
+<tr class="nil"><td class="ln">290</td><td class="code">  // this behavior&quot; choice in the collision dialog), every insertion is</td></tr>
+<tr class="nil"><td class="ln">291</td><td class="code">  // independent. No shared asset_id with prior inserts at the same</td></tr>
+<tr class="nil"><td class="ln">292</td><td class="code">  // path, no external_path link (so watching can never resume even if</td></tr>
+<tr class="nil"><td class="ln">293</td><td class="code">  // the user flips per-pres back to ON — re-import to relink), no</td></tr>
+<tr class="nil"><td class="ln">294</td><td class="code">  // collision dialog. This is the kindness for users who explicitly</td></tr>
+<tr class="nil"><td class="ln">295</td><td class="code">  // opted out of the auto-update paradigm.</td></tr>
+<tr class="cov"><td class="ln">296</td><td class="code">  const presOverride = usePresentationStore.getState().presentation?.config?.autoReloadAssets ?? null;</td></tr>
+<tr class="cov"><td class="ln">297</td><td class="code">  if (presOverride === &#x27;off&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">298</td><td class="code">    const assetId = crypto.randomUUID();</td></tr>
+<tr class="nil"><td class="ln">299</td><td class="code">    // external_path IS preserved: the manual &quot;Reload from disk now&quot;</td></tr>
+<tr class="nil"><td class="ln">300</td><td class="code">    // button in the Asset properties section is a useful affordance</td></tr>
+<tr class="nil"><td class="ln">301</td><td class="code">    // even in PowerPoint mode. The cascade still blocks the watcher</td></tr>
+<tr class="nil"><td class="ln">302</td><td class="code">    // from subscribing (per-pres OFF wins over null per-asset), so</td></tr>
+<tr class="nil"><td class="ln">303</td><td class="code">    // there&#x27;s no auto-update — but the user can explicitly pull a</td></tr>
+<tr class="nil"><td class="ln">304</td><td class="code">    // fresh version from disk via Reload-now whenever they want.</td></tr>
+<tr class="cov"><td class="ln">305</td><td class="code">    await storeAssetRaw({ path: args.path, mimeType: args.mimeType, externalPath: args.externalPath, externalMtime: args.externalMtime, assetId }, args.data);</td></tr>
+<tr class="cov"><td class="ln">306</td><td class="code">    ilog(`per-pres auto-reload OFF: fresh independent asset ${assetId.slice(0, 8)} at &quot;${args.path}&quot; (link preserved for manual Reload-now, watcher blocked by cascade)`);</td></tr>
+<tr class="cov"><td class="ln">307</td><td class="code">    maybeWarnUnsavedProject(args.externalPath);</td></tr>
+<tr class="cov"><td class="ln">308</td><td class="code">    return { assetId, path: args.path, cancelled: false };</td></tr>
+<tr class="nil"><td class="ln">309</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">310</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">311</td><td class="code">  const meta = await invoke&lt;AssetMeta | null&gt;(&#x27;db_get_asset_meta_by_path&#x27;, { path: args.path })</td></tr>
+<tr class="unc"><td class="ln">312</td><td class="code">    .catch(() =&gt; null);</td></tr>
+<tr class="nil"><td class="ln">313</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">314</td><td class="code">  if (!meta) {</td></tr>
+<tr class="nil"><td class="ln">315</td><td class="code">    // No existing asset at this path → simple insertion.</td></tr>
+<tr class="cov"><td class="ln">316</td><td class="code">    const assetId = await storeAssetRaw({ path: args.path, mimeType: args.mimeType, externalPath: args.externalPath, externalMtime: args.externalMtime }, args.data);</td></tr>
+<tr class="cov"><td class="ln">317</td><td class="code">    ilog(`new asset at &quot;${args.path}&quot; → ${assetId.slice(0, 8)}`);</td></tr>
+<tr class="cov"><td class="ln">318</td><td class="code">    maybeWarnUnsavedProject(args.externalPath);</td></tr>
+<tr class="cov"><td class="ln">319</td><td class="code">    return { assetId, path: args.path, cancelled: false };</td></tr>
+<tr class="nil"><td class="ln">320</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">321</td><td class="code">  ilog(`existing asset at &quot;${args.path}&quot; → asset_id=${meta.asset_id.slice(0, 8)} current_hash=${meta.hash?.slice(0, 8)}`);</td></tr>
+<tr class="nil"><td class="ln">322</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">323</td><td class="code">  // Compare the bytes being added against the existing asset&#x27;s ORIGINAL</td></tr>
+<tr class="nil"><td class="ln">324</td><td class="code">  // bytes (oldest version&#x27;s hash). Match → user is re-adding what they</td></tr>
+<tr class="nil"><td class="ln">325</td><td class="code">  // originally added; no surprise. Mismatch → divergence (silent watch</td></tr>
+<tr class="nil"><td class="ln">326</td><td class="code">  // update, or external edit with auto-reload off, or just a different</td></tr>
+<tr class="nil"><td class="ln">327</td><td class="code">  // file) → dialog.</td></tr>
+<tr class="cov"><td class="ln">328</td><td class="code">  const history = await invoke&lt;AssetVersion[]&gt;(&#x27;db_get_asset_history&#x27;, { assetId: meta.asset_id })</td></tr>
+<tr class="unc"><td class="ln">329</td><td class="code">    .catch(() =&gt; [] as AssetVersion[]);</td></tr>
+<tr class="cov"><td class="ln">330</td><td class="code">  const original = history[history.length - 1];</td></tr>
+<tr class="cov"><td class="ln">331</td><td class="code">  const newHash = await sha256Hex(args.data);</td></tr>
+<tr class="nil"><td class="ln">332</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">333</td><td class="code">  if (!original || !original.hash || original.hash === newHash) {</td></tr>
+<tr class="nil"><td class="ln">334</td><td class="code">    // No history / new bytes match original → no surprise. Store on</td></tr>
+<tr class="nil"><td class="ln">335</td><td class="code">    // existing assetId (will dedup if current also matches original;</td></tr>
+<tr class="nil"><td class="ln">336</td><td class="code">    // otherwise effectively reverts current to original).</td></tr>
+<tr class="cov"><td class="ln">337</td><td class="code">    ilog(`new bytes match original (original_hash=${original?.hash?.slice(0, 8) ?? &#x27;n/a&#x27;} == new_hash=${newHash.slice(0, 8)}) → silent store on existing asset`);</td></tr>
+<tr class="cov"><td class="ln">338</td><td class="code">    const assetId = await storeAssetRaw({ path: args.path, mimeType: args.mimeType, externalPath: args.externalPath, externalMtime: args.externalMtime, assetId: meta.asset_id }, args.data);</td></tr>
+<tr class="nil"><td class="ln">339</td><td class="code">    // Only invalidate when current bytes actually CHANGE. The common</td></tr>
+<tr class="nil"><td class="ln">340</td><td class="code">    // case here is the user re-adding the same file they already have:</td></tr>
+<tr class="nil"><td class="ln">341</td><td class="code">    // db_store_asset short-circuits (newHash === current hash) and we</td></tr>
+<tr class="nil"><td class="ln">342</td><td class="code">    // shouldn&#x27;t nuke the asset_cache for a no-op. Asset 2.pdf (40+s</td></tr>
+<tr class="nil"><td class="ln">343</td><td class="code">    // pdfium re-parse on miss) makes this expensive.</td></tr>
+<tr class="cov"><td class="ln">344</td><td class="code">    if (newHash !== meta.hash) await invalidateRenderedAsset(meta.asset_id);</td></tr>
+<tr class="cov"><td class="ln">345</td><td class="code">    maybeWarnUnsavedProject(args.externalPath);</td></tr>
+<tr class="cov"><td class="ln">346</td><td class="code">    return { assetId, path: args.path, cancelled: false };</td></tr>
+<tr class="nil"><td class="ln">347</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">348</td><td class="code">  ilog(`DIVERGENCE detected: original_hash=${original.hash.slice(0, 8)} != new_hash=${newHash.slice(0, 8)} (current=${meta.hash?.slice(0, 8)}, history: ${history.length} versions)`);</td></tr>
+<tr class="nil"><td class="ln">349</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">350</td><td class="code">  // Session-level suppression: if the user already clicked &quot;I understand</td></tr>
+<tr class="nil"><td class="ln">351</td><td class="code">  // and want this auto-updating behavior&quot; for this presentation this</td></tr>
+<tr class="nil"><td class="ln">352</td><td class="code">  // session, don&#x27;t re-prompt — they&#x27;re informed. Silently store on the</td></tr>
+<tr class="nil"><td class="ln">353</td><td class="code">  // existing asset.</td></tr>
+<tr class="cov"><td class="ln">354</td><td class="code">  const projectId = await currentProjectId();</td></tr>
+<tr class="cov"><td class="ln">355</td><td class="code">  if (projectId &amp;&amp; acceptedProjects.has(projectId)) {</td></tr>
+<tr class="cov"><td class="ln">356</td><td class="code">    ilog(`auto-update previously accepted for project ${projectId.slice(0, 8)} → silent store, no dialog`);</td></tr>
+<tr class="cov"><td class="ln">357</td><td class="code">    const assetId = await storeAssetRaw({ path: args.path, mimeType: args.mimeType, externalPath: args.externalPath, externalMtime: args.externalMtime, assetId: meta.asset_id }, args.data);</td></tr>
+<tr class="cov"><td class="ln">358</td><td class="code">    if (newHash !== meta.hash) await invalidateRenderedAsset(meta.asset_id);</td></tr>
+<tr class="cov"><td class="ln">359</td><td class="code">    maybeWarnUnsavedProject(args.externalPath);</td></tr>
+<tr class="cov"><td class="ln">360</td><td class="code">    return { assetId, path: args.path, cancelled: false };</td></tr>
+<tr class="nil"><td class="ln">361</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">362</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">363</td><td class="code">  const slidesUsing = findSlidesUsingAsset(meta.asset_id);</td></tr>
+<tr class="cov"><td class="ln">364</td><td class="code">  ilog(`asset used on slides: ${slidesUsing.length === 0 ? &#x27;(none — orphan)&#x27; : slidesUsing.join(&#x27;, &#x27;)}`);</td></tr>
+<tr class="cov"><td class="ln">365</td><td class="code">  if (slidesUsing.length === 0) {</td></tr>
+<tr class="nil"><td class="ln">366</td><td class="code">    // Orphan: asset has versions but no element references it. No</td></tr>
+<tr class="nil"><td class="ln">367</td><td class="code">    // surprise to surface. Store a new version of the orphan.</td></tr>
+<tr class="cov"><td class="ln">368</td><td class="code">    const assetId = await storeAssetRaw({ path: args.path, mimeType: args.mimeType, externalPath: args.externalPath, externalMtime: args.externalMtime, assetId: meta.asset_id }, args.data);</td></tr>
+<tr class="cov"><td class="ln">369</td><td class="code">    if (newHash !== meta.hash) await invalidateRenderedAsset(meta.asset_id);</td></tr>
+<tr class="cov"><td class="ln">370</td><td class="code">    return { assetId, path: args.path, cancelled: false };</td></tr>
+<tr class="nil"><td class="ln">371</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">372</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">373</td><td class="code">  ilog(`showing collision dialog`);</td></tr>
+<tr class="nil"><td class="ln">374</td><td class="code">  // Did the existing embedded copy already diverge from its original? Only then</td></tr>
+<tr class="nil"><td class="ln">375</td><td class="code">  // did an auto-update &quot;already happen&quot;; on an untrusted/unwatched deck the copy</td></tr>
+<tr class="nil"><td class="ln">376</td><td class="code">  // is still the original, so the dialog must not claim an update occurred.</td></tr>
+<tr class="cov"><td class="ln">377</td><td class="code">  const existingChanged = !!meta.hash &amp;&amp; !!original.hash &amp;&amp; meta.hash !== original.hash;</td></tr>
+<tr class="cov"><td class="ln">378</td><td class="code">  const notLiveReason = existingChanged ? undefined : await whyNotLive(meta.auto_reload);</td></tr>
+<tr class="cov"><td class="ln">379</td><td class="code">  const choice = await showCollisionDialog({</td></tr>
+<tr class="nil"><td class="ln">380</td><td class="code">    path: args.path,</td></tr>
+<tr class="nil"><td class="ln">381</td><td class="code">    slideNumbers: slidesUsing,</td></tr>
+<tr class="nil"><td class="ln">382</td><td class="code">    existingChanged,</td></tr>
+<tr class="nil"><td class="ln">383</td><td class="code">    notLiveReason,</td></tr>
+<tr class="nil"><td class="ln">384</td><td class="code">  });</td></tr>
+<tr class="cov"><td class="ln">385</td><td class="code">  ilog(`user chose: ${choice}`);</td></tr>
+<tr class="nil"><td class="ln">386</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">387</td><td class="code">  if (choice === &#x27;cancel&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">388</td><td class="code">    return { assetId: &#x27;&#x27;, path: args.path, cancelled: true };</td></tr>
+<tr class="nil"><td class="ln">389</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">390</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">391</td><td class="code">  if (choice === &#x27;accept&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">392</td><td class="code">    // User opted into the auto-updating behavior. Remember for the</td></tr>
+<tr class="nil"><td class="ln">393</td><td class="code">    // rest of this app-session: don&#x27;t re-prompt on subsequent</td></tr>
+<tr class="nil"><td class="ln">394</td><td class="code">    // collisions in this same presentation. The understanding is a</td></tr>
+<tr class="nil"><td class="ln">395</td><td class="code">    // one-time commitment per session.</td></tr>
+<tr class="cov"><td class="ln">396</td><td class="code">    if (projectId) {</td></tr>
+<tr class="cov"><td class="ln">397</td><td class="code">      acceptedProjects.add(projectId);</td></tr>
+<tr class="cov"><td class="ln">398</td><td class="code">      ilog(`accept: recorded project ${projectId.slice(0, 8)} as session-accepted (no more collision dialogs this session)`);</td></tr>
+<tr class="nil"><td class="ln">399</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">400</td><td class="code">    // Store new bytes on the existing assetId; all elements bound to</td></tr>
+<tr class="nil"><td class="ln">401</td><td class="code">    // it see the new bytes. Cache invalidation is critical: other</td></tr>
+<tr class="nil"><td class="ln">402</td><td class="code">    // slides&#x27; main-window &lt;img&gt; blob URLs cached the OLD bytes via</td></tr>
+<tr class="nil"><td class="ln">403</td><td class="code">    // useAssetUrl; without invalidation they keep showing stale until</td></tr>
+<tr class="nil"><td class="ln">404</td><td class="code">    // next reload.</td></tr>
+<tr class="cov"><td class="ln">405</td><td class="code">    const assetId = await storeAssetRaw({ path: args.path, mimeType: args.mimeType, externalPath: args.externalPath, externalMtime: args.externalMtime, assetId: meta.asset_id }, args.data);</td></tr>
+<tr class="cov"><td class="ln">406</td><td class="code">    await invalidateRenderedAsset(meta.asset_id);</td></tr>
+<tr class="cov"><td class="ln">407</td><td class="code">    ilog(`accept: stored on existing asset_id=${meta.asset_id.slice(0, 8)} + invalidated cache`);</td></tr>
+<tr class="cov"><td class="ln">408</td><td class="code">    maybeWarnUnsavedProject(args.externalPath);</td></tr>
+<tr class="cov"><td class="ln">409</td><td class="code">    return { assetId, path: args.path, cancelled: false };</td></tr>
+<tr class="nil"><td class="ln">410</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">411</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">412</td><td class="code">  // choice === &#x27;revert&#x27;: three-step flow.</td></tr>
+<tr class="nil"><td class="ln">413</td><td class="code">  //   1. Restore the existing asset to its original bytes (db_restore_</td></tr>
+<tr class="nil"><td class="ln">414</td><td class="code">  //      asset_version sets auto_reload=&#x27;off&#x27; on the restored row so</td></tr>
+<tr class="nil"><td class="ln">415</td><td class="code">  //      the watcher won&#x27;t immediately re-apply the change).</td></tr>
+<tr class="nil"><td class="ln">416</td><td class="code">  //   2. Create a NEW asset (FRESH asset_id, same path label) with the</td></tr>
+<tr class="nil"><td class="ln">417</td><td class="code">  //      bytes the user just dragged in.</td></tr>
+<tr class="nil"><td class="ln">418</td><td class="code">  //   3. Disable auto-reload for the entire presentation per the user&#x27;s</td></tr>
+<tr class="nil"><td class="ln">419</td><td class="code">  //      explicit opt-out in the dialog wording.</td></tr>
+<tr class="nil"><td class="ln">420</td><td class="code">  //</td></tr>
+<tr class="nil"><td class="ln">421</td><td class="code">  // CRITICAL: step 2 generates the UUID on the JS side and passes it</td></tr>
+<tr class="nil"><td class="ln">422</td><td class="code">  // explicitly. Without an explicit assetId, db_store_asset&#x27;s legacy</td></tr>
+<tr class="nil"><td class="ln">423</td><td class="code">  // &quot;look up asset_id by path&quot; branch would re-find the asset we just</td></tr>
+<tr class="nil"><td class="ln">424</td><td class="code">  // restored (same path), reuse its asset_id, and silently overwrite</td></tr>
+<tr class="nil"><td class="ln">425</td><td class="code">  // the restore with the new bytes — defeating the whole revert flow.</td></tr>
+<tr class="nil"><td class="ln">426</td><td class="code">  // The explicit UUID forces db_store_asset&#x27;s &quot;use this asset_id&quot;</td></tr>
+<tr class="nil"><td class="ln">427</td><td class="code">  // branch, which is the only way to guarantee a fresh asset at a</td></tr>
+<tr class="nil"><td class="ln">428</td><td class="code">  // path that&#x27;s already in use.</td></tr>
+<tr class="cov"><td class="ln">429</td><td class="code">  ilog(`revert: restoring asset_id=${meta.asset_id.slice(0, 8)} to original valid_from=${original.valid_from}`);</td></tr>
+<tr class="cov"><td class="ln">430</td><td class="code">  await invoke(&#x27;db_restore_asset_version&#x27;, {</td></tr>
+<tr class="nil"><td class="ln">431</td><td class="code">    assetId: meta.asset_id,</td></tr>
+<tr class="nil"><td class="ln">432</td><td class="code">    validFrom: original.valid_from,</td></tr>
+<tr class="unc"><td class="ln">433</td><td class="code">  }).catch((e) =&gt; { console.warn(&#x27;[insert] revert failed:&#x27;, e); });</td></tr>
+<tr class="cov"><td class="ln">434</td><td class="code">  await invalidateRenderedAsset(meta.asset_id);</td></tr>
+<tr class="nil"><td class="ln">435</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">436</td><td class="code">  const newAssetId = crypto.randomUUID();</td></tr>
+<tr class="cov"><td class="ln">437</td><td class="code">  ilog(`revert: creating NEW asset_id=${newAssetId.slice(0, 8)} at path=&quot;${args.path}&quot; with new bytes (link preserved)`);</td></tr>
+<tr class="nil"><td class="ln">438</td><td class="code">  // external_path IS preserved (same rationale as PowerPoint mode):</td></tr>
+<tr class="nil"><td class="ln">439</td><td class="code">  // Reload-now is a useful manual affordance. Cascade blocks watcher.</td></tr>
+<tr class="cov"><td class="ln">440</td><td class="code">  await storeAssetRaw({ path: args.path, mimeType: args.mimeType, externalPath: args.externalPath, externalMtime: args.externalMtime, assetId: newAssetId }, args.data);</td></tr>
+<tr class="cov"><td class="ln">441</td><td class="code">  usePresentationStore.getState().updateConfig({ autoReloadAssets: &#x27;off&#x27; });</td></tr>
+<tr class="cov"><td class="ln">442</td><td class="code">  ilog(`revert: per-presentation auto-reload set to OFF`);</td></tr>
+<tr class="nil"><td class="ln">443</td><td class="code">  // Revert path turns auto-reload OFF for the presentation, so the</td></tr>
+<tr class="nil"><td class="ln">444</td><td class="code">  // unsaved-warning suppression rule (effective autoreload off → no</td></tr>
+<tr class="nil"><td class="ln">445</td><td class="code">  // toast) means this call is a no-op. Included for symmetry / safety</td></tr>
+<tr class="nil"><td class="ln">446</td><td class="code">  // if the suppression rule changes later.</td></tr>
+<tr class="cov"><td class="ln">447</td><td class="code">  maybeWarnUnsavedProject(args.externalPath);</td></tr>
+<tr class="nil"><td class="ln">448</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">449</td><td class="code">  return { assetId: newAssetId, path: args.path, cancelled: false };</td></tr>
+<tr class="nil"><td class="ln">450</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">451</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">452</td><td class="code">/** Thin wrapper for the old call-site: returns just the slide numbers</td></tr>
+<tr class="nil"><td class="ln">453</td><td class="code"> *  for showing in the collision dialog (&quot;used on slides 2, 4, 7&quot;). */</td></tr>
+<tr class="nil"><td class="ln">454</td><td class="code">function findSlidesUsingAsset(assetId: string): number[] {</td></tr>
+<tr class="cov"><td class="ln">455</td><td class="code">  const pres = usePresentationStore.getState().presentation;</td></tr>
+<tr class="cov"><td class="ln">456</td><td class="code">  return computeAssetUsage(pres, assetId).slideNumbers;</td></tr>
+<tr class="nil"><td class="ln">457</td><td class="code">}</td></tr></table>
+</body></html>

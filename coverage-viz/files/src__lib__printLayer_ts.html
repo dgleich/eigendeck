@@ -1,0 +1,169 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/printLayer.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/printLayer.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>84%</b> covered</span>
+    <span class="stat">95/113 executable</span>
+    <span class="stat unc-txt">18 uncovered</span>
+    <span class="stat">151 raw lines</span>
+    <span class="stat">0.35% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:62.914%"></span><span class="seg unc" style="width:11.921%"></span><span class="seg nil" style="width:25.166%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__assetCache_ts.html">assetCache.ts</a> <a href="src__lib__assetRenderer_ts.html">assetRenderer.ts</a> <a href="src__lib__base64_ts.html">base64.ts</a> <a href="src__lib__fonts_ts.html">fonts.ts</a> <a href="src__lib__mathjaxRenderer_ts.html">mathjaxRenderer.ts</a> <a href="src__lib__previewCache_ts.html">previewCache.ts</a> <a href="src__lib__printSlideHtml_ts.html">printSlideHtml.ts</a> <a href="src__lib__themes_ts.html">themes.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__export-cli_ts.html">export-cli.ts</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// The PRINT layer: the inch-based, screenshot-baked slide HTML that both the</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// standalone Print export (printToPdf) and the interactive HTML export embed</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// (the latter behind @media print, so a posted .html is viewable AND printable —</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// #109). Extracted from printToPdf so there is ONE print-realization path.</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// This produces the per-slide `&lt;div class=&quot;slide&quot;&gt;` strings via buildPrintSlideHtml</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// (render-path #6). The async prep it owns: gather each live element&#x27;s screenshot</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">// (cached preview, or a live flip-through capture when liveCapture is set — the</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">// GUI can, the headless CLI can&#x27;t), build the image data-URL cache, and pre-render</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">// math to inline SVG. Fonts + the document wrapper stay with each caller.</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">import type { Presentation, SlideElement, Slide } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">import { usePresentationStore } from &#x27;../store/presentation&#x27;;<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">import { buildPrintSlideHtml } from &#x27;./printSlideHtml&#x27;;<a class="jump" href="src__lib__printSlideHtml_ts.html" title="src/lib/printSlideHtml.ts">→ printSlideHtml.ts</a></td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">import { previewKey, loadPreviewDataUrl, isPreviewThemeStale } from &#x27;./previewCache&#x27;;<a class="jump" href="src__lib__previewCache_ts.html" title="src/lib/previewCache.ts">→ previewCache.ts</a></td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">import { resolveTheme, previewThemeSalt } from &#x27;./themes&#x27;;<a class="jump" href="src__lib__themes_ts.html" title="src/lib/themes.ts">→ themes.ts</a></td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">import { bytesToBase64 } from &#x27;./base64&#x27;;<a class="jump" href="src__lib__base64_ts.html" title="src/lib/base64.ts">→ base64.ts</a></td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">import { fontForPreset } from &#x27;./fonts&#x27;;<a class="jump" href="src__lib__fonts_ts.html" title="src/lib/fonts.ts">→ fonts.ts</a></td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">import { renderMathInHtml, containsMath } from &#x27;./mathjaxRenderer&#x27;;<a class="jump" href="src__lib__mathjaxRenderer_ts.html" title="src/lib/mathjaxRenderer.ts">→ mathjaxRenderer.ts</a></td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">/** Element types baked to a static screenshot for print (can&#x27;t be live on paper). */</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">export const isLivePrintElement = (t: string): boolean =&gt;</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">  t === &#x27;demo&#x27; || t === &#x27;demo-piece&#x27; || t === &#x27;video&#x27; || t === &#x27;notebook&#x27;;</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">export interface PreparePrintLayerOpts {</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">  /** GUI: flip through slides to capture live elements with no cached preview.</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">   *  Headless CLI: false — use only cached previews (no editor to flip). */</td></tr>
+<tr class="unc"><td class="ln">28</td><td class="code">  liveCapture?: boolean;</td></tr>
+<tr class="unc"><td class="ln">29</td><td class="code">  /** Pre-render math for one element&#x27;s html. Defaults to the live iframe-pool</td></tr>
+<tr class="unc"><td class="ln">30</td><td class="code">   *  renderer; the CLI passes its cache-only renderer. */</td></tr>
+<tr class="unc"><td class="ln">31</td><td class="code">  renderMath?: (html: string, bundleId: string, preamble: string) =&gt; Promise&lt;string&gt;;</td></tr>
+<tr class="unc"><td class="ln">32</td><td class="code">  /** Called (and awaited) when at least one uncached live element needs a</td></tr>
+<tr class="unc"><td class="ln">33</td><td class="code">   *  flip-through capture — the caller can warn about the brief slide flicker</td></tr>
+<tr class="unc"><td class="ln">34</td><td class="code">   *  before it happens. */</td></tr>
+<tr class="unc"><td class="ln">35</td><td class="code">  onNeedsLiveCapture?: () =&gt; void | Promise&lt;void&gt;;</td></tr>
+<tr class="unc"><td class="ln">36</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">37</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">38</td><td class="code">/** Gather slideId:elementId → screenshot data-URL for every live element:</td></tr>
+<tr class="unc"><td class="ln">39</td><td class="code"> *  cached previews first, then (if liveCapture) a flip-through capture of the misses. */</td></tr>
+<tr class="unc"><td class="ln">40</td><td class="code">async function gatherScreenshots(</td></tr>
+<tr class="unc"><td class="ln">41</td><td class="code">  presentation: Presentation, liveCapture: boolean, onNeedsLiveCapture?: () =&gt; void,</td></tr>
+<tr class="unc"><td class="ln">42</td><td class="code">): Promise&lt;Map&lt;string, string&gt;&gt; {</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">  const shots = new Map&lt;string, string&gt;();</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">  const hasLive = presentation.slides.some((s) =&gt; s.elements.some((e) =&gt; isLivePrintElement(e.type)));</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  if (!hasLive) return shots;</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">  for (const slide of presentation.slides) {</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">    for (const el of slide.elements) {</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">      if (!isLivePrintElement(el.type)) continue;</td></tr>
+<tr class="unc"><td class="ln">49</td><td class="code">      // A notebook&#x27;s cached preview goes theme-stale for OTHER slides on a theme</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">      // switch — skip a stale one so it re-captures live below (#140).</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">      if (el.type === &#x27;notebook&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">        const salt = previewThemeSalt(resolveTheme(presentation.theme, slide.theme));</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">        if (await isPreviewThemeStale(previewKey(el), salt)) continue;</td></tr>
+<tr class="unc"><td class="ln">54</td><td class="code">      }</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">      const cached = await loadPreviewDataUrl(previewKey(el));</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">      if (cached) shots.set(`${slide.id}:${el.id}`, cached);</td></tr>
+<tr class="unc"><td class="ln">57</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">  const needsLive = presentation.slides.some((s) =&gt;</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">    s.elements.some((e) =&gt; isLivePrintElement(e.type) &amp;&amp; !shots.has(`${s.id}:${e.id}`)));</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">  if (!needsLive) return shots;</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">  await onNeedsLiveCapture?.();</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">  if (!liveCapture) return shots; // CLI: leave the misses to placeholder rendering</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">  const { domToDataUrl } = await import(&#x27;modern-screenshot&#x27;);</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">  const store = usePresentationStore.getState();</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">  const originalSlideIndex = store.currentSlideIndex;</td></tr>
+<tr class="cov"><td class="ln">68</td><td class="code">  usePresentationStore.getState().selectObject({ type: &#x27;slide&#x27; });</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">  document.body.classList.add(&#x27;pdf-capturing&#x27;);</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">    for (let i = 0; i &lt; presentation.slides.length; i++) {</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">      const slide = presentation.slides[i];</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">      const demoEls = slide.elements.filter((e) =&gt; isLivePrintElement(e.type) &amp;&amp; !shots.has(`${slide.id}:${e.id}`));</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">      if (demoEls.length === 0) continue;</td></tr>
+<tr class="cov"><td class="ln">75</td><td class="code">      usePresentationStore.getState().selectSlide(i);</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code">      await new Promise((r) =&gt; setTimeout(r, 500)); // let demos render</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">      for (const el of demoEls) {</td></tr>
+<tr class="cov"><td class="ln">78</td><td class="code">        const domEl = document.querySelector(`[data-element-id=&quot;${el.id}&quot;]`) as HTMLElement | null;</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">        if (!domEl) continue;</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">        try {</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code">          shots.set(`${slide.id}:${el.id}`,</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">            await domToDataUrl(domEl, { width: el.position.width, height: el.position.height, scale: 1 }));</td></tr>
+<tr class="cov"><td class="ln">83</td><td class="code">        } catch (e) { console.warn(`Failed to capture live element ${el.id}:`, e); }</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">      }</td></tr>
+<tr class="cov"><td class="ln">85</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">  } finally {</td></tr>
+<tr class="cov"><td class="ln">87</td><td class="code">    document.body.classList.remove(&#x27;pdf-capturing&#x27;);</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code">    usePresentationStore.getState().selectSlide(originalSlideIndex);</td></tr>
+<tr class="cov"><td class="ln">89</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">90</td><td class="code">  return shots;</td></tr>
+<tr class="cov"><td class="ln">91</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">92</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">93</td><td class="code">/** Image assetId → data-URL (pdf-kind uses the pdfium-rasterized cache PNG). */</td></tr>
+<tr class="cov"><td class="ln">94</td><td class="code">async function gatherImageCache(presentation: Presentation): Promise&lt;Map&lt;string, string&gt;&gt; {</td></tr>
+<tr class="cov"><td class="ln">95</td><td class="code">  const cache = new Map&lt;string, string&gt;();</td></tr>
+<tr class="cov"><td class="ln">96</td><td class="code">  const { invoke } = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
+<tr class="cov"><td class="ln">97</td><td class="code">  for (const slide of presentation.slides) {</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">    for (const el of slide.elements) {</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">      if (el.type !== &#x27;image&#x27; || cache.has(el.assetId)) continue;</td></tr>
+<tr class="cov"><td class="ln">100</td><td class="code">      try {</td></tr>
+<tr class="cov"><td class="ln">101</td><td class="code">        if (el.kind === &#x27;pdf&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">102</td><td class="code">          const { renderAsset } = await import(&#x27;./assetRenderer&#x27;);<a class="jump" href="src__lib__assetRenderer_ts.html" title="src/lib/assetRenderer.ts">→ assetRenderer.ts</a></td></tr>
+<tr class="cov"><td class="ln">103</td><td class="code">          const { ASSET_TIER } = await import(&#x27;./assetCache&#x27;);<a class="jump" href="src__lib__assetCache_ts.html" title="src/lib/assetCache.ts">→ assetCache.ts</a></td></tr>
+<tr class="cov"><td class="ln">104</td><td class="code">          await renderAsset({ assetId: el.assetId, kind: &#x27;pdf&#x27;, variant: el.snapshotVariant ?? &#x27;_&#x27;, maxWidth: ASSET_TIER.full, maxHeight: ASSET_TIER.full });</td></tr>
+<tr class="cov"><td class="ln">105</td><td class="code">          const buf = await invoke&lt;ArrayBuffer&gt;(&#x27;db_get_asset_cache_bytes&#x27;, { sourceId: el.assetId, variant: el.snapshotVariant ?? &#x27;_&#x27;, width: ASSET_TIER.full, height: ASSET_TIER.full });</td></tr>
+<tr class="cov"><td class="ln">106</td><td class="code">          const cbytes = new Uint8Array(buf);</td></tr>
+<tr class="cov"><td class="ln">107</td><td class="code">          if (cbytes.length) cache.set(el.assetId, `data:image/png;base64,${bytesToBase64(cbytes)}`);</td></tr>
+<tr class="cov"><td class="ln">108</td><td class="code">          continue;</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">        }</td></tr>
+<tr class="cov"><td class="ln">110</td><td class="code">        const meta = await invoke&lt;{ mime_type: string | null; path: string | null } | null&gt;(&#x27;db_get_asset_meta_by_id&#x27;, { assetId: el.assetId });</td></tr>
+<tr class="cov"><td class="ln">111</td><td class="code">        const data = await invoke&lt;ArrayBuffer&gt;(&#x27;db_get_asset_by_id&#x27;, { assetId: el.assetId });</td></tr>
+<tr class="cov"><td class="ln">112</td><td class="code">        const bytes = new Uint8Array(data);</td></tr>
+<tr class="cov"><td class="ln">113</td><td class="code">        const ext = (meta?.path ?? &#x27;&#x27;).split(&#x27;.&#x27;).pop()?.toLowerCase() || &#x27;png&#x27;;</td></tr>
+<tr class="cov"><td class="ln">114</td><td class="code">        const mime = meta?.mime_type ?? (ext === &#x27;svg&#x27; ? &#x27;image/svg+xml&#x27; : `image/${ext === &#x27;jpg&#x27; ? &#x27;jpeg&#x27; : ext}`);</td></tr>
+<tr class="cov"><td class="ln">115</td><td class="code">        cache.set(el.assetId, `data:${mime};base64,${bytesToBase64(bytes)}`);</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">      } catch { /* skip */ }</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">119</td><td class="code">  return cache;</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code"> * Build the print layer: the per-slide inch-based `&lt;div class=&quot;slide&quot;&gt;` strings.</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code"> * Deterministic given its async inputs; the caller owns fonts + the document</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code"> * wrapper (see printPageCss in printSlideHtml.ts for the matching @page CSS).</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">export async function preparePrintLayer(</td></tr>
+<tr class="nil"><td class="ln">128</td><td class="code">  presentation: Presentation, opts: PreparePrintLayerOpts = {},</td></tr>
+<tr class="nil"><td class="ln">129</td><td class="code">): Promise&lt;{ slideHtmls: string[] }&gt; {</td></tr>
+<tr class="cov"><td class="ln">130</td><td class="code">  const renderMath = opts.renderMath ?? renderMathInHtml;</td></tr>
+<tr class="cov"><td class="ln">131</td><td class="code">  const demoScreenshots = await gatherScreenshots(presentation, !!opts.liveCapture, opts.onNeedsLiveCapture);</td></tr>
+<tr class="cov"><td class="ln">132</td><td class="code">  const imageCache = await gatherImageCache(presentation);</td></tr>
+<tr class="nil"><td class="ln">133</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">  // Pre-render math per text element to inline SVG (the print path emits plain</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">  // HTML, not the live render). Key by slideId:elementId — a shared element can</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">  // appear on multiple slides with a different preset font.</td></tr>
+<tr class="cov"><td class="ln">137</td><td class="code">  const mathHtmlByKey = new Map&lt;string, string&gt;();</td></tr>
+<tr class="cov"><td class="ln">138</td><td class="code">  for (const slide of presentation.slides) {</td></tr>
+<tr class="cov"><td class="ln">139</td><td class="code">    for (const el of slide.elements as SlideElement[]) {</td></tr>
+<tr class="cov"><td class="ln">140</td><td class="code">      if (el.type === &#x27;text&#x27; &amp;&amp; el.html &amp;&amp; containsMath(el.html)) {</td></tr>
+<tr class="cov"><td class="ln">141</td><td class="code">        const bundleId = fontForPreset(el.preset, slide as Slide, presentation.config).id;</td></tr>
+<tr class="cov"><td class="ln">142</td><td class="code">        const rendered = await renderMath(el.html, bundleId, presentation.config.mathPreamble || &#x27;&#x27;).catch(() =&gt; el.html as string);</td></tr>
+<tr class="cov"><td class="ln">143</td><td class="code">        mathHtmlByKey.set(`${slide.id}:${el.id}`, rendered);</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">145</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">146</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">148</td><td class="code">  const slideHtmls = presentation.slides.map((slide, i) =&gt;</td></tr>
+<tr class="nil"><td class="ln">149</td><td class="code">    buildPrintSlideHtml(slide, presentation, imageCache, demoScreenshots, mathHtmlByKey, i + 1));</td></tr>
+<tr class="cov"><td class="ln">150</td><td class="code">  return { slideHtmls };</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code">}</td></tr></table>
+</body></html>

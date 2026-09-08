@@ -1,0 +1,230 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/export-cli.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/export-cli.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>0%</b> covered</span>
+    <span class="stat">0/83 executable</span>
+    <span class="stat unc-txt">83 uncovered</span>
+    <span class="stat">212 raw lines</span>
+    <span class="stat">0.50% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg unc" style="width:39.151%"></span><span class="seg nil" style="width:60.849%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__assetCachePreview_mjs.html">assetCachePreview.mjs</a> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__fonts_ts.html">fonts.ts</a> <a href="src__lib__mathjax_ts.html">mathjax.ts</a> <a href="src__lib__mathjaxRenderer_ts.html">mathjaxRenderer.ts</a> <a href="src__lib__normalizePresentation_ts.html">normalizePresentation.ts</a> <a href="src__lib__printLayer_ts.html">printLayer.ts</a> <a href="src__lib__printSlideHtml_ts.html">printSlideHtml.ts</a></div>
+  <div class="links"><span>imported by:</span> <i>none</i></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code"> * Headless HTML export — runs in a hidden Tauri webview.</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code"> * Reads the .eigendeck file, builds export HTML, writes output, exits.</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code"> * Per-preset math: the CLI looks up rendered SVGs in the math_cache table</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code"> * (populated by the editor&#x27;s iframe pool when each expression was first</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code"> * rendered). Cache misses fall back to the singleton MathJax renderer</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code"> * loaded with the body font&#x27;s bundle, which produces correct math but in</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code"> * the body font only — so for full per-preset CLI math, open the file in</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code"> * the editor at least once first to seed the cache.</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">import { invoke } from &#x27;@tauri-apps/api/core&#x27;;</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">// @ts-ignore — pure JS module</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">import { buildExportHtml } from &#x27;./lib/exportCore.mjs&#x27;;<a class="jump" href="src__lib__exportCore_mjs.html" title="src/lib/exportCore.mjs">→ exportCore.mjs</a></td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">import { normalizeUntrustedPresentation } from &#x27;./lib/normalizePresentation&#x27;;<a class="jump" href="src__lib__normalizePresentation_ts.html" title="src/lib/normalizePresentation.ts">→ normalizePresentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">import { renderMathInHtml, applyMathPreamble } from &#x27;./lib/mathjax&#x27;;<a class="jump" href="src__lib__mathjax_ts.html" title="src/lib/mathjax.ts">→ mathjax.ts</a></td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">import { fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS } from &#x27;./lib/fonts&#x27;;<a class="jump" href="src__lib__fonts_ts.html" title="src/lib/fonts.ts">→ fonts.ts</a></td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">import { mathCacheKey } from &#x27;./lib/mathjaxRenderer&#x27;;<a class="jump" href="src__lib__mathjaxRenderer_ts.html" title="src/lib/mathjaxRenderer.ts">→ mathjaxRenderer.ts</a></td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">import { pngBytesToDataUrl, previewLookupKey, pickLargestVariant, type CacheVariant } from &#x27;./lib/assetCachePreview.mjs&#x27;;<a class="jump" href="src__lib__assetCachePreview_mjs.html" title="src/lib/assetCachePreview.mjs">→ assetCachePreview.mjs</a></td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">interface CachedMathRow {</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">  key: string; tex: string; bundle: string; display: boolean; preamble: string;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">  svg: string; width: string | null; height: string | null; valign: string | null;</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code"> * #85 — notebook / video / PDF-image elements can&#x27;t be rendered headlessly, so</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code"> * the static export embeds their cached preview PNG (asset_cache). The app export</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code"> * passes this callback (fileOps.getElementPreviewDataUrl); the CLI used to omit</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code"> * it, so those elements showed &quot;NB&quot;/&quot;PDF&quot; placeholders. Read-only cache lookup</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code"> * (a deck opened in the editor has previews cached): pick the LARGEST cached</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code"> * render for the element&#x27;s (source_id, variant) and return a data: URL. Returns</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code"> * null on a miss → exportCore falls back to the placeholder, same as before.</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">// Signature matches the exportCore contract `(element, slide)`; `slide` is</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">// unused here (the cache key is element-only) but accepted for honesty.</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">// eslint-disable-next-line @typescript-eslint/no-explicit-any</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">async function getElementPreview(el: any, _slide?: any): Promise&lt;string | null&gt; {</td></tr>
+<tr class="unc"><td class="ln">40</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">41</td><td class="code">    const key = previewLookupKey(el);</td></tr>
+<tr class="unc"><td class="ln">42</td><td class="code">    if (!key) return null;</td></tr>
+<tr class="unc"><td class="ln">43</td><td class="code">    const variants = await invoke&lt;CacheVariant[]&gt;(&#x27;db_list_asset_cache_variants&#x27;, { sourceId: key.sourceId });</td></tr>
+<tr class="unc"><td class="ln">44</td><td class="code">    const best = pickLargestVariant(variants, key.variant);</td></tr>
+<tr class="unc"><td class="ln">45</td><td class="code">    if (!best) return null;</td></tr>
+<tr class="unc"><td class="ln">46</td><td class="code">    const buf = await invoke&lt;ArrayBuffer&gt;(&#x27;db_get_asset_cache_bytes&#x27;, {</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">      sourceId: key.sourceId, variant: key.variant, width: best.width, height: best.height,</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">    });</td></tr>
+<tr class="unc"><td class="ln">49</td><td class="code">    const bytes = new Uint8Array(buf);</td></tr>
+<tr class="unc"><td class="ln">50</td><td class="code">    if (!bytes.length) return null;</td></tr>
+<tr class="unc"><td class="ln">51</td><td class="code">    return pngBytesToDataUrl(bytes);</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">53</td><td class="code">    console.warn(&#x27;getElementPreview (cli) failed:&#x27;, e);</td></tr>
+<tr class="unc"><td class="ln">54</td><td class="code">    return null;</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code"> * Build a renderMath function that consults the SQLite math_cache for each</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code"> * expression. Falls back to the singleton renderer for cache misses.</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code"> * Signature matches what exportCore expects:</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code"> *   renderMath(html, bundleId) → Promise&lt;string&gt;</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code"> * Walks $..$ and $$..$$ markers in the input html, replaces each with the</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code"> * SVG from the cache (or singleton-rendered SVG), returns the patched html.</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">function makeCachingRenderMath(preamble: string) {</td></tr>
+<tr class="unc"><td class="ln">69</td><td class="code">  return async (html: string, bundleId?: string): Promise&lt;string&gt; =&gt; {</td></tr>
+<tr class="unc"><td class="ln">70</td><td class="code">    if (!/\$\$[\s\S]+?\$\$|\$[^\$\n]+?\$/.test(html)) return html;</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">    // Use bundleId &#x27;ptsans&#x27; as default if not provided (singleton fallback).</td></tr>
+<tr class="unc"><td class="ln">72</td><td class="code">    const bundle = bundleId || &#x27;ptsans&#x27;;</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">    // Walk the HTML similar to renderMathInHtml — skip tags, find $..$/$$..$$.</td></tr>
+<tr class="unc"><td class="ln">75</td><td class="code">    const parts: string[] = [];</td></tr>
+<tr class="unc"><td class="ln">76</td><td class="code">    let i = 0;</td></tr>
+<tr class="unc"><td class="ln">77</td><td class="code">    while (i &lt; html.length) {</td></tr>
+<tr class="unc"><td class="ln">78</td><td class="code">      if (html[i] === &#x27;&lt;&#x27;) {</td></tr>
+<tr class="unc"><td class="ln">79</td><td class="code">        const end = html.indexOf(&#x27;&gt;&#x27;, i);</td></tr>
+<tr class="unc"><td class="ln">80</td><td class="code">        if (end !== -1) { parts.push(html.slice(i, end + 1)); i = end + 1; continue; }</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">      // Display $$..$$</td></tr>
+<tr class="unc"><td class="ln">83</td><td class="code">      if (html[i] === &#x27;$&#x27; &amp;&amp; html[i + 1] === &#x27;$&#x27;) {</td></tr>
+<tr class="unc"><td class="ln">84</td><td class="code">        const end = html.indexOf(&#x27;$$&#x27;, i + 2);</td></tr>
+<tr class="unc"><td class="ln">85</td><td class="code">        if (end !== -1) {</td></tr>
+<tr class="unc"><td class="ln">86</td><td class="code">          const tex = html.slice(i + 2, end);</td></tr>
+<tr class="unc"><td class="ln">87</td><td class="code">          const svg = await renderOne(tex, bundle, true, preamble);</td></tr>
+<tr class="unc"><td class="ln">88</td><td class="code">          parts.push(`&lt;div style=&quot;text-align:center;&quot;&gt;${svg}&lt;/div&gt;`);</td></tr>
+<tr class="unc"><td class="ln">89</td><td class="code">          i = end + 2;</td></tr>
+<tr class="unc"><td class="ln">90</td><td class="code">          continue;</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">      // Inline $..$</td></tr>
+<tr class="unc"><td class="ln">94</td><td class="code">      if (html[i] === &#x27;$&#x27;) {</td></tr>
+<tr class="unc"><td class="ln">95</td><td class="code">        const end = html.indexOf(&#x27;$&#x27;, i + 1);</td></tr>
+<tr class="unc"><td class="ln">96</td><td class="code">        if (end !== -1 &amp;&amp; !html.slice(i + 1, end).includes(&#x27;\n&#x27;)) {</td></tr>
+<tr class="unc"><td class="ln">97</td><td class="code">          const tex = html.slice(i + 1, end);</td></tr>
+<tr class="unc"><td class="ln">98</td><td class="code">          const svg = await renderOne(tex, bundle, false, preamble);</td></tr>
+<tr class="unc"><td class="ln">99</td><td class="code">          parts.push(svg);</td></tr>
+<tr class="unc"><td class="ln">100</td><td class="code">          i = end + 1;</td></tr>
+<tr class="unc"><td class="ln">101</td><td class="code">          continue;</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">      }</td></tr>
+<tr class="unc"><td class="ln">104</td><td class="code">      parts.push(html[i]);</td></tr>
+<tr class="unc"><td class="ln">105</td><td class="code">      i++;</td></tr>
+<tr class="nil"><td class="ln">106</td><td class="code">    }</td></tr>
+<tr class="unc"><td class="ln">107</td><td class="code">    return parts.join(&#x27;&#x27;);</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code"> * Resolve one math expression: cache lookup, then singleton fallback.</td></tr>
+<tr class="nil"><td class="ln">113</td><td class="code"> * Returns the SVG markup (with inline display/valign style for inline math).</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">115</td><td class="code">async function renderOne(tex: string, bundleId: string, display: boolean, preamble: string): Promise&lt;string&gt; {</td></tr>
+<tr class="unc"><td class="ln">116</td><td class="code">  const key = mathCacheKey(tex, bundleId, display, preamble);</td></tr>
+<tr class="unc"><td class="ln">117</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">118</td><td class="code">    const row = await invoke&lt;CachedMathRow | null&gt;(&#x27;db_get_math_svg&#x27;, { key });</td></tr>
+<tr class="unc"><td class="ln">119</td><td class="code">    if (row) {</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">      // Match the inline-math vertical-align tweak the iframe-pool render adds.</td></tr>
+<tr class="unc"><td class="ln">121</td><td class="code">      if (display) return row.svg;</td></tr>
+<tr class="unc"><td class="ln">122</td><td class="code">      const valign = row.valign || &#x27;-0.025ex&#x27;;</td></tr>
+<tr class="unc"><td class="ln">123</td><td class="code">      return row.svg.replace(/^&lt;svg/, `&lt;svg overflow=&quot;visible&quot; style=&quot;display:inline;vertical-align:${valign};overflow:visible&quot;`);</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code">  } catch { /* fall through to singleton */ }</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">  // Cache miss: use the singleton renderer (will be in body font only).</td></tr>
+<tr class="unc"><td class="ln">127</td><td class="code">  const wrapped = display ? `$$${tex}$$` : `$${tex}$`;</td></tr>
+<tr class="unc"><td class="ln">128</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">129</td><td class="code">    const out = await renderMathInHtml(wrapped);</td></tr>
+<tr class="unc"><td class="ln">130</td><td class="code">    return out;</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">  } catch {</td></tr>
+<tr class="unc"><td class="ln">132</td><td class="code">    return wrapped; // give up — leave source visible</td></tr>
+<tr class="nil"><td class="ln">133</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">async function main() {</td></tr>
+<tr class="unc"><td class="ln">137</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">138</td><td class="code">    const args = await invoke&lt;{ dbPath: string; outputPath: string }&gt;(&#x27;cli_export_args&#x27;);</td></tr>
+<tr class="unc"><td class="ln">139</td><td class="code">    await invoke(&#x27;db_open&#x27;, { path: args.dbPath });</td></tr>
+<tr class="unc"><td class="ln">140</td><td class="code">    const json = await invoke&lt;string&gt;(&#x27;db_export_json&#x27;);</td></tr>
+<tr class="unc"><td class="ln">141</td><td class="code">    const presentation = JSON.parse(json);</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">    // The CLI reads the deck straight from SQLite — it never went through the</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">    // on-open normalize the GUI does. Run the same untrusted-content boundary here</td></tr>
+<tr class="nil"><td class="ln">145</td><td class="code">    // (this CLI runs in a hidden webview, so DOMParser/sanitize is available) so a</td></tr>
+<tr class="nil"><td class="ln">146</td><td class="code">    // crafted deck can&#x27;t emit an active/hostile HTML artifact: sanitizes text html</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">    // and drops elements with out-of-shape properties (audit C-2 export path).</td></tr>
+<tr class="unc"><td class="ln">148</td><td class="code">    normalizeUntrustedPresentation(presentation);</td></tr>
+<tr class="nil"><td class="ln">149</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">150</td><td class="code">    console.log(`Exporting &quot;${presentation.title}&quot; (${presentation.slides.length} slides)...`);</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">152</td><td class="code">    const preamble = presentation.config?.mathPreamble || &#x27;&#x27;;</td></tr>
+<tr class="unc"><td class="ln">153</td><td class="code">    if (preamble) {</td></tr>
+<tr class="unc"><td class="ln">154</td><td class="code">      try { await applyMathPreamble(preamble); } catch (e) { console.warn(&#x27;preamble apply failed:&#x27;, e); }</td></tr>
+<tr class="nil"><td class="ln">155</td><td class="code">    }</td></tr>
+<tr class="unc"><td class="ln">156</td><td class="code">    const cachingRender = makeCachingRenderMath(preamble);</td></tr>
+<tr class="nil"><td class="ln">157</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code">    // #85: embed @font-face data URLs for every font the deck uses, exactly like</td></tr>
+<tr class="nil"><td class="ln">159</td><td class="code">    // the app export (fileOps.buildPresentationExportHtml). Without this the CLI</td></tr>
+<tr class="nil"><td class="ln">160</td><td class="code">    // omitted fontFacesCss → exportCore fell back to the PT-Sans-only Google Fonts</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">    // CDN, so a CLI-exported deck using any other font rendered in a fallback</td></tr>
+<tr class="nil"><td class="ln">162</td><td class="code">    // face on machines without it installed (and depended on network). Runs in</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">    // the same hidden webview that already fetches /fonts/* for math, so the</td></tr>
+<tr class="nil"><td class="ln">164</td><td class="code">    // fetch resolves headlessly.</td></tr>
+<tr class="unc"><td class="ln">165</td><td class="code">    let fontFacesCss = &#x27;&#x27;;</td></tr>
+<tr class="unc"><td class="ln">166</td><td class="code">    try { fontFacesCss = await buildEmbeddedFontFacesCSS(presentation); }</td></tr>
+<tr class="unc"><td class="ln">167</td><td class="code">    catch (e) { console.warn(&#x27;font embedding (cli) failed:&#x27;, e); }</td></tr>
+<tr class="nil"><td class="ln">168</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">169</td><td class="code">    // #109: embed the print layer (cached previews only — headless CLI can&#x27;t</td></tr>
+<tr class="nil"><td class="ln">170</td><td class="code">    // flip-through-capture; uncached demos get a placeholder in the print view).</td></tr>
+<tr class="unc"><td class="ln">171</td><td class="code">    const { preparePrintLayer } = await import(&#x27;./lib/printLayer&#x27;);<a class="jump" href="src__lib__printLayer_ts.html" title="src/lib/printLayer.ts">→ printLayer.ts</a></td></tr>
+<tr class="unc"><td class="ln">172</td><td class="code">    const { exportPrintCss } = await import(&#x27;./lib/printSlideHtml&#x27;);<a class="jump" href="src__lib__printSlideHtml_ts.html" title="src/lib/printSlideHtml.ts">→ printSlideHtml.ts</a></td></tr>
+<tr class="unc"><td class="ln">173</td><td class="code">    let printSlideHtmls: string[] = [];</td></tr>
+<tr class="unc"><td class="ln">174</td><td class="code">    try { ({ slideHtmls: printSlideHtmls } = await preparePrintLayer(presentation, { renderMath: cachingRender })); }</td></tr>
+<tr class="unc"><td class="ln">175</td><td class="code">    catch (e) { console.warn(&#x27;print layer (cli) failed:&#x27;, e); }</td></tr>
+<tr class="nil"><td class="ln">176</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">177</td><td class="code">    const html = await buildExportHtml({</td></tr>
+<tr class="nil"><td class="ln">178</td><td class="code">      presentation,</td></tr>
+<tr class="nil"><td class="ln">179</td><td class="code">      fontFacesCss,</td></tr>
+<tr class="nil"><td class="ln">180</td><td class="code">      printSlideHtmls,</td></tr>
+<tr class="nil"><td class="ln">181</td><td class="code">      printCss: exportPrintCss(),</td></tr>
+<tr class="nil"><td class="ln">182</td><td class="code">      readFile: async (path: string) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">183</td><td class="code">        const data = await invoke&lt;number[]&gt;(&#x27;db_get_asset&#x27;, { path });</td></tr>
+<tr class="unc"><td class="ln">184</td><td class="code">        return new Uint8Array(data);</td></tr>
+<tr class="nil"><td class="ln">185</td><td class="code">      },</td></tr>
+<tr class="nil"><td class="ln">186</td><td class="code">      readTextFile: async (path: string) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">187</td><td class="code">        const data = await invoke&lt;number[]&gt;(&#x27;db_get_asset&#x27;, { path });</td></tr>
+<tr class="unc"><td class="ln">188</td><td class="code">        return new TextDecoder().decode(new Uint8Array(data));</td></tr>
+<tr class="nil"><td class="ln">189</td><td class="code">      },</td></tr>
+<tr class="nil"><td class="ln">190</td><td class="code">      renderMath: cachingRender,</td></tr>
+<tr class="nil"><td class="ln">191</td><td class="code">      applyMathPreamble: applyMathPreamble,</td></tr>
+<tr class="nil"><td class="ln">192</td><td class="code">      getElementPreview,   // #85: embed cached notebook/video/PDF previews (not placeholders)</td></tr>
+<tr class="nil"><td class="ln">193</td><td class="code">      // Per-preset bundle resolver — same chain as the editor.</td></tr>
+<tr class="nil"><td class="ln">194</td><td class="code">      // eslint-disable-next-line @typescript-eslint/no-explicit-any</td></tr>
+<tr class="nil"><td class="ln">195</td><td class="code">      resolveMathBundle: (preset: string, slide: any) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">196</td><td class="code">        return fontForPreset(preset, slide || {}, presentation.config).id;</td></tr>
+<tr class="nil"><td class="ln">197</td><td class="code">      },</td></tr>
+<tr class="nil"><td class="ln">198</td><td class="code">      // eslint-disable-next-line @typescript-eslint/no-explicit-any</td></tr>
+<tr class="nil"><td class="ln">199</td><td class="code">      resolveFont: (preset: string, slide: any) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">200</td><td class="code">        const pkg = fontForPreset(preset, slide || {}, presentation.config);</td></tr>
+<tr class="unc"><td class="ln">201</td><td class="code">        return fontFamilyForPreset(pkg, preset);</td></tr>
+<tr class="nil"><td class="ln">202</td><td class="code">      },</td></tr>
+<tr class="nil"><td class="ln">203</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">204</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">205</td><td class="code">    await invoke(&#x27;cli_write_and_exit&#x27;, { path: args.outputPath, content: html });</td></tr>
+<tr class="nil"><td class="ln">206</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">207</td><td class="code">    console.error(&#x27;Export failed:&#x27;, e);</td></tr>
+<tr class="unc"><td class="ln">208</td><td class="code">    await invoke(&#x27;cli_write_and_exit&#x27;, { path: &#x27;&#x27;, content: &#x27;&#x27;, error: String(e) });</td></tr>
+<tr class="nil"><td class="ln">209</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">210</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">211</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">212</td><td class="code">main();</td></tr></table>
+</body></html>

@@ -1,0 +1,80 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/textElementHtml.mjs · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/textElementHtml.mjs </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">13/13 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">62 raw lines</span>
+    <span class="stat">0.15% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:20.968%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:79.032%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__textBox_mjs.html">textBox.mjs</a> <a href="src__lib__textPresets_mjs.html">textPresets.mjs</a> <a href="src__lib__textStyle_mjs.html">textStyle.mjs</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__printSlideHtml_ts.html">printSlideHtml.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// The positioned HTML for ONE text element — the 3-div structure (outer box →</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// vertical-align wrapper → styled content) shared by the HTML export (exportCore,</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// px units) and the PDF export (printSlideHtml, inches/points). The ONLY</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// difference between those two was the unit, so units are injected as formatters</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// (`len`: px→CSS length, `fsize`: px→CSS font-size) and everything else — which</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// styles, their order, footnote-tight line-height, padding overrides, fill /</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// box-shadow / border-radius / rotation, font weight/style — lives here once so</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// the two exports can&#x27;t drift.</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// The caller pre-computes the parts that genuinely differ per target and passes</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">// them in: the resolved `color` and `fontFamily`, the px `fontSize`, and the</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">// inner `content` HTML (the HTML export math-renders + code-fonts it; the PDF</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">// export marks it as eigendeck-origin — neither concern belongs here).</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">import { textPresetBoxCss } from &#x27;./textBox.mjs&#x27;;<a class="jump" href="src__lib__textBox_mjs.html" title="src/lib/textBox.mjs">→ textBox.mjs</a></td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">import { textBackgroundResolved, textBoxShadowCss, textShadowCss } from &#x27;./textStyle.mjs&#x27;;<a class="jump" href="src__lib__textStyle_mjs.html" title="src/lib/textStyle.mjs">→ textStyle.mjs</a></td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">import { TEXT_PRESET_STYLES } from &#x27;./textPresets.mjs&#x27;;<a class="jump" href="src__lib__textPresets_mjs.html" title="src/lib/textPresets.mjs">→ textPresets.mjs</a></td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code"> * @param el  text element ({ preset, position, verticalAlign?, padding?,</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code"> *            borderRadius?, rotation?, backgroundColor?, backgroundOpacity?,</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code"> *            boxShadow?, textEffect? })</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code"> * @param o.color       resolved text color</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code"> * @param o.fontFamily  resolved font family</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code"> * @param o.fontSize    px font size (already resolved via effectiveFontSize)</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code"> * @param o.content     inner HTML (already math-rendered / code-fonted / marked)</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code"> * @param o.len    (px:number) =&gt; string  length formatter, e.g. n=&gt;`${n}px` or px2in</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code"> * @param o.fsize  (px:number) =&gt; string  font-size formatter, e.g. n=&gt;`${n}px` or px2pt</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">export function textElementHtml(el, { color, fontFamily, fontSize, content, len, fsize, theme }) {</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">  const ps = TEXT_PRESET_STYLES[el.preset] || TEXT_PRESET_STYLES.body;</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">  const p = el.position;</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">  const box = textPresetBoxCss(el.preset);</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">  const valign = el.verticalAlign || (el.preset === &#x27;title&#x27; || el.preset === &#x27;footnote&#x27; ? &#x27;bottom&#x27; : undefined);</td></tr>
+<tr class="cov"><td class="ln">36</td><td class="code">  const valignStyle = valign === &#x27;middle&#x27; ? &#x27;display:flex;flex-direction:column;justify-content:center;&#x27; :</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">                      valign === &#x27;bottom&#x27; ? &#x27;display:flex;flex-direction:column;justify-content:flex-end;&#x27; : &#x27;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">  // Escape every dynamic value spliced into the style/attribute strings — neutralize</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">  // &quot; &lt; &gt; &amp; so a crafted property (padding/rotation/borderRadius/color/fontFamily/</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">  // geometry, or a size from an unvalidated config.textSizes) can&#x27;t break out of the</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">  // quoted attribute and inject markup. This builder feeds BOTH the HTML export (a</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">  // possibly-hosted artifact) and the PDF path (audit C-2). `content` is the already-</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">  // sanitized inner HTML and is intentionally NOT escaped. Legit values have none of</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">  // these chars, so output is byte-identical (WYSIWYG). Mirrors escAttr in TextElementSvg.</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">  const e = (v) =&gt; String(v).replace(/&amp;/g, &#x27;&amp;amp;&#x27;).replace(/&quot;/g, &#x27;&amp;quot;&#x27;).replace(/&lt;/g, &#x27;&amp;lt;&#x27;).replace(/&gt;/g, &#x27;&amp;gt;&#x27;);</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">  const pad = el.padding</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">    ? `${e(len(el.padding.top))} ${e(len(el.padding.right))} ${e(len(el.padding.bottom))} ${e(len(el.padding.left))}`</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">    : `${e(len(box.padY))} ${e(len(box.padX))}`;</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">  const bg = textBackgroundResolved(el, theme);   // theme-aware (boxTint) fill; falls back to the fixed color</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">  const sh = textBoxShadowCss(el);</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">  const fx = textShadowCss(el, color);</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">  const rot = el.rotation ? `transform:rotate(${e(el.rotation)}deg);` : &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">  const rad = el.borderRadius ? `border-radius:${e(len(el.borderRadius))};` : &#x27;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">  return `&lt;div style=&quot;position:absolute;left:${e(len(p.x))};top:${e(len(p.y))};width:${e(len(p.width))};height:${e(len(p.height))};overflow:hidden;${bg ? `background:${e(bg)};` : &#x27;&#x27;}${sh ? `box-shadow:${e(sh)};` : &#x27;&#x27;}${rad}${rot}&quot;&gt;` +</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">    `&lt;div style=&quot;width:100%;height:100%;${valignStyle}&quot;&gt;` +</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">    `&lt;div style=&quot;font-family:${e(fontFamily)};font-weight:${e(ps.fontWeight)};font-style:${e(ps.fontStyle)};font-size:${e(fsize(fontSize))};color:${e(color)};line-height:${e(box.lineHeight)};padding:${pad};${fx ? `text-shadow:${e(fx)};` : &#x27;&#x27;}&quot;&gt;${content}&lt;/div&gt;` +</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">    `&lt;/div&gt;&lt;/div&gt;`;</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">}</td></tr></table>
+</body></html>

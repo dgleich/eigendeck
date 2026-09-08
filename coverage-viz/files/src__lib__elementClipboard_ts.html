@@ -1,0 +1,183 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/elementClipboard.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/elementClipboard.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>87%</b> covered</span>
+    <span class="stat">84/97 executable</span>
+    <span class="stat unc-txt">13 uncovered</span>
+    <span class="stat">165 raw lines</span>
+    <span class="stat">0.39% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:50.909%"></span><span class="seg unc" style="width:7.879%"></span><span class="seg nil" style="width:41.212%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__fonts_ts.html">fonts.ts</a> <a href="src__lib__mathjaxRenderer_ts.html">mathjaxRenderer.ts</a> <a href="src__lib__themes_ts.html">themes.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Asset-aware copy/paste for slide elements (image / SVG), layered on the Rust</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// `clip_*` commands (see src-tauri/src/clip.rs).</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// Copy of an image element: the bytes go to a process-global &quot;internal clip&quot;</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// (shared across windows) AND to the system clipboard (so it pastes into other</td></tr>
+<tr class="cov"><td class="ln">6</td><td class="code">// apps). Paste prefers the internal clip — it stores the bytes into the CURRENT</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// deck and rebuilds the element with a fresh id/assetId (so cross-deck paste</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">// works and never carries a stale syncId). The internal clip is staleness-</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">// checked in Rust (clipboard generation), so a foreign copy after an eigendeck</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// copy correctly wins.</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">import { invoke } from &#x27;@tauri-apps/api/core&#x27;;</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">import type { SlideElement, TextElement, Slide, PresentationConfig } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">import { TEXT_PRESET_STYLES, effectiveFontSize, resolveColor } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">import { resolveTheme, themeColorForPreset } from &#x27;./themes&#x27;;<a class="jump" href="src__lib__themes_ts.html" title="src/lib/themes.ts">→ themes.ts</a></td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">import { fontForPreset, fontFamilyForPreset } from &#x27;./fonts&#x27;;<a class="jump" href="src__lib__fonts_ts.html" title="src/lib/fonts.ts">→ fonts.ts</a></td></tr>
+<tr class="unc"><td class="ln">17</td><td class="code">import { renderMathInHtmlSync, containsMath } from &#x27;./mathjaxRenderer&#x27;;<a class="jump" href="src__lib__mathjaxRenderer_ts.html" title="src/lib/mathjaxRenderer.ts">→ mathjaxRenderer.ts</a></td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">const PAYLOAD_V = 1;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">21</td><td class="code">interface AssetClipPayload {</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">  v: number;</td></tr>
+<tr class="unc"><td class="ln">23</td><td class="code">  sourceDeckId: string | null;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">  /** The element&#x27;s renderable fields, minus identity (id/assetId/sync/link). */</td></tr>
+<tr class="unc"><td class="ln">25</td><td class="code">  element: Record&lt;string, unknown&gt;;</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">  ext: string;</td></tr>
+<tr class="unc"><td class="ln">27</td><td class="code">  // Cross-slide LINK re-resolution on paste. The image path bypasses the</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">  // text/html private flavor (arboard&#x27;s image write clobbers it), so the link</td></tr>
+<tr class="unc"><td class="ln">29</td><td class="code">  // metadata rides in this payload instead. See docs/copy-and-paste.md.</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">  fromSlideId?: string;</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">  fromSlideIndex?: number;</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">  sourceId?: string;</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">  sourceSyncId?: string;</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">36</td><td class="code">interface AssetMeta { mime_type?: string; path?: string }</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">interface PeekResult { payload: string; mime: string; has_bytes: boolean }</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">/** True for elements we copy as a real image/SVG asset. */</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">export function isCopyableAsset(el: SlideElement): boolean {</td></tr>
+<tr class="cov"><td class="ln">41</td><td class="code">  return el.type === &#x27;image&#x27; &amp;&amp; !!(el as { assetId?: string }).assetId;</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">function detachedFields(el: SlideElement): Record&lt;string, unknown&gt; {</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  const rest = { ...(el as unknown as Record&lt;string, unknown&gt;) };</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">  for (const k of [&#x27;id&#x27;, &#x27;assetId&#x27;, &#x27;syncId&#x27;, &#x27;_syncId&#x27;, &#x27;linkId&#x27;, &#x27;_linkId&#x27;]) delete rest[k];</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">  return rest;</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">function extFromMime(mime: string, path?: string): string {</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">  if (path &amp;&amp; path.includes(&#x27;.&#x27;)) return path.split(&#x27;.&#x27;).pop()!.toLowerCase();</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">  switch (mime) {</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">    case &#x27;image/svg+xml&#x27;: return &#x27;svg&#x27;;</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">    case &#x27;application/pdf&#x27;: return &#x27;pdf&#x27;;</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">    case &#x27;image/jpeg&#x27;: return &#x27;jpg&#x27;;</td></tr>
+<tr class="unc"><td class="ln">56</td><td class="code">    case &#x27;image/gif&#x27;: return &#x27;gif&#x27;;</td></tr>
+<tr class="unc"><td class="ln">57</td><td class="code">    case &#x27;image/webp&#x27;: return &#x27;webp&#x27;;</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">    default: return &#x27;png&#x27;;</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">/** Copy a single image/SVG element to the internal clip + system clipboard.</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code"> *  Returns true if it handled the element. */</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">export async function copyAssetElement(</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">  el: SlideElement,</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">  ctx?: { fromSlideId: string; fromSlideIndex: number },</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">): Promise&lt;boolean&gt; {</td></tr>
+<tr class="cov"><td class="ln">68</td><td class="code">  if (!isCopyableAsset(el)) return false;</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">  const assetId = (el as { assetId: string }).assetId;</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">    const meta = await invoke&lt;AssetMeta | null&gt;(&#x27;db_get_asset_meta_by_id&#x27;, { assetId });</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">    const kind = (el as { kind?: string }).kind;</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">    // Fall back from kind when asset meta is missing — must distinguish pdf, or</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">    // build_reps would send it down the raster (PNG) branch instead of the PDF one.</td></tr>
+<tr class="cov"><td class="ln">75</td><td class="code">    const mime = meta?.mime_type</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code">      || (kind === &#x27;svg&#x27; ? &#x27;image/svg+xml&#x27; : kind === &#x27;pdf&#x27; ? &#x27;application/pdf&#x27; : &#x27;image/png&#x27;);</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">    let sourceDeckId: string | null = null;</td></tr>
+<tr class="cov"><td class="ln">78</td><td class="code">    try { sourceDeckId = await invoke&lt;string&gt;(&#x27;db_get_project_id&#x27;); } catch { /* unsaved deck */ }</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">    const payload: AssetClipPayload = {</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">      v: PAYLOAD_V, sourceDeckId, element: detachedFields(el), ext: extFromMime(mime, meta?.path),</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">      fromSlideId: ctx?.fromSlideId, fromSlideIndex: ctx?.fromSlideIndex,</td></tr>
+<tr class="cov"><td class="ln">82</td><td class="code">      sourceId: el.id, sourceSyncId: (el as { syncId?: string }).syncId,</td></tr>
+<tr class="cov"><td class="ln">83</td><td class="code">    };</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">    await invoke(&#x27;clip_copy_asset&#x27;, { assetId, payload: JSON.stringify(payload), mime });</td></tr>
+<tr class="cov"><td class="ln">85</td><td class="code">    return true;</td></tr>
+<tr class="unc"><td class="ln">86</td><td class="code">  } catch (e) {</td></tr>
+<tr class="cov"><td class="ln">87</td><td class="code">    console.warn(&#x27;[clip] copyAssetElement failed:&#x27;, e);</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code">    return false;</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">90</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">91</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">92</td><td class="code">/** Clear the internal clip — call when copying something that is NOT an asset</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code"> *  element, so a later paste doesn&#x27;t resurrect a stale image. */</td></tr>
+<tr class="unc"><td class="ln">94</td><td class="code">export async function clearInternalClip(): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">95</td><td class="code">  try { await invoke(&#x27;clip_clear_internal&#x27;); } catch { /* ignore */ }</td></tr>
+<tr class="cov"><td class="ln">96</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">function plainTextFromHtml(html: string): string {</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">  return html</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">    .replace(/&lt;br\s*\/?&gt;/gi, &#x27;\n&#x27;)</td></tr>
+<tr class="unc"><td class="ln">101</td><td class="code">    .replace(/&lt;\/(p|div|li|h[1-6])&gt;/gi, &#x27;\n&#x27;)</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">    .replace(/&lt;[^&gt;]+&gt;/g, &#x27;&#x27;)</td></tr>
+<tr class="cov"><td class="ln">103</td><td class="code">    .replace(/&amp;nbsp;/g, &#x27; &#x27;).replace(/&amp;amp;/g, &#x27;&amp;&#x27;).replace(/&amp;lt;/g, &#x27;&lt;&#x27;).replace(/&amp;gt;/g, &#x27;&gt;&#x27;)</td></tr>
+<tr class="cov"><td class="ln">104</td><td class="code">    .replace(/[ \t]+/g, &#x27; &#x27;).replace(/\n{3,}/g, &#x27;\n\n&#x27;).trim();</td></tr>
+<tr class="cov"><td class="ln">105</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">106</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">107</td><td class="code">/** The visible (foreign-app-facing) styled HTML + plain text for a copied text</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code"> *  element. Returns the RAW styled markup — the caller wraps it with the marker</td></tr>
+<tr class="unc"><td class="ln">109</td><td class="code"> *  + private JSON flavor via encodeClipHtml (clipboardModel). */</td></tr>
+<tr class="unc"><td class="ln">110</td><td class="code">export function textElementClipboardHtml(</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">  el: TextElement, slide: Slide, config: PresentationConfig, theme: string,</td></tr>
+<tr class="cov"><td class="ln">112</td><td class="code">): { styledHtml: string; plain: string } {</td></tr>
+<tr class="cov"><td class="ln">113</td><td class="code">  const preset = TEXT_PRESET_STYLES[el.preset];</td></tr>
+<tr class="cov"><td class="ln">114</td><td class="code">  const pkg = fontForPreset(el.preset, slide, config);</td></tr>
+<tr class="cov"><td class="ln">115</td><td class="code">  const fontFamily = el.fontFamily || fontFamilyForPreset(pkg, el.preset);</td></tr>
+<tr class="cov"><td class="ln">116</td><td class="code">  const fontSize = effectiveFontSize(el, config);</td></tr>
+<tr class="cov"><td class="ln">117</td><td class="code">  const clipTheme = resolveTheme(theme, slide.theme);</td></tr>
+<tr class="cov"><td class="ln">118</td><td class="code">  const color = resolveColor(el.color, clipTheme, themeColorForPreset(clipTheme, el.preset));</td></tr>
+<tr class="cov"><td class="ln">119</td><td class="code">  const rendered = containsMath(el.html)</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">    ? (renderMathInHtmlSync(el.html, pkg.id, config.mathPreamble) ?? el.html ?? &#x27;&#x27;)</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code">    : (el.html || &#x27;&#x27;);</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">  const styled =</td></tr>
+<tr class="cov"><td class="ln">123</td><td class="code">    `&lt;div style=&quot;font-family:${fontFamily};font-size:${fontSize}px;font-weight:${preset.fontWeight};` +</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">    `font-style:${preset.fontStyle};color:${color};line-height:1.3;&quot;&gt;${rendered}&lt;/div&gt;`;</td></tr>
+<tr class="cov"><td class="ln">125</td><td class="code">  return { styledHtml: styled, plain: plainTextFromHtml(el.html || &#x27;&#x27;) };</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">128</td><td class="code">/** Is there a FRESH internal asset clip right now? (staleness-checked in Rust).</td></tr>
+<tr class="nil"><td class="ln">129</td><td class="code"> *  The image-paste handler uses this to defer to the internal-clip paste. */</td></tr>
+<tr class="nil"><td class="ln">130</td><td class="code">export async function hasFreshInternalAsset(): Promise&lt;boolean&gt; {</td></tr>
+<tr class="cov"><td class="ln">131</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">132</td><td class="code">    const m = await invoke&lt;PeekResult | null&gt;(&#x27;clip_peek_internal&#x27;);</td></tr>
+<tr class="cov"><td class="ln">133</td><td class="code">    return !!(m &amp;&amp; m.has_bytes);</td></tr>
+<tr class="cov"><td class="ln">134</td><td class="code">  } catch { return false; }</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">137</td><td class="code">/** Paste the internal clip&#x27;s asset into the CURRENT deck and return a new,</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code"> *  detached element (fresh id + assetId). Null if there&#x27;s no fresh internal</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code"> *  clip. The caller adds it to the slide. */</td></tr>
+<tr class="nil"><td class="ln">140</td><td class="code">export interface PastedAsset {</td></tr>
+<tr class="nil"><td class="ln">141</td><td class="code">  element: SlideElement;</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">  /** Cross-slide link metadata (for the animation link the html private flavor</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">   *  would otherwise carry). */</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">  link: { fromSlideId?: string; sourceId?: string; sourceSyncId?: string };</td></tr>
+<tr class="nil"><td class="ln">145</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">146</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">export async function pasteAssetElement(): Promise&lt;PastedAsset | null&gt; {</td></tr>
+<tr class="cov"><td class="ln">148</td><td class="code">  let meta: PeekResult | null = null;</td></tr>
+<tr class="cov"><td class="ln">149</td><td class="code">  try { meta = await invoke&lt;PeekResult | null&gt;(&#x27;clip_peek_internal&#x27;); } catch { return null; }</td></tr>
+<tr class="cov"><td class="ln">150</td><td class="code">  if (!meta || !meta.has_bytes) return null;</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code">  let payload: AssetClipPayload;</td></tr>
+<tr class="cov"><td class="ln">152</td><td class="code">  try { payload = JSON.parse(meta.payload) as AssetClipPayload; } catch { return null; }</td></tr>
+<tr class="cov"><td class="ln">153</td><td class="code">  const ext = payload.ext || &#x27;png&#x27;;</td></tr>
+<tr class="cov"><td class="ln">154</td><td class="code">  const path = `images/pasted-${Date.now()}.${ext}`;</td></tr>
+<tr class="cov"><td class="ln">155</td><td class="code">  let res: { asset_id: string; payload: string } | null = null;</td></tr>
+<tr class="cov"><td class="ln">156</td><td class="code">  try { res = await invoke&lt;{ asset_id: string; payload: string } | null&gt;(&#x27;clip_paste_asset&#x27;, { path }); }</td></tr>
+<tr class="cov"><td class="ln">157</td><td class="code">  catch (e) { console.warn(&#x27;[clip] clip_paste_asset failed:&#x27;, e); return null; }</td></tr>
+<tr class="cov"><td class="ln">158</td><td class="code">  if (!res) return null;</td></tr>
+<tr class="cov"><td class="ln">159</td><td class="code">  const element = {</td></tr>
+<tr class="nil"><td class="ln">160</td><td class="code">    ...payload.element,</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">    id: crypto.randomUUID(),</td></tr>
+<tr class="nil"><td class="ln">162</td><td class="code">    assetId: res.asset_id,</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">  } as unknown as SlideElement;</td></tr>
+<tr class="cov"><td class="ln">164</td><td class="code">  return { element, link: { fromSlideId: payload.fromSlideId, sourceId: payload.sourceId, sourceSyncId: payload.sourceSyncId } };</td></tr>
+<tr class="nil"><td class="ln">165</td><td class="code">}</td></tr></table>
+</body></html>

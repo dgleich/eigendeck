@@ -1,0 +1,58 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/components/PromoteChooser.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/components/PromoteChooser.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>43%</b> covered</span>
+    <span class="stat">3/7 executable</span>
+    <span class="stat unc-txt">4 uncovered</span>
+    <span class="stat">40 raw lines</span>
+    <span class="stat">0.09% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:7.500%"></span><span class="seg unc" style="width:10.000%"></span><span class="seg nil" style="width:82.500%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// &quot;Which recording do you want to keep?&quot; chooser for promoting an animation</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// link to a sync. Promote is destructive — the linked copies collapse into one</td></tr>
+<tr class="cov"><td class="ln">3</td><td class="code">// element — so when they hold different notebook recordings we ask which one</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// survives. The picked copy becomes the master (its recording is kept; the</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// others are discarded). Shown only on a real conflict (2+ different</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// recordings); a single/no recording promotes without asking.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">interface Candidate {</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">  elementId: string;</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">  slideNo: number;     // 1-based, for display</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">  summary: string;     // summarizeOverlay() of this copy&#x27;s recording</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">export function PromoteChooser({ candidates, onPick, onCancel }: {</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">  candidates: Candidate[];</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">  onPick: (elementId: string) =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">  onCancel: () =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">}) {</td></tr>
+<tr class="unc"><td class="ln">19</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">    &lt;div className=&quot;link-overlay&quot; onClick={onCancel}&gt;</td></tr>
+<tr class="unc"><td class="ln">21</td><td class="code">      &lt;div className=&quot;link-overlay-content&quot; onClick={(e) =&gt; e.stopPropagation()}&gt;</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">        &lt;div className=&quot;link-overlay-header&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">          &lt;span&gt;These linked notebooks have different recordings — keep which one?</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">            The others are discarded.&lt;/span&gt;</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">          &lt;button className=&quot;link-overlay-close&quot; onClick={onCancel}&gt;Cancel&lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">        &lt;div className=&quot;overlay-conflict-choices&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">          {candidates.map((c) =&gt; (</td></tr>
+<tr class="unc"><td class="ln">29</td><td class="code">            &lt;button key={c.elementId} className=&quot;overlay-conflict-card&quot;</td></tr>
+<tr class="unc"><td class="ln">30</td><td class="code">              onClick={() =&gt; onPick(c.elementId)}&gt;</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">              &lt;strong&gt;Slide {c.slideNo}&lt;/strong&gt;</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">              &lt;span&gt;{c.summary}&lt;/span&gt;</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">              &lt;em&gt;Keep this recording&lt;/em&gt;</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">            &lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">          ))}</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">      &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">    &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">}</td></tr></table>
+</body></html>

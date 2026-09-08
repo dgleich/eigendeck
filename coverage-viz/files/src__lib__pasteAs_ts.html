@@ -1,0 +1,177 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/pasteAs.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/pasteAs.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">53/53 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">159 raw lines</span>
+    <span class="stat">0.37% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:33.333%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:66.667%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__PasteAsModal_tsx.html">PasteAsModal.tsx</a> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// &quot;Paste as…&quot; — let the user pick which representation on the clipboard to</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// paste, instead of the automatic ladder (docs/copy-and-paste.md Stage 4).</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// Two pure-ish pieces here:</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//   • clipboardRepresentations(types) — map a raw pasteboard type/MIME list to</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//     the offered choices (Image / SVG / PDF / HTML / Text). PURE + unit-tested.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">//   • gatherClipboardTypes() / readRepresentation(kind) — talk to the OS</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">//     clipboard (native NSPasteboard on macOS, the async Clipboard API</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">//     elsewhere). The actual element INSERT is done by SlideEditor&#x27;s existing</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">//     paste helpers (reused via a CustomEvent), so nothing is duplicated here.</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">// &#x27;html-image&#x27; = rasterize the clipboard HTML to a STATIC image (the screenshot</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">// path), offered only when both HTML and text are present. Unlike the automatic</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">// ⌘V screenshot it&#x27;s an explicit choice, and the capture never touches the</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">// network (see captureHtmlToPng) so it can&#x27;t hang on a remote resource.</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">export type PasteKind = &#x27;image&#x27; | &#x27;svg&#x27; | &#x27;pdf&#x27; | &#x27;html-image&#x27; | &#x27;html&#x27; | &#x27;text&#x27;;</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">export interface PasteRep {</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">  kind: PasteKind;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">  label: string;</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">interface KindSpec {</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">  kind: PasteKind;</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">  label: string;</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">  /** Pasteboard UTIs + MIME aliases that indicate this representation. */</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">  types: string[];</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">  /** Asset kinds: canonical mime + extension for the stored asset. */</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">  mime?: string;</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">  ext?: string;</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">// Order = the order shown in the chooser (richest graphics first, text last).</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">const KINDS: KindSpec[] = [</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">  { kind: &#x27;image&#x27;, label: &#x27;Image&#x27;,</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">    types: [&#x27;public.png&#x27;, &#x27;image/png&#x27;, &#x27;public.jpeg&#x27;, &#x27;image/jpeg&#x27;, &#x27;public.jpg&#x27;, &#x27;public.tiff&#x27;, &#x27;image/tiff&#x27;, &#x27;image/gif&#x27;, &#x27;com.compuserve.gif&#x27;, &#x27;image/webp&#x27;, &#x27;org.webmproject.webp&#x27;],</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">    mime: &#x27;image/png&#x27;, ext: &#x27;png&#x27; },</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">  { kind: &#x27;svg&#x27;, label: &#x27;SVG&#x27;,</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">    types: [&#x27;public.svg-image&#x27;, &#x27;com.microsoft.image-svg-xml&#x27;, &#x27;image/svg+xml&#x27;],</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">    mime: &#x27;image/svg+xml&#x27;, ext: &#x27;svg&#x27; },</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">  { kind: &#x27;pdf&#x27;, label: &#x27;PDF&#x27;,</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">    types: [&#x27;com.adobe.pdf&#x27;, &#x27;application/pdf&#x27;],</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">    mime: &#x27;application/pdf&#x27;, ext: &#x27;pdf&#x27; },</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">  // Synthesized (no raw clipboard type): rasterize the clipboard HTML to a</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">  // static PNG. Offered only when HTML *and* text are present — see</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">  // clipboardRepresentations. mime/ext are the captured output.</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">  { kind: &#x27;html-image&#x27;, label: &#x27;Simple Image&#x27;,</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">    types: [], mime: &#x27;image/png&#x27;, ext: &#x27;png&#x27; },</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">  { kind: &#x27;html&#x27;, label: &#x27;HTML element&#x27;,</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">    types: [&#x27;public.html&#x27;, &#x27;text/html&#x27;] },</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">  { kind: &#x27;text&#x27;, label: &#x27;Text&#x27;,</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">    types: [&#x27;public.utf8-plain-text&#x27;, &#x27;public.text&#x27;, &#x27;text/plain&#x27;, &#x27;public.rtf&#x27;, &#x27;text/rtf&#x27;] },</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">];</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">const HTML_TYPES = [&#x27;public.html&#x27;, &#x27;text/html&#x27;];</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">const TEXT_TYPES = [&#x27;public.utf8-plain-text&#x27;, &#x27;public.text&#x27;, &#x27;text/plain&#x27;, &#x27;public.rtf&#x27;, &#x27;text/rtf&#x27;];</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">/** Which representations does this raw clipboard type/UTI list offer? PURE. */</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">export function clipboardRepresentations(types: readonly string[]): PasteRep[] {</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">  const set = new Set(types.map((t) =&gt; t.toLowerCase()));</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">  const has = (toks: string[]) =&gt; toks.some((t) =&gt; set.has(t.toLowerCase()));</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">  // &quot;Simple Image&quot; (rasterize the HTML) is offered only when BOTH HTML and text</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">  // are present — i.e. a rich copy (browser/Word/Docs) where rasterizing is a</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">  // meaningful alternative to pasting the text.</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">  const htmlImage = has(HTML_TYPES) &amp;&amp; has(TEXT_TYPES);</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">  return KINDS</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">    .filter((k) =&gt; (k.kind === &#x27;html-image&#x27; ? htmlImage : has(k.types)))</td></tr>
+<tr class="cov"><td class="ln">68</td><td class="code">    .map((k) =&gt; ({ kind: k.kind, label: k.label }));</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">async function invokeSafe&lt;T&gt;(cmd: string, args: Record&lt;string, unknown&gt;): Promise&lt;T | null&gt; {</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">    const { invoke } = await import(&#x27;@tauri-apps/api/core&#x27;);</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">    return await invoke&lt;T&gt;(cmd, args);</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code">  } catch {</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code">    return null;</td></tr>
+<tr class="nil"><td class="ln">77</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">/** Union of the native pasteboard UTIs (macOS) and the async Clipboard API MIME</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code"> *  types (Linux/Windows). Used to build the chooser. */</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">export async function gatherClipboardTypes(): Promise&lt;string[]&gt; {</td></tr>
+<tr class="cov"><td class="ln">83</td><td class="code">  const out = new Set&lt;string&gt;();</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">  const native = await invokeSafe&lt;string[]&gt;(&#x27;pasteboard_list_types&#x27;, {});</td></tr>
+<tr class="cov"><td class="ln">85</td><td class="code">  native?.forEach((t) =&gt; out.add(t));</td></tr>
+<tr class="cov"><td class="ln">86</td><td class="code">  if (typeof navigator !== &#x27;undefined&#x27; &amp;&amp; navigator.clipboard?.read) {</td></tr>
+<tr class="cov"><td class="ln">87</td><td class="code">    try {</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code">      const items = await navigator.clipboard.read();</td></tr>
+<tr class="cov"><td class="ln">89</td><td class="code">      items.forEach((it) =&gt; it.types.forEach((t) =&gt; out.add(t)));</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">    } catch { /* permission / not focused */ }</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">92</td><td class="code">  return [...out];</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code">async function readNativeBytes(uti: string): Promise&lt;Uint8Array | null&gt; {</td></tr>
+<tr class="cov"><td class="ln">96</td><td class="code">  const arr = await invokeSafe&lt;number[] | null&gt;(&#x27;pasteboard_read_type&#x27;, { uti });</td></tr>
+<tr class="cov"><td class="ln">97</td><td class="code">  return arr &amp;&amp; arr.length ? new Uint8Array(arr) : null;</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">async function readAsyncBytes(mimes: string[]): Promise&lt;Uint8Array | null&gt; {</td></tr>
+<tr class="cov"><td class="ln">101</td><td class="code">  if (typeof navigator === &#x27;undefined&#x27; || !navigator.clipboard?.read) return null;</td></tr>
+<tr class="cov"><td class="ln">102</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">103</td><td class="code">    const items = await navigator.clipboard.read();</td></tr>
+<tr class="cov"><td class="ln">104</td><td class="code">    for (const it of items) {</td></tr>
+<tr class="cov"><td class="ln">105</td><td class="code">      for (const m of mimes) {</td></tr>
+<tr class="cov"><td class="ln">106</td><td class="code">        if (it.types.includes(m)) {</td></tr>
+<tr class="cov"><td class="ln">107</td><td class="code">          const blob = await it.getType(m);</td></tr>
+<tr class="cov"><td class="ln">108</td><td class="code">          return new Uint8Array(await blob.arrayBuffer());</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">  } catch { /* ignore */ }</td></tr>
+<tr class="cov"><td class="ln">113</td><td class="code">  return null;</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">115</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">export interface RepData {</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">  kind: PasteKind;</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code">  text?: string;</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">  html?: string;</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">  bytes?: Uint8Array;</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code">  mime?: string;</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">  ext?: string;</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code">/** Read the bytes/text for the chosen representation off the clipboard, native</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code"> *  first (macOS) then the async Clipboard API. Returns null if it&#x27;s gone. */</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">export async function readRepresentation(kind: PasteKind): Promise&lt;RepData | null&gt; {</td></tr>
+<tr class="cov"><td class="ln">128</td><td class="code">  const spec = KINDS.find((k) =&gt; k.kind === kind);</td></tr>
+<tr class="cov"><td class="ln">129</td><td class="code">  if (!spec) return null;</td></tr>
+<tr class="nil"><td class="ln">130</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">131</td><td class="code">  if (kind === &#x27;text&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">132</td><td class="code">    const nb = await readNativeBytes(&#x27;public.utf8-plain-text&#x27;) ?? await readNativeBytes(&#x27;public.text&#x27;);</td></tr>
+<tr class="cov"><td class="ln">133</td><td class="code">    if (nb) return { kind, text: new TextDecoder(&#x27;utf-8&#x27;).decode(nb) };</td></tr>
+<tr class="cov"><td class="ln">134</td><td class="code">    try {</td></tr>
+<tr class="cov"><td class="ln">135</td><td class="code">      const t = await navigator.clipboard?.readText?.();</td></tr>
+<tr class="cov"><td class="ln">136</td><td class="code">      if (t) return { kind, text: t };</td></tr>
+<tr class="nil"><td class="ln">137</td><td class="code">    } catch { /* ignore */ }</td></tr>
+<tr class="cov"><td class="ln">138</td><td class="code">    return null;</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">140</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">141</td><td class="code">  if (kind === &#x27;html&#x27; || kind === &#x27;html-image&#x27;) {</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">    // Both read the clipboard HTML; the caller rasterizes it for &#x27;html-image&#x27;</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">    // and creates a raw HTML element for &#x27;html&#x27;.</td></tr>
+<tr class="cov"><td class="ln">144</td><td class="code">    const nb = await readNativeBytes(&#x27;public.html&#x27;);</td></tr>
+<tr class="cov"><td class="ln">145</td><td class="code">    if (nb) return { kind, html: new TextDecoder(&#x27;utf-8&#x27;).decode(nb) };</td></tr>
+<tr class="cov"><td class="ln">146</td><td class="code">    const ab = await readAsyncBytes([&#x27;text/html&#x27;]);</td></tr>
+<tr class="cov"><td class="ln">147</td><td class="code">    if (ab) return { kind, html: new TextDecoder(&#x27;utf-8&#x27;).decode(ab) };</td></tr>
+<tr class="cov"><td class="ln">148</td><td class="code">    return null;</td></tr>
+<tr class="nil"><td class="ln">149</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">150</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code">  // image / svg / pdf → raw bytes</td></tr>
+<tr class="cov"><td class="ln">152</td><td class="code">  for (const t of spec.types) {</td></tr>
+<tr class="cov"><td class="ln">153</td><td class="code">    const nb = await readNativeBytes(t);</td></tr>
+<tr class="cov"><td class="ln">154</td><td class="code">    if (nb) return { kind, bytes: nb, mime: spec.mime, ext: spec.ext };</td></tr>
+<tr class="nil"><td class="ln">155</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">156</td><td class="code">  const ab = await readAsyncBytes(spec.types);</td></tr>
+<tr class="cov"><td class="ln">157</td><td class="code">  if (ab) return { kind, bytes: ab, mime: spec.mime, ext: spec.ext };</td></tr>
+<tr class="cov"><td class="ln">158</td><td class="code">  return null;</td></tr>
+<tr class="nil"><td class="ln">159</td><td class="code">}</td></tr></table>
+</body></html>

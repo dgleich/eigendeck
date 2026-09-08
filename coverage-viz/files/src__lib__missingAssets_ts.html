@@ -1,0 +1,111 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/missingAssets.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/missingAssets.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>96%</b> covered</span>
+    <span class="stat">45/47 executable</span>
+    <span class="stat unc-txt">2 uncovered</span>
+    <span class="stat">93 raw lines</span>
+    <span class="stat">0.22% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:48.387%"></span><span class="seg unc" style="width:2.151%"></span><span class="seg nil" style="width:49.462%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__AssetSection_tsx.html">AssetSection.tsx</a> <a href="src__lib__watcherRegistry_ts.html">watcherRegistry.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Tracks asset source files that have gone missing from disk (moved or</td></tr>
+<tr class="cov"><td class="ln">2</td><td class="code">// deleted out from under a linked asset). Issue #74.</td></tr>
+<tr class="cov"><td class="ln">3</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// Detection fires from three places, all of which already stat/read the</td></tr>
+<tr class="cov"><td class="ln">5</td><td class="code">// source file:</td></tr>
+<tr class="cov"><td class="ln">6</td><td class="code">//   • scanForChangedAssets()  — on project open (the common case: the file</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">//     moved while the deck was closed). UNGATED by the auto-reload toggle —</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">//     a missing source matters even if you&#x27;re not auto-reloading it.</td></tr>
+<tr class="cov"><td class="ln">9</td><td class="code">//   • WatcherRegistry.handleChange() — live, while the deck is open (covers</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">//     a delete/rename that the OS reports as a change event).</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">//   • AssetSection &quot;Reload from disk now&quot; — manual retry.</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">// IMPORTANT: a missing source never loses content. The last-loaded bytes stay</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">// in the assets table (the snapshot), so the slide keeps rendering. This module</td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">// only SURFACES the situation (inspector banner + count) and powers Relocate.</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">//</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">// Observable three ways so any layer can react without a store dependency:</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">//   • subscribeMissing(cb) — low-level listener (set of missing asset ids)</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">//   • useAssetMissing(id) / useMissingCount() — React hooks</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">//   • window &#x27;eigendeck:asset-missing&#x27; / &#x27;eigendeck:asset-found&#x27; CustomEvents</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">//     (matches the existing &#x27;eigendeck:asset-changed&#x27; convention)</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">import { useSyncExternalStore } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">export interface MissingAsset {</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">  assetId: string;</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">  /** Human-readable path label (the asset row&#x27;s `path`, else external_path). */</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">  path: string;</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">// assetId -&gt; path label</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">const missing = new Map&lt;string, string&gt;();</td></tr>
+<tr class="unc"><td class="ln">33</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">34</td><td class="code">type Listener = (ids: ReadonlySet&lt;string&gt;) =&gt; void;</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">const listeners = new Set&lt;Listener&gt;();</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">function notify(): void {</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">  const ids = new Set(missing.keys());</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">  for (const l of listeners) l(ids);</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">function dispatch(name: string, detail: unknown): void {</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">  if (typeof window !== &#x27;undefined&#x27; &amp;&amp; typeof window.dispatchEvent === &#x27;function&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">    window.dispatchEvent(new CustomEvent(name, { detail }));</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">/** Mark an asset&#x27;s source file as missing. No-op if already marked the same. */</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">export function markAssetMissing(assetId: string, path: string): void {</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">  if (missing.get(assetId) === path) return;</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">  missing.set(assetId, path);</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">  notify();</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">  dispatch(&#x27;eigendeck:asset-missing&#x27;, { assetId, path });</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">/** Clear the missing flag — the source reappeared / was relocated. */</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">export function markAssetFound(assetId: string): void {</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">  if (!missing.has(assetId)) return;</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">  missing.delete(assetId);</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">  notify();</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">  dispatch(&#x27;eigendeck:asset-found&#x27;, { assetId });</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">export function isAssetMissing(assetId: string): boolean {</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">  return missing.has(assetId);</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">export function getMissingAssets(): MissingAsset[] {</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">  return Array.from(missing, ([assetId, path]) =&gt; ({ assetId, path }));</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">/** Drop all missing flags — called on project close so stale flags from a</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code"> *  previous deck don&#x27;t leak into the next one. */</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">export function clearAllMissing(): void {</td></tr>
+<tr class="cov"><td class="ln">75</td><td class="code">  if (missing.size === 0) return;</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code">  missing.clear();</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">  notify();</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">export function subscribeMissing(l: Listener): () =&gt; void {</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code">  listeners.add(l);</td></tr>
+<tr class="cov"><td class="ln">82</td><td class="code">  l(new Set(missing.keys()));</td></tr>
+<tr class="cov"><td class="ln">83</td><td class="code">  return () =&gt; { listeners.delete(l); };</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">// --- React hooks (getSnapshot returns a primitive → stable, no extra renders).</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code">export function useAssetMissing(assetId: string): boolean {</td></tr>
+<tr class="cov"><td class="ln">89</td><td class="code">  return useSyncExternalStore(</td></tr>
+<tr class="cov"><td class="ln">90</td><td class="code">    (cb) =&gt; subscribeMissing(() =&gt; cb()),</td></tr>
+<tr class="cov"><td class="ln">91</td><td class="code">    () =&gt; missing.has(assetId),</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">}</td></tr></table>
+</body></html>

@@ -1,0 +1,115 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/videoEmbedParse.mjs · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/videoEmbedParse.mjs </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">51/51 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">97 raw lines</span>
+    <span class="stat">0.23% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:52.577%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:47.423%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__videoEmbed_ts.html">videoEmbed.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Shared YouTube / Vimeo / PeerTube URL → {provider, id, origin?} parser AND the</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// iframe-src builder. Extracted so the live app (videoEmbed.ts) and the static</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// export (exportCore.mjs) share ONE copy instead of two hand-synced ones. The</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// builders&#x27; one intentional difference — the live embeds add enablejsapi/api for</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// postMessage playback control, the static export omits them (no JS) — is now a</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// `jsApi` flag, not a forked function.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">/** sandbox flags for demo / demo-piece iframes — run the demo&#x27;s own scripts,</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code"> *  same-origin for its asset URLs. Shared by the editor, present, and export</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code"> *  iframes so the security posture is defined once. */</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">export const DEMO_SANDBOX = &#x27;allow-scripts allow-same-origin&#x27;;</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">/** `allow` permissions for embedded-video iframes in the LIVE app (editor +</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code"> *  present). (The static HTML export uses the older allowfullscreen attribute.) */</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">export const VIDEO_EMBED_ALLOW = &#x27;autoplay; fullscreen; picture-in-picture; encrypted-media&#x27;;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">// A real YouTube video id is exactly 11 chars from [A-Za-z0-9_-]. We validate to</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">// this canonical shape so a shared/opened deck can&#x27;t smuggle an arbitrary string</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">// (raw `?v=` was previously taken unchecked) into the embed URL — and, once the</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">// packaged-app loopback shim interpolates the id into HTML, into an injection sink.</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">// See docs/youtube-embed-shim.md. A non-conforming id yields null (no embed).</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">export function detectVideoProvider(raw) {</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">  let u;</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">  try { u = new URL(String(raw).trim()); } catch { return null; }</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">  const host = u.hostname.replace(/^www\./, &#x27;&#x27;);</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">  if (host === &#x27;youtube.com&#x27; || host === &#x27;m.youtube.com&#x27; || host === &#x27;youtube-nocookie.com&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">    const v = u.searchParams.get(&#x27;v&#x27;);</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">    if (v) return YOUTUBE_ID.test(v) ? { provider: &#x27;youtube&#x27;, id: v } : null;</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">    const m = u.pathname.match(/^\/(?:embed|shorts|live)\/([^/?#]+)/);</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">    if (m) return YOUTUBE_ID.test(m[1]) ? { provider: &#x27;youtube&#x27;, id: m[1] } : null;</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">  if (host === &#x27;youtu.be&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">    const id = u.pathname.slice(1).split(&#x27;/&#x27;)[0];</td></tr>
+<tr class="cov"><td class="ln">36</td><td class="code">    if (id) return YOUTUBE_ID.test(id) ? { provider: &#x27;youtube&#x27;, id } : null;</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">  if (host === &#x27;vimeo.com&#x27; || host === &#x27;player.vimeo.com&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">    const m = u.pathname.match(/(\d+)/);</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">    if (m) return { provider: &#x27;vimeo&#x27;, id: m[1] };</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">  // PeerTube (federated): /w/&lt;id&gt;, /videos/watch/&lt;uuid&gt;, /videos/embed/&lt;uuid&gt;.</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">  const pt = u.pathname.match(/\/(?:w|videos\/(?:watch|embed))\/([\w-]+)/);</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">  if (pt) return { provider: &#x27;peertube&#x27;, id: pt[1], origin: u.origin };</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  return null;</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code"> * Build the iframe `src` for an embed-kind video, applying the element&#x27;s options</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code"> * (loop/autoplay/muted/controls/captions as URL params; playback SPEED needs the</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code"> * provider JS API, not a URL param). Returns null when the URL isn&#x27;t a recognized</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code"> * provider. `opts.jsApi` (default true) adds enablejsapi (YouTube) / api=1</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code"> * (PeerTube) so postMessage can drive playback rate — the live app wants it; the</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code"> * static HTML export passes `{ jsApi: false }` (no JS to drive it).</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code"> * showControls: hiding controls is only safe when autoplay starts the video —</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code"> * with autoplay off, controls=0 leaves no way to play (and on PeerTube/video.js</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code"> * also kills click-to-play). So controls show unless autoplay is on.</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">export function buildEmbedSrc(el, opts = {}) {</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">  const jsApi = opts.jsApi !== false;</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">  if (!el || !el.url) return null;</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">  const parsed = detectVideoProvider(el.url);</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">  if (!parsed) return null;</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">  const { provider, id, origin } = parsed;</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">  const p = new URLSearchParams();</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">  const showControls = !!el.controls || !el.autoplay;</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">  if (provider === &#x27;youtube&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">    if (el.autoplay) p.set(&#x27;autoplay&#x27;, &#x27;1&#x27;);</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">    if (el.muted) p.set(&#x27;mute&#x27;, &#x27;1&#x27;);</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">    if (el.loop) { p.set(&#x27;loop&#x27;, &#x27;1&#x27;); p.set(&#x27;playlist&#x27;, id); }  // single-video loop needs playlist=id</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">    p.set(&#x27;controls&#x27;, showControls ? &#x27;1&#x27; : &#x27;0&#x27;);</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">    if (el.captions) p.set(&#x27;cc_load_policy&#x27;, &#x27;1&#x27;);</td></tr>
+<tr class="cov"><td class="ln">75</td><td class="code">    if (jsApi) p.set(&#x27;enablejsapi&#x27;, &#x27;1&#x27;);  // postMessage control (setPlaybackRate)</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code">    p.set(&#x27;rel&#x27;, &#x27;0&#x27;);</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">    return `https://www.youtube-nocookie.com/embed/${id}?${p.toString()}`;</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">  if (provider === &#x27;vimeo&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">    if (el.autoplay) p.set(&#x27;autoplay&#x27;, &#x27;1&#x27;);</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code">    if (el.muted) p.set(&#x27;muted&#x27;, &#x27;1&#x27;);</td></tr>
+<tr class="cov"><td class="ln">82</td><td class="code">    if (el.loop) p.set(&#x27;loop&#x27;, &#x27;1&#x27;);</td></tr>
+<tr class="cov"><td class="ln">83</td><td class="code">    if (!showControls) p.set(&#x27;controls&#x27;, &#x27;0&#x27;);</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">    if (el.captions) p.set(&#x27;texttrack&#x27;, &#x27;en&#x27;);</td></tr>
+<tr class="cov"><td class="ln">85</td><td class="code">    return `https://player.vimeo.com/video/${id}?${p.toString()}`;</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">  // PeerTube</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code">  const base = origin ?? (() =&gt; { try { return new URL(el.url).origin; } catch { return &#x27;&#x27;; } })();</td></tr>
+<tr class="cov"><td class="ln">89</td><td class="code">  if (!base) return null;</td></tr>
+<tr class="cov"><td class="ln">90</td><td class="code">  if (el.autoplay) p.set(&#x27;autoplay&#x27;, &#x27;1&#x27;);</td></tr>
+<tr class="cov"><td class="ln">91</td><td class="code">  if (el.muted) p.set(&#x27;muted&#x27;, &#x27;1&#x27;);</td></tr>
+<tr class="cov"><td class="ln">92</td><td class="code">  if (el.loop) p.set(&#x27;loop&#x27;, &#x27;1&#x27;);</td></tr>
+<tr class="cov"><td class="ln">93</td><td class="code">  if (!showControls) p.set(&#x27;controls&#x27;, &#x27;0&#x27;);</td></tr>
+<tr class="cov"><td class="ln">94</td><td class="code">  if (el.captions) p.set(&#x27;subtitle&#x27;, &#x27;en&#x27;);</td></tr>
+<tr class="cov"><td class="ln">95</td><td class="code">  if (jsApi) p.set(&#x27;api&#x27;, &#x27;1&#x27;);  // PeerTube PlayerAPI (postMessage setPlaybackRate)</td></tr>
+<tr class="cov"><td class="ln">96</td><td class="code">  return `${base}/videos/embed/${id}?${p.toString()}`;</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">}</td></tr></table>
+</body></html>

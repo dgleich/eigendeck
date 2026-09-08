@@ -1,0 +1,164 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/debug/types.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/debug/types.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>0%</b> covered</span>
+    <span class="stat">0/0 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">146 raw lines</span>
+    <span class="stat">0.34% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:100.000%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__debug__batchCacheAudit_ts.html">batchCacheAudit.ts</a> <a href="src__debug__batchExportHtml_ts.html">batchExportHtml.ts</a> <a href="src__debug__batchRoundtrip_ts.html">batchRoundtrip.ts</a> <a href="src__debug__batchStripHistory_ts.html">batchStripHistory.ts</a> <a href="src__debug__batchWarmCache_ts.html">batchWarmCache.ts</a> <a href="src__debug__report_ts.html">report.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Shared report shapes for the Debug menu&#x27;s batch operations. All reports</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// are designed to serialize cleanly to JSON for offline inspection.</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">export interface RunMeta {</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">  /** Which batch action produced this report */</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">  action: &#x27;batch-html-export&#x27; | &#x27;batch-roundtrip&#x27; | &#x27;batch-cache-audit&#x27; | &#x27;batch-warm-cache&#x27; | &#x27;batch-strip-history&#x27;;</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">  /** ISO 8601 timestamp */</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">  startedAt: string;</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">  /** Directory the user picked */</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">  directory: string;</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">  /** Number of .eigendeck files found */</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">  totalFiles: number;</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">  /** Total wall-clock seconds */</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">  elapsedSeconds: number;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">  /** Aggregate pass count */</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">  passed: number;</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">  /** Aggregate fail count */</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">  failed: number;</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">// ---- batch HTML export ----</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">export interface ExportFileReport {</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">  input: string;</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">  output: string;</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">  ok: boolean;</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">  error?: string;</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">  /** Number of &lt;svg role=&quot;img&quot;&gt; blocks in the output (pre-rendered math) */</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">  mathSvgs: number;</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">  /** Distinct font-family names embedded */</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">  fontFamilies: string[];</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">  /** Should always be 0 — non-zero means a CDN leak slipped in */</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">  cdnLeaks: number;</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">  /** Distinct math bundles used (cascade output) */</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">  bundlesUsed: string[];</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">  /** Output html size in bytes */</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">  sizeBytes: number;</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">  elapsedMs: number;</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">export interface ExportReport {</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">  meta: RunMeta;</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">  files: ExportFileReport[];</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">// ---- batch round-trip ----</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">export interface RoundtripFileReport {</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">  input: string;</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">  ok: boolean;</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">  error?: string;</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">  /** Number of slides in the source */</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">  slideCount: number;</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">  /** Number of slides with per-slide config overrides */</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">  slidesWithConfig: number;</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">  /** Total elements in the source */</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">  elementCount: number;</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">  /** A short list of fields that differ between before/after JSON (path:value) */</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">  diffs: string[];</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">  elapsedMs: number;</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">export interface RoundtripReport {</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">  meta: RunMeta;</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">  files: RoundtripFileReport[];</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">// ---- batch math cache audit ----</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">export interface CacheMiss {</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">  preset: string;</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">  bundle: string;</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">  display: boolean;</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">  /** Truncated tex preview */</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code">  tex: string;</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">77</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">export interface CacheAuditFileReport {</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">  input: string;</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">  ok: boolean;</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">  error?: string;</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">  /** Total $..$ and $$..$$ expressions found across all text elements */</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">  expressionsFound: number;</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">  /** Cached rows present in the file */</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">  cacheRows: number;</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">  /** Expressions resolved from cache */</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">  hits: number;</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code">  /** Expressions NOT in cache (open + ⌘S to seed) */</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">  misses: number;</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">  /** Per-bundle hit/miss breakdown */</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">  perBundle: Record&lt;string, { hits: number; misses: number }&gt;;</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">  /** Up to 10 sample misses for debugging */</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">  sampleMisses: CacheMiss[];</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">  elapsedMs: number;</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">export interface CacheAuditReport {</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">  meta: RunMeta;</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">  files: CacheAuditFileReport[];</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">101</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">// ---- batch warm cache (write in place) ----</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">export interface WarmCacheFileReport {</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">  input: string;</td></tr>
+<tr class="nil"><td class="ln">106</td><td class="code">  ok: boolean;</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">  error?: string;</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">  /** Schema version on first open (1 = pre-migration) */</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">  schemaBefore: number | null;</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">  /** Schema version after — should always be 2 (db_open migrates implicitly) */</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">  schemaAfter: number | null;</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">  /** Total $..$ / $$..$$ expressions across all text elements */</td></tr>
+<tr class="nil"><td class="ln">113</td><td class="code">  expressionsFound: number;</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">  /** Cache rows present before warming */</td></tr>
+<tr class="nil"><td class="ln">115</td><td class="code">  cacheRowsBefore: number;</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">  /** Cache rows present after warming */</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">  cacheRowsAfter: number;</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code">  /** Expressions successfully rendered + persisted this run */</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">  rendered: number;</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">  /** Expressions whose render failed (logged in errors) */</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code">  renderFailures: number;</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">  errors: string[];</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">  elapsedMs: number;</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">export interface WarmCacheReport {</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">  meta: RunMeta;</td></tr>
+<tr class="nil"><td class="ln">128</td><td class="code">  files: WarmCacheFileReport[];</td></tr>
+<tr class="nil"><td class="ln">129</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">130</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">// ---- batch strip history (write in place) ----</td></tr>
+<tr class="nil"><td class="ln">132</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">133</td><td class="code">export interface StripHistoryFileReport {</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">  input: string;</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">  ok: boolean;</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">  error?: string;</td></tr>
+<tr class="nil"><td class="ln">137</td><td class="code">  sizeBeforeBytes: number;</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">  sizeAfterBytes: number;</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code">  savedBytes: number;</td></tr>
+<tr class="nil"><td class="ln">140</td><td class="code">  elapsedMs: number;</td></tr>
+<tr class="nil"><td class="ln">141</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">export interface StripHistoryReport {</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">  meta: RunMeta;</td></tr>
+<tr class="nil"><td class="ln">145</td><td class="code">  files: StripHistoryFileReport[];</td></tr>
+<tr class="nil"><td class="ln">146</td><td class="code">}</td></tr></table>
+</body></html>

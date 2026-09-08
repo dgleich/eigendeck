@@ -1,0 +1,75 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/videoEmbed.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/videoEmbed.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>38%</b> covered</span>
+    <span class="stat">12/32 executable</span>
+    <span class="stat unc-txt">20 uncovered</span>
+    <span class="stat">57 raw lines</span>
+    <span class="stat">0.13% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:21.053%"></span><span class="seg unc" style="width:35.088%"></span><span class="seg nil" style="width:43.860%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__videoEmbedParse_mjs.html">videoEmbedParse.mjs</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__PresentSlide_tsx.html">PresentSlide.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__components__VideoThumb_tsx.html">VideoThumb.tsx</a> <a href="src__lib__videoPlayback_ts.html">videoPlayback.ts</a> <a href="src__lib__youtubeShim_ts.html">youtubeShim.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Embedded-video providers (YouTube / Vimeo / PeerTube): URL parsing, iframe</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// src construction (options are best-effort and per-provider), and poster</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// thumbnails (YouTube = direct CDN URL; Vimeo/PeerTube = oEmbed lookup).</td></tr>
+<tr class="cov"><td class="ln">4</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">5</td><td class="code">export type VideoProvider = &#x27;youtube&#x27; | &#x27;vimeo&#x27; | &#x27;peertube&#x27;;</td></tr>
+<tr class="unc"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">7</td><td class="code">// URL parsing AND the iframe-src builder are shared with the static export</td></tr>
+<tr class="unc"><td class="ln">8</td><td class="code">// (exportCore.mjs) via a .mjs so there&#x27;s a single copy; re-exported here so</td></tr>
+<tr class="unc"><td class="ln">9</td><td class="code">// existing importers are unaffected. The live app calls buildEmbedSrc(el) (jsApi</td></tr>
+<tr class="unc"><td class="ln">10</td><td class="code">// defaults on → enablejsapi/api for postMessage speed control); the static export</td></tr>
+<tr class="unc"><td class="ln">11</td><td class="code">// passes { jsApi: false } (no JS to drive it).</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">export type { ParsedEmbed } from &#x27;./videoEmbedParse.mjs&#x27;;<a class="jump" href="src__lib__videoEmbedParse_mjs.html" title="src/lib/videoEmbedParse.mjs">→ videoEmbedParse.mjs</a></td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">export { detectVideoProvider, buildEmbedSrc, DEMO_SANDBOX, VIDEO_EMBED_ALLOW } from &#x27;./videoEmbedParse.mjs&#x27;;<a class="jump" href="src__lib__videoEmbedParse_mjs.html" title="src/lib/videoEmbedParse.mjs">→ videoEmbedParse.mjs</a></td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">import { detectVideoProvider } from &#x27;./videoEmbedParse.mjs&#x27;;<a class="jump" href="src__lib__videoEmbedParse_mjs.html" title="src/lib/videoEmbedParse.mjs">→ videoEmbedParse.mjs</a></td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">/** Best-effort playback-speed control for an embed, via each provider&#x27;s</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code"> *  postMessage player API (YouTube IFrame API / Vimeo player.js / PeerTube</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code"> *  PlayerAPI). No-op/silent if the player isn&#x27;t ready or the provider rejects</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code"> *  it — speed is &quot;best-effort&quot; for embeds. */</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">export function postEmbedSpeed(win: Window | null | undefined, provider: string | undefined, rate: number): void {</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">  if (!win || !provider) return;</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">    if (provider === &#x27;youtube&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">      win.postMessage(JSON.stringify({ event: &#x27;command&#x27;, func: &#x27;setPlaybackRate&#x27;, args: [rate] }), &#x27;*&#x27;);</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">    } else if (provider === &#x27;vimeo&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">      win.postMessage({ method: &#x27;setPlaybackRate&#x27;, value: rate }, &#x27;*&#x27;);</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">    } else if (provider === &#x27;peertube&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">      win.postMessage({ method: &#x27;setPlaybackRate&#x27;, params: [rate] }, &#x27;*&#x27;);</td></tr>
+<tr class="unc"><td class="ln">29</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">  } catch { /* cross-origin / not ready — ignore */ }</td></tr>
+<tr class="unc"><td class="ln">31</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">/** YouTube poster — a direct CDN URL (no API/CORS needed for &lt;img&gt; display). */</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">export function youtubeThumb(id: string): string {</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">  return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">/** Resolve a poster thumbnail URL for any provider. YouTube is synchronous (a</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code"> *  CDN URL); Vimeo/PeerTube need an oEmbed fetch (CORS-permitting; null on</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code"> *  failure/offline). Returns a URL for &lt;img src&gt; display — not bytes. */</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">export async function fetchEmbedThumbnail(el: { provider?: string; url?: string }): Promise&lt;string | null&gt; {</td></tr>
+<tr class="unc"><td class="ln">42</td><td class="code">  if (!el.url) return null;</td></tr>
+<tr class="unc"><td class="ln">43</td><td class="code">  const parsed = detectVideoProvider(el.url);</td></tr>
+<tr class="unc"><td class="ln">44</td><td class="code">  if (!parsed) return null;</td></tr>
+<tr class="unc"><td class="ln">45</td><td class="code">  if (parsed.provider === &#x27;youtube&#x27;) return youtubeThumb(parsed.id);</td></tr>
+<tr class="unc"><td class="ln">46</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">47</td><td class="code">    const oembed = parsed.provider === &#x27;vimeo&#x27;</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">      ? `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(el.url)}`</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">      : `${parsed.origin}/services/oembed?format=json&amp;url=${encodeURIComponent(el.url)}`;</td></tr>
+<tr class="unc"><td class="ln">50</td><td class="code">    const res = await fetch(oembed);</td></tr>
+<tr class="unc"><td class="ln">51</td><td class="code">    if (!res.ok) return null;</td></tr>
+<tr class="unc"><td class="ln">52</td><td class="code">    const j = await res.json();</td></tr>
+<tr class="unc"><td class="ln">53</td><td class="code">    return (j &amp;&amp; typeof j.thumbnail_url === &#x27;string&#x27;) ? j.thumbnail_url : null;</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">  } catch {</td></tr>
+<tr class="unc"><td class="ln">55</td><td class="code">    return null;</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">}</td></tr></table>
+</body></html>

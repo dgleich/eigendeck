@@ -1,0 +1,64 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/settings.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/settings.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>35%</b> covered</span>
+    <span class="stat">6/17 executable</span>
+    <span class="stat unc-txt">11 uncovered</span>
+    <span class="stat">46 raw lines</span>
+    <span class="stat">0.11% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:13.043%"></span><span class="seg unc" style="width:23.913%"></span><span class="seg nil" style="width:63.043%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__components__SettingsModal_tsx.html">SettingsModal.tsx</a> <a href="src__lib__coverageBeacon_ts.html">coverageBeacon.ts</a> <a href="src__lib__runtime_ts.html">runtime.ts</a></div>
+  <div class="links"><span>imported by:</span> <i>none</i></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code"> * Settings window entry point — the independent app-preferences window.</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code"> * Runs in its own webview (settings.html), mirroring the Security window</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code"> * (src/security.tsx). Settings are app-level prefs stored in localStorage</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code"> * (shared across same-origin webview windows); writes here reach the main</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code"> * window via the PREF_SYNC cross-window bridge (see preferences.ts +</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code"> * initRuntime → initPrefSync). No deck init handshake is needed — the panel</td></tr>
+<tr class="cov"><td class="ln">9</td><td class="code"> * reads/writes prefs directly.</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code"> *</td></tr>
+<tr class="unc"><td class="ln">11</td><td class="code"> * See github.com/dgleich/eigendeck/issues/62 (was: webview modal).</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">import ReactDOM from &#x27;react-dom/client&#x27;;</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">import { getCurrentWindow } from &#x27;@tauri-apps/api/window&#x27;;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">import { listen } from &#x27;@tauri-apps/api/event&#x27;;</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">import { SettingsPanel } from &#x27;./components/SettingsModal&#x27;;<a class="jump" href="src__components__SettingsModal_tsx.html" title="src/components/SettingsModal.tsx">→ SettingsModal.tsx</a></td></tr>
+<tr class="unc"><td class="ln">17</td><td class="code">import { initRuntime } from &#x27;./lib/runtime&#x27;;<a class="jump" href="src__lib__runtime_ts.html" title="src/lib/runtime.ts">→ runtime.ts</a></td></tr>
+<tr class="unc"><td class="ln">18</td><td class="code">import { installCoverageBeacon } from &#x27;./lib/coverageBeacon&#x27;;<a class="jump" href="src__lib__coverageBeacon_ts.html" title="src/lib/coverageBeacon.ts">→ coverageBeacon.ts</a></td></tr>
+<tr class="unc"><td class="ln">19</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">20</td><td class="code">initRuntime();</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">// E2E coverage: this window&#x27;s own __coverage__ → collector (no-op in normal builds).</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">installCoverageBeacon();</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">// Deep-link: when the window is already open, the main window emits `settings-tab`</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">// to switch tabs (e.g. View → Customize Toolbar… → `ui`). Bridge it to the plain</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">// window event SettingsPanel listens for (keeps the panel free of Tauri imports).</td></tr>
+<tr class="unc"><td class="ln">27</td><td class="code">void listen&lt;string&gt;(&#x27;settings-tab&#x27;, (e) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">28</td><td class="code">  window.dispatchEvent(new CustomEvent(&#x27;eigendeck:settings-tab&#x27;, { detail: e.payload }));</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">});</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">function SettingsRoot(): React.ReactElement {</td></tr>
+<tr class="unc"><td class="ln">32</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">    &lt;div style={{ display: &#x27;flex&#x27;, flexDirection: &#x27;column&#x27;, height: &#x27;100vh&#x27; }}&gt;</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">      {/* No in-window &quot;Settings&quot; heading — the native window title says it. The</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">          tab bar sits at the top with a little breathing room. */}</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">      &lt;SettingsPanel header={&lt;div style={{ height: 10 }} /&gt;} /&gt;</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">    &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">// Esc closes the window (native Cmd+W also works via the menu).</td></tr>
+<tr class="unc"><td class="ln">42</td><td class="code">window.addEventListener(&#x27;keydown&#x27;, (e) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">43</td><td class="code">  if (e.key === &#x27;Escape&#x27;) { e.preventDefault(); void getCurrentWindow().close(); }</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">});</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">46</td><td class="code">ReactDOM.createRoot(document.getElementById(&#x27;root&#x27;)!).render(&lt;SettingsRoot /&gt;);</td></tr></table>
+</body></html>

@@ -1,0 +1,791 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src-tauri/src/mac_toolbar.rs · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src-tauri/src/mac_toolbar.rs <span class="badge warn">not instrumented · 0%</span></h1>
+  <div class="stats">
+    <span class="stat"><b>0%</b> covered</span>
+    <span class="stat">0/423 executable</span>
+    <span class="stat unc-txt">423 uncovered</span>
+    <span class="stat">773 raw lines</span>
+    <span class="stat">1.81% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:0.000%"></span><span class="seg unc" style="width:54.722%"></span><span class="seg nil" style="width:45.278%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src-tauri__src__lib_rs.html">lib.rs</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">//! Native macOS NSToolbar for the main window. Uses the Expanded toolbar style,</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">//! so the window&#x27;s native title + proxy icon render CENTERED on their own row</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">//! (the BBEdit/Keynote look) — giving the proxy path popover, drag-to-share, and</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">//! the edited dot for free — with the toolbar buttons/fields in the row below:</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//! Add Slide / Add Build / Save on the left, Author / Venue / Export / Present on</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//! the right. The title/proxy are driven from lib.rs `set_window_document`</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">//! (setRepresentedURL + setTitle + setDocumentEdited).</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">//!</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">//! - BUTTON items post a Rust→JS `toolbar:action` event; the frontend runs the</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">//!   same action as the HTML button (dispatchToolbarAction).</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">//! - The Author/Venue TEXT FIELDS post `toolbar:field` {id,value} on edit; the</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">//!   frontend writes them to config. set_fields() pushes current values back.</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">//!</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">//! SPIKE — behind the `mac-toolbar` cargo feature (off by default).</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">16</td><td class="code">use std::cell::{Cell, RefCell};</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">18</td><td class="code">use objc2::rc::Retained;</td></tr>
+<tr class="unc"><td class="ln">19</td><td class="code">use objc2::runtime::{AnyObject, ProtocolObject};</td></tr>
+<tr class="unc"><td class="ln">20</td><td class="code">use objc2::{define_class, msg_send, sel, AnyThread, DefinedClass, MainThreadMarker, MainThreadOnly};</td></tr>
+<tr class="unc"><td class="ln">21</td><td class="code">use objc2_app_kit::{</td></tr>
+<tr class="unc"><td class="ln">22</td><td class="code">    NSColor, NSCompositingOperation, NSFont, NSFontWeightRegular, NSImage,</td></tr>
+<tr class="unc"><td class="ln">23</td><td class="code">    NSEvent, NSImageSymbolConfiguration, NSImageSymbolScale, NSLayoutConstraint, NSText,</td></tr>
+<tr class="unc"><td class="ln">24</td><td class="code">    NSTextAlignment, NSTextField, NSTextFieldCell, NSToolbar, NSToolbarDelegate,</td></tr>
+<tr class="unc"><td class="ln">25</td><td class="code">    NSToolbarDisplayMode, NSToolbarItem, NSView, NSWindow, NSWindowToolbarStyle,</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">};</td></tr>
+<tr class="unc"><td class="ln">27</td><td class="code">use objc2_foundation::{NSArray, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};</td></tr>
+<tr class="unc"><td class="ln">28</td><td class="code">use serde::Serialize;</td></tr>
+<tr class="unc"><td class="ln">29</td><td class="code">use tauri::{AppHandle, Emitter, Manager};</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">/// Author/Venue toolbar-item size (logical points); the toolbar centers the item.</td></tr>
+<tr class="unc"><td class="ln">32</td><td class="code">const FIELD_WIDTH: f64 = 130.0;</td></tr>
+<tr class="unc"><td class="ln">33</td><td class="code">const FIELD_HEIGHT: f64 = 28.0;</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">/// SF Symbol point size for the button icons. 18 clipped the taller glyphs</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">/// (Export&#x27;s up-arrow) against the button; 15 stays comfortably inside. Compact</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">/// mode (labels off) drops to a smaller glyph to reclaim vertical space.</td></tr>
+<tr class="unc"><td class="ln">37</td><td class="code">const ICON_POINT_SIZE_REGULAR: f64 = 15.0;</td></tr>
+<tr class="unc"><td class="ln">38</td><td class="code">const ICON_POINT_SIZE_COMPACT: f64 = 12.0;</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">/// Per-glyph vertical nudge (points) so off-balance SF Symbols read as centered</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">/// against the boxy neighbors (Jupyter, Present). POSITIVE = up, NEGATIVE = down.</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">/// Separate values for normal vs compact since the glyph is smaller in compact.</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">///   Export (square.and.arrow.up): arrow above the box → box sinks → nudge UP.</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">///   Save   (square.and.arrow.down): arrow below the box → box rides high → nudge DOWN.</td></tr>
+<tr class="unc"><td class="ln">44</td><td class="code">const EXPORT_NUDGE_REGULAR: f64 = 8.0;</td></tr>
+<tr class="unc"><td class="ln">45</td><td class="code">const EXPORT_NUDGE_COMPACT: f64 = 4.0;</td></tr>
+<tr class="unc"><td class="ln">46</td><td class="code">const SAVE_NUDGE_REGULAR: f64 = 8.0;</td></tr>
+<tr class="unc"><td class="ln">47</td><td class="code">const SAVE_NUDGE_COMPACT: f64 = 4.0;</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">49</td><td class="code">fn nudge_for(symbol: &amp;str, compact: bool) -&gt; f64 {</td></tr>
+<tr class="unc"><td class="ln">50</td><td class="code">    match symbol {</td></tr>
+<tr class="unc"><td class="ln">51</td><td class="code">        &quot;square.and.arrow.up&quot; =&gt; if compact { EXPORT_NUDGE_COMPACT } else { EXPORT_NUDGE_REGULAR },</td></tr>
+<tr class="unc"><td class="ln">52</td><td class="code">        &quot;square.and.arrow.down&quot; =&gt; if compact { SAVE_NUDGE_COMPACT } else { SAVE_NUDGE_REGULAR },</td></tr>
+<tr class="unc"><td class="ln">53</td><td class="code">        _ =&gt; 0.0,</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">/// Width (points) of the invisible spacer between the left group (Add Slide / Add</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">/// Build / Save) and the centered title, per mode. Bump COMPACT to push the left</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">/// group further from the title in compact mode; REGULAR is normally 0.</td></tr>
+<tr class="unc"><td class="ln">60</td><td class="code">const LEAD_GAP_REGULAR: f64 = 0.0;</td></tr>
+<tr class="unc"><td class="ln">61</td><td class="code">const LEAD_GAP_COMPACT: f64 = 100.0;</td></tr>
+<tr class="unc"><td class="ln">62</td><td class="code">const LEAD_GAP_ID: &amp;str = &quot;lead-gap&quot;;</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">64</td><td class="code">fn lead_gap_for(compact: bool) -&gt; f64 {</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">    // Never exactly 0: a zero-width toolbar view item makes NSToolbar log an</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">    // &quot;ambiguous/zero size&quot; warning. 1pt reads as no gap.</td></tr>
+<tr class="unc"><td class="ln">67</td><td class="code">    (if compact { LEAD_GAP_COMPACT } else { LEAD_GAP_REGULAR }).max(1.0)</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">70</td><td class="code">const TITLE_ID: &amp;str = &quot;title&quot;;</td></tr>
+<tr class="unc"><td class="ln">71</td><td class="code">const TITLE_WIDTH: f64 = 320.0;</td></tr>
+<tr class="unc"><td class="ln">72</td><td class="code">const TITLE_FONT_SIZE: f64 = 14.0;</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">/// Breathing room (points) above AND below the title text, inside the focus ring.</td></tr>
+<tr class="unc"><td class="ln">74</td><td class="code">const TITLE_VPAD: f64 = 5.0;</td></tr>
+<tr class="unc"><td class="ln">75</td><td class="code">const AUTHOR_ID: &amp;str = &quot;author&quot;;</td></tr>
+<tr class="unc"><td class="ln">76</td><td class="code">const VENUE_ID: &amp;str = &quot;venue&quot;;</td></tr>
+<tr class="unc"><td class="ln">77</td><td class="code">const JUPYTER_ID: &amp;str = &quot;jupyter&quot;;</td></tr>
+<tr class="unc"><td class="ln">78</td><td class="code">const FLEX_ID: &amp;str = &quot;NSToolbarFlexibleSpaceItem&quot;;</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">#[derive(Clone, Serialize)]</td></tr>
+<tr class="unc"><td class="ln">81</td><td class="code">struct ActionPayload {</td></tr>
+<tr class="unc"><td class="ln">82</td><td class="code">    id: String,</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">#[derive(Clone, Serialize)]</td></tr>
+<tr class="unc"><td class="ln">86</td><td class="code">struct FieldPayload {</td></tr>
+<tr class="unc"><td class="ln">87</td><td class="code">    id: String,</td></tr>
+<tr class="unc"><td class="ln">88</td><td class="code">    value: String,</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">/// (identifier, visible label, SF Symbol name) per BUTTON item.</td></tr>
+<tr class="unc"><td class="ln">92</td><td class="code">const ITEMS: &amp;[(&amp;str, &amp;str, &amp;str)] = &amp;[</td></tr>
+<tr class="unc"><td class="ln">93</td><td class="code">    (&quot;add-slide&quot;, &quot;Add Slide&quot;, &quot;plus.rectangle&quot;),</td></tr>
+<tr class="unc"><td class="ln">94</td><td class="code">    (&quot;add-build&quot;, &quot;Add Build&quot;, &quot;plus.square.on.square&quot;),</td></tr>
+<tr class="unc"><td class="ln">95</td><td class="code">    (&quot;save&quot;, &quot;Save&quot;, &quot;square.and.arrow.down&quot;),</td></tr>
+<tr class="unc"><td class="ln">96</td><td class="code">    (&quot;export&quot;, &quot;Export&quot;, &quot;square.and.arrow.up&quot;),</td></tr>
+<tr class="unc"><td class="ln">97</td><td class="code">    (&quot;present&quot;, &quot;Present&quot;, &quot;play.fill&quot;),</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">];</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">// left group | flexible space | right group. The document title is the native</td></tr>
+<tr class="nil"><td class="ln">101</td><td class="code">// centered title row (Expanded style), NOT a toolbar item. The Jupyter item is</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">// ALLOWED but not DEFAULT: it&#x27;s inserted/removed live by set_jupyter() so it only</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">// shows when the deck actually uses a Jupyter kernel (mirrors the HTML pill).</td></tr>
+<tr class="unc"><td class="ln">104</td><td class="code">fn build_ids(with_jupyter: bool) -&gt; Retained&lt;NSArray&lt;NSString&gt;&gt; {</td></tr>
+<tr class="unc"><td class="ln">105</td><td class="code">    let mut order: Vec&lt;&amp;str&gt; = vec![</td></tr>
+<tr class="unc"><td class="ln">106</td><td class="code">        &quot;add-slide&quot;, &quot;add-build&quot;, &quot;save&quot;, LEAD_GAP_ID,</td></tr>
+<tr class="unc"><td class="ln">107</td><td class="code">        FLEX_ID, TITLE_ID, FLEX_ID,</td></tr>
+<tr class="unc"><td class="ln">108</td><td class="code">        AUTHOR_ID, VENUE_ID,</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">    ];</td></tr>
+<tr class="unc"><td class="ln">110</td><td class="code">    if with_jupyter {</td></tr>
+<tr class="unc"><td class="ln">111</td><td class="code">        order.push(JUPYTER_ID);</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">    }</td></tr>
+<tr class="unc"><td class="ln">113</td><td class="code">    order.push(&quot;export&quot;);</td></tr>
+<tr class="unc"><td class="ln">114</td><td class="code">    order.push(&quot;present&quot;);</td></tr>
+<tr class="unc"><td class="ln">115</td><td class="code">    let ids: Vec&lt;Retained&lt;NSString&gt;&gt; = order.iter().map(|id| NSString::from_str(id)).collect();</td></tr>
+<tr class="unc"><td class="ln">116</td><td class="code">    let refs: Vec&lt;&amp;NSString&gt; = ids.iter().map(|r| &amp;**r).collect();</td></tr>
+<tr class="unc"><td class="ln">117</td><td class="code">    NSArray::from_slice(&amp;refs)</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">120</td><td class="code">fn default_identifiers() -&gt; Retained&lt;NSArray&lt;NSString&gt;&gt; {</td></tr>
+<tr class="unc"><td class="ln">121</td><td class="code">    build_ids(false)</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">124</td><td class="code">fn allowed_identifiers() -&gt; Retained&lt;NSArray&lt;NSString&gt;&gt; {</td></tr>
+<tr class="unc"><td class="ln">125</td><td class="code">    build_ids(true)</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">128</td><td class="code">/// Return a copy of `src` grown by |dy| points of transparent space so the glyph</td></tr>
+<tr class="nil"><td class="ln">129</td><td class="code">/// shifts when the toolbar centers it. dy &gt; 0 pads the BOTTOM (glyph moves UP);</td></tr>
+<tr class="nil"><td class="ln">130</td><td class="code">/// dy &lt; 0 pads the TOP (glyph moves DOWN). Preserves template rendering (so it</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">/// still tints for light/dark). Main thread (lockFocus).</td></tr>
+<tr class="nil"><td class="ln">132</td><td class="code">#[allow(deprecated)] // lockFocus/unlockFocus: fine for this small compositing use</td></tr>
+<tr class="unc"><td class="ln">133</td><td class="code">fn nudge_image(src: &amp;NSImage, dy: f64) -&gt; Retained&lt;NSImage&gt; {</td></tr>
+<tr class="unc"><td class="ln">134</td><td class="code">    let s = src.size();</td></tr>
+<tr class="unc"><td class="ln">135</td><td class="code">    let extra = dy.abs();</td></tr>
+<tr class="unc"><td class="ln">136</td><td class="code">    let out = NSImage::initWithSize(</td></tr>
+<tr class="unc"><td class="ln">137</td><td class="code">        NSImage::alloc(),</td></tr>
+<tr class="unc"><td class="ln">138</td><td class="code">        NSSize { width: s.width, height: s.height + extra },</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code">    );</td></tr>
+<tr class="unc"><td class="ln">140</td><td class="code">    out.setTemplate(src.isTemplate());</td></tr>
+<tr class="nil"><td class="ln">141</td><td class="code">    // Non-flipped image space (origin bottom-left). Up: draw high (pad at bottom).</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">    // Down: draw at 0 (pad at top).</td></tr>
+<tr class="unc"><td class="ln">143</td><td class="code">    let draw_y = if dy &gt;= 0.0 { extra } else { 0.0 };</td></tr>
+<tr class="unc"><td class="ln">144</td><td class="code">    out.lockFocus();</td></tr>
+<tr class="unc"><td class="ln">145</td><td class="code">    src.drawAtPoint_fromRect_operation_fraction(</td></tr>
+<tr class="unc"><td class="ln">146</td><td class="code">        NSPoint { x: 0.0, y: draw_y },</td></tr>
+<tr class="unc"><td class="ln">147</td><td class="code">        NSRect::new(NSPoint::new(0.0, 0.0), s),</td></tr>
+<tr class="unc"><td class="ln">148</td><td class="code">        NSCompositingOperation::SourceOver,</td></tr>
+<tr class="unc"><td class="ln">149</td><td class="code">        1.0,</td></tr>
+<tr class="nil"><td class="ln">150</td><td class="code">    );</td></tr>
+<tr class="unc"><td class="ln">151</td><td class="code">    out.unlockFocus();</td></tr>
+<tr class="unc"><td class="ln">152</td><td class="code">    out</td></tr>
+<tr class="nil"><td class="ln">153</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">154</td><td class="code">struct CellIvars {</td></tr>
+<tr class="unc"><td class="ln">155</td><td class="code">    measuring: Cell&lt;bool&gt;,</td></tr>
+<tr class="nil"><td class="ln">156</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">157</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">158</td><td class="code">define_class!(</td></tr>
+<tr class="nil"><td class="ln">159</td><td class="code">    // Vertically centers single-line text: measures the text&#x27;s natural height via</td></tr>
+<tr class="nil"><td class="ln">160</td><td class="code">    // cellSizeForBounds: and shifts the drawing rect down by half the surplus. Only</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">    // used for the title (which is deliberately taller than its text for ring room).</td></tr>
+<tr class="nil"><td class="ln">162</td><td class="code">    // Editing/selection route through drawingRectForBounds:, so the field editor</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">    // lands in the same place (no jump on click).</td></tr>
+<tr class="nil"><td class="ln">164</td><td class="code">    #[unsafe(super(NSTextFieldCell))]</td></tr>
+<tr class="nil"><td class="ln">165</td><td class="code">    #[thread_kind = MainThreadOnly]</td></tr>
+<tr class="nil"><td class="ln">166</td><td class="code">    #[name = &quot;EigendeckCenteredCell&quot;]</td></tr>
+<tr class="nil"><td class="ln">167</td><td class="code">    #[ivars = CellIvars]</td></tr>
+<tr class="unc"><td class="ln">168</td><td class="code">    struct CenteredCell;</td></tr>
+<tr class="nil"><td class="ln">169</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">170</td><td class="code">    unsafe impl NSObjectProtocol for CenteredCell {}</td></tr>
+<tr class="nil"><td class="ln">171</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">172</td><td class="code">    impl CenteredCell {</td></tr>
+<tr class="nil"><td class="ln">173</td><td class="code">        #[unsafe(method(drawingRectForBounds:))]</td></tr>
+<tr class="unc"><td class="ln">174</td><td class="code">        fn drawing_rect_for_bounds(&amp;self, bounds: NSRect) -&gt; NSRect {</td></tr>
+<tr class="unc"><td class="ln">175</td><td class="code">            let mut r: NSRect = unsafe { msg_send![super(self), drawingRectForBounds: bounds] };</td></tr>
+<tr class="nil"><td class="ln">176</td><td class="code">            // cellSizeForBounds: calls back into drawingRectForBounds: — guard it.</td></tr>
+<tr class="unc"><td class="ln">177</td><td class="code">            if !self.ivars().measuring.get() {</td></tr>
+<tr class="unc"><td class="ln">178</td><td class="code">                self.ivars().measuring.set(true);</td></tr>
+<tr class="unc"><td class="ln">179</td><td class="code">                let text: NSSize = unsafe { msg_send![self, cellSizeForBounds: bounds] };</td></tr>
+<tr class="unc"><td class="ln">180</td><td class="code">                self.ivars().measuring.set(false);</td></tr>
+<tr class="unc"><td class="ln">181</td><td class="code">                let delta = r.size.height - text.height;</td></tr>
+<tr class="unc"><td class="ln">182</td><td class="code">                if delta &gt; 0.0 {</td></tr>
+<tr class="unc"><td class="ln">183</td><td class="code">                    r.origin.y += (delta / 2.0).floor();</td></tr>
+<tr class="unc"><td class="ln">184</td><td class="code">                    r.size.height -= delta;</td></tr>
+<tr class="nil"><td class="ln">185</td><td class="code">                }</td></tr>
+<tr class="nil"><td class="ln">186</td><td class="code">            }</td></tr>
+<tr class="unc"><td class="ln">187</td><td class="code">            r</td></tr>
+<tr class="nil"><td class="ln">188</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">189</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">190</td><td class="code">        // Route the field editor (edit + select) through the SAME centered rect as</td></tr>
+<tr class="nil"><td class="ln">191</td><td class="code">        // display, so the text doesn&#x27;t jump when you click to edit.</td></tr>
+<tr class="nil"><td class="ln">192</td><td class="code">        #[unsafe(method(editWithFrame:inView:editor:delegate:event:))]</td></tr>
+<tr class="unc"><td class="ln">193</td><td class="code">        fn edit_with_frame(</td></tr>
+<tr class="unc"><td class="ln">194</td><td class="code">            &amp;self,</td></tr>
+<tr class="unc"><td class="ln">195</td><td class="code">            frame: NSRect,</td></tr>
+<tr class="unc"><td class="ln">196</td><td class="code">            view: &amp;NSView,</td></tr>
+<tr class="unc"><td class="ln">197</td><td class="code">            editor: &amp;NSText,</td></tr>
+<tr class="unc"><td class="ln">198</td><td class="code">            delegate: Option&lt;&amp;AnyObject&gt;,</td></tr>
+<tr class="unc"><td class="ln">199</td><td class="code">            event: Option&lt;&amp;NSEvent&gt;,</td></tr>
+<tr class="nil"><td class="ln">200</td><td class="code">        ) {</td></tr>
+<tr class="unc"><td class="ln">201</td><td class="code">            let r: NSRect = unsafe { msg_send![self, drawingRectForBounds: frame] };</td></tr>
+<tr class="unc"><td class="ln">202</td><td class="code">            unsafe {</td></tr>
+<tr class="unc"><td class="ln">203</td><td class="code">                let _: () = msg_send![super(self),</td></tr>
+<tr class="unc"><td class="ln">204</td><td class="code">                    editWithFrame: r, inView: view, editor: editor, delegate: delegate, event: event];</td></tr>
+<tr class="nil"><td class="ln">205</td><td class="code">            }</td></tr>
+<tr class="nil"><td class="ln">206</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">207</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">208</td><td class="code">        #[unsafe(method(selectWithFrame:inView:editor:delegate:start:length:))]</td></tr>
+<tr class="unc"><td class="ln">209</td><td class="code">        fn select_with_frame(</td></tr>
+<tr class="unc"><td class="ln">210</td><td class="code">            &amp;self,</td></tr>
+<tr class="unc"><td class="ln">211</td><td class="code">            frame: NSRect,</td></tr>
+<tr class="unc"><td class="ln">212</td><td class="code">            view: &amp;NSView,</td></tr>
+<tr class="unc"><td class="ln">213</td><td class="code">            editor: &amp;NSText,</td></tr>
+<tr class="unc"><td class="ln">214</td><td class="code">            delegate: Option&lt;&amp;AnyObject&gt;,</td></tr>
+<tr class="unc"><td class="ln">215</td><td class="code">            start: isize,</td></tr>
+<tr class="unc"><td class="ln">216</td><td class="code">            length: isize,</td></tr>
+<tr class="nil"><td class="ln">217</td><td class="code">        ) {</td></tr>
+<tr class="unc"><td class="ln">218</td><td class="code">            let r: NSRect = unsafe { msg_send![self, drawingRectForBounds: frame] };</td></tr>
+<tr class="unc"><td class="ln">219</td><td class="code">            unsafe {</td></tr>
+<tr class="unc"><td class="ln">220</td><td class="code">                let _: () = msg_send![super(self),</td></tr>
+<tr class="unc"><td class="ln">221</td><td class="code">                    selectWithFrame: r, inView: view, editor: editor, delegate: delegate, start: start, length: length];</td></tr>
+<tr class="nil"><td class="ln">222</td><td class="code">            }</td></tr>
+<tr class="nil"><td class="ln">223</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">224</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">225</td><td class="code">);</td></tr>
+<tr class="nil"><td class="ln">226</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">227</td><td class="code">impl CenteredCell {</td></tr>
+<tr class="unc"><td class="ln">228</td><td class="code">    fn make(mtm: MainThreadMarker) -&gt; Retained&lt;Self&gt; {</td></tr>
+<tr class="unc"><td class="ln">229</td><td class="code">        let this = Self::alloc(mtm).set_ivars(CellIvars { measuring: Cell::new(false) });</td></tr>
+<tr class="unc"><td class="ln">230</td><td class="code">        unsafe { msg_send![super(this), initTextCell: &amp;*NSString::from_str(&quot;&quot;)] }</td></tr>
+<tr class="nil"><td class="ln">231</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">232</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">233</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">234</td><td class="code">fn meta_for(identifier: &amp;NSString) -&gt; Option&lt;(&amp;&#x27;static str, &amp;&#x27;static str)&gt; {</td></tr>
+<tr class="unc"><td class="ln">235</td><td class="code">    let id = identifier.to_string();</td></tr>
+<tr class="unc"><td class="ln">236</td><td class="code">    ITEMS</td></tr>
+<tr class="unc"><td class="ln">237</td><td class="code">        .iter()</td></tr>
+<tr class="unc"><td class="ln">238</td><td class="code">        .find(|(i, _, _)| *i == id)</td></tr>
+<tr class="unc"><td class="ln">239</td><td class="code">        .map(|(_, label, sym)| (*label, *sym))</td></tr>
+<tr class="nil"><td class="ln">240</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">241</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">242</td><td class="code">/// Apply the visible chrome for a BUTTON item. Shared by the initial build</td></tr>
+<tr class="nil"><td class="ln">243</td><td class="code">/// (item_for) and the live toggles (set_compact / set_save_dirty) so all three</td></tr>
+<tr class="nil"><td class="ln">244</td><td class="code">/// produce identical styling.</td></tr>
+<tr class="nil"><td class="ln">245</td><td class="code">///</td></tr>
+<tr class="nil"><td class="ln">246</td><td class="code">/// - `compact`: hide the visible label and shrink the icon (paletteLabel + toolTip</td></tr>
+<tr class="nil"><td class="ln">247</td><td class="code">///   keep the name available for a11y/hover).</td></tr>
+<tr class="nil"><td class="ln">248</td><td class="code">/// - `dirty`: tint the glyph with the system accent color — used on the Save item</td></tr>
+<tr class="nil"><td class="ln">249</td><td class="code">///   to flag unsaved changes (mirrors the title-bar edited dot).</td></tr>
+<tr class="unc"><td class="ln">250</td><td class="code">fn style_button(item: &amp;NSToolbarItem, label: &amp;str, symbol: &amp;str, compact: bool, dirty: bool) {</td></tr>
+<tr class="unc"><td class="ln">251</td><td class="code">    let ns_label = NSString::from_str(label);</td></tr>
+<tr class="nil"><td class="ln">252</td><td class="code">    // Normal mode shows the label under the icon; compact clears the text (icon</td></tr>
+<tr class="nil"><td class="ln">253</td><td class="code">    // only). paletteLabel + toolTip keep the name available regardless.</td></tr>
+<tr class="unc"><td class="ln">254</td><td class="code">    item.setLabel(&amp;NSString::from_str(if compact { &quot;&quot; } else { label }));</td></tr>
+<tr class="unc"><td class="ln">255</td><td class="code">    item.setPaletteLabel(&amp;ns_label);</td></tr>
+<tr class="unc"><td class="ln">256</td><td class="code">    item.setToolTip(Some(&amp;ns_label));</td></tr>
+<tr class="unc"><td class="ln">257</td><td class="code">    if let Some(image) = NSImage::imageWithSystemSymbolName_accessibilityDescription(</td></tr>
+<tr class="unc"><td class="ln">258</td><td class="code">        &amp;NSString::from_str(symbol),</td></tr>
+<tr class="unc"><td class="ln">259</td><td class="code">        Some(&amp;ns_label),</td></tr>
+<tr class="nil"><td class="ln">260</td><td class="code">    ) {</td></tr>
+<tr class="unc"><td class="ln">261</td><td class="code">        let point = if compact { ICON_POINT_SIZE_COMPACT } else { ICON_POINT_SIZE_REGULAR };</td></tr>
+<tr class="unc"><td class="ln">262</td><td class="code">        let cfg = unsafe {</td></tr>
+<tr class="unc"><td class="ln">263</td><td class="code">            NSImageSymbolConfiguration::configurationWithPointSize_weight_scale(</td></tr>
+<tr class="unc"><td class="ln">264</td><td class="code">                point,</td></tr>
+<tr class="unc"><td class="ln">265</td><td class="code">                NSFontWeightRegular,</td></tr>
+<tr class="nil"><td class="ln">266</td><td class="code">                // Large — the label row is controlled by the toolbar displayMode, not</td></tr>
+<tr class="nil"><td class="ln">267</td><td class="code">                // image size (#125), so keep the bigger glyph.</td></tr>
+<tr class="unc"><td class="ln">268</td><td class="code">                NSImageSymbolScale::Large,</td></tr>
+<tr class="nil"><td class="ln">269</td><td class="code">            )</td></tr>
+<tr class="nil"><td class="ln">270</td><td class="code">        };</td></tr>
+<tr class="nil"><td class="ln">271</td><td class="code">        // Accent-tint the dirty Save icon; otherwise leave it template (adapts to</td></tr>
+<tr class="nil"><td class="ln">272</td><td class="code">        // light/dark). Combine the size + color configs.</td></tr>
+<tr class="unc"><td class="ln">273</td><td class="code">        let cfg = if dirty {</td></tr>
+<tr class="unc"><td class="ln">274</td><td class="code">            let color = NSColor::controlAccentColor();</td></tr>
+<tr class="unc"><td class="ln">275</td><td class="code">            let color_cfg = NSImageSymbolConfiguration::configurationWithHierarchicalColor(&amp;color);</td></tr>
+<tr class="unc"><td class="ln">276</td><td class="code">            cfg.configurationByApplyingConfiguration(&amp;color_cfg)</td></tr>
+<tr class="unc"><td class="ln">277</td><td class="code">        } else {</td></tr>
+<tr class="unc"><td class="ln">278</td><td class="code">            cfg</td></tr>
+<tr class="nil"><td class="ln">279</td><td class="code">        };</td></tr>
+<tr class="unc"><td class="ln">280</td><td class="code">        let sized = image.imageWithSymbolConfiguration(&amp;cfg).unwrap_or(image);</td></tr>
+<tr class="nil"><td class="ln">281</td><td class="code">        // Nudge off-balance glyphs (Export up, Save down) so their boxes align.</td></tr>
+<tr class="unc"><td class="ln">282</td><td class="code">        let dy = nudge_for(symbol, compact);</td></tr>
+<tr class="unc"><td class="ln">283</td><td class="code">        let sized = if dy != 0.0 { nudge_image(&amp;sized, dy) } else { sized };</td></tr>
+<tr class="unc"><td class="ln">284</td><td class="code">        item.setImage(Some(&amp;sized));</td></tr>
+<tr class="nil"><td class="ln">285</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">286</td><td class="code">    // Always borderless: a BORDERED plain toolbar item renders icon-only (the label</td></tr>
+<tr class="nil"><td class="ln">287</td><td class="code">    // is dropped for the capsule chrome). Borderless is what shows icon+label.</td></tr>
+<tr class="unc"><td class="ln">288</td><td class="code">    item.setBordered(false);</td></tr>
+<tr class="nil"><td class="ln">289</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">290</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">291</td><td class="code">/// Map the aggregate Jupyter-health status to a system color for the icon tint.</td></tr>
+<tr class="unc"><td class="ln">292</td><td class="code">fn jupyter_color(status: &amp;str) -&gt; Retained&lt;NSColor&gt; {</td></tr>
+<tr class="unc"><td class="ln">293</td><td class="code">    match status {</td></tr>
+<tr class="unc"><td class="ln">294</td><td class="code">        &quot;green&quot; =&gt; NSColor::systemGreenColor(),</td></tr>
+<tr class="unc"><td class="ln">295</td><td class="code">        &quot;yellow&quot; =&gt; NSColor::systemYellowColor(),</td></tr>
+<tr class="unc"><td class="ln">296</td><td class="code">        &quot;red&quot; =&gt; NSColor::systemRedColor(),</td></tr>
+<tr class="unc"><td class="ln">297</td><td class="code">        _ =&gt; NSColor::systemGrayColor(),</td></tr>
+<tr class="nil"><td class="ln">298</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">299</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">300</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">301</td><td class="code">/// Style the Jupyter server-status item: a `server.rack` glyph tinted by the</td></tr>
+<tr class="nil"><td class="ln">302</td><td class="code">/// aggregate health (green/yellow/red, gray = nothing to report). Mirrors the</td></tr>
+<tr class="nil"><td class="ln">303</td><td class="code">/// HTML ServerStatusPill. Follows the same compact bordered/label rules as the</td></tr>
+<tr class="nil"><td class="ln">304</td><td class="code">/// other buttons.</td></tr>
+<tr class="unc"><td class="ln">305</td><td class="code">fn style_jupyter(item: &amp;NSToolbarItem, status: &amp;str, tooltip: &amp;str, compact: bool) {</td></tr>
+<tr class="unc"><td class="ln">306</td><td class="code">    let ns_label = NSString::from_str(&quot;Jupyter servers&quot;);</td></tr>
+<tr class="unc"><td class="ln">307</td><td class="code">    item.setLabel(&amp;NSString::from_str(if compact { &quot;&quot; } else { &quot;Jupyter&quot; }));</td></tr>
+<tr class="unc"><td class="ln">308</td><td class="code">    item.setPaletteLabel(&amp;ns_label);</td></tr>
+<tr class="unc"><td class="ln">309</td><td class="code">    item.setToolTip(Some(&amp;NSString::from_str(tooltip)));</td></tr>
+<tr class="unc"><td class="ln">310</td><td class="code">    if let Some(image) = NSImage::imageWithSystemSymbolName_accessibilityDescription(</td></tr>
+<tr class="unc"><td class="ln">311</td><td class="code">        &amp;NSString::from_str(&quot;server.rack&quot;),</td></tr>
+<tr class="unc"><td class="ln">312</td><td class="code">        Some(&amp;ns_label),</td></tr>
+<tr class="nil"><td class="ln">313</td><td class="code">    ) {</td></tr>
+<tr class="unc"><td class="ln">314</td><td class="code">        let point = if compact { ICON_POINT_SIZE_COMPACT } else { ICON_POINT_SIZE_REGULAR };</td></tr>
+<tr class="unc"><td class="ln">315</td><td class="code">        let size_cfg = unsafe {</td></tr>
+<tr class="unc"><td class="ln">316</td><td class="code">            NSImageSymbolConfiguration::configurationWithPointSize_weight_scale(</td></tr>
+<tr class="unc"><td class="ln">317</td><td class="code">                point,</td></tr>
+<tr class="unc"><td class="ln">318</td><td class="code">                NSFontWeightRegular,</td></tr>
+<tr class="unc"><td class="ln">319</td><td class="code">                NSImageSymbolScale::Large,</td></tr>
+<tr class="nil"><td class="ln">320</td><td class="code">            )</td></tr>
+<tr class="nil"><td class="ln">321</td><td class="code">        };</td></tr>
+<tr class="unc"><td class="ln">322</td><td class="code">        let color_cfg =</td></tr>
+<tr class="unc"><td class="ln">323</td><td class="code">            NSImageSymbolConfiguration::configurationWithHierarchicalColor(&amp;jupyter_color(status));</td></tr>
+<tr class="unc"><td class="ln">324</td><td class="code">        let cfg = size_cfg.configurationByApplyingConfiguration(&amp;color_cfg);</td></tr>
+<tr class="unc"><td class="ln">325</td><td class="code">        let sized = image.imageWithSymbolConfiguration(&amp;cfg).unwrap_or(image);</td></tr>
+<tr class="unc"><td class="ln">326</td><td class="code">        item.setImage(Some(&amp;sized));</td></tr>
+<tr class="nil"><td class="ln">327</td><td class="code">    }</td></tr>
+<tr class="unc"><td class="ln">328</td><td class="code">    item.setBordered(compact);</td></tr>
+<tr class="nil"><td class="ln">329</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">330</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">331</td><td class="code">struct Ivars {</td></tr>
+<tr class="unc"><td class="ln">332</td><td class="code">    app: AppHandle,</td></tr>
+<tr class="unc"><td class="ln">333</td><td class="code">    title_field: RefCell&lt;Option&lt;Retained&lt;NSTextField&gt;&gt;&gt;,</td></tr>
+<tr class="unc"><td class="ln">334</td><td class="code">    author_field: RefCell&lt;Option&lt;Retained&lt;NSTextField&gt;&gt;&gt;,</td></tr>
+<tr class="unc"><td class="ln">335</td><td class="code">    venue_field: RefCell&lt;Option&lt;Retained&lt;NSTextField&gt;&gt;&gt;,</td></tr>
+<tr class="nil"><td class="ln">336</td><td class="code">    /// Built BUTTON items, kept so the live toggles can re-style them in place.</td></tr>
+<tr class="unc"><td class="ln">337</td><td class="code">    buttons: RefCell&lt;Vec&lt;Retained&lt;NSToolbarItem&gt;&gt;&gt;,</td></tr>
+<tr class="nil"><td class="ln">338</td><td class="code">    /// Compact view (labels off + smaller icons). Read at build time; toggled live</td></tr>
+<tr class="nil"><td class="ln">339</td><td class="code">    /// by set_compact().</td></tr>
+<tr class="unc"><td class="ln">340</td><td class="code">    compact: Cell&lt;bool&gt;,</td></tr>
+<tr class="nil"><td class="ln">341</td><td class="code">    /// Whether the deck has unsaved changes — accent-tints the Save icon.</td></tr>
+<tr class="unc"><td class="ln">342</td><td class="code">    save_dirty: Cell&lt;bool&gt;,</td></tr>
+<tr class="nil"><td class="ln">343</td><td class="code">    /// Jupyter server-status item + its current health/tooltip (pushed from JS).</td></tr>
+<tr class="unc"><td class="ln">344</td><td class="code">    jupyter_item: RefCell&lt;Option&lt;Retained&lt;NSToolbarItem&gt;&gt;&gt;,</td></tr>
+<tr class="unc"><td class="ln">345</td><td class="code">    jupyter_status: RefCell&lt;String&gt;,</td></tr>
+<tr class="unc"><td class="ln">346</td><td class="code">    jupyter_tooltip: RefCell&lt;String&gt;,</td></tr>
+<tr class="nil"><td class="ln">347</td><td class="code">    /// Invisible leading spacer item (Save→title gap) + its width constraint, whose</td></tr>
+<tr class="nil"><td class="ln">348</td><td class="code">    /// constant is updated per mode.</td></tr>
+<tr class="unc"><td class="ln">349</td><td class="code">    lead_gap_item: RefCell&lt;Option&lt;Retained&lt;NSToolbarItem&gt;&gt;&gt;,</td></tr>
+<tr class="unc"><td class="ln">350</td><td class="code">    lead_gap_width: RefCell&lt;Option&lt;Retained&lt;NSLayoutConstraint&gt;&gt;&gt;,</td></tr>
+<tr class="nil"><td class="ln">351</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">352</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">353</td><td class="code">define_class!(</td></tr>
+<tr class="nil"><td class="ln">354</td><td class="code">    #[unsafe(super(objc2::runtime::NSObject))]</td></tr>
+<tr class="nil"><td class="ln">355</td><td class="code">    #[thread_kind = MainThreadOnly]</td></tr>
+<tr class="nil"><td class="ln">356</td><td class="code">    #[name = &quot;EigendeckToolbarDelegate&quot;]</td></tr>
+<tr class="nil"><td class="ln">357</td><td class="code">    #[ivars = Ivars]</td></tr>
+<tr class="unc"><td class="ln">358</td><td class="code">    struct ToolbarDelegate;</td></tr>
+<tr class="nil"><td class="ln">359</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">360</td><td class="code">    unsafe impl NSObjectProtocol for ToolbarDelegate {}</td></tr>
+<tr class="nil"><td class="ln">361</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">362</td><td class="code">    unsafe impl NSToolbarDelegate for ToolbarDelegate {</td></tr>
+<tr class="nil"><td class="ln">363</td><td class="code">        #[unsafe(method_id(toolbarDefaultItemIdentifiers:))]</td></tr>
+<tr class="unc"><td class="ln">364</td><td class="code">        fn default_ids(&amp;self, _t: &amp;NSToolbar) -&gt; Retained&lt;NSArray&lt;NSString&gt;&gt; {</td></tr>
+<tr class="unc"><td class="ln">365</td><td class="code">            default_identifiers()</td></tr>
+<tr class="nil"><td class="ln">366</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">367</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">368</td><td class="code">        #[unsafe(method_id(toolbarAllowedItemIdentifiers:))]</td></tr>
+<tr class="unc"><td class="ln">369</td><td class="code">        fn allowed_ids(&amp;self, _t: &amp;NSToolbar) -&gt; Retained&lt;NSArray&lt;NSString&gt;&gt; {</td></tr>
+<tr class="unc"><td class="ln">370</td><td class="code">            allowed_identifiers()</td></tr>
+<tr class="nil"><td class="ln">371</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">372</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">373</td><td class="code">        #[unsafe(method_id(toolbar:itemForItemIdentifier:willBeInsertedIntoToolbar:))]</td></tr>
+<tr class="unc"><td class="ln">374</td><td class="code">        fn item_for(</td></tr>
+<tr class="unc"><td class="ln">375</td><td class="code">            &amp;self,</td></tr>
+<tr class="unc"><td class="ln">376</td><td class="code">            _t: &amp;NSToolbar,</td></tr>
+<tr class="unc"><td class="ln">377</td><td class="code">            identifier: &amp;NSString,</td></tr>
+<tr class="unc"><td class="ln">378</td><td class="code">            _insert: bool,</td></tr>
+<tr class="unc"><td class="ln">379</td><td class="code">        ) -&gt; Option&lt;Retained&lt;NSToolbarItem&gt;&gt; {</td></tr>
+<tr class="nil"><td class="ln">380</td><td class="code">            // method_id&#x27;s raw return is RetainedReturnValue → no early `return`;</td></tr>
+<tr class="nil"><td class="ln">381</td><td class="code">            // the whole body is one tail expression yielding Option.</td></tr>
+<tr class="unc"><td class="ln">382</td><td class="code">            let mtm = self.mtm();</td></tr>
+<tr class="unc"><td class="ln">383</td><td class="code">            let id = identifier.to_string();</td></tr>
+<tr class="unc"><td class="ln">384</td><td class="code">            let item = NSToolbarItem::initWithItemIdentifier(NSToolbarItem::alloc(mtm), identifier);</td></tr>
+<tr class="nil"><td class="ln">385</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">386</td><td class="code">            if id == TITLE_ID {</td></tr>
+<tr class="nil"><td class="ln">387</td><td class="code">                // Bold, borderless, editable presentation title — centered in the</td></tr>
+<tr class="nil"><td class="ln">388</td><td class="code">                // toolbar row (centeredItemIdentifier). Two-way synced to</td></tr>
+<tr class="nil"><td class="ln">389</td><td class="code">                // presentation.title (onTitleEdit → toolbar:field; set_fields pushes back).</td></tr>
+<tr class="nil"><td class="ln">390</td><td class="code">                // Bold, borderless, editable title. Uses the centering cell (set</td></tr>
+<tr class="nil"><td class="ln">391</td><td class="code">                // FIRST — setCell replaces the cell wholesale) so the text stays</td></tr>
+<tr class="nil"><td class="ln">392</td><td class="code">                // centered inside a field made a touch taller than the text for</td></tr>
+<tr class="nil"><td class="ln">393</td><td class="code">                // focus-ring breathing room.</td></tr>
+<tr class="unc"><td class="ln">394</td><td class="code">                let field = NSTextField::textFieldWithString(&amp;NSString::from_str(&quot;&quot;), mtm);</td></tr>
+<tr class="unc"><td class="ln">395</td><td class="code">                field.setCell(Some(&amp;CenteredCell::make(mtm)));</td></tr>
+<tr class="unc"><td class="ln">396</td><td class="code">                field.setBezeled(false);</td></tr>
+<tr class="unc"><td class="ln">397</td><td class="code">                field.setDrawsBackground(false);</td></tr>
+<tr class="unc"><td class="ln">398</td><td class="code">                field.setEditable(true);</td></tr>
+<tr class="unc"><td class="ln">399</td><td class="code">                field.setFont(Some(&amp;NSFont::boldSystemFontOfSize(TITLE_FONT_SIZE)));</td></tr>
+<tr class="unc"><td class="ln">400</td><td class="code">                field.setAlignment(NSTextAlignment::Center);</td></tr>
+<tr class="unc"><td class="ln">401</td><td class="code">                let target: &amp;objc2::runtime::AnyObject = self;</td></tr>
+<tr class="unc"><td class="ln">402</td><td class="code">                unsafe {</td></tr>
+<tr class="unc"><td class="ln">403</td><td class="code">                    field.setTarget(Some(target));</td></tr>
+<tr class="unc"><td class="ln">404</td><td class="code">                    field.setAction(Some(sel!(onTitleEdit:)));</td></tr>
+<tr class="nil"><td class="ln">405</td><td class="code">                }</td></tr>
+<tr class="nil"><td class="ln">406</td><td class="code">                // Commit on focus-loss, not just Return/Tab. NSTextField sends its</td></tr>
+<tr class="nil"><td class="ln">407</td><td class="code">                // action only on Return/Tab by default, so clicking AWAY from the</td></tr>
+<tr class="nil"><td class="ln">408</td><td class="code">                // title dropped the edit: no onTitleEdit: → no toolbar:field → no</td></tr>
+<tr class="nil"><td class="ln">409</td><td class="code">                // setTitle → the deck never went dirty and Save wrote the OLD title.</td></tr>
+<tr class="nil"><td class="ln">410</td><td class="code">                // sendsActionOnEndEditing makes end-editing fire the action too.</td></tr>
+<tr class="unc"><td class="ln">411</td><td class="code">                if let Some(cell) = field.cell() {</td></tr>
+<tr class="unc"><td class="ln">412</td><td class="code">                    cell.setSendsActionOnEndEditing(true);</td></tr>
+<tr class="nil"><td class="ln">413</td><td class="code">                }</td></tr>
+<tr class="nil"><td class="ln">414</td><td class="code">                *self.ivars().title_field.borrow_mut() = Some(field.clone());</td></tr>
+<tr class="nil"><td class="ln">415</td><td class="code">                // Pin width AND intrinsic height. Height is required so the toolbar</td></tr>
+<tr class="nil"><td class="ln">416</td><td class="code">                // can&#x27;t stretch the field taller than its text (a single-line field</td></tr>
+<tr class="nil"><td class="ln">417</td><td class="code">                // would then top-align). Intrinsic height reflects the bold 14pt font</td></tr>
+<tr class="nil"><td class="ln">418</td><td class="code">                // set above.</td></tr>
+<tr class="unc"><td class="ln">419</td><td class="code">                field.setTranslatesAutoresizingMaskIntoConstraints(false);</td></tr>
+<tr class="unc"><td class="ln">420</td><td class="code">                field.widthAnchor().constraintEqualToConstant(TITLE_WIDTH).setActive(true);</td></tr>
+<tr class="nil"><td class="ln">421</td><td class="code">                // Taller than the text (by 2*TITLE_VPAD) for ring room; the centering</td></tr>
+<tr class="nil"><td class="ln">422</td><td class="code">                // cell keeps the text centered within it.</td></tr>
+<tr class="unc"><td class="ln">423</td><td class="code">                let h = field.intrinsicContentSize().height + 2.0 * TITLE_VPAD;</td></tr>
+<tr class="unc"><td class="ln">424</td><td class="code">                field.heightAnchor().constraintEqualToConstant(h).setActive(true);</td></tr>
+<tr class="unc"><td class="ln">425</td><td class="code">                let view: &amp;NSView = &amp;field;</td></tr>
+<tr class="unc"><td class="ln">426</td><td class="code">                item.setView(Some(view));</td></tr>
+<tr class="unc"><td class="ln">427</td><td class="code">                item.setLabel(&amp;NSString::from_str(&quot;&quot;));</td></tr>
+<tr class="unc"><td class="ln">428</td><td class="code">                Some(item)</td></tr>
+<tr class="unc"><td class="ln">429</td><td class="code">            } else if id == AUTHOR_ID || id == VENUE_ID {</td></tr>
+<tr class="unc"><td class="ln">430</td><td class="code">                let (placeholder, action, slot): (&amp;str, _, &amp;RefCell&lt;_&gt;) = if id == AUTHOR_ID {</td></tr>
+<tr class="unc"><td class="ln">431</td><td class="code">                    (&quot;Author&quot;, sel!(onAuthorEdit:), &amp;self.ivars().author_field)</td></tr>
+<tr class="unc"><td class="ln">432</td><td class="code">                } else {</td></tr>
+<tr class="unc"><td class="ln">433</td><td class="code">                    (&quot;Venue&quot;, sel!(onVenueEdit:), &amp;self.ivars().venue_field)</td></tr>
+<tr class="nil"><td class="ln">434</td><td class="code">                };</td></tr>
+<tr class="nil"><td class="ln">435</td><td class="code">                // Standard bezeled editable field at its natural height (centered by</td></tr>
+<tr class="nil"><td class="ln">436</td><td class="code">                // the toolbar) — like Mail&#x27;s toolbar search field.</td></tr>
+<tr class="unc"><td class="ln">437</td><td class="code">                let field = NSTextField::textFieldWithString(&amp;NSString::from_str(&quot;&quot;), mtm);</td></tr>
+<tr class="unc"><td class="ln">438</td><td class="code">                field.setPlaceholderString(Some(&amp;NSString::from_str(placeholder)));</td></tr>
+<tr class="unc"><td class="ln">439</td><td class="code">                let target: &amp;objc2::runtime::AnyObject = self;</td></tr>
+<tr class="unc"><td class="ln">440</td><td class="code">                unsafe {</td></tr>
+<tr class="unc"><td class="ln">441</td><td class="code">                    field.setTarget(Some(target));</td></tr>
+<tr class="unc"><td class="ln">442</td><td class="code">                    field.setAction(Some(action));</td></tr>
+<tr class="nil"><td class="ln">443</td><td class="code">                }</td></tr>
+<tr class="nil"><td class="ln">444</td><td class="code">                // Same as the title: commit on focus-loss, not just Return/Tab.</td></tr>
+<tr class="unc"><td class="ln">445</td><td class="code">                if let Some(cell) = field.cell() {</td></tr>
+<tr class="unc"><td class="ln">446</td><td class="code">                    cell.setSendsActionOnEndEditing(true);</td></tr>
+<tr class="nil"><td class="ln">447</td><td class="code">                }</td></tr>
+<tr class="nil"><td class="ln">448</td><td class="code">                *slot.borrow_mut() = Some(field.clone());</td></tr>
+<tr class="unc"><td class="ln">449</td><td class="code">                field.setTranslatesAutoresizingMaskIntoConstraints(false);</td></tr>
+<tr class="unc"><td class="ln">450</td><td class="code">                field.widthAnchor().constraintEqualToConstant(FIELD_WIDTH).setActive(true);</td></tr>
+<tr class="unc"><td class="ln">451</td><td class="code">                let h = field.intrinsicContentSize().height;</td></tr>
+<tr class="unc"><td class="ln">452</td><td class="code">                field.heightAnchor().constraintEqualToConstant(h).setActive(true);</td></tr>
+<tr class="unc"><td class="ln">453</td><td class="code">                let view: &amp;NSView = &amp;field;</td></tr>
+<tr class="unc"><td class="ln">454</td><td class="code">                item.setView(Some(view));</td></tr>
+<tr class="unc"><td class="ln">455</td><td class="code">                item.setLabel(&amp;NSString::from_str(&quot;&quot;));</td></tr>
+<tr class="unc"><td class="ln">456</td><td class="code">                Some(item)</td></tr>
+<tr class="unc"><td class="ln">457</td><td class="code">            } else if id == JUPYTER_ID {</td></tr>
+<tr class="unc"><td class="ln">458</td><td class="code">                let compact = self.ivars().compact.get();</td></tr>
+<tr class="unc"><td class="ln">459</td><td class="code">                style_jupyter(</td></tr>
+<tr class="unc"><td class="ln">460</td><td class="code">                    &amp;item,</td></tr>
+<tr class="unc"><td class="ln">461</td><td class="code">                    &amp;self.ivars().jupyter_status.borrow(),</td></tr>
+<tr class="unc"><td class="ln">462</td><td class="code">                    &amp;self.ivars().jupyter_tooltip.borrow(),</td></tr>
+<tr class="unc"><td class="ln">463</td><td class="code">                    compact,</td></tr>
+<tr class="nil"><td class="ln">464</td><td class="code">                );</td></tr>
+<tr class="unc"><td class="ln">465</td><td class="code">                let target: &amp;objc2::runtime::AnyObject = self;</td></tr>
+<tr class="unc"><td class="ln">466</td><td class="code">                unsafe {</td></tr>
+<tr class="unc"><td class="ln">467</td><td class="code">                    item.setTarget(Some(target));</td></tr>
+<tr class="unc"><td class="ln">468</td><td class="code">                    item.setAction(Some(sel!(onItem:)));</td></tr>
+<tr class="nil"><td class="ln">469</td><td class="code">                }</td></tr>
+<tr class="nil"><td class="ln">470</td><td class="code">                *self.ivars().jupyter_item.borrow_mut() = Some(item.clone());</td></tr>
+<tr class="unc"><td class="ln">471</td><td class="code">                Some(item)</td></tr>
+<tr class="unc"><td class="ln">472</td><td class="code">            } else if id == LEAD_GAP_ID {</td></tr>
+<tr class="nil"><td class="ln">473</td><td class="code">                // Invisible spacer between the left group and the title. An empty</td></tr>
+<tr class="nil"><td class="ln">474</td><td class="code">                // NSView has no intrinsic size, so pin both width (per-mode, kept for</td></tr>
+<tr class="nil"><td class="ln">475</td><td class="code">                // restyle_lead_gap to update its constant) and height via constraints.</td></tr>
+<tr class="unc"><td class="ln">476</td><td class="code">                let view = NSView::initWithFrame(</td></tr>
+<tr class="unc"><td class="ln">477</td><td class="code">                    NSView::alloc(mtm),</td></tr>
+<tr class="unc"><td class="ln">478</td><td class="code">                    NSRect::new(NSPoint::new(0.0, 0.0), NSSize { width: 0.0, height: FIELD_HEIGHT }),</td></tr>
+<tr class="nil"><td class="ln">479</td><td class="code">                );</td></tr>
+<tr class="unc"><td class="ln">480</td><td class="code">                view.setTranslatesAutoresizingMaskIntoConstraints(false);</td></tr>
+<tr class="unc"><td class="ln">481</td><td class="code">                let width = view</td></tr>
+<tr class="unc"><td class="ln">482</td><td class="code">                    .widthAnchor()</td></tr>
+<tr class="unc"><td class="ln">483</td><td class="code">                    .constraintEqualToConstant(lead_gap_for(self.ivars().compact.get()));</td></tr>
+<tr class="unc"><td class="ln">484</td><td class="code">                width.setActive(true);</td></tr>
+<tr class="nil"><td class="ln">485</td><td class="code">                // Only width matters; keep height minimal so it never props the row up.</td></tr>
+<tr class="unc"><td class="ln">486</td><td class="code">                view.heightAnchor().constraintEqualToConstant(1.0).setActive(true);</td></tr>
+<tr class="unc"><td class="ln">487</td><td class="code">                item.setView(Some(&amp;view));</td></tr>
+<tr class="unc"><td class="ln">488</td><td class="code">                item.setLabel(&amp;NSString::from_str(&quot;&quot;));</td></tr>
+<tr class="nil"><td class="ln">489</td><td class="code">                *self.ivars().lead_gap_item.borrow_mut() = Some(item.clone());</td></tr>
+<tr class="nil"><td class="ln">490</td><td class="code">                *self.ivars().lead_gap_width.borrow_mut() = Some(width);</td></tr>
+<tr class="unc"><td class="ln">491</td><td class="code">                Some(item)</td></tr>
+<tr class="unc"><td class="ln">492</td><td class="code">            } else {</td></tr>
+<tr class="unc"><td class="ln">493</td><td class="code">                match meta_for(identifier) {</td></tr>
+<tr class="unc"><td class="ln">494</td><td class="code">                    None =&gt; None, // system-provided (flexible space)</td></tr>
+<tr class="unc"><td class="ln">495</td><td class="code">                    Some((label, symbol)) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">496</td><td class="code">                        let compact = self.ivars().compact.get();</td></tr>
+<tr class="unc"><td class="ln">497</td><td class="code">                        let dirty = id == &quot;save&quot; &amp;&amp; self.ivars().save_dirty.get();</td></tr>
+<tr class="unc"><td class="ln">498</td><td class="code">                        style_button(&amp;item, label, symbol, compact, dirty);</td></tr>
+<tr class="unc"><td class="ln">499</td><td class="code">                        let target: &amp;objc2::runtime::AnyObject = self;</td></tr>
+<tr class="unc"><td class="ln">500</td><td class="code">                        unsafe {</td></tr>
+<tr class="unc"><td class="ln">501</td><td class="code">                            item.setTarget(Some(target));</td></tr>
+<tr class="unc"><td class="ln">502</td><td class="code">                            item.setAction(Some(sel!(onItem:)));</td></tr>
+<tr class="nil"><td class="ln">503</td><td class="code">                        }</td></tr>
+<tr class="nil"><td class="ln">504</td><td class="code">                        // Remember the item so the live toggles can restyle it.</td></tr>
+<tr class="unc"><td class="ln">505</td><td class="code">                        let mut buttons = self.ivars().buttons.borrow_mut();</td></tr>
+<tr class="unc"><td class="ln">506</td><td class="code">                        buttons.retain(|it| it.itemIdentifier().to_string() != id);</td></tr>
+<tr class="unc"><td class="ln">507</td><td class="code">                        buttons.push(item.clone());</td></tr>
+<tr class="unc"><td class="ln">508</td><td class="code">                        Some(item)</td></tr>
+<tr class="nil"><td class="ln">509</td><td class="code">                    }</td></tr>
+<tr class="nil"><td class="ln">510</td><td class="code">                }</td></tr>
+<tr class="nil"><td class="ln">511</td><td class="code">            }</td></tr>
+<tr class="nil"><td class="ln">512</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">513</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">514</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">515</td><td class="code">    impl ToolbarDelegate {</td></tr>
+<tr class="nil"><td class="ln">516</td><td class="code">        #[unsafe(method(onItem:))]</td></tr>
+<tr class="unc"><td class="ln">517</td><td class="code">        fn on_item(&amp;self, sender: &amp;NSToolbarItem) {</td></tr>
+<tr class="unc"><td class="ln">518</td><td class="code">            let id = sender.itemIdentifier().to_string();</td></tr>
+<tr class="unc"><td class="ln">519</td><td class="code">            let _ = self.ivars().app.emit(&quot;toolbar:action&quot;, ActionPayload { id });</td></tr>
+<tr class="nil"><td class="ln">520</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">521</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">522</td><td class="code">        #[unsafe(method(onTitleEdit:))]</td></tr>
+<tr class="unc"><td class="ln">523</td><td class="code">        fn on_title(&amp;self, sender: &amp;NSTextField) {</td></tr>
+<tr class="unc"><td class="ln">524</td><td class="code">            self.emit_field(TITLE_ID, sender);</td></tr>
+<tr class="nil"><td class="ln">525</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">526</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">527</td><td class="code">        #[unsafe(method(onAuthorEdit:))]</td></tr>
+<tr class="unc"><td class="ln">528</td><td class="code">        fn on_author(&amp;self, sender: &amp;NSTextField) {</td></tr>
+<tr class="unc"><td class="ln">529</td><td class="code">            self.emit_field(AUTHOR_ID, sender);</td></tr>
+<tr class="nil"><td class="ln">530</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">531</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">532</td><td class="code">        #[unsafe(method(onVenueEdit:))]</td></tr>
+<tr class="unc"><td class="ln">533</td><td class="code">        fn on_venue(&amp;self, sender: &amp;NSTextField) {</td></tr>
+<tr class="unc"><td class="ln">534</td><td class="code">            self.emit_field(VENUE_ID, sender);</td></tr>
+<tr class="nil"><td class="ln">535</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">536</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">537</td><td class="code">);</td></tr>
+<tr class="nil"><td class="ln">538</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">539</td><td class="code">impl ToolbarDelegate {</td></tr>
+<tr class="unc"><td class="ln">540</td><td class="code">    fn new(mtm: MainThreadMarker, app: AppHandle) -&gt; Retained&lt;Self&gt; {</td></tr>
+<tr class="unc"><td class="ln">541</td><td class="code">        let this = Self::alloc(mtm).set_ivars(Ivars {</td></tr>
+<tr class="unc"><td class="ln">542</td><td class="code">            app,</td></tr>
+<tr class="unc"><td class="ln">543</td><td class="code">            title_field: RefCell::new(None),</td></tr>
+<tr class="unc"><td class="ln">544</td><td class="code">            author_field: RefCell::new(None),</td></tr>
+<tr class="unc"><td class="ln">545</td><td class="code">            venue_field: RefCell::new(None),</td></tr>
+<tr class="unc"><td class="ln">546</td><td class="code">            buttons: RefCell::new(Vec::new()),</td></tr>
+<tr class="unc"><td class="ln">547</td><td class="code">            compact: Cell::new(false),</td></tr>
+<tr class="unc"><td class="ln">548</td><td class="code">            save_dirty: Cell::new(false),</td></tr>
+<tr class="unc"><td class="ln">549</td><td class="code">            jupyter_item: RefCell::new(None),</td></tr>
+<tr class="unc"><td class="ln">550</td><td class="code">            jupyter_status: RefCell::new(&quot;gray&quot;.to_string()),</td></tr>
+<tr class="unc"><td class="ln">551</td><td class="code">            jupyter_tooltip: RefCell::new(String::new()),</td></tr>
+<tr class="unc"><td class="ln">552</td><td class="code">            lead_gap_item: RefCell::new(None),</td></tr>
+<tr class="unc"><td class="ln">553</td><td class="code">            lead_gap_width: RefCell::new(None),</td></tr>
+<tr class="nil"><td class="ln">554</td><td class="code">        });</td></tr>
+<tr class="unc"><td class="ln">555</td><td class="code">        unsafe { msg_send![super(this), init] }</td></tr>
+<tr class="nil"><td class="ln">556</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">557</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">558</td><td class="code">    fn emit_field(&amp;self, id: &amp;str, sender: &amp;NSTextField) {</td></tr>
+<tr class="unc"><td class="ln">559</td><td class="code">        let value = sender.stringValue().to_string();</td></tr>
+<tr class="unc"><td class="ln">560</td><td class="code">        let _ = self.ivars().app.emit(</td></tr>
+<tr class="unc"><td class="ln">561</td><td class="code">            &quot;toolbar:field&quot;,</td></tr>
+<tr class="unc"><td class="ln">562</td><td class="code">            FieldPayload { id: id.to_string(), value },</td></tr>
+<tr class="nil"><td class="ln">563</td><td class="code">        );</td></tr>
+<tr class="nil"><td class="ln">564</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">565</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">566</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">567</td><td class="code">// Delegate is MainThreadOnly (!Send/!Sync). Keep it in a main-thread thread-local:</td></tr>
+<tr class="nil"><td class="ln">568</td><td class="code">// keeps it alive (NSToolbar&#x27;s delegate ref is weak) AND lets set_fields reach it.</td></tr>
+<tr class="unc"><td class="ln">569</td><td class="code">thread_local! {</td></tr>
+<tr class="unc"><td class="ln">570</td><td class="code">    static DELEGATE: RefCell&lt;Option&lt;Retained&lt;ToolbarDelegate&gt;&gt;&gt; = const { RefCell::new(None) };</td></tr>
+<tr class="nil"><td class="ln">571</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">572</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">573</td><td class="code">fn set_string(field: &amp;RefCell&lt;Option&lt;Retained&lt;NSTextField&gt;&gt;&gt;, value: &amp;str) {</td></tr>
+<tr class="unc"><td class="ln">574</td><td class="code">    if let Some(f) = field.borrow().as_ref() {</td></tr>
+<tr class="nil"><td class="ln">575</td><td class="code">        // Skip if unchanged: a field edit echoes back through the store (onEdit →</td></tr>
+<tr class="nil"><td class="ln">576</td><td class="code">        // toolbar:field → store → set_toolbar_fields → here), and re-setting the</td></tr>
+<tr class="nil"><td class="ln">577</td><td class="code">        // same value while the field is first responder would reset the caret.</td></tr>
+<tr class="unc"><td class="ln">578</td><td class="code">        if f.stringValue().to_string() != value {</td></tr>
+<tr class="unc"><td class="ln">579</td><td class="code">            f.setStringValue(&amp;NSString::from_str(value));</td></tr>
+<tr class="nil"><td class="ln">580</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">581</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">582</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">583</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">584</td><td class="code">/// Push the current title/author/venue into the toolbar fields (main thread).</td></tr>
+<tr class="unc"><td class="ln">585</td><td class="code">pub fn set_fields(title: &amp;str, author: &amp;str, venue: &amp;str) {</td></tr>
+<tr class="unc"><td class="ln">586</td><td class="code">    DELEGATE.with(|d| {</td></tr>
+<tr class="unc"><td class="ln">587</td><td class="code">        if let Some(del) = d.borrow().as_ref() {</td></tr>
+<tr class="unc"><td class="ln">588</td><td class="code">            set_string(&amp;del.ivars().title_field, title);</td></tr>
+<tr class="unc"><td class="ln">589</td><td class="code">            set_string(&amp;del.ivars().author_field, author);</td></tr>
+<tr class="unc"><td class="ln">590</td><td class="code">            set_string(&amp;del.ivars().venue_field, venue);</td></tr>
+<tr class="nil"><td class="ln">591</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">592</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">593</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">594</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">595</td><td class="code">/// Re-apply styling to every built button from the delegate&#x27;s current</td></tr>
+<tr class="nil"><td class="ln">596</td><td class="code">/// compact/dirty flags. Main thread.</td></tr>
+<tr class="unc"><td class="ln">597</td><td class="code">fn restyle_buttons(del: &amp;ToolbarDelegate) {</td></tr>
+<tr class="unc"><td class="ln">598</td><td class="code">    let compact = del.ivars().compact.get();</td></tr>
+<tr class="unc"><td class="ln">599</td><td class="code">    let dirty = del.ivars().save_dirty.get();</td></tr>
+<tr class="unc"><td class="ln">600</td><td class="code">    for item in del.ivars().buttons.borrow().iter() {</td></tr>
+<tr class="unc"><td class="ln">601</td><td class="code">        let ident = item.itemIdentifier();</td></tr>
+<tr class="unc"><td class="ln">602</td><td class="code">        if let Some((label, symbol)) = meta_for(&amp;ident) {</td></tr>
+<tr class="unc"><td class="ln">603</td><td class="code">            style_button(item, label, symbol, compact, ident.to_string() == &quot;save&quot; &amp;&amp; dirty);</td></tr>
+<tr class="nil"><td class="ln">604</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">605</td><td class="code">    }</td></tr>
+<tr class="unc"><td class="ln">606</td><td class="code">    restyle_jupyter(del);</td></tr>
+<tr class="unc"><td class="ln">607</td><td class="code">    restyle_lead_gap(del);</td></tr>
+<tr class="nil"><td class="ln">608</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">609</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">610</td><td class="code">/// Resize the leading spacer to the current mode&#x27;s gap width by updating its width</td></tr>
+<tr class="nil"><td class="ln">611</td><td class="code">/// constraint&#x27;s constant (relayouts properly). In place.</td></tr>
+<tr class="unc"><td class="ln">612</td><td class="code">fn restyle_lead_gap(del: &amp;ToolbarDelegate) {</td></tr>
+<tr class="unc"><td class="ln">613</td><td class="code">    if let Some(width) = del.ivars().lead_gap_width.borrow().as_ref() {</td></tr>
+<tr class="unc"><td class="ln">614</td><td class="code">        width.setConstant(lead_gap_for(del.ivars().compact.get()));</td></tr>
+<tr class="nil"><td class="ln">615</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">616</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">617</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">618</td><td class="code">/// Re-apply the Jupyter item&#x27;s tint/label from the delegate&#x27;s current state.</td></tr>
+<tr class="unc"><td class="ln">619</td><td class="code">fn restyle_jupyter(del: &amp;ToolbarDelegate) {</td></tr>
+<tr class="unc"><td class="ln">620</td><td class="code">    if let Some(item) = del.ivars().jupyter_item.borrow().as_ref() {</td></tr>
+<tr class="unc"><td class="ln">621</td><td class="code">        style_jupyter(</td></tr>
+<tr class="unc"><td class="ln">622</td><td class="code">            item,</td></tr>
+<tr class="unc"><td class="ln">623</td><td class="code">            &amp;del.ivars().jupyter_status.borrow(),</td></tr>
+<tr class="unc"><td class="ln">624</td><td class="code">            &amp;del.ivars().jupyter_tooltip.borrow(),</td></tr>
+<tr class="unc"><td class="ln">625</td><td class="code">            del.ivars().compact.get(),</td></tr>
+<tr class="nil"><td class="ln">626</td><td class="code">        );</td></tr>
+<tr class="nil"><td class="ln">627</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">628</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">629</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">630</td><td class="code">/// Toggle compact view live, IN PLACE (no item rebuild). Compact = labels off +</td></tr>
+<tr class="nil"><td class="ln">631</td><td class="code">/// smaller icons via a shorter toolbar style (UnifiedCompact vs Expanded). We</td></tr>
+<tr class="nil"><td class="ln">632</td><td class="code">/// restyle the existing items (label/image) and switch the window toolbar style;</td></tr>
+<tr class="nil"><td class="ln">633</td><td class="code">/// setLabel/setImage relayout the items, and validateVisibleItems nudges a</td></tr>
+<tr class="nil"><td class="ln">634</td><td class="code">/// re-measure. Main thread.</td></tr>
+<tr class="unc"><td class="ln">635</td><td class="code">pub fn set_compact(compact: bool) {</td></tr>
+<tr class="unc"><td class="ln">636</td><td class="code">    DELEGATE.with(|d| {</td></tr>
+<tr class="unc"><td class="ln">637</td><td class="code">        let Some(del) = d.borrow().as_ref().cloned() else { return };</td></tr>
+<tr class="unc"><td class="ln">638</td><td class="code">        del.ivars().compact.set(compact);</td></tr>
+<tr class="nil"><td class="ln">639</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">640</td><td class="code">        // Switch the window toolbar style (Expanded = tall w/ centered title row;</td></tr>
+<tr class="nil"><td class="ln">641</td><td class="code">        // UnifiedCompact = short single row).</td></tr>
+<tr class="unc"><td class="ln">642</td><td class="code">        if let Some(win) = del.ivars().app.get_webview_window(&quot;main&quot;) {</td></tr>
+<tr class="unc"><td class="ln">643</td><td class="code">            if let Ok(ptr) = win.ns_window() {</td></tr>
+<tr class="nil"><td class="ln">644</td><td class="code">                // Safety: Tauri owns a valid NSWindow for &quot;main&quot; for its lifetime.</td></tr>
+<tr class="unc"><td class="ln">645</td><td class="code">                let ns_win: &amp;NSWindow = unsafe { &amp;*(ptr as *const NSWindow) };</td></tr>
+<tr class="unc"><td class="ln">646</td><td class="code">                let style = if compact {</td></tr>
+<tr class="unc"><td class="ln">647</td><td class="code">                    NSWindowToolbarStyle::UnifiedCompact</td></tr>
+<tr class="unc"><td class="ln">648</td><td class="code">                } else {</td></tr>
+<tr class="unc"><td class="ln">649</td><td class="code">                    NSWindowToolbarStyle::Expanded</td></tr>
+<tr class="nil"><td class="ln">650</td><td class="code">                };</td></tr>
+<tr class="unc"><td class="ln">651</td><td class="code">                ns_win.setToolbarStyle(style);</td></tr>
+<tr class="nil"><td class="ln">652</td><td class="code">            }</td></tr>
+<tr class="nil"><td class="ln">653</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">654</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">655</td><td class="code">        // Restyle the existing items in place (label text + image size).</td></tr>
+<tr class="unc"><td class="ln">656</td><td class="code">        restyle_buttons(&amp;del);</td></tr>
+<tr class="nil"><td class="ln">657</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">658</td><td class="code">        // THE label-row toggle: displayMode. UnifiedCompact forces the toolbar to</td></tr>
+<tr class="nil"><td class="ln">659</td><td class="code">        // IconOnly and switching back to Expanded does NOT restore it — so set it</td></tr>
+<tr class="nil"><td class="ln">660</td><td class="code">        // explicitly. IconAndLabel turns the label row back on (#125).</td></tr>
+<tr class="unc"><td class="ln">661</td><td class="code">        TOOLBAR.with(|t| {</td></tr>
+<tr class="unc"><td class="ln">662</td><td class="code">            if let Some(tb) = t.borrow().as_ref() {</td></tr>
+<tr class="unc"><td class="ln">663</td><td class="code">                tb.setDisplayMode(if compact {</td></tr>
+<tr class="unc"><td class="ln">664</td><td class="code">                    NSToolbarDisplayMode::IconOnly</td></tr>
+<tr class="unc"><td class="ln">665</td><td class="code">                } else {</td></tr>
+<tr class="unc"><td class="ln">666</td><td class="code">                    NSToolbarDisplayMode::IconAndLabel</td></tr>
+<tr class="nil"><td class="ln">667</td><td class="code">                });</td></tr>
+<tr class="unc"><td class="ln">668</td><td class="code">                tb.validateVisibleItems();</td></tr>
+<tr class="nil"><td class="ln">669</td><td class="code">            }</td></tr>
+<tr class="nil"><td class="ln">670</td><td class="code">        });</td></tr>
+<tr class="nil"><td class="ln">671</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">672</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">673</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">674</td><td class="code">/// Accent-tint the Save icon when the deck has unsaved changes. Main thread.</td></tr>
+<tr class="unc"><td class="ln">675</td><td class="code">pub fn set_save_dirty(dirty: bool) {</td></tr>
+<tr class="unc"><td class="ln">676</td><td class="code">    DELEGATE.with(|d| {</td></tr>
+<tr class="unc"><td class="ln">677</td><td class="code">        if let Some(del) = d.borrow().as_ref() {</td></tr>
+<tr class="unc"><td class="ln">678</td><td class="code">            del.ivars().save_dirty.set(dirty);</td></tr>
+<tr class="unc"><td class="ln">679</td><td class="code">            restyle_buttons(del);</td></tr>
+<tr class="nil"><td class="ln">680</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">681</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">682</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">683</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">684</td><td class="code">/// Index of the item with the given identifier in the toolbar, if present.</td></tr>
+<tr class="unc"><td class="ln">685</td><td class="code">fn item_index(tb: &amp;NSToolbar, id: &amp;str) -&gt; Option&lt;usize&gt; {</td></tr>
+<tr class="unc"><td class="ln">686</td><td class="code">    let items = tb.items();</td></tr>
+<tr class="unc"><td class="ln">687</td><td class="code">    (0..items.count()).find(|&amp;i| items.objectAtIndex(i).itemIdentifier().to_string() == id)</td></tr>
+<tr class="nil"><td class="ln">688</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">689</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">690</td><td class="code">/// Update the Jupyter server-status icon. status &quot;gray&quot; = the deck has no live</td></tr>
+<tr class="nil"><td class="ln">691</td><td class="code">/// notebooks → the item is REMOVED entirely (mirrors the HTML pill hiding). Any</td></tr>
+<tr class="nil"><td class="ln">692</td><td class="code">/// other status inserts it (before Export) if absent and tints it. Main thread.</td></tr>
+<tr class="unc"><td class="ln">693</td><td class="code">pub fn set_jupyter(status: &amp;str, tooltip: &amp;str) {</td></tr>
+<tr class="unc"><td class="ln">694</td><td class="code">    DELEGATE.with(|d| {</td></tr>
+<tr class="unc"><td class="ln">695</td><td class="code">        let Some(del) = d.borrow().as_ref().cloned() else { return };</td></tr>
+<tr class="nil"><td class="ln">696</td><td class="code">        *del.ivars().jupyter_status.borrow_mut() = status.to_string();</td></tr>
+<tr class="nil"><td class="ln">697</td><td class="code">        *del.ivars().jupyter_tooltip.borrow_mut() = tooltip.to_string();</td></tr>
+<tr class="unc"><td class="ln">698</td><td class="code">        let visible = status != &quot;gray&quot;;</td></tr>
+<tr class="unc"><td class="ln">699</td><td class="code">        TOOLBAR.with(|t| {</td></tr>
+<tr class="unc"><td class="ln">700</td><td class="code">            let Some(tb) = t.borrow().as_ref().cloned() else { return };</td></tr>
+<tr class="unc"><td class="ln">701</td><td class="code">            match (visible, item_index(&amp;tb, JUPYTER_ID)) {</td></tr>
+<tr class="nil"><td class="ln">702</td><td class="code">                // Show: insert before Export (item_for styles it from the status</td></tr>
+<tr class="nil"><td class="ln">703</td><td class="code">                // we just stored). Fall back to the end if Export isn&#x27;t found.</td></tr>
+<tr class="unc"><td class="ln">704</td><td class="code">                (true, None) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">705</td><td class="code">                    let idx = item_index(&amp;tb, &quot;export&quot;).unwrap_or_else(|| tb.items().count());</td></tr>
+<tr class="unc"><td class="ln">706</td><td class="code">                    tb.insertItemWithItemIdentifier_atIndex(&amp;NSString::from_str(JUPYTER_ID), idx as isize);</td></tr>
+<tr class="nil"><td class="ln">707</td><td class="code">                }</td></tr>
+<tr class="nil"><td class="ln">708</td><td class="code">                // Already shown: just re-tint.</td></tr>
+<tr class="unc"><td class="ln">709</td><td class="code">                (true, Some(_)) =&gt; restyle_jupyter(&amp;del),</td></tr>
+<tr class="nil"><td class="ln">710</td><td class="code">                // Hide: remove it and drop the stale ref.</td></tr>
+<tr class="unc"><td class="ln">711</td><td class="code">                (false, Some(i)) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">712</td><td class="code">                    tb.removeItemAtIndex(i as isize);</td></tr>
+<tr class="nil"><td class="ln">713</td><td class="code">                    *del.ivars().jupyter_item.borrow_mut() = None;</td></tr>
+<tr class="nil"><td class="ln">714</td><td class="code">                }</td></tr>
+<tr class="unc"><td class="ln">715</td><td class="code">                (false, None) =&gt; {}</td></tr>
+<tr class="nil"><td class="ln">716</td><td class="code">            }</td></tr>
+<tr class="nil"><td class="ln">717</td><td class="code">        });</td></tr>
+<tr class="nil"><td class="ln">718</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">719</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">720</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">721</td><td class="code">// The toolbar itself, kept so we can show/hide it (welcome screen + present mode).</td></tr>
+<tr class="unc"><td class="ln">722</td><td class="code">thread_local! {</td></tr>
+<tr class="unc"><td class="ln">723</td><td class="code">    static TOOLBAR: RefCell&lt;Option&lt;Retained&lt;NSToolbar&gt;&gt;&gt; = const { RefCell::new(None) };</td></tr>
+<tr class="nil"><td class="ln">724</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">725</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">726</td><td class="code">/// Show or hide the whole toolbar (hidden on the welcome screen and while</td></tr>
+<tr class="nil"><td class="ln">727</td><td class="code">/// presenting). Main thread.</td></tr>
+<tr class="unc"><td class="ln">728</td><td class="code">pub fn set_visible(visible: bool) {</td></tr>
+<tr class="unc"><td class="ln">729</td><td class="code">    TOOLBAR.with(|t| {</td></tr>
+<tr class="unc"><td class="ln">730</td><td class="code">        if let Some(tb) = t.borrow().as_ref() {</td></tr>
+<tr class="unc"><td class="ln">731</td><td class="code">            tb.setVisible(visible);</td></tr>
+<tr class="nil"><td class="ln">732</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">733</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">734</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">735</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">736</td><td class="code">/// Install the native toolbar on the main window. Call from the Tauri setup hook.</td></tr>
+<tr class="unc"><td class="ln">737</td><td class="code">pub fn install(app: &amp;AppHandle) {</td></tr>
+<tr class="unc"><td class="ln">738</td><td class="code">    let Some(mtm) = MainThreadMarker::new() else { return };</td></tr>
+<tr class="unc"><td class="ln">739</td><td class="code">    let Some(window) = app.get_webview_window(&quot;main&quot;) else { return };</td></tr>
+<tr class="unc"><td class="ln">740</td><td class="code">    let Ok(ns_win_ptr) = window.ns_window() else { return };</td></tr>
+<tr class="nil"><td class="ln">741</td><td class="code">    // Safety: Tauri owns a valid NSWindow for &quot;main&quot; for its lifetime.</td></tr>
+<tr class="unc"><td class="ln">742</td><td class="code">    let ns_win: &amp;NSWindow = unsafe { &amp;*(ns_win_ptr as *const NSWindow) };</td></tr>
+<tr class="nil"><td class="ln">743</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">744</td><td class="code">    let delegate = ToolbarDelegate::new(mtm, app.clone());</td></tr>
+<tr class="unc"><td class="ln">745</td><td class="code">    let toolbar = NSToolbar::initWithIdentifier(</td></tr>
+<tr class="unc"><td class="ln">746</td><td class="code">        NSToolbar::alloc(mtm),</td></tr>
+<tr class="unc"><td class="ln">747</td><td class="code">        &amp;NSString::from_str(&quot;EigendeckMainToolbar&quot;),</td></tr>
+<tr class="nil"><td class="ln">748</td><td class="code">    );</td></tr>
+<tr class="unc"><td class="ln">749</td><td class="code">    let proto: &amp;ProtocolObject&lt;dyn NSToolbarDelegate&gt; = ProtocolObject::from_ref(&amp;*delegate);</td></tr>
+<tr class="unc"><td class="ln">750</td><td class="code">    toolbar.setDelegate(Some(proto));</td></tr>
+<tr class="nil"><td class="ln">751</td><td class="code">    // (Icon-only is achieved per-item via empty labels — Expanded style ignores</td></tr>
+<tr class="nil"><td class="ln">752</td><td class="code">    // displayMode, so we don&#x27;t set it.)</td></tr>
+<tr class="nil"><td class="ln">753</td><td class="code">    // Center the editable presentation-title item in the toolbar row. (Singular</td></tr>
+<tr class="nil"><td class="ln">754</td><td class="code">    // API is deprecated on 13+ but works on 11+; the native title lives on the</td></tr>
+<tr class="nil"><td class="ln">755</td><td class="code">    // separate Expanded row, so this only centers our title field.)</td></tr>
+<tr class="nil"><td class="ln">756</td><td class="code">    #[allow(deprecated)]</td></tr>
+<tr class="unc"><td class="ln">757</td><td class="code">    toolbar.setCenteredItemIdentifier(Some(&amp;NSString::from_str(TITLE_ID)));</td></tr>
+<tr class="unc"><td class="ln">758</td><td class="code">    ns_win.setToolbar(Some(&amp;toolbar));</td></tr>
+<tr class="nil"><td class="ln">759</td><td class="code">    // Expanded → native title + proxy centered on their own row (BBEdit/Keynote),</td></tr>
+<tr class="nil"><td class="ln">760</td><td class="code">    // toolbar items on the row below. The native title provides the proxy path</td></tr>
+<tr class="nil"><td class="ln">761</td><td class="code">    // popover + drag + edited dot for free (driven by setRepresentedURL in lib.rs).</td></tr>
+<tr class="unc"><td class="ln">762</td><td class="code">    ns_win.setToolbarStyle(NSWindowToolbarStyle::Expanded);</td></tr>
+<tr class="nil"><td class="ln">763</td><td class="code">    // Label row on by default (the label-row toggle set_compact drives). See #125.</td></tr>
+<tr class="unc"><td class="ln">764</td><td class="code">    toolbar.setDisplayMode(NSToolbarDisplayMode::IconAndLabel);</td></tr>
+<tr class="nil"><td class="ln">765</td><td class="code">    // Start hidden. The window boots into the welcome/startup screen (no project),</td></tr>
+<tr class="nil"><td class="ln">766</td><td class="code">    // which has no toolbar; the frontend calls set_toolbar_visible(true) once a</td></tr>
+<tr class="nil"><td class="ln">767</td><td class="code">    // deck is open. Installing visible flashed the empty toolbar for a frame</td></tr>
+<tr class="nil"><td class="ln">768</td><td class="code">    // before React mounted and hid it.</td></tr>
+<tr class="unc"><td class="ln">769</td><td class="code">    toolbar.setVisible(false);</td></tr>
+<tr class="nil"><td class="ln">770</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">771</td><td class="code">    TOOLBAR.with(|t| *t.borrow_mut() = Some(toolbar));</td></tr>
+<tr class="unc"><td class="ln">772</td><td class="code">    DELEGATE.with(|d| *d.borrow_mut() = Some(delegate));</td></tr>
+<tr class="nil"><td class="ln">773</td><td class="code">}</td></tr></table>
+</body></html>

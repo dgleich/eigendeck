@@ -1,0 +1,79 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/imageSrc.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/imageSrc.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">16/16 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">61 raw lines</span>
+    <span class="stat">0.14% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:26.230%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:73.770%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__assetCache_ts.html">assetCache.ts</a> <a href="src__lib__assetRenderer_ts.html">assetRenderer.ts</a> <a href="src__lib__demoAssets_ts.html">demoAssets.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__PresentSlide_tsx.html">PresentSlide.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Decide which renderer hook fetches an image element&#x27;s bytes for</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// display, based on its `kind`. Single source of truth shared by</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// ImageBox (editor), PresentImage (presenter), and PresenterImage</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// (speaker view). DRYing the branch up means the PDF path can grow</td></tr>
+<tr class="cov"><td class="ln">5</td><td class="code">// (multi-page picker, snapshotVariant routing) without 3-way drift.</td></tr>
+<tr class="cov"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">7</td><td class="code">import { useAssetUrl } from &#x27;./demoAssets&#x27;;<a class="jump" href="src__lib__demoAssets_ts.html" title="src/lib/demoAssets.ts">→ demoAssets.ts</a></td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">import { useRenderedAsset } from &#x27;./assetRenderer&#x27;;<a class="jump" href="src__lib__assetRenderer_ts.html" title="src/lib/assetRenderer.ts">→ assetRenderer.ts</a></td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">import { ASSET_TIER } from &#x27;./assetCache&#x27;;<a class="jump" href="src__lib__assetCache_ts.html" title="src/lib/assetCache.ts">→ assetCache.ts</a></td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">/** Snap a display dimension up to the next render tier.</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code"> *</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code"> *  Tier (not exact element dims) so the cache stays sticky during a</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code"> *  resize-handle drag — every animation-frame size would otherwise be</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code"> *  a fresh cache key + fresh pdfium render.</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code"> *  2x for retina sharpness — on an Apple-Silicon display a 1200px</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code"> *  slide-space element is ~2400 actual pixels at 100% editor zoom,</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code"> *  so rendering at slide-space dims means immediate blur. 256px</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code"> *  step granularity keeps typical element sizes from over-shooting</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code"> *  the next tier (PNG encode cost is roughly quadratic). Cap at</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code"> *  slide width — past 1920 we&#x27;d be rendering more pixels than the</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code"> *  slide is ever shown at. */</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">function pdfRenderTier(displayWidth: number, displayHeight: number): number {</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">  const max = Math.max(displayWidth, displayHeight);</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">  const stepped = Math.ceil((max * 2) / 256) * 256;</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">  return Math.min(stepped, ASSET_TIER.full);</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code"> * Resolve an image element to a renderable URL. Branching:</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code"> * - `kind === &#x27;pdf&#x27;` → goes through useRenderedAsset (pdfium-rasterized</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code"> *   PNG cached in asset_cache). PDFs can&#x27;t render as `&lt;img src=&quot;blob:application/pdf&quot;&gt;`</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code"> *   — WebKit doesn&#x27;t natively rasterize PDF inline.</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code"> * - everything else (raster/svg/undefined) → useAssetUrl returns a raw</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code"> *   blob URL the browser renders natively.</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code"> * `displayWidth/Height` size the PDF render. SVG/raster ignore them</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code"> * (browser scales those for free). Pass element.position.{width,height}.</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">export function useImageSrc(</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">  assetId: string,</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">  kind?: &#x27;raster&#x27; | &#x27;svg&#x27; | &#x27;pdf&#x27;,</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">  opts?: { displayWidth?: number; displayHeight?: number; snapshotVariant?: string },</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">): string | undefined {</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">  const isPdf = kind === &#x27;pdf&#x27;;</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">  // Always call both hooks (rules-of-hooks) but feed one of them an</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">  // undefined assetId so it no-ops. The unused branch returns undefined.</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">  const blobUrl = useAssetUrl(isPdf ? undefined : assetId);</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">  const tier = isPdf</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">    ? pdfRenderTier(opts?.displayWidth ?? ASSET_TIER.full, opts?.displayHeight ?? ASSET_TIER.full)</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">    : ASSET_TIER.full;</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">  const pdfUrl = useRenderedAsset(</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">    isPdf ? assetId : undefined,</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">    isPdf ? &#x27;pdf&#x27; : undefined,</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">    tier, tier,</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">    opts?.snapshotVariant,</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">  );</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">  return isPdf ? pdfUrl : blobUrl;</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">}</td></tr></table>
+</body></html>

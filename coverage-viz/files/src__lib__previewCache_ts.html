@@ -1,0 +1,235 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/previewCache.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/previewCache.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>80%</b> covered</span>
+    <span class="stat">112/140 executable</span>
+    <span class="stat unc-txt">28 uncovered</span>
+    <span class="stat">217 raw lines</span>
+    <span class="stat">0.51% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:51.613%"></span><span class="seg unc" style="width:12.903%"></span><span class="seg nil" style="width:35.484%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__base64_ts.html">base64.ts</a> <a href="src__lib__demoMount_ts.html">demoMount.ts</a> <a href="src__lib__hash_ts.html">hash.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__ElementPreviewImg_tsx.html">ElementPreviewImg.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__components__notebook__NotebookContent_tsx.html">NotebookContent.tsx</a> <a href="src__lib__printLayer_ts.html">printLayer.ts</a> <a href="src__lib__snapshotAll_ts.html">snapshotAll.ts</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Cached PNG previews of an element&#x27;s rendered contents, stored in the SQLite</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// asset_cache (variant &#x27;preview&#x27;), keyed by the element&#x27;s sync identity</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// (syncId ?? id) — synced instances look identical and share one preview, the</td></tr>
+<tr class="cov"><td class="ln">4</td><td class="code">// same keying useOverlay uses. Captured proactively (debounced, while the</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// element is on-screen in the editor) so static export / pickers / thumbnails</td></tr>
+<tr class="cov"><td class="ln">6</td><td class="code">// can read a picture without a live render or a slide-by-slide capture pass.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// Element-type-agnostic on purpose: notebooks today, demos next (see</td></tr>
+<tr class="cov"><td class="ln">9</td><td class="code">// .claude/notes/notebook-preview-cache-design.md). The only type-specific bit</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">// is when to recapture, which the caller drives.</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">import { invoke } from &#x27;@tauri-apps/api/core&#x27;;</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">import type { SlideElement } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">import { bytesToBase64 } from &#x27;./base64&#x27;;<a class="jump" href="src__lib__base64_ts.html" title="src/lib/base64.ts">→ base64.ts</a></td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">import { hashString } from &#x27;./hash&#x27;;<a class="jump" href="src__lib__hash_ts.html" title="src/lib/hash.ts">→ hash.ts</a></td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">/** The cache key for an element&#x27;s preview: its sync identity. */</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">// Separator between the readable theme-salt prefix and the content hash in a</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">// DOM-node preview&#x27;s stored signature. A control char that can&#x27;t appear in a</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">// theme salt (hex colors + `|`) or a base-36 hash, so a plain split is safe.</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">const PREVIEW_SALT_SEP = &#x27;␞&#x27;;</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">export function previewKey(el: Pick&lt;SlideElement, &#x27;id&#x27; | &#x27;syncId&#x27;&gt;): string {</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">  return el.syncId ?? el.id;</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">function dataUrlToBytes(dataUrl: string): Uint8Array {</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">  const comma = dataUrl.indexOf(&#x27;,&#x27;);</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">  const b64 = comma &gt;= 0 ? dataUrl.slice(comma + 1) : dataUrl;</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">  const bin = atob(b64);</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">  const out = new Uint8Array(bin.length);</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">  for (let i = 0; i &lt; bin.length; i++) out[i] = bin.charCodeAt(i);</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">  return out;</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">36</td><td class="code">// One in-flight capture per key (StrictMode / rapid edits would otherwise</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">// double-capture the same element).</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">const inflight = new Set&lt;string&gt;();</td></tr>
+<tr class="unc"><td class="ln">39</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">// Last source_hash captured this session per key — lets us skip the expensive</td></tr>
+<tr class="cov"><td class="ln">41</td><td class="code">// domToDataUrl when the to-be-captured content + size are unchanged.</td></tr>
+<tr class="cov"><td class="ln">42</td><td class="code">const lastHash = new Map&lt;string, string&gt;();</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">/** Dedup + persist a capture: skip if the size/theme signature is unchanged</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code"> *  (in-memory + persisted), else run `produce` for the PNG data URL and store it.</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code"> *  Shared by the demo-iframe path (bridge round-trip) and the in-DOM path</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code"> *  (modern-screenshot) — they differ only in the signature and the producer. */</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">async function storeCapture(</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">  key: string, width: number, height: number, sig: string,</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">  produce: () =&gt; Promise&lt;string | null | undefined&gt;,</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">  if (lastHash.get(key) === sig) return;</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">    const variants = await invoke&lt;CacheVariant[]&gt;(&#x27;db_list_asset_cache_variants&#x27;, { sourceId: key });</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">    const ex = variants.find((v) =&gt; v.variant === &#x27;preview&#x27; &amp;&amp; v.width === width &amp;&amp; v.height === height);</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">    if (ex &amp;&amp; ex.source_hash === sig) { lastHash.set(key, sig); return; }  // persisted + unchanged</td></tr>
+<tr class="cov"><td class="ln">57</td><td class="code">  } catch { /* fall through and (re)capture */ }</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">  if (inflight.has(key)) return;</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">  inflight.add(key);</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">    const dataUrl = await produce();</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">    if (!dataUrl) return;</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">    const bytes = dataUrlToBytes(dataUrl);</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">    await invoke(&#x27;db_put_asset_cache&#x27;, { sourceId: key, variant: &#x27;preview&#x27;, width, height, png: Array.from(bytes), sourceHash: sig });</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">    lastHash.set(key, sig);</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">    bumpPreviewVersion(key);</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">  } catch (e) {</td></tr>
+<tr class="cov"><td class="ln">68</td><td class="code">    console.warn(&#x27;capturePreview failed:&#x27;, e);</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">  } finally {</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">    inflight.delete(key);</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">/** Capture the element&#x27;s rendered content to a PNG and store it as the cached</td></tr>
+<tr class="cov"><td class="ln">75</td><td class="code"> *  preview. Captures `[data-element-id=el.id]`, or — when `innerSelector` is</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code"> *  given — that descendant (e.g. &#x27;.nb-frame&#x27;, so authoring chrome on the outer</td></tr>
+<tr class="nil"><td class="ln">77</td><td class="code"> *  DraggableBox is excluded). No-op if not mounted / no size. Never throws.</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code"> *</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code"> *  `cacheSalt` is mixed into the change-detection hash for content that affects</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code"> *  the picture but ISN&#x27;T in the captured node&#x27;s own HTML — e.g. a demo&#x27;s theme</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code"> *  (#86) is injected as CSS vars in the iframe&#x27;s &lt;head&gt;, so a theme switch leaves</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code"> *  the captured &lt;body&gt; HTML identical and would otherwise never recapture.</td></tr>
+<tr class="unc"><td class="ln">83</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code"> *  `backgroundColor` fills the capture&#x27;s backdrop. A demo iframe is TRANSPARENT</td></tr>
+<tr class="cov"><td class="ln">85</td><td class="code"> *  (so the slide shows through live); without this the rasterized PNG keeps that</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code"> *  transparency and reads as the app&#x27;s grey wherever it&#x27;s shown standalone</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code"> *  (sidebar / link picker / export). Pass the slide&#x27;s resolved background so the</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code"> *  thumbnail matches the slide. It&#x27;s folded into the cache hash too, so changing</td></tr>
+<tr class="cov"><td class="ln">89</td><td class="code"> *  the slide theme re-captures with the new backdrop. */</td></tr>
+<tr class="cov"><td class="ln">90</td><td class="code">export async function capturePreview(</td></tr>
+<tr class="cov"><td class="ln">91</td><td class="code">  el: SlideElement, innerSelector?: string, cacheSalt?: string,</td></tr>
+<tr class="cov"><td class="ln">92</td><td class="code">  backgroundColor?: string,</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">94</td><td class="code">  const key = previewKey(el);</td></tr>
+<tr class="cov"><td class="ln">95</td><td class="code">  if (inflight.has(key)) return;</td></tr>
+<tr class="cov"><td class="ln">96</td><td class="code">  const host = document.querySelector(`[data-element-id=&quot;${el.id}&quot;]`) as HTMLElement | null;</td></tr>
+<tr class="cov"><td class="ln">97</td><td class="code">  if (!host) return;</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">  let node: HTMLElement = (innerSelector</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">    ? (host.querySelector(innerSelector) as HTMLElement | null)</td></tr>
+<tr class="cov"><td class="ln">100</td><td class="code">    : host) ?? host;</td></tr>
+<tr class="cov"><td class="ln">101</td><td class="code">  const width = Math.round(el.position.width);</td></tr>
+<tr class="cov"><td class="ln">102</td><td class="code">  const height = Math.round(el.position.height);</td></tr>
+<tr class="cov"><td class="ln">103</td><td class="code">  if (!width || !height) return;</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">  // A demo renders in an OPAQUE-ORIGIN iframe (docs/DEMO-PLATFORM.md §8): the</td></tr>
+<tr class="nil"><td class="ln">106</td><td class="code">  // parent can&#x27;t reach its DOM, so ask the in-demo bridge to rasterize itself and</td></tr>
+<tr class="cov"><td class="ln">107</td><td class="code">  // post the PNG back. Dedup by size + theme salt (the content HTML is unreadable).</td></tr>
+<tr class="cov"><td class="ln">108</td><td class="code">  if (node instanceof HTMLIFrameElement) {</td></tr>
+<tr class="cov"><td class="ln">109</td><td class="code">    const iframe = node;</td></tr>
+<tr class="cov"><td class="ln">110</td><td class="code">    const sig = hashString(`${width}x${height}|${cacheSalt ?? &#x27;&#x27;}|${backgroundColor ?? &#x27;&#x27;}`);</td></tr>
+<tr class="cov"><td class="ln">111</td><td class="code">    await storeCapture(key, width, height, sig, async () =&gt; {</td></tr>
+<tr class="unc"><td class="ln">112</td><td class="code">      const { requestDemoCapture } = await import(&#x27;./demoMount&#x27;);<a class="jump" href="src__lib__demoMount_ts.html" title="src/lib/demoMount.ts">→ demoMount.ts</a></td></tr>
+<tr class="unc"><td class="ln">113</td><td class="code">      return requestDemoCapture(iframe, { width, height, backgroundColor });</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">    });</td></tr>
+<tr class="unc"><td class="ln">115</td><td class="code">    return;</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">117</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">118</td><td class="code">  // In-DOM node (notebook / video): rasterize directly. The signature includes the</td></tr>
+<tr class="cov"><td class="ln">119</td><td class="code">  // node&#x27;s HTML so it changes exactly when the picture&#x27;s structure does. (Canvas</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">  // pixel state isn&#x27;t in the HTML — acceptable: a thumbnail is a single frame.)</td></tr>
+<tr class="unc"><td class="ln">121</td><td class="code">  // The theme salt is kept as a READABLE prefix (not folded into the hash) so the</td></tr>
+<tr class="unc"><td class="ln">122</td><td class="code">  // PDF/print export can compare it against the current theme WITHOUT the node&#x27;s</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">  // outerHTML — which it can&#x27;t read for a notebook that isn&#x27;t on the current slide.</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">  // A theme change then reads stale at export → forces a fresh capture (#140).</td></tr>
+<tr class="cov"><td class="ln">125</td><td class="code">  const sig = `${cacheSalt ?? &#x27;&#x27;}${PREVIEW_SALT_SEP}${hashString(`${width}x${height}|${backgroundColor ?? &#x27;&#x27;}|${node.outerHTML}`)}`;</td></tr>
+<tr class="cov"><td class="ln">126</td><td class="code">  await storeCapture(key, width, height, sig, async () =&gt; {</td></tr>
+<tr class="cov"><td class="ln">127</td><td class="code">    const { domToDataUrl } = await import(&#x27;modern-screenshot&#x27;);</td></tr>
+<tr class="cov"><td class="ln">128</td><td class="code">    return domToDataUrl(node, { width, height, scale: 1, backgroundColor });</td></tr>
+<tr class="cov"><td class="ln">129</td><td class="code">  });</td></tr>
+<tr class="cov"><td class="ln">130</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">131</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">132</td><td class="code">// --- read side ----------------------------------------------------------</td></tr>
+<tr class="nil"><td class="ln">133</td><td class="code">// A monotonic version per key, bumped on (re)capture, so consumers can</td></tr>
+<tr class="unc"><td class="ln">134</td><td class="code">// re-fetch the blob URL when the preview changes (the URL itself is stable</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">// bytes; the version is the cache-busting signal).</td></tr>
+<tr class="cov"><td class="ln">136</td><td class="code">const previewVersion = new Map&lt;string, number&gt;();</td></tr>
+<tr class="cov"><td class="ln">137</td><td class="code">const listeners = new Set&lt;() =&gt; void&gt;();</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code">function bumpPreviewVersion(key: string): void {</td></tr>
+<tr class="cov"><td class="ln">140</td><td class="code">  previewVersion.set(key, (previewVersion.get(key) ?? 0) + 1);</td></tr>
+<tr class="cov"><td class="ln">141</td><td class="code">  for (const l of listeners) l();</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">/** Subscribe to any preview (re)capture — consumers re-read on change. */</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">export function onPreviewChange(fn: () =&gt; void): () =&gt; void {</td></tr>
+<tr class="unc"><td class="ln">145</td><td class="code">  listeners.add(fn);</td></tr>
+<tr class="unc"><td class="ln">146</td><td class="code">  return () =&gt; listeners.delete(fn);</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">148</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">149</td><td class="code">/** Drop a preview: forget the session hash AND delete the persisted cache row,</td></tr>
+<tr class="nil"><td class="ln">150</td><td class="code"> *  so the next capturePreview re-renders it even if the content is unchanged.</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code"> *  Used by &quot;Refresh All Snapshots&quot; to force a full re-render. Best-effort. */</td></tr>
+<tr class="nil"><td class="ln">152</td><td class="code">export async function clearPreview(key: string): Promise&lt;void&gt; {</td></tr>
+<tr class="unc"><td class="ln">153</td><td class="code">  lastHash.delete(key);</td></tr>
+<tr class="unc"><td class="ln">154</td><td class="code">  try { await invoke(&#x27;db_clear_asset_cache&#x27;, { sourceId: key }); }</td></tr>
+<tr class="unc"><td class="ln">155</td><td class="code">  catch (e) { console.warn(&#x27;clearPreview failed:&#x27;, e); }</td></tr>
+<tr class="unc"><td class="ln">156</td><td class="code">  bumpPreviewVersion(key);</td></tr>
+<tr class="nil"><td class="ln">157</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">159</td><td class="code">interface CacheVariant { variant: string; width: number; height: number; source_hash?: string | null }</td></tr>
+<tr class="nil"><td class="ln">160</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">/** Load the element&#x27;s cached preview as an object URL, or null on a miss.</td></tr>
+<tr class="nil"><td class="ln">162</td><td class="code"> *  Size-robust: discovers the stored `preview` size via list-variants rather</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code"> *  than assuming the element&#x27;s current size. Caller owns revoking the URL. */</td></tr>
+<tr class="nil"><td class="ln">164</td><td class="code">export async function loadPreviewUrl(key: string): Promise&lt;string | null&gt; {</td></tr>
+<tr class="unc"><td class="ln">165</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">166</td><td class="code">    const variants = await invoke&lt;CacheVariant[]&gt;(&#x27;db_list_asset_cache_variants&#x27;, { sourceId: key });</td></tr>
+<tr class="unc"><td class="ln">167</td><td class="code">    const p = variants.find((v) =&gt; v.variant === &#x27;preview&#x27;);</td></tr>
+<tr class="unc"><td class="ln">168</td><td class="code">    if (!p) return null;</td></tr>
+<tr class="unc"><td class="ln">169</td><td class="code">    const buf = await invoke&lt;ArrayBuffer&gt;(&#x27;db_get_asset_cache_bytes&#x27;, {</td></tr>
+<tr class="nil"><td class="ln">170</td><td class="code">      sourceId: key, variant: &#x27;preview&#x27;, width: p.width, height: p.height,</td></tr>
+<tr class="nil"><td class="ln">171</td><td class="code">    });</td></tr>
+<tr class="unc"><td class="ln">172</td><td class="code">    const bytes = new Uint8Array(buf);</td></tr>
+<tr class="unc"><td class="ln">173</td><td class="code">    if (bytes.length === 0) return null;            // empty Response = miss</td></tr>
+<tr class="unc"><td class="ln">174</td><td class="code">    return URL.createObjectURL(new Blob([bytes], { type: &#x27;image/png&#x27; }));</td></tr>
+<tr class="nil"><td class="ln">175</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">176</td><td class="code">    console.warn(&#x27;loadPreviewUrl failed:&#x27;, e);</td></tr>
+<tr class="unc"><td class="ln">177</td><td class="code">    return null;</td></tr>
+<tr class="nil"><td class="ln">178</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">179</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">180</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">181</td><td class="code">/** Load the element&#x27;s cached preview as a base64 `data:` URL (or null on a</td></tr>
+<tr class="nil"><td class="ln">182</td><td class="code"> *  miss). For embedding in exported HTML/PDF, where a blob: URL won&#x27;t survive</td></tr>
+<tr class="nil"><td class="ln">183</td><td class="code"> *  in the written file. */</td></tr>
+<tr class="nil"><td class="ln">184</td><td class="code">export async function loadPreviewDataUrl(key: string): Promise&lt;string | null&gt; {</td></tr>
+<tr class="cov"><td class="ln">185</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">186</td><td class="code">    const variants = await invoke&lt;CacheVariant[]&gt;(&#x27;db_list_asset_cache_variants&#x27;, { sourceId: key });</td></tr>
+<tr class="cov"><td class="ln">187</td><td class="code">    const p = variants.find((v) =&gt; v.variant === &#x27;preview&#x27;);</td></tr>
+<tr class="cov"><td class="ln">188</td><td class="code">    if (!p) return null;</td></tr>
+<tr class="cov"><td class="ln">189</td><td class="code">    const buf = await invoke&lt;ArrayBuffer&gt;(&#x27;db_get_asset_cache_bytes&#x27;, {</td></tr>
+<tr class="nil"><td class="ln">190</td><td class="code">      sourceId: key, variant: &#x27;preview&#x27;, width: p.width, height: p.height,</td></tr>
+<tr class="nil"><td class="ln">191</td><td class="code">    });</td></tr>
+<tr class="cov"><td class="ln">192</td><td class="code">    const bytes = new Uint8Array(buf);</td></tr>
+<tr class="cov"><td class="ln">193</td><td class="code">    if (bytes.length === 0) return null;</td></tr>
+<tr class="cov"><td class="ln">194</td><td class="code">    return `data:image/png;base64,${bytesToBase64(bytes)}`;</td></tr>
+<tr class="nil"><td class="ln">195</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">196</td><td class="code">    console.warn(&#x27;loadPreviewDataUrl failed:&#x27;, e);</td></tr>
+<tr class="unc"><td class="ln">197</td><td class="code">    return null;</td></tr>
+<tr class="nil"><td class="ln">198</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">199</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">200</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">201</td><td class="code">/** True when a cached DOM-node (notebook) preview exists but was captured under a</td></tr>
+<tr class="nil"><td class="ln">202</td><td class="code"> *  DIFFERENT theme salt than `expectedSalt` — so the PDF/print export should</td></tr>
+<tr class="nil"><td class="ln">203</td><td class="code"> *  re-capture it instead of baking the stale-theme PNG (#140). False when there&#x27;s</td></tr>
+<tr class="nil"><td class="ln">204</td><td class="code"> *  no cached preview, or its stored signature predates the salt-prefix format</td></tr>
+<tr class="nil"><td class="ln">205</td><td class="code"> *  (can&#x27;t tell → treat as fresh, preserving prior behavior). */</td></tr>
+<tr class="nil"><td class="ln">206</td><td class="code">export async function isPreviewThemeStale(key: string, expectedSalt: string): Promise&lt;boolean&gt; {</td></tr>
+<tr class="cov"><td class="ln">207</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">208</td><td class="code">    const variants = await invoke&lt;CacheVariant[]&gt;(&#x27;db_list_asset_cache_variants&#x27;, { sourceId: key });</td></tr>
+<tr class="cov"><td class="ln">209</td><td class="code">    const p = variants.find((v) =&gt; v.variant === &#x27;preview&#x27;);</td></tr>
+<tr class="cov"><td class="ln">210</td><td class="code">    if (!p || !p.source_hash) return false;</td></tr>
+<tr class="cov"><td class="ln">211</td><td class="code">    const i = p.source_hash.indexOf(PREVIEW_SALT_SEP);</td></tr>
+<tr class="cov"><td class="ln">212</td><td class="code">    if (i &lt; 0) return false; // pre-prefix format — can&#x27;t compare, keep the cached preview</td></tr>
+<tr class="cov"><td class="ln">213</td><td class="code">    return p.source_hash.slice(0, i) !== expectedSalt;</td></tr>
+<tr class="nil"><td class="ln">214</td><td class="code">  } catch {</td></tr>
+<tr class="unc"><td class="ln">215</td><td class="code">    return false;</td></tr>
+<tr class="nil"><td class="ln">216</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">217</td><td class="code">}</td></tr></table>
+</body></html>

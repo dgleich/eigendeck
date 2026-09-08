@@ -1,0 +1,144 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/components/CollisionDialog.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/components/CollisionDialog.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>13%</b> covered</span>
+    <span class="stat">6/46 executable</span>
+    <span class="stat unc-txt">40 uncovered</span>
+    <span class="stat">126 raw lines</span>
+    <span class="stat">0.29% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:4.762%"></span><span class="seg unc" style="width:31.746%"></span><span class="seg nil" style="width:63.492%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__collisionDialog_ts.html">collisionDialog.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// &quot;Asset has silently changed since first add&quot; awareness dialog.</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// User must explicitly opt in to one of two actions; no default focus.</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// Esc / outside-click cancels (abandons the insertion entirely) even</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// though no visible Cancel button exists — users expect Esc to back</td></tr>
+<tr class="cov"><td class="ln">6</td><td class="code">// out of a modal.</td></tr>
+<tr class="cov"><td class="ln">7</td><td class="code">//</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">// See docs/ASSETS.md → &quot;Path collision dialog&quot; for the design.</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">import { useEffect, useState } from &#x27;react&#x27;;</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">import { createPortal } from &#x27;react-dom&#x27;;</td></tr>
+<tr class="unc"><td class="ln">12</td><td class="code">import { subscribeCollisionDialog } from &#x27;../lib/collisionDialog&#x27;;<a class="jump" href="src__lib__collisionDialog_ts.html" title="src/lib/collisionDialog.ts">→ collisionDialog.ts</a></td></tr>
+<tr class="unc"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">14</td><td class="code">type Pending = {</td></tr>
+<tr class="unc"><td class="ln">15</td><td class="code">  id: number;</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">  path: string;</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">  slideNumbers: number[];</td></tr>
+<tr class="unc"><td class="ln">18</td><td class="code">  existingChanged: boolean;</td></tr>
+<tr class="unc"><td class="ln">19</td><td class="code">  notLiveReason?: string;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">  resolve: (choice: &#x27;accept&#x27; | &#x27;revert&#x27; | &#x27;cancel&#x27;) =&gt; void;</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">};</td></tr>
+<tr class="unc"><td class="ln">22</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">23</td><td class="code">export function CollisionDialog() {</td></tr>
+<tr class="unc"><td class="ln">24</td><td class="code">  const [req, setReq] = useState&lt;Pending | null&gt;(null);</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">26</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">27</td><td class="code">    return subscribeCollisionDialog((p) =&gt; setReq(p as Pending | null));</td></tr>
+<tr class="unc"><td class="ln">28</td><td class="code">  }, []);</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">30</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">31</td><td class="code">    if (!req) return;</td></tr>
+<tr class="unc"><td class="ln">32</td><td class="code">    const handler = (e: KeyboardEvent) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">33</td><td class="code">      if (e.key === &#x27;Escape&#x27;) { e.preventDefault(); req.resolve(&#x27;cancel&#x27;); }</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">    };</td></tr>
+<tr class="unc"><td class="ln">35</td><td class="code">    window.addEventListener(&#x27;keydown&#x27;, handler);</td></tr>
+<tr class="unc"><td class="ln">36</td><td class="code">    return () =&gt; window.removeEventListener(&#x27;keydown&#x27;, handler);</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">  }, [req]);</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">39</td><td class="code">  if (!req) return null;</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">41</td><td class="code">  const fileName = req.path.split(&#x27;/&#x27;).pop() ?? req.path;</td></tr>
+<tr class="unc"><td class="ln">42</td><td class="code">  const slideList = formatSlideList(req.slideNumbers);</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">44</td><td class="code">  return createPortal(</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">    &lt;div</td></tr>
+<tr class="unc"><td class="ln">46</td><td class="code">      onClick={() =&gt; req.resolve(&#x27;cancel&#x27;)}</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">      style={{</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">        position: &#x27;fixed&#x27;, inset: 0, background: &#x27;rgba(0,0,0,0.4)&#x27;,</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">        display: &#x27;flex&#x27;, alignItems: &#x27;center&#x27;, justifyContent: &#x27;center&#x27;, zIndex: 10001,</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">      }}&gt;</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">      &lt;div</td></tr>
+<tr class="unc"><td class="ln">52</td><td class="code">        onClick={(e) =&gt; e.stopPropagation()}</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">        style={{</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">          background: &#x27;#fff&#x27;, borderRadius: 8, minWidth: 520, maxWidth: 640,</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">          boxShadow: &#x27;0 12px 40px rgba(0,0,0,0.25)&#x27;,</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">          display: &#x27;flex&#x27;, flexDirection: &#x27;column&#x27;,</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">        }}&gt;</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">        &lt;div style={{ padding: &#x27;16px 20px 8px&#x27;, fontSize: 15, fontWeight: 600 }}&gt;</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">          {req.existingChanged ? `${fileName} has changed` : `${fileName} is different from the copy in this deck`}</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">        &lt;div style={{ padding: &#x27;0 20px 14px&#x27;, fontSize: 13, color: &#x27;#374151&#x27;, lineHeight: 1.5 }}&gt;</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">          &lt;code style={{ background: &#x27;#f3f4f6&#x27;, padding: &#x27;1px 4px&#x27;, borderRadius: 3 }}&gt;</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">            {fileName}</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">          &lt;/code&gt;{&#x27; &#x27;}</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">          {req.existingChanged ? (</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">            &lt;&gt;</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">              has changed since you added it on {slideList}. The default behavior in</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">              Eigendeck is to update it to the latest version when it changes, which has</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">              already happened. Both the existing and new copy will now show the updated</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">              version.</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">            &lt;/&gt;</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">          ) : (</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">            &lt;&gt;</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">              is different from the copy already used on {slideList}.{&#x27; &#x27;}</td></tr>
+<tr class="unc"><td class="ln">75</td><td class="code">              {req.notLiveReason ?? &#x27;Eigendeck isn’t auto-updating this file from its source.&#x27;}{&#x27; &#x27;}</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">              So it still shows the version you first added — what should happen?</td></tr>
+<tr class="nil"><td class="ln">77</td><td class="code">            &lt;/&gt;</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">          )}</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">        &lt;div style={{ padding: &#x27;0 20px 16px&#x27;, display: &#x27;flex&#x27;, flexDirection: &#x27;column&#x27;, gap: 8 }}&gt;</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">          &lt;ChoiceButton</td></tr>
+<tr class="unc"><td class="ln">82</td><td class="code">            label={req.existingChanged</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">              ? &#x27;I understand and want this auto-updating behavior.&#x27;</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">              : `Update ${slideList} to this new version too.`}</td></tr>
+<tr class="unc"><td class="ln">85</td><td class="code">            onClick={() =&gt; req.resolve(&#x27;accept&#x27;)}</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">          /&gt;</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">          &lt;ChoiceButton</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code">            label={req.existingChanged</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">              ? `I want to revert the contents of ${slideList} to the previous version and add this as a new version. I don&#x27;t want the auto-updating behavior. (This will disable it for this presentation.)`</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">              : `Keep ${slideList} as-is and add this as a separate copy.`}</td></tr>
+<tr class="unc"><td class="ln">91</td><td class="code">            onClick={() =&gt; req.resolve(&#x27;revert&#x27;)}</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">          /&gt;</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">      &lt;/div&gt;</td></tr>
+<tr class="unc"><td class="ln">95</td><td class="code">    &lt;/div&gt;,</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">    document.body,</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">function ChoiceButton({ label, onClick }: { label: string; onClick: () =&gt; void }) {</td></tr>
+<tr class="unc"><td class="ln">101</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">    &lt;button</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">      onClick={onClick}</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">      style={{</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">        textAlign: &#x27;left&#x27;,</td></tr>
+<tr class="nil"><td class="ln">106</td><td class="code">        padding: &#x27;10px 12px&#x27;,</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">        background: &#x27;#f9fafb&#x27;,</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">        border: &#x27;1px solid #d1d5db&#x27;,</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">        borderRadius: 5,</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">        cursor: &#x27;pointer&#x27;,</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">        fontSize: 12,</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">        color: &#x27;#111827&#x27;,</td></tr>
+<tr class="nil"><td class="ln">113</td><td class="code">        lineHeight: 1.4,</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">      }}&gt;</td></tr>
+<tr class="unc"><td class="ln">115</td><td class="code">      {label}</td></tr>
+<tr class="unc"><td class="ln">116</td><td class="code">    &lt;/button&gt;</td></tr>
+<tr class="unc"><td class="ln">117</td><td class="code">  );</td></tr>
+<tr class="unc"><td class="ln">118</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">119</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">function formatSlideList(nums: number[]): string {</td></tr>
+<tr class="unc"><td class="ln">121</td><td class="code">  if (nums.length === 0) return &#x27;no slides&#x27;;  // shouldn&#x27;t fire — caller skips dialog in that case</td></tr>
+<tr class="unc"><td class="ln">122</td><td class="code">  if (nums.length === 1) return `slide ${nums[0]}`;</td></tr>
+<tr class="unc"><td class="ln">123</td><td class="code">  if (nums.length === 2) return `slides ${nums[0]} and ${nums[1]}`;</td></tr>
+<tr class="unc"><td class="ln">124</td><td class="code">  const head = nums.slice(0, -1).join(&#x27;, &#x27;);</td></tr>
+<tr class="unc"><td class="ln">125</td><td class="code">  return `slides ${head}, and ${nums[nums.length - 1]}`;</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">}</td></tr></table>
+</body></html>

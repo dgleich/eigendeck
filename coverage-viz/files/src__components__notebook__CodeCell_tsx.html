@@ -1,0 +1,206 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/components/notebook/CodeCell.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/components/notebook/CodeCell.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>79%</b> covered</span>
+    <span class="stat">37/47 executable</span>
+    <span class="stat unc-txt">10 uncovered</span>
+    <span class="stat">188 raw lines</span>
+    <span class="stat">0.44% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:19.681%"></span><span class="seg unc" style="width:5.319%"></span><span class="seg nil" style="width:75.000%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__components__notebook__CellOutput_tsx.html">CellOutput.tsx</a> <a href="src__components__notebook__NotebookCellEditor_tsx.html">NotebookCellEditor.tsx</a> <a href="src__lib__notebookFormat_ts.html">notebookFormat.ts</a> <a href="src__lib__syntaxHighlight_ts.html">syntaxHighlight.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__notebook__NotebookCells_tsx.html">NotebookCells.tsx</a> <a href="src__components__notebook__NotebookContent_tsx.html">NotebookContent.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Single code cell — source area + outputs + Run button.</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// `liveOutputs`: when present, replaces persisted outputs (the result</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// of a fresh run this session). Reverts to `cell.outputs` when null —</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// e.g. after the file watcher reloads.</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// `liveExecutionCount`: replaces the persisted `[N]` prompt;</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// &#x27;*&#x27; means currently running.</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// `source`: the EFFECTIVE source to display + run. NotebookContent</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">// passes the cellEdits overlay value when one exists, else the cell&#x27;s</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">// own source. (CodeCell never reads cell.source directly for</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">// display — always this prop — so edits show consistently.)</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">// `editable`: when true, the source area becomes a CodeMirror editor</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">// (the notebook is being interacted with). When false, a static</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">// highlighted &lt;pre&gt;.</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">// `language`: kernel language for highlighting + the editor grammar.</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">// Run button is disabled when `onRun` is undefined (display-only mode</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">// when no kernel layer is wired) or when the cell is already running.</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">import { useEffect, useState } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">import { CodeCell as CodeCellT, CellOutput as CellOutputT } from &#x27;../../lib/notebookFormat&#x27;;<a class="jump" href="src__lib__notebookFormat_ts.html" title="src/lib/notebookFormat.ts">→ notebookFormat.ts</a></td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">import { CellOutput } from &#x27;./CellOutput&#x27;;<a class="jump" href="src__components__notebook__CellOutput_tsx.html" title="src/components/notebook/CellOutput.tsx">→ CellOutput.tsx</a></td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">import { highlightCode } from &#x27;../../lib/syntaxHighlight&#x27;;<a class="jump" href="src__lib__syntaxHighlight_ts.html" title="src/lib/syntaxHighlight.ts">→ syntaxHighlight.ts</a></td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">import { NotebookCellEditor } from &#x27;./NotebookCellEditor&#x27;;<a class="jump" href="src__components__notebook__NotebookCellEditor_tsx.html" title="src/components/notebook/NotebookCellEditor.tsx">→ NotebookCellEditor.tsx</a></td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">export interface CodeCellProps {</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">  cell: CodeCellT;</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">  /** Effective source (edit overlay applied). Defaults to cell.source. */</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">  source?: string;</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">  liveOutputs?: CellOutputT[] | null;</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">  liveExecutionCount?: number | &#x27;*&#x27; | null;</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">  running?: boolean;</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">  onRun?: () =&gt; void;</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">  /** Kernel language (notebook.kernelspec.language). When null, no</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">   *  highlighting / grammar is applied. */</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">  language?: string | null;</td></tr>
+<tr class="cov"><td class="ln">41</td><td class="code">  /** Whether to highlight at all. Default true. */</td></tr>
+<tr class="cov"><td class="ln">42</td><td class="code">  highlight?: boolean;</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">  /** Dark slide theme — picks the matching editor highlight palette. */</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">  dark?: boolean;</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  /** When true, render an editor instead of a static &lt;pre&gt;. */</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">  editable?: boolean;</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">  /** Show a line-number gutter in the editor. Default false (opt-in). */</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">  showLineNumbers?: boolean;</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">  /** Editor font size in slide-pixels (matches --nb-base-size). */</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">  fontSize?: number;</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">  /** Working-copy change handler (per keystroke). */</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">  onEdit?: (next: string) =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">  /** Commit handler (editor blur). */</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">  onCommit?: () =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">  /** True when this cell has an active edit overlay (amber accent +</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">   *  &quot;edited&quot; tag + revert ⟲). */</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">  edited?: boolean;</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">  /** True when this is a live-authored (appended) cell (teal accent +</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">   *  &quot;added&quot; tag + delete ✕). */</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">  added?: boolean;</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">  /** edited: revert to saved source. added: delete the cell. */</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">  onRevert?: () =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">  /** Pre-resolved highlighted source HTML (the same markup the async</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">   *  highlightCode path produces). Used by the static HTML export,</td></tr>
+<tr class="unc"><td class="ln">65</td><td class="code">   *  where the async useEffect can&#x27;t run under renderToStaticMarkup.</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">   *  When set, it&#x27;s used directly (no async highlight); when absent,</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">   *  the existing async behavior is unchanged. */</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">  highlightedHtml?: string;</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">export function CodeCell({</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">  cell, source, liveOutputs, liveExecutionCount, running, onRun,</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">  language, highlight = true, dark = false,</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">  editable = false, showLineNumbers = false,</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code">  fontSize = 32, onEdit, onCommit, edited, added, onRevert,</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">  highlightedHtml,</td></tr>
+<tr class="nil"><td class="ln">77</td><td class="code">}: CodeCellProps) {</td></tr>
+<tr class="cov"><td class="ln">78</td><td class="code">  const effectiveSource = source ?? cell.source;</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">  // Strip ONE trailing newline for DISPLAY (static + editor) so a cell that</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">  // ends in &quot;\n&quot; doesn&#x27;t render a spurious blank last line — which the</td></tr>
+<tr class="unc"><td class="ln">81</td><td class="code">  // wrapped view hid but the line-number / no-wrap view exposes.</td></tr>
+<tr class="cov"><td class="ln">82</td><td class="code">  const displaySource = effectiveSource.replace(/\n$/, &#x27;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">83</td><td class="code">  const outputs = liveOutputs ?? cell.outputs;</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">  const promptCount = running</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">    ? &#x27;*&#x27;</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">    : liveExecutionCount === &#x27;*&#x27; ? &#x27;*&#x27;</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">    : liveExecutionCount != null ? String(liveExecutionCount)</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code">    : cell.executionCount != null ? String(cell.executionCount)</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">    : &#x27; &#x27;;</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">  // Highlighted HTML — null until the lazy load resolves. Recomputed</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">  // when the effective source changes (so edits re-highlight when the</td></tr>
+<tr class="unc"><td class="ln">93</td><td class="code">  // cell goes back to static).</td></tr>
+<tr class="cov"><td class="ln">94</td><td class="code">  const [highlighted, setHighlighted] = useState&lt;string | null&gt;(null);</td></tr>
+<tr class="cov"><td class="ln">95</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">    // A pre-resolved highlight (export path) means we don&#x27;t run the async</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">    // highlighter — the static markup is supplied directly.</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">    if (highlightedHtml != null) return;</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">    if (!highlight || editable) { setHighlighted(null); return; }</td></tr>
+<tr class="unc"><td class="ln">100</td><td class="code">    let cancelled = false;</td></tr>
+<tr class="unc"><td class="ln">101</td><td class="code">    highlightCode(displaySource, language ?? null).then((html) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">102</td><td class="code">      if (!cancelled) setHighlighted(html);</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">    });</td></tr>
+<tr class="cov"><td class="ln">104</td><td class="code">    return () =&gt; { cancelled = true; };</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">  }, [displaySource, language, highlight, editable, highlightedHtml]);</td></tr>
+<tr class="cov"><td class="ln">106</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">107</td><td class="code">  // Effective highlighted markup: the pre-resolved prop wins (export),</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">  // else the async-resolved state (live).</td></tr>
+<tr class="cov"><td class="ln">109</td><td class="code">  const effectiveHighlighted = highlightedHtml ?? highlighted;</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">  // Visual distinction: appended (live-authored) &gt; edited (overlay) &gt;</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">  // pristine. Drives the left accent + tag.</td></tr>
+<tr class="cov"><td class="ln">113</td><td class="code">  const markClass = added ? &#x27; nb-cell-added&#x27; : edited ? &#x27; nb-cell-edited&#x27; : &#x27;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">115</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">    &lt;div className={`nb-cell nb-cell-code${markClass}`}&gt;</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">      &lt;div className={`nb-cell-prompt${running ? &#x27; is-running&#x27; : &#x27;&#x27;}`}&gt;[{promptCount}]&lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code">      &lt;div className=&quot;nb-cell-body&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">        &lt;div className=&quot;nb-cell-source-row&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">          {editable ? (</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code">            &lt;div className=&quot;nb-cell-source nb-cell-source-editing&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">              &lt;NotebookCellEditor</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">                value={displaySource}</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">                language={language ?? null}</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code">                fontSize={fontSize}</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">                highlight={highlight}</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">                dark={dark}</td></tr>
+<tr class="nil"><td class="ln">128</td><td class="code">                showLineNumbers={showLineNumbers}</td></tr>
+<tr class="unc"><td class="ln">129</td><td class="code">                onChange={(next) =&gt; onEdit?.(next)}</td></tr>
+<tr class="unc"><td class="ln">130</td><td class="code">                onRun={() =&gt; onRun?.()}</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">                onBlur={onCommit}</td></tr>
+<tr class="nil"><td class="ln">132</td><td class="code">              /&gt;</td></tr>
+<tr class="nil"><td class="ln">133</td><td class="code">            &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">          ) : (</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">            &lt;pre className={`nb-cell-source${showLineNumbers ? &#x27; nb-has-linenos&#x27; : &#x27;&#x27;}`}&gt;</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">              {showLineNumbers &amp;&amp; (</td></tr>
+<tr class="nil"><td class="ln">137</td><td class="code">                &lt;span className=&quot;nb-linenos&quot; aria-hidden=&quot;true&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">                  {Array.from(</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code">                    { length: displaySource.split(&#x27;\n&#x27;).length },</td></tr>
+<tr class="cov"><td class="ln">140</td><td class="code">                    (_, i) =&gt; i + 1,</td></tr>
+<tr class="nil"><td class="ln">141</td><td class="code">                  ).join(&#x27;\n&#x27;)}</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">                &lt;/span&gt;</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">              )}</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">              {displaySource === &#x27;&#x27;</td></tr>
+<tr class="nil"><td class="ln">145</td><td class="code">                /* Phantom space so an EMPTY cell still has a full line box —</td></tr>
+<tr class="nil"><td class="ln">146</td><td class="code">                   keeps it the same height as a one-line code cell instead of</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">                   collapsing to padding. */</td></tr>
+<tr class="nil"><td class="ln">148</td><td class="code">                ? &lt;code&gt;{&#x27; &#x27;}&lt;/code&gt;</td></tr>
+<tr class="nil"><td class="ln">149</td><td class="code">                : highlight &amp;&amp; effectiveHighlighted != null</td></tr>
+<tr class="nil"><td class="ln">150</td><td class="code">                  ? &lt;code className=&quot;hljs&quot; dangerouslySetInnerHTML={{ __html: effectiveHighlighted }} /&gt;</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code">                  : &lt;code&gt;{displaySource}&lt;/code&gt;}</td></tr>
+<tr class="nil"><td class="ln">152</td><td class="code">            &lt;/pre&gt;</td></tr>
+<tr class="nil"><td class="ln">153</td><td class="code">          )}</td></tr>
+<tr class="nil"><td class="ln">154</td><td class="code">          &lt;div className=&quot;nb-cell-actions&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">155</td><td class="code">            {/* No text tag: the colored left accent + the action button are</td></tr>
+<tr class="nil"><td class="ln">156</td><td class="code">                indicator enough — ⟲ revert = edited, ✕ = added. */}</td></tr>
+<tr class="nil"><td class="ln">157</td><td class="code">            {added &amp;&amp; onRevert &amp;&amp; (</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code">              &lt;button className=&quot;nb-cell-delete&quot;</td></tr>
+<tr class="unc"><td class="ln">159</td><td class="code">                onClick={(e) =&gt; { e.stopPropagation(); onRevert(); }}</td></tr>
+<tr class="nil"><td class="ln">160</td><td class="code">                title=&quot;Delete this added cell&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">                ✕</td></tr>
+<tr class="nil"><td class="ln">162</td><td class="code">              &lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">            )}</td></tr>
+<tr class="nil"><td class="ln">164</td><td class="code">            {!added &amp;&amp; edited &amp;&amp; onRevert &amp;&amp; (</td></tr>
+<tr class="nil"><td class="ln">165</td><td class="code">              &lt;button className=&quot;nb-cell-revert&quot;</td></tr>
+<tr class="unc"><td class="ln">166</td><td class="code">                onClick={(e) =&gt; { e.stopPropagation(); onRevert(); }}</td></tr>
+<tr class="nil"><td class="ln">167</td><td class="code">                title=&quot;Revert this cell to the notebook&#x27;s saved source&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">168</td><td class="code">                ⟲</td></tr>
+<tr class="nil"><td class="ln">169</td><td class="code">              &lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">170</td><td class="code">            )}</td></tr>
+<tr class="nil"><td class="ln">171</td><td class="code">            {onRun &amp;&amp; (</td></tr>
+<tr class="nil"><td class="ln">172</td><td class="code">              &lt;button className=&quot;nb-cell-run&quot; disabled={running}</td></tr>
+<tr class="cov"><td class="ln">173</td><td class="code">                onClick={(e) =&gt; { e.stopPropagation(); onRun(); }}</td></tr>
+<tr class="nil"><td class="ln">174</td><td class="code">                title=&quot;Run this cell (Shift-Enter)&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">175</td><td class="code">                {running ? &#x27;…&#x27; : &#x27;▶&#x27;}</td></tr>
+<tr class="nil"><td class="ln">176</td><td class="code">              &lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">177</td><td class="code">            )}</td></tr>
+<tr class="nil"><td class="ln">178</td><td class="code">          &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">179</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">180</td><td class="code">        {outputs.length &gt; 0 &amp;&amp; (</td></tr>
+<tr class="nil"><td class="ln">181</td><td class="code">          &lt;div className=&quot;nb-cell-outputs&quot;&gt;</td></tr>
+<tr class="cov"><td class="ln">182</td><td class="code">            {outputs.map((o, i) =&gt; &lt;CellOutput key={i} output={o} /&gt;)}</td></tr>
+<tr class="nil"><td class="ln">183</td><td class="code">          &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">184</td><td class="code">        )}</td></tr>
+<tr class="nil"><td class="ln">185</td><td class="code">      &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">186</td><td class="code">    &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">187</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">188</td><td class="code">}</td></tr></table>
+</body></html>

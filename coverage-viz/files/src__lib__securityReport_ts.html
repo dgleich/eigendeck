@@ -1,0 +1,232 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/securityReport.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/securityReport.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>85%</b> covered</span>
+    <span class="stat">115/135 executable</span>
+    <span class="stat unc-txt">20 uncovered</span>
+    <span class="stat">214 raw lines</span>
+    <span class="stat">0.50% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:53.738%"></span><span class="seg unc" style="width:9.346%"></span><span class="seg nil" style="width:36.916%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__assetGate_ts.html">assetGate.ts</a> <a href="src__lib__assetUsage_ts.html">assetUsage.ts</a> <a href="src__lib__preferences_ts.html">preferences.ts</a> <a href="src__lib__trustLedger_d_mts.html">trustLedger.d.mts</a> <a href="src__lib__trustStore_ts.html">trustStore.ts</a> <a href="src__lib__watcherRegistry_ts.html">watcherRegistry.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Builds the per-deck &quot;external files&quot; report for the Security panel.</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// One row per linked (external_path) asset: what the deck references, the REAL</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// resolved target (realpath), where it&#x27;s used, and its asset-security state</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// (approved / eligible / forbidden / missing). The panel renders resolved targets</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// in plain sight (transparency) and gates approval on state. See docs/ASSETS-SECURITY.md.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">import { invoke } from &#x27;@tauri-apps/api/core&#x27;;</td></tr>
+<tr class="cov"><td class="ln">9</td><td class="code">import { usePresentationStore, getDeckToken } from &#x27;../store/presentation&#x27;;<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">import { resolveAndGate, resolveAndGateDecision } from &#x27;./assetGate&#x27;;<a class="jump" href="src__lib__assetGate_ts.html" title="src/lib/assetGate.ts">→ assetGate.ts</a></td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">import { resolvePosixPath, dirname } from &#x27;./watcherRegistry&#x27;;<a class="jump" href="src__lib__watcherRegistry_ts.html" title="src/lib/watcherRegistry.ts">→ watcherRegistry.ts</a></td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">import { isTrusted, isPathApproved, deckState, approvalDetail } from &#x27;./trustStore&#x27;;<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
+<tr class="unc"><td class="ln">13</td><td class="code">import { getPreference } from &#x27;./preferences&#x27;;<a class="jump" href="src__lib__preferences_ts.html" title="src/lib/preferences.ts">→ preferences.ts</a></td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">import { computeAssetUsage } from &#x27;./assetUsage&#x27;;<a class="jump" href="src__lib__assetUsage_ts.html" title="src/lib/assetUsage.ts">→ assetUsage.ts</a></td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">import type { DeckStatus } from &#x27;./trustLedger.d.mts&#x27;;<a class="jump" href="src__lib__trustLedger_d_mts.html" title="src/lib/trustLedger.d.mts">→ trustLedger.d.mts</a></td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">export type RowState = &#x27;approved&#x27; | &#x27;eligible&#x27; | &#x27;forbidden&#x27; | &#x27;missing&#x27;;</td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">export interface ExternalPathRow {</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">  assetId: string;</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">  /** external_path as stored in the deck (what the author wrote). */</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">  referencePath: string;</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">  /** Fully resolved real target, or null if it couldn&#x27;t be resolved. */</td></tr>
+<tr class="unc"><td class="ln">24</td><td class="code">  resolvedPath: string | null;</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">  /** Directory of the resolved target (for &quot;approve all in this folder&quot;), or null. */</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">  resolvedDir: string | null;</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">  state: RowState;</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">  /** Short reason for forbidden/missing (destination-forward for the UI). */</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">  reason: string | null;</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">  /** &quot;Used on 2 slides&quot; style label. */</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">  usage: string;</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">  /** Approval provenance (approved rows only): when + how it was approved. */</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">  approvedAt: number | null;</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">  approvedHow: string | null;</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">36</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">export interface DeckSecurityReport {</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">  trusted: boolean;</td></tr>
+<tr class="unc"><td class="ln">39</td><td class="code">  /** Ledger trust status: untrusted-new (received, never trusted) / untrusted-ttl</td></tr>
+<tr class="unc"><td class="ln">40</td><td class="code">   *  (trust lapsed) / trusted. */</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">  status: DeckStatus;</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">  /** When the deck was first trusted (epoch ms), or null. */</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">  trustedAt: number | null;</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">  /** How it became trusted (&#x27;file-new&#x27; = you created it, &#x27;trusted&#x27; = you trusted a</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">   *  received deck), or null. */</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">  trustReason: string | null;</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">  /** Watch settings: global (Settings) and this deck&#x27;s per-presentation override. */</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">  watch: { global: boolean; deck: &#x27;on&#x27; | &#x27;off&#x27; | null };</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">  /** The presentation&#x27;s directory (for the &quot;outside the deck folder&quot; tint). */</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">  projectDir: string;</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">  counts: { total: number; approved: number; eligible: number; blocked: number; missing: number };</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">  rows: ExternalPathRow[];</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">interface LinkedRow { asset_id: string; external_path: string; }</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">function usageLabel(assetId: string): string {</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">  const pres = usePresentationStore.getState().presentation;</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">  const u = computeAssetUsage(pres, assetId);</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">  if (u.elementCount === 0) return &#x27;unused&#x27;;</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">  if (u.slideCount === 1) return u.elementCount === 1 ? &#x27;used on 1 slide&#x27; : `used ${u.elementCount}× on 1 slide`;</td></tr>
+<tr class="unc"><td class="ln">62</td><td class="code">  return `used on ${u.slideCount} slides`;</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">/** Build the report for the currently-open deck. Never throws. */</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">export async function buildDeckSecurityReport(): Promise&lt;DeckSecurityReport&gt; {</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">  const store = usePresentationStore.getState();</td></tr>
+<tr class="cov"><td class="ln">68</td><td class="code">  const token = getDeckToken();</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">  const trusted = token ? await isTrusted(token) : false;</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">  const projectDir = store.projectPath ? dirname(store.projectPath) : &#x27;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">  let linked: LinkedRow[] = [];</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">  try { linked = await invoke&lt;LinkedRow[]&gt;(&#x27;db_list_linked_assets&#x27;); } catch { linked = []; }</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">75</td><td class="code">  const rows: ExternalPathRow[] = [];</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code">  for (const a of linked) {</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">    if (!a.external_path) continue;</td></tr>
+<tr class="cov"><td class="ln">78</td><td class="code">    // Decision-only (bounded) read: the report classifies each linked file but never</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">    // uses its bytes, so it must not read a large video/PDF in full just to build a row.</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">    const gate = await resolveAndGateDecision(resolvePosixPath(projectDir, a.external_path));</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code">    let state: RowState;</td></tr>
+<tr class="cov"><td class="ln">82</td><td class="code">    let reason: string | null = null;</td></tr>
+<tr class="cov"><td class="ln">83</td><td class="code">    let approvedAt: number | null = null;</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">    let approvedHow: string | null = null;</td></tr>
+<tr class="cov"><td class="ln">85</td><td class="code">    if (!gate.ok) {</td></tr>
+<tr class="cov"><td class="ln">86</td><td class="code">      if (gate.reason === &#x27;unreadable&#x27;) { state = &#x27;missing&#x27;; reason = &#x27;source not found on disk&#x27;; }</td></tr>
+<tr class="cov"><td class="ln">87</td><td class="code">      else { state = &#x27;forbidden&#x27;; reason = gate.reason; }</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code">    } else {</td></tr>
+<tr class="cov"><td class="ln">89</td><td class="code">      const approved = token ? await isPathApproved(token, gate.canonicalPath!) : false;</td></tr>
+<tr class="cov"><td class="ln">90</td><td class="code">      state = approved ? &#x27;approved&#x27; : &#x27;eligible&#x27;;</td></tr>
+<tr class="cov"><td class="ln">91</td><td class="code">      if (approved &amp;&amp; token) {</td></tr>
+<tr class="cov"><td class="ln">92</td><td class="code">        const detail = await approvalDetail(token, gate.canonicalPath!);</td></tr>
+<tr class="cov"><td class="ln">93</td><td class="code">        approvedAt = detail?.at ?? null;</td></tr>
+<tr class="cov"><td class="ln">94</td><td class="code">        approvedHow = detail?.reason ?? null;</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code">      }</td></tr>
+<tr class="cov"><td class="ln">96</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">97</td><td class="code">    rows.push({</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">      assetId: a.asset_id,</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">      referencePath: a.external_path,</td></tr>
+<tr class="unc"><td class="ln">100</td><td class="code">      resolvedPath: gate.canonicalPath ?? null,</td></tr>
+<tr class="unc"><td class="ln">101</td><td class="code">      resolvedDir: gate.canonicalPath ? dirname(gate.canonicalPath) : null,</td></tr>
+<tr class="unc"><td class="ln">102</td><td class="code">      state,</td></tr>
+<tr class="unc"><td class="ln">103</td><td class="code">      reason,</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">      usage: usageLabel(a.asset_id),</td></tr>
+<tr class="unc"><td class="ln">105</td><td class="code">      approvedAt,</td></tr>
+<tr class="nil"><td class="ln">106</td><td class="code">      approvedHow,</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">    });</td></tr>
+<tr class="cov"><td class="ln">108</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">109</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">110</td><td class="code">  const ds = token ? await deckState(token) : null;</td></tr>
+<tr class="cov"><td class="ln">111</td><td class="code">  return {</td></tr>
+<tr class="cov"><td class="ln">112</td><td class="code">    trusted,</td></tr>
+<tr class="cov"><td class="ln">113</td><td class="code">    status: ds?.status ?? &#x27;untrusted-new&#x27;,</td></tr>
+<tr class="cov"><td class="ln">114</td><td class="code">    trustedAt: ds?.trustedAt ?? null,</td></tr>
+<tr class="cov"><td class="ln">115</td><td class="code">    trustReason: ds?.trustReason ?? null,</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">    watch: { global: getPreference(&#x27;autoReloadAssets&#x27;), deck: store.presentation.config.autoReloadAssets ?? null },</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">    projectDir,</td></tr>
+<tr class="cov"><td class="ln">118</td><td class="code">    counts: countRows(rows),</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">    rows,</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">  };</td></tr>
+<tr class="unc"><td class="ln">121</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">122</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">123</td><td class="code">/** Tally the per-state counts for a row set. Shared by buildDeckSecurityReport and the</td></tr>
+<tr class="unc"><td class="ln">124</td><td class="code"> *  in-place update in approveDirectory (which flips rows without a second full build). */</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code">function countRows(rows: ExternalPathRow[]): DeckSecurityReport[&#x27;counts&#x27;] {</td></tr>
+<tr class="cov"><td class="ln">126</td><td class="code">  return {</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">    total: rows.length,</td></tr>
+<tr class="cov"><td class="ln">128</td><td class="code">    approved: rows.filter((r) =&gt; r.state === &#x27;approved&#x27;).length,</td></tr>
+<tr class="cov"><td class="ln">129</td><td class="code">    eligible: rows.filter((r) =&gt; r.state === &#x27;eligible&#x27;).length,</td></tr>
+<tr class="cov"><td class="ln">130</td><td class="code">    blocked: rows.filter((r) =&gt; r.state === &#x27;forbidden&#x27;).length,</td></tr>
+<tr class="cov"><td class="ln">131</td><td class="code">    missing: rows.filter((r) =&gt; r.state === &#x27;missing&#x27;).length,</td></tr>
+<tr class="cov"><td class="ln">132</td><td class="code">  };</td></tr>
+<tr class="cov"><td class="ln">133</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">134</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">135</td><td class="code">/** Ensure the current deck has a trusted identity, minting a token for a legacy</td></tr>
+<tr class="cov"><td class="ln">136</td><td class="code"> *  deck. Returns the token. LEDGER-ONLY (no scan) — the caller notifies the main</td></tr>
+<tr class="cov"><td class="ln">137</td><td class="code"> *  window, which owns the watcher, to re-scan. */</td></tr>
+<tr class="cov"><td class="ln">138</td><td class="code">async function ensureTrusted(): Promise&lt;string&gt; {</td></tr>
+<tr class="cov"><td class="ln">139</td><td class="code">  const store = usePresentationStore.getState();</td></tr>
+<tr class="cov"><td class="ln">140</td><td class="code">  let token = getDeckToken();</td></tr>
+<tr class="cov"><td class="ln">141</td><td class="code">  if (!token) { token = crypto.randomUUID(); store.updateConfig({ deckToken: token }); }</td></tr>
+<tr class="cov"><td class="ln">142</td><td class="code">  const { createTrustedDeck, isTrusted: chk } = await import(&#x27;./trustStore&#x27;);<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
+<tr class="cov"><td class="ln">143</td><td class="code">  if (!(await chk(token))) await createTrustedDeck(token, &#x27;trusted&#x27;);</td></tr>
+<tr class="cov"><td class="ln">144</td><td class="code">  return token;</td></tr>
+<tr class="cov"><td class="ln">145</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">146</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">/** Explicitly TRUST the current deck — the deck-level decision that unlocks watching</td></tr>
+<tr class="nil"><td class="ln">148</td><td class="code"> *  and approval. Approves NO files by itself (paths stay Eligible until approved); this</td></tr>
+<tr class="nil"><td class="ln">149</td><td class="code"> *  is a SEPARATE step from approving files, never combined. Mints a token for a legacy</td></tr>
+<tr class="nil"><td class="ln">150</td><td class="code"> *  deck. Returns the fresh report. See docs/ASSETS-SECURITY.md (&quot;Trust store&quot;). */</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code">export async function trustThisDeck(): Promise&lt;DeckSecurityReport&gt; {</td></tr>
+<tr class="cov"><td class="ln">152</td><td class="code">  await ensureTrusted();</td></tr>
+<tr class="cov"><td class="ln">153</td><td class="code">  return buildDeckSecurityReport();</td></tr>
+<tr class="nil"><td class="ln">154</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">155</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">156</td><td class="code">/** Re-confirm a deck whose trust lapsed (TTL): restores its retained approvals in one</td></tr>
+<tr class="nil"><td class="ln">157</td><td class="code"> *  act. LEDGER-ONLY (shared appData persists it) — caller notifies the main window to</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code"> *  re-scan. Returns the fresh report. */</td></tr>
+<tr class="nil"><td class="ln">159</td><td class="code">export async function reconfirmThisDeck(): Promise&lt;DeckSecurityReport&gt; {</td></tr>
+<tr class="unc"><td class="ln">160</td><td class="code">  const token = getDeckToken();</td></tr>
+<tr class="unc"><td class="ln">161</td><td class="code">  if (token) { const { reconfirmDeck } = await import(&#x27;./trustStore&#x27;); await reconfirmDeck(token); }<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
+<tr class="unc"><td class="ln">162</td><td class="code">  return buildDeckSecurityReport();</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">164</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">165</td><td class="code">/** Approve one eligible asset. REQUIRES the deck to be trusted already — trust is a</td></tr>
+<tr class="nil"><td class="ln">166</td><td class="code"> *  separate, explicit act (trustThisDeck); this never trusts on your behalf. A no-op if</td></tr>
+<tr class="nil"><td class="ln">167</td><td class="code"> *  the deck isn&#x27;t trusted (approvePath guards it) or the target no longer resolves. */</td></tr>
+<tr class="nil"><td class="ln">168</td><td class="code">export async function approveOne(assetId: string, referencePath: string): Promise&lt;DeckSecurityReport&gt; {</td></tr>
+<tr class="cov"><td class="ln">169</td><td class="code">  const store = usePresentationStore.getState();</td></tr>
+<tr class="cov"><td class="ln">170</td><td class="code">  const token = getDeckToken();</td></tr>
+<tr class="cov"><td class="ln">171</td><td class="code">  if (token) {</td></tr>
+<tr class="cov"><td class="ln">172</td><td class="code">    const projectDir = store.projectPath ? dirname(store.projectPath) : &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">173</td><td class="code">    const gate = await resolveAndGate(resolvePosixPath(projectDir, referencePath));</td></tr>
+<tr class="cov"><td class="ln">174</td><td class="code">    if (gate.ok &amp;&amp; gate.canonicalPath) {</td></tr>
+<tr class="cov"><td class="ln">175</td><td class="code">      const { approvePath } = await import(&#x27;./trustStore&#x27;); // approvePath no-ops if untrusted<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
+<tr class="cov"><td class="ln">176</td><td class="code">      await approvePath(token, assetId, gate.canonicalPath, &#x27;approve&#x27;);</td></tr>
+<tr class="nil"><td class="ln">177</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">178</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">179</td><td class="code">  return buildDeckSecurityReport();</td></tr>
+<tr class="nil"><td class="ln">180</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">181</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">182</td><td class="code">/** Revoke ONE approved asset&#x27;s approval (per-file). Leaves deck trust and every other</td></tr>
+<tr class="nil"><td class="ln">183</td><td class="code"> *  approval intact. Returns the fresh report. */</td></tr>
+<tr class="nil"><td class="ln">184</td><td class="code">export async function revokeApproval(assetId: string): Promise&lt;DeckSecurityReport&gt; {</td></tr>
+<tr class="unc"><td class="ln">185</td><td class="code">  const token = getDeckToken();</td></tr>
+<tr class="unc"><td class="ln">186</td><td class="code">  if (token) { const { unapproveAsset } = await import(&#x27;./trustStore&#x27;); await unapproveAsset(token, assetId); }<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
+<tr class="unc"><td class="ln">187</td><td class="code">  return buildDeckSecurityReport();</td></tr>
+<tr class="nil"><td class="ln">188</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">189</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">190</td><td class="code">/** Approve ALL currently-eligible files whose resolved target sits in `resolvedDir`</td></tr>
+<tr class="nil"><td class="ln">191</td><td class="code"> *  — the &quot;approve everything in this folder&quot; bulk action (still a per-path decision,</td></tr>
+<tr class="nil"><td class="ln">192</td><td class="code"> *  just batched by directory). REQUIRES a trusted deck; no-op otherwise. This is NOT a</td></tr>
+<tr class="nil"><td class="ln">193</td><td class="code"> *  trust action — the deck must already be trusted (trustThisDeck), keeping deck-trust</td></tr>
+<tr class="nil"><td class="ln">194</td><td class="code"> *  and file-approval two distinct steps. Returns the fresh report. */</td></tr>
+<tr class="nil"><td class="ln">195</td><td class="code">export async function approveDirectory(resolvedDir: string): Promise&lt;DeckSecurityReport&gt; {</td></tr>
+<tr class="cov"><td class="ln">196</td><td class="code">  const token = getDeckToken();</td></tr>
+<tr class="cov"><td class="ln">197</td><td class="code">  const report = await buildDeckSecurityReport();   // built ONCE</td></tr>
+<tr class="cov"><td class="ln">198</td><td class="code">  if (!token) return report;</td></tr>
+<tr class="cov"><td class="ln">199</td><td class="code">  const { approvePath } = await import(&#x27;./trustStore&#x27;);<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
+<tr class="cov"><td class="ln">200</td><td class="code">  const now = Date.now();</td></tr>
+<tr class="nil"><td class="ln">201</td><td class="code">  // Approve the eligible rows in this folder and flip them IN the already-built report</td></tr>
+<tr class="nil"><td class="ln">202</td><td class="code">  // (state + provenance), instead of a second full buildDeckSecurityReport() that would</td></tr>
+<tr class="nil"><td class="ln">203</td><td class="code">  // re-resolve and re-read every linked file off disk.</td></tr>
+<tr class="cov"><td class="ln">204</td><td class="code">  let changed = false;</td></tr>
+<tr class="cov"><td class="ln">205</td><td class="code">  for (const r of report.rows) {</td></tr>
+<tr class="cov"><td class="ln">206</td><td class="code">    if (r.state === &#x27;eligible&#x27; &amp;&amp; r.resolvedPath &amp;&amp; r.resolvedDir === resolvedDir) {</td></tr>
+<tr class="cov"><td class="ln">207</td><td class="code">      if (await approvePath(token, r.assetId, r.resolvedPath, &#x27;approve-folder&#x27;)) {</td></tr>
+<tr class="cov"><td class="ln">208</td><td class="code">        r.state = &#x27;approved&#x27;; r.approvedAt = now; r.approvedHow = &#x27;approve-folder&#x27;; changed = true;</td></tr>
+<tr class="nil"><td class="ln">209</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">210</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">211</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">212</td><td class="code">  if (changed) report.counts = countRows(report.rows);</td></tr>
+<tr class="cov"><td class="ln">213</td><td class="code">  return report;</td></tr>
+<tr class="nil"><td class="ln">214</td><td class="code">}</td></tr></table>
+</body></html>

@@ -1,0 +1,28 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/base64.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/base64.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">6/6 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">10 raw lines</span>
+    <span class="stat">0.02% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:60.000%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:40.000%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__lib__assetRenderer_ts.html">assetRenderer.ts</a> <a href="src__lib__fonts_ts.html">fonts.ts</a> <a href="src__lib__previewCache_ts.html">previewCache.ts</a> <a href="src__lib__printLayer_ts.html">printLayer.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">/**</td></tr>
+<tr class="cov"><td class="ln">2</td><td class="code"> * Uint8Array → base64 string. Chunked to stay under the argument-count limit of</td></tr>
+<tr class="cov"><td class="ln">3</td><td class="code"> * String.fromCharCode on large buffers. Extracted to dedup the identical inline</td></tr>
+<tr class="cov"><td class="ln">4</td><td class="code"> * loops that were scattered across App.tsx / previewCache.ts (and friends).</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">export function bytesToBase64(bytes: Uint8Array): string {</td></tr>
+<tr class="cov"><td class="ln">7</td><td class="code">  let s = &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">  for (let i = 0; i &lt; bytes.length; i += 8192) s += String.fromCharCode(...bytes.slice(i, i + 8192));</td></tr>
+<tr class="cov"><td class="ln">9</td><td class="code">  return btoa(s);</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">}</td></tr></table>
+</body></html>

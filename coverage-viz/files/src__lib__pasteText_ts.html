@@ -1,0 +1,119 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/pasteText.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/pasteText.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>85%</b> covered</span>
+    <span class="stat">58/68 executable</span>
+    <span class="stat unc-txt">10 uncovered</span>
+    <span class="stat">101 raw lines</span>
+    <span class="stat">0.24% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:57.426%"></span><span class="seg unc" style="width:9.901%"></span><span class="seg nil" style="width:32.673%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__sanitizeRichText_ts.html">sanitizeRichText.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Build a text element&#x27;s `html` from a plain/styled-text paste (#161).</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">//</td></tr>
+<tr class="cov"><td class="ln">3</td><td class="code">// When a paste onto the canvas has no image, isn&#x27;t an Eigendeck-internal paste,</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// and isn&#x27;t block-structured HTML (tables/lists/formatted blocks — those go to</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// the screenshot path), we create an editable text element from the text. This</td></tr>
+<tr class="cov"><td class="ln">6</td><td class="code">// is the pure decision: given the clipboard&#x27;s text/html and text/plain, produce</td></tr>
+<tr class="cov"><td class="ln">7</td><td class="code">// the element html, or null when there&#x27;s nothing usable.</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">//</td></tr>
+<tr class="cov"><td class="ln">9</td><td class="code">// Styling policy (docs/copy-and-paste.md): keep only what the format toolbar can</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">// author — bold / italic / strikethrough, foreground color, uppercase + letter-</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">// spacing, alignment, lists. sanitizeRichText already DROPS font-size + font-</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">// family (pasted text adopts the target preset). On top of that, for a PASTE we:</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">//   - strip a color applied to the WHOLE string (a source default — Word&#x27;s black,</td></tr>
+<tr class="unc"><td class="ln">14</td><td class="code">//     WebKit&#x27;s baked neutral black — invisible on themed slides), so it inherits</td></tr>
+<tr class="unc"><td class="ln">15</td><td class="code">//     the deck theme; keep colors on SUB-RANGES (intentional highlights);</td></tr>
+<tr class="unc"><td class="ln">16</td><td class="code">//   - drop underline (Eigendeck has none), keeping line-through (strikethrough).</td></tr>
+<tr class="unc"><td class="ln">17</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">import { sanitizeRichText } from &#x27;./sanitizeRichText&#x27;;<a class="jump" href="src__lib__sanitizeRichText_ts.html" title="src/lib/sanitizeRichText.ts">→ sanitizeRichText.ts</a></td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">/** Escape plain text for use as element html, preserving line breaks. */</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">function plainToHtml(plain: string): string {</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">  return plain</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">    .replace(/\r\n?/g, &#x27;\n&#x27;)</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">    .replace(/&amp;/g, &#x27;&amp;amp;&#x27;)</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">    .replace(/&lt;/g, &#x27;&amp;lt;&#x27;)</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">    .replace(/&gt;/g, &#x27;&amp;gt;&#x27;)</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">    .replace(/\n/g, &#x27;&lt;br&gt;&#x27;);</td></tr>
+<tr class="unc"><td class="ln">28</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">29</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">30</td><td class="code">/** Post-sanitize paste normalization: drop a whole-string color + underline.</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code"> *  (Element-copy paste preserves color via the private flavor — this only runs</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code"> *  in the text-branch paste, foreign or edit-mode text-run.) */</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">function normalizePastedStyles(html: string): string {</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">  if (typeof DOMParser === &#x27;undefined&#x27;) return html;</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">  const doc = new DOMParser().parseFromString(`&lt;body&gt;${html}&lt;/body&gt;`, &#x27;text/html&#x27;);</td></tr>
+<tr class="cov"><td class="ln">36</td><td class="code">  const rootText = doc.body.textContent || &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">  const hasText = rootText.trim().length &gt; 0;</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">  doc.body.querySelectorAll&lt;HTMLElement&gt;(&#x27;[style]&#x27;).forEach((el) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">39</td><td class="code">    // A color on an element that wraps the ENTIRE text is a blanket default → drop.</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">    if (el.style.color &amp;&amp; hasText &amp;&amp; (el.textContent || &#x27;&#x27;) === rootText) el.style.removeProperty(&#x27;color&#x27;);</td></tr>
+<tr class="unc"><td class="ln">41</td><td class="code">    // Underline is not authorable in Eigendeck — strip it, keep line-through.</td></tr>
+<tr class="cov"><td class="ln">42</td><td class="code">    const td = el.style.textDecoration || el.style.getPropertyValue(&#x27;text-decoration-line&#x27;);</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">    if (td &amp;&amp; /underline/i.test(td)) {</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">      const kept = td.replace(/underline/ig, &#x27;&#x27;).replace(/\s+/g, &#x27; &#x27;).trim();</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">      el.style.removeProperty(&#x27;text-decoration&#x27;);</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">      el.style.removeProperty(&#x27;text-decoration-line&#x27;);</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">      if (kept) el.style.textDecoration = kept;</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">    if (!(el.getAttribute(&#x27;style&#x27;) || &#x27;&#x27;).trim()) el.removeAttribute(&#x27;style&#x27;);</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">  });</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">  // Multi-block uniform default: when several sibling blocks (Word/Docs</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">  // paragraphs) all carry the SAME color and together cover ALL the text, that&#x27;s</td></tr>
+<tr class="unc"><td class="ln">53</td><td class="code">  // a blanket default too (no single element equalled rootText, so the pass above</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">  // missed it). Drop it so the deck theme&#x27;s text color applies. A non-uniform set</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">  // (different colors, or colors covering only part of the text) is an</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">  // intentional highlight and is kept.</td></tr>
+<tr class="cov"><td class="ln">57</td><td class="code">  if (hasText) {</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">    const colored = Array.from(doc.body.querySelectorAll&lt;HTMLElement&gt;(&#x27;[style]&#x27;)).filter((el) =&gt; el.style.color);</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">    const topColored = colored.filter((el) =&gt; !colored.some((o) =&gt; o !== el &amp;&amp; o.contains(el)));</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">    const colorVals = new Set(topColored.map((el) =&gt; el.style.color.trim().toLowerCase()));</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">    const norm = (s: string) =&gt; s.replace(/\s+/g, &#x27;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">    const covered = norm(topColored.map((el) =&gt; el.textContent || &#x27;&#x27;).join(&#x27;&#x27;));</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">    if (colorVals.size === 1 &amp;&amp; covered === norm(rootText)) {</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">      topColored.forEach((el) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">        el.style.removeProperty(&#x27;color&#x27;);</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">        if (!(el.getAttribute(&#x27;style&#x27;) || &#x27;&#x27;).trim()) el.removeAttribute(&#x27;style&#x27;);</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">      });</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">  doc.body.querySelectorAll(&#x27;font[color]&#x27;).forEach((el) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">    if (hasText &amp;&amp; (el.textContent || &#x27;&#x27;) === rootText) el.removeAttribute(&#x27;color&#x27;);</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">  });</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">  // &lt;u&gt; → unwrap (no underline element in Eigendeck).</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">  doc.body.querySelectorAll(&#x27;u&#x27;).forEach((u) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">75</td><td class="code">    const parent = u.parentNode;</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code">    if (!parent) return;</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">    while (u.firstChild) parent.insertBefore(u.firstChild, u);</td></tr>
+<tr class="cov"><td class="ln">78</td><td class="code">    parent.removeChild(u);</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">  });</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">  return doc.body.innerHTML;</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code"> * Prefer text/html (sanitized to the authorable allowlist); fall back to</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code"> * text/plain (escaped, newlines → &lt;br&gt;). Returns null when both are empty —</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code"> * including the case where the html sanitizes down to nothing (e.g. it was only</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code"> * an &lt;img&gt;), so the caller can still use the plain text.</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">export function pasteTextToElementHtml(</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">  html: string | null | undefined,</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">  plain: string | null | undefined,</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">): string | null {</td></tr>
+<tr class="cov"><td class="ln">93</td><td class="code">  const h = (html || &#x27;&#x27;).trim();</td></tr>
+<tr class="cov"><td class="ln">94</td><td class="code">  if (h) {</td></tr>
+<tr class="cov"><td class="ln">95</td><td class="code">    const clean = normalizePastedStyles(sanitizeRichText(h)).trim();</td></tr>
+<tr class="cov"><td class="ln">96</td><td class="code">    if (clean) return clean;</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">  const p = plain || &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">  if (p.trim()) return plainToHtml(p);</td></tr>
+<tr class="cov"><td class="ln">100</td><td class="code">  return null;</td></tr>
+<tr class="nil"><td class="ln">101</td><td class="code">}</td></tr></table>
+</body></html>

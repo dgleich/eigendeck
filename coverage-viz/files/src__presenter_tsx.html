@@ -1,0 +1,123 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/presenter.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/presenter.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>78%</b> covered</span>
+    <span class="stat">25/32 executable</span>
+    <span class="stat unc-txt">7 uncovered</span>
+    <span class="stat">105 raw lines</span>
+    <span class="stat">0.25% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:23.810%"></span><span class="seg unc" style="width:6.667%"></span><span class="seg nil" style="width:69.524%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__App_css.html">App.css</a> <a href="src__components__PresentMode_tsx.html">PresentMode.tsx</a> <a href="src__lib__coverageBeacon_ts.html">coverageBeacon.ts</a> <a href="src__lib__mathjaxRenderer_ts.html">mathjaxRenderer.ts</a> <a href="src__lib__runtime_ts.html">runtime.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <i>none</i></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code"> * Projector window entry point (secondary monitor).</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code"> * #3 — same viewer as the main window: this renders the REAL &lt;PresentMode&gt;</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code"> * (controlled by events), not a parallel renderer. It receives the</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code"> * presentation + navigation from the main window via Tauri events, drops the</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code"> * presentation into the store, and drives PresentMode&#x27;s slide index through the</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code"> * `controlledIndex` prop. Same transitions, same element rendering, same boot</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code"> * (initRuntime) — so the projector can&#x27;t drift from the single-window present.</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code"> */</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">import { useEffect, useState } from &#x27;react&#x27;;</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">import ReactDOM from &#x27;react-dom/client&#x27;;</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">import { listen, emitTo } from &#x27;@tauri-apps/api/event&#x27;;</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">import type { Presentation } from &#x27;./types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">import { PresentMode } from &#x27;./components/PresentMode&#x27;;<a class="jump" href="src__components__PresentMode_tsx.html" title="src/components/PresentMode.tsx">→ PresentMode.tsx</a></td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">import { usePresentationStore } from &#x27;./store/presentation&#x27;;<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">import { initRuntime } from &#x27;./lib/runtime&#x27;;<a class="jump" href="src__lib__runtime_ts.html" title="src/lib/runtime.ts">→ runtime.ts</a></td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">import { warmMathCacheFromSqlite } from &#x27;./lib/mathjaxRenderer&#x27;;<a class="jump" href="src__lib__mathjaxRenderer_ts.html" title="src/lib/mathjaxRenderer.ts">→ mathjaxRenderer.ts</a></td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">import { installCoverageBeacon } from &#x27;./lib/coverageBeacon&#x27;;<a class="jump" href="src__lib__coverageBeacon_ts.html" title="src/lib/coverageBeacon.ts">→ coverageBeacon.ts</a></td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">import &#x27;./App.css&#x27;;<a class="jump" href="src__App_css.html" title="src/App.css">→ App.css</a></td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">// E2E coverage: this window has its own window.__coverage__; stream it to the</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">// collector so the presenter/PresentMode code it exercises is measured (no-op in</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">// normal builds). See src/lib/coverageBeacon.ts.</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">installCoverageBeacon();</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">// Same boot as the main window (fonts + server discovery).</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">initRuntime();</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">function PresenterApp() {</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">  const [ready, setReady] = useState(false);</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">  const [index, setIndex] = useState(0);</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">  const [windowed, setWindowed] = useState(false);</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">    const unsubs: (() =&gt; void)[] = [];</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">    (async () =&gt; {</td></tr>
+<tr class="unc"><td class="ln">38</td><td class="code">      unsubs.push(await listen&lt;{ presentation: Presentation; currentIndex: number; projectPath: string | null; windowed?: boolean }&gt;(</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">        &#x27;presenter:init&#x27;, async (event) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">          // Warm the math cache from the shared DB so PresentMode&#x27;s text</td></tr>
+<tr class="unc"><td class="ln">41</td><td class="code">          // renders from cached SVGs (cold projector would otherwise re-render</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">          // and time out on complex math — the raw-LaTeX spillover).</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">          try { await warmMathCacheFromSqlite(); } catch { /* best effort */ }</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">          // Populate THIS window&#x27;s store so PresentMode reads the deck.</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">          usePresentationStore.setState({</td></tr>
+<tr class="unc"><td class="ln">46</td><td class="code">            presentation: event.payload.presentation,</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">            currentSlideIndex: event.payload.currentIndex,</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">            projectPath: event.payload.projectPath,</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">          });</td></tr>
+<tr class="unc"><td class="ln">50</td><td class="code">          setIndex(event.payload.currentIndex);</td></tr>
+<tr class="unc"><td class="ln">51</td><td class="code">          setWindowed(!!event.payload.windowed);</td></tr>
+<tr class="unc"><td class="ln">52</td><td class="code">          setReady(true);</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">        }));</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">      unsubs.push(await listen&lt;{ index: number }&gt;(&#x27;presenter:goto&#x27;, (event) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">55</td><td class="code">        setIndex(event.payload.index);</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">      }));</td></tr>
+<tr class="cov"><td class="ln">57</td><td class="code">      unsubs.push(await listen&lt;{ presentation: Presentation }&gt;(&#x27;presenter:update&#x27;, (event) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">        usePresentationStore.setState({ presentation: event.payload.presentation });</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">      }));</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">      await emitTo(&#x27;main&#x27;, &#x27;presenter:ready&#x27;, {});</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">    })();</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">    return () =&gt; { unsubs.forEach((fn) =&gt; fn()); };</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">  }, []);</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">  const onExit = async () =&gt; {</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">    await emitTo(&#x27;main&#x27;, &#x27;presenter:closed&#x27;, {});</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">    const { getCurrentWindow } = await import(&#x27;@tauri-apps/api/window&#x27;);</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">    await getCurrentWindow().close();</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">  // Keyboard/clicker focused on the projector window: forward the requested</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">  // slide to the main (speaker) window, which owns the index and echoes back a</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">  // presenter:goto. Single source of truth — the projector never sets its own.</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">  const onNavigate = (target: number) =&gt; { void emitTo(&#x27;main&#x27;, &#x27;presenter:nav&#x27;, { index: target }); };</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">  if (!ready) {</td></tr>
+<tr class="nil"><td class="ln">77</td><td class="code">    return (</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">      &lt;div style={{ width: &#x27;100vw&#x27;, height: &#x27;100vh&#x27;, background: &#x27;#000&#x27;, display: &#x27;flex&#x27;, alignItems: &#x27;center&#x27;, justifyContent: &#x27;center&#x27;, color: &#x27;#666&#x27;, fontSize: 24, fontFamily: &#x27;system-ui&#x27; }}&gt;</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">        Waiting for presentation...</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">      &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">    );</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">    &lt;&gt;</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">      {/* Chromeless screen-share window has no title bar — give it an invisible</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">          top strip to drag the window by (data-tauri-drag-region). Thin and</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code">          transparent so it doesn&#x27;t show in the shared slide; sits above the</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">          slide content. Only in windowed (screen-share) mode. */}</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">      {windowed &amp;&amp; (</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">        &lt;div</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">          data-tauri-drag-region</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">          title=&quot;Drag to move the presentation window&quot;</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">          style={{</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code">            position: &#x27;fixed&#x27;, top: 0, left: 0, right: 0, height: 22,</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">            zIndex: 10000, cursor: &#x27;grab&#x27;,</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">          }}</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">        /&gt;</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">      )}</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">      &lt;PresentMode controlledIndex={index} onExit={onExit} onNavigate={onNavigate} /&gt;</td></tr>
+<tr class="nil"><td class="ln">101</td><td class="code">    &lt;/&gt;</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">ReactDOM.createRoot(document.getElementById(&#x27;root&#x27;)!).render(&lt;PresenterApp /&gt;);</td></tr></table>
+</body></html>

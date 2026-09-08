@@ -1,0 +1,76 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/insertItems.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/insertItems.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">6/6 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">58 raw lines</span>
+    <span class="stat">0.14% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:10.345%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:89.655%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__SettingsModal_tsx.html">SettingsModal.tsx</a> <a href="src__lib__preferences_ts.html">preferences.ts</a></div>
+</header>
+<table class="src"><tr class="cov"><td class="ln">1</td><td class="code">// Single source of truth for the &quot;insertable element&quot; actions.</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// Both the editor toolbar (the &quot;+ Title / + Body / …&quot; buttons) and the</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// native macOS &quot;Insert&quot; menu are driven from this list. The toolbar</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// hides any item whose id is in the `hiddenToolbarItems` preference; the</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// Insert menu ALWAYS shows everything (that&#x27;s the whole point — toolbar</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// customization never removes an action, it just declutters the toolbar).</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">// The actual handlers live in App.tsx (`runInsert`) because they need</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// component context (store, file dialogs, the video modal). This module</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">// is metadata only: stable ids, labels, tooltips, and toolbar grouping.</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">export type InsertGroup = &#x27;text&#x27; | &#x27;objects&#x27; | &#x27;embeds&#x27;;</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">export interface InsertItem {</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">  /** Stable id. Used as the toolbar-visibility key AND, prefixed with</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">   *  `insert-`, as the native menu item id. Never rename without a</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">   *  migration — it&#x27;s persisted in the hiddenToolbarItems preference. */</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">  id: string;</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">  /** Toolbar button text (rendered as &quot;+ {label}&quot;). */</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">  label: string;</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">  /** Button tooltip / accessibility title. */</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">  tooltip: string;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">  /** Toolbar group — items render in groups separated by a divider. */</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">  group: InsertGroup;</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">  /** Hidden from the editor toolbar by default (still always in the Insert</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">   *  menu, and re-addable via Settings → Toolbar buttons). Seeds the default</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">   *  of the `hiddenToolbarItems` preference. Used for power-user actions most</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">   *  users shouldn&#x27;t see out of the box — currently just `demo`, which needs</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">   *  infrastructure most users don&#x27;t have. */</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">  defaultHidden?: boolean;</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">export const INSERT_ITEMS: InsertItem[] = [</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">  // text</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">  { id: &#x27;title&#x27;,    label: &#x27;Title&#x27;,    tooltip: &#x27;Add title text&#x27;,                                   group: &#x27;text&#x27; },</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">  { id: &#x27;body&#x27;,     label: &#x27;Body&#x27;,     tooltip: &#x27;Add body text&#x27;,                                    group: &#x27;text&#x27; },</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">  { id: &#x27;textbox&#x27;,  label: &#x27;Text&#x27;,     tooltip: &#x27;Add text box&#x27;,                                     group: &#x27;text&#x27; },</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">  { id: &#x27;note&#x27;,     label: &#x27;Note&#x27;,     tooltip: &#x27;Add annotation (small, blue, italic)&#x27;,             group: &#x27;text&#x27; },</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">  { id: &#x27;footnote&#x27;, label: &#x27;Footnote&#x27;, tooltip: &#x27;Add footnote (small, grey, narrow)&#x27;,               group: &#x27;text&#x27; },</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">  { id: &#x27;card&#x27;,     label: &#x27;Card&#x27;,     tooltip: &#x27;Add a titled card (rounded, shadowed, themed tint)&#x27;, group: &#x27;text&#x27; },</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">  // objects</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">  { id: &#x27;arrow&#x27;,    label: &#x27;Arrow&#x27;,    tooltip: &#x27;Add arrow&#x27;,                                        group: &#x27;objects&#x27; },</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">  { id: &#x27;cover&#x27;,    label: &#x27;Cover&#x27;,    tooltip: &#x27;Add cover-up rectangle (white)&#x27;,                   group: &#x27;objects&#x27; },</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">  { id: &#x27;image&#x27;,    label: &#x27;Image&#x27;,    tooltip: &#x27;Add image / vector / PDF from file&#x27;,               group: &#x27;objects&#x27; },</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">  { id: &#x27;hype&#x27;,     label: &#x27;Hype&#x27;,     tooltip: &#x27;Add a Hype sticky note (yellow, Shantell)&#x27;,        group: &#x27;objects&#x27; },</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">  // embeds</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">  { id: &#x27;demo&#x27;,     label: &#x27;Demo&#x27;,     tooltip: &#x27;Add demo HTML&#x27;,                                    group: &#x27;embeds&#x27;, defaultHidden: true },</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">  { id: &#x27;notebook&#x27;, label: &#x27;Notebook&#x27;, tooltip: &#x27;Add Jupyter notebook&#x27;,                             group: &#x27;embeds&#x27; },</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">  { id: &#x27;video&#x27;,    label: &#x27;Video&#x27;,    tooltip: &#x27;Add a movie — file or URL (YouTube/Vimeo/PeerTube)&#x27;, group: &#x27;embeds&#x27; },</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">];</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">export const INSERT_GROUP_ORDER: InsertGroup[] = [&#x27;text&#x27;, &#x27;objects&#x27;, &#x27;embeds&#x27;];</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">/** Ids hidden from the editor toolbar out of the box — seeds the</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code"> *  `hiddenToolbarItems` preference default (src/lib/preferences.ts). */</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">export const DEFAULT_HIDDEN_TOOLBAR_ITEMS: string[] =</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">  INSERT_ITEMS.filter((it) =&gt; it.defaultHidden).map((it) =&gt; it.id);</td></tr></table>
+</body></html>

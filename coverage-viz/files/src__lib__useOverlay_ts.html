@@ -1,0 +1,390 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/useOverlay.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/useOverlay.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>86%</b> covered</span>
+    <span class="stat">201/234 executable</span>
+    <span class="stat unc-txt">33 uncovered</span>
+    <span class="stat">372 raw lines</span>
+    <span class="stat">0.87% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:54.032%"></span><span class="seg unc" style="width:8.871%"></span><span class="seg nil" style="width:37.097%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__notebookFormat_ts.html">notebookFormat.ts</a> <a href="src__lib__overlayFlushRegistry_ts.html">overlayFlushRegistry.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__notebook__NotebookCells_tsx.html">NotebookCells.tsx</a> <a href="src__components__notebook__NotebookContent_tsx.html">NotebookContent.tsx</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// React hook owning a notebook element&#x27;s &quot;overlay&quot; — the eigendeck</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// record of the live session (source edits, recorded outputs,</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// live-authored cells) stored as an owner-tagged asset</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// (assets.owner_element_id = the element id). See</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// .claude/notes/notebook-recording-decisions.md.</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// Responsibilities:</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">//   - load the overlay on mount (db_get_owned_asset_id → bytes → parse)</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">//   - hold it in memory; expose record/edit/revert/append mutators</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">//   - flush to a new overlay-asset version, debounced + only-when-changed</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">//   - lazily CREATE the overlay asset on first flush with an explicit</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">//     client-minted UUID (so hash-dedup can&#x27;t collapse two empty</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">//     overlays — blocker B3)</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">// The .ipynb asset is never touched here. &quot;Recorder, not editor.&quot;</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">import { useCallback, useEffect, useRef, useState } from &#x27;react&#x27;;</td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">import { registerOverlayFlush } from &#x27;./overlayFlushRegistry&#x27;;<a class="jump" href="src__lib__overlayFlushRegistry_ts.html" title="src/lib/overlayFlushRegistry.ts">→ overlayFlushRegistry.ts</a></td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">import { invoke } from &#x27;@tauri-apps/api/core&#x27;;</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">import {</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">  Overlay, emptyOverlay, isOverlayEmpty, parseOverlay, serializeOverlay,</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">  OVERLAY_MIME, AppendedCell,</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">} from &#x27;./notebookOverlay&#x27;;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">import { CellOutput } from &#x27;./notebookFormat&#x27;;<a class="jump" href="src__lib__notebookFormat_ts.html" title="src/lib/notebookFormat.ts">→ notebookFormat.ts</a></td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">const FLUSH_DEBOUNCE_MS = 800;</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">28</td><td class="code">// Module-level in-session cache of overlays, keyed by element id. The</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">// editor and PresentMode mount SEPARATE NotebookContent instances</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">// (App returns &lt;PresentMode/&gt; instead of the editor while presenting),</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">// so a per-instance overlay would lose state across the present↔edit</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">// transition — and a DB reload on remount races the outgoing flush.</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">// This cache is the in-session source of truth: any instance&#x27;s</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">// mutations land here, and a remounted instance reads it synchronously</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">// (no flicker, no race). The asset is still flushed for durability.</td></tr>
+<tr class="cov"><td class="ln">36</td><td class="code">// Cleared per-element on reload-from-disk and wholesale on deck load.</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">const overlayCache = new Map&lt;string, Overlay&gt;();</td></tr>
+<tr class="unc"><td class="ln">38</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">/** Drop all cached overlays — call on deck open/close so element ids</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code"> *  from a previous deck don&#x27;t leak. */</td></tr>
+<tr class="cov"><td class="ln">41</td><td class="code">export function clearAllOverlayCache(): void {</td></tr>
+<tr class="cov"><td class="ln">42</td><td class="code">  overlayCache.clear();</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">// Synced notebooks (the same notebook shown on multiple slides) share ONE</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">// overlay — they are the SAME thing. That sharing is achieved by keying the</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">// overlay on the element&#x27;s sync identity (syncId ?? id) at the call site</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">// (NotebookContent), so no per-duplicate clone is needed.</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">// Sync/unsync DO move overlays around, via the plain (non-hook) helpers below</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">// — they operate on the same module cache + persist path useOverlay uses, so</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">// the change is visible to mounted instances synchronously and durable on save.</td></tr>
+<tr class="unc"><td class="ln">53</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">/** Read an overlay by its element key — cache first, then DB. Empty if none. */</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">export async function loadOverlayFor(key: string): Promise&lt;Overlay&gt; {</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">  const cached = overlayCache.get(key);</td></tr>
+<tr class="cov"><td class="ln">57</td><td class="code">  if (cached) return cached;</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">    const id = await invoke&lt;string | null&gt;(&#x27;db_get_owned_asset_id&#x27;, { ownerElementId: key });</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">    if (id) {</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">      const buf = await invoke&lt;ArrayBuffer&gt;(&#x27;db_get_asset_by_id&#x27;, { assetId: id });</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">      return parseOverlay(new Uint8Array(buf));</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">  } catch (e) { console.warn(&#x27;loadOverlayFor failed:&#x27;, e); }</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">  return emptyOverlay();</td></tr>
+<tr class="unc"><td class="ln">66</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">67</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">68</td><td class="code">/** Persist `overlay` as owned by `key` (deterministic asset id, reusing an</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code"> *  existing owned asset for that key if present) and seed the cache. Empty</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code"> *  overlays are not persisted (no stray assets). */</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">export async function writeOverlayFor(key: string, overlay: Overlay): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">  overlayCache.set(key, overlay);</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">  const bytes = serializeOverlay(overlay);</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">  if (isOverlayEmpty(overlay)) return;</td></tr>
+<tr class="cov"><td class="ln">75</td><td class="code">  let id: string | null = null;</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">    id = await invoke&lt;string | null&gt;(&#x27;db_get_owned_asset_id&#x27;, { ownerElementId: key });</td></tr>
+<tr class="unc"><td class="ln">78</td><td class="code">  } catch { id = null; }</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">  id = id ?? `overlay-${key}`;</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code">    await invoke(&#x27;db_store_asset&#x27;, {</td></tr>
+<tr class="cov"><td class="ln">82</td><td class="code">      path: `overlay:${key}`,</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">      data: Array.from(new TextEncoder().encode(bytes)),</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">      mimeType: OVERLAY_MIME,</td></tr>
+<tr class="cov"><td class="ln">85</td><td class="code">      externalPath: null, externalMtime: null,</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">      assetId: id, autoReload: &#x27;off&#x27;, ownerElementId: key,</td></tr>
+<tr class="unc"><td class="ln">87</td><td class="code">    });</td></tr>
+<tr class="unc"><td class="ln">88</td><td class="code">  } catch (e) { console.warn(&#x27;writeOverlayFor failed:&#x27;, e); }</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">91</td><td class="code">/** Copy the overlay at `fromKey` into a private overlay owned by `toKey`.</td></tr>
+<tr class="cov"><td class="ln">92</td><td class="code"> *  Used when a synced notebook is freed (unsynced): the freed instance keeps</td></tr>
+<tr class="cov"><td class="ln">93</td><td class="code"> *  its own copy of the recording while the still-synced instances keep the</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code"> *  original. When `fromKey` is already cached, the cache seed happens before</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code"> *  the first await, so a caller that fires this immediately before flipping</td></tr>
+<tr class="cov"><td class="ln">96</td><td class="code"> *  syncId sees the clone on the very next render (no empty flash). No-op when</td></tr>
+<tr class="cov"><td class="ln">97</td><td class="code"> *  the source is empty or the keys coincide. */</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">export async function cloneOverlay(fromKey: string, toKey: string): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">  if (!fromKey || !toKey || fromKey === toKey) return;</td></tr>
+<tr class="cov"><td class="ln">100</td><td class="code">  const cached = overlayCache.get(fromKey);</td></tr>
+<tr class="cov"><td class="ln">101</td><td class="code">  if (cached) {</td></tr>
+<tr class="cov"><td class="ln">102</td><td class="code">    if (isOverlayEmpty(cached)) return;</td></tr>
+<tr class="cov"><td class="ln">103</td><td class="code">    const clone: Overlay = structuredClone(cached);</td></tr>
+<tr class="cov"><td class="ln">104</td><td class="code">    overlayCache.set(toKey, clone);          // sync seed, pre-await</td></tr>
+<tr class="cov"><td class="ln">105</td><td class="code">    await writeOverlayFor(toKey, clone);</td></tr>
+<tr class="cov"><td class="ln">106</td><td class="code">    return;</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">108</td><td class="code">  const src = await loadOverlayFor(fromKey);</td></tr>
+<tr class="cov"><td class="ln">109</td><td class="code">  if (isOverlayEmpty(src)) return;</td></tr>
+<tr class="cov"><td class="ln">110</td><td class="code">  await writeOverlayFor(toKey, structuredClone(src));</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">112</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">113</td><td class="code">/** Soft-close and forget the overlay owned by `key`. After this the recording</td></tr>
+<tr class="cov"><td class="ln">114</td><td class="code"> *  is neither exported nor revived by the import re-own map. */</td></tr>
+<tr class="cov"><td class="ln">115</td><td class="code">export async function discardOverlay(key: string): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">116</td><td class="code">  overlayCache.delete(key);</td></tr>
+<tr class="cov"><td class="ln">117</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">118</td><td class="code">    await invoke(&#x27;db_close_owned_overlay&#x27;, { ownerElementId: key });</td></tr>
+<tr class="cov"><td class="ln">119</td><td class="code">  } catch (e) { console.warn(&#x27;discardOverlay failed:&#x27;, e); }</td></tr>
+<tr class="cov"><td class="ln">120</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">121</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">122</td><td class="code">/** Reconcile recordings when two notebooks merge under one syncId (the Link /</td></tr>
+<tr class="cov"><td class="ln">123</td><td class="code"> *  Time-Machine action). The surviving overlay — the one owned by `keepKey`,</td></tr>
+<tr class="cov"><td class="ln">124</td><td class="code"> *  or none — becomes owned by `newKey` (the shared syncId), and BOTH pre-merge</td></tr>
+<tr class="cov"><td class="ln">125</td><td class="code"> *  keys are discarded so nothing lingers to be revived later. The caller</td></tr>
+<tr class="cov"><td class="ln">126</td><td class="code"> *  decides `keepKey` (auto when 0/1 recordings exist; user-chosen on a real</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code"> *  conflict). Load the winner BEFORE discarding so its bytes survive. */</td></tr>
+<tr class="cov"><td class="ln">128</td><td class="code">export async function applyLinkOverlay(</td></tr>
+<tr class="cov"><td class="ln">129</td><td class="code">  keys: { sourceKey: string; targetKey: string; newKey: string },</td></tr>
+<tr class="cov"><td class="ln">130</td><td class="code">  keepKey: string | null,</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">132</td><td class="code">  const { sourceKey, targetKey, newKey } = keys;</td></tr>
+<tr class="cov"><td class="ln">133</td><td class="code">  const winner = keepKey ? await loadOverlayFor(keepKey) : null;</td></tr>
+<tr class="cov"><td class="ln">134</td><td class="code">  for (const k of new Set([sourceKey, targetKey])) {</td></tr>
+<tr class="cov"><td class="ln">135</td><td class="code">    if (k !== newKey) await discardOverlay(k);</td></tr>
+<tr class="cov"><td class="ln">136</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">137</td><td class="code">  if (winner &amp;&amp; !isOverlayEmpty(winner)) {</td></tr>
+<tr class="cov"><td class="ln">138</td><td class="code">    await writeOverlayFor(newKey, structuredClone(winner));</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code">  } else {</td></tr>
+<tr class="cov"><td class="ln">140</td><td class="code">    await discardOverlay(newKey);</td></tr>
+<tr class="cov"><td class="ln">141</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">142</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">143</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">144</td><td class="code">export interface UseOverlayResult {</td></tr>
+<tr class="cov"><td class="ln">145</td><td class="code">  overlay: Overlay;</td></tr>
+<tr class="cov"><td class="ln">146</td><td class="code">  /** Replace a cell&#x27;s recorded output + execution count (by .ipynb index). */</td></tr>
+<tr class="unc"><td class="ln">147</td><td class="code">  recordOutput(index: number, outputs: CellOutput[], executionCount: number | null): void;</td></tr>
+<tr class="unc"><td class="ln">148</td><td class="code">  /** Set/replace a cell&#x27;s source edit (by .ipynb index). Passing the</td></tr>
+<tr class="nil"><td class="ln">149</td><td class="code">   *  cell&#x27;s saved source clears the edit. */</td></tr>
+<tr class="cov"><td class="ln">150</td><td class="code">  setEdit(index: number, source: string, savedSource: string): void;</td></tr>
+<tr class="cov"><td class="ln">151</td><td class="code">  /** Drop a cell&#x27;s source edit. */</td></tr>
+<tr class="nil"><td class="ln">152</td><td class="code">  revertEdit(index: number): void;</td></tr>
+<tr class="nil"><td class="ln">153</td><td class="code">  /** Replace an appended cell&#x27;s source. */</td></tr>
+<tr class="nil"><td class="ln">154</td><td class="code">  setAppendedSource(id: string, source: string): void;</td></tr>
+<tr class="unc"><td class="ln">155</td><td class="code">  /** Replace an appended cell&#x27;s recorded output. */</td></tr>
+<tr class="nil"><td class="ln">156</td><td class="code">  recordAppendedOutput(id: string, outputs: CellOutput[], executionCount: number | null): void;</td></tr>
+<tr class="cov"><td class="ln">157</td><td class="code">  /** Add a live-authored cell after the given .ipynb index (null = top). */</td></tr>
+<tr class="cov"><td class="ln">158</td><td class="code">  addAppended(afterIndex: number | null, cellType: &#x27;code&#x27; | &#x27;markdown&#x27;): AppendedCell;</td></tr>
+<tr class="nil"><td class="ln">159</td><td class="code">  /** Remove an appended cell by id. */</td></tr>
+<tr class="cov"><td class="ln">160</td><td class="code">  removeAppended(id: string): void;</td></tr>
+<tr class="cov"><td class="ln">161</td><td class="code">  /** Drop the entire overlay (e.g. after a manual reload-from-disk). */</td></tr>
+<tr class="cov"><td class="ln">162</td><td class="code">  clear(): void;</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">164</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">165</td><td class="code">export function useOverlay(elementId: string): UseOverlayResult {</td></tr>
+<tr class="nil"><td class="ln">166</td><td class="code">  // Seed from the in-session cache so a remount (e.g. exiting</td></tr>
+<tr class="nil"><td class="ln">167</td><td class="code">  // PresentMode) shows recorded outputs immediately.</td></tr>
+<tr class="cov"><td class="ln">168</td><td class="code">  const [overlay, setOverlay] = useState&lt;Overlay&gt;(() =&gt; overlayCache.get(elementId) ?? emptyOverlay());</td></tr>
+<tr class="nil"><td class="ln">169</td><td class="code">  // The overlay asset&#x27;s id once known (loaded or created). null until</td></tr>
+<tr class="nil"><td class="ln">170</td><td class="code">  // the first flush creates it.</td></tr>
+<tr class="cov"><td class="ln">171</td><td class="code">  const assetIdRef = useRef&lt;string | null&gt;(null);</td></tr>
+<tr class="cov"><td class="ln">172</td><td class="code">  // Last-flushed serialized bytes, to skip no-op flushes. Seeded with the</td></tr>
+<tr class="nil"><td class="ln">173</td><td class="code">  // initial overlay&#x27;s bytes so an UNTOUCHED overlay never flushes (a &#x27;&#x27;</td></tr>
+<tr class="unc"><td class="ln">174</td><td class="code">  // seed let a flush racing the load write an empty overlay — one source</td></tr>
+<tr class="nil"><td class="ln">175</td><td class="code">  // of the duplicate-asset bug).</td></tr>
+<tr class="cov"><td class="ln">176</td><td class="code">  const lastFlushedRef = useRef&lt;string&gt;(</td></tr>
+<tr class="cov"><td class="ln">177</td><td class="code">    serializeOverlay(overlayCache.get(elementId) ?? emptyOverlay()),</td></tr>
+<tr class="cov"><td class="ln">178</td><td class="code">  );</td></tr>
+<tr class="cov"><td class="ln">179</td><td class="code">  const flushTimer = useRef&lt;ReturnType&lt;typeof setTimeout&gt; | null&gt;(null);</td></tr>
+<tr class="cov"><td class="ln">180</td><td class="code">  // Latest overlay for the debounced flush closure.</td></tr>
+<tr class="cov"><td class="ln">181</td><td class="code">  const overlayRef = useRef&lt;Overlay&gt;(overlay);</td></tr>
+<tr class="cov"><td class="ln">182</td><td class="code">  overlayRef.current = overlay;</td></tr>
+<tr class="cov"><td class="ln">183</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">184</td><td class="code">  // --- load on mount / element change -------------------------------</td></tr>
+<tr class="cov"><td class="ln">185</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">186</td><td class="code">    // If this element&#x27;s overlay is already cached this session, trust</td></tr>
+<tr class="cov"><td class="ln">187</td><td class="code">    // it (it holds in-flight edits/outputs that may not be flushed yet)</td></tr>
+<tr class="cov"><td class="ln">188</td><td class="code">    // and skip the DB load — avoids the present→edit reload race.</td></tr>
+<tr class="cov"><td class="ln">189</td><td class="code">    if (overlayCache.has(elementId)) {</td></tr>
+<tr class="cov"><td class="ln">190</td><td class="code">      const cached = overlayCache.get(elementId)!;</td></tr>
+<tr class="cov"><td class="ln">191</td><td class="code">      // We don&#x27;t know the asset id from the cache alone; fetch it lazily</td></tr>
+<tr class="cov"><td class="ln">192</td><td class="code">      // (cheap) so a subsequent flush updates the existing asset rather</td></tr>
+<tr class="cov"><td class="ln">193</td><td class="code">      // than minting a second one.</td></tr>
+<tr class="cov"><td class="ln">194</td><td class="code">      if (assetIdRef.current === null) {</td></tr>
+<tr class="cov"><td class="ln">195</td><td class="code">        void invoke&lt;string | null&gt;(&#x27;db_get_owned_asset_id&#x27;, { ownerElementId: elementId })</td></tr>
+<tr class="cov"><td class="ln">196</td><td class="code">          .then((id) =&gt; { if (id) assetIdRef.current = id; })</td></tr>
+<tr class="nil"><td class="ln">197</td><td class="code">          .catch(() =&gt; {});</td></tr>
+<tr class="nil"><td class="ln">198</td><td class="code">      }</td></tr>
+<tr class="cov"><td class="ln">199</td><td class="code">      lastFlushedRef.current = serializeOverlay(cached);</td></tr>
+<tr class="cov"><td class="ln">200</td><td class="code">      setOverlay(cached);</td></tr>
+<tr class="cov"><td class="ln">201</td><td class="code">      return;</td></tr>
+<tr class="nil"><td class="ln">202</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">203</td><td class="code">    let cancelled = false;</td></tr>
+<tr class="cov"><td class="ln">204</td><td class="code">    (async () =&gt; {</td></tr>
+<tr class="cov"><td class="ln">205</td><td class="code">      try {</td></tr>
+<tr class="cov"><td class="ln">206</td><td class="code">        const id = await invoke&lt;string | null&gt;(&#x27;db_get_owned_asset_id&#x27;, {</td></tr>
+<tr class="cov"><td class="ln">207</td><td class="code">          ownerElementId: elementId,</td></tr>
+<tr class="cov"><td class="ln">208</td><td class="code">        });</td></tr>
+<tr class="cov"><td class="ln">209</td><td class="code">        if (cancelled) return;</td></tr>
+<tr class="cov"><td class="ln">210</td><td class="code">        if (id) {</td></tr>
+<tr class="cov"><td class="ln">211</td><td class="code">          assetIdRef.current = id;</td></tr>
+<tr class="cov"><td class="ln">212</td><td class="code">          const buf = await invoke&lt;ArrayBuffer&gt;(&#x27;db_get_asset_by_id&#x27;, { assetId: id });</td></tr>
+<tr class="cov"><td class="ln">213</td><td class="code">          if (cancelled) return;</td></tr>
+<tr class="cov"><td class="ln">214</td><td class="code">          const parsed = parseOverlay(new Uint8Array(buf));</td></tr>
+<tr class="cov"><td class="ln">215</td><td class="code">          lastFlushedRef.current = serializeOverlay(parsed);</td></tr>
+<tr class="cov"><td class="ln">216</td><td class="code">          overlayCache.set(elementId, parsed);</td></tr>
+<tr class="cov"><td class="ln">217</td><td class="code">          setOverlay(parsed);</td></tr>
+<tr class="unc"><td class="ln">218</td><td class="code">        } else {</td></tr>
+<tr class="cov"><td class="ln">219</td><td class="code">          assetIdRef.current = null;</td></tr>
+<tr class="cov"><td class="ln">220</td><td class="code">          lastFlushedRef.current = serializeOverlay(emptyOverlay());</td></tr>
+<tr class="cov"><td class="ln">221</td><td class="code">          setOverlay(emptyOverlay());</td></tr>
+<tr class="cov"><td class="ln">222</td><td class="code">        }</td></tr>
+<tr class="unc"><td class="ln">223</td><td class="code">      } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">224</td><td class="code">        console.warn(&#x27;useOverlay load failed:&#x27;, e);</td></tr>
+<tr class="unc"><td class="ln">225</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">226</td><td class="code">    })();</td></tr>
+<tr class="cov"><td class="ln">227</td><td class="code">    return () =&gt; { cancelled = true; };</td></tr>
+<tr class="cov"><td class="ln">228</td><td class="code">  }, [elementId]);</td></tr>
+<tr class="unc"><td class="ln">229</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">230</td><td class="code">  // --- flush (debounced, only-when-changed) -------------------------</td></tr>
+<tr class="cov"><td class="ln">231</td><td class="code">  const flushNow = useCallback(async () =&gt; {</td></tr>
+<tr class="nil"><td class="ln">232</td><td class="code">    // Flush the SHARED cache — it&#x27;s the source of truth across remounts and</td></tr>
+<tr class="nil"><td class="ln">233</td><td class="code">    // the present&lt;-&gt;edit transition. Serializing per-instance state here let</td></tr>
+<tr class="cov"><td class="ln">234</td><td class="code">    // a stale/empty instance overwrite a richer overlay. Fall back to the</td></tr>
+<tr class="unc"><td class="ln">235</td><td class="code">    // live overlay if the cache was cleared (reload-from-disk).</td></tr>
+<tr class="cov"><td class="ln">236</td><td class="code">    const current = overlayCache.get(elementId) ?? overlayRef.current;</td></tr>
+<tr class="cov"><td class="ln">237</td><td class="code">    const bytes = serializeOverlay(current);</td></tr>
+<tr class="cov"><td class="ln">238</td><td class="code">    if (bytes === lastFlushedRef.current) return;       // nothing changed</td></tr>
+<tr class="cov"><td class="ln">239</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">240</td><td class="code">    // Resolve the asset id WITHOUT minting a fresh random one per flush —</td></tr>
+<tr class="nil"><td class="ln">241</td><td class="code">    // that created a new overlay asset on every remount, and the loader</td></tr>
+<tr class="unc"><td class="ln">242</td><td class="code">    // (db_get_owned_asset_id, latest-first) could then pick an empty</td></tr>
+<tr class="nil"><td class="ln">243</td><td class="code">    // duplicate. Reuse this element&#x27;s existing owned overlay if any;</td></tr>
+<tr class="nil"><td class="ln">244</td><td class="code">    // otherwise use a DETERMINISTIC id so concurrent/remount first-flushes</td></tr>
+<tr class="cov"><td class="ln">245</td><td class="code">    // all converge on ONE asset (also subsumes the old anti-hash-collapse</td></tr>
+<tr class="cov"><td class="ln">246</td><td class="code">    // trick — B3). Never create an asset for an empty overlay.</td></tr>
+<tr class="cov"><td class="ln">247</td><td class="code">    let id = assetIdRef.current;</td></tr>
+<tr class="cov"><td class="ln">248</td><td class="code">    if (id == null) {</td></tr>
+<tr class="cov"><td class="ln">249</td><td class="code">      if (bytes === serializeOverlay(emptyOverlay())) {</td></tr>
+<tr class="unc"><td class="ln">250</td><td class="code">        lastFlushedRef.current = bytes;                  // nothing to persist</td></tr>
+<tr class="unc"><td class="ln">251</td><td class="code">        return;</td></tr>
+<tr class="nil"><td class="ln">252</td><td class="code">      }</td></tr>
+<tr class="cov"><td class="ln">253</td><td class="code">      try {</td></tr>
+<tr class="cov"><td class="ln">254</td><td class="code">        id = await invoke&lt;string | null&gt;(&#x27;db_get_owned_asset_id&#x27;, {</td></tr>
+<tr class="nil"><td class="ln">255</td><td class="code">          ownerElementId: elementId,</td></tr>
+<tr class="nil"><td class="ln">256</td><td class="code">        });</td></tr>
+<tr class="cov"><td class="ln">257</td><td class="code">      } catch { id = null; }</td></tr>
+<tr class="cov"><td class="ln">258</td><td class="code">      id = id ?? `overlay-${elementId}`;</td></tr>
+<tr class="cov"><td class="ln">259</td><td class="code">      assetIdRef.current = id;</td></tr>
+<tr class="nil"><td class="ln">260</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">261</td><td class="code">    try {</td></tr>
+<tr class="cov"><td class="ln">262</td><td class="code">      const data = Array.from(new TextEncoder().encode(bytes));</td></tr>
+<tr class="cov"><td class="ln">263</td><td class="code">      await invoke(&#x27;db_store_asset&#x27;, {</td></tr>
+<tr class="nil"><td class="ln">264</td><td class="code">        path: `overlay:${elementId}`,</td></tr>
+<tr class="nil"><td class="ln">265</td><td class="code">        data,</td></tr>
+<tr class="nil"><td class="ln">266</td><td class="code">        mimeType: OVERLAY_MIME,</td></tr>
+<tr class="nil"><td class="ln">267</td><td class="code">        externalPath: null,</td></tr>
+<tr class="nil"><td class="ln">268</td><td class="code">        externalMtime: null,</td></tr>
+<tr class="nil"><td class="ln">269</td><td class="code">        assetId: id,</td></tr>
+<tr class="nil"><td class="ln">270</td><td class="code">        autoReload: &#x27;off&#x27;,</td></tr>
+<tr class="nil"><td class="ln">271</td><td class="code">        ownerElementId: elementId,</td></tr>
+<tr class="nil"><td class="ln">272</td><td class="code">      });</td></tr>
+<tr class="cov"><td class="ln">273</td><td class="code">      lastFlushedRef.current = bytes;</td></tr>
+<tr class="nil"><td class="ln">274</td><td class="code">    } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">275</td><td class="code">      console.warn(&#x27;useOverlay flush failed:&#x27;, e);</td></tr>
+<tr class="nil"><td class="ln">276</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">277</td><td class="code">  }, [elementId]);</td></tr>
+<tr class="nil"><td class="ln">278</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">279</td><td class="code">  // Schedule a debounced flush whenever the overlay changes.</td></tr>
+<tr class="cov"><td class="ln">280</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">281</td><td class="code">    if (flushTimer.current) clearTimeout(flushTimer.current);</td></tr>
+<tr class="cov"><td class="ln">282</td><td class="code">    flushTimer.current = setTimeout(() =&gt; { void flushNow(); }, FLUSH_DEBOUNCE_MS);</td></tr>
+<tr class="cov"><td class="ln">283</td><td class="code">    return () =&gt; { if (flushTimer.current) clearTimeout(flushTimer.current); };</td></tr>
+<tr class="nil"><td class="ln">284</td><td class="code">  }, [overlay, flushNow]);</td></tr>
+<tr class="nil"><td class="ln">285</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">286</td><td class="code">  // Flush any pending change on unmount (best-effort).</td></tr>
+<tr class="cov"><td class="ln">287</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">288</td><td class="code">    return () =&gt; { void flushNow(); };</td></tr>
+<tr class="nil"><td class="ln">289</td><td class="code">  }, [flushNow]);</td></tr>
+<tr class="nil"><td class="ln">290</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">291</td><td class="code">  // Register with the global registry so the deck save / close-quit path can</td></tr>
+<tr class="nil"><td class="ln">292</td><td class="code">  // FORCE this overlay to disk without waiting on the debounce (#123).</td></tr>
+<tr class="cov"><td class="ln">293</td><td class="code">  useEffect(() =&gt; registerOverlayFlush(flushNow), [flushNow]);</td></tr>
+<tr class="nil"><td class="ln">294</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">295</td><td class="code">  // --- mutators -----------------------------------------------------</td></tr>
+<tr class="nil"><td class="ln">296</td><td class="code">  // All mutations go through applyOverlay so the in-session cache stays</td></tr>
+<tr class="nil"><td class="ln">297</td><td class="code">  // in lock-step with component state — that&#x27;s what survives the</td></tr>
+<tr class="nil"><td class="ln">298</td><td class="code">  // present↔edit remount.</td></tr>
+<tr class="cov"><td class="ln">299</td><td class="code">  const applyOverlay = useCallback((updater: (o: Overlay) =&gt; Overlay) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">300</td><td class="code">    setOverlay((prev) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">301</td><td class="code">      const next = updater(prev);</td></tr>
+<tr class="cov"><td class="ln">302</td><td class="code">      overlayCache.set(elementId, next);</td></tr>
+<tr class="cov"><td class="ln">303</td><td class="code">      return next;</td></tr>
+<tr class="nil"><td class="ln">304</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">305</td><td class="code">  }, [elementId]);</td></tr>
+<tr class="nil"><td class="ln">306</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">307</td><td class="code">  const recordOutput = useCallback((index: number, outputs: CellOutput[], executionCount: number | null) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">308</td><td class="code">    applyOverlay((prev) =&gt; ({</td></tr>
+<tr class="nil"><td class="ln">309</td><td class="code">      ...prev,</td></tr>
+<tr class="nil"><td class="ln">310</td><td class="code">      cellOutputs: { ...prev.cellOutputs, [index]: outputs },</td></tr>
+<tr class="nil"><td class="ln">311</td><td class="code">      cellCounts: { ...prev.cellCounts, [index]: executionCount },</td></tr>
+<tr class="nil"><td class="ln">312</td><td class="code">    }));</td></tr>
+<tr class="nil"><td class="ln">313</td><td class="code">  }, [applyOverlay]);</td></tr>
+<tr class="nil"><td class="ln">314</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">315</td><td class="code">  const setEdit = useCallback((index: number, source: string, savedSource: string) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">316</td><td class="code">    applyOverlay((prev) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">317</td><td class="code">      const edits = { ...prev.cellEdits };</td></tr>
+<tr class="cov"><td class="ln">318</td><td class="code">      if (source === savedSource) delete edits[index];</td></tr>
+<tr class="cov"><td class="ln">319</td><td class="code">      else edits[index] = source;</td></tr>
+<tr class="cov"><td class="ln">320</td><td class="code">      return { ...prev, cellEdits: edits };</td></tr>
+<tr class="nil"><td class="ln">321</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">322</td><td class="code">  }, [applyOverlay]);</td></tr>
+<tr class="nil"><td class="ln">323</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">324</td><td class="code">  const revertEdit = useCallback((index: number) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">325</td><td class="code">    applyOverlay((prev) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">326</td><td class="code">      if (!(index in prev.cellEdits)) return prev;</td></tr>
+<tr class="unc"><td class="ln">327</td><td class="code">      const edits = { ...prev.cellEdits };</td></tr>
+<tr class="unc"><td class="ln">328</td><td class="code">      delete edits[index];</td></tr>
+<tr class="unc"><td class="ln">329</td><td class="code">      return { ...prev, cellEdits: edits };</td></tr>
+<tr class="nil"><td class="ln">330</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">331</td><td class="code">  }, [applyOverlay]);</td></tr>
+<tr class="nil"><td class="ln">332</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">333</td><td class="code">  const setAppendedSource = useCallback((id: string, source: string) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">334</td><td class="code">    applyOverlay((prev) =&gt; ({</td></tr>
+<tr class="nil"><td class="ln">335</td><td class="code">      ...prev,</td></tr>
+<tr class="unc"><td class="ln">336</td><td class="code">      appendedCells: prev.appendedCells.map((a) =&gt; a.id === id ? { ...a, source } : a),</td></tr>
+<tr class="nil"><td class="ln">337</td><td class="code">    }));</td></tr>
+<tr class="nil"><td class="ln">338</td><td class="code">  }, [applyOverlay]);</td></tr>
+<tr class="nil"><td class="ln">339</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">340</td><td class="code">  const recordAppendedOutput = useCallback((id: string, outputs: CellOutput[], executionCount: number | null) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">341</td><td class="code">    applyOverlay((prev) =&gt; ({</td></tr>
+<tr class="nil"><td class="ln">342</td><td class="code">      ...prev,</td></tr>
+<tr class="nil"><td class="ln">343</td><td class="code">      appendedCells: prev.appendedCells.map((a) =&gt;</td></tr>
+<tr class="unc"><td class="ln">344</td><td class="code">        a.id === id ? { ...a, outputs, executionCount } : a),</td></tr>
+<tr class="nil"><td class="ln">345</td><td class="code">    }));</td></tr>
+<tr class="nil"><td class="ln">346</td><td class="code">  }, [applyOverlay]);</td></tr>
+<tr class="nil"><td class="ln">347</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">348</td><td class="code">  const addAppended = useCallback((afterIndex: number | null, cellType: &#x27;code&#x27; | &#x27;markdown&#x27;) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">349</td><td class="code">    const cell: AppendedCell = { id: crypto.randomUUID(), afterIndex, cellType, source: &#x27;&#x27; };</td></tr>
+<tr class="cov"><td class="ln">350</td><td class="code">    applyOverlay((prev) =&gt; ({ ...prev, appendedCells: [...prev.appendedCells, cell] }));</td></tr>
+<tr class="cov"><td class="ln">351</td><td class="code">    return cell;</td></tr>
+<tr class="nil"><td class="ln">352</td><td class="code">  }, [applyOverlay]);</td></tr>
+<tr class="nil"><td class="ln">353</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">354</td><td class="code">  const removeAppended = useCallback((id: string) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">355</td><td class="code">    applyOverlay((prev) =&gt; ({</td></tr>
+<tr class="nil"><td class="ln">356</td><td class="code">      ...prev,</td></tr>
+<tr class="cov"><td class="ln">357</td><td class="code">      appendedCells: prev.appendedCells.filter((a) =&gt; a.id !== id),</td></tr>
+<tr class="nil"><td class="ln">358</td><td class="code">    }));</td></tr>
+<tr class="nil"><td class="ln">359</td><td class="code">  }, [applyOverlay]);</td></tr>
+<tr class="nil"><td class="ln">360</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">361</td><td class="code">  const clear = useCallback(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">362</td><td class="code">    overlayCache.delete(elementId);</td></tr>
+<tr class="cov"><td class="ln">363</td><td class="code">    setOverlay(emptyOverlay());</td></tr>
+<tr class="nil"><td class="ln">364</td><td class="code">  }, [elementId]);</td></tr>
+<tr class="nil"><td class="ln">365</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">366</td><td class="code">  return {</td></tr>
+<tr class="nil"><td class="ln">367</td><td class="code">    overlay,</td></tr>
+<tr class="nil"><td class="ln">368</td><td class="code">    recordOutput, setEdit, revertEdit,</td></tr>
+<tr class="nil"><td class="ln">369</td><td class="code">    setAppendedSource, recordAppendedOutput, addAppended, removeAppended,</td></tr>
+<tr class="nil"><td class="ln">370</td><td class="code">    clear,</td></tr>
+<tr class="nil"><td class="ln">371</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">372</td><td class="code">}</td></tr></table>
+</body></html>

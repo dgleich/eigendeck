@@ -1,0 +1,141 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/notebookParser.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/notebookParser.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>92%</b> covered</span>
+    <span class="stat">70/76 executable</span>
+    <span class="stat unc-txt">6 uncovered</span>
+    <span class="stat">123 raw lines</span>
+    <span class="stat">0.29% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:56.911%"></span><span class="seg unc" style="width:4.878%"></span><span class="seg nil" style="width:38.211%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__lib__notebookExport_tsx.html">notebookExport.tsx</a> <a href="src__lib__useNotebook_ts.html">useNotebook.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Parse an .ipynb JSON blob into the in-memory shape we render.</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// Forgiving — we ignore unknown fields rather than throwing, so future</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// nbformat additions or quirky authoring tools don&#x27;t break the slide.</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">5</td><td class="code">import {</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">  Cell, CodeCell, CellOutput, MarkdownCell, RawCell, Notebook,</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">  joinMultiline,</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">} from &#x27;./notebookFormat&#x27;;</td></tr>
+<tr class="cov"><td class="ln">9</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">// nbformat is loosely typed; using `unknown` + narrowing rather than `any`.</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">function asObj(v: unknown): Record&lt;string, unknown&gt; | null {</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">  return (typeof v === &#x27;object&#x27; &amp;&amp; v !== null &amp;&amp; !Array.isArray(v))</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">    ? v as Record&lt;string, unknown&gt;</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">    : null;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">function parseOutput(raw: unknown): CellOutput | null {</td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">  const o = asObj(raw);</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">  if (!o) return null;</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">  const type = String(o.output_type ?? &#x27;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">  switch (type) {</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">    case &#x27;stream&#x27;: {</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">      const name = (o.name === &#x27;stderr&#x27;) ? &#x27;stderr&#x27; : &#x27;stdout&#x27;;</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">      return { kind: &#x27;stream&#x27;, name, text: joinMultiline(o.text) };</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">    case &#x27;display_data&#x27;:</td></tr>
+<tr class="unc"><td class="ln">27</td><td class="code">      return { kind: &#x27;display_data&#x27;, data: parseMimeBundle(o.data) };</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">    case &#x27;execute_result&#x27;:</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">      return {</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">        kind: &#x27;execute_result&#x27;,</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">        data: parseMimeBundle(o.data),</td></tr>
+<tr class="unc"><td class="ln">32</td><td class="code">        executionCount: typeof o.execution_count === &#x27;number&#x27; ? o.execution_count : null,</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">      };</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">    case &#x27;error&#x27;:</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">      return {</td></tr>
+<tr class="cov"><td class="ln">36</td><td class="code">        kind: &#x27;error&#x27;,</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">        ename: String(o.ename ?? &#x27;Error&#x27;),</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">        evalue: String(o.evalue ?? &#x27;&#x27;),</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">        traceback: Array.isArray(o.traceback) ? o.traceback.map(String) : [],</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">      };</td></tr>
+<tr class="unc"><td class="ln">41</td><td class="code">    default:</td></tr>
+<tr class="unc"><td class="ln">42</td><td class="code">      return null;</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">function parseMimeBundle(raw: unknown): Record&lt;string, string | string[]&gt; {</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">  const o = asObj(raw);</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">  if (!o) return {};</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">  const out: Record&lt;string, string | string[]&gt; = {};</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">  for (const [mime, value] of Object.entries(o)) {</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">    // Jupyter stores text mimes as string or string[]; binary mimes (image/png,</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">    // application/pdf, etc.) as base64 strings. We keep both shapes — renderers</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">    // call joinMultiline() or use the string directly per mime type.</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">    if (Array.isArray(value)) out[mime] = value.map(String);</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">    else if (typeof value === &#x27;string&#x27;) out[mime] = value;</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">57</td><td class="code">  return out;</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">function parseCell(raw: unknown, index: number): Cell | null {</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">  const c = asObj(raw);</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">  if (!c) return null;</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">  const cellType = String(c.cell_type ?? &#x27;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">  const source = joinMultiline(c.source);</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">  switch (cellType) {</td></tr>
+<tr class="unc"><td class="ln">66</td><td class="code">    case &#x27;code&#x27;: {</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">      const cell: CodeCell = {</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">        kind: &#x27;code&#x27;,</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">        index,</td></tr>
+<tr class="unc"><td class="ln">70</td><td class="code">        source,</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">        executionCount: typeof c.execution_count === &#x27;number&#x27; ? c.execution_count : null,</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">        outputs: Array.isArray(c.outputs)</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">          ? c.outputs.map(parseOutput).filter((o): o is CellOutput =&gt; o !== null)</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">          : [],</td></tr>
+<tr class="cov"><td class="ln">75</td><td class="code">      };</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code">      return cell;</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">78</td><td class="code">    case &#x27;markdown&#x27;: {</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">      const cell: MarkdownCell = { kind: &#x27;markdown&#x27;, index, source };</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">      return cell;</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">82</td><td class="code">    case &#x27;raw&#x27;: {</td></tr>
+<tr class="cov"><td class="ln">83</td><td class="code">      const cell: RawCell = { kind: &#x27;raw&#x27;, index, source };</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">      return cell;</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">    default:</td></tr>
+<tr class="cov"><td class="ln">87</td><td class="code">      return null;</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">89</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">/** Parse a .ipynb JSON document into our in-memory shape. Throws on</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code"> *  unparseable JSON; returns a best-effort Notebook for malformed-but-</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code"> *  JSON content (e.g. drops unknown cell types). */</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">export function parseNotebook(json: string | object): Notebook {</td></tr>
+<tr class="cov"><td class="ln">95</td><td class="code">  const root = typeof json === &#x27;string&#x27; ? JSON.parse(json) : json;</td></tr>
+<tr class="cov"><td class="ln">96</td><td class="code">  const o = asObj(root);</td></tr>
+<tr class="cov"><td class="ln">97</td><td class="code">  if (!o) throw new Error(&#x27;notebook: top-level JSON is not an object&#x27;);</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">  const cells = Array.isArray(o.cells)</td></tr>
+<tr class="cov"><td class="ln">100</td><td class="code">    ? o.cells.map((c, i) =&gt; parseCell(c, i)).filter((c): c is Cell =&gt; c !== null)</td></tr>
+<tr class="nil"><td class="ln">101</td><td class="code">    : [];</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">103</td><td class="code">  const meta = asObj(o.metadata) ?? {};</td></tr>
+<tr class="cov"><td class="ln">104</td><td class="code">  const kernelspec = asObj(meta.kernelspec) ?? {};</td></tr>
+<tr class="cov"><td class="ln">105</td><td class="code">  const langInfo = asObj(meta.language_info) ?? {};</td></tr>
+<tr class="cov"><td class="ln">106</td><td class="code">  const kernelspecName = typeof kernelspec.name === &#x27;string&#x27; ? kernelspec.name : null;</td></tr>
+<tr class="cov"><td class="ln">107</td><td class="code">  const kernelDisplayName = typeof kernelspec.display_name === &#x27;string&#x27; ? kernelspec.display_name : null;</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">  const language =</td></tr>
+<tr class="cov"><td class="ln">109</td><td class="code">    (typeof langInfo.name === &#x27;string&#x27; &amp;&amp; langInfo.name) ||</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">    (kernelspecName &amp;&amp; kernelspecName.startsWith(&#x27;python&#x27;) ? &#x27;python&#x27; : null) ||</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">    (kernelspecName === &#x27;ir&#x27; ? &#x27;r&#x27; : null) ||</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">    (kernelspecName?.startsWith(&#x27;julia&#x27;) ? &#x27;julia&#x27; : null) ||</td></tr>
+<tr class="nil"><td class="ln">113</td><td class="code">    null;</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">115</td><td class="code">  return { cells, kernelspecName, kernelDisplayName, language };</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code">/** Parse bytes (Uint8Array from db_get_asset_by_id) as a notebook. */</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">export function parseNotebookBytes(bytes: Uint8Array | ArrayBuffer): Notebook {</td></tr>
+<tr class="cov"><td class="ln">120</td><td class="code">  const buf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);</td></tr>
+<tr class="cov"><td class="ln">121</td><td class="code">  const text = new TextDecoder(&#x27;utf-8&#x27;).decode(buf);</td></tr>
+<tr class="cov"><td class="ln">122</td><td class="code">  return parseNotebook(text);</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">}</td></tr></table>
+</body></html>

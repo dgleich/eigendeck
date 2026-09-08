@@ -1,0 +1,233 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/components/TextElementSvg.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/components/TextElementSvg.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>92%</b> covered</span>
+    <span class="stat">76/83 executable</span>
+    <span class="stat unc-txt">7 uncovered</span>
+    <span class="stat">215 raw lines</span>
+    <span class="stat">0.50% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:35.349%"></span><span class="seg unc" style="width:3.256%"></span><span class="seg nil" style="width:61.395%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__fonts_ts.html">fonts.ts</a> <a href="src__lib__textStyle_mjs.html">textStyle.mjs</a> <a href="src__lib__themes_ts.html">themes.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__PresentSlide_tsx.html">PresentSlide.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__components__SlideThumbnail_tsx.html">SlideThumbnail.tsx</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code"> * Display-only renderer for a TextElement: &lt;svg&gt;&lt;foreignObject&gt; with the</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code"> * element&#x27;s HTML composed inside (math pre-rendered via the per-preset</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code"> * iframe pool).</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code"> * Used by:</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code"> *   - SlideElementRenderer&#x27;s TextContent (display mode, when not editing)</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code"> *   - SlideSidebar thumbnails</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code"> *   - PresentMode and presenter (when wired up)</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code"> * The SVG approach is what makes per-preset math fonts coexist on the same</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code"> * slide (each math expression is rendered with the bundle that matches its</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code"> * surrounding text element&#x27;s preset).</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code"> */</td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">import { useEffect, useState } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">import type { TextElement, Slide, PresentationConfig } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">import { TEXT_PRESET_STYLES, effectiveFontSize, textBackgroundResolved, textShadowCss, textBoxShadowCss, textPresetBoxCss, textPaddingCss, resolveColor } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">import { resolveTheme, themeColorForPreset } from &#x27;../lib/themes&#x27;;<a class="jump" href="src__lib__themes_ts.html" title="src/lib/themes.ts">→ themes.ts</a></td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">import { applyCodeFont } from &#x27;../lib/textStyle.mjs&#x27;;<a class="jump" href="src__lib__textStyle_mjs.html" title="src/lib/textStyle.mjs">→ textStyle.mjs</a></td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">import { fontForPreset, fontFamilyForPreset, resolveMonoFontPackage } from &#x27;../lib/fonts&#x27;;<a class="jump" href="src__lib__fonts_ts.html" title="src/lib/fonts.ts">→ fonts.ts</a></td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">import {</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">  renderMathInHtml as renderMathInIframe,</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">  renderMathInHtmlSync,</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">  containsMath as containsMathExpr,</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">} from &#x27;../lib/mathjaxRenderer&#x27;;</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">function valignToCss(valign?: string): string {</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">  if (valign === &#x27;middle&#x27;) return &#x27;display:flex;flex-direction:column;justify-content:center&#x27;;</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">  if (valign === &#x27;bottom&#x27;) return &#x27;display:flex;flex-direction:column;justify-content:flex-end&#x27;;</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">  return &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">/**</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code"> * Strip HTML tags but keep math source ($..$ / $$..$$) — produces readable</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code"> * alt-text for accessibility. The result preserves &quot;text $\\alpha + 1$ more&quot;</td></tr>
+<tr class="cov"><td class="ln">36</td><td class="code"> * as &quot;text $\alpha + 1$ more&quot; so screen readers can announce the equation</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code"> * source intelligibly.</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">function altTextFromHtml(html: string): string {</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">  if (!html) return &#x27;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">  // Replace block tags with newlines, then strip remaining tags. Decode</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">  // common entities. Collapse whitespace.</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">  return html</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">    .replace(/&lt;br\s*\/?&gt;/gi, &#x27;\n&#x27;)</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">    .replace(/&lt;\/(p|div|li|h[1-6])&gt;/gi, &#x27;\n&#x27;)</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">    .replace(/&lt;[^&gt;]+&gt;/g, &#x27;&#x27;)</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">    .replace(/&amp;nbsp;/g, &#x27; &#x27;)</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">    .replace(/&amp;amp;/g, &#x27;&amp;&#x27;)</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">    .replace(/&amp;lt;/g, &#x27;&lt;&#x27;)</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">    .replace(/&amp;gt;/g, &#x27;&gt;&#x27;)</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">    .replace(/&amp;quot;/g, &#x27;&quot;&#x27;)</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">    .replace(/&amp;#39;/g, &quot;&#x27;&quot;)</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">    .replace(/[ \t]+/g, &#x27; &#x27;)</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">    .replace(/\n{3,}/g, &#x27;\n\n&#x27;)</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">    .trim();</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">57</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">/** Escape XML special characters for use in an attribute value. */</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">function escAttr(s: string): string {</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">  return s.replace(/&amp;/g, &#x27;&amp;amp;&#x27;).replace(/&quot;/g, &#x27;&amp;quot;&#x27;).replace(/&lt;/g, &#x27;&amp;lt;&#x27;).replace(/&gt;/g, &#x27;&amp;gt;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">/** Escape XML special characters for use as element text content. */</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">function escText(s: string): string {</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">  return s.replace(/&amp;/g, &#x27;&amp;amp;&#x27;).replace(/&lt;/g, &#x27;&amp;lt;&#x27;).replace(/&gt;/g, &#x27;&amp;gt;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">68</td><td class="code">/**</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code"> * Build the SVG/foreignObject markup string for a text element.</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code"> * Pure function — no React, no DOM. The iframe pool must already have</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code"> * pre-rendered math (passed in as `renderedHtml`).</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code"> *</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code"> * Used by:</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code"> *   - TextElementSvg (React display component)</td></tr>
+<tr class="unc"><td class="ln">75</td><td class="code"> *   - HTML export (fileOps.ts, via exportCore renderTextElement callback)</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code"> *</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code"> * The output is fully self-contained — math SVGs have inlined glyph paths</td></tr>
+<tr class="unc"><td class="ln">78</td><td class="code"> * (fontCache:&#x27;none&#x27;) so they can be moved across documents.</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code"> * Accessibility: the SVG carries role=&quot;img&quot; + aria-label with the source</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code"> * text (math marker syntax preserved), and an inner &lt;title&gt; element. Screen</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code"> * readers pick up either; sighted users don&#x27;t see them as tooltips because</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code"> * we use aria-label instead of relying on title-as-tooltip behavior.</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">// applyCodeFont (mono family for &lt;code&gt; runs) lives in lib/textStyle.mjs, shared</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">// with the HTML export; imported above.</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code">export function buildTextElementSvgMarkup(</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">  element: TextElement,</td></tr>
+<tr class="cov"><td class="ln">90</td><td class="code">  renderedHtml: string,</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">  ctx: { fontFamily: string; fontSize: number; fontWeight: string; fontStyle: string; color: string; valign?: string; mono?: string },</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">): string {</td></tr>
+<tr class="cov"><td class="ln">93</td><td class="code">  const textShadow = textShadowCss(element, ctx.color);</td></tr>
+<tr class="cov"><td class="ln">94</td><td class="code">  const box = textPresetBoxCss(element.preset);</td></tr>
+<tr class="cov"><td class="ln">95</td><td class="code">  const w = element.position.width;</td></tr>
+<tr class="cov"><td class="ln">96</td><td class="code">  const h = element.position.height;</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">  // Alt text comes from the SOURCE element.html (with $..$), not the</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">  // post-render html (which would have lost the math source to inline SVGs).</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">  const alt = altTextFromHtml(element.html);</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">  // Clip the OUTER box to its bounds (overflow=&quot;hidden&quot; attribute, not just CSS —</td></tr>
+<tr class="nil"><td class="ln">101</td><td class="code">  // WebKit&#x27;s UA stylesheet already forces overflow:hidden on &lt;svg&gt;/&lt;foreignObject&gt;,</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">  // and only the presentation attribute can change it). Content that overflows the</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">  // box is cut off, matching edit mode (SlideElementRenderer&#x27;s edit wrapper) and</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">  // the editor — true WYSIWYG. This also kills the present-mode &quot;pop&quot; (#79): with</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">  // nothing overflowing, the opacity-fade&#x27;s box-clipped compositor buffer has no</td></tr>
+<tr class="nil"><td class="ln">106</td><td class="code">  // out-of-box ink to reveal late. Italic/integral GLYPH ink overhang is preserved</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">  // by the INNER MathJax &lt;svg&gt; keeping overflow:visible (see mathjaxRenderer.ts) —</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">  // that ink stays within the box, so this outer clip doesn&#x27;t touch it.</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">  // Escape EVERY dynamic value spliced into an attribute or the style=&quot;&quot; string:</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">  // neutralize &quot; &lt; &gt; &amp; — the characters that break out of the quoted attribute. A</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">  // crafted property (padding/fontFamily/color/geometry, or a size that came from an</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">  // unvalidated config.textSizes) can&#x27;t then inject markup into this privileged</td></tr>
+<tr class="nil"><td class="ln">113</td><td class="code">  // dangerouslySetInnerHTML output (audit C-2). escAttr leaves single-quotes alone, so</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">  // legit CSS (single-quoted font stacks, #hex, px numbers) is byte-identical — WYSIWYG</td></tr>
+<tr class="nil"><td class="ln">115</td><td class="code">  // preserved. This is the sink defense that backs up the ingress normalizer and also</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">  // protects the headless export, which shares this builder.</td></tr>
+<tr class="cov"><td class="ln">117</td><td class="code">  const e = (v: unknown): string =&gt; escAttr(String(v));</td></tr>
+<tr class="cov"><td class="ln">118</td><td class="code">  const eW = e(w), eH = e(h);</td></tr>
+<tr class="cov"><td class="ln">119</td><td class="code">  const outerStyle = `width:${eW}px;height:${eH}px;${e(valignToCss(ctx.valign))};overflow:hidden;box-sizing:border-box;`;</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">  const innerStyle =</td></tr>
+<tr class="cov"><td class="ln">121</td><td class="code">    `width:100%;font-family:${e(ctx.fontFamily)};font-size:${e(ctx.fontSize)}px;` +</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">    `font-weight:${e(ctx.fontWeight)};font-style:${e(ctx.fontStyle)};color:${e(ctx.color)};` +</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">    `line-height:${e(box.lineHeight)};padding:${e(textPaddingCss(element, element.preset))};` +</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">    `${textShadow ? `text-shadow:${e(textShadow)};` : &#x27;&#x27;}`;</td></tr>
+<tr class="cov"><td class="ln">125</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">    `&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 ${eW} ${eH}&quot; preserveAspectRatio=&quot;none&quot; width=&quot;${eW}&quot; height=&quot;${eH}&quot; overflow=&quot;hidden&quot; role=&quot;img&quot; aria-label=&quot;${escAttr(alt)}&quot; style=&quot;display:block;overflow:hidden;&quot;&gt;` +</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">      `&lt;title&gt;${escText(alt)}&lt;/title&gt;` +</td></tr>
+<tr class="nil"><td class="ln">128</td><td class="code">      `&lt;foreignObject x=&quot;0&quot; y=&quot;0&quot; width=&quot;${eW}&quot; height=&quot;${eH}&quot; overflow=&quot;hidden&quot;&gt;` +</td></tr>
+<tr class="nil"><td class="ln">129</td><td class="code">        `&lt;div xmlns=&quot;http://www.w3.org/1999/xhtml&quot; style=&quot;${outerStyle}&quot;&gt;` +</td></tr>
+<tr class="nil"><td class="ln">130</td><td class="code">          `&lt;div style=&quot;${innerStyle}&quot;&gt;` +</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">            applyCodeFont(renderedHtml || &#x27;&#x27;, ctx.mono) +</td></tr>
+<tr class="nil"><td class="ln">132</td><td class="code">          `&lt;/div&gt;` +</td></tr>
+<tr class="nil"><td class="ln">133</td><td class="code">        `&lt;/div&gt;` +</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">      `&lt;/foreignObject&gt;` +</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">    `&lt;/svg&gt;`</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">137</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code">interface Props {</td></tr>
+<tr class="nil"><td class="ln">140</td><td class="code">  element: TextElement;</td></tr>
+<tr class="nil"><td class="ln">141</td><td class="code">  slide: Slide;</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">  presentationTheme: string;</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">  presentationConfig: PresentationConfig;</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">  /** Optional CSS class on the wrapper (for hover/preset selectors). */</td></tr>
+<tr class="nil"><td class="ln">145</td><td class="code">  className?: string;</td></tr>
+<tr class="nil"><td class="ln">146</td><td class="code">  /** Optional z-index on the wrapper (for layering in slide canvases). */</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">  zIndex?: number;</td></tr>
+<tr class="nil"><td class="ln">148</td><td class="code">  /** Optional style override (e.g. interpolated transform from animations). */</td></tr>
+<tr class="nil"><td class="ln">149</td><td class="code">  styleOverride?: React.CSSProperties;</td></tr>
+<tr class="nil"><td class="ln">150</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">152</td><td class="code">export function TextElementSvg({</td></tr>
+<tr class="nil"><td class="ln">153</td><td class="code">  element, slide, presentationTheme, presentationConfig,</td></tr>
+<tr class="nil"><td class="ln">154</td><td class="code">  className, zIndex, styleOverride,</td></tr>
+<tr class="nil"><td class="ln">155</td><td class="code">}: Props) {</td></tr>
+<tr class="cov"><td class="ln">156</td><td class="code">  const presetStyle = TEXT_PRESET_STYLES[element.preset];</td></tr>
+<tr class="cov"><td class="ln">157</td><td class="code">  const theme = resolveTheme(presentationTheme, slide.theme);</td></tr>
+<tr class="cov"><td class="ln">158</td><td class="code">  const themeColor = themeColorForPreset(theme, element.preset);</td></tr>
+<tr class="cov"><td class="ln">159</td><td class="code">  const presetFontPkg = fontForPreset(element.preset, slide, presentationConfig);</td></tr>
+<tr class="cov"><td class="ln">160</td><td class="code">  const presetFontFamily = fontFamilyForPreset(presetFontPkg, element.preset);</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">162</td><td class="code">  const fontFamily = element.fontFamily || presetFontFamily;</td></tr>
+<tr class="cov"><td class="ln">163</td><td class="code">  const fontSize = effectiveFontSize(element, presentationConfig);</td></tr>
+<tr class="cov"><td class="ln">164</td><td class="code">  const fontWeight = presetStyle.fontWeight;</td></tr>
+<tr class="cov"><td class="ln">165</td><td class="code">  const fontStyle = presetStyle.fontStyle;</td></tr>
+<tr class="cov"><td class="ln">166</td><td class="code">  const color = resolveColor(element.color, theme, themeColor);</td></tr>
+<tr class="cov"><td class="ln">167</td><td class="code">  const mathBundleId = presetFontPkg.id;</td></tr>
+<tr class="nil"><td class="ln">168</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">169</td><td class="code">  const valign = element.verticalAlign || (element.preset === &#x27;title&#x27; || element.preset === &#x27;footnote&#x27; ? &#x27;bottom&#x27; : undefined);</td></tr>
+<tr class="nil"><td class="ln">170</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">171</td><td class="code">  // Pre-render math via per-preset iframe pool. The INITIAL value pulls any</td></tr>
+<tr class="nil"><td class="ln">172</td><td class="code">  // already-cached SVGs synchronously (renderMathInHtmlSync) so warmed math</td></tr>
+<tr class="nil"><td class="ln">173</td><td class="code">  // paints in the FIRST frame — no &quot;slide appears, then math fades in&quot; flash</td></tr>
+<tr class="nil"><td class="ln">174</td><td class="code">  // (the projector warms its cache from SQLite, so this is a full hit there).</td></tr>
+<tr class="nil"><td class="ln">175</td><td class="code">  // Uncached expressions stay raw and the async effect below fills them in.</td></tr>
+<tr class="cov"><td class="ln">176</td><td class="code">  const [renderedHtml, setRenderedHtml] = useState&lt;string&gt;(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">177</td><td class="code">    if (!containsMathExpr(element.html)) return element.html || &#x27;&#x27;;</td></tr>
+<tr class="unc"><td class="ln">178</td><td class="code">    return renderMathInHtmlSync(element.html, mathBundleId, presentationConfig.mathPreamble) ?? (element.html || &#x27;&#x27;);</td></tr>
+<tr class="nil"><td class="ln">179</td><td class="code">  });</td></tr>
+<tr class="cov"><td class="ln">180</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">181</td><td class="code">    let cancelled = false;</td></tr>
+<tr class="cov"><td class="ln">182</td><td class="code">    if (!containsMathExpr(element.html)) {</td></tr>
+<tr class="cov"><td class="ln">183</td><td class="code">      setRenderedHtml(element.html || &#x27;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">184</td><td class="code">      return () =&gt; { cancelled = true; };</td></tr>
+<tr class="nil"><td class="ln">185</td><td class="code">    }</td></tr>
+<tr class="unc"><td class="ln">186</td><td class="code">    renderMathInIframe(element.html, mathBundleId, presentationConfig.mathPreamble).then((html) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">187</td><td class="code">      if (!cancelled) setRenderedHtml(html);</td></tr>
+<tr class="nil"><td class="ln">188</td><td class="code">    }).catch(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">189</td><td class="code">      if (!cancelled) setRenderedHtml(element.html || &#x27;&#x27;);</td></tr>
+<tr class="nil"><td class="ln">190</td><td class="code">    });</td></tr>
+<tr class="unc"><td class="ln">191</td><td class="code">    return () =&gt; { cancelled = true; };</td></tr>
+<tr class="nil"><td class="ln">192</td><td class="code">  }, [element.html, mathBundleId]);</td></tr>
+<tr class="nil"><td class="ln">193</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">194</td><td class="code">  const svgMarkup = buildTextElementSvgMarkup(element, renderedHtml, {</td></tr>
+<tr class="nil"><td class="ln">195</td><td class="code">    fontFamily, fontSize, fontWeight, fontStyle, color, valign,</td></tr>
+<tr class="nil"><td class="ln">196</td><td class="code">    mono: resolveMonoFontPackage(presentationConfig.defaultMonoFont).family,</td></tr>
+<tr class="nil"><td class="ln">197</td><td class="code">  });</td></tr>
+<tr class="nil"><td class="ln">198</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">199</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">200</td><td class="code">    &lt;div</td></tr>
+<tr class="nil"><td class="ln">201</td><td class="code">      className={className}</td></tr>
+<tr class="nil"><td class="ln">202</td><td class="code">      style={{</td></tr>
+<tr class="nil"><td class="ln">203</td><td class="code">        position: &#x27;absolute&#x27;, left: element.position.x, top: element.position.y,</td></tr>
+<tr class="nil"><td class="ln">204</td><td class="code">        width: element.position.width, height: element.position.height,</td></tr>
+<tr class="nil"><td class="ln">205</td><td class="code">        backgroundColor: textBackgroundResolved(element, theme),</td></tr>
+<tr class="nil"><td class="ln">206</td><td class="code">        boxShadow: textBoxShadowCss(element),</td></tr>
+<tr class="nil"><td class="ln">207</td><td class="code">        ...(element.borderRadius ? { borderRadius: element.borderRadius } : {}),</td></tr>
+<tr class="nil"><td class="ln">208</td><td class="code">        ...(element.rotation ? { transform: `rotate(${element.rotation}deg)` } : {}),</td></tr>
+<tr class="nil"><td class="ln">209</td><td class="code">        ...(zIndex !== undefined ? { zIndex } : {}),</td></tr>
+<tr class="nil"><td class="ln">210</td><td class="code">        ...styleOverride,</td></tr>
+<tr class="nil"><td class="ln">211</td><td class="code">      }}</td></tr>
+<tr class="nil"><td class="ln">212</td><td class="code">      dangerouslySetInnerHTML={{ __html: svgMarkup }}</td></tr>
+<tr class="nil"><td class="ln">213</td><td class="code">    /&gt;</td></tr>
+<tr class="nil"><td class="ln">214</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">215</td><td class="code">}</td></tr></table>
+</body></html>

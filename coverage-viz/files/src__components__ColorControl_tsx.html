@@ -1,0 +1,123 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/components/ColorControl.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/components/ColorControl.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>93%</b> covered</span>
+    <span class="stat">25/27 executable</span>
+    <span class="stat unc-txt">2 uncovered</span>
+    <span class="stat">105 raw lines</span>
+    <span class="stat">0.25% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:23.810%"></span><span class="seg unc" style="width:1.905%"></span><span class="seg nil" style="width:74.286%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__colorPalettes_ts.html">colorPalettes.ts</a> <a href="src__lib__textStyle_mjs.html">textStyle.mjs</a> <a href="src__lib__themes_ts.html">themes.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__PropertiesPanel_tsx.html">PropertiesPanel.tsx</a> <a href="src__components__TextFormatToolbar_tsx.html">TextFormatToolbar.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// The ONE color picker, shared by the inline text-format toolbar and the inspector</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// (text color / background / arrow / cover). Purely presentational: it renders the</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// swatch row consistently and emits SEMANTIC events — onNone / onColor(hex) /</td></tr>
+<tr class="cov"><td class="ln">4</td><td class="code">// onTint(base). Each call site wires those to its exact field writes (or the</td></tr>
+<tr class="cov"><td class="ln">5</td><td class="code">// toolbar&#x27;s execCommand), so the data model stays per-site while the UI is unified.</td></tr>
+<tr class="cov"><td class="ln">6</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// Row order (all wrapping): [None chip] [deck palette] [tint swatches] [fixed</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">// palette] [custom-hex]. A tint&#x27;s swatch previews its RESOLVED look against the</td></tr>
+<tr class="cov"><td class="ln">9</td><td class="code">// current theme; a corner mark flags it as &quot;themed&quot; (adapts per theme) vs a fixed</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// color. Only render the pieces a site opts into.</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">import type { CSSProperties } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">import type { Swatch } from &#x27;../lib/colorPalettes&#x27;;<a class="jump" href="src__lib__colorPalettes_ts.html" title="src/lib/colorPalettes.ts">→ colorPalettes.ts</a></td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">import { TINT_SWATCHES, ACCENT_TINT } from &#x27;../lib/colorPalettes&#x27;;<a class="jump" href="src__lib__colorPalettes_ts.html" title="src/lib/colorPalettes.ts">→ colorPalettes.ts</a></td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">import { textBackgroundResolved } from &#x27;../lib/textStyle.mjs&#x27;;<a class="jump" href="src__lib__textStyle_mjs.html" title="src/lib/textStyle.mjs">→ textStyle.mjs</a></td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">import type { ThemeColors } from &#x27;../lib/themes&#x27;;<a class="jump" href="src__lib__themes_ts.html" title="src/lib/themes.ts">→ themes.ts</a></td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">// The 135° corner triangle that marks a swatch as a themed tint.</td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">const TINT_MARK = &#x27;linear-gradient(135deg, transparent 60%, rgba(0,0,0,0.4) 60%)&#x27;;</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">export interface ColorControlProps {</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">  /** Current literal color (hex), for fixed/custom active state. `undefined` = none. */</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">  value?: string;</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">  /** Current tint base (`el.boxTint`, or `&#x27;accent&#x27;` when a foreground uses the token),</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">   *  for tint active state. */</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">  activeTint?: string;</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">  /** Fixed swatches. */</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">  palette: readonly Swatch[];</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">  /** Deck brand colors (rendered first, ringed). */</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">  customPalette?: readonly string[];</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">  allowNone?: boolean;</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">  /** Label for the clear chip — &#x27;Auto&#x27; | &#x27;None&#x27; | &#x27;Match&#x27;. */</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">  noneLabel?: string;</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">  allowCustom?: boolean;</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">  /** Enables the tint swatches. `fill` = the full wash palette (text bg / cover);</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">   *  `accent` = just the theme-accent solid (foreground text / arrow). */</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">  tint?: { kind: &#x27;fill&#x27; | &#x27;accent&#x27;; theme: ThemeColors };</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">  onNone?: () =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">  onColor: (hex: string) =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">  onTint?: (base: string) =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">41</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">42</td><td class="code">const SWATCH = &#x27;prop-color-swatch&#x27;;</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">const CUSTOM_STYLE: CSSProperties = { width: 24, height: 24, padding: 0, border: &#x27;1px solid #ccc&#x27;, borderRadius: 4, cursor: &#x27;pointer&#x27; };</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">/** Preview color for a tint base against the current theme. */</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">function tintPreview(base: string, kind: &#x27;fill&#x27; | &#x27;accent&#x27;, theme: ThemeColors): string {</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">  if (kind === &#x27;accent&#x27;) return theme.accent;</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">  return textBackgroundResolved({ boxTint: base }, theme) || theme.background;</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">export function ColorControl({</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">  value, activeTint, palette, customPalette, allowNone, noneLabel = &#x27;None&#x27;,</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">  allowCustom, tint, onNone, onColor, onTint,</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">}: ColorControlProps) {</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">  const tintSwatches = tint ? (tint.kind === &#x27;accent&#x27; ? ACCENT_TINT : TINT_SWATCHES) : [];</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">    &lt;div className=&quot;prop-color-row&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">      {allowNone &amp;&amp; (</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">        &lt;button</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">          className={`prop-zbtn ${!value &amp;&amp; !activeTint ? &#x27;active&#x27; : &#x27;&#x27;}`}</td></tr>
+<tr class="unc"><td class="ln">61</td><td class="code">          style={{ fontSize: 11, width: &#x27;auto&#x27;, padding: &#x27;2px 6px&#x27; }}</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">          onClick={onNone}</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">        &gt;</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">          {noneLabel}</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">        &lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">      )}</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">      {(customPalette ?? []).map((c) =&gt; (</td></tr>
+<tr class="cov"><td class="ln">68</td><td class="code">        &lt;button</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">          key={`cp-${c}`}</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">          className={`${SWATCH} ${value === c &amp;&amp; !activeTint ? &#x27;active&#x27; : &#x27;&#x27;}`}</td></tr>
+<tr class="unc"><td class="ln">71</td><td class="code">          style={{ background: c, boxShadow: &#x27;0 0 0 1px #94a3b8 inset&#x27; }}</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">          title={`Deck palette ${c}`}</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">          onClick={() =&gt; onColor(c)}</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">        /&gt;</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code">      ))}</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">      {tintSwatches.map(({ base, title }) =&gt; (</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">        &lt;button</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">          key={`tint-${base}`}</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">          className={`${SWATCH} ${activeTint === base ? &#x27;active&#x27; : &#x27;&#x27;}`}</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">          title={title}</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">          style={{ background: tintPreview(base, tint!.kind, tint!.theme), backgroundImage: TINT_MARK }}</td></tr>
+<tr class="cov"><td class="ln">82</td><td class="code">          onClick={() =&gt; onTint?.(base)}</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">        /&gt;</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">      ))}</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">      {palette.map(({ color, label }) =&gt; (</td></tr>
+<tr class="cov"><td class="ln">86</td><td class="code">        &lt;button</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">          key={color}</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code">          className={`${SWATCH} ${value === color &amp;&amp; !activeTint ? &#x27;active&#x27; : &#x27;&#x27;}`}</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">          title={label}</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">          style={{ background: color, border: color === &#x27;#ffffff&#x27; ? &#x27;1px solid #ccc&#x27; : undefined }}</td></tr>
+<tr class="cov"><td class="ln">91</td><td class="code">          onClick={() =&gt; onColor(color)}</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">        /&gt;</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">      ))}</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">      {allowCustom &amp;&amp; (</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code">        &lt;input</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">          type=&quot;color&quot;</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">          title=&quot;Custom colour&quot;</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">          value={value &amp;&amp; /^#[0-9a-fA-F]{6}$/.test(value) ? value : &#x27;#000000&#x27;}</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">          onChange={(e) =&gt; onColor(e.target.value)}</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">          style={CUSTOM_STYLE}</td></tr>
+<tr class="nil"><td class="ln">101</td><td class="code">        /&gt;</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">      )}</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">    &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">}</td></tr></table>
+</body></html>

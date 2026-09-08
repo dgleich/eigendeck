@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/htmlSnippet.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/htmlSnippet.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">21/21 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">73 raw lines</span>
+    <span class="stat">0.17% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:28.767%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:71.233%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__htmlVars_mjs.html">htmlVars.mjs</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__lib__htmlDropRoute_ts.html">htmlDropRoute.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Validate an HTML-element snippet before inserting it (#137). Snippets are just</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// self-contained HTML fragments (see examples-html-elements/), so &quot;Insert HTML</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// Element from File…&quot; — and, later, a &quot;download from an online repo&quot; flow — need a</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// gate that rejects cruddy input: not-HTML, scripts (won&#x27;t run in the sandbox),</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// and remote resource references (blocked by the CSP). This is a UX guard, NOT a</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// security boundary — the real containment is the no-`allow-scripts` sandbox + CSP</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// applied to `el.html` in every render path; a snippet that slipped past this still</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// executes nothing. This function is PURE (no Tauri / DOM deps) so it can guard both</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">// the local file picker and any remote fetch.</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">import { stripVarsManifest } from &#x27;./htmlVars.mjs&#x27;;<a class="jump" href="src__lib__htmlVars_mjs.html" title="src/lib/htmlVars.mjs">→ htmlVars.mjs</a></td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">export interface SnippetCheck {</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">  ok: boolean;</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">  /** The snippet HTML to use as the element&#x27;s `html` field (unchanged on success). */</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">  html: string;</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">  /** Whether the metadata comment marked it interactive (needs pointer events). */</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">  interactive: boolean;</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">  /** Human-readable reasons it was rejected (empty when ok). */</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">  problems: string[];</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">// Snippets should be small. 2 MB leaves room for a modest inline data: image while</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">// still rejecting &quot;someone handed me a whole web page / a binary&quot;.</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">const MAX_BYTES = 2_000_000;</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">// A remote resource reference the sandbox CSP would block (http/https/protocol-</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">// relative) in a load context: src / srcset / CSS url() / @import / &lt;link href&gt;.</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">const REMOTE_PATTERNS: RegExp[] = [</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">  /\bsrc\s*=\s*[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">  /\bsrcset\s*=\s*[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">  /url\(\s*[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">  /@import\s+(?:url\(\s*)?[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">  /&lt;link\b[^&gt;]*\bhref\s*=\s*[&quot;&#x27;]?\s*(?:https?:)?\/\//i,</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">];</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">/** Read the interactive flag from the `&lt;!-- eigendeck-html-element … interactive --&gt;`</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code"> *  metadata comment, if present. */</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">export function snippetIsInteractive(raw: string): boolean {</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">  const m = raw.match(/&lt;!--\s*eigendeck-html-element\b([\s\S]*?)--&gt;/i);</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">  return !!(m &amp;&amp; /\binteractive\b/i.test(m[1]));</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">export function validateHtmlSnippet(raw: unknown): SnippetCheck {</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">  const problems: string[] = [];</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  const html = typeof raw === &#x27;string&#x27; ? raw : &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">  const trimmed = html.trim();</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">  if (!trimmed) {</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">    problems.push(&#x27;The file is empty.&#x27;);</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">    return { ok: false, html, interactive: false, problems };</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">  if (html.length &gt; MAX_BYTES) {</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">    problems.push(`Too large (${(html.length / 1e6).toFixed(1)} MB, max 2 MB) — snippets should be small; embed a big image as a real image element instead.`);</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">  // Must actually be HTML — at least one element tag.</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">  if (!/&lt;([a-z][a-z0-9-]*)\b[^&gt;]*&gt;/i.test(trimmed)) {</td></tr>
+<tr class="cov"><td class="ln">57</td><td class="code">    problems.push(&#x27;This doesn’t look like HTML — no elements were found.&#x27;);</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">  // The variables manifest (`&lt;script type=&quot;application/eigendeck-vars+json&quot;&gt;`, #138)</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">  // is a non-executing data island — strip it before the script check so it&#x27;s exempt</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">  // while real scripts still trip the gate.</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">  if (/&lt;script[\s&gt;/]/i.test(stripVarsManifest(html))) {</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">    problems.push(&#x27;Contains a &lt;script&gt; — scripts don’t run in the sandbox. Use CSS animation or native form controls instead.&#x27;);</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">  if (/&lt;[a-z][^&gt;]*\son[a-z]+\s*=/i.test(html)) {</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">    problems.push(&#x27;Contains inline event handlers (onclick, onerror, …) — they don’t run in the sandbox.&#x27;);</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">68</td><td class="code">  if (REMOTE_PATTERNS.some((re) =&gt; re.test(html))) {</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">    problems.push(&#x27;References remote resources (http/https). The sandbox blocks the network — embed images and fonts as data: URIs.&#x27;);</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">  return { ok: problems.length === 0, html, interactive: snippetIsInteractive(html), problems };</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">}</td></tr></table>
+</body></html>

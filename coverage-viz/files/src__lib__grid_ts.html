@@ -1,0 +1,136 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/grid.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/grid.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">41/41 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">118 raw lines</span>
+    <span class="stat">0.28% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:34.746%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:65.254%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Pure helpers for the editor alignment grid (snap-to-grid).</td></tr>
+<tr class="cov"><td class="ln">2</td><td class="code">//</td></tr>
+<tr class="cov"><td class="ln">3</td><td class="code">// Kept free of any store/preference reads so the rounding is trivially</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// unit-testable. The component layer (DraggableBox) supplies the live</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// spacing + on/off + bypass state and calls snapToGrid().</td></tr>
+<tr class="cov"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">7</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code"> * Round a slide-space coordinate to the nearest multiple of `spacing`.</td></tr>
+<tr class="cov"><td class="ln">9</td><td class="code"> *</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code"> * A spacing below 2px (or non-finite) is treated as &quot;no grid&quot; and returns</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code"> * the value unchanged — guards against a 0/1px grid snapping everything to</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code"> * the origin or to every pixel.</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code"> */</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">export function snapToGrid(value: number, spacing: number): number {</td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">  if (!Number.isFinite(spacing) || spacing &lt; 2) return value;</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">  return Math.round(value / spacing) * spacing;</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">/**</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code"> * New size for a bottom-right (SE) resize that snaps the moving EDGE to the grid</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code"> * rather than the size itself (#97).</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code"> * Snapping width/height directly leaves the far edge off-grid whenever the</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code"> * element&#x27;s `origin` (x or y) isn&#x27;t grid-aligned — e.g. origin 130, width</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code"> * snapped to 200 → right edge 330, not on a 30px grid. Instead we snap the edge</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code"> * (`origin + rawSize`) and derive the size back from the fixed origin, so the</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code"> * edge lands on a gridline and only the size absorbs the origin&#x27;s offset.</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code"> *</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code"> * `spacing &lt; 2` (or non-finite) means &quot;no grid&quot; — pass 0 when snap is off or</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code"> * bypassed and the raw size is returned (clamped/rounded). Result is clamped to</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code"> * `minSize` and rounded to whole px.</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">export function resizeEdgeToGrid(</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">  origin: number,</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">  rawSize: number,</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">  spacing: number,</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">  minSize: number,</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">): number {</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">  const edge = snapToGrid(origin + rawSize, spacing);</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">  return Math.max(minSize, Math.round(edge - origin));</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">// Grid overlay marker color (light slate) — every tier (dots, thin/thick &quot;+&quot;</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">// crosses, the dead-center &quot;+&quot;) uses this SAME light grey; they&#x27;re told apart by</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">// shape and stroke weight, never by colour, so the grid stays unobtrusive.</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">const MARK = &#x27;rgba(100,116,139,0.55)&#x27;;</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">// A single &quot;+&quot; SVG path centered at (x,y) with arm half-length a.</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">const crossPath = (x: number, y: number, a: number) =&gt;</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">  `M${x} ${y - a}V${y + a}M${x - a} ${y}H${x + a}`;</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code"> * The complete editor alignment-grid overlay (#89) as ONE inline-SVG markup</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code"> * string, sized to the whole slide (width × height). Three tiers of marker, all</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code"> * in the SAME light grey — distinguished by SHAPE/WEIGHT, not colour:</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code"> *   1. a FINE dot at every grid point (0, g, 2g…);</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code"> *   2. a thin &quot;+&quot; CROSS every 4th cell (offset 2 cells in → on the grid points</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code"> *      2g, 6g, 10g…), a coarse reference that reads at a glance;</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code"> *   3. on a FINE grid only (spacing &lt; 30, e.g. 12/15/20/24, where the every-4th</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code"> *      crosses get dense), a slightly THICKER &quot;+&quot; every 16th cell (every 4th</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code"> *      cross), so you can count the &quot;big chunks&quot; without counting every cross;</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code"> *   plus a single, larger &quot;+&quot; marking the DEAD CENTER of the slide.</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code"> * Why one full-slide SVG and not a repeating CSS background tile + a separate</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code"> * center element: the center mark kept drifting ~1px off the dot grid on</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code"> * Retina/fractional-scale (#89). A CSS background and an absolutely-positioned</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code"> * element rasterize in DIFFERENT compositing layers, each rounded to device</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code"> * pixels independently under the canvas&#x27; `transform: scale()`. Drawing the</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code"> * repeating tiers (via a &lt;pattern&gt;) AND the center cross in ONE &lt;svg&gt; puts them</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code"> * in one user-space and one raster, so nothing can drift relative to anything</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code"> * else.</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code"> * Dots are drawn only at the pattern tile&#x27;s leading/interior corners ([0, span)</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code"> * in each axis); the &lt;pattern&gt; clips overflow and the tiling reproduces the</td></tr>
+<tr class="nil"><td class="ln">77</td><td class="code"> * trailing-edge dots, yielding one full dot at every grid line with no</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code"> * double-painting. No shape-rendering=&#x27;crispEdges&#x27; on the crosses — at a fine</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code"> * spacing the canvas is downscaled enough that crisp-snapping a 1px stroke drops</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code"> * a whole arm (a &quot;+&quot; becomes &quot;—&quot; or &quot;|&quot;); plain anti-aliasing keeps both arms.</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code"> * Pure → unit-tested.</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">export function gridOverlaySvg(spacing: number, width: number, height: number): string {</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">  const g = spacing;</td></tr>
+<tr class="cov"><td class="ln">85</td><td class="code">  const fine = g &lt; 30;        // fine grid → add the every-16th &quot;big chunk&quot; cross</td></tr>
+<tr class="cov"><td class="ln">86</td><td class="code">  const span = fine ? 16 : 4; // cells per pattern tile (holds the every-16 mark)</td></tr>
+<tr class="cov"><td class="ln">87</td><td class="code">  const tile = span * g;</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code">  const r = 1.5;              // fine-dot radius (slide px) — a crisp disc reads bold</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">  // Crosses live at 2g, 6g, 10g… (every 4th line, offset 2). The one at (2g,2g)</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">  // is the every-16th anchor → thick on a fine grid; the rest stay thin.</td></tr>
+<tr class="cov"><td class="ln">91</td><td class="code">  let thin = &#x27;&#x27;, thick = &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">92</td><td class="code">  for (let x = 2 * g; x &lt; tile; x += 4 * g) {</td></tr>
+<tr class="cov"><td class="ln">93</td><td class="code">    for (let y = 2 * g; y &lt; tile; y += 4 * g) {</td></tr>
+<tr class="cov"><td class="ln">94</td><td class="code">      if (fine &amp;&amp; x === 2 * g &amp;&amp; y === 2 * g) thick += crossPath(x, y, 8);</td></tr>
+<tr class="cov"><td class="ln">95</td><td class="code">      else thin += crossPath(x, y, 6);</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">  let dots = &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">  for (let i = 0; i &lt; span; i++) for (let j = 0; j &lt; span; j++) {</td></tr>
+<tr class="cov"><td class="ln">100</td><td class="code">    dots += `&lt;circle cx=&#x27;${i * g}&#x27; cy=&#x27;${j * g}&#x27; r=&#x27;${r}&#x27;/&gt;`;</td></tr>
+<tr class="nil"><td class="ln">101</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">  // The dead-center mark: a larger &quot;+&quot; at the true slide center. At the default</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">  // 30px spacing the center (960,540) is itself a grid dot, so it reads as a</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">  // bullseye; at other spacings it just marks center.</td></tr>
+<tr class="cov"><td class="ln">105</td><td class="code">  const center = crossPath(width / 2, height / 2, 12);</td></tr>
+<tr class="cov"><td class="ln">106</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">    `&lt;svg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; width=&#x27;${width}&#x27; height=&#x27;${height}&#x27; ` +</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">    `viewBox=&#x27;0 0 ${width} ${height}&#x27;&gt;` +</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">    `&lt;defs&gt;&lt;pattern id=&#x27;eigendeck-grid&#x27; width=&#x27;${tile}&#x27; height=&#x27;${tile}&#x27; patternUnits=&#x27;userSpaceOnUse&#x27;&gt;` +</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">    `&lt;path d=&#x27;${thin}&#x27; stroke=&#x27;${MARK}&#x27; stroke-width=&#x27;1&#x27; fill=&#x27;none&#x27;/&gt;` +</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">    (thick ? `&lt;path d=&#x27;${thick}&#x27; stroke=&#x27;${MARK}&#x27; stroke-width=&#x27;2&#x27; fill=&#x27;none&#x27;/&gt;` : &#x27;&#x27;) +</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">    `&lt;g fill=&#x27;${MARK}&#x27;&gt;${dots}&lt;/g&gt;` +</td></tr>
+<tr class="nil"><td class="ln">113</td><td class="code">    `&lt;/pattern&gt;&lt;/defs&gt;` +</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">    `&lt;rect width=&#x27;${width}&#x27; height=&#x27;${height}&#x27; fill=&#x27;url(#eigendeck-grid)&#x27;/&gt;` +</td></tr>
+<tr class="nil"><td class="ln">115</td><td class="code">    `&lt;path d=&#x27;${center}&#x27; stroke=&#x27;${MARK}&#x27; stroke-width=&#x27;1.5&#x27; fill=&#x27;none&#x27;/&gt;` +</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">    `&lt;/svg&gt;`</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code">}</td></tr></table>
+</body></html>

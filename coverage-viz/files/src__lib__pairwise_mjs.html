@@ -1,0 +1,102 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/pairwise.mjs · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/pairwise.mjs </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">46/46 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">84 raw lines</span>
+    <span class="stat">0.20% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:54.762%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:45.238%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <i>none</i></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Combinatorial test-case generation over a set of named parameters, each with a</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// list of candidate values. Used to drive the export/print style matrix at three</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// coverage levels (see exportMatrixGenerated.test.mjs):</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">//   • single    — each value of each parameter appears at least once (tier 1)</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//   • allPairs  — every PAIR of values from any two parameters appears (tier 2)</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//   • full      — the full cartesian product (tier 3, expanded env only)</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// `params` is an object `{ name: [v0, v1, …] }`. Each generator returns an array</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">// of cases, where a case is `{ name: value }` for every parameter.</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">const names = (params) =&gt; Object.keys(params);</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">/** Each parameter value appears in ≥1 case; other params take their first value.</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code"> *  Case count = max domain size. */</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">export function single(params) {</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">  const ns = names(params);</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">  const max = Math.max(0, ...ns.map((n) =&gt; params[n].length));</td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">  const cases = [];</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">  for (let i = 0; i &lt; max; i++) {</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">    const c = {};</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">    for (const n of ns) c[n] = params[n][Math.min(i, params[n].length - 1)];</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">    cases.push(c);</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">  return cases;</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">/** All-pairs (pairwise): every (paramA=a, paramB=b) combination appears in ≥1</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code"> *  case. Greedy set-cover over value INDICES (values may be any type). */</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">export function allPairs(params) {</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">  const ns = names(params);</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">  if (ns.length &lt; 2) return single(params);</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">  const key = (i, a, j, b) =&gt; `${i}=${a}:${j}=${b}`;   // param index = value index</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">  const uncovered = new Set();</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">  for (let i = 0; i &lt; ns.length; i++) {</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">    for (let j = i + 1; j &lt; ns.length; j++) {</td></tr>
+<tr class="cov"><td class="ln">36</td><td class="code">      for (let a = 0; a &lt; params[ns[i]].length; a++) {</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">        for (let b = 0; b &lt; params[ns[j]].length; b++) uncovered.add(key(i, a, j, b));</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">41</td><td class="code">  const cases = [];</td></tr>
+<tr class="cov"><td class="ln">42</td><td class="code">  while (uncovered.size) {</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">    const idx = new Array(ns.length).fill(-1);</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">    // Seed with any still-uncovered pair.</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">    const [seed] = uncovered;</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">    const m = seed.match(/^(\d+)=(\d+):(\d+)=(\d+)$/);</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">    idx[+m[1]] = +m[2]; idx[+m[3]] = +m[4];</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">    // Fill the rest greedily — pick the value covering the most uncovered pairs</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">    // against the already-chosen params.</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">    for (let i = 0; i &lt; ns.length; i++) {</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">      if (idx[i] &gt;= 0) continue;</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">      let best = 0, bestCov = -1;</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">      for (let a = 0; a &lt; params[ns[i]].length; a++) {</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">        let cov = 0;</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">        for (let j = 0; j &lt; ns.length; j++) {</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">          if (j === i || idx[j] &lt; 0) continue;</td></tr>
+<tr class="cov"><td class="ln">57</td><td class="code">          const [lo, la, hi, hb] = i &lt; j ? [i, a, j, idx[j]] : [j, idx[j], i, a];</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">          if (uncovered.has(key(lo, la, hi, hb))) cov++;</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">        }</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">        if (cov &gt; bestCov) { bestCov = cov; best = a; }</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">      }</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">      idx[i] = best;</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">    for (let i = 0; i &lt; ns.length; i++) {</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">      for (let j = i + 1; j &lt; ns.length; j++) uncovered.delete(key(i, idx[i], j, idx[j]));</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">    cases.push(Object.fromEntries(ns.map((n, k) =&gt; [n, params[n][idx[k]]])));</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">  return cases;</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">/** Full cartesian product. Case count = product of all domain sizes (can be huge). */</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">export function full(params) {</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">  const ns = names(params);</td></tr>
+<tr class="cov"><td class="ln">75</td><td class="code">  let cases = [{}];</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code">  for (const n of ns) {</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">    const next = [];</td></tr>
+<tr class="cov"><td class="ln">78</td><td class="code">    for (const c of cases) for (const v of params[n]) next.push({ ...c, [n]: v });</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">    cases = next;</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code">  return cases;</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">export const GENERATORS = { single, allPairs, full };</td></tr></table>
+</body></html>

@@ -1,0 +1,63 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/components/NotebookBox.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/components/NotebookBox.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>50%</b> covered</span>
+    <span class="stat">4/8 executable</span>
+    <span class="stat unc-txt">4 uncovered</span>
+    <span class="stat">45 raw lines</span>
+    <span class="stat">0.11% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:8.889%"></span><span class="seg unc" style="width:8.889%"></span><span class="seg nil" style="width:82.222%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__components__notebook__NotebookContent_tsx.html">NotebookContent.tsx</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Notebook element renderer (editor mode). Wraps NotebookContent</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// inside a DraggableBox with the double-click-to-interact overlay</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// pattern shared with DemoBox.</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// The notebook body lives in NotebookContent so PresentMode can</td></tr>
+<tr class="cov"><td class="ln">6</td><td class="code">// reuse it without the editor chrome.</td></tr>
+<tr class="cov"><td class="ln">7</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">import { useState } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">import { DraggableBox, InteractLockBar } from &#x27;./SlideElementRenderer&#x27;;<a class="jump" href="src__components__SlideElementRenderer_tsx.html" title="src/components/SlideElementRenderer.tsx">→ SlideElementRenderer.tsx</a></td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">import { NotebookContent } from &#x27;./notebook/NotebookContent&#x27;;<a class="jump" href="src__components__notebook__NotebookContent_tsx.html" title="src/components/notebook/NotebookContent.tsx">→ NotebookContent.tsx</a></td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">import {</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">  NotebookElement, SlideElement,</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">} from &#x27;../types/presentation&#x27;;</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">export function NotebookBox({ element, zIndex, scale, isSelected, onSelect, onDelete, onUpdate }: {</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">  element: NotebookElement;</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">  zIndex: number; scale: number;</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">  isSelected: boolean;</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">  onSelect: (e?: { shiftKey: boolean }) =&gt; void; onDelete: () =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">  onUpdate: (changes: Partial&lt;SlideElement&gt;) =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">}) {</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">  // `interacting` lifts the click-through overlay so scroll/click reach</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">  // the cell area. Same pattern as DemoBox — without it, dragging the</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">  // box on the canvas is impossible because the cell area would eat</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">  // the pointer. Double-click overlay → interact; Lock button → back.</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">  const [interacting, setInteracting] = useState(false);</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">28</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">    &lt;DraggableBox</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">      element={element} zIndex={zIndex} scale={scale}</td></tr>
+<tr class="unc"><td class="ln">31</td><td class="code">      className=&quot;el-notebook&quot; isSelected={isSelected}</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">      onSelect={onSelect} onDelete={onDelete} onUpdate={onUpdate}</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">    &gt;</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">      &lt;NotebookContent element={element} interactive={interacting} /&gt;</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">      {!interacting &amp;&amp; (</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">        &lt;div className=&quot;nb-overlay&quot;</td></tr>
+<tr class="unc"><td class="ln">37</td><td class="code">          onDoubleClick={(e) =&gt; { e.stopPropagation(); setInteracting(true); }}</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">          style={{ position: &#x27;absolute&#x27;, top: 0, left: 0, right: 0, bottom: 0, cursor: &#x27;grab&#x27;, zIndex: 1 }} /&gt;</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">      )}</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">      {interacting &amp;&amp; (</td></tr>
+<tr class="unc"><td class="ln">41</td><td class="code">        &lt;InteractLockBar scale={scale} onLock={() =&gt; setInteracting(false)} /&gt;</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">      )}</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">    &lt;/DraggableBox&gt;</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">}</td></tr></table>
+</body></html>

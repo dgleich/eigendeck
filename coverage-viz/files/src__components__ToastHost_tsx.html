@@ -1,0 +1,108 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/components/ToastHost.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/components/ToastHost.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>47%</b> covered</span>
+    <span class="stat">9/19 executable</span>
+    <span class="stat unc-txt">10 uncovered</span>
+    <span class="stat">90 raw lines</span>
+    <span class="stat">0.21% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:10.000%"></span><span class="seg unc" style="width:11.111%"></span><span class="seg nil" style="width:78.889%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__toasts_ts.html">toasts.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Renders the global toast stack at the bottom-center of the window.</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// Mount once in App.tsx near the root; call showToast() from anywhere.</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">4</td><td class="code">import { useEffect, useState } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">import { subscribeToasts, dismissToast, type Toast } from &#x27;../lib/toasts&#x27;;<a class="jump" href="src__lib__toasts_ts.html" title="src/lib/toasts.ts">→ toasts.ts</a></td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">7</td><td class="code">const KIND_STYLES: Record&lt;Toast[&#x27;kind&#x27;], { border: string; bg: string; icon: string }&gt; = {</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">  info:    { border: &#x27;#3b82f6&#x27;, bg: &#x27;#eff6ff&#x27;, icon: &#x27;ⓘ&#x27; },</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">  warning: { border: &#x27;#f59e0b&#x27;, bg: &#x27;#fffbeb&#x27;, icon: &#x27;⚠&#x27; },</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">  error:   { border: &#x27;#dc2626&#x27;, bg: &#x27;#fef2f2&#x27;, icon: &#x27;⚠&#x27; },</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">  success: { border: &#x27;#16a34a&#x27;, bg: &#x27;#f0fdf4&#x27;, icon: &#x27;✓&#x27; },</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">};</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">export function ToastHost() {</td></tr>
+<tr class="unc"><td class="ln">15</td><td class="code">  const [toasts, setToasts] = useState&lt;Toast[]&gt;([]);</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">  useEffect(() =&gt; subscribeToasts(setToasts), []);</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">18</td><td class="code">  if (toasts.length === 0) return null;</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">20</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">    &lt;div style={{</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">      position: &#x27;fixed&#x27;,</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">      bottom: 24,</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">      left: &#x27;50%&#x27;,</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">      transform: &#x27;translateX(-50%)&#x27;,</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">      display: &#x27;flex&#x27;,</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">      flexDirection: &#x27;column&#x27;,</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">      gap: 8,</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">      alignItems: &#x27;center&#x27;,</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">      zIndex: 10000,</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">      pointerEvents: &#x27;none&#x27;,</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">    }}&gt;</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">      {toasts.map((t) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">34</td><td class="code">        const s = KIND_STYLES[t.kind];</td></tr>
+<tr class="unc"><td class="ln">35</td><td class="code">        return (</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">          &lt;div key={t.id} style={{</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">            background: s.bg,</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">            border: `1px solid ${s.border}`,</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">            borderLeft: `4px solid ${s.border}`,</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">            borderRadius: 6,</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">            boxShadow: &#x27;0 4px 14px rgba(0,0,0,0.12)&#x27;,</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">            padding: &#x27;10px 12px&#x27;,</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">            display: &#x27;flex&#x27;,</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">            alignItems: &#x27;center&#x27;,</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">            gap: 10,</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">            minWidth: 360,</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">            maxWidth: 560,</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">            fontSize: 13,</td></tr>
+<tr class="unc"><td class="ln">49</td><td class="code">            color: &#x27;#1f2937&#x27;,</td></tr>
+<tr class="unc"><td class="ln">50</td><td class="code">            pointerEvents: &#x27;auto&#x27;,</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">          }}&gt;</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">            &lt;span style={{ color: s.border, fontSize: 16, fontWeight: 600, lineHeight: 1 }}&gt;{s.icon}&lt;/span&gt;</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">            &lt;span style={{ flex: 1 }}&gt;{t.message}&lt;/span&gt;</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">            {t.action &amp;&amp; (</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">              &lt;button</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">                onClick={() =&gt; { t.action?.onClick(); dismissToast(t.id); }}</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">                style={{</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">                  padding: &#x27;4px 10px&#x27;,</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">                  fontSize: 12,</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">                  fontWeight: 500,</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">                  background: s.border,</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">                  color: &#x27;#fff&#x27;,</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">                  border: &#x27;none&#x27;,</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">                  borderRadius: 4,</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">                  cursor: &#x27;pointer&#x27;,</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">                }}&gt;</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">                {t.action.label}</td></tr>
+<tr class="unc"><td class="ln">68</td><td class="code">              &lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">            )}</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">            &lt;button</td></tr>
+<tr class="unc"><td class="ln">71</td><td class="code">              onClick={() =&gt; dismissToast(t.id)}</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">              title=&quot;Dismiss&quot;</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">              style={{</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">                padding: 0,</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code">                width: 20, height: 20,</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">                background: &#x27;transparent&#x27;,</td></tr>
+<tr class="nil"><td class="ln">77</td><td class="code">                color: &#x27;#6b7280&#x27;,</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">                border: &#x27;none&#x27;,</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">                cursor: &#x27;pointer&#x27;,</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">                fontSize: 18,</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">                lineHeight: 1,</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">              }}&gt;</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">              ×</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">            &lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">          &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">        );</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">      })}</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code">    &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">}</td></tr></table>
+</body></html>

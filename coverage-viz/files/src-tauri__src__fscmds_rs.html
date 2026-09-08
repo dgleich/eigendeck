@@ -1,0 +1,338 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src-tauri/src/fscmds.rs · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src-tauri/src/fscmds.rs </h1>
+  <div class="stats">
+    <span class="stat"><b>46%</b> covered</span>
+    <span class="stat">80/174 executable</span>
+    <span class="stat unc-txt">94 uncovered</span>
+    <span class="stat">320 raw lines</span>
+    <span class="stat">0.75% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:25.000%"></span><span class="seg unc" style="width:29.375%"></span><span class="seg nil" style="width:45.625%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src-tauri__src__lib_rs.html">lib.rs</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Filesystem commands that replace the frontend&#x27;s JS `fs`-plugin usage, so the</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// webview can drop the `fs` capability entirely (no ambient disk access for any</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// injected script). Reads of asset bytes keep going through `resolve_and_read`</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// (the gated realpath+size-cap read in lib.rs); this module adds the rest:</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// writes, stat/exists, mkdir, read_dir, the trust-ledger persistence, and a</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// notify-based file watcher that emits `fs-watch-event` to the frontend.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// Paths handed to write/stat/read_dir come from native dialogs or deck-relative</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">// resolution — user-chosen, not attacker-chosen. Nothing here canonicalizes or</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// gates (that&#x27;s `resolve_and_read`&#x27;s job for the security-sensitive byte reads);</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">// instead the write/stat/watch commands require the caller to be the MAIN editor</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">// window (`require_main`) — see the caller-authorization note below.</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">use std::collections::HashMap;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">use std::sync::Mutex;</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">use std::time::UNIX_EPOCH;</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">use notify::{RecommendedWatcher, RecursiveMode, Watcher};</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">use serde::Serialize;</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">// --- caller authorization ----------------------------------------------------</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">// These commands act on whatever path the caller passes, with NO canonicalization</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">// or trust check (that is `resolve_and_read`&#x27;s job for the security-sensitive byte</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">// reads, which stays open to every window because the presenter renders assets</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">// through it). Only the MAIN editor window has any legitimate reason to drive</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">// arbitrary-path writes/stat/watch — the presenter/settings/security windows never</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">// call them. Refusing from any other window means a stray or secondary webview</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">// label can&#x27;t turn its IPC access into arbitrary-path disk I/O. (audit C-3)</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">// The filesystem logic lives in window-free `*_impl` helpers so the unit tests can</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">// exercise it without constructing a WebviewWindow; the `#[tauri::command]`</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">// wrappers add the guard.</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">// These helpers are `pub(crate)` because the same caller boundary applies to the</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">// other arbitrary-path commands elsewhere in the crate (storage.rs db_open/save,</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">// lib.rs cli_write_and_exit/resolve_and_read, llmtools.rs install_llm_tools).</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">/// Refuse unless the calling window&#x27;s label is in `allowed`.</td></tr>
+<tr class="unc"><td class="ln">40</td><td class="code">pub(crate) fn require_windows(window: &amp;WebviewWindow, allowed: &amp;[&amp;str]) -&gt; Result&lt;(), String&gt; {</td></tr>
+<tr class="unc"><td class="ln">41</td><td class="code">    if allowed.contains(&amp;window.label()) {</td></tr>
+<tr class="unc"><td class="ln">42</td><td class="code">        Ok(())</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">    } else {</td></tr>
+<tr class="unc"><td class="ln">44</td><td class="code">        Err(format!(</td></tr>
+<tr class="unc"><td class="ln">45</td><td class="code">            &quot;command not permitted from window &#x27;{}&#x27;&quot;,</td></tr>
+<tr class="unc"><td class="ln">46</td><td class="code">            window.label()</td></tr>
+<tr class="unc"><td class="ln">47</td><td class="code">        ))</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">    }</td></tr>
+<tr class="unc"><td class="ln">49</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">/// The common case: only the main editor window may call.</td></tr>
+<tr class="unc"><td class="ln">52</td><td class="code">pub(crate) fn require_main(window: &amp;WebviewWindow) -&gt; Result&lt;(), String&gt; {</td></tr>
+<tr class="unc"><td class="ln">53</td><td class="code">    require_windows(window, &amp;[&quot;main&quot;])</td></tr>
+<tr class="unc"><td class="ln">54</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">// --- writes ------------------------------------------------------------------</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">// No parent auto-create (mirrors the JS plugin: callers mkdir explicitly first).</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">fn write_file_impl(path: &amp;str, data: Vec&lt;u8&gt;) -&gt; Result&lt;(), String&gt; {</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">    std::fs::write(path, data).map_err(|e| e.to_string())</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">63</td><td class="code">#[tauri::command]</td></tr>
+<tr class="unc"><td class="ln">64</td><td class="code">pub fn write_file(window: WebviewWindow, path: String, data: Vec&lt;u8&gt;) -&gt; Result&lt;(), String&gt; {</td></tr>
+<tr class="unc"><td class="ln">65</td><td class="code">    require_main(&amp;window)?;</td></tr>
+<tr class="unc"><td class="ln">66</td><td class="code">    write_file_impl(&amp;path, data)</td></tr>
+<tr class="unc"><td class="ln">67</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">fn write_text_file_impl(path: &amp;str, text: String, append: Option&lt;bool&gt;) -&gt; Result&lt;(), String&gt; {</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">    if append.unwrap_or(false) {</td></tr>
+<tr class="nil"><td class="ln">71</td><td class="code">        use std::io::Write;</td></tr>
+<tr class="unc"><td class="ln">72</td><td class="code">        std::fs::OpenOptions::new()</td></tr>
+<tr class="unc"><td class="ln">73</td><td class="code">            .create(true)</td></tr>
+<tr class="unc"><td class="ln">74</td><td class="code">            .append(true)</td></tr>
+<tr class="unc"><td class="ln">75</td><td class="code">            .open(path)</td></tr>
+<tr class="unc"><td class="ln">76</td><td class="code">            .and_then(|mut f| f.write_all(text.as_bytes()))</td></tr>
+<tr class="unc"><td class="ln">77</td><td class="code">            .map_err(|e| e.to_string())</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">    } else {</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">        std::fs::write(path, text).map_err(|e| e.to_string())</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">#[tauri::command]</td></tr>
+<tr class="unc"><td class="ln">84</td><td class="code">pub fn write_text_file(</td></tr>
+<tr class="unc"><td class="ln">85</td><td class="code">    window: WebviewWindow,</td></tr>
+<tr class="unc"><td class="ln">86</td><td class="code">    path: String,</td></tr>
+<tr class="unc"><td class="ln">87</td><td class="code">    text: String,</td></tr>
+<tr class="unc"><td class="ln">88</td><td class="code">    append: Option&lt;bool&gt;,</td></tr>
+<tr class="unc"><td class="ln">89</td><td class="code">) -&gt; Result&lt;(), String&gt; {</td></tr>
+<tr class="unc"><td class="ln">90</td><td class="code">    require_main(&amp;window)?;</td></tr>
+<tr class="unc"><td class="ln">91</td><td class="code">    write_text_file_impl(&amp;path, text, append)</td></tr>
+<tr class="unc"><td class="ln">92</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">94</td><td class="code">fn make_dir_impl(path: &amp;str) -&gt; Result&lt;(), String&gt; {</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code">    // Always recursive — every current caller passes { recursive: true }.</td></tr>
+<tr class="cov"><td class="ln">96</td><td class="code">    std::fs::create_dir_all(path).map_err(|e| e.to_string())</td></tr>
+<tr class="cov"><td class="ln">97</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">#[tauri::command]</td></tr>
+<tr class="unc"><td class="ln">100</td><td class="code">pub fn make_dir(window: WebviewWindow, path: String) -&gt; Result&lt;(), String&gt; {</td></tr>
+<tr class="unc"><td class="ln">101</td><td class="code">    require_main(&amp;window)?;</td></tr>
+<tr class="unc"><td class="ln">102</td><td class="code">    make_dir_impl(&amp;path)</td></tr>
+<tr class="unc"><td class="ln">103</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">// --- stat / exists -----------------------------------------------------------</td></tr>
+<tr class="nil"><td class="ln">106</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">#[derive(Serialize)]</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">#[serde(rename_all = &quot;camelCase&quot;)]</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">pub struct StatInfo {</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">    /// mtime in epoch milliseconds; the frontend does `new Date(mtimeMs)`.</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">    mtime_ms: Option&lt;i64&gt;,</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">    size: u64,</td></tr>
+<tr class="nil"><td class="ln">113</td><td class="code">    is_file: bool,</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">    is_dir: bool,</td></tr>
+<tr class="nil"><td class="ln">115</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">117</td><td class="code">fn path_stat_impl(path: &amp;str) -&gt; Result&lt;StatInfo, String&gt; {</td></tr>
+<tr class="cov"><td class="ln">118</td><td class="code">    let meta = std::fs::metadata(path).map_err(|e| e.to_string())?;</td></tr>
+<tr class="cov"><td class="ln">119</td><td class="code">    let mtime_ms = meta</td></tr>
+<tr class="cov"><td class="ln">120</td><td class="code">        .modified()</td></tr>
+<tr class="cov"><td class="ln">121</td><td class="code">        .ok()</td></tr>
+<tr class="cov"><td class="ln">122</td><td class="code">        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())</td></tr>
+<tr class="cov"><td class="ln">123</td><td class="code">        .map(|d| d.as_millis() as i64);</td></tr>
+<tr class="cov"><td class="ln">124</td><td class="code">    Ok(StatInfo {</td></tr>
+<tr class="cov"><td class="ln">125</td><td class="code">        mtime_ms,</td></tr>
+<tr class="cov"><td class="ln">126</td><td class="code">        size: meta.len(),</td></tr>
+<tr class="cov"><td class="ln">127</td><td class="code">        is_file: meta.is_file(),</td></tr>
+<tr class="cov"><td class="ln">128</td><td class="code">        is_dir: meta.is_dir(),</td></tr>
+<tr class="cov"><td class="ln">129</td><td class="code">    })</td></tr>
+<tr class="cov"><td class="ln">130</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">132</td><td class="code">#[tauri::command]</td></tr>
+<tr class="unc"><td class="ln">133</td><td class="code">pub fn path_stat(window: WebviewWindow, path: String) -&gt; Result&lt;StatInfo, String&gt; {</td></tr>
+<tr class="unc"><td class="ln">134</td><td class="code">    require_main(&amp;window)?;</td></tr>
+<tr class="unc"><td class="ln">135</td><td class="code">    path_stat_impl(&amp;path)</td></tr>
+<tr class="unc"><td class="ln">136</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">137</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">138</td><td class="code">fn path_exists_impl(path: &amp;str) -&gt; bool {</td></tr>
+<tr class="cov"><td class="ln">139</td><td class="code">    std::path::Path::new(path).exists()</td></tr>
+<tr class="cov"><td class="ln">140</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">141</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">// Returns Result (not bare bool) so the guard can reject a non-main caller; the</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">// frontend&#x27;s `invoke&lt;boolean&gt;` still resolves to the bool on Ok.</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">#[tauri::command]</td></tr>
+<tr class="unc"><td class="ln">145</td><td class="code">pub fn path_exists(window: WebviewWindow, path: String) -&gt; Result&lt;bool, String&gt; {</td></tr>
+<tr class="unc"><td class="ln">146</td><td class="code">    require_main(&amp;window)?;</td></tr>
+<tr class="unc"><td class="ln">147</td><td class="code">    Ok(path_exists_impl(&amp;path))</td></tr>
+<tr class="unc"><td class="ln">148</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">149</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">150</td><td class="code">// --- read_dir (debug batch tools) --------------------------------------------</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">152</td><td class="code">// Only the debug-only `read_dir` returns this, so it&#x27;s compiled out of release too.</td></tr>
+<tr class="nil"><td class="ln">153</td><td class="code">#[cfg(debug_assertions)]</td></tr>
+<tr class="nil"><td class="ln">154</td><td class="code">#[derive(Serialize)]</td></tr>
+<tr class="nil"><td class="ln">155</td><td class="code">#[serde(rename_all = &quot;camelCase&quot;)]</td></tr>
+<tr class="nil"><td class="ln">156</td><td class="code">pub struct DirEntryInfo {</td></tr>
+<tr class="nil"><td class="ln">157</td><td class="code">    name: String,</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code">    path: String,</td></tr>
+<tr class="nil"><td class="ln">159</td><td class="code">    is_dir: bool,</td></tr>
+<tr class="nil"><td class="ln">160</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">162</td><td class="code">// Debug-builds-only: arbitrary directory enumeration is dev/batch tooling (its sole</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">// caller is the debug `dirPicker`). `#[cfg(debug_assertions)]` compiles it OUT of a</td></tr>
+<tr class="nil"><td class="ln">164</td><td class="code">// release build entirely — a shipped binary has no `read_dir` command at all — matching</td></tr>
+<tr class="nil"><td class="ln">165</td><td class="code">// the rest of the debug subsystem, which is already debug-builds-only (lib.rs). The</td></tr>
+<tr class="nil"><td class="ln">166</td><td class="code">// registration in lib.rs&#x27;s `generate_handler!` is `#[cfg(debug_assertions)]` to match.</td></tr>
+<tr class="nil"><td class="ln">167</td><td class="code">// (audit C-3)</td></tr>
+<tr class="nil"><td class="ln">168</td><td class="code">#[cfg(debug_assertions)]</td></tr>
+<tr class="nil"><td class="ln">169</td><td class="code">#[tauri::command]</td></tr>
+<tr class="cov"><td class="ln">170</td><td class="code">pub fn read_dir(path: String) -&gt; Result&lt;Vec&lt;DirEntryInfo&gt;, String&gt; {</td></tr>
+<tr class="cov"><td class="ln">171</td><td class="code">    let mut out = Vec::new();</td></tr>
+<tr class="cov"><td class="ln">172</td><td class="code">    for entry in std::fs::read_dir(&amp;path).map_err(|e| e.to_string())? {</td></tr>
+<tr class="cov"><td class="ln">173</td><td class="code">        let entry = entry.map_err(|e| e.to_string())?;</td></tr>
+<tr class="cov"><td class="ln">174</td><td class="code">        let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);</td></tr>
+<tr class="cov"><td class="ln">175</td><td class="code">        out.push(DirEntryInfo {</td></tr>
+<tr class="cov"><td class="ln">176</td><td class="code">            name: entry.file_name().to_string_lossy().into_owned(),</td></tr>
+<tr class="cov"><td class="ln">177</td><td class="code">            path: entry.path().to_string_lossy().into_owned(),</td></tr>
+<tr class="cov"><td class="ln">178</td><td class="code">            is_dir,</td></tr>
+<tr class="cov"><td class="ln">179</td><td class="code">        });</td></tr>
+<tr class="nil"><td class="ln">180</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">181</td><td class="code">    Ok(out)</td></tr>
+<tr class="cov"><td class="ln">182</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">183</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">184</td><td class="code">// --- trust ledger persistence (was JS fs in trustStore.ts) -------------------</td></tr>
+<tr class="nil"><td class="ln">185</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">186</td><td class="code">fn ledger_path(app: &amp;AppHandle) -&gt; Result&lt;std::path::PathBuf, String&gt; {</td></tr>
+<tr class="unc"><td class="ln">187</td><td class="code">    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;</td></tr>
+<tr class="unc"><td class="ln">188</td><td class="code">    Ok(dir.join(&quot;asset-trust-ledger.json&quot;))</td></tr>
+<tr class="unc"><td class="ln">189</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">190</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">191</td><td class="code">/// Read the trust ledger JSON. None on missing/unreadable — the frontend treats</td></tr>
+<tr class="nil"><td class="ln">192</td><td class="code">/// that as an empty ledger (fail-safe: untrusted).</td></tr>
+<tr class="nil"><td class="ln">193</td><td class="code">#[tauri::command]</td></tr>
+<tr class="unc"><td class="ln">194</td><td class="code">pub fn read_trust_ledger(app: AppHandle) -&gt; Option&lt;String&gt; {</td></tr>
+<tr class="unc"><td class="ln">195</td><td class="code">    let p = ledger_path(&amp;app).ok()?;</td></tr>
+<tr class="unc"><td class="ln">196</td><td class="code">    std::fs::read_to_string(&amp;p).ok()</td></tr>
+<tr class="unc"><td class="ln">197</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">198</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">199</td><td class="code">/// Write the trust ledger JSON (creating the app-data dir). Errors propagate;</td></tr>
+<tr class="nil"><td class="ln">200</td><td class="code">/// the frontend swallows them (best-effort, mirrors the old JS behavior).</td></tr>
+<tr class="nil"><td class="ln">201</td><td class="code">#[tauri::command]</td></tr>
+<tr class="unc"><td class="ln">202</td><td class="code">pub fn write_trust_ledger(app: AppHandle, json: String) -&gt; Result&lt;(), String&gt; {</td></tr>
+<tr class="unc"><td class="ln">203</td><td class="code">    let p = ledger_path(&amp;app)?;</td></tr>
+<tr class="unc"><td class="ln">204</td><td class="code">    if let Some(parent) = p.parent() {</td></tr>
+<tr class="unc"><td class="ln">205</td><td class="code">        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;</td></tr>
+<tr class="unc"><td class="ln">206</td><td class="code">    }</td></tr>
+<tr class="unc"><td class="ln">207</td><td class="code">    std::fs::write(&amp;p, json).map_err(|e| e.to_string())</td></tr>
+<tr class="unc"><td class="ln">208</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">209</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">210</td><td class="code">// --- file watcher (was JS fs-plugin `watch`) ---------------------------------</td></tr>
+<tr class="nil"><td class="ln">211</td><td class="code">// One RecommendedWatcher per subscribed path, keyed by an incrementing id the</td></tr>
+<tr class="nil"><td class="ln">212</td><td class="code">// frontend holds and passes back to unwatch_path. Each raw notify event emits a</td></tr>
+<tr class="nil"><td class="ln">213</td><td class="code">// `fs-watch-event` {id, path}; the frontend&#x27;s own COALESCE_MS window collapses</td></tr>
+<tr class="nil"><td class="ln">214</td><td class="code">// the burst a single save produces (same as before — the JS `delayMs` never</td></tr>
+<tr class="nil"><td class="ln">215</td><td class="code">// truly coalesced either).</td></tr>
+<tr class="nil"><td class="ln">216</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">217</td><td class="code">#[derive(Default)]</td></tr>
+<tr class="nil"><td class="ln">218</td><td class="code">pub struct WatchState {</td></tr>
+<tr class="nil"><td class="ln">219</td><td class="code">    next_id: u32,</td></tr>
+<tr class="nil"><td class="ln">220</td><td class="code">    watchers: HashMap&lt;u32, RecommendedWatcher&gt;,</td></tr>
+<tr class="nil"><td class="ln">221</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">222</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">223</td><td class="code">#[tauri::command]</td></tr>
+<tr class="unc"><td class="ln">224</td><td class="code">pub fn watch_path(</td></tr>
+<tr class="unc"><td class="ln">225</td><td class="code">    window: WebviewWindow,</td></tr>
+<tr class="unc"><td class="ln">226</td><td class="code">    app: AppHandle,</td></tr>
+<tr class="unc"><td class="ln">227</td><td class="code">    state: State&lt;Mutex&lt;WatchState&gt;&gt;,</td></tr>
+<tr class="unc"><td class="ln">228</td><td class="code">    path: String,</td></tr>
+<tr class="unc"><td class="ln">229</td><td class="code">) -&gt; Result&lt;u32, String&gt; {</td></tr>
+<tr class="unc"><td class="ln">230</td><td class="code">    require_main(&amp;window)?;</td></tr>
+<tr class="unc"><td class="ln">231</td><td class="code">    let id = {</td></tr>
+<tr class="unc"><td class="ln">232</td><td class="code">        let mut s = state.lock().map_err(|e| e.to_string())?;</td></tr>
+<tr class="unc"><td class="ln">233</td><td class="code">        let id = s.next_id;</td></tr>
+<tr class="unc"><td class="ln">234</td><td class="code">        s.next_id = s.next_id.wrapping_add(1);</td></tr>
+<tr class="unc"><td class="ln">235</td><td class="code">        id</td></tr>
+<tr class="nil"><td class="ln">236</td><td class="code">    };</td></tr>
+<tr class="unc"><td class="ln">237</td><td class="code">    let app_for_event = app.clone();</td></tr>
+<tr class="unc"><td class="ln">238</td><td class="code">    let path_for_event = path.clone();</td></tr>
+<tr class="unc"><td class="ln">239</td><td class="code">    let mut watcher = notify::recommended_watcher(move |res: notify::Result&lt;notify::Event&gt;| {</td></tr>
+<tr class="unc"><td class="ln">240</td><td class="code">        if res.is_ok() {</td></tr>
+<tr class="unc"><td class="ln">241</td><td class="code">            let _ = app_for_event.emit(</td></tr>
+<tr class="unc"><td class="ln">242</td><td class="code">                &quot;fs-watch-event&quot;,</td></tr>
+<tr class="unc"><td class="ln">243</td><td class="code">                serde_json::json!({ &quot;id&quot;: id, &quot;path&quot;: path_for_event }),</td></tr>
+<tr class="unc"><td class="ln">244</td><td class="code">            );</td></tr>
+<tr class="unc"><td class="ln">245</td><td class="code">        }</td></tr>
+<tr class="unc"><td class="ln">246</td><td class="code">    })</td></tr>
+<tr class="unc"><td class="ln">247</td><td class="code">    .map_err(|e| e.to_string())?;</td></tr>
+<tr class="unc"><td class="ln">248</td><td class="code">    watcher</td></tr>
+<tr class="unc"><td class="ln">249</td><td class="code">        .watch(std::path::Path::new(&amp;path), RecursiveMode::NonRecursive)</td></tr>
+<tr class="unc"><td class="ln">250</td><td class="code">        .map_err(|e| e.to_string())?;</td></tr>
+<tr class="unc"><td class="ln">251</td><td class="code">    state</td></tr>
+<tr class="unc"><td class="ln">252</td><td class="code">        .lock()</td></tr>
+<tr class="unc"><td class="ln">253</td><td class="code">        .map_err(|e| e.to_string())?</td></tr>
+<tr class="nil"><td class="ln">254</td><td class="code">        .watchers</td></tr>
+<tr class="unc"><td class="ln">255</td><td class="code">        .insert(id, watcher);</td></tr>
+<tr class="unc"><td class="ln">256</td><td class="code">    Ok(id)</td></tr>
+<tr class="unc"><td class="ln">257</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">258</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">259</td><td class="code">#[tauri::command]</td></tr>
+<tr class="unc"><td class="ln">260</td><td class="code">pub fn unwatch_path(state: State&lt;Mutex&lt;WatchState&gt;&gt;, id: u32) {</td></tr>
+<tr class="nil"><td class="ln">261</td><td class="code">    // Dropping the watcher stops it.</td></tr>
+<tr class="unc"><td class="ln">262</td><td class="code">    if let Ok(mut s) = state.lock() {</td></tr>
+<tr class="unc"><td class="ln">263</td><td class="code">        s.watchers.remove(&amp;id);</td></tr>
+<tr class="unc"><td class="ln">264</td><td class="code">    }</td></tr>
+<tr class="unc"><td class="ln">265</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">266</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">267</td><td class="code">#[cfg(test)]</td></tr>
+<tr class="nil"><td class="ln">268</td><td class="code">mod tests {</td></tr>
+<tr class="nil"><td class="ln">269</td><td class="code">    use super::*;</td></tr>
+<tr class="nil"><td class="ln">270</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">271</td><td class="code">    fn tmp(name: &amp;str) -&gt; std::path::PathBuf {</td></tr>
+<tr class="cov"><td class="ln">272</td><td class="code">        std::env::temp_dir().join(format!(&quot;eigendeck-fscmds-{}-{}&quot;, std::process::id(), name))</td></tr>
+<tr class="cov"><td class="ln">273</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">274</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">275</td><td class="code">    #[test]</td></tr>
+<tr class="cov"><td class="ln">276</td><td class="code">    fn write_then_stat_roundtrips() {</td></tr>
+<tr class="cov"><td class="ln">277</td><td class="code">        let p = tmp(&quot;w.bin&quot;);</td></tr>
+<tr class="cov"><td class="ln">278</td><td class="code">        let _ = std::fs::remove_file(&amp;p);</td></tr>
+<tr class="cov"><td class="ln">279</td><td class="code">        write_file_impl(&amp;p.to_string_lossy(), vec![1, 2, 3, 4]).unwrap();</td></tr>
+<tr class="cov"><td class="ln">280</td><td class="code">        let st = path_stat_impl(&amp;p.to_string_lossy()).unwrap();</td></tr>
+<tr class="cov"><td class="ln">281</td><td class="code">        assert_eq!(st.size, 4);</td></tr>
+<tr class="cov"><td class="ln">282</td><td class="code">        assert!(st.is_file);</td></tr>
+<tr class="cov"><td class="ln">283</td><td class="code">        assert!(!st.is_dir);</td></tr>
+<tr class="cov"><td class="ln">284</td><td class="code">        assert!(st.mtime_ms.is_some());</td></tr>
+<tr class="cov"><td class="ln">285</td><td class="code">        assert!(path_exists_impl(&amp;p.to_string_lossy()));</td></tr>
+<tr class="cov"><td class="ln">286</td><td class="code">        let _ = std::fs::remove_file(&amp;p);</td></tr>
+<tr class="cov"><td class="ln">287</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">288</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">289</td><td class="code">    #[test]</td></tr>
+<tr class="cov"><td class="ln">290</td><td class="code">    fn write_text_roundtrips() {</td></tr>
+<tr class="cov"><td class="ln">291</td><td class="code">        let p = tmp(&quot;t.txt&quot;);</td></tr>
+<tr class="cov"><td class="ln">292</td><td class="code">        let _ = std::fs::remove_file(&amp;p);</td></tr>
+<tr class="cov"><td class="ln">293</td><td class="code">        write_text_file_impl(&amp;p.to_string_lossy(), &quot;héllo&quot;.into(), None).unwrap();</td></tr>
+<tr class="cov"><td class="ln">294</td><td class="code">        assert_eq!(std::fs::read_to_string(&amp;p).unwrap(), &quot;héllo&quot;);</td></tr>
+<tr class="cov"><td class="ln">295</td><td class="code">        let _ = std::fs::remove_file(&amp;p);</td></tr>
+<tr class="cov"><td class="ln">296</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">297</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">298</td><td class="code">    #[test]</td></tr>
+<tr class="cov"><td class="ln">299</td><td class="code">    fn stat_missing_errors_and_exists_false() {</td></tr>
+<tr class="cov"><td class="ln">300</td><td class="code">        let p = tmp(&quot;nope.bin&quot;);</td></tr>
+<tr class="cov"><td class="ln">301</td><td class="code">        let _ = std::fs::remove_file(&amp;p);</td></tr>
+<tr class="cov"><td class="ln">302</td><td class="code">        assert!(path_stat_impl(&amp;p.to_string_lossy()).is_err());</td></tr>
+<tr class="cov"><td class="ln">303</td><td class="code">        assert!(!path_exists_impl(&amp;p.to_string_lossy()));</td></tr>
+<tr class="cov"><td class="ln">304</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">305</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">306</td><td class="code">    #[test]</td></tr>
+<tr class="cov"><td class="ln">307</td><td class="code">    fn make_dir_recursive_and_read_dir() {</td></tr>
+<tr class="cov"><td class="ln">308</td><td class="code">        let base = tmp(&quot;d&quot;);</td></tr>
+<tr class="cov"><td class="ln">309</td><td class="code">        let _ = std::fs::remove_dir_all(&amp;base);</td></tr>
+<tr class="cov"><td class="ln">310</td><td class="code">        let nested = base.join(&quot;a/b&quot;);</td></tr>
+<tr class="cov"><td class="ln">311</td><td class="code">        make_dir_impl(&amp;nested.to_string_lossy()).unwrap();</td></tr>
+<tr class="cov"><td class="ln">312</td><td class="code">        assert!(nested.is_dir());</td></tr>
+<tr class="cov"><td class="ln">313</td><td class="code">        std::fs::write(nested.join(&quot;x.eigendeck&quot;), b&quot;x&quot;).unwrap();</td></tr>
+<tr class="cov"><td class="ln">314</td><td class="code">        let entries = read_dir(nested.to_string_lossy().into_owned()).unwrap();</td></tr>
+<tr class="cov"><td class="ln">315</td><td class="code">        assert_eq!(entries.len(), 1);</td></tr>
+<tr class="cov"><td class="ln">316</td><td class="code">        assert_eq!(entries[0].name, &quot;x.eigendeck&quot;);</td></tr>
+<tr class="cov"><td class="ln">317</td><td class="code">        assert!(!entries[0].is_dir);</td></tr>
+<tr class="cov"><td class="ln">318</td><td class="code">        let _ = std::fs::remove_dir_all(&amp;base);</td></tr>
+<tr class="cov"><td class="ln">319</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">320</td><td class="code">}</td></tr></table>
+</body></html>

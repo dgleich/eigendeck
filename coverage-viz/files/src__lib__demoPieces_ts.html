@@ -1,0 +1,37 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/demoPieces.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/demoPieces.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>50%</b> covered</span>
+    <span class="stat">2/4 executable</span>
+    <span class="stat unc-txt">2 uncovered</span>
+    <span class="stat">19 raw lines</span>
+    <span class="stat">0.04% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:10.526%"></span><span class="seg unc" style="width:10.526%"></span><span class="seg nil" style="width:78.947%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a> <a href="src__components__PropertiesPanel_tsx.html">PropertiesPanel.tsx</a> <a href="src__lib__htmlDropRoute_ts.html">htmlDropRoute.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Demo-piece name detection (#44). A multi-piece demo gates its rendering on a</td></tr>
+<tr class="unc"><td class="ln">2</td><td class="code">// `piece` param it reads from the URL hash, e.g. `if (piece === &#x27;force-graph&#x27;)`.</td></tr>
+<tr class="unc"><td class="ln">3</td><td class="code">// When a demo is added, we scan its HTML for those checks to auto-create one</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// demo-piece element per referenced name.</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// Single source of truth — previously this regex was copy-pasted in App.tsx,</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">// SlideEditor.tsx, and PropertiesPanel.tsx, and they drifted (only one used the</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// hyphen-aware pattern), which is exactly how #44 slipped in.</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code"> * Unique demo-piece names referenced by `piece === &#x27;…&#x27;` / `piece == &quot;…&quot;` checks</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code"> * in a demo&#x27;s HTML, in first-seen order. Names may contain hyphens, digits, and</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code"> * underscores (e.g. `force-graph`) — `[\w-]+`, NOT `\w+`, so they aren&#x27;t</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code"> * truncated at the hyphen (#44).</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">export function extractDemoPieceNames(html: string): string[] {</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">  const matches = html.matchAll(/piece\s*===?\s*[&#x27;&quot;]([\w-]+)[&#x27;&quot;]/g);</td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">  return [...new Set([...matches].map((m) =&gt; m[1]))];</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">}</td></tr></table>
+</body></html>

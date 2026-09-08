@@ -1,0 +1,73 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/elementHtml.mjs · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/elementHtml.mjs </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">16/16 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">55 raw lines</span>
+    <span class="stat">0.13% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:29.091%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:70.909%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__arrowGeometry_mjs.html">arrowGeometry.mjs</a> <a href="src__lib__elementDescriptor_mjs.html">elementDescriptor.mjs</a> <a href="src__lib__htmlEscape_mjs.html">htmlEscape.mjs</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__printSlideHtml_ts.html">printSlideHtml.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Export HTML builders for the simple element types (cover / arrow / image),</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// shared by the HTML export (exportCore.mjs, px units) and the PDF export</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// (printSlideHtml.ts, inches/points). Like textElementHtml.mjs, the box position</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// is unit-parameterized via `len` so the two exports can&#x27;t drift on geometry or</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// visual styling. (Text has its own richer builder in textElementHtml.mjs.)</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">import { describeCover, describeArrow, imageVisuals } from &#x27;./elementDescriptor.mjs&#x27;;<a class="jump" href="src__lib__elementDescriptor_mjs.html" title="src/lib/elementDescriptor.mjs">→ elementDescriptor.mjs</a></td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">import { arrowSvgInner } from &#x27;./arrowGeometry.mjs&#x27;;<a class="jump" href="src__lib__arrowGeometry_mjs.html" title="src/lib/arrowGeometry.mjs">→ arrowGeometry.mjs</a></td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">import { escAttr } from &#x27;./htmlEscape.mjs&#x27;;<a class="jump" href="src__lib__htmlEscape_mjs.html" title="src/lib/htmlEscape.mjs">→ htmlEscape.mjs</a></td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">// These builders splice element values into a quoted style/attribute that becomes</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">// part of a self-contained (possibly hosted) export artifact. Escape every dynamic</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">// value (&quot;&lt;&gt;&amp; → entities) so a crafted geometry/color/opacity/radius/rotation/src</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">// can&#x27;t create a new attribute in the exported HTML. Legit values (px, #hex, data:</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">// urls) are byte-identical. (Audit C-2 — export builder hardening.)</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">/** cover — a reveal mask filled with the slide background (explicit color wins). */</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">export function coverHtml(el, resolvedSlideBg, len, theme) {</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">  const d = describeCover(el, resolvedSlideBg, theme);</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">  const b = d.box;</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">  return `&lt;div style=&quot;position:absolute;left:${escAttr(len(b.x))};top:${escAttr(len(b.y))};width:${escAttr(len(b.width))};height:${escAttr(len(b.height))};background:${escAttr(d.background)};&quot;&gt;&lt;/div&gt;`;</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">/** arrow — inset line + head triangle(s) as an absolute 100% SVG overlay.</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code"> *  `opts.viewBox` is set by inch-scaled targets (the PDF export) so the px arrow</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code"> *  coordinates map into the inch container; px targets (HTML export) omit it.</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code"> *  pointer-events:none so the overlay never blocks the elements beneath it. */</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">export function arrowSvgHtml(el, opts = {}) {</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">  const a = describeArrow(el, opts.theme);</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">  const vb = opts.viewBox ? `viewBox=&quot;${escAttr(opts.viewBox)}&quot; ` : &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">  return `&lt;svg ${vb}style=&quot;position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;&quot;&gt;${arrowSvgInner(a.geo, a.color, a.strokeWidth, a.opacity)}&lt;/svg&gt;`;</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">/** image — a positioned &lt;img&gt; with the shared visual styles (drop-shadow / corner</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code"> *  radius / opacity / rotation from imageVisuals — IDENTICAL across targets). The</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code"> *  `src` is already resolved (data URL / cached PNG); `len` formats the box. */</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">export function imageHtml(src, el, len, extraAttrs = &#x27;&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">  const p = el.position;</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">  const iv = imageVisuals(el);</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">  const styles = [</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">    `position:absolute`, `left:${escAttr(len(p.x))}`, `top:${escAttr(len(p.y))}`,</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">    `width:${escAttr(len(p.width))}`, `height:${escAttr(len(p.height))}`, `object-fit:contain`,</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">  ];</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">  if (iv.shadow) styles.push(`filter:${escAttr(iv.shadow)}`);</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  if (iv.borderRadius) styles.push(`border-radius:${escAttr(iv.borderRadius)}px`);</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">  if (iv.opacity != null) styles.push(`opacity:${escAttr(iv.opacity)}`);</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">  if (iv.transform) styles.push(`transform:${escAttr(iv.transform)}`);</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">  // `src` may be omitted for the single-store export path: the image is emitted as</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">  // a `data-asset-id` placeholder (via extraAttrs) and painted by the in-body</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">  // loader from the embedded #eigendeck-deck block, so its bytes aren&#x27;t inlined twice.</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">  // (extraAttrs is escaped at its source — see exportCore&#x27;s data-asset-id.)</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">  const srcAttr = src ? ` src=&quot;${escAttr(src)}&quot;` : &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">  const extra = extraAttrs ? ` ${extraAttrs}` : &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">  return `&lt;img${srcAttr}${extra} style=&quot;${styles.join(&#x27;;&#x27;)};&quot; /&gt;`;</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">}</td></tr></table>
+</body></html>

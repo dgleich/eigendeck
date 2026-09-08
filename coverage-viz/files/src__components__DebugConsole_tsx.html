@@ -1,0 +1,206 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/components/DebugConsole.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/components/DebugConsole.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>40%</b> covered</span>
+    <span class="stat">58/146 executable</span>
+    <span class="stat unc-txt">88 uncovered</span>
+    <span class="stat">188 raw lines</span>
+    <span class="stat">0.44% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:30.851%"></span><span class="seg unc" style="width:46.809%"></span><span class="seg nil" style="width:22.340%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__nativeFs_ts.html">nativeFs.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">import { useState, useEffect, useRef } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">3</td><td class="code">interface LogEntry {</td></tr>
+<tr class="cov"><td class="ln">4</td><td class="code">  level: &#x27;log&#x27; | &#x27;warn&#x27; | &#x27;error&#x27;;</td></tr>
+<tr class="cov"><td class="ln">5</td><td class="code">  message: string;</td></tr>
+<tr class="cov"><td class="ln">6</td><td class="code">  time: string;</td></tr>
+<tr class="cov"><td class="ln">7</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">8</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">9</td><td class="code">const globalLogs: LogEntry[] = [];</td></tr>
+<tr class="unc"><td class="ln">10</td><td class="code">const listeners: Set&lt;() =&gt; void&gt; = new Set();</td></tr>
+<tr class="unc"><td class="ln">11</td><td class="code">let intercepted = false;</td></tr>
+<tr class="unc"><td class="ln">12</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">13</td><td class="code">// Continuously append every log entry to a file on disk so a crash /</td></tr>
+<tr class="unc"><td class="ln">14</td><td class="code">// white-screen doesn&#x27;t lose the captured timings. Buffered + flushed</td></tr>
+<tr class="unc"><td class="ln">15</td><td class="code">// every ~250ms to keep the per-entry overhead negligible. Off by</td></tr>
+<tr class="unc"><td class="ln">16</td><td class="code">// default — flip true to capture every console.log to</td></tr>
+<tr class="unc"><td class="ln">17</td><td class="code">// ~/Library/Logs/&lt;bundle_id&gt;/debug.log for post-mortem analysis.</td></tr>
+<tr class="unc"><td class="ln">18</td><td class="code">// (Leaving on in release fills the log forever; there&#x27;s no rotation.)</td></tr>
+<tr class="unc"><td class="ln">19</td><td class="code">const AUTO_WRITE = false;</td></tr>
+<tr class="unc"><td class="ln">20</td><td class="code">const pendingWrite: LogEntry[] = [];</td></tr>
+<tr class="unc"><td class="ln">21</td><td class="code">let writeTimer: ReturnType&lt;typeof setTimeout&gt; | null = null;</td></tr>
+<tr class="unc"><td class="ln">22</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">function scheduleFlush(): void {</td></tr>
+<tr class="unc"><td class="ln">24</td><td class="code">  if (!AUTO_WRITE || writeTimer) return;</td></tr>
+<tr class="unc"><td class="ln">25</td><td class="code">  writeTimer = setTimeout(async () =&gt; {</td></tr>
+<tr class="unc"><td class="ln">26</td><td class="code">    writeTimer = null;</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">    if (pendingWrite.length === 0) return;</td></tr>
+<tr class="unc"><td class="ln">28</td><td class="code">    const batch = pendingWrite.splice(0, pendingWrite.length);</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">    const text = batch.map((e) =&gt; `${e.time}\t${e.level}\t${e.message}`).join(&#x27;\n&#x27;) + &#x27;\n&#x27;;</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">    try {</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">      // Lazy-import so this module doesn&#x27;t depend on Tauri at JS-only test time.</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">      // appLogDir() (core path API — not the fs plugin) resolves to</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">      // ~/Library/Logs/&lt;identifier&gt;/ on macOS, %LOCALAPPDATA%\&lt;identifier&gt;\logs on</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">      // Windows, $XDG_DATA_HOME/&lt;identifier&gt;/logs on Linux — the platform log home.</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code">      // `cat ~/Library/Logs/dev.eigendeck.Eigendeck/debug.log` on Mac after a crash.</td></tr>
+<tr class="unc"><td class="ln">36</td><td class="code">      // mkdir(recursive) is a no-op if the dir exists; first run needs it so the</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">      // append write doesn&#x27;t fail with ENOENT.</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">      const { appLogDir, join } = await import(&#x27;@tauri-apps/api/path&#x27;);</td></tr>
+<tr class="unc"><td class="ln">39</td><td class="code">      const { mkdirNative, writeTextFileNative } = await import(&#x27;../lib/nativeFs&#x27;);<a class="jump" href="src__lib__nativeFs_ts.html" title="src/lib/nativeFs.ts">→ nativeFs.ts</a></td></tr>
+<tr class="unc"><td class="ln">40</td><td class="code">      const dir = await appLogDir();</td></tr>
+<tr class="unc"><td class="ln">41</td><td class="code">      await mkdirNative(dir).catch(() =&gt; {});</td></tr>
+<tr class="cov"><td class="ln">42</td><td class="code">      await writeTextFileNative(await join(dir, &#x27;debug.log&#x27;), text, { append: true });</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">    } catch {</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">      // Best-effort: if writing fails (non-Tauri context, perms), drop</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">      // the batch silently. Re-trying would just back up the queue.</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">  }, 250);</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">// Stress tests (e.g. opening the PDF stress-test deck with 55 PDFs)</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">// emit hundreds of [render] / [pdfjs] / [pdf] lines per session. 300</td></tr>
+<tr class="cov"><td class="ln">52</td><td class="code">// was too tight — earliest entries dropped before the test finished.</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">// 5000 entries is ~600KB of memory; trivial.</td></tr>
+<tr class="cov"><td class="ln">54</td><td class="code">const MAX_LOG_ENTRIES = 5000;</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">function addEntry(level: LogEntry[&#x27;level&#x27;], args: any[]) {</td></tr>
+<tr class="unc"><td class="ln">57</td><td class="code">  const message = args.map((a) =&gt;</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">    typeof a === &#x27;object&#x27; ? JSON.stringify(a, null, 2) : String(a)</td></tr>
+<tr class="unc"><td class="ln">59</td><td class="code">  ).join(&#x27; &#x27;);</td></tr>
+<tr class="unc"><td class="ln">60</td><td class="code">  const time = new Date().toLocaleTimeString();</td></tr>
+<tr class="unc"><td class="ln">61</td><td class="code">  const entry: LogEntry = { level, message, time };</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">  globalLogs.push(entry);</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">  if (globalLogs.length &gt; MAX_LOG_ENTRIES) {</td></tr>
+<tr class="unc"><td class="ln">64</td><td class="code">    globalLogs.splice(0, globalLogs.length - MAX_LOG_ENTRIES);</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">  }</td></tr>
+<tr class="unc"><td class="ln">66</td><td class="code">  if (AUTO_WRITE) {</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">    pendingWrite.push(entry);</td></tr>
+<tr class="cov"><td class="ln">68</td><td class="code">    scheduleFlush();</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">  listeners.forEach((fn) =&gt; fn());</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">function interceptConsole() {</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">  if (intercepted) return;</td></tr>
+<tr class="unc"><td class="ln">75</td><td class="code">  intercepted = true;</td></tr>
+<tr class="unc"><td class="ln">76</td><td class="code">  const origLog = console.log;</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">  const origWarn = console.warn;</td></tr>
+<tr class="cov"><td class="ln">78</td><td class="code">  const origError = console.error;</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">  console.log = (...args) =&gt; { origLog.apply(console, args); addEntry(&#x27;log&#x27;, args); };</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">  console.warn = (...args) =&gt; { origWarn.apply(console, args); addEntry(&#x27;warn&#x27;, args); };</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code">  console.error = (...args) =&gt; { origError.apply(console, args); addEntry(&#x27;error&#x27;, args); };</td></tr>
+<tr class="cov"><td class="ln">82</td><td class="code">  window.addEventListener(&#x27;error&#x27;, (e) =&gt; addEntry(&#x27;error&#x27;, [`Unhandled: ${e.message} at ${e.filename}:${e.lineno}`]));</td></tr>
+<tr class="cov"><td class="ln">83</td><td class="code">  window.addEventListener(&#x27;unhandledrejection&#x27;, (e) =&gt; addEntry(&#x27;error&#x27;, [`Unhandled rejection: ${e.reason}`]));</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">85</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">86</td><td class="code">interceptConsole();</td></tr>
+<tr class="cov"><td class="ln">87</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code">export function DebugConsole() {</td></tr>
+<tr class="cov"><td class="ln">89</td><td class="code">  const [visible, setVisible] = useState(false);</td></tr>
+<tr class="unc"><td class="ln">90</td><td class="code">  const [, setTick] = useState(0);</td></tr>
+<tr class="unc"><td class="ln">91</td><td class="code">  const bottomRef = useRef&lt;HTMLDivElement&gt;(null);</td></tr>
+<tr class="cov"><td class="ln">92</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">93</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">94</td><td class="code">    const update = () =&gt; setTick((t) =&gt; t + 1);</td></tr>
+<tr class="cov"><td class="ln">95</td><td class="code">    listeners.add(update);</td></tr>
+<tr class="cov"><td class="ln">96</td><td class="code">    return () =&gt; { listeners.delete(update); };</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">  }, []);</td></tr>
+<tr class="nil"><td class="ln">98</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">99</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">100</td><td class="code">    const handleKey = (e: KeyboardEvent) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">101</td><td class="code">      if (e.key === &#x27;d&#x27; &amp;&amp; (e.ctrlKey || e.metaKey) &amp;&amp; e.shiftKey) {</td></tr>
+<tr class="unc"><td class="ln">102</td><td class="code">        e.preventDefault();</td></tr>
+<tr class="cov"><td class="ln">103</td><td class="code">        setVisible((v) =&gt; !v);</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">    };</td></tr>
+<tr class="cov"><td class="ln">106</td><td class="code">    const handleCustom = () =&gt; setVisible((v) =&gt; !v);</td></tr>
+<tr class="unc"><td class="ln">107</td><td class="code">    window.addEventListener(&#x27;keydown&#x27;, handleKey);</td></tr>
+<tr class="unc"><td class="ln">108</td><td class="code">    window.addEventListener(&#x27;toggle-debug-console&#x27;, handleCustom);</td></tr>
+<tr class="unc"><td class="ln">109</td><td class="code">    return () =&gt; {</td></tr>
+<tr class="unc"><td class="ln">110</td><td class="code">      window.removeEventListener(&#x27;keydown&#x27;, handleKey);</td></tr>
+<tr class="unc"><td class="ln">111</td><td class="code">      window.removeEventListener(&#x27;toggle-debug-console&#x27;, handleCustom);</td></tr>
+<tr class="unc"><td class="ln">112</td><td class="code">    };</td></tr>
+<tr class="unc"><td class="ln">113</td><td class="code">  }, []);</td></tr>
+<tr class="nil"><td class="ln">114</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">115</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">116</td><td class="code">    if (visible) bottomRef.current?.scrollIntoView({ behavior: &#x27;smooth&#x27; });</td></tr>
+<tr class="unc"><td class="ln">117</td><td class="code">  }, [globalLogs.length, visible]);</td></tr>
+<tr class="unc"><td class="ln">118</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">119</td><td class="code">  if (!visible) return null;</td></tr>
+<tr class="unc"><td class="ln">120</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">121</td><td class="code">  return (</td></tr>
+<tr class="unc"><td class="ln">122</td><td class="code">    &lt;div className=&quot;debug-console&quot;&gt;</td></tr>
+<tr class="unc"><td class="ln">123</td><td class="code">      &lt;div className=&quot;debug-header&quot;&gt;</td></tr>
+<tr class="unc"><td class="ln">124</td><td class="code">        &lt;span&gt;Debug Console ({globalLogs.length})&lt;/span&gt;</td></tr>
+<tr class="unc"><td class="ln">125</td><td class="code">        &lt;div&gt;</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">          &lt;button</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">            title=&quot;Copy all log lines to the clipboard&quot;</td></tr>
+<tr class="unc"><td class="ln">128</td><td class="code">            onClick={async () =&gt; {</td></tr>
+<tr class="unc"><td class="ln">129</td><td class="code">              const text = globalLogs</td></tr>
+<tr class="unc"><td class="ln">130</td><td class="code">                .map((e) =&gt; `${e.time}\t${e.level}\t${e.message}`)</td></tr>
+<tr class="nil"><td class="ln">131</td><td class="code">                .join(&#x27;\n&#x27;);</td></tr>
+<tr class="nil"><td class="ln">132</td><td class="code">              // Try the Clipboard API first. Tauri&#x27;s webview accepts it but</td></tr>
+<tr class="nil"><td class="ln">133</td><td class="code">              // it&#x27;s silent-fail-prone — confirm via a tiny re-read.</td></tr>
+<tr class="unc"><td class="ln">134</td><td class="code">              let copied = false;</td></tr>
+<tr class="unc"><td class="ln">135</td><td class="code">              try {</td></tr>
+<tr class="unc"><td class="ln">136</td><td class="code">                await navigator.clipboard.writeText(text);</td></tr>
+<tr class="unc"><td class="ln">137</td><td class="code">                copied = true;</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">              } catch {/* will fall through */}</td></tr>
+<tr class="unc"><td class="ln">139</td><td class="code">              if (!copied) {</td></tr>
+<tr class="unc"><td class="ln">140</td><td class="code">                // Fallback: invisible textarea + execCommand. Old API but</td></tr>
+<tr class="unc"><td class="ln">141</td><td class="code">                // always works in a webview, no permissions needed.</td></tr>
+<tr class="unc"><td class="ln">142</td><td class="code">                const ta = document.createElement(&#x27;textarea&#x27;);</td></tr>
+<tr class="unc"><td class="ln">143</td><td class="code">                ta.value = text;</td></tr>
+<tr class="unc"><td class="ln">144</td><td class="code">                ta.style.position = &#x27;fixed&#x27;;</td></tr>
+<tr class="unc"><td class="ln">145</td><td class="code">                ta.style.left = &#x27;-9999px&#x27;;</td></tr>
+<tr class="unc"><td class="ln">146</td><td class="code">                document.body.appendChild(ta);</td></tr>
+<tr class="unc"><td class="ln">147</td><td class="code">                ta.select();</td></tr>
+<tr class="unc"><td class="ln">148</td><td class="code">                try { document.execCommand(&#x27;copy&#x27;); copied = true; } catch {/* ignore */}</td></tr>
+<tr class="unc"><td class="ln">149</td><td class="code">                document.body.removeChild(ta);</td></tr>
+<tr class="unc"><td class="ln">150</td><td class="code">              }</td></tr>
+<tr class="unc"><td class="ln">151</td><td class="code">              if (!copied) console.warn(&#x27;Copy failed; use Save… instead.&#x27;);</td></tr>
+<tr class="nil"><td class="ln">152</td><td class="code">            }}</td></tr>
+<tr class="nil"><td class="ln">153</td><td class="code">          &gt;Copy&lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">154</td><td class="code">          &lt;button</td></tr>
+<tr class="nil"><td class="ln">155</td><td class="code">            title=&quot;Write the log to a file on disk (survives an app crash)&quot;</td></tr>
+<tr class="nil"><td class="ln">156</td><td class="code">            onClick={async () =&gt; {</td></tr>
+<tr class="unc"><td class="ln">157</td><td class="code">              const text = globalLogs</td></tr>
+<tr class="cov"><td class="ln">158</td><td class="code">                .map((e) =&gt; `${e.time}\t${e.level}\t${e.message}`)</td></tr>
+<tr class="nil"><td class="ln">159</td><td class="code">                .join(&#x27;\n&#x27;);</td></tr>
+<tr class="unc"><td class="ln">160</td><td class="code">              try {</td></tr>
+<tr class="unc"><td class="ln">161</td><td class="code">                const { save } = await import(&#x27;@tauri-apps/plugin-dialog&#x27;);</td></tr>
+<tr class="unc"><td class="ln">162</td><td class="code">                const { writeTextFileNative } = await import(&#x27;../lib/nativeFs&#x27;);<a class="jump" href="src__lib__nativeFs_ts.html" title="src/lib/nativeFs.ts">→ nativeFs.ts</a></td></tr>
+<tr class="unc"><td class="ln">163</td><td class="code">                const defaultName = `eigendeck-log-${new Date().toISOString().replace(/[:.]/g, &#x27;-&#x27;).slice(0, 19)}.txt`;</td></tr>
+<tr class="unc"><td class="ln">164</td><td class="code">                const path = await save({ defaultPath: defaultName, filters: [{ name: &#x27;Text&#x27;, extensions: [&#x27;txt&#x27;, &#x27;log&#x27;] }] });</td></tr>
+<tr class="unc"><td class="ln">165</td><td class="code">                if (!path) return;  // user cancelled</td></tr>
+<tr class="unc"><td class="ln">166</td><td class="code">                await writeTextFileNative(path as string, text);</td></tr>
+<tr class="nil"><td class="ln">167</td><td class="code">              } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">168</td><td class="code">                console.error(&#x27;Save log failed:&#x27;, e);</td></tr>
+<tr class="unc"><td class="ln">169</td><td class="code">                alert(`Save log failed: ${e}`);</td></tr>
+<tr class="nil"><td class="ln">170</td><td class="code">              }</td></tr>
+<tr class="nil"><td class="ln">171</td><td class="code">            }}</td></tr>
+<tr class="nil"><td class="ln">172</td><td class="code">          &gt;Save…&lt;/button&gt;</td></tr>
+<tr class="unc"><td class="ln">173</td><td class="code">          &lt;button onClick={() =&gt; { globalLogs.length = 0; setTick((t) =&gt; t + 1); }}&gt;Clear&lt;/button&gt;</td></tr>
+<tr class="unc"><td class="ln">174</td><td class="code">          &lt;button onClick={() =&gt; setVisible(false)}&gt;×&lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">175</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">176</td><td class="code">      &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">177</td><td class="code">      &lt;div className=&quot;debug-logs&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">178</td><td class="code">        {globalLogs.map((entry, i) =&gt; (</td></tr>
+<tr class="unc"><td class="ln">179</td><td class="code">          &lt;div key={i} className={`debug-entry debug-${entry.level}`}&gt;</td></tr>
+<tr class="nil"><td class="ln">180</td><td class="code">            &lt;span className=&quot;debug-time&quot;&gt;{entry.time}&lt;/span&gt;</td></tr>
+<tr class="nil"><td class="ln">181</td><td class="code">            &lt;span className=&quot;debug-msg&quot;&gt;{entry.message}&lt;/span&gt;</td></tr>
+<tr class="nil"><td class="ln">182</td><td class="code">          &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">183</td><td class="code">        ))}</td></tr>
+<tr class="nil"><td class="ln">184</td><td class="code">        &lt;div ref={bottomRef} /&gt;</td></tr>
+<tr class="nil"><td class="ln">185</td><td class="code">      &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">186</td><td class="code">    &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">187</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">188</td><td class="code">}</td></tr></table>
+</body></html>

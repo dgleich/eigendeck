@@ -1,0 +1,219 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/components/SlideThumbnail.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/components/SlideThumbnail.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>73%</b> covered</span>
+    <span class="stat">66/90 executable</span>
+    <span class="stat unc-txt">24 uncovered</span>
+    <span class="stat">201 raw lines</span>
+    <span class="stat">0.47% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:32.836%"></span><span class="seg unc" style="width:11.940%"></span><span class="seg nil" style="width:55.224%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__components__ArrowGlyph_tsx.html">ArrowGlyph.tsx</a> <a href="src__components__ElementPreviewImg_tsx.html">ElementPreviewImg.tsx</a> <a href="src__components__ElementView_tsx.html">ElementView.tsx</a> <a href="src__components__TextElementSvg_tsx.html">TextElementSvg.tsx</a> <a href="src__components__VideoThumb_tsx.html">VideoThumb.tsx</a> <a href="src__lib__assetCache_ts.html">assetCache.ts</a> <a href="src__lib__assetRenderer_ts.html">assetRenderer.ts</a> <a href="src__lib__assetWatcher_ts.html">assetWatcher.ts</a> <a href="src__lib__elementDescriptor_mjs.html">elementDescriptor.mjs</a> <a href="src__lib__elementPlaceholders_mjs.html">elementPlaceholders.mjs</a> <a href="src__lib__htmlElement_mjs.html">htmlElement.mjs</a> <a href="src__lib__imageVisualStyle_ts.html">imageVisualStyle.ts</a> <a href="src__lib__themes_ts.html">themes.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__SlideSidebar_tsx.html">SlideSidebar.tsx</a> <a href="src__components__SpeakerMode_tsx.html">SpeakerMode.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Canonical STATIC slide render — the shared &quot;frozen snapshot&quot; of a slide used</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// by the sidebar thumbnails AND the dual-monitor speaker view. Static (not</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// live): heavy elements (demo / notebook / video) show cached preview images</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">// rather than live iframes, so you can render many of these cheaply (a whole</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// sidebar, or the speaker&#x27;s current+next). Text/math reuse TextElementSvg, the</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// same pipeline the editor and present view use.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">// This is the C-renderer in the present-architecture split (see PresentSlide.tsx</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">// for the B-renderer, the LIVE present view). Live vs static are deliberately</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">// separate: you can&#x27;t run live demo iframes in a 50-slide sidebar.</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">import { useLayoutEffect, useRef, useState } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">import { ArrowGlyph } from &#x27;./ArrowGlyph&#x27;;<a class="jump" href="src__components__ArrowGlyph_tsx.html" title="src/components/ArrowGlyph.tsx">→ ArrowGlyph.tsx</a></td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">import { CoverView } from &#x27;./ElementView&#x27;;<a class="jump" href="src__components__ElementView_tsx.html" title="src/components/ElementView.tsx">→ ElementView.tsx</a></td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">import { describeCover, describeArrow } from &#x27;../lib/elementDescriptor.mjs&#x27;;<a class="jump" href="src__lib__elementDescriptor_mjs.html" title="src/lib/elementDescriptor.mjs">→ elementDescriptor.mjs</a></td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">import { htmlElementSrcdoc, HTML_SANDBOX_LOCKED, htmlIsScaled, htmlScaleLayout } from &#x27;../lib/htmlElement.mjs&#x27;;<a class="jump" href="src__lib__htmlElement_mjs.html" title="src/lib/htmlElement.mjs">→ htmlElement.mjs</a></td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">import { ELEMENT_PLACEHOLDERS as PH } from &#x27;../lib/elementPlaceholders.mjs&#x27;;<a class="jump" href="src__lib__elementPlaceholders_mjs.html" title="src/lib/elementPlaceholders.mjs">→ elementPlaceholders.mjs</a></td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">import { resolveTheme } from &#x27;../lib/themes&#x27;;<a class="jump" href="src__lib__themes_ts.html" title="src/lib/themes.ts">→ themes.ts</a></td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">import { imageVisualStyle } from &#x27;../lib/imageVisualStyle&#x27;;<a class="jump" href="src__lib__imageVisualStyle_ts.html" title="src/lib/imageVisualStyle.ts">→ imageVisualStyle.ts</a></td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">import { TextElementSvg } from &#x27;./TextElementSvg&#x27;;<a class="jump" href="src__components__TextElementSvg_tsx.html" title="src/components/TextElementSvg.tsx">→ TextElementSvg.tsx</a></td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">import { useRenderedAsset } from &#x27;../lib/assetRenderer&#x27;;<a class="jump" href="src__lib__assetRenderer_ts.html" title="src/lib/assetRenderer.ts">→ assetRenderer.ts</a></td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">import { ASSET_TIER } from &#x27;../lib/assetCache&#x27;;<a class="jump" href="src__lib__assetCache_ts.html" title="src/lib/assetCache.ts">→ assetCache.ts</a></td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">import { useAssetFileWatcher } from &#x27;../lib/assetWatcher&#x27;;<a class="jump" href="src__lib__assetWatcher_ts.html" title="src/lib/assetWatcher.ts">→ assetWatcher.ts</a></td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">import { ElementPreviewImg } from &#x27;./ElementPreviewImg&#x27;;<a class="jump" href="src__components__ElementPreviewImg_tsx.html" title="src/components/ElementPreviewImg.tsx">→ ElementPreviewImg.tsx</a></td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">import { VideoThumb } from &#x27;./VideoThumb&#x27;;<a class="jump" href="src__components__VideoThumb_tsx.html" title="src/components/VideoThumb.tsx">→ VideoThumb.tsx</a></td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">import type { Presentation, Slide, SlideElement } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">/**</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code"> * A static, scaled snapshot of one slide.</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code"> * - Pass `width` (px) for a FIXED-size thumbnail (the sidebar, whose column is a</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code"> *   known width).</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code"> * - Omit `width` for a RESPONSIVE thumbnail that fills its parent&#x27;s width and</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code"> *   takes the deck&#x27;s aspect ratio (the speaker view). This avoids the</td></tr>
+<tr class="cov"><td class="ln">35</td><td class="code"> *   fixed-width-inside-a-flex-box mismatch that clipped the next-slide preview.</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code"> * `imageTier` is the max px (long edge) raster images render at; defaults to the</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code"> * small sidebar thumb tier. The speaker view passes ASSET_TIER.full so the</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code"> * current/next previews use crisp, slide-native images instead of 256px ones.</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">export function SlideThumbnail({ presentation, slide, width, imageTier = ASSET_TIER.thumb }: {</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">  presentation: Presentation; slide: Slide; width?: number; imageTier?: number;</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">}) {</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">  const slideW = presentation.config.width || 1920;</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  const slideH = presentation.config.height || 1080;</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">  // Responsive mode measures the rendered width; fixed mode uses the prop.</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">  const ref = useRef&lt;HTMLDivElement&gt;(null);</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">  const [measuredW, setMeasuredW] = useState(0);</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">  useLayoutEffect(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">51</td><td class="code">    if (width !== undefined) return; // fixed-size: no observer needed</td></tr>
+<tr class="unc"><td class="ln">52</td><td class="code">    const el = ref.current;</td></tr>
+<tr class="unc"><td class="ln">53</td><td class="code">    if (!el) return;</td></tr>
+<tr class="unc"><td class="ln">54</td><td class="code">    setMeasuredW(el.clientWidth);</td></tr>
+<tr class="unc"><td class="ln">55</td><td class="code">    const ro = new ResizeObserver((entries) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">56</td><td class="code">      for (const e of entries) setMeasuredW(e.contentRect.width);</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">    });</td></tr>
+<tr class="unc"><td class="ln">58</td><td class="code">    ro.observe(el);</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">    return () =&gt; ro.disconnect();</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">  }, [width]);</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">  const renderW = width !== undefined ? width : measuredW;</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">  const scale = renderW / slideW;</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">  // Fixed: explicit box. Responsive: fill width, height from the deck ratio</td></tr>
+<tr class="nil"><td class="ln">65</td><td class="code">  // (set even before measuring so the box doesn&#x27;t collapse on first paint).</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">  const outerStyle: React.CSSProperties = width !== undefined</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">    ? { width, height: slideH * scale }</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">    : { width: &#x27;100%&#x27;, aspectRatio: `${slideW} / ${slideH}` };</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">  return (</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">    &lt;div ref={ref} className=&quot;slide-thumb-clip&quot; style={{ ...outerStyle, position: &#x27;relative&#x27; }}&gt;</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">      {renderW &gt; 0 &amp;&amp; (</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">        &lt;div className=&quot;slide-thumb-render&quot; style={{</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">          width: slideW, height: slideH,</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code">          transform: `scale(${scale})`, transformOrigin: &#x27;top left&#x27;,</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">          position: &#x27;absolute&#x27;, top: 0, left: 0,</td></tr>
+<tr class="nil"><td class="ln">77</td><td class="code">          background: resolveTheme(presentation.theme, slide.theme).background,</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code">        }}&gt;</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code">          {slide.elements.map((el) =&gt; (</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">            &lt;ThumbElement key={el.id} element={el} slide={slide} presentation={presentation} imageTier={imageTier} /&gt;</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code">          ))}</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">      )}</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code">    &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">87</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code">function ThumbElement({ element: el, slide, presentation, imageTier }: {</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">  element: SlideElement; slide: Slide; presentation: Presentation; imageTier: number;</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">}) {</td></tr>
+<tr class="cov"><td class="ln">91</td><td class="code">  switch (el.type) {</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">    case &#x27;text&#x27;:</td></tr>
+<tr class="cov"><td class="ln">93</td><td class="code">      return (</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">        &lt;TextElementSvg element={el} slide={slide}</td></tr>
+<tr class="cov"><td class="ln">95</td><td class="code">          presentationTheme={presentation.theme} presentationConfig={presentation.config} /&gt;</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">      );</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code">    case &#x27;image&#x27;:</td></tr>
+<tr class="unc"><td class="ln">98</td><td class="code">      return &lt;ThumbImage element={el} imageTier={imageTier} /&gt;;</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">    case &#x27;arrow&#x27;: {</td></tr>
+<tr class="cov"><td class="ln">100</td><td class="code">      const a = describeArrow(el, resolveTheme(presentation.theme, slide.theme));</td></tr>
+<tr class="cov"><td class="ln">101</td><td class="code">      return (</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">        &lt;svg style={{ position: &#x27;absolute&#x27;, top: 0, left: 0, width: &#x27;100%&#x27;, height: &#x27;100%&#x27;, pointerEvents: &#x27;none&#x27;, overflow: &#x27;visible&#x27; }}&gt;</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">          &lt;ArrowGlyph geo={a.geo} color={a.color} strokeWidth={a.strokeWidth} opacity={a.opacity} /&gt;</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">        &lt;/svg&gt;</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">      );</td></tr>
+<tr class="nil"><td class="ln">106</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">    case &#x27;demo&#x27;:</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">    case &#x27;demo-piece&#x27;:</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">    case &#x27;notebook&#x27;:</td></tr>
+<tr class="unc"><td class="ln">110</td><td class="code">      return &lt;ThumbPreview element={el} /&gt;;</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">    case &#x27;html&#x27;: {</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">      // Static + locked (no script/network) → render the real thing for a true</td></tr>
+<tr class="nil"><td class="ln">113</td><td class="code">      // mini-preview; it scales with the thumbnail&#x27;s CSS transform.</td></tr>
+<tr class="cov"><td class="ln">114</td><td class="code">      const p = el.position;</td></tr>
+<tr class="cov"><td class="ln">115</td><td class="code">      const htmlTheme = resolveTheme(presentation.theme, slide.theme);</td></tr>
+<tr class="cov"><td class="ln">116</td><td class="code">      if (htmlIsScaled(el)) {</td></tr>
+<tr class="unc"><td class="ln">117</td><td class="code">        const L = htmlScaleLayout(p.width, p.height, el.scaleW!, el.scaleH!);</td></tr>
+<tr class="cov"><td class="ln">118</td><td class="code">        return (</td></tr>
+<tr class="cov"><td class="ln">119</td><td class="code">          &lt;div style={{ position: &#x27;absolute&#x27;, left: p.x, top: p.y, width: p.width, height: p.height, overflow: &#x27;hidden&#x27; }}&gt;</td></tr>
+<tr class="cov"><td class="ln">120</td><td class="code">            &lt;iframe title=&quot;HTML element&quot; srcDoc={htmlElementSrcdoc(el.html, el.background, el.vars, htmlTheme)}</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code">              sandbox={HTML_SANDBOX_LOCKED} scrolling=&quot;no&quot; style={{</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">                position: &#x27;absolute&#x27;, left: 0, top: 0, width: L.designW, height: L.designH,</td></tr>
+<tr class="unc"><td class="ln">123</td><td class="code">                border: &#x27;none&#x27;, background: &#x27;transparent&#x27;, pointerEvents: &#x27;none&#x27;,</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">                transform: `translate(${L.offsetX}px, ${L.offsetY}px) scale(${L.scale})`,</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code">                transformOrigin: &#x27;top left&#x27;,</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">              }} /&gt;</td></tr>
+<tr class="cov"><td class="ln">127</td><td class="code">          &lt;/div&gt;</td></tr>
+<tr class="cov"><td class="ln">128</td><td class="code">        );</td></tr>
+<tr class="cov"><td class="ln">129</td><td class="code">      }</td></tr>
+<tr class="cov"><td class="ln">130</td><td class="code">      return (</td></tr>
+<tr class="cov"><td class="ln">131</td><td class="code">        &lt;iframe title=&quot;HTML element&quot; srcDoc={htmlElementSrcdoc(el.html, el.background, el.vars, htmlTheme)}</td></tr>
+<tr class="nil"><td class="ln">132</td><td class="code">          sandbox={HTML_SANDBOX_LOCKED} scrolling=&quot;no&quot; style={{</td></tr>
+<tr class="nil"><td class="ln">133</td><td class="code">            position: &#x27;absolute&#x27;, left: p.x, top: p.y, width: p.width, height: p.height,</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">            border: &#x27;none&#x27;, background: &#x27;transparent&#x27;, pointerEvents: &#x27;none&#x27;,</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">          }} /&gt;</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">      );</td></tr>
+<tr class="nil"><td class="ln">137</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">    case &#x27;video&#x27;:</td></tr>
+<tr class="unc"><td class="ln">139</td><td class="code">      return &lt;ThumbVideo element={el} /&gt;;</td></tr>
+<tr class="nil"><td class="ln">140</td><td class="code">    case &#x27;cover&#x27;: {</td></tr>
+<tr class="nil"><td class="ln">141</td><td class="code">      // Match the slide background (it&#x27;s a reveal mask) — no border, so the</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">      // static render matches the live slide / speaker view. Explicit color wins.</td></tr>
+<tr class="cov"><td class="ln">143</td><td class="code">      const tt = resolveTheme(presentation.theme, slide.theme);</td></tr>
+<tr class="cov"><td class="ln">144</td><td class="code">      const d = describeCover(el, tt.background, tt);</td></tr>
+<tr class="cov"><td class="ln">145</td><td class="code">      return &lt;CoverView box={d.box} background={d.background} /&gt;;</td></tr>
+<tr class="nil"><td class="ln">146</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">147</td><td class="code">    default:</td></tr>
+<tr class="cov"><td class="ln">148</td><td class="code">      return null;</td></tr>
+<tr class="cov"><td class="ln">149</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">150</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">151</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">152</td><td class="code">function ThumbImage({ element, imageTier }: { element: Extract&lt;SlideElement, { type: &#x27;image&#x27; }&gt;; imageTier: number }) {</td></tr>
+<tr class="cov"><td class="ln">153</td><td class="code">  const p = element.position;</td></tr>
+<tr class="unc"><td class="ln">154</td><td class="code">  const kind = element.kind ?? &#x27;raster&#x27;;</td></tr>
+<tr class="unc"><td class="ln">155</td><td class="code">  const url = useRenderedAsset(element.assetId, kind, imageTier, imageTier, element.snapshotVariant);</td></tr>
+<tr class="cov"><td class="ln">156</td><td class="code">  useAssetFileWatcher(element.assetId, element.id);</td></tr>
+<tr class="cov"><td class="ln">157</td><td class="code">  return (</td></tr>
+<tr class="cov"><td class="ln">158</td><td class="code">    &lt;div style={{</td></tr>
+<tr class="cov"><td class="ln">159</td><td class="code">      position: &#x27;absolute&#x27;, left: p.x, top: p.y, width: p.width, height: p.height, overflow: &#x27;hidden&#x27;,</td></tr>
+<tr class="nil"><td class="ln">160</td><td class="code">      background: url ? &#x27;transparent&#x27; : &#x27;#f0f0f0&#x27;, border: url ? &#x27;none&#x27; : &#x27;1px solid #ddd&#x27;, borderRadius: 2,</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">      display: &#x27;flex&#x27;, alignItems: &#x27;center&#x27;, justifyContent: &#x27;center&#x27;,</td></tr>
+<tr class="nil"><td class="ln">162</td><td class="code">    }}&gt;</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">      {url ? &lt;img src={url} alt=&quot;&quot; style={{ width: &#x27;100%&#x27;, height: &#x27;100%&#x27;, objectFit: &#x27;contain&#x27;, ...imageVisualStyle(element) }} /&gt;</td></tr>
+<tr class="nil"><td class="ln">164</td><td class="code">        : &lt;span style={{ fontSize: 24, color: &#x27;#aaa&#x27; }}&gt;IMG&lt;/span&gt;}</td></tr>
+<tr class="nil"><td class="ln">165</td><td class="code">    &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">166</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">167</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">168</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">169</td><td class="code">// demo / demo-piece / notebook all render as a cached-preview image with a</td></tr>
+<tr class="nil"><td class="ln">170</td><td class="code">// typed placeholder fallback in an identical positioned box. The placeholder</td></tr>
+<tr class="nil"><td class="ln">171</td><td class="code">// identity comes from ELEMENT_PLACEHOLDERS; notebook fills big with no border,</td></tr>
+<tr class="nil"><td class="ln">172</td><td class="code">// demo/demo-piece are smaller dashed boxes; demo-piece shows the piece name.</td></tr>
+<tr class="nil"><td class="ln">173</td><td class="code">function ThumbPreview({ element }: { element: Extract&lt;SlideElement, { type: &#x27;demo&#x27; | &#x27;demo-piece&#x27; | &#x27;notebook&#x27; }&gt; }) {</td></tr>
+<tr class="unc"><td class="ln">174</td><td class="code">  const p = element.position;</td></tr>
+<tr class="unc"><td class="ln">175</td><td class="code">  useAssetFileWatcher(element.assetId, element.id);</td></tr>
+<tr class="unc"><td class="ln">176</td><td class="code">  const spec = PH[element.type];</td></tr>
+<tr class="unc"><td class="ln">177</td><td class="code">  const isNb = element.type === &#x27;notebook&#x27;;</td></tr>
+<tr class="unc"><td class="ln">178</td><td class="code">  const fontSize = isNb ? 64 : element.type === &#x27;demo&#x27; ? 20 : 16;</td></tr>
+<tr class="unc"><td class="ln">179</td><td class="code">  const label = element.type === &#x27;demo-piece&#x27; ? element.piece : spec.label;</td></tr>
+<tr class="nil"><td class="ln">180</td><td class="code">  // Demos capture TRANSPARENT now (#111): keep the wrapper transparent so the</td></tr>
+<tr class="nil"><td class="ln">181</td><td class="code">  // slide background (from the thumb-render div) and any elements beneath the demo</td></tr>
+<tr class="nil"><td class="ln">182</td><td class="code">  // show through, matching the live slide. (Notebooks keep their white card.)</td></tr>
+<tr class="unc"><td class="ln">183</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">184</td><td class="code">    &lt;div style={{ position: &#x27;absolute&#x27;, left: p.x, top: p.y, width: p.width, height: p.height, overflow: &#x27;hidden&#x27;, background: isNb ? &#x27;#fff&#x27; : &#x27;transparent&#x27; }}&gt;</td></tr>
+<tr class="nil"><td class="ln">185</td><td class="code">      &lt;ElementPreviewImg cacheKey={element.syncId ?? element.id} fallback={</td></tr>
+<tr class="nil"><td class="ln">186</td><td class="code">        &lt;div style={{ width: &#x27;100%&#x27;, height: &#x27;100%&#x27;, display: &#x27;flex&#x27;, alignItems: &#x27;center&#x27;, justifyContent: &#x27;center&#x27;, fontSize, color: spec.color, background: spec.bg, ...(isNb ? {} : { border: `1px dashed ${spec.borderColor}` }) }}&gt;{label}&lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">187</td><td class="code">      } /&gt;</td></tr>
+<tr class="nil"><td class="ln">188</td><td class="code">    &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">189</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">190</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">191</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">192</td><td class="code">function ThumbVideo({ element }: { element: Extract&lt;SlideElement, { type: &#x27;video&#x27; }&gt; }) {</td></tr>
+<tr class="unc"><td class="ln">193</td><td class="code">  const p = element.position;</td></tr>
+<tr class="unc"><td class="ln">194</td><td class="code">  useAssetFileWatcher(element.assetId, element.id);</td></tr>
+<tr class="unc"><td class="ln">195</td><td class="code">  useAssetFileWatcher(element.captionsAssetId, element.id);</td></tr>
+<tr class="unc"><td class="ln">196</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">197</td><td class="code">    &lt;div style={{ position: &#x27;absolute&#x27;, left: p.x, top: p.y, width: p.width, height: p.height, overflow: &#x27;hidden&#x27;, background: &#x27;#000&#x27; }}&gt;</td></tr>
+<tr class="nil"><td class="ln">198</td><td class="code">      &lt;VideoThumb element={element} /&gt;</td></tr>
+<tr class="nil"><td class="ln">199</td><td class="code">    &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">200</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">201</td><td class="code">}</td></tr></table>
+</body></html>

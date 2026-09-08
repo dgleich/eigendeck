@@ -1,0 +1,281 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/components/LinkOverlay.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/components/LinkOverlay.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>71%</b> covered</span>
+    <span class="stat">83/117 executable</span>
+    <span class="stat unc-txt">34 uncovered</span>
+    <span class="stat">263 raw lines</span>
+    <span class="stat">0.62% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:31.559%"></span><span class="seg unc" style="width:12.928%"></span><span class="seg nil" style="width:55.513%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__components__ArrowGlyph_tsx.html">ArrowGlyph.tsx</a> <a href="src__components__ElementPreviewImg_tsx.html">ElementPreviewImg.tsx</a> <a href="src__components__VideoThumb_tsx.html">VideoThumb.tsx</a> <a href="src__lib__arrowGeometry_mjs.html">arrowGeometry.mjs</a> <a href="src__lib__elementDescriptor_mjs.html">elementDescriptor.mjs</a> <a href="src__lib__elementPlaceholders_mjs.html">elementPlaceholders.mjs</a> <a href="src__store__presentation_ts.html">presentation.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__App_tsx.html">App.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">import { useState, useEffect, useCallback, useRef } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">import { usePresentationStore } from &#x27;../store/presentation&#x27;;<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">import { TEXT_PRESET_STYLES, effectiveFontSize, getSlideNumber } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">import type { SlideElement } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">import { ElementPreviewImg } from &#x27;./ElementPreviewImg&#x27;;<a class="jump" href="src__components__ElementPreviewImg_tsx.html" title="src/components/ElementPreviewImg.tsx">→ ElementPreviewImg.tsx</a></td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">import { VideoThumb } from &#x27;./VideoThumb&#x27;;<a class="jump" href="src__components__VideoThumb_tsx.html" title="src/components/VideoThumb.tsx">→ VideoThumb.tsx</a></td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">import { arrowBBox } from &#x27;../lib/arrowGeometry.mjs&#x27;;<a class="jump" href="src__lib__arrowGeometry_mjs.html" title="src/lib/arrowGeometry.mjs">→ arrowGeometry.mjs</a></td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">import { ArrowGlyph } from &#x27;./ArrowGlyph&#x27;;<a class="jump" href="src__components__ArrowGlyph_tsx.html" title="src/components/ArrowGlyph.tsx">→ ArrowGlyph.tsx</a></td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">import { describeCover, describeArrow } from &#x27;../lib/elementDescriptor.mjs&#x27;;<a class="jump" href="src__lib__elementDescriptor_mjs.html" title="src/lib/elementDescriptor.mjs">→ elementDescriptor.mjs</a></td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code">import { ELEMENT_PLACEHOLDERS as PH } from &#x27;../lib/elementPlaceholders.mjs&#x27;;<a class="jump" href="src__lib__elementPlaceholders_mjs.html" title="src/lib/elementPlaceholders.mjs">→ elementPlaceholders.mjs</a></td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">const SLIDE_W = 1920;</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">const SLIDE_H = 1080;</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">interface Props {</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">  elementId: string;</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">  onClose: () =&gt; void;</td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">export function LinkOverlay({ elementId, onClose }: Props) {</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">  const { presentation, currentSlideIndex } = usePresentationStore();</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">  const [viewIndex, setViewIndex] = useState(Math.max(0, currentSlideIndex - 1));</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">24</td><td class="code">  const containerRef = useRef&lt;HTMLDivElement&gt;(null);</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">  const [slideScale, setSlideScale] = useState(0.5);</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">  const currentSlide = presentation.slides[currentSlideIndex];</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">  const sourceElement = currentSlide?.elements.find((el) =&gt; el.id === elementId);</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">30</td><td class="code">  // Scale slide to fit container</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">    const container = containerRef.current;</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">    if (!container) return;</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">    const observer = new ResizeObserver((entries) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">35</td><td class="code">      for (const entry of entries) {</td></tr>
+<tr class="unc"><td class="ln">36</td><td class="code">        const { width } = entry.contentRect;</td></tr>
+<tr class="unc"><td class="ln">37</td><td class="code">        setSlideScale(width / SLIDE_W);</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">      }</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">    });</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">    observer.observe(container);</td></tr>
+<tr class="cov"><td class="ln">41</td><td class="code">    return () =&gt; observer.disconnect();</td></tr>
+<tr class="unc"><td class="ln">42</td><td class="code">  }, []);</td></tr>
+<tr class="unc"><td class="ln">43</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">  // Navigate with arrow keys (skip current slide)</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  const navPrev = useCallback(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">    setViewIndex((i) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">      let next = i - 1;</td></tr>
+<tr class="unc"><td class="ln">48</td><td class="code">      if (next === currentSlideIndex) next--;</td></tr>
+<tr class="unc"><td class="ln">49</td><td class="code">      return Math.max(0, next);</td></tr>
+<tr class="unc"><td class="ln">50</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">  }, [currentSlideIndex]);</td></tr>
+<tr class="unc"><td class="ln">52</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">53</td><td class="code">  const navNext = useCallback(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">54</td><td class="code">    setViewIndex((i) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">55</td><td class="code">      let next = i + 1;</td></tr>
+<tr class="unc"><td class="ln">56</td><td class="code">      if (next === currentSlideIndex) next++;</td></tr>
+<tr class="unc"><td class="ln">57</td><td class="code">      return Math.min(presentation.slides.length - 1, next);</td></tr>
+<tr class="unc"><td class="ln">58</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">  }, [currentSlideIndex, presentation.slides.length]);</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">    const handleKey = (e: KeyboardEvent) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">63</td><td class="code">      if (e.key === &#x27;Escape&#x27;) { e.preventDefault(); onClose(); }</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">      if (e.key === &#x27;ArrowLeft&#x27; || e.key === &#x27;ArrowUp&#x27;) { e.preventDefault(); navPrev(); }</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">      if (e.key === &#x27;ArrowRight&#x27; || e.key === &#x27;ArrowDown&#x27;) { e.preventDefault(); navNext(); }</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">    };</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">    window.addEventListener(&#x27;keydown&#x27;, handleKey);</td></tr>
+<tr class="cov"><td class="ln">68</td><td class="code">    return () =&gt; window.removeEventListener(&#x27;keydown&#x27;, handleKey);</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">  }, [onClose, navPrev, navNext]);</td></tr>
+<tr class="unc"><td class="ln">70</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">71</td><td class="code">  // Establish an ANIMATION link to the clicked target. Non-destructive: both</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">  // elements stay separate; only a shared linkId is set. (Syncing/merging is a</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">  // deliberate, separate action — never a side effect of picking a link target.)</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">  const handleElementClick = useCallback((targetEl: SlideElement) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">75</td><td class="code">    if (!sourceElement) return;</td></tr>
+<tr class="unc"><td class="ln">76</td><td class="code">    usePresentationStore.getState().linkElements(elementId, viewIndex, targetEl.id);</td></tr>
+<tr class="unc"><td class="ln">77</td><td class="code">    onClose();</td></tr>
+<tr class="cov"><td class="ln">78</td><td class="code">  }, [sourceElement, elementId, viewIndex, onClose]);</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">  if (!sourceElement) { onClose(); return null; }</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">82</td><td class="code">  // Build the stack of slides to show (exclude current)</td></tr>
+<tr class="cov"><td class="ln">83</td><td class="code">  const otherSlides = presentation.slides</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">    .map((slide, idx) =&gt; ({ slide, idx }))</td></tr>
+<tr class="cov"><td class="ln">85</td><td class="code">    .filter(({ idx }) =&gt; idx !== currentSlideIndex);</td></tr>
+<tr class="nil"><td class="ln">86</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">87</td><td class="code">  if (otherSlides.length === 0) { onClose(); return null; }</td></tr>
+<tr class="nil"><td class="ln">88</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">89</td><td class="code">  // Clamp viewIndex</td></tr>
+<tr class="cov"><td class="ln">90</td><td class="code">  const viewSlideEntry = otherSlides.find(({ idx }) =&gt; idx === viewIndex)</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">    || otherSlides[otherSlides.length - 1];</td></tr>
+<tr class="cov"><td class="ln">92</td><td class="code">  const viewSlide = viewSlideEntry.slide;</td></tr>
+<tr class="nil"><td class="ln">93</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">94</td><td class="code">  // Build-adjusted numbers (match the sidebar/footer via getSlideNumber) + an</td></tr>
+<tr class="nil"><td class="ln">95</td><td class="code">  // orientation offset from the slide holding the element you&#x27;re linking FROM</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">  // (the &quot;link origin&quot;), so you know how far the browsed slide is (#88).</td></tr>
+<tr class="cov"><td class="ln">97</td><td class="code">  const viewNum = getSlideNumber(presentation.slides, viewSlideEntry.idx);</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">  const totalNum = getSlideNumber(presentation.slides, presentation.slides.length - 1);</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">  const originNum = getSlideNumber(presentation.slides, currentSlideIndex);</td></tr>
+<tr class="cov"><td class="ln">100</td><td class="code">  const delta = viewNum - originNum;</td></tr>
+<tr class="cov"><td class="ln">101</td><td class="code">  const orientation = delta === 0</td></tr>
+<tr class="nil"><td class="ln">102</td><td class="code">    ? &#x27;same number as the link origin&#x27;</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">    : `${Math.abs(delta)} ${Math.abs(delta) === 1 ? &#x27;slide&#x27; : &#x27;slides&#x27;} ${delta &lt; 0 ? &#x27;before&#x27; : &#x27;after&#x27;} the link origin`;</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">105</td><td class="code">  return (</td></tr>
+<tr class="nil"><td class="ln">106</td><td class="code">    &lt;div className=&quot;link-overlay&quot; onClick={onClose}&gt;</td></tr>
+<tr class="unc"><td class="ln">107</td><td class="code">      &lt;div className=&quot;link-overlay-content&quot; onClick={(e) =&gt; e.stopPropagation()}&gt;</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">        &lt;div className=&quot;link-overlay-header&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">          &lt;span&gt;Click an element on slide {viewNum} to link&lt;/span&gt;</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">          &lt;div className=&quot;link-overlay-nav&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">            &lt;button disabled={viewIndex &lt;= 0} onClick={navPrev}&gt;&amp;larr;&lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">            &lt;span&gt;Slide {viewNum} of {totalNum} · {orientation}&lt;/span&gt;</td></tr>
+<tr class="nil"><td class="ln">113</td><td class="code">            &lt;button disabled={viewIndex &gt;= presentation.slides.length - 1} onClick={navNext}&gt;&amp;rarr;&lt;/button&gt;</td></tr>
+<tr class="cov"><td class="ln">114</td><td class="code">          &lt;/div&gt;</td></tr>
+<tr class="cov"><td class="ln">115</td><td class="code">          &lt;button className=&quot;link-overlay-close&quot; onClick={onClose}&gt;Cancel&lt;/button&gt;</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code">        {/* Slide preview — scaled to fit container */}</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">        &lt;div className=&quot;link-overlay-slide-container&quot; ref={containerRef}&gt;</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">          &lt;div className=&quot;link-overlay-slide&quot; style={{</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code">            width: SLIDE_W, height: SLIDE_H,</td></tr>
+<tr class="cov"><td class="ln">122</td><td class="code">            position: &#x27;relative&#x27;, background: &#x27;#fff&#x27;,</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code">            transform: `scale(${slideScale})`,</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">            transformOrigin: &#x27;top left&#x27;,</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code">          }}&gt;</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">            {viewSlide.elements.map((el) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">              // A target is linkable only if it&#x27;s the SAME type and NOT itself</td></tr>
+<tr class="nil"><td class="ln">128</td><td class="code">              // synced. Cross-type links could later promote-sync one type over</td></tr>
+<tr class="nil"><td class="ln">129</td><td class="code">              // another (losing a notebook&#x27;s recording); a synced element can&#x27;t</td></tr>
+<tr class="nil"><td class="ln">130</td><td class="code">              // animate (it shares one position across slides). Both show dimmed</td></tr>
+<tr class="cov"><td class="ln">131</td><td class="code">              // + inert. (The L badge is likewise disabled on synced sources.)</td></tr>
+<tr class="cov"><td class="ln">132</td><td class="code">              const linkable = el.type === sourceElement.type &amp;&amp; !el.syncId;</td></tr>
+<tr class="cov"><td class="ln">133</td><td class="code">              return (</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">                &lt;LinkableElement</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">                  key={el.id}</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">                  element={el}</td></tr>
+<tr class="nil"><td class="ln">137</td><td class="code">                  linkable={linkable}</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">                  isLinked={!!(sourceElement.linkId &amp;&amp; el.linkId === sourceElement.linkId)}</td></tr>
+<tr class="cov"><td class="ln">139</td><td class="code">                  onClick={() =&gt; { if (linkable) handleElementClick(el); }}</td></tr>
+<tr class="nil"><td class="ln">140</td><td class="code">                /&gt;</td></tr>
+<tr class="nil"><td class="ln">141</td><td class="code">              );</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code">            })}</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">          &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">144</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">145</td><td class="code">      &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">146</td><td class="code">    &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">147</td><td class="code">  );</td></tr>
+<tr class="nil"><td class="ln">148</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">149</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">150</td><td class="code">function LinkableElement({ element: el, isLinked, linkable = true, onClick }: {</td></tr>
+<tr class="unc"><td class="ln">151</td><td class="code">  element: SlideElement; isLinked: boolean; linkable?: boolean; onClick: () =&gt; void;</td></tr>
+<tr class="unc"><td class="ln">152</td><td class="code">}) {</td></tr>
+<tr class="cov"><td class="ln">153</td><td class="code">  const p = el.position;</td></tr>
+<tr class="cov"><td class="ln">154</td><td class="code">  const config = usePresentationStore.getState().presentation.config;</td></tr>
+<tr class="nil"><td class="ln">155</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">156</td><td class="code">  const wrapStyle: React.CSSProperties = {</td></tr>
+<tr class="nil"><td class="ln">157</td><td class="code">    position: &#x27;absolute&#x27;,</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code">    left: p.x, top: p.y, width: p.width, height: p.height,</td></tr>
+<tr class="nil"><td class="ln">159</td><td class="code">    cursor: linkable ? &#x27;pointer&#x27; : &#x27;not-allowed&#x27;,</td></tr>
+<tr class="nil"><td class="ln">160</td><td class="code">    border: isLinked ? &#x27;4px solid #16a34a&#x27; : &#x27;4px solid transparent&#x27;,</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">    borderRadius: 4,</td></tr>
+<tr class="nil"><td class="ln">162</td><td class="code">    transition: &#x27;border-color 0.15s&#x27;,</td></tr>
+<tr class="nil"><td class="ln">163</td><td class="code">    zIndex: 10,</td></tr>
+<tr class="nil"><td class="ln">164</td><td class="code">    // Off-type targets are inert: dimmed and non-interactive (kept visible for</td></tr>
+<tr class="nil"><td class="ln">165</td><td class="code">    // spatial context so you still see what&#x27;s on the slide).</td></tr>
+<tr class="nil"><td class="ln">166</td><td class="code">    opacity: linkable ? 1 : 0.3,</td></tr>
+<tr class="nil"><td class="ln">167</td><td class="code">    pointerEvents: linkable ? &#x27;auto&#x27; : &#x27;none&#x27;,</td></tr>
+<tr class="nil"><td class="ln">168</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">169</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">170</td><td class="code">  switch (el.type) {</td></tr>
+<tr class="nil"><td class="ln">171</td><td class="code">    case &#x27;text&#x27;: {</td></tr>
+<tr class="cov"><td class="ln">172</td><td class="code">      const ps = TEXT_PRESET_STYLES[el.preset];</td></tr>
+<tr class="cov"><td class="ln">173</td><td class="code">      return (</td></tr>
+<tr class="nil"><td class="ln">174</td><td class="code">        &lt;div style={wrapStyle} onClick={onClick}</td></tr>
+<tr class="unc"><td class="ln">175</td><td class="code">          className=&quot;link-overlay-element&quot;</td></tr>
+<tr class="nil"><td class="ln">176</td><td class="code">        &gt;</td></tr>
+<tr class="nil"><td class="ln">177</td><td class="code">          &lt;div style={{</td></tr>
+<tr class="nil"><td class="ln">178</td><td class="code">            width: &#x27;100%&#x27;, height: &#x27;100%&#x27;,</td></tr>
+<tr class="nil"><td class="ln">179</td><td class="code">            fontFamily: el.fontFamily || ps.fontFamily, fontWeight: ps.fontWeight,</td></tr>
+<tr class="nil"><td class="ln">180</td><td class="code">            fontStyle: ps.fontStyle, fontSize: effectiveFontSize(el, config),</td></tr>
+<tr class="nil"><td class="ln">181</td><td class="code">            color: el.color || ps.color, lineHeight: 1.3, overflow: &#x27;hidden&#x27;, padding: &#x27;8px 12px&#x27;,</td></tr>
+<tr class="nil"><td class="ln">182</td><td class="code">            pointerEvents: &#x27;none&#x27;,</td></tr>
+<tr class="nil"><td class="ln">183</td><td class="code">          }} dangerouslySetInnerHTML={{ __html: el.html }} /&gt;</td></tr>
+<tr class="nil"><td class="ln">184</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="unc"><td class="ln">185</td><td class="code">      );</td></tr>
+<tr class="nil"><td class="ln">186</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">187</td><td class="code">    case &#x27;image&#x27;:</td></tr>
+<tr class="cov"><td class="ln">188</td><td class="code">      return (</td></tr>
+<tr class="nil"><td class="ln">189</td><td class="code">        &lt;div style={{ ...wrapStyle, background: &#x27;#f0f0f0&#x27;, display: &#x27;flex&#x27;, alignItems: &#x27;center&#x27;, justifyContent: &#x27;center&#x27;, fontSize: 48, color: &#x27;#aaa&#x27; }}</td></tr>
+<tr class="nil"><td class="ln">190</td><td class="code">          onClick={onClick} className=&quot;link-overlay-element&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">191</td><td class="code">          IMG</td></tr>
+<tr class="nil"><td class="ln">192</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">193</td><td class="code">      );</td></tr>
+<tr class="nil"><td class="ln">194</td><td class="code">    case &#x27;demo&#x27;:</td></tr>
+<tr class="cov"><td class="ln">195</td><td class="code">      return (</td></tr>
+<tr class="nil"><td class="ln">196</td><td class="code">        &lt;div style={{ ...wrapStyle, background: PH.demo.bg, border: isLinked ? &#x27;4px solid #16a34a&#x27; : `4px dashed ${PH.demo.borderColor}`, display: &#x27;flex&#x27;, alignItems: &#x27;center&#x27;, justifyContent: &#x27;center&#x27;, fontSize: 40, color: PH.demo.color }}</td></tr>
+<tr class="nil"><td class="ln">197</td><td class="code">          onClick={onClick} className=&quot;link-overlay-element&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">198</td><td class="code">          {PH.demo.label}</td></tr>
+<tr class="nil"><td class="ln">199</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">200</td><td class="code">      );</td></tr>
+<tr class="nil"><td class="ln">201</td><td class="code">    case &#x27;video&#x27;:</td></tr>
+<tr class="unc"><td class="ln">202</td><td class="code">      return (</td></tr>
+<tr class="nil"><td class="ln">203</td><td class="code">        &lt;div style={{ ...wrapStyle, background: &#x27;#000&#x27;, overflow: &#x27;hidden&#x27; }}</td></tr>
+<tr class="nil"><td class="ln">204</td><td class="code">          onClick={onClick} className=&quot;link-overlay-element&quot;&gt;</td></tr>
+<tr class="cov"><td class="ln">205</td><td class="code">          &lt;VideoThumb element={el} /&gt;</td></tr>
+<tr class="nil"><td class="ln">206</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">207</td><td class="code">      );</td></tr>
+<tr class="nil"><td class="ln">208</td><td class="code">    case &#x27;notebook&#x27;:</td></tr>
+<tr class="unc"><td class="ln">209</td><td class="code">      return (</td></tr>
+<tr class="nil"><td class="ln">210</td><td class="code">        &lt;div style={{ ...wrapStyle, background: PH.notebook.bg, border: isLinked ? &#x27;4px solid #16a34a&#x27; : `4px dashed ${PH.notebook.borderColor}`, overflow: &#x27;hidden&#x27; }}</td></tr>
+<tr class="nil"><td class="ln">211</td><td class="code">          onClick={onClick} className=&quot;link-overlay-element&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">212</td><td class="code">          &lt;ElementPreviewImg</td></tr>
+<tr class="nil"><td class="ln">213</td><td class="code">            cacheKey={el.syncId ?? el.id}</td></tr>
+<tr class="nil"><td class="ln">214</td><td class="code">            fallback={</td></tr>
+<tr class="nil"><td class="ln">215</td><td class="code">              &lt;div style={{ width: &#x27;100%&#x27;, height: &#x27;100%&#x27;, display: &#x27;flex&#x27;, alignItems: &#x27;center&#x27;, justifyContent: &#x27;center&#x27;, fontSize: 36, color: PH.notebook.color }}&gt;{PH.notebook.label}&lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">216</td><td class="code">            }</td></tr>
+<tr class="nil"><td class="ln">217</td><td class="code">          /&gt;</td></tr>
+<tr class="nil"><td class="ln">218</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">219</td><td class="code">      );</td></tr>
+<tr class="nil"><td class="ln">220</td><td class="code">    case &#x27;demo-piece&#x27;:</td></tr>
+<tr class="cov"><td class="ln">221</td><td class="code">      return (</td></tr>
+<tr class="nil"><td class="ln">222</td><td class="code">        &lt;div style={{ ...wrapStyle, background: PH[&#x27;demo-piece&#x27;].bg, border: isLinked ? &#x27;4px solid #16a34a&#x27; : `4px dashed ${PH[&#x27;demo-piece&#x27;].borderColor}`, display: &#x27;flex&#x27;, alignItems: &#x27;center&#x27;, justifyContent: &#x27;center&#x27;, fontSize: 32, color: PH[&#x27;demo-piece&#x27;].color }}</td></tr>
+<tr class="nil"><td class="ln">223</td><td class="code">          onClick={onClick} className=&quot;link-overlay-element&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">224</td><td class="code">          {el.piece}</td></tr>
+<tr class="nil"><td class="ln">225</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">226</td><td class="code">      );</td></tr>
+<tr class="nil"><td class="ln">227</td><td class="code">    case &#x27;html&#x27;:</td></tr>
+<tr class="nil"><td class="ln">228</td><td class="code">      // Link picker only needs a clickable target — a neutral labelled box (the</td></tr>
+<tr class="nil"><td class="ln">229</td><td class="code">      // real HTML iframe isn&#x27;t interactive here and isn&#x27;t worth mounting).</td></tr>
+<tr class="cov"><td class="ln">230</td><td class="code">      return (</td></tr>
+<tr class="unc"><td class="ln">231</td><td class="code">        &lt;div style={{ ...wrapStyle, background: &#x27;#eef2ff&#x27;, border: isLinked ? &#x27;4px solid #16a34a&#x27; : &#x27;4px dashed #a5b4fc&#x27;, display: &#x27;flex&#x27;, alignItems: &#x27;center&#x27;, justifyContent: &#x27;center&#x27;, fontSize: 32, color: &#x27;#6366f1&#x27; }}</td></tr>
+<tr class="nil"><td class="ln">232</td><td class="code">          onClick={onClick} className=&quot;link-overlay-element&quot;&gt;</td></tr>
+<tr class="nil"><td class="ln">233</td><td class="code">          HTML</td></tr>
+<tr class="nil"><td class="ln">234</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">235</td><td class="code">      );</td></tr>
+<tr class="nil"><td class="ln">236</td><td class="code">    case &#x27;cover&#x27;:</td></tr>
+<tr class="cov"><td class="ln">237</td><td class="code">      return (</td></tr>
+<tr class="nil"><td class="ln">238</td><td class="code">        &lt;div style={{ ...wrapStyle, background: describeCover(el, &#x27;#fff&#x27;).background, border: isLinked ? &#x27;4px solid #16a34a&#x27; : &#x27;4px solid #ddd&#x27; }}</td></tr>
+<tr class="nil"><td class="ln">239</td><td class="code">          onClick={onClick} className=&quot;link-overlay-element&quot; /&gt;</td></tr>
+<tr class="nil"><td class="ln">240</td><td class="code">      );</td></tr>
+<tr class="unc"><td class="ln">241</td><td class="code">    case &#x27;arrow&#x27;: {</td></tr>
+<tr class="cov"><td class="ln">242</td><td class="code">      const a = describeArrow(el);</td></tr>
+<tr class="cov"><td class="ln">243</td><td class="code">      const { x1, y1, x2, y2, geo, color } = a;</td></tr>
+<tr class="nil"><td class="ln">244</td><td class="code">      // Bounding-box click target — arrowBBox includes any Bézier control points</td></tr>
+<tr class="nil"><td class="ln">245</td><td class="code">      // so a curved arrow&#x27;s hit area still covers the bowed-out curve.</td></tr>
+<tr class="cov"><td class="ln">246</td><td class="code">      const { minX: bx, minY: by, maxX, maxY } = arrowBBox(x1, y1, x2, y2, a.headSize, a.heads, 30, a.c1x, a.c1y, a.c2x, a.c2y);</td></tr>
+<tr class="cov"><td class="ln">247</td><td class="code">      const bw = maxX - bx, bh = maxY - by;</td></tr>
+<tr class="cov"><td class="ln">248</td><td class="code">      return (</td></tr>
+<tr class="nil"><td class="ln">249</td><td class="code">        &lt;div style={{ position: &#x27;absolute&#x27;, left: bx, top: by, width: bw, height: bh, cursor: &#x27;pointer&#x27;, zIndex: 10 }}</td></tr>
+<tr class="unc"><td class="ln">250</td><td class="code">          onClick={onClick} className=&quot;link-overlay-element&quot;&gt;</td></tr>
+<tr class="unc"><td class="ln">251</td><td class="code">          &lt;svg width={bw} height={bh} style={{ overflow: &#x27;visible&#x27; }}&gt;</td></tr>
+<tr class="unc"><td class="ln">252</td><td class="code">            {/* fat transparent hit target follows the (un-inset) curve or line */}</td></tr>
+<tr class="unc"><td class="ln">253</td><td class="code">            {geo.curved</td></tr>
+<tr class="unc"><td class="ln">254</td><td class="code">              ? &lt;path d={geo.path} transform={`translate(${-bx} ${-by})`} fill=&quot;none&quot; stroke=&quot;transparent&quot; strokeWidth={24} style={{ pointerEvents: &#x27;stroke&#x27; }} /&gt;</td></tr>
+<tr class="nil"><td class="ln">255</td><td class="code">              : &lt;line x1={x1 - bx} y1={y1 - by} x2={x2 - bx} y2={y2 - by} stroke=&quot;transparent&quot; strokeWidth={24} style={{ pointerEvents: &#x27;stroke&#x27; }} /&gt;}</td></tr>
+<tr class="nil"><td class="ln">256</td><td class="code">            &lt;ArrowGlyph geo={geo} color={color} strokeWidth={a.strokeWidth} opacity={a.opacity} dx={bx} dy={by} /&gt;</td></tr>
+<tr class="nil"><td class="ln">257</td><td class="code">          &lt;/svg&gt;</td></tr>
+<tr class="nil"><td class="ln">258</td><td class="code">          {isLinked &amp;&amp; &lt;div style={{ position: &#x27;absolute&#x27;, inset: 0, border: &#x27;4px solid #16a34a&#x27;, borderRadius: 4 }} /&gt;}</td></tr>
+<tr class="nil"><td class="ln">259</td><td class="code">        &lt;/div&gt;</td></tr>
+<tr class="nil"><td class="ln">260</td><td class="code">      );</td></tr>
+<tr class="nil"><td class="ln">261</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">262</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">263</td><td class="code">}</td></tr></table>
+</body></html>

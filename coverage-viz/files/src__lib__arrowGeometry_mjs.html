@@ -1,0 +1,172 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/arrowGeometry.mjs · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/arrowGeometry.mjs </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">69/69 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">154 raw lines</span>
+    <span class="stat">0.36% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:44.805%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:55.195%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__htmlEscape_mjs.html">htmlEscape.mjs</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__ArrowGlyph_tsx.html">ArrowGlyph.tsx</a> <a href="src__components__LinkOverlay_tsx.html">LinkOverlay.tsx</a> <a href="src__components__PresentMode_tsx.html">PresentMode.tsx</a> <a href="src__components__PropertiesPanel_tsx.html">PropertiesPanel.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__lib__elementDescriptor_mjs.html">elementDescriptor.mjs</a> <a href="src__lib__elementHtml_mjs.html">elementHtml.mjs</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// Shared arrow geometry — used by the editor, present mode, and HTML export so</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">// the three never drift (#98). Produces:</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">//   • line endpoints pulled back to the head BASE on any headed end, so the</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code">//     stroke meets the head cleanly instead of poking through the tip; and</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//   • the head triangle(s).</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// `heads`: &#x27;end&#x27; (default) | &#x27;start&#x27; | &#x27;both&#x27; | &#x27;none&#x27;.</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">import { escAttr } from &#x27;./htmlEscape.mjs&#x27;;<a class="jump" href="src__lib__htmlEscape_mjs.html" title="src/lib/htmlEscape.mjs">→ htmlEscape.mjs</a></td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">const ARROW_HA = Math.PI / 6;   // head half-angle (30°)</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">export function arrowGeometry(x1, y1, x2, y2, headSize, heads, c1x, c1y, c2x, c2y, points) {</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">  const ha = ARROW_HA;</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">  // Cubic-Bézier control points (#129): c1 off the start, c2 off the end. When all</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">  // four are present the arrow curves; otherwise it&#x27;s a straight line (unchanged).</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">  const curved = c1x != null &amp;&amp; c1y != null &amp;&amp; c2x != null &amp;&amp; c2y != null;</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">  // Head angle at each tip = the curve TANGENT there (straight: the line dir).</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">  // end head points along c2→end; start head points OUTWARD along c1→start.</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">  const endAng = curved ? Math.atan2(y2 - c2y, x2 - c2x) : Math.atan2(y2 - y1, x2 - x1);</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">  const startAng = curved ? Math.atan2(y1 - c1y, x1 - c1x) : Math.atan2(y1 - y2, x1 - x2);</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">  const atEnd = heads !== &#x27;start&#x27; &amp;&amp; heads !== &#x27;none&#x27;;   // default/&#x27;end&#x27;/&#x27;both&#x27;</td></tr>
+<tr class="cov"><td class="ln">22</td><td class="code">  const atStart = heads === &#x27;start&#x27; || heads === &#x27;both&#x27;;</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">  // tip → base-centre distance. For an arrow shorter than the combined insets,</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">  // pulling both endpoints in would make them cross; clamp by the straight-line</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">  // length so at worst they meet (never reverse). The curved arc is longer, so</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">  // this stays conservative there.</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">  const len = Math.hypot(x2 - x1, y2 - y1);</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">  const nHeads = (atStart ? 1 : 0) + (atEnd ? 1 : 0);</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">  const inset = nHeads &gt; 0</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">    ? Math.min(headSize * Math.cos(ha), len / nHeads)</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">    : headSize * Math.cos(ha);</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">  const tri = (tx, ty, a) =&gt; [</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">    [tx, ty],</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">    [tx - headSize * Math.cos(a - ha), ty - headSize * Math.sin(a - ha)],</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">    [tx - headSize * Math.cos(a + ha), ty - headSize * Math.sin(a + ha)],</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">  ];</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">  const triangles = [];</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">  if (atEnd) triangles.push(tri(x2, y2, endAng));</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">  if (atStart) triangles.push(tri(x1, y1, startAng));</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">  // Pull each headed endpoint back to the head base ALONG its tangent — the stroke</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">  // meets the head cleanly on the curve too (keeps the control points fixed).</td></tr>
+<tr class="cov"><td class="ln">42</td><td class="code">  const ex = atEnd ? x2 - Math.cos(endAng) * inset : x2;</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">  const ey = atEnd ? y2 - Math.sin(endAng) * inset : y2;</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">  const sx = atStart ? x1 - Math.cos(startAng) * inset : x1;</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  const sy = atStart ? y1 - Math.sin(startAng) * inset : y1;</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">  if (curved) {</td></tr>
+<tr class="cov"><td class="ln">47</td><td class="code">    const pts = Array.isArray(points) ? points.filter((p) =&gt; p &amp;&amp; p.x != null &amp;&amp; p.y != null) : [];</td></tr>
+<tr class="cov"><td class="ln">48</td><td class="code">    if (pts.length === 0) {</td></tr>
+<tr class="cov"><td class="ln">49</td><td class="code">      return { curved: true, path: `M ${sx} ${sy} C ${c1x} ${c1y} ${c2x} ${c2y} ${ex} ${ey}`, triangles };</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">    // Interior interpolation points (#129): the curve passes THROUGH each point,</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">    // smoothly. The two END tangents keep coming from the user handles (c1/c2, so</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">    // the heads orient exactly as before); interior knots get automatic</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">    // Catmull-Rom tangents (T = (next − prev)/6). No handles on interior points.</td></tr>
+<tr class="cov"><td class="ln">55</td><td class="code">    const K = [{ x: sx, y: sy }, ...pts, { x: ex, y: ey }];</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">    const outC = new Array(K.length);</td></tr>
+<tr class="cov"><td class="ln">57</td><td class="code">    const inC = new Array(K.length);</td></tr>
+<tr class="cov"><td class="ln">58</td><td class="code">    outC[0] = { x: c1x, y: c1y };</td></tr>
+<tr class="cov"><td class="ln">59</td><td class="code">    inC[K.length - 1] = { x: c2x, y: c2y };</td></tr>
+<tr class="cov"><td class="ln">60</td><td class="code">    for (let i = 1; i &lt; K.length - 1; i++) {</td></tr>
+<tr class="cov"><td class="ln">61</td><td class="code">      const tx = (K[i + 1].x - K[i - 1].x) / 6, ty = (K[i + 1].y - K[i - 1].y) / 6;</td></tr>
+<tr class="cov"><td class="ln">62</td><td class="code">      outC[i] = { x: K[i].x + tx, y: K[i].y + ty };</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">      inC[i] = { x: K[i].x - tx, y: K[i].y - ty };</td></tr>
+<tr class="nil"><td class="ln">64</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">    let d = `M ${sx} ${sy}`;</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">    for (let i = 0; i &lt; K.length - 1; i++) {</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">      d += ` C ${outC[i].x} ${outC[i].y} ${inC[i + 1].x} ${inC[i + 1].y} ${K[i + 1].x} ${K[i + 1].y}`;</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">    return { curved: true, path: d, triangles };</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">  return {</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">    line: { x1: sx, y1: sy, x2: ex, y2: ey },</td></tr>
+<tr class="nil"><td class="ln">73</td><td class="code">    triangles,   // each: [[x,y],[x,y],[x,y]]</td></tr>
+<tr class="nil"><td class="ln">74</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">76</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">77</td><td class="code">/** Insert a new interior waypoint on the current curve, at the MIDPOINT of its</td></tr>
+<tr class="nil"><td class="ln">78</td><td class="code"> *  longest segment, then let the arrow re-smooth. The endpoint handles c1/c2 are</td></tr>
+<tr class="nil"><td class="ln">79</td><td class="code"> *  left UNCHANGED — the curve is allowed to change (no shape preservation, no</td></tr>
+<tr class="nil"><td class="ln">80</td><td class="code"> *  handle scaling). The new knot lands ON the existing curve (segment t = 0.5) so</td></tr>
+<tr class="nil"><td class="ln">81</td><td class="code"> *  it doesn&#x27;t jump; interior knots get Catmull-Rom auto-tangents. Returns</td></tr>
+<tr class="nil"><td class="ln">82</td><td class="code"> *  `{ points, index }`, or null if the arrow isn&#x27;t curved (the caller materialises</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code"> *  c1/c2 first for a straight arrow).</td></tr>
+<tr class="nil"><td class="ln">84</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">export function arrowInsertPoint(x1, y1, x2, y2, c1x, c1y, c2x, c2y, points) {</td></tr>
+<tr class="cov"><td class="ln">86</td><td class="code">  if (c1x == null || c1y == null || c2x == null || c2y == null) return null;</td></tr>
+<tr class="cov"><td class="ln">87</td><td class="code">  const pts = Array.isArray(points) ? points.filter((p) =&gt; p &amp;&amp; p.x != null &amp;&amp; p.y != null) : [];</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code">  const K = [{ x: x1, y: y1 }, ...pts, { x: x2, y: y2 }];</td></tr>
+<tr class="cov"><td class="ln">89</td><td class="code">  const n = K.length;</td></tr>
+<tr class="nil"><td class="ln">90</td><td class="code">  // Segment controls exactly as arrowGeometry builds them: user handles at the</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code">  // ends, Catmull-Rom auto-tangents at the interior knots.</td></tr>
+<tr class="cov"><td class="ln">92</td><td class="code">  const outC = new Array(n), inC = new Array(n);</td></tr>
+<tr class="cov"><td class="ln">93</td><td class="code">  outC[0] = { x: c1x, y: c1y };</td></tr>
+<tr class="cov"><td class="ln">94</td><td class="code">  inC[n - 1] = { x: c2x, y: c2y };</td></tr>
+<tr class="cov"><td class="ln">95</td><td class="code">  for (let i = 1; i &lt; n - 1; i++) {</td></tr>
+<tr class="cov"><td class="ln">96</td><td class="code">    const tx = (K[i + 1].x - K[i - 1].x) / 6, ty = (K[i + 1].y - K[i - 1].y) / 6;</td></tr>
+<tr class="cov"><td class="ln">97</td><td class="code">    outC[i] = { x: K[i].x + tx, y: K[i].y + ty };</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">    inC[i] = { x: K[i].x - tx, y: K[i].y - ty };</td></tr>
+<tr class="nil"><td class="ln">99</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">100</td><td class="code">  // Longest segment (chord length) hosts the new knot, at its midpoint on the curve.</td></tr>
+<tr class="cov"><td class="ln">101</td><td class="code">  let seg = 0, segLen = -1;</td></tr>
+<tr class="cov"><td class="ln">102</td><td class="code">  for (let i = 0; i &lt; n - 1; i++) {</td></tr>
+<tr class="cov"><td class="ln">103</td><td class="code">    const L = Math.hypot(K[i + 1].x - K[i].x, K[i + 1].y - K[i].y);</td></tr>
+<tr class="cov"><td class="ln">104</td><td class="code">    if (L &gt; segLen) { segLen = L; seg = i; }</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">106</td><td class="code">  const P0 = K[seg], P1 = outC[seg], P2 = inC[seg + 1], P3 = K[seg + 1];</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">  // Cubic at t = 0.5 → Bézier weights (1,3,3,1)/8.</td></tr>
+<tr class="cov"><td class="ln">108</td><td class="code">  const np = {</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">    x: Math.round((P0.x + 3 * P1.x + 3 * P2.x + P3.x) / 8),</td></tr>
+<tr class="nil"><td class="ln">110</td><td class="code">    y: Math.round((P0.y + 3 * P1.y + 3 * P2.y + P3.y) / 8),</td></tr>
+<tr class="nil"><td class="ln">111</td><td class="code">  };</td></tr>
+<tr class="cov"><td class="ln">112</td><td class="code">  const newPts = [...pts];</td></tr>
+<tr class="cov"><td class="ln">113</td><td class="code">  newPts.splice(seg, 0, np);</td></tr>
+<tr class="cov"><td class="ln">114</td><td class="code">  return { points: newPts, index: seg };</td></tr>
+<tr class="nil"><td class="ln">115</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">116</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">/** An SVG `points` string for one triangle. */</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code">export function triPoints(t) {</td></tr>
+<tr class="cov"><td class="ln">119</td><td class="code">  return t.map((p) =&gt; p[0] + &#x27;,&#x27; + p[1]).join(&#x27; &#x27;);</td></tr>
+<tr class="nil"><td class="ln">120</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">121</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">122</td><td class="code">/** SVG-STRING inner `&lt;g&gt;` for an arrow — the inset line + head polygon(s) wrapped</td></tr>
+<tr class="nil"><td class="ln">123</td><td class="code"> *  in `&lt;g [opacity]&gt;`. Shared by the HTML/string render targets (exportCore HTML</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code"> *  export + App.tsx print-to-PDF), which built this identically. The caller</td></tr>
+<tr class="nil"><td class="ln">125</td><td class="code"> *  supplies its own `&lt;svg&gt;` wrapper. */</td></tr>
+<tr class="nil"><td class="ln">126</td><td class="code">export function arrowSvgInner(geo, color, strokeWidth, opacity) {</td></tr>
+<tr class="nil"><td class="ln">127</td><td class="code">  // Escape values spliced into SVG attributes — a crafted color/strokeWidth reaching</td></tr>
+<tr class="nil"><td class="ln">128</td><td class="code">  // the exported artifact must not create a new attribute/tag (audit C-2 export). geo</td></tr>
+<tr class="nil"><td class="ln">129</td><td class="code">  // path/coords are computed numerics (a crafted coord becomes NaN, not markup), but</td></tr>
+<tr class="nil"><td class="ln">130</td><td class="code">  // escaping is uniform and cheap.</td></tr>
+<tr class="cov"><td class="ln">131</td><td class="code">  const c = escAttr(color), sw = escAttr(strokeWidth);</td></tr>
+<tr class="cov"><td class="ln">132</td><td class="code">  const op = opacity != null &amp;&amp; opacity &lt; 1 ? ` opacity=&quot;${escAttr(opacity)}&quot;` : &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">133</td><td class="code">  const stroke = geo.path</td></tr>
+<tr class="nil"><td class="ln">134</td><td class="code">    ? `&lt;path d=&quot;${escAttr(geo.path)}&quot; fill=&quot;none&quot; stroke=&quot;${c}&quot; stroke-width=&quot;${sw}&quot;/&gt;`</td></tr>
+<tr class="nil"><td class="ln">135</td><td class="code">    : `&lt;line x1=&quot;${escAttr(geo.line.x1)}&quot; y1=&quot;${escAttr(geo.line.y1)}&quot; x2=&quot;${escAttr(geo.line.x2)}&quot; y2=&quot;${escAttr(geo.line.y2)}&quot; stroke=&quot;${c}&quot; stroke-width=&quot;${sw}&quot;/&gt;`;</td></tr>
+<tr class="cov"><td class="ln">136</td><td class="code">  const heads = geo.triangles.map((t) =&gt; `&lt;polygon points=&quot;${escAttr(triPoints(t))}&quot; fill=&quot;${c}&quot;/&gt;`).join(&#x27;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">137</td><td class="code">  return `&lt;g${op}&gt;${stroke}${heads}&lt;/g&gt;`;</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">139</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">140</td><td class="code">/** Bounding box over endpoints + head corners (editor hit-area), padded. Includes</td></tr>
+<tr class="nil"><td class="ln">141</td><td class="code"> *  the Bézier control points when present — the curve stays within the convex hull</td></tr>
+<tr class="nil"><td class="ln">142</td><td class="code"> *  of {endpoints, control points}, so this bounds it. */</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">export function arrowBBox(x1, y1, x2, y2, headSize, heads, pad, c1x, c1y, c2x, c2y, points) {</td></tr>
+<tr class="cov"><td class="ln">144</td><td class="code">  const g = arrowGeometry(x1, y1, x2, y2, headSize, heads, c1x, c1y, c2x, c2y, points);</td></tr>
+<tr class="cov"><td class="ln">145</td><td class="code">  const xs = [x1, x2], ys = [y1, y2];</td></tr>
+<tr class="cov"><td class="ln">146</td><td class="code">  if (c1x != null &amp;&amp; c1y != null &amp;&amp; c2x != null &amp;&amp; c2y != null) { xs.push(c1x, c2x); ys.push(c1y, c2y); }</td></tr>
+<tr class="cov"><td class="ln">147</td><td class="code">  if (Array.isArray(points)) for (const p of points) { if (p &amp;&amp; p.x != null) { xs.push(p.x); ys.push(p.y); } }</td></tr>
+<tr class="cov"><td class="ln">148</td><td class="code">  for (const t of g.triangles) for (const p of t) { xs.push(p[0]); ys.push(p[1]); }</td></tr>
+<tr class="cov"><td class="ln">149</td><td class="code">  pad = pad || 0;</td></tr>
+<tr class="cov"><td class="ln">150</td><td class="code">  return {</td></tr>
+<tr class="nil"><td class="ln">151</td><td class="code">    minX: Math.min(...xs) - pad, minY: Math.min(...ys) - pad,</td></tr>
+<tr class="nil"><td class="ln">152</td><td class="code">    maxX: Math.max(...xs) + pad, maxY: Math.max(...ys) + pad,</td></tr>
+<tr class="nil"><td class="ln">153</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">154</td><td class="code">}</td></tr></table>
+</body></html>

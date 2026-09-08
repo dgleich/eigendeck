@@ -1,0 +1,65 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/assetCachePreview.mjs · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/assetCachePreview.mjs </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">13/13 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">47 raw lines</span>
+    <span class="stat">0.11% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:27.660%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:72.340%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__export-cli_ts.html">export-cli.ts</a> <a href="src__store__fileOps_ts.html">fileOps.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code"> * Pure helpers for resolving an element&#x27;s cached preview PNG out of the</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code"> * asset_cache table. Shared by the app export (src/store/fileOps.ts) and the</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code"> * headless CLI export (src/export-cli.ts) so the two paths can&#x27;t drift, and so</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code"> * the logic is unit-testable without a Tauri backend (#85).</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">/** PNG bytes → base64 data: URL. Inlined into exported HTML, where a blob: URL</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code"> *  wouldn&#x27;t survive in the written file. Chunked to avoid blowing the argument</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code"> *  limit of String.fromCharCode on large images. */</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">export function pngBytesToDataUrl(bytes) {</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">  let binary = &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">  for (let k = 0; k &lt; bytes.length; k += 8192) {</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">    binary += String.fromCharCode(...bytes.slice(k, k + 8192));</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">  return `data:image/png;base64,${btoa(binary)}`;</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code"> * Map an element to its asset_cache lookup key, or null if the element type has</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code"> * no cached preview. Mirrors fileOps.getElementPreviewDataUrl / previewKey:</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code"> *   - image kind:&#x27;pdf&#x27; → the pdfium raster, keyed by assetId + snapshotVariant</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code"> *     (default &#x27;_&#x27;);</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code"> *   - notebook / video → the proactively-cached &#x27;preview&#x27;, keyed by the</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code"> *     element&#x27;s sync identity (syncId, falling back to id).</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">export function previewLookupKey(el) {</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">  if (el.type === &#x27;image&#x27; &amp;&amp; el.kind === &#x27;pdf&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">    return { sourceId: el.assetId, variant: el.snapshotVariant ?? &#x27;_&#x27; };</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">  if (el.type === &#x27;notebook&#x27; || el.type === &#x27;video&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">32</td><td class="code">    return { sourceId: el.syncId ?? el.id, variant: &#x27;preview&#x27; };</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">34</td><td class="code">  return null;</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code"> * From the asset_cache variant rows for a source, pick the largest render</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code"> * (most pixels) whose variant matches. Returns null if none match. Numeric</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code"> * compare on width*height — not a string sort — so e.g. a 1024² tier beats 512².</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">export function pickLargestVariant(variants, variant) {</td></tr>
+<tr class="cov"><td class="ln">43</td><td class="code">  const matches = (variants || []).filter((v) =&gt; v.variant === variant);</td></tr>
+<tr class="cov"><td class="ln">44</td><td class="code">  if (!matches.length) return null;</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  matches.sort((a, b) =&gt; b.width * b.height - a.width * a.height);</td></tr>
+<tr class="cov"><td class="ln">46</td><td class="code">  return matches[0];</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">}</td></tr></table>
+</body></html>

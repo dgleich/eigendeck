@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/imageVisualStyle.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/imageVisualStyle.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>100%</b> covered</span>
+    <span class="stat">4/4 executable</span>
+    <span class="stat unc-txt">0 uncovered</span>
+    <span class="stat">22 raw lines</span>
+    <span class="stat">0.05% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:18.182%"></span><span class="seg unc" style="width:0.000%"></span><span class="seg nil" style="width:81.818%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__elementDescriptor_mjs.html">elementDescriptor.mjs</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__PresentSlide_tsx.html">PresentSlide.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__components__SlideThumbnail_tsx.html">SlideThumbnail.tsx</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">import type { CSSProperties } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code">import { imageVisuals } from &#x27;./elementDescriptor.mjs&#x27;;<a class="jump" href="src__lib__elementDescriptor_mjs.html" title="src/lib/elementDescriptor.mjs">→ elementDescriptor.mjs</a></td></tr>
+<tr class="cov"><td class="ln">3</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">4</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code"> * The optional visual styles an image element carries — drop shadow, border</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code"> * radius, opacity, rotation — as a React style object. The predicates + magic</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code"> * values live once in `imageVisuals` (the descriptor, shared with the HTML</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code"> * export); this is the React-form adapter. Returns only the props that apply (so</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code"> * spreading it is a no-op when none are set), to be merged after the path&#x27;s base</td></tr>
+<tr class="nil"><td class="ln">10</td><td class="code"> * layout style.</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">export function imageVisualStyle(</td></tr>
+<tr class="nil"><td class="ln">13</td><td class="code">  el: { shadow?: boolean; borderRadius?: number; opacity?: number; rotation?: number },</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">): CSSProperties {</td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">  const v = imageVisuals(el);</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">  return {</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">    ...(v.shadow ? { filter: v.shadow } : {}),</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">    ...(v.borderRadius ? { borderRadius: v.borderRadius } : {}),</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">    ...(v.opacity != null ? { opacity: v.opacity } : {}),</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">    ...(v.transform ? { transform: v.transform } : {}),</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">}</td></tr></table>
+</body></html>

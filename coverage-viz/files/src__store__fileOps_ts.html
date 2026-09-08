@@ -1,0 +1,689 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/store/fileOps.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/store/fileOps.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>35%</b> covered</span>
+    <span class="stat">140/405 executable</span>
+    <span class="stat unc-txt">265 uncovered</span>
+    <span class="stat">671 raw lines</span>
+    <span class="stat">1.57% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:20.864%"></span><span class="seg unc" style="width:39.493%"></span><span class="seg nil" style="width:39.642%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__components__TextElementSvg_tsx.html">TextElementSvg.tsx</a> <a href="src__lib__assetCache_ts.html">assetCache.ts</a> <a href="src__lib__assetCachePreview_mjs.html">assetCachePreview.mjs</a> <a href="src__lib__assetRenderer_ts.html">assetRenderer.ts</a> <a href="src__lib__demoThemeInject_ts.html">demoThemeInject.ts</a> <a href="src__lib__exportCore_mjs.html">exportCore.mjs</a> <a href="src__lib__nativeFs_ts.html">nativeFs.ts</a> <a href="src__lib__normalizePresentation_ts.html">normalizePresentation.ts</a> <a href="src__lib__notebookExport_tsx.html">notebookExport.tsx</a> <a href="src__lib__preferences_ts.html">preferences.ts</a> <a href="src__lib__previewCache_ts.html">previewCache.ts</a> <a href="src__lib__printLayer_ts.html">printLayer.ts</a> <a href="src__lib__printSlideHtml_ts.html">printSlideHtml.ts</a> <a href="src__lib__securityReport_ts.html">securityReport.ts</a> <a href="src__lib__securityWindow_ts.html">securityWindow.ts</a> <a href="src__lib__themes_ts.html">themes.ts</a> <a href="src__lib__toasts_ts.html">toasts.ts</a> <a href="src__lib__trustStore_ts.html">trustStore.ts</a> <a href="src__lib__watcherRegistry_ts.html">watcherRegistry.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__AssetSection_tsx.html">AssetSection.tsx</a> <a href="src__components__WelcomeWindow_tsx.html">WelcomeWindow.tsx</a> <a href="src__debug__batchExportHtml_ts.html">batchExportHtml.ts</a> <a href="src__lib__assetInsert_ts.html">assetInsert.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code"> * File operations — SQLite (.eigendeck) only.</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code"> * No JSON directory support. Convert old presentations via:</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code"> *   eigendeck-cli new.eigendeck import json old/presentation.json</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code"> */</td></tr>
+<tr class="unc"><td class="ln">7</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">8</td><td class="code">import { save, message } from &#x27;@tauri-apps/plugin-dialog&#x27;;</td></tr>
+<tr class="unc"><td class="ln">9</td><td class="code">import { invoke } from &#x27;@tauri-apps/api/core&#x27;;</td></tr>
+<tr class="unc"><td class="ln">10</td><td class="code">import { Presentation } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="unc"><td class="ln">11</td><td class="code">import { usePresentationStore, getDeckToken, openSqliteProject, flushToSqlite, createSeededPresentation } from &#x27;./presentation&#x27;;<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">import { getPreference } from &#x27;../lib/preferences&#x27;;<a class="jump" href="src__lib__preferences_ts.html" title="src/lib/preferences.ts">→ preferences.ts</a></td></tr>
+<tr class="unc"><td class="ln">13</td><td class="code">import { showToast } from &#x27;../lib/toasts&#x27;;<a class="jump" href="src__lib__toasts_ts.html" title="src/lib/toasts.ts">→ toasts.ts</a></td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code"> * File → New / scratch: mark a freshly-CREATED local deck trusted for asset</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code"> * watching — but only when global watching is on (off = PowerPoint model, so trust</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code"> * is moot). Trust attaches ONLY here, never on Save/Save-As of a received deck (see</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code"> * docs/ASSETS-SECURITY.md). Best-effort; never throws.</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">async function markNewDeckTrusted(presentation: Presentation): Promise&lt;void&gt; {</td></tr>
+<tr class="unc"><td class="ln">23</td><td class="code">  const token = presentation.config.deckToken;</td></tr>
+<tr class="unc"><td class="ln">24</td><td class="code">  if (!token || !getPreference(&#x27;autoReloadAssets&#x27;)) return;</td></tr>
+<tr class="unc"><td class="ln">25</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">26</td><td class="code">    const { createTrustedDeck } = await import(&#x27;../lib/trustStore&#x27;);<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
+<tr class="unc"><td class="ln">27</td><td class="code">    await createTrustedDeck(token);</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">29</td><td class="code">    console.warn(&#x27;[create] markNewDeckTrusted failed (non-fatal):&#x27;, e);</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">// @ts-ignore — pure JS module shared with the CLI tool</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code">import { buildExportHtml, parseEigendeckSource, extractEigendeckDeckJson } from &#x27;../lib/exportCore.mjs&#x27;;<a class="jump" href="src__lib__exportCore_mjs.html" title="src/lib/exportCore.mjs">→ exportCore.mjs</a></td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">import { normalizeUntrustedPresentation } from &#x27;../lib/normalizePresentation&#x27;;<a class="jump" href="src__lib__normalizePresentation_ts.html" title="src/lib/normalizePresentation.ts">→ normalizePresentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">import { readTextFileNative, writeTextFileNative, existsNative, mkdirNative } from &#x27;../lib/nativeFs&#x27;;<a class="jump" href="src__lib__nativeFs_ts.html" title="src/lib/nativeFs.ts">→ nativeFs.ts</a></td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">import {</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">  fontForPreset, fontFamilyForPreset, buildEmbeddedFontFacesCSS, resolveMonoFontPackage,</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">} from &#x27;../lib/fonts&#x27;;</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">import {</td></tr>
+<tr class="unc"><td class="ln">40</td><td class="code">  renderMathInHtml as renderMathPerBundle,</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">} from &#x27;../lib/mathjaxRenderer&#x27;;</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">import { TEXT_PRESET_STYLES, effectiveFontSize, resolveColor } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">import { resolveTheme, themeColorForPreset } from &#x27;../lib/themes&#x27;;<a class="jump" href="src__lib__themes_ts.html" title="src/lib/themes.ts">→ themes.ts</a></td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">import { buildTextElementSvgMarkup } from &#x27;../components/TextElementSvg&#x27;;<a class="jump" href="src__components__TextElementSvg_tsx.html" title="src/components/TextElementSvg.tsx">→ TextElementSvg.tsx</a></td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">import { demoVarsCssForSlide } from &#x27;../lib/demoThemeInject&#x27;;<a class="jump" href="src__lib__demoThemeInject_ts.html" title="src/lib/demoThemeInject.ts">→ demoThemeInject.ts</a></td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">import { previewKey, loadPreviewDataUrl } from &#x27;../lib/previewCache&#x27;;<a class="jump" href="src__lib__previewCache_ts.html" title="src/lib/previewCache.ts">→ previewCache.ts</a></td></tr>
+<tr class="unc"><td class="ln">47</td><td class="code">import { pngBytesToDataUrl } from &#x27;../lib/assetCachePreview.mjs&#x27;;<a class="jump" href="src__lib__assetCachePreview_mjs.html" title="src/lib/assetCachePreview.mjs">→ assetCachePreview.mjs</a></td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">import { ASSET_TIER } from &#x27;../lib/assetCache&#x27;;<a class="jump" href="src__lib__assetCache_ts.html" title="src/lib/assetCache.ts">→ assetCache.ts</a></td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">import { renderAsset } from &#x27;../lib/assetRenderer&#x27;;<a class="jump" href="src__lib__assetRenderer_ts.html" title="src/lib/assetRenderer.ts">→ assetRenderer.ts</a></td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">import type { TextElement, Slide, SlideElement, NotebookElement } from &#x27;../types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">import { renderNotebookElementHtml } from &#x27;../lib/notebookExport&#x27;;<a class="jump" href="src__lib__notebookExport_tsx.html" title="src/lib/notebookExport.tsx">→ notebookExport.tsx</a></td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">53</td><td class="code">/**</td></tr>
+<tr class="unc"><td class="ln">54</td><td class="code"> * Resolve an element&#x27;s preview PNG to a base64 data: URL for export, mirroring</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code"> * what the static on-screen renderer (SlideThumbnail) shows:</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code"> *   - image kind:&#x27;pdf&#x27; → the pdfium-rasterized PNG (asset_cache &#x27;_&#x27;, rendered</td></tr>
+<tr class="cov"><td class="ln">57</td><td class="code"> *     on demand if not yet cached);</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code"> *   - notebook / video  → the proactively-cached preview PNG (asset_cache</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code"> *     &#x27;preview&#x27;, keyed by the element&#x27;s sync identity).</td></tr>
+<tr class="unc"><td class="ln">60</td><td class="code"> * Returns null on a miss (caller falls back to a placeholder).</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code"> */</td></tr>
+<tr class="unc"><td class="ln">62</td><td class="code">async function getElementPreviewDataUrl(el: SlideElement): Promise&lt;string | null&gt; {</td></tr>
+<tr class="unc"><td class="ln">63</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">64</td><td class="code">    if (el.type === &#x27;image&#x27; &amp;&amp; el.kind === &#x27;pdf&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">      // Render (or cache-hit) the PDF&#x27;s first page at the full tier, then read</td></tr>
+<tr class="cov"><td class="ln">66</td><td class="code">      // the cached PNG bytes back as a data URL. renderAsset returns a blob</td></tr>
+<tr class="cov"><td class="ln">67</td><td class="code">      // URL; we want bytes that embed in the file, so read the cache directly.</td></tr>
+<tr class="cov"><td class="ln">68</td><td class="code">      await renderAsset({</td></tr>
+<tr class="cov"><td class="ln">69</td><td class="code">        assetId: el.assetId, kind: &#x27;pdf&#x27;,</td></tr>
+<tr class="nil"><td class="ln">70</td><td class="code">        variant: el.snapshotVariant ?? &#x27;_&#x27;,</td></tr>
+<tr class="cov"><td class="ln">71</td><td class="code">        maxWidth: ASSET_TIER.full, maxHeight: ASSET_TIER.full,</td></tr>
+<tr class="nil"><td class="ln">72</td><td class="code">      });</td></tr>
+<tr class="unc"><td class="ln">73</td><td class="code">      const buf = await invoke&lt;ArrayBuffer&gt;(&#x27;db_get_asset_cache_bytes&#x27;, {</td></tr>
+<tr class="unc"><td class="ln">74</td><td class="code">        sourceId: el.assetId, variant: el.snapshotVariant ?? &#x27;_&#x27;,</td></tr>
+<tr class="nil"><td class="ln">75</td><td class="code">        width: ASSET_TIER.full, height: ASSET_TIER.full,</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code">      });</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">      const bytes = new Uint8Array(buf);</td></tr>
+<tr class="unc"><td class="ln">78</td><td class="code">      return bytes.length ? pngBytesToDataUrl(bytes) : null;</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">    if (el.type === &#x27;notebook&#x27; || el.type === &#x27;video&#x27;) {</td></tr>
+<tr class="unc"><td class="ln">81</td><td class="code">      return await loadPreviewDataUrl(previewKey(el));</td></tr>
+<tr class="unc"><td class="ln">82</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">83</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">84</td><td class="code">    console.warn(&#x27;getElementPreviewDataUrl failed:&#x27;, e);</td></tr>
+<tr class="nil"><td class="ln">85</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">86</td><td class="code">  return null;</td></tr>
+<tr class="cov"><td class="ln">87</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">89</td><td class="code">/** Asset-bytes resolver for the notebook export builder. Handles two</td></tr>
+<tr class="cov"><td class="ln">90</td><td class="code"> *  kinds of keys:</td></tr>
+<tr class="nil"><td class="ln">91</td><td class="code"> *   - a normal asset id (the .ipynb) → db_get_asset_by_id;</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code"> *   - the `overlay-&lt;elementKey&gt;` convention the builder uses to ask for a</td></tr>
+<tr class="unc"><td class="ln">93</td><td class="code"> *     notebook&#x27;s recording overlay → resolve the element&#x27;s OWNED overlay</td></tr>
+<tr class="unc"><td class="ln">94</td><td class="code"> *     asset id (db_get_owned_asset_id, the same lookup useOverlay does)</td></tr>
+<tr class="unc"><td class="ln">95</td><td class="code"> *     and fetch that, so legacy/random overlay ids still resolve.</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code"> *  Throws on a miss (the builder treats that as &quot;no overlay&quot; / fails the</td></tr>
+<tr class="nil"><td class="ln">97</td><td class="code"> *  whole notebook → caller falls back to the PNG). */</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">async function getNotebookAssetBytes(assetId: string): Promise&lt;ArrayBuffer&gt; {</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">  if (assetId.startsWith(&#x27;overlay-&#x27;)) {</td></tr>
+<tr class="cov"><td class="ln">100</td><td class="code">    const ownerElementId = assetId.slice(&#x27;overlay-&#x27;.length);</td></tr>
+<tr class="unc"><td class="ln">101</td><td class="code">    const ownedId = await invoke&lt;string | null&gt;(&#x27;db_get_owned_asset_id&#x27;, { ownerElementId });</td></tr>
+<tr class="unc"><td class="ln">102</td><td class="code">    if (!ownedId) throw new Error(`no overlay for ${ownerElementId}`);</td></tr>
+<tr class="unc"><td class="ln">103</td><td class="code">    return invoke&lt;ArrayBuffer&gt;(&#x27;db_get_asset_by_id&#x27;, { assetId: ownedId });</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">  }</td></tr>
+<tr class="unc"><td class="ln">105</td><td class="code">  return invoke&lt;ArrayBuffer&gt;(&#x27;db_get_asset_by_id&#x27;, { assetId });</td></tr>
+<tr class="unc"><td class="ln">106</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">async function showError(msg: string) {</td></tr>
+<tr class="cov"><td class="ln">109</td><td class="code">  await message(msg, { title: &#x27;Error&#x27;, kind: &#x27;error&#x27; });</td></tr>
+<tr class="unc"><td class="ln">110</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">111</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">112</td><td class="code">// ============================================================================</td></tr>
+<tr class="unc"><td class="ln">113</td><td class="code">// Recent projects (localStorage)</td></tr>
+<tr class="unc"><td class="ln">114</td><td class="code">// ============================================================================</td></tr>
+<tr class="cov"><td class="ln">115</td><td class="code">const RECENT_KEY = &#x27;eigendeck-recent-projects&#x27;;</td></tr>
+<tr class="cov"><td class="ln">116</td><td class="code">const MAX_RECENT = 10;</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">118</td><td class="code">export interface RecentProject {</td></tr>
+<tr class="nil"><td class="ln">119</td><td class="code">  path: string;</td></tr>
+<tr class="cov"><td class="ln">120</td><td class="code">  title: string;</td></tr>
+<tr class="cov"><td class="ln">121</td><td class="code">  lastOpened: string;</td></tr>
+<tr class="unc"><td class="ln">122</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">123</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">124</td><td class="code">export function getRecentProjects(): RecentProject[] {</td></tr>
+<tr class="cov"><td class="ln">125</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">126</td><td class="code">    return JSON.parse(localStorage.getItem(RECENT_KEY) || &#x27;[]&#x27;);</td></tr>
+<tr class="unc"><td class="ln">127</td><td class="code">  } catch { return []; }</td></tr>
+<tr class="cov"><td class="ln">128</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">129</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">130</td><td class="code">function addRecentProject(path: string, title: string) {</td></tr>
+<tr class="cov"><td class="ln">131</td><td class="code">  const recents = getRecentProjects().filter((r) =&gt; r.path !== path);</td></tr>
+<tr class="unc"><td class="ln">132</td><td class="code">  recents.unshift({ path, title, lastOpened: new Date().toISOString() });</td></tr>
+<tr class="unc"><td class="ln">133</td><td class="code">  if (recents.length &gt; MAX_RECENT) recents.length = MAX_RECENT;</td></tr>
+<tr class="unc"><td class="ln">134</td><td class="code">  localStorage.setItem(RECENT_KEY, JSON.stringify(recents));</td></tr>
+<tr class="unc"><td class="ln">135</td><td class="code">  syncRecentMenu();</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">137</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">export function removeRecentProject(path: string): void {</td></tr>
+<tr class="cov"><td class="ln">139</td><td class="code">  const recents = getRecentProjects().filter((r) =&gt; r.path !== path);</td></tr>
+<tr class="cov"><td class="ln">140</td><td class="code">  localStorage.setItem(RECENT_KEY, JSON.stringify(recents));</td></tr>
+<tr class="cov"><td class="ln">141</td><td class="code">  void syncRecentMenu();</td></tr>
+<tr class="unc"><td class="ln">142</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">143</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">144</td><td class="code">export async function syncRecentMenu(): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">145</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">146</td><td class="code">    const recents = getRecentProjects();</td></tr>
+<tr class="cov"><td class="ln">147</td><td class="code">    await invoke(&#x27;update_recent_menu&#x27;, { projects: recents });</td></tr>
+<tr class="unc"><td class="ln">148</td><td class="code">  } catch { /* not in Tauri or command not available */ }</td></tr>
+<tr class="unc"><td class="ln">149</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">150</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">151</td><td class="code">// ============================================================================</td></tr>
+<tr class="unc"><td class="ln">152</td><td class="code">// Open / Create / Save</td></tr>
+<tr class="unc"><td class="ln">153</td><td class="code">// ============================================================================</td></tr>
+<tr class="unc"><td class="ln">154</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">155</td><td class="code">export async function openProject(): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">156</td><td class="code">  const { open } = await import(&#x27;@tauri-apps/plugin-dialog&#x27;);</td></tr>
+<tr class="cov"><td class="ln">157</td><td class="code">  const selected = await open({</td></tr>
+<tr class="nil"><td class="ln">158</td><td class="code">    title: &#x27;Open Presentation&#x27;,</td></tr>
+<tr class="nil"><td class="ln">159</td><td class="code">    filters: [{ name: &#x27;Eigendeck&#x27;, extensions: [&#x27;eigendeck&#x27;] }],</td></tr>
+<tr class="unc"><td class="ln">160</td><td class="code">  });</td></tr>
+<tr class="cov"><td class="ln">161</td><td class="code">  if (!selected) return;</td></tr>
+<tr class="unc"><td class="ln">162</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">163</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">164</td><td class="code">    await openSqliteProject(selected as string);</td></tr>
+<tr class="unc"><td class="ln">165</td><td class="code">    const store = usePresentationStore.getState();</td></tr>
+<tr class="unc"><td class="ln">166</td><td class="code">    addRecentProject(selected as string, store.presentation.title);</td></tr>
+<tr class="unc"><td class="ln">167</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">168</td><td class="code">    await showError(`Failed to open: ${e}`);</td></tr>
+<tr class="unc"><td class="ln">169</td><td class="code">  }</td></tr>
+<tr class="unc"><td class="ln">170</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">171</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">172</td><td class="code">export async function openRecentProject(path: string): Promise&lt;void&gt; {</td></tr>
+<tr class="unc"><td class="ln">173</td><td class="code">  // A Recent entry can point at a file that was moved/deleted. Opening it anyway</td></tr>
+<tr class="unc"><td class="ln">174</td><td class="code">  // would CREATE an empty DB at that path (SQLite&#x27;s open creates the file),</td></tr>
+<tr class="unc"><td class="ln">175</td><td class="code">  // silently blanking the editor (#103). Check first: on a miss, surface an</td></tr>
+<tr class="unc"><td class="ln">176</td><td class="code">  // error, prune the dead entry, and leave the current document untouched.</td></tr>
+<tr class="cov"><td class="ln">177</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">178</td><td class="code">    if (!(await existsNative(path))) {</td></tr>
+<tr class="cov"><td class="ln">179</td><td class="code">      removeRecentProject(path);</td></tr>
+<tr class="cov"><td class="ln">180</td><td class="code">      await showError(`Can&#x27;t open &quot;${path.split(&#x27;/&#x27;).pop()}&quot; — the file no longer exists. Removed it from Recent.`);</td></tr>
+<tr class="cov"><td class="ln">181</td><td class="code">      return;</td></tr>
+<tr class="nil"><td class="ln">182</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">183</td><td class="code">  } catch { /* exists() unavailable (non-Tauri) — fall through and let open report */ }</td></tr>
+<tr class="cov"><td class="ln">184</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">185</td><td class="code">    await openSqliteProject(path);</td></tr>
+<tr class="cov"><td class="ln">186</td><td class="code">    const store = usePresentationStore.getState();</td></tr>
+<tr class="cov"><td class="ln">187</td><td class="code">    addRecentProject(path, store.presentation.title);</td></tr>
+<tr class="cov"><td class="ln">188</td><td class="code">  } catch (e) {</td></tr>
+<tr class="cov"><td class="ln">189</td><td class="code">    await showError(`Failed to open: ${e}`);</td></tr>
+<tr class="cov"><td class="ln">190</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">191</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">192</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">193</td><td class="code">export async function createProject(): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">194</td><td class="code">  const selected = await save({</td></tr>
+<tr class="nil"><td class="ln">195</td><td class="code">    title: &#x27;Create New Presentation&#x27;,</td></tr>
+<tr class="nil"><td class="ln">196</td><td class="code">    defaultPath: &#x27;Untitled.eigendeck&#x27;,</td></tr>
+<tr class="cov"><td class="ln">197</td><td class="code">    filters: [{ name: &#x27;Eigendeck&#x27;, extensions: [&#x27;eigendeck&#x27;] }],</td></tr>
+<tr class="cov"><td class="ln">198</td><td class="code">  });</td></tr>
+<tr class="cov"><td class="ln">199</td><td class="code">  if (!selected) return;</td></tr>
+<tr class="cov"><td class="ln">200</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">201</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">202</td><td class="code">    // Close previous project cleanly before creating new one</td></tr>
+<tr class="cov"><td class="ln">203</td><td class="code">    const { closeSqliteProject } = await import(&#x27;./presentation&#x27;);<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="unc"><td class="ln">204</td><td class="code">    await closeSqliteProject();</td></tr>
+<tr class="unc"><td class="ln">205</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">206</td><td class="code">    // Same seeding helper the Zustand cold-start uses — keeps the two</td></tr>
+<tr class="nil"><td class="ln">207</td><td class="code">    // &quot;fresh presentation&quot; entry points in sync.</td></tr>
+<tr class="unc"><td class="ln">208</td><td class="code">    const presentation = createSeededPresentation();</td></tr>
+<tr class="cov"><td class="ln">209</td><td class="code">    // Build the new deck in a FRESH in-memory DB, then atomically write it</td></tr>
+<tr class="cov"><td class="ln">210</td><td class="code">    // over `selected`. Never db_open() an existing file just to clear it —</td></tr>
+<tr class="cov"><td class="ln">211</td><td class="code">    // that &quot;open-dirty-then-wipe&quot; pattern caused the dca9005 stale-asset</td></tr>
+<tr class="cov"><td class="ln">212</td><td class="code">    // bug and issue #65. The atomic save replaces any old file wholesale.</td></tr>
+<tr class="cov"><td class="ln">213</td><td class="code">    await invoke(&#x27;db_open_memory&#x27;);</td></tr>
+<tr class="cov"><td class="ln">214</td><td class="code">    await invoke(&#x27;db_import_json&#x27;, { json: JSON.stringify(presentation) });</td></tr>
+<tr class="cov"><td class="ln">215</td><td class="code">    await invoke(&#x27;db_save_to_file&#x27;, { path: selected });</td></tr>
+<tr class="unc"><td class="ln">216</td><td class="code">    await openSqliteProject(selected as string);</td></tr>
+<tr class="unc"><td class="ln">217</td><td class="code">    const store = usePresentationStore.getState();</td></tr>
+<tr class="unc"><td class="ln">218</td><td class="code">    store.markClean();</td></tr>
+<tr class="unc"><td class="ln">219</td><td class="code">    addRecentProject(selected as string, presentation.title);</td></tr>
+<tr class="unc"><td class="ln">220</td><td class="code">    await markNewDeckTrusted(presentation);</td></tr>
+<tr class="nil"><td class="ln">221</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">222</td><td class="code">    await showError(`Failed to create: ${e}`);</td></tr>
+<tr class="unc"><td class="ln">223</td><td class="code">  }</td></tr>
+<tr class="unc"><td class="ln">224</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">225</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">226</td><td class="code">/**</td></tr>
+<tr class="unc"><td class="ln">227</td><td class="code"> * &quot;Just let me scribble&quot; — create a disk-anchored scratch deck in the app&#x27;s</td></tr>
+<tr class="unc"><td class="ln">228</td><td class="code"> * local-data dir without prompting for a path (#66). Still file-backed, so</td></tr>
+<tr class="nil"><td class="ln">229</td><td class="code"> * file-watching / linked assets / saves all work; the user can Save As later to</td></tr>
+<tr class="nil"><td class="ln">230</td><td class="code"> * give it a real home.</td></tr>
+<tr class="unc"><td class="ln">231</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">232</td><td class="code">export async function createScratchProject(): Promise&lt;void&gt; {</td></tr>
+<tr class="unc"><td class="ln">233</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">234</td><td class="code">    const { documentDir, join } = await import(&#x27;@tauri-apps/api/path&#x27;);</td></tr>
+<tr class="unc"><td class="ln">235</td><td class="code">    // ~/Documents/Eigendeck — a real, user-visible, cross-platform home (macOS,</td></tr>
+<tr class="nil"><td class="ln">236</td><td class="code">    // Windows, Linux XDG) so scratch decks are easy to find and keep.</td></tr>
+<tr class="cov"><td class="ln">237</td><td class="code">    const dir = await join(await documentDir(), &#x27;Eigendeck&#x27;);</td></tr>
+<tr class="cov"><td class="ln">238</td><td class="code">    await mkdirNative(dir).catch(() =&gt; { /* already exists */ });</td></tr>
+<tr class="cov"><td class="ln">239</td><td class="code">    const stamp = new Date().toISOString().slice(0, 19).replace(&#x27;T&#x27;, &#x27; &#x27;).replace(/:/g, &#x27;-&#x27;);</td></tr>
+<tr class="cov"><td class="ln">240</td><td class="code">    const title = `Scratch ${stamp}`;</td></tr>
+<tr class="cov"><td class="ln">241</td><td class="code">    const path = await join(dir, `${title}.eigendeck`);</td></tr>
+<tr class="cov"><td class="ln">242</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">243</td><td class="code">    const { closeSqliteProject } = await import(&#x27;./presentation&#x27;);<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="cov"><td class="ln">244</td><td class="code">    await closeSqliteProject();</td></tr>
+<tr class="cov"><td class="ln">245</td><td class="code">    const presentation = createSeededPresentation();</td></tr>
+<tr class="cov"><td class="ln">246</td><td class="code">    presentation.title = title;</td></tr>
+<tr class="nil"><td class="ln">247</td><td class="code">    // Build fresh in-memory, atomic-save to the scratch path, then open it</td></tr>
+<tr class="nil"><td class="ln">248</td><td class="code">    // (same model as createProject — no open-dirty-then-wipe).</td></tr>
+<tr class="unc"><td class="ln">249</td><td class="code">    await invoke(&#x27;db_open_memory&#x27;);</td></tr>
+<tr class="unc"><td class="ln">250</td><td class="code">    await invoke(&#x27;db_import_json&#x27;, { json: JSON.stringify(presentation) });</td></tr>
+<tr class="unc"><td class="ln">251</td><td class="code">    await invoke(&#x27;db_save_to_file&#x27;, { path });</td></tr>
+<tr class="unc"><td class="ln">252</td><td class="code">    await openSqliteProject(path);</td></tr>
+<tr class="unc"><td class="ln">253</td><td class="code">    usePresentationStore.getState().markClean();</td></tr>
+<tr class="unc"><td class="ln">254</td><td class="code">    addRecentProject(path, title);</td></tr>
+<tr class="unc"><td class="ln">255</td><td class="code">    await markNewDeckTrusted(presentation);</td></tr>
+<tr class="nil"><td class="ln">256</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">257</td><td class="code">    await showError(`Failed to create scratch deck: ${e}`);</td></tr>
+<tr class="unc"><td class="ln">258</td><td class="code">  }</td></tr>
+<tr class="unc"><td class="ln">259</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">260</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">261</td><td class="code">export async function saveProject(): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">262</td><td class="code">  const store = usePresentationStore.getState();</td></tr>
+<tr class="nil"><td class="ln">263</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">264</td><td class="code">  // Every editing session is now file-anchored from the start (Welcome window /</td></tr>
+<tr class="unc"><td class="ln">265</td><td class="code">  // #66), so there&#x27;s no untitled-first-save path — just flush to the open file.</td></tr>
+<tr class="unc"><td class="ln">266</td><td class="code">  // Guard in case Save is invoked before a project exists (e.g. the global</td></tr>
+<tr class="unc"><td class="ln">267</td><td class="code">  // Cmd+S handler firing on the Welcome screen).</td></tr>
+<tr class="cov"><td class="ln">268</td><td class="code">  if (!store.projectPath) return;</td></tr>
+<tr class="unc"><td class="ln">269</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">270</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">271</td><td class="code">    await flushToSqlite();</td></tr>
+<tr class="unc"><td class="ln">272</td><td class="code">    store.markClean();</td></tr>
+<tr class="unc"><td class="ln">273</td><td class="code">    // Refresh the recent-projects entry with the CURRENT title so a rename shows up</td></tr>
+<tr class="unc"><td class="ln">274</td><td class="code">    // in the recent list + native Open Recent menu on save, instead of keeping the</td></tr>
+<tr class="unc"><td class="ln">275</td><td class="code">    // open-time title until the app is reopened. Recent entries are keyed by the FULL</td></tr>
+<tr class="nil"><td class="ln">276</td><td class="code">    // .eigendeck path (store.projectPath has the extension stripped — presentation.ts),</td></tr>
+<tr class="unc"><td class="ln">277</td><td class="code">    // so re-add the extension to REPLACE the existing entry rather than duplicate it.</td></tr>
+<tr class="unc"><td class="ln">278</td><td class="code">    addRecentProject(`${store.projectPath}.eigendeck`, store.presentation.title);</td></tr>
+<tr class="unc"><td class="ln">279</td><td class="code">    void reconcileDeckApprovals();   // ledger hygiene: drop approvals for dropped assets</td></tr>
+<tr class="nil"><td class="ln">280</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">281</td><td class="code">    console.error(&#x27;Save failed:&#x27;, e);</td></tr>
+<tr class="cov"><td class="ln">282</td><td class="code">    await showError(`Failed to save: ${e}`);</td></tr>
+<tr class="cov"><td class="ln">283</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">284</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">285</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">286</td><td class="code">/**</td></tr>
+<tr class="cov"><td class="ln">287</td><td class="code"> * Ledger hygiene (docs/ASSETS-SECURITY.md): prune the trust ledger to exactly the</td></tr>
+<tr class="cov"><td class="ln">288</td><td class="code"> * deck&#x27;s CURRENT linked assets. Called on save + on open. Removing an element/asset</td></tr>
+<tr class="cov"><td class="ln">289</td><td class="code"> * (or otherwise dropping a linked source) leaves an orphaned approval; this drops it</td></tr>
+<tr class="nil"><td class="ln">290</td><td class="code"> * so a copied deck-token can never reach a path the deck no longer references. Relocate</td></tr>
+<tr class="nil"><td class="ln">291</td><td class="code"> * doesn&#x27;t need this (it re-points the asset&#x27;s approval in place), but delete/re-link do.</td></tr>
+<tr class="nil"><td class="ln">292</td><td class="code"> * No-op for an untrusted / TTL-lapsed deck (the ledger guards that too). Best-effort.</td></tr>
+<tr class="unc"><td class="ln">293</td><td class="code"> */</td></tr>
+<tr class="cov"><td class="ln">294</td><td class="code">export async function reconcileDeckApprovals(): Promise&lt;void&gt; {</td></tr>
+<tr class="unc"><td class="ln">295</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">296</td><td class="code">    const token = getDeckToken();</td></tr>
+<tr class="unc"><td class="ln">297</td><td class="code">    if (!token) return;</td></tr>
+<tr class="unc"><td class="ln">298</td><td class="code">    const { isTrusted, reconcileApprovals } = await import(&#x27;../lib/trustStore&#x27;);<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
+<tr class="unc"><td class="ln">299</td><td class="code">    if (!(await isTrusted(token))) return;</td></tr>
+<tr class="cov"><td class="ln">300</td><td class="code">    const linked = await invoke&lt;Array&lt;{ asset_id: string }&gt;&gt;(&#x27;db_list_linked_assets&#x27;).catch(() =&gt; []);</td></tr>
+<tr class="cov"><td class="ln">301</td><td class="code">    await reconcileApprovals(token, linked.map((a) =&gt; a.asset_id).filter(Boolean));</td></tr>
+<tr class="nil"><td class="ln">302</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">303</td><td class="code">    console.warn(&#x27;[reconcileDeckApprovals] failed (non-fatal):&#x27;, e);</td></tr>
+<tr class="nil"><td class="ln">304</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">305</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">306</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">307</td><td class="code">/**</td></tr>
+<tr class="cov"><td class="ln">308</td><td class="code"> * On OPEN, surface the deck&#x27;s trust status as a non-blocking, dismissible toast — never</td></tr>
+<tr class="cov"><td class="ln">309</td><td class="code"> * a modal (docs/ASSETS-SECURITY.md, &quot;default to silence&quot;). Two cases only:</td></tr>
+<tr class="cov"><td class="ln">310</td><td class="code"> *   - U-ttl (trust lapsed by the 30-day TTL) → offer one-click Re-confirm.</td></tr>
+<tr class="nil"><td class="ln">311</td><td class="code"> *   - T-Won-E (trusted + watching on + some linked files still unapproved) → offer Review.</td></tr>
+<tr class="cov"><td class="ln">312</td><td class="code"> * Silent otherwise (untrusted deck, watching off, or everything already approved).</td></tr>
+<tr class="cov"><td class="ln">313</td><td class="code"> * Open-only — NOT called on save. Best-effort.</td></tr>
+<tr class="cov"><td class="ln">314</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">315</td><td class="code">export async function notifyTrustStatusOnOpen(): Promise&lt;void&gt; {</td></tr>
+<tr class="unc"><td class="ln">316</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">317</td><td class="code">    const token = getDeckToken();</td></tr>
+<tr class="cov"><td class="ln">318</td><td class="code">    const store = usePresentationStore.getState();</td></tr>
+<tr class="cov"><td class="ln">319</td><td class="code">    if (!token) return;</td></tr>
+<tr class="unc"><td class="ln">320</td><td class="code">    const { deckState, reconfirmDeck } = await import(&#x27;../lib/trustStore&#x27;);<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
+<tr class="cov"><td class="ln">321</td><td class="code">    const state = await deckState(token);</td></tr>
+<tr class="cov"><td class="ln">322</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">323</td><td class="code">    if (state.status === &#x27;untrusted-ttl&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">324</td><td class="code">      showToast({</td></tr>
+<tr class="cov"><td class="ln">325</td><td class="code">        kind: &#x27;warning&#x27;, ttl: 12000, key: &#x27;deck-trust-ttl&#x27;,</td></tr>
+<tr class="nil"><td class="ln">326</td><td class="code">        message: &#x27;This deck’s trust expired — re-confirm to resume watching its linked files.&#x27;,</td></tr>
+<tr class="cov"><td class="ln">327</td><td class="code">        action: {</td></tr>
+<tr class="cov"><td class="ln">328</td><td class="code">          label: &#x27;Re-confirm&#x27;,</td></tr>
+<tr class="unc"><td class="ln">329</td><td class="code">          onClick: () =&gt; void (async () =&gt; {</td></tr>
+<tr class="cov"><td class="ln">330</td><td class="code">            await reconfirmDeck(token);</td></tr>
+<tr class="unc"><td class="ln">331</td><td class="code">            const { scanForChangedAssets, dirname } = await import(&#x27;../lib/watcherRegistry&#x27;);<a class="jump" href="src__lib__watcherRegistry_ts.html" title="src/lib/watcherRegistry.ts">→ watcherRegistry.ts</a></td></tr>
+<tr class="cov"><td class="ln">332</td><td class="code">            if (store.projectPath) {</td></tr>
+<tr class="unc"><td class="ln">333</td><td class="code">              const presOverride = store.presentation.config.autoReloadAssets ?? null;</td></tr>
+<tr class="cov"><td class="ln">334</td><td class="code">              await scanForChangedAssets(dirname(store.projectPath), presOverride).catch(() =&gt; {});</td></tr>
+<tr class="nil"><td class="ln">335</td><td class="code">            }</td></tr>
+<tr class="unc"><td class="ln">336</td><td class="code">            showToast({ kind: &#x27;success&#x27;, ttl: 5000, message: &#x27;Trust restored — linked files will live-update again.&#x27; });</td></tr>
+<tr class="nil"><td class="ln">337</td><td class="code">          })(),</td></tr>
+<tr class="nil"><td class="ln">338</td><td class="code">        },</td></tr>
+<tr class="nil"><td class="ln">339</td><td class="code">      });</td></tr>
+<tr class="cov"><td class="ln">340</td><td class="code">      return;</td></tr>
+<tr class="cov"><td class="ln">341</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">342</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">343</td><td class="code">    // T-Won-E: trusted + watching on + linked files still awaiting approval. This fires</td></tr>
+<tr class="unc"><td class="ln">344</td><td class="code">    // on EVERY open by design — a trusted deck referencing unreviewed content is the risk</td></tr>
+<tr class="nil"><td class="ln">345</td><td class="code">    // to keep surfacing — but the message is SCOPED to acknowledge prior behavior: NEW</td></tr>
+<tr class="cov"><td class="ln">346</td><td class="code">    // eligible paths (never surfaced before, e.g. added or a changed target) are the</td></tr>
+<tr class="cov"><td class="ln">347</td><td class="code">    // dangerous case and are called out distinctly from ones you&#x27;ve already seen.</td></tr>
+<tr class="cov"><td class="ln">348</td><td class="code">    if (state.status !== &#x27;trusted&#x27;) return;</td></tr>
+<tr class="cov"><td class="ln">349</td><td class="code">    if (!getPreference(&#x27;autoReloadAssets&#x27;) || store.presentation.config.autoReloadAssets === &#x27;off&#x27;) return;</td></tr>
+<tr class="cov"><td class="ln">350</td><td class="code">    const { buildDeckSecurityReport } = await import(&#x27;../lib/securityReport&#x27;);<a class="jump" href="src__lib__securityReport_ts.html" title="src/lib/securityReport.ts">→ securityReport.ts</a></td></tr>
+<tr class="unc"><td class="ln">351</td><td class="code">    const rep = await buildDeckSecurityReport();</td></tr>
+<tr class="cov"><td class="ln">352</td><td class="code">    const eligible = rep.rows.filter((r) =&gt; r.state === &#x27;eligible&#x27; &amp;&amp; r.resolvedPath).map((r) =&gt; r.resolvedPath as string);</td></tr>
+<tr class="unc"><td class="ln">353</td><td class="code">    if (eligible.length === 0) return;</td></tr>
+<tr class="unc"><td class="ln">354</td><td class="code">    const { noteEligibleOnOpen } = await import(&#x27;../lib/trustStore&#x27;);<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
+<tr class="unc"><td class="ln">355</td><td class="code">    const { total, newCount } = await noteEligibleOnOpen(token, eligible);</td></tr>
+<tr class="unc"><td class="ln">356</td><td class="code">    const message = newCount &gt; 0</td></tr>
+<tr class="nil"><td class="ln">357</td><td class="code">      ? `${newCount} NEW linked file${newCount === 1 ? &#x27;&#x27; : &#x27;s&#x27;} ${newCount === 1 ? &#x27;isn’t&#x27; : &#x27;aren’t&#x27;} watched — review to approve.`</td></tr>
+<tr class="nil"><td class="ln">358</td><td class="code">      : `${total} linked file${total === 1 ? &#x27;&#x27; : &#x27;s&#x27;} still ${total === 1 ? &#x27;isn’t&#x27; : &#x27;aren’t&#x27;} watched — review to approve.`;</td></tr>
+<tr class="unc"><td class="ln">359</td><td class="code">    showToast({</td></tr>
+<tr class="nil"><td class="ln">360</td><td class="code">      kind: newCount &gt; 0 ? &#x27;warning&#x27; : &#x27;info&#x27;, ttl: 12000, key: &#x27;deck-eligible-review&#x27;,</td></tr>
+<tr class="nil"><td class="ln">361</td><td class="code">      message,</td></tr>
+<tr class="unc"><td class="ln">362</td><td class="code">      action: { label: &#x27;Review&#x27;, onClick: () =&gt; void import(&#x27;../lib/securityWindow&#x27;).then((m) =&gt; m.openSecurityWindow()) },<a class="jump" href="src__lib__securityWindow_ts.html" title="src/lib/securityWindow.ts">→ securityWindow.ts</a></td></tr>
+<tr class="unc"><td class="ln">363</td><td class="code">    });</td></tr>
+<tr class="unc"><td class="ln">364</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">365</td><td class="code">    console.warn(&#x27;[notifyTrustStatusOnOpen] failed (non-fatal):&#x27;, e);</td></tr>
+<tr class="nil"><td class="ln">366</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">367</td><td class="code">}</td></tr>
+<tr class="cov"><td class="ln">368</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">369</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">370</td><td class="code"> * Save As: prompt for a new path, copy the current in-memory DB to that</td></tr>
+<tr class="nil"><td class="ln">371</td><td class="code"> * file, and switch the active project to it. The original file (if any)</td></tr>
+<tr class="nil"><td class="ln">372</td><td class="code"> * is left untouched on disk.</td></tr>
+<tr class="nil"><td class="ln">373</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">374</td><td class="code">export async function saveAsProject(): Promise&lt;void&gt; {</td></tr>
+<tr class="unc"><td class="ln">375</td><td class="code">  const store = usePresentationStore.getState();</td></tr>
+<tr class="cov"><td class="ln">376</td><td class="code">  const baseName = store.presentation.title.replace(/[^a-zA-Z0-9]/g, &#x27;-&#x27;) || &#x27;Untitled&#x27;;</td></tr>
+<tr class="nil"><td class="ln">377</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">378</td><td class="code">  const selected = await save({</td></tr>
+<tr class="nil"><td class="ln">379</td><td class="code">    title: &#x27;Save Presentation As...&#x27;,</td></tr>
+<tr class="nil"><td class="ln">380</td><td class="code">    defaultPath: `${baseName}.eigendeck`,</td></tr>
+<tr class="nil"><td class="ln">381</td><td class="code">    filters: [{ name: &#x27;Eigendeck&#x27;, extensions: [&#x27;eigendeck&#x27;] }],</td></tr>
+<tr class="nil"><td class="ln">382</td><td class="code">  });</td></tr>
+<tr class="unc"><td class="ln">383</td><td class="code">  if (!selected) return;</td></tr>
+<tr class="nil"><td class="ln">384</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">385</td><td class="code">  try {</td></tr>
+<tr class="cov"><td class="ln">386</td><td class="code">    // Self-heal in case boot-time db_open_memory hasn&#x27;t completed</td></tr>
+<tr class="cov"><td class="ln">387</td><td class="code">    // yet — no-op if a DB is already open.</td></tr>
+<tr class="cov"><td class="ln">388</td><td class="code">    await invoke(&#x27;db_open_memory&#x27;);</td></tr>
+<tr class="nil"><td class="ln">389</td><td class="code">    // Make sure the in-memory DB matches the live Zustand state before</td></tr>
+<tr class="nil"><td class="ln">390</td><td class="code">    // we serialize it to the new file.</td></tr>
+<tr class="unc"><td class="ln">391</td><td class="code">    await flushToSqlite();</td></tr>
+<tr class="nil"><td class="ln">392</td><td class="code">    // Import resets structure but PRESERVES assets — the open DB holds this</td></tr>
+<tr class="nil"><td class="ln">393</td><td class="code">    // deck&#x27;s images/PDFs/notebooks, which aren&#x27;t in the JSON (issue #65).</td></tr>
+<tr class="unc"><td class="ln">394</td><td class="code">    await invoke(&#x27;db_import_json&#x27;, { json: JSON.stringify(store.presentation) });</td></tr>
+<tr class="unc"><td class="ln">395</td><td class="code">    await invoke(&#x27;db_save_to_file&#x27;, { path: selected });</td></tr>
+<tr class="unc"><td class="ln">396</td><td class="code">    // Switch the active project to the new file going forward.</td></tr>
+<tr class="unc"><td class="ln">397</td><td class="code">    store.setProjectPath((selected as string).replace(/\.eigendeck$/, &#x27;&#x27;));</td></tr>
+<tr class="unc"><td class="ln">398</td><td class="code">    const { setSqliteDbPath } = await import(&#x27;./presentation&#x27;);<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="unc"><td class="ln">399</td><td class="code">    setSqliteDbPath(selected as string);</td></tr>
+<tr class="unc"><td class="ln">400</td><td class="code">    store.markClean();</td></tr>
+<tr class="unc"><td class="ln">401</td><td class="code">    addRecentProject(selected as string, store.presentation.title);</td></tr>
+<tr class="unc"><td class="ln">402</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">403</td><td class="code">    console.error(&#x27;Save As failed:&#x27;, e);</td></tr>
+<tr class="unc"><td class="ln">404</td><td class="code">    await showError(`Failed to save: ${e}`);</td></tr>
+<tr class="nil"><td class="ln">405</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">406</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">407</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">408</td><td class="code">// ============================================================================</td></tr>
+<tr class="unc"><td class="ln">409</td><td class="code">// Export</td></tr>
+<tr class="unc"><td class="ln">410</td><td class="code">// ============================================================================</td></tr>
+<tr class="unc"><td class="ln">411</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">412</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">413</td><td class="code"> * Build the per-text-element SVG renderer used by exportPresentation (and by</td></tr>
+<tr class="unc"><td class="ln">414</td><td class="code"> * the Debug menu&#x27;s batch HTML export, so batch tests THE SAME path).</td></tr>
+<tr class="nil"><td class="ln">415</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">416</td><td class="code"> * Each element&#x27;s preset picks its own MathJax bundle, math is pre-rendered</td></tr>
+<tr class="nil"><td class="ln">417</td><td class="code"> * via the iframe pool with fontCache:&#x27;none&#x27; (inlined glyph paths → fully</td></tr>
+<tr class="cov"><td class="ln">418</td><td class="code"> * self-contained SVG), and the result is wrapped via buildTextElementSvgMarkup.</td></tr>
+<tr class="nil"><td class="ln">419</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">420</td><td class="code">export function makeTextElementRenderer(presentation: Presentation) {</td></tr>
+<tr class="cov"><td class="ln">421</td><td class="code">  return async (el: TextElement, slide: Slide): Promise&lt;string&gt; =&gt; {</td></tr>
+<tr class="cov"><td class="ln">422</td><td class="code">    const presetStyle = TEXT_PRESET_STYLES[el.preset];</td></tr>
+<tr class="cov"><td class="ln">423</td><td class="code">    const theme = resolveTheme(presentation.theme, slide.theme);</td></tr>
+<tr class="unc"><td class="ln">424</td><td class="code">    const presetFontPkg = fontForPreset(el.preset, slide, presentation.config);</td></tr>
+<tr class="unc"><td class="ln">425</td><td class="code">    const fontFamily = el.fontFamily || fontFamilyForPreset(presetFontPkg, el.preset);</td></tr>
+<tr class="unc"><td class="ln">426</td><td class="code">    const color = resolveColor(el.color, theme, themeColorForPreset(theme, el.preset));</td></tr>
+<tr class="unc"><td class="ln">427</td><td class="code">    const valign = el.verticalAlign || (el.preset === &#x27;title&#x27; || el.preset === &#x27;footnote&#x27; ? &#x27;bottom&#x27; : undefined);</td></tr>
+<tr class="unc"><td class="ln">428</td><td class="code">    const renderedHtml = await renderMathPerBundle(</td></tr>
+<tr class="nil"><td class="ln">429</td><td class="code">      el.html || &#x27;&#x27;, presetFontPkg.id, presentation.config.mathPreamble || &#x27;&#x27;</td></tr>
+<tr class="cov"><td class="ln">430</td><td class="code">    ).catch(() =&gt; el.html || &#x27;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">431</td><td class="code">    return buildTextElementSvgMarkup(el, renderedHtml, {</td></tr>
+<tr class="cov"><td class="ln">432</td><td class="code">      fontFamily,</td></tr>
+<tr class="cov"><td class="ln">433</td><td class="code">      fontSize: effectiveFontSize(el, presentation.config),</td></tr>
+<tr class="cov"><td class="ln">434</td><td class="code">      fontWeight: presetStyle.fontWeight,</td></tr>
+<tr class="cov"><td class="ln">435</td><td class="code">      fontStyle: presetStyle.fontStyle,</td></tr>
+<tr class="cov"><td class="ln">436</td><td class="code">      color,</td></tr>
+<tr class="cov"><td class="ln">437</td><td class="code">      valign,</td></tr>
+<tr class="nil"><td class="ln">438</td><td class="code">      mono: resolveMonoFontPackage(presentation.config.defaultMonoFont).family,</td></tr>
+<tr class="nil"><td class="ln">439</td><td class="code">    });</td></tr>
+<tr class="unc"><td class="ln">440</td><td class="code">  };</td></tr>
+<tr class="unc"><td class="ln">441</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">442</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">443</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">444</td><td class="code"> * Build the full interactive-HTML export for a presentation, with the REAL</td></tr>
+<tr class="unc"><td class="ln">445</td><td class="code"> * callbacks: asset reads via `invoke`, per-text SVG via the iframe pool,</td></tr>
+<tr class="unc"><td class="ln">446</td><td class="code"> * full-fidelity notebook renders, cached previews, and embedded fonts.</td></tr>
+<tr class="unc"><td class="ln">447</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">448</td><td class="code"> * Dialog-free and disk-free on purpose, so it&#x27;s testable: the E2E seam</td></tr>
+<tr class="unc"><td class="ln">449</td><td class="code"> * (`window.__eigendeck.exportHtml`) calls THIS to verify the live</td></tr>
+<tr class="unc"><td class="ln">450</td><td class="code"> * invoke-backed pipeline end-to-end without a native save dialog.</td></tr>
+<tr class="unc"><td class="ln">451</td><td class="code"> */</td></tr>
+<tr class="nil"><td class="ln">452</td><td class="code">export async function buildPresentationExportHtml(</td></tr>
+<tr class="unc"><td class="ln">453</td><td class="code">  presentation: Presentation,</td></tr>
+<tr class="unc"><td class="ln">454</td><td class="code">): Promise&lt;string&gt; {</td></tr>
+<tr class="nil"><td class="ln">455</td><td class="code">  // Embed @font-face data URLs for all fonts actually used.</td></tr>
+<tr class="unc"><td class="ln">456</td><td class="code">  const fontFacesCss = await buildEmbeddedFontFacesCSS(presentation);</td></tr>
+<tr class="unc"><td class="ln">457</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">458</td><td class="code">  // exportCore reads media by PATH (el.src / demo-piece&#x27;s el.demoSrc), but the</td></tr>
+<tr class="nil"><td class="ln">459</td><td class="code">  // data model stores only assetId (path lives on the asset, looked up by id).</td></tr>
+<tr class="unc"><td class="ln">460</td><td class="code">  // Resolve each media element&#x27;s assetId → path and hydrate that field, so the</td></tr>
+<tr class="nil"><td class="ln">461</td><td class="code">  // exporter can readFile() it. Unresolved ids stay undefined → exportCore emits</td></tr>
+<tr class="nil"><td class="ln">462</td><td class="code">  // a placeholder rather than crashing.</td></tr>
+<tr class="unc"><td class="ln">463</td><td class="code">  const pathCache = new Map&lt;string, string | undefined&gt;();</td></tr>
+<tr class="unc"><td class="ln">464</td><td class="code">  const pathFor = async (assetId?: string): Promise&lt;string | undefined&gt; =&gt; {</td></tr>
+<tr class="unc"><td class="ln">465</td><td class="code">    if (!assetId) return undefined;</td></tr>
+<tr class="unc"><td class="ln">466</td><td class="code">    if (pathCache.has(assetId)) return pathCache.get(assetId);</td></tr>
+<tr class="nil"><td class="ln">467</td><td class="code">    let path: string | undefined;</td></tr>
+<tr class="unc"><td class="ln">468</td><td class="code">    try {</td></tr>
+<tr class="unc"><td class="ln">469</td><td class="code">      const meta = await invoke&lt;{ path?: string | null } | null&gt;(&#x27;db_get_asset_meta_by_id&#x27;, { assetId });</td></tr>
+<tr class="unc"><td class="ln">470</td><td class="code">      path = meta?.path ?? undefined;</td></tr>
+<tr class="unc"><td class="ln">471</td><td class="code">    } catch { path = undefined; }</td></tr>
+<tr class="unc"><td class="ln">472</td><td class="code">    pathCache.set(assetId, path);</td></tr>
+<tr class="unc"><td class="ln">473</td><td class="code">    return path;</td></tr>
+<tr class="nil"><td class="ln">474</td><td class="code">  };</td></tr>
+<tr class="unc"><td class="ln">475</td><td class="code">  const hydrateEl = async (e: SlideElement): Promise&lt;SlideElement&gt; =&gt; {</td></tr>
+<tr class="unc"><td class="ln">476</td><td class="code">    const m = e as { assetId?: string; src?: string; demoSrc?: string; type: string; kind?: string };</td></tr>
+<tr class="unc"><td class="ln">477</td><td class="code">    if (!m.assetId) return e;</td></tr>
+<tr class="unc"><td class="ln">478</td><td class="code">    if (e.type === &#x27;demo-piece&#x27;) {</td></tr>
+<tr class="unc"><td class="ln">479</td><td class="code">      return m.demoSrc ? e : ({ ...e, demoSrc: await pathFor(m.assetId) } as unknown as SlideElement);</td></tr>
+<tr class="nil"><td class="ln">480</td><td class="code">    }</td></tr>
+<tr class="unc"><td class="ln">481</td><td class="code">    if (e.type === &#x27;image&#x27; || e.type === &#x27;demo&#x27; || (e.type === &#x27;video&#x27; &amp;&amp; e.kind === &#x27;file&#x27;)) {</td></tr>
+<tr class="unc"><td class="ln">482</td><td class="code">      return m.src ? e : ({ ...e, src: await pathFor(m.assetId) } as unknown as SlideElement);</td></tr>
+<tr class="nil"><td class="ln">483</td><td class="code">    }</td></tr>
+<tr class="unc"><td class="ln">484</td><td class="code">    return e;</td></tr>
+<tr class="nil"><td class="ln">485</td><td class="code">  };</td></tr>
+<tr class="unc"><td class="ln">486</td><td class="code">  const hydrated: Presentation = {</td></tr>
+<tr class="nil"><td class="ln">487</td><td class="code">    ...presentation,</td></tr>
+<tr class="unc"><td class="ln">488</td><td class="code">    slides: await Promise.all(presentation.slides.map(async (s) =&gt; ({</td></tr>
+<tr class="nil"><td class="ln">489</td><td class="code">      ...s,</td></tr>
+<tr class="nil"><td class="ln">490</td><td class="code">      elements: await Promise.all(s.elements.map(hydrateEl)),</td></tr>
+<tr class="nil"><td class="ln">491</td><td class="code">    }))),</td></tr>
+<tr class="nil"><td class="ln">492</td><td class="code">  };</td></tr>
+<tr class="nil"><td class="ln">493</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">494</td><td class="code">  // The self-contained deck JSON (structure + assets[] base64) for the losslessly</td></tr>
+<tr class="nil"><td class="ln">495</td><td class="code">  // re-importable, single-store embed (docs .claude/notes/html-export-plan.md).</td></tr>
+<tr class="nil"><td class="ln">496</td><td class="code">  // IMPORTANT: pair the LIVE (in-memory) structure with the DB&#x27;s asset bytes —</td></tr>
+<tr class="nil"><td class="ln">497</td><td class="code">  // db_export_json_with_assets&#x27;s *structure* reflects the last SQLite flush and can</td></tr>
+<tr class="nil"><td class="ln">498</td><td class="code">  // lag unsaved store edits, whereas the display renders from the store; taking only</td></tr>
+<tr class="nil"><td class="ln">499</td><td class="code">  // its `assets[]` keeps the embedded deck consistent with what&#x27;s shown. Best-effort:</td></tr>
+<tr class="nil"><td class="ln">500</td><td class="code">  // on failure the export still renders and falls back to the legacy source comment.</td></tr>
+<tr class="nil"><td class="ln">501</td><td class="code">  let deckJson: string | undefined;</td></tr>
+<tr class="unc"><td class="ln">502</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">503</td><td class="code">    const dbAssets = JSON.parse(await invoke&lt;string&gt;(&#x27;db_export_json_with_assets&#x27;)).assets || [];</td></tr>
+<tr class="unc"><td class="ln">504</td><td class="code">    deckJson = JSON.stringify({ ...presentation, assets: dbAssets });</td></tr>
+<tr class="unc"><td class="ln">505</td><td class="code">  } catch (e) { console.warn(&#x27;with-assets embed failed; export won\&#x27;t be re-importable with assets:&#x27;, e); }</td></tr>
+<tr class="nil"><td class="ln">506</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">507</td><td class="code">  // #109: build the embedded print layer so File→Print on the exported HTML gives</td></tr>
+<tr class="nil"><td class="ln">508</td><td class="code">  // the print view. liveCapture omitted (false) — this path must not flip slides</td></tr>
+<tr class="nil"><td class="ln">509</td><td class="code">  // (it&#x27;s called by the read-only seam/e2e too); uncached demos fall back to their</td></tr>
+<tr class="nil"><td class="ln">510</td><td class="code">  // cached preview or a placeholder. The dedicated Print export does the live capture.</td></tr>
+<tr class="unc"><td class="ln">511</td><td class="code">  const { preparePrintLayer } = await import(&#x27;../lib/printLayer&#x27;);<a class="jump" href="src__lib__printLayer_ts.html" title="src/lib/printLayer.ts">→ printLayer.ts</a></td></tr>
+<tr class="unc"><td class="ln">512</td><td class="code">  const { exportPrintCss } = await import(&#x27;../lib/printSlideHtml&#x27;);<a class="jump" href="src__lib__printSlideHtml_ts.html" title="src/lib/printSlideHtml.ts">→ printSlideHtml.ts</a></td></tr>
+<tr class="unc"><td class="ln">513</td><td class="code">  const { slideHtmls: printSlideHtmls } = await preparePrintLayer(presentation);</td></tr>
+<tr class="nil"><td class="ln">514</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">515</td><td class="code">  // Read assets from SQLite for inlining</td></tr>
+<tr class="nil"><td class="ln">516</td><td class="code">  // The in-memory deck was already normalized on open, but run the boundary again on</td></tr>
+<tr class="nil"><td class="ln">517</td><td class="code">  // the exact structure we&#x27;re about to render (defense-in-depth, matches the CLI path).</td></tr>
+<tr class="unc"><td class="ln">518</td><td class="code">  normalizeUntrustedPresentation(hydrated);</td></tr>
+<tr class="unc"><td class="ln">519</td><td class="code">  return buildExportHtml({</td></tr>
+<tr class="nil"><td class="ln">520</td><td class="code">    presentation: hydrated,</td></tr>
+<tr class="nil"><td class="ln">521</td><td class="code">    deckJson,</td></tr>
+<tr class="nil"><td class="ln">522</td><td class="code">    printSlideHtmls,</td></tr>
+<tr class="nil"><td class="ln">523</td><td class="code">    printCss: exportPrintCss(),</td></tr>
+<tr class="nil"><td class="ln">524</td><td class="code">    // Export reads ONLY embedded/cached bytes from SQLite — it NEVER touches disk.</td></tr>
+<tr class="nil"><td class="ln">525</td><td class="code">    // Assets are always embedded (ASSETS.md: the asset table is the source of</td></tr>
+<tr class="nil"><td class="ln">526</td><td class="code">    // truth), so there is no legitimate need for a disk read here; and resolving</td></tr>
+<tr class="nil"><td class="ln">527</td><td class="code">    // `${projectPath}/${path}` with the deck-controlled `path` would let a crafted</td></tr>
+<tr class="nil"><td class="ln">528</td><td class="code">    // deck exfiltrate arbitrary files into the exported artifact</td></tr>
+<tr class="nil"><td class="ln">529</td><td class="code">    // (docs/ASSETS-SECURITY.md — &quot;export → cached-bytes-only&quot;). Missing → throw,</td></tr>
+<tr class="nil"><td class="ln">530</td><td class="code">    // and exportCore emits a placeholder rather than crashing.</td></tr>
+<tr class="nil"><td class="ln">531</td><td class="code">    readFile: async (path: string) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">532</td><td class="code">      const data = await invoke&lt;number[]&gt;(&#x27;db_get_asset&#x27;, { path });</td></tr>
+<tr class="unc"><td class="ln">533</td><td class="code">      return new Uint8Array(data);</td></tr>
+<tr class="nil"><td class="ln">534</td><td class="code">    },</td></tr>
+<tr class="nil"><td class="ln">535</td><td class="code">    readTextFile: async (path: string) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">536</td><td class="code">      const data = await invoke&lt;number[]&gt;(&#x27;db_get_asset&#x27;, { path });</td></tr>
+<tr class="unc"><td class="ln">537</td><td class="code">      return new TextDecoder().decode(new Uint8Array(data));</td></tr>
+<tr class="nil"><td class="ln">538</td><td class="code">    },</td></tr>
+<tr class="nil"><td class="ln">539</td><td class="code">    // Pre-render each text element to its own self-contained SVG via the</td></tr>
+<tr class="nil"><td class="ln">540</td><td class="code">    // iframe pool — see makeTextElementRenderer.</td></tr>
+<tr class="nil"><td class="ln">541</td><td class="code">    renderTextElement: makeTextElementRenderer(presentation),</td></tr>
+<tr class="nil"><td class="ln">542</td><td class="code">    fontFacesCss,</td></tr>
+<tr class="nil"><td class="ln">543</td><td class="code">    // Per-slide demo theme vars (#86): demos inherit the deck&#x27;s fonts + theme</td></tr>
+<tr class="nil"><td class="ln">544</td><td class="code">    // via injected --eigendeck-* custom properties (opt-in in demo CSS).</td></tr>
+<tr class="unc"><td class="ln">545</td><td class="code">    demoThemeVarsCss: (slide: Slide) =&gt; demoVarsCssForSlide(presentation.config, presentation.theme, slide),</td></tr>
+<tr class="nil"><td class="ln">546</td><td class="code">    // Rasterized/cached preview PNGs for elements that can&#x27;t be rendered</td></tr>
+<tr class="nil"><td class="ln">547</td><td class="code">    // statically from source bytes in a plain &lt;img&gt; (pdf images, notebooks,</td></tr>
+<tr class="nil"><td class="ln">548</td><td class="code">    // file videos). Mirrors the static on-screen renderer (SlideThumbnail).</td></tr>
+<tr class="nil"><td class="ln">549</td><td class="code">    getElementPreview: getElementPreviewDataUrl,</td></tr>
+<tr class="nil"><td class="ln">550</td><td class="code">    // Full-fidelity, scrollable notebook render (recorded outputs, no</td></tr>
+<tr class="nil"><td class="ln">551</td><td class="code">    // kernel) through the same React components as the live view. Falls</td></tr>
+<tr class="nil"><td class="ln">552</td><td class="code">    // back to the preview PNG / placeholder when this returns null.</td></tr>
+<tr class="nil"><td class="ln">553</td><td class="code">    renderNotebookElement: async (el: SlideElement, slide: Slide) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">554</td><td class="code">      if (el.type !== &#x27;notebook&#x27;) return null;</td></tr>
+<tr class="unc"><td class="ln">555</td><td class="code">      const nb = el as NotebookElement;</td></tr>
+<tr class="unc"><td class="ln">556</td><td class="code">      try {</td></tr>
+<tr class="unc"><td class="ln">557</td><td class="code">        return await renderNotebookElementHtml(</td></tr>
+<tr class="nil"><td class="ln">558</td><td class="code">          nb, slide, presentation, getNotebookAssetBytes,</td></tr>
+<tr class="nil"><td class="ln">559</td><td class="code">        );</td></tr>
+<tr class="nil"><td class="ln">560</td><td class="code">      } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">561</td><td class="code">        console.error(&#x27;renderNotebookElement failed:&#x27;, e);</td></tr>
+<tr class="unc"><td class="ln">562</td><td class="code">        return null;</td></tr>
+<tr class="nil"><td class="ln">563</td><td class="code">      }</td></tr>
+<tr class="nil"><td class="ln">564</td><td class="code">    },</td></tr>
+<tr class="nil"><td class="ln">565</td><td class="code">  });</td></tr>
+<tr class="nil"><td class="ln">566</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">567</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">568</td><td class="code">export async function exportPresentation(): Promise&lt;void&gt; {</td></tr>
+<tr class="unc"><td class="ln">569</td><td class="code">  const store = usePresentationStore.getState();</td></tr>
+<tr class="unc"><td class="ln">570</td><td class="code">  const { presentation } = store;</td></tr>
+<tr class="nil"><td class="ln">571</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">572</td><td class="code">  const selected = await save({</td></tr>
+<tr class="nil"><td class="ln">573</td><td class="code">    title: &#x27;Export Presentation&#x27;,</td></tr>
+<tr class="nil"><td class="ln">574</td><td class="code">    defaultPath: `${presentation.title.replace(/[^a-zA-Z0-9]/g, &#x27;-&#x27;)}.html`,</td></tr>
+<tr class="nil"><td class="ln">575</td><td class="code">    filters: [{ name: &#x27;HTML&#x27;, extensions: [&#x27;html&#x27;] }],</td></tr>
+<tr class="nil"><td class="ln">576</td><td class="code">  });</td></tr>
+<tr class="unc"><td class="ln">577</td><td class="code">  if (!selected) return;</td></tr>
+<tr class="nil"><td class="ln">578</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">579</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">580</td><td class="code">    const html = await buildPresentationExportHtml(presentation);</td></tr>
+<tr class="unc"><td class="ln">581</td><td class="code">    await writeTextFileNative(selected as string, html);</td></tr>
+<tr class="nil"><td class="ln">582</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">583</td><td class="code">    await showError(`Failed to export: ${e}`);</td></tr>
+<tr class="nil"><td class="ln">584</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">585</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">586</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">587</td><td class="code">// ============================================================================</td></tr>
+<tr class="nil"><td class="ln">588</td><td class="code">// Import from exported HTML</td></tr>
+<tr class="nil"><td class="ln">589</td><td class="code">// ============================================================================</td></tr>
+<tr class="nil"><td class="ln">590</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">591</td><td class="code">/** Dialog-free core of import-from-HTML: decode the embedded presentation from an</td></tr>
+<tr class="nil"><td class="ln">592</td><td class="code"> *  exported HTML string, build a FRESH deck from it, atomic-save to `savePath`,</td></tr>
+<tr class="nil"><td class="ln">593</td><td class="code"> *  and open it. Returns the imported deck&#x27;s title, or null if the HTML carried no</td></tr>
+<tr class="nil"><td class="ln">594</td><td class="code"> *  embedded Eigendeck source. Throws on a corrupt payload / IO error. Shared by</td></tr>
+<tr class="nil"><td class="ln">595</td><td class="code"> *  importFromHtml (which wraps it in the open + save-as dialogs) and the E2E seam,</td></tr>
+<tr class="nil"><td class="ln">596</td><td class="code"> *  so the real read -&gt; decode (#164) -&gt; db_import_json -&gt; save -&gt; open path can be</td></tr>
+<tr class="nil"><td class="ln">597</td><td class="code"> *  exercised without native dialogs. */</td></tr>
+<tr class="nil"><td class="ln">598</td><td class="code">export async function importHtmlToDeck(htmlContent: string, savePath: string): Promise&lt;string | null&gt; {</td></tr>
+<tr class="nil"><td class="ln">599</td><td class="code">  // Prefer the modern self-contained deck block (structure + assets[] base64) —</td></tr>
+<tr class="nil"><td class="ln">600</td><td class="code">  // db_import_json restores the assets, so demos/images/notebooks come back</td></tr>
+<tr class="nil"><td class="ln">601</td><td class="code">  // (docs .claude/notes/html-export-plan.md). Fall back to the legacy structure-only</td></tr>
+<tr class="nil"><td class="ln">602</td><td class="code">  // &lt;!-- eigendeck-source --&gt; comment (assets not recoverable). The comment decode</td></tr>
+<tr class="nil"><td class="ln">603</td><td class="code">  // is the exact inverse of the UTF-8-safe encode (#164 — a plain atob mangled</td></tr>
+<tr class="nil"><td class="ln">604</td><td class="code">  // non-ASCII); the deck block is already JSON, passed straight through.</td></tr>
+<tr class="unc"><td class="ln">605</td><td class="code">  const deckJson = extractEigendeckDeckJson(htmlContent) as string | null;</td></tr>
+<tr class="nil"><td class="ln">606</td><td class="code">  let importJson: string;</td></tr>
+<tr class="nil"><td class="ln">607</td><td class="code">  let title: string;</td></tr>
+<tr class="unc"><td class="ln">608</td><td class="code">  if (deckJson) {</td></tr>
+<tr class="unc"><td class="ln">609</td><td class="code">    importJson = deckJson;</td></tr>
+<tr class="unc"><td class="ln">610</td><td class="code">    title = (JSON.parse(deckJson).title as string) || &#x27;Imported Presentation&#x27;;</td></tr>
+<tr class="nil"><td class="ln">611</td><td class="code">  } else {</td></tr>
+<tr class="unc"><td class="ln">612</td><td class="code">    const presentation = parseEigendeckSource(htmlContent) as Presentation | null;</td></tr>
+<tr class="unc"><td class="ln">613</td><td class="code">    if (!presentation) return null;</td></tr>
+<tr class="unc"><td class="ln">614</td><td class="code">    importJson = JSON.stringify(presentation);</td></tr>
+<tr class="unc"><td class="ln">615</td><td class="code">    title = presentation.title;</td></tr>
+<tr class="nil"><td class="ln">616</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">617</td><td class="code">  // Build in a fresh in-memory DB and atomic-save over `savePath` rather than</td></tr>
+<tr class="nil"><td class="ln">618</td><td class="code">  // opening (possibly an existing file) to clear it in place. See createProject for</td></tr>
+<tr class="nil"><td class="ln">619</td><td class="code">  // why (dca9005 / issue #65). Close any open project first: db_open_memory is a</td></tr>
+<tr class="nil"><td class="ln">620</td><td class="code">  // no-op while a DB is open, so without this we&#x27;d import into the CURRENT deck&#x27;s</td></tr>
+<tr class="nil"><td class="ln">621</td><td class="code">  // DB and carry its assets across.</td></tr>
+<tr class="unc"><td class="ln">622</td><td class="code">  const { closeSqliteProject } = await import(&#x27;./presentation&#x27;);<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="unc"><td class="ln">623</td><td class="code">  await closeSqliteProject();</td></tr>
+<tr class="unc"><td class="ln">624</td><td class="code">  await invoke(&#x27;db_open_memory&#x27;);</td></tr>
+<tr class="unc"><td class="ln">625</td><td class="code">  await invoke(&#x27;db_import_json&#x27;, { json: importJson });</td></tr>
+<tr class="unc"><td class="ln">626</td><td class="code">  await invoke(&#x27;db_save_to_file&#x27;, { path: savePath });</td></tr>
+<tr class="unc"><td class="ln">627</td><td class="code">  await openSqliteProject(savePath);</td></tr>
+<tr class="unc"><td class="ln">628</td><td class="code">  addRecentProject(savePath, title);</td></tr>
+<tr class="unc"><td class="ln">629</td><td class="code">  return title;</td></tr>
+<tr class="nil"><td class="ln">630</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">631</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">632</td><td class="code">export async function importFromHtml(): Promise&lt;void&gt; {</td></tr>
+<tr class="unc"><td class="ln">633</td><td class="code">  const { open } = await import(&#x27;@tauri-apps/plugin-dialog&#x27;);</td></tr>
+<tr class="unc"><td class="ln">634</td><td class="code">  const htmlFile = await open({</td></tr>
+<tr class="nil"><td class="ln">635</td><td class="code">    title: &#x27;Import from Exported HTML&#x27;,</td></tr>
+<tr class="nil"><td class="ln">636</td><td class="code">    filters: [{ name: &#x27;HTML&#x27;, extensions: [&#x27;html&#x27;] }],</td></tr>
+<tr class="nil"><td class="ln">637</td><td class="code">  });</td></tr>
+<tr class="unc"><td class="ln">638</td><td class="code">  if (!htmlFile) return;</td></tr>
+<tr class="nil"><td class="ln">639</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">640</td><td class="code">  try {</td></tr>
+<tr class="unc"><td class="ln">641</td><td class="code">    const htmlContent = await readTextFileNative(htmlFile as string);</td></tr>
+<tr class="nil"><td class="ln">642</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">643</td><td class="code">    // Peek the title (for the save dialog&#x27;s default name) + validate before asking</td></tr>
+<tr class="nil"><td class="ln">644</td><td class="code">    // where to save — from either the modern deck block or the legacy comment.</td></tr>
+<tr class="nil"><td class="ln">645</td><td class="code">    let title: string | null;</td></tr>
+<tr class="unc"><td class="ln">646</td><td class="code">    try {</td></tr>
+<tr class="unc"><td class="ln">647</td><td class="code">      const deckJson = extractEigendeckDeckJson(htmlContent) as string | null;</td></tr>
+<tr class="unc"><td class="ln">648</td><td class="code">      title = deckJson</td></tr>
+<tr class="nil"><td class="ln">649</td><td class="code">        ? ((JSON.parse(deckJson).title as string) || &#x27;Imported Presentation&#x27;)</td></tr>
+<tr class="nil"><td class="ln">650</td><td class="code">        : ((parseEigendeckSource(htmlContent) as Presentation | null)?.title ?? null);</td></tr>
+<tr class="nil"><td class="ln">651</td><td class="code">    } catch {</td></tr>
+<tr class="unc"><td class="ln">652</td><td class="code">      await showError(&#x27;Failed to decode embedded presentation data.&#x27;);</td></tr>
+<tr class="unc"><td class="ln">653</td><td class="code">      return;</td></tr>
+<tr class="nil"><td class="ln">654</td><td class="code">    }</td></tr>
+<tr class="unc"><td class="ln">655</td><td class="code">    if (title == null) {</td></tr>
+<tr class="unc"><td class="ln">656</td><td class="code">      await showError(&#x27;This HTML file does not contain embedded Eigendeck data.&#x27;);</td></tr>
+<tr class="unc"><td class="ln">657</td><td class="code">      return;</td></tr>
+<tr class="nil"><td class="ln">658</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">659</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">660</td><td class="code">    const selected = await save({</td></tr>
+<tr class="nil"><td class="ln">661</td><td class="code">      title: &#x27;Save Imported Presentation&#x27;,</td></tr>
+<tr class="nil"><td class="ln">662</td><td class="code">      defaultPath: `${title.replace(/[^a-zA-Z0-9]/g, &#x27;-&#x27;)}.eigendeck`,</td></tr>
+<tr class="nil"><td class="ln">663</td><td class="code">      filters: [{ name: &#x27;Eigendeck&#x27;, extensions: [&#x27;eigendeck&#x27;] }],</td></tr>
+<tr class="nil"><td class="ln">664</td><td class="code">    });</td></tr>
+<tr class="unc"><td class="ln">665</td><td class="code">    if (!selected) return;</td></tr>
+<tr class="nil"><td class="ln">666</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">667</td><td class="code">    await importHtmlToDeck(htmlContent, selected as string);</td></tr>
+<tr class="nil"><td class="ln">668</td><td class="code">  } catch (e) {</td></tr>
+<tr class="unc"><td class="ln">669</td><td class="code">    await showError(`Failed to import: ${e}`);</td></tr>
+<tr class="nil"><td class="ln">670</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">671</td><td class="code">}</td></tr></table>
+</body></html>

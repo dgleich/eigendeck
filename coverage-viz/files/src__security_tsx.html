@@ -1,0 +1,80 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/security.tsx · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/security.tsx </h1>
+  <div class="stats">
+    <span class="stat"><b>94%</b> covered</span>
+    <span class="stat">17/18 executable</span>
+    <span class="stat unc-txt">1 uncovered</span>
+    <span class="stat">62 raw lines</span>
+    <span class="stat">0.15% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:27.419%"></span><span class="seg unc" style="width:1.613%"></span><span class="seg nil" style="width:70.968%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__components__SecurityPanel_tsx.html">SecurityPanel.tsx</a> <a href="src__lib__coverageBeacon_ts.html">coverageBeacon.ts</a> <a href="src__lib__runtime_ts.html">runtime.ts</a> <a href="src__lib__trustStore_ts.html">trustStore.ts</a> <a href="src__store__presentation_ts.html">presentation.ts</a> <a href="src__styles__chip_css.html">chip.css</a> <a href="src__types__presentation_ts.html">presentation.ts</a></div>
+  <div class="links"><span>imported by:</span> <i>none</i></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">/**</td></tr>
+<tr class="nil"><td class="ln">2</td><td class="code"> * Security window entry point — the deck-wide &quot;Linked files &amp; security&quot; window.</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code"> *</td></tr>
+<tr class="nil"><td class="ln">4</td><td class="code"> * Runs in its own webview (security.html). It receives the current deck</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code"> * (presentation + projectPath) from the main window via a `security:init` event,</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code"> * drops it into THIS window&#x27;s store so buildDeckSecurityReport can read the deck</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code"> * token / project dir / usage, then renders SecurityWindowApp. Ledger writes here</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code"> * are shared (appData) and it emits `eigendeck:security-changed` so the main window</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code"> * (which owns the watcher) re-scans. Mirrors src/presenter.tsx.</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code"> */</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">import { useEffect, useState } from &#x27;react&#x27;;</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">import ReactDOM from &#x27;react-dom/client&#x27;;</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">import { listen, emit } from &#x27;@tauri-apps/api/event&#x27;;</td></tr>
+<tr class="cov"><td class="ln">14</td><td class="code">import type { Presentation } from &#x27;./types/presentation&#x27;;<a class="jump" href="src__types__presentation_ts.html" title="src/types/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">import { usePresentationStore } from &#x27;./store/presentation&#x27;;<a class="jump" href="src__store__presentation_ts.html" title="src/store/presentation.ts">→ presentation.ts</a></td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">import { SecurityWindowApp } from &#x27;./components/SecurityPanel&#x27;;<a class="jump" href="src__components__SecurityPanel_tsx.html" title="src/components/SecurityPanel.tsx">→ SecurityPanel.tsx</a></td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">import { initRuntime } from &#x27;./lib/runtime&#x27;;<a class="jump" href="src__lib__runtime_ts.html" title="src/lib/runtime.ts">→ runtime.ts</a></td></tr>
+<tr class="cov"><td class="ln">18</td><td class="code">import { installCoverageBeacon } from &#x27;./lib/coverageBeacon&#x27;;<a class="jump" href="src__lib__coverageBeacon_ts.html" title="src/lib/coverageBeacon.ts">→ coverageBeacon.ts</a></td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">import &#x27;./styles/chip.css&#x27;;<a class="jump" href="src__styles__chip_css.html" title="src/styles/chip.css">→ chip.css</a></td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">21</td><td class="code">initRuntime();</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">// E2E coverage: this window&#x27;s own __coverage__ → collector (no-op in normal builds).</td></tr>
+<tr class="nil"><td class="ln">23</td><td class="code">installCoverageBeacon();</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">25</td><td class="code">function SecurityRoot(): React.ReactElement {</td></tr>
+<tr class="cov"><td class="ln">26</td><td class="code">  const [ready, setReady] = useState(false);</td></tr>
+<tr class="cov"><td class="ln">27</td><td class="code">  // Bumped on every security:init. The main window re-sends init after it trusts the</td></tr>
+<tr class="cov"><td class="ln">28</td><td class="code">  // deck (see App.tsx trust-request handler), so remounting SecurityWindowApp via this</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">  // key rebuilds the report against the now-trusted deck — deterministically, without</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">  // racing the store update against the report&#x27;s own listeners.</td></tr>
+<tr class="cov"><td class="ln">31</td><td class="code">  const [initKey, setInitKey] = useState(0);</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">33</td><td class="code">  useEffect(() =&gt; {</td></tr>
+<tr class="unc"><td class="ln">34</td><td class="code">    let unlisten: (() =&gt; void) | undefined;</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">    (async () =&gt; {</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">      unlisten = await listen&lt;{ presentation: Presentation; projectPath: string | null }&gt;(</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">        &#x27;security:init&#x27;,</td></tr>
+<tr class="cov"><td class="ln">38</td><td class="code">        async (event) =&gt; {</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">          usePresentationStore.setState({</td></tr>
+<tr class="cov"><td class="ln">40</td><td class="code">            presentation: event.payload.presentation,</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">            projectPath: event.payload.projectPath,</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code">          });</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">          // The main window may have just mutated the shared ledger (e.g. trusted</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">          // the deck in response to our request). Drop our stale cache so the</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">          // remounted report — and any approve/revoke we then do — reads fresh.</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">          const { invalidateLedgerCache } = await import(&#x27;./lib/trustStore&#x27;);<a class="jump" href="src__lib__trustStore_ts.html" title="src/lib/trustStore.ts">→ trustStore.ts</a></td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">          invalidateLedgerCache();</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">          setReady(true);</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">          setInitKey((k) =&gt; k + 1);</td></tr>
+<tr class="nil"><td class="ln">50</td><td class="code">        },</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">      );</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">      // Signal the main window we&#x27;re mounted and listening.</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">      await emit(&#x27;security:ready&#x27;);</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code">    })();</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">    return () =&gt; { unlisten?.(); };</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">  }, []);</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">  if (!ready) return &lt;div style={{ padding: 20, color: &#x27;#999&#x27; }}&gt;Loading…&lt;/div&gt;;</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">  return &lt;SecurityWindowApp key={initKey} /&gt;;</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">ReactDOM.createRoot(document.getElementById(&#x27;root&#x27;)!).render(&lt;SecurityRoot /&gt;);</td></tr></table>
+</body></html>

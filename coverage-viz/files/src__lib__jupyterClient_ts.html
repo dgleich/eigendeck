@@ -1,0 +1,334 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/jupyterClient.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/jupyterClient.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>73%</b> covered</span>
+    <span class="stat">141/194 executable</span>
+    <span class="stat unc-txt">53 uncovered</span>
+    <span class="stat">316 raw lines</span>
+    <span class="stat">0.74% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:44.620%"></span><span class="seg unc" style="width:16.772%"></span><span class="seg nil" style="width:38.608%"></span></span>
+  <div class="links"><span>imports:</span> <a href="src__lib__notebookFormat_ts.html">notebookFormat.ts</a></div>
+  <div class="links"><span>imported by:</span> <a href="src__lib__useKernel_ts.html">useKernel.ts</a></div>
+</header>
+<table class="src"><tr class="nil"><td class="ln">1</td><td class="code">// JupyterClient — REST + WebSocket against a user-run jupyter server.</td></tr>
+<tr class="cov"><td class="ln">2</td><td class="code">// Factored from public/notebook-spike/external-kernel.html — same</td></tr>
+<tr class="cov"><td class="ln">3</td><td class="code">// protocol, packaged for reuse.</td></tr>
+<tr class="cov"><td class="ln">4</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">// Lifecycle:</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">//   const client = new JupyterClient({ baseUrl, token });</td></tr>
+<tr class="nil"><td class="ln">7</td><td class="code">//   await client.startKernel(&#x27;python3&#x27;);     // POST /api/kernels + WS connect</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">//   const handle = client.execute(code, callbacks);  // execute_request</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">//   handle.interrupt();</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">//   await client.stopKernel();               // DELETE /api/kernels + WS close</td></tr>
+<tr class="cov"><td class="ln">11</td><td class="code">//</td></tr>
+<tr class="cov"><td class="ln">12</td><td class="code">// Callbacks fire as iopub messages stream in:</td></tr>
+<tr class="cov"><td class="ln">13</td><td class="code">//   onStream({ name, text })</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">//   onDisplayData({ data })</td></tr>
+<tr class="cov"><td class="ln">15</td><td class="code">//   onExecuteResult({ data, executionCount })</td></tr>
+<tr class="cov"><td class="ln">16</td><td class="code">//   onError({ ename, evalue, traceback })</td></tr>
+<tr class="cov"><td class="ln">17</td><td class="code">//   onStatus(&#x27;busy&#x27; | &#x27;idle&#x27; | &#x27;dead&#x27;)</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">//</td></tr>
+<tr class="cov"><td class="ln">19</td><td class="code">// The returned handle resolves when execute_reply arrives on the</td></tr>
+<tr class="cov"><td class="ln">20</td><td class="code">// shell channel (i.e. the cell finished, successfully or not).</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code">import { MimeBundle } from &#x27;./notebookFormat&#x27;;<a class="jump" href="src__lib__notebookFormat_ts.html" title="src/lib/notebookFormat.ts">→ notebookFormat.ts</a></td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">export interface JupyterClientOptions {</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">  baseUrl: string;     // e.g. &#x27;http://localhost:8888&#x27;</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code">  token: string;       // empty string for unauthenticated server</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">29</td><td class="code">export interface ExecuteCallbacks {</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">  onStream?: (s: { name: &#x27;stdout&#x27; | &#x27;stderr&#x27;; text: string }) =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">  onDisplayData?: (d: { data: MimeBundle }) =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code">  onExecuteResult?: (r: { data: MimeBundle; executionCount: number | null }) =&gt; void;</td></tr>
+<tr class="unc"><td class="ln">33</td><td class="code">  onError?: (e: { ename: string; evalue: string; traceback: string[] }) =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code">  onStatus?: (s: &#x27;busy&#x27; | &#x27;idle&#x27; | &#x27;dead&#x27;) =&gt; void;</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code">  /** Fires on execute_reply (the authoritative source of the cell&#x27;s `[N]`</td></tr>
+<tr class="unc"><td class="ln">36</td><td class="code">   *  count). Unlike onExecuteResult it fires for EVERY cell — including ones</td></tr>
+<tr class="nil"><td class="ln">37</td><td class="code">   *  that produce no output (print-only / assignments) — so the prompt updates. */</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">  onReply?: (r: { status: &#x27;ok&#x27; | &#x27;error&#x27; | &#x27;aborted&#x27;; executionCount: number | null }) =&gt; void;</td></tr>
+<tr class="cov"><td class="ln">39</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code">export interface ExecuteHandle {</td></tr>
+<tr class="cov"><td class="ln">42</td><td class="code">  /** Resolves when the kernel sends execute_reply (status: ok|error|aborted). */</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code">  done: Promise&lt;&#x27;ok&#x27; | &#x27;error&#x27; | &#x27;aborted&#x27;&gt;;</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">  /** Send an interrupt to the kernel (kernel-level Ctrl-C). */</td></tr>
+<tr class="nil"><td class="ln">45</td><td class="code">  interrupt(): Promise&lt;void&gt;;</td></tr>
+<tr class="unc"><td class="ln">46</td><td class="code">  /** Message id of the execute_request — useful for log correlation. */</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">  msgId: string;</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">49</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">50</td><td class="code">interface PendingExecution {</td></tr>
+<tr class="unc"><td class="ln">51</td><td class="code">  resolve: (status: &#x27;ok&#x27; | &#x27;error&#x27; | &#x27;aborted&#x27;) =&gt; void;</td></tr>
+<tr class="unc"><td class="ln">52</td><td class="code">  callbacks: ExecuteCallbacks;</td></tr>
+<tr class="unc"><td class="ln">53</td><td class="code">}</td></tr>
+<tr class="unc"><td class="ln">54</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">export interface KernelSpec {</td></tr>
+<tr class="nil"><td class="ln">56</td><td class="code">  name: string;</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">  displayName: string;</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">  language: string | null;</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">60</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">61</td><td class="code">function uuid(): string {</td></tr>
+<tr class="nil"><td class="ln">62</td><td class="code">  // RFC 4122 v4 — good enough for client-side correlation</td></tr>
+<tr class="cov"><td class="ln">63</td><td class="code">  return &#x27;xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx&#x27;.replace(/[xy]/g, (c) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">64</td><td class="code">    const r = (Math.random() * 16) | 0;</td></tr>
+<tr class="cov"><td class="ln">65</td><td class="code">    return (c === &#x27;x&#x27; ? r : (r &amp; 0x3) | 0x8).toString(16);</td></tr>
+<tr class="nil"><td class="ln">66</td><td class="code">  });</td></tr>
+<tr class="nil"><td class="ln">67</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">68</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">69</td><td class="code">export class JupyterClient {</td></tr>
+<tr class="cov"><td class="ln">70</td><td class="code">  private baseUrl: string;</td></tr>
+<tr class="unc"><td class="ln">71</td><td class="code">  private token: string;</td></tr>
+<tr class="cov"><td class="ln">72</td><td class="code">  private session = uuid();</td></tr>
+<tr class="cov"><td class="ln">73</td><td class="code">  private kernel: { id: string; name: string } | null = null;</td></tr>
+<tr class="cov"><td class="ln">74</td><td class="code">  private ws: WebSocket | null = null;</td></tr>
+<tr class="cov"><td class="ln">75</td><td class="code">  private pending = new Map&lt;string, PendingExecution&gt;();</td></tr>
+<tr class="cov"><td class="ln">76</td><td class="code">  // Connection-readiness handshake state (see openChannels).</td></tr>
+<tr class="cov"><td class="ln">77</td><td class="code">  private kernelInfoMsgId: string | null = null;</td></tr>
+<tr class="cov"><td class="ln">78</td><td class="code">  private markReady: (() =&gt; void) | null = null;</td></tr>
+<tr class="cov"><td class="ln">79</td><td class="code">  private readyTimer: ReturnType&lt;typeof setTimeout&gt; | null = null;</td></tr>
+<tr class="cov"><td class="ln">80</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">81</td><td class="code">  constructor(opts: JupyterClientOptions) {</td></tr>
+<tr class="cov"><td class="ln">82</td><td class="code">    this.baseUrl = opts.baseUrl.replace(/\/$/, &#x27;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">83</td><td class="code">    this.token = opts.token;</td></tr>
+<tr class="cov"><td class="ln">84</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">85</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">86</td><td class="code">  private buildHeader(msgType: string, msgId: string): Record&lt;string, string&gt; {</td></tr>
+<tr class="cov"><td class="ln">87</td><td class="code">    return {</td></tr>
+<tr class="cov"><td class="ln">88</td><td class="code">      msg_id: msgId,</td></tr>
+<tr class="cov"><td class="ln">89</td><td class="code">      session: this.session,</td></tr>
+<tr class="cov"><td class="ln">90</td><td class="code">      username: &#x27;eigendeck&#x27;,</td></tr>
+<tr class="cov"><td class="ln">91</td><td class="code">      msg_type: msgType,</td></tr>
+<tr class="nil"><td class="ln">92</td><td class="code">      version: &#x27;5.3&#x27;,</td></tr>
+<tr class="cov"><td class="ln">93</td><td class="code">      date: new Date().toISOString(),</td></tr>
+<tr class="cov"><td class="ln">94</td><td class="code">    };</td></tr>
+<tr class="cov"><td class="ln">95</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">96</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">97</td><td class="code">  get isConnected(): boolean {</td></tr>
+<tr class="cov"><td class="ln">98</td><td class="code">    return this.ws !== null &amp;&amp; this.ws.readyState === WebSocket.OPEN;</td></tr>
+<tr class="cov"><td class="ln">99</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">100</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">101</td><td class="code">  get kernelId(): string | null {</td></tr>
+<tr class="cov"><td class="ln">102</td><td class="code">    return this.kernel?.id ?? null;</td></tr>
+<tr class="nil"><td class="ln">103</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">104</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">105</td><td class="code">  private authHeaders(extra: Record&lt;string, string&gt; = {}): Record&lt;string, string&gt; {</td></tr>
+<tr class="cov"><td class="ln">106</td><td class="code">    return this.token ? { ...extra, Authorization: `token ${this.token}` } : extra;</td></tr>
+<tr class="nil"><td class="ln">107</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">108</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">109</td><td class="code">  private authQuery(): string {</td></tr>
+<tr class="cov"><td class="ln">110</td><td class="code">    return this.token ? `?token=${encodeURIComponent(this.token)}` : &#x27;&#x27;;</td></tr>
+<tr class="cov"><td class="ln">111</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">112</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">113</td><td class="code">  /** GET /api/kernelspecs — list available kernels on the server. */</td></tr>
+<tr class="unc"><td class="ln">114</td><td class="code">  async listKernelSpecs(): Promise&lt;KernelSpec[]&gt; {</td></tr>
+<tr class="unc"><td class="ln">115</td><td class="code">    const r = await fetch(`${this.baseUrl}/api/kernelspecs${this.authQuery()}`, {</td></tr>
+<tr class="unc"><td class="ln">116</td><td class="code">      headers: this.authHeaders(),</td></tr>
+<tr class="nil"><td class="ln">117</td><td class="code">    });</td></tr>
+<tr class="unc"><td class="ln">118</td><td class="code">    if (!r.ok) throw new Error(`kernelspecs: ${r.status} ${r.statusText}`);</td></tr>
+<tr class="cov"><td class="ln">119</td><td class="code">    const data = await r.json();</td></tr>
+<tr class="cov"><td class="ln">120</td><td class="code">    const specs = data.kernelspecs ?? {};</td></tr>
+<tr class="unc"><td class="ln">121</td><td class="code">    return Object.entries(specs).map(([name, info]) =&gt; {</td></tr>
+<tr class="unc"><td class="ln">122</td><td class="code">      const i = info as { spec?: { display_name?: string; language?: string } };</td></tr>
+<tr class="unc"><td class="ln">123</td><td class="code">      return {</td></tr>
+<tr class="nil"><td class="ln">124</td><td class="code">        name,</td></tr>
+<tr class="unc"><td class="ln">125</td><td class="code">        displayName: i.spec?.display_name ?? name,</td></tr>
+<tr class="unc"><td class="ln">126</td><td class="code">        language: i.spec?.language ?? null,</td></tr>
+<tr class="unc"><td class="ln">127</td><td class="code">      };</td></tr>
+<tr class="unc"><td class="ln">128</td><td class="code">    });</td></tr>
+<tr class="unc"><td class="ln">129</td><td class="code">  }</td></tr>
+<tr class="unc"><td class="ln">130</td><td class="code">&nbsp;</td></tr>
+<tr class="unc"><td class="ln">131</td><td class="code">  /** POST /api/kernels + open WS channels. Idempotent: if a kernel is</td></tr>
+<tr class="nil"><td class="ln">132</td><td class="code">   *  already running, returns immediately. */</td></tr>
+<tr class="unc"><td class="ln">133</td><td class="code">  async startKernel(kernelName: string): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">134</td><td class="code">    if (this.kernel) return;</td></tr>
+<tr class="cov"><td class="ln">135</td><td class="code">    const r = await fetch(`${this.baseUrl}/api/kernels${this.authQuery()}`, {</td></tr>
+<tr class="nil"><td class="ln">136</td><td class="code">      method: &#x27;POST&#x27;,</td></tr>
+<tr class="nil"><td class="ln">137</td><td class="code">      headers: this.authHeaders({ &#x27;Content-Type&#x27;: &#x27;application/json&#x27; }),</td></tr>
+<tr class="nil"><td class="ln">138</td><td class="code">      body: JSON.stringify({ name: kernelName }),</td></tr>
+<tr class="cov"><td class="ln">139</td><td class="code">    });</td></tr>
+<tr class="cov"><td class="ln">140</td><td class="code">    if (!r.ok) {</td></tr>
+<tr class="cov"><td class="ln">141</td><td class="code">      const txt = await r.text().catch(() =&gt; &#x27;&#x27;);</td></tr>
+<tr class="cov"><td class="ln">142</td><td class="code">      throw new Error(`startKernel: ${r.status} ${r.statusText} — ${txt}`);</td></tr>
+<tr class="nil"><td class="ln">143</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">144</td><td class="code">    const k = (await r.json()) as { id: string; name: string };</td></tr>
+<tr class="cov"><td class="ln">145</td><td class="code">    this.kernel = { id: k.id, name: k.name };</td></tr>
+<tr class="cov"><td class="ln">146</td><td class="code">    await this.openChannels();</td></tr>
+<tr class="cov"><td class="ln">147</td><td class="code">  }</td></tr>
+<tr class="cov"><td class="ln">148</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">149</td><td class="code">  private openChannels(): Promise&lt;void&gt; {</td></tr>
+<tr class="cov"><td class="ln">150</td><td class="code">    if (!this.kernel) return Promise.reject(new Error(&#x27;no kernel&#x27;));</td></tr>
+<tr class="cov"><td class="ln">151</td><td class="code">    const wsBase = this.baseUrl.replace(/^http/, &#x27;ws&#x27;);</td></tr>
+<tr class="cov"><td class="ln">152</td><td class="code">    const url = `${wsBase}/api/kernels/${this.kernel.id}/channels${this.authQuery()}`;</td></tr>
+<tr class="cov"><td class="ln">153</td><td class="code">    return new Promise((resolve, reject) =&gt; {</td></tr>
+<tr class="cov"><td class="ln">154</td><td class="code">      let settled = false;</td></tr>
+<tr class="cov"><td class="ln">155</td><td class="code">      const ws = new WebSocket(url);</td></tr>
+<tr class="cov"><td class="ln">156</td><td class="code">      this.ws = ws;</td></tr>
+<tr class="cov"><td class="ln">157</td><td class="code">      // Resolve connect() only once the kernel is confirmed ready — never on bare</td></tr>
+<tr class="cov"><td class="ln">158</td><td class="code">      // ws.onopen. jupyter_server runs a connection &quot;nudge&quot; (a kernel_info</td></tr>
+<tr class="cov"><td class="ln">159</td><td class="code">      // handshake) on every new channels WebSocket and does not reliably deliver</td></tr>
+<tr class="cov"><td class="ln">160</td><td class="code">      // shell messages that arrive before it completes. Sending execute_request in</td></tr>
+<tr class="nil"><td class="ln">161</td><td class="code">      // onopen therefore races that nudge and the first cell run is silently</td></tr>
+<tr class="cov"><td class="ln">162</td><td class="code">      // dropped (no output). We force the handshake ourselves and gate readiness</td></tr>
+<tr class="cov"><td class="ln">163</td><td class="code">      // on kernel_info_reply.</td></tr>
+<tr class="cov"><td class="ln">164</td><td class="code">      const finish = () =&gt; {</td></tr>
+<tr class="cov"><td class="ln">165</td><td class="code">        if (settled) return;</td></tr>
+<tr class="cov"><td class="ln">166</td><td class="code">        settled = true;</td></tr>
+<tr class="cov"><td class="ln">167</td><td class="code">        if (this.readyTimer != null) { clearTimeout(this.readyTimer); this.readyTimer = null; }</td></tr>
+<tr class="cov"><td class="ln">168</td><td class="code">        this.markReady = null;</td></tr>
+<tr class="cov"><td class="ln">169</td><td class="code">        this.kernelInfoMsgId = null;</td></tr>
+<tr class="cov"><td class="ln">170</td><td class="code">        resolve();</td></tr>
+<tr class="nil"><td class="ln">171</td><td class="code">      };</td></tr>
+<tr class="cov"><td class="ln">172</td><td class="code">      this.markReady = finish;</td></tr>
+<tr class="cov"><td class="ln">173</td><td class="code">      ws.onopen = () =&gt; {</td></tr>
+<tr class="cov"><td class="ln">174</td><td class="code">        const mid = uuid();</td></tr>
+<tr class="cov"><td class="ln">175</td><td class="code">        this.kernelInfoMsgId = mid;</td></tr>
+<tr class="cov"><td class="ln">176</td><td class="code">        try {</td></tr>
+<tr class="cov"><td class="ln">177</td><td class="code">          ws.send(JSON.stringify({</td></tr>
+<tr class="cov"><td class="ln">178</td><td class="code">            header: this.buildHeader(&#x27;kernel_info_request&#x27;, mid),</td></tr>
+<tr class="cov"><td class="ln">179</td><td class="code">            parent_header: {}, metadata: {}, content: {}, channel: &#x27;shell&#x27;,</td></tr>
+<tr class="cov"><td class="ln">180</td><td class="code">          }));</td></tr>
+<tr class="cov"><td class="ln">181</td><td class="code">        } catch { /* fall through to the timeout fallback */ }</td></tr>
+<tr class="nil"><td class="ln">182</td><td class="code">        // Fallback: proceed anyway if no reply arrives (an older server or a</td></tr>
+<tr class="nil"><td class="ln">183</td><td class="code">        // kernel slow to answer kernel_info) so connect() never hangs.</td></tr>
+<tr class="cov"><td class="ln">184</td><td class="code">        this.readyTimer = setTimeout(finish, 5000);</td></tr>
+<tr class="cov"><td class="ln">185</td><td class="code">      };</td></tr>
+<tr class="cov"><td class="ln">186</td><td class="code">      ws.onerror = () =&gt; { if (!settled) { settled = true; reject(new Error(&#x27;WebSocket error during open&#x27;)); } };</td></tr>
+<tr class="cov"><td class="ln">187</td><td class="code">      ws.onmessage = (ev) =&gt; this.handleMessage(ev.data);</td></tr>
+<tr class="cov"><td class="ln">188</td><td class="code">      ws.onclose = () =&gt; {</td></tr>
+<tr class="nil"><td class="ln">189</td><td class="code">        // Notify all pending executions that the kernel went away.</td></tr>
+<tr class="cov"><td class="ln">190</td><td class="code">        for (const [, p] of this.pending) {</td></tr>
+<tr class="unc"><td class="ln">191</td><td class="code">          p.callbacks.onStatus?.(&#x27;dead&#x27;);</td></tr>
+<tr class="cov"><td class="ln">192</td><td class="code">          p.resolve(&#x27;aborted&#x27;);</td></tr>
+<tr class="unc"><td class="ln">193</td><td class="code">        }</td></tr>
+<tr class="cov"><td class="ln">194</td><td class="code">        this.pending.clear();</td></tr>
+<tr class="cov"><td class="ln">195</td><td class="code">        this.ws = null;</td></tr>
+<tr class="cov"><td class="ln">196</td><td class="code">        if (!settled) {</td></tr>
+<tr class="cov"><td class="ln">197</td><td class="code">          settled = true;</td></tr>
+<tr class="cov"><td class="ln">198</td><td class="code">          if (this.readyTimer != null) { clearTimeout(this.readyTimer); this.readyTimer = null; }</td></tr>
+<tr class="cov"><td class="ln">199</td><td class="code">          reject(new Error(&#x27;WebSocket closed before the kernel was ready&#x27;));</td></tr>
+<tr class="nil"><td class="ln">200</td><td class="code">        }</td></tr>
+<tr class="nil"><td class="ln">201</td><td class="code">      };</td></tr>
+<tr class="nil"><td class="ln">202</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">203</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">204</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">205</td><td class="code">  private handleMessage(raw: string | ArrayBuffer | Blob): void {</td></tr>
+<tr class="cov"><td class="ln">206</td><td class="code">    if (typeof raw !== &#x27;string&#x27;) return; // binary buffers aren&#x27;t used by our message types</td></tr>
+<tr class="nil"><td class="ln">207</td><td class="code">    let msg: {</td></tr>
+<tr class="nil"><td class="ln">208</td><td class="code">      header?: { msg_type?: string };</td></tr>
+<tr class="nil"><td class="ln">209</td><td class="code">      parent_header?: { msg_id?: string };</td></tr>
+<tr class="nil"><td class="ln">210</td><td class="code">      channel?: string;</td></tr>
+<tr class="nil"><td class="ln">211</td><td class="code">      content?: Record&lt;string, unknown&gt;;</td></tr>
+<tr class="cov"><td class="ln">212</td><td class="code">    };</td></tr>
+<tr class="cov"><td class="ln">213</td><td class="code">    try { msg = JSON.parse(raw); } catch { return; }</td></tr>
+<tr class="cov"><td class="ln">214</td><td class="code">    const t = msg.header?.msg_type;</td></tr>
+<tr class="cov"><td class="ln">215</td><td class="code">    const parentId = msg.parent_header?.msg_id;</td></tr>
+<tr class="cov"><td class="ln">216</td><td class="code">    const c = msg.content ?? {};</td></tr>
+<tr class="cov"><td class="ln">217</td><td class="code">    // Readiness handshake (see openChannels): our kernel_info_request has been</td></tr>
+<tr class="nil"><td class="ln">218</td><td class="code">    // answered → the channel is wired and safe for execute_request.</td></tr>
+<tr class="cov"><td class="ln">219</td><td class="code">    if (t === &#x27;kernel_info_reply&#x27; &amp;&amp; parentId &amp;&amp; parentId === this.kernelInfoMsgId) {</td></tr>
+<tr class="cov"><td class="ln">220</td><td class="code">      this.markReady?.();</td></tr>
+<tr class="cov"><td class="ln">221</td><td class="code">      return;</td></tr>
+<tr class="nil"><td class="ln">222</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">223</td><td class="code">    if (!parentId) return;</td></tr>
+<tr class="cov"><td class="ln">224</td><td class="code">    const pending = this.pending.get(parentId);</td></tr>
+<tr class="cov"><td class="ln">225</td><td class="code">    if (!pending) return;</td></tr>
+<tr class="cov"><td class="ln">226</td><td class="code">    const cb = pending.callbacks;</td></tr>
+<tr class="nil"><td class="ln">227</td><td class="code">&nbsp;</td></tr>
+<tr class="cov"><td class="ln">228</td><td class="code">    if (t === &#x27;status&#x27;) {</td></tr>
+<tr class="unc"><td class="ln">229</td><td class="code">      const state = c.execution_state as string | undefined;</td></tr>
+<tr class="unc"><td class="ln">230</td><td class="code">      if (state === &#x27;busy&#x27; || state === &#x27;idle&#x27; || state === &#x27;dead&#x27;) {</td></tr>
+<tr class="unc"><td class="ln">231</td><td class="code">        cb.onStatus?.(state);</td></tr>
+<tr class="nil"><td class="ln">232</td><td class="code">      }</td></tr>
+<tr class="cov"><td class="ln">233</td><td class="code">    } else if (t === &#x27;stream&#x27;) {</td></tr>
+<tr class="unc"><td class="ln">234</td><td class="code">      const name = c.name === &#x27;stderr&#x27; ? &#x27;stderr&#x27; : &#x27;stdout&#x27;;</td></tr>
+<tr class="unc"><td class="ln">235</td><td class="code">      cb.onStream?.({ name, text: String(c.text ?? &#x27;&#x27;) });</td></tr>
+<tr class="cov"><td class="ln">236</td><td class="code">    } else if (t === &#x27;display_data&#x27;) {</td></tr>
+<tr class="unc"><td class="ln">237</td><td class="code">      cb.onDisplayData?.({ data: (c.data ?? {}) as MimeBundle });</td></tr>
+<tr class="cov"><td class="ln">238</td><td class="code">    } else if (t === &#x27;execute_result&#x27;) {</td></tr>
+<tr class="unc"><td class="ln">239</td><td class="code">      cb.onExecuteResult?.({</td></tr>
+<tr class="unc"><td class="ln">240</td><td class="code">        data: (c.data ?? {}) as MimeBundle,</td></tr>
+<tr class="unc"><td class="ln">241</td><td class="code">        executionCount: typeof c.execution_count === &#x27;number&#x27; ? c.execution_count : null,</td></tr>
+<tr class="nil"><td class="ln">242</td><td class="code">      });</td></tr>
+<tr class="cov"><td class="ln">243</td><td class="code">    } else if (t === &#x27;error&#x27;) {</td></tr>
+<tr class="unc"><td class="ln">244</td><td class="code">      cb.onError?.({</td></tr>
+<tr class="nil"><td class="ln">245</td><td class="code">        ename: String(c.ename ?? &#x27;Error&#x27;),</td></tr>
+<tr class="unc"><td class="ln">246</td><td class="code">        evalue: String(c.evalue ?? &#x27;&#x27;),</td></tr>
+<tr class="unc"><td class="ln">247</td><td class="code">        traceback: Array.isArray(c.traceback) ? (c.traceback as unknown[]).map(String) : [],</td></tr>
+<tr class="unc"><td class="ln">248</td><td class="code">      });</td></tr>
+<tr class="cov"><td class="ln">249</td><td class="code">    } else if (t === &#x27;execute_reply&#x27; &amp;&amp; msg.channel === &#x27;shell&#x27;) {</td></tr>
+<tr class="cov"><td class="ln">250</td><td class="code">      const status = c.status as string;</td></tr>
+<tr class="nil"><td class="ln">251</td><td class="code">      const norm: &#x27;ok&#x27; | &#x27;error&#x27; | &#x27;aborted&#x27; =</td></tr>
+<tr class="cov"><td class="ln">252</td><td class="code">        status === &#x27;ok&#x27; || status === &#x27;error&#x27; || status === &#x27;aborted&#x27; ? status : &#x27;aborted&#x27;;</td></tr>
+<tr class="cov"><td class="ln">253</td><td class="code">      cb.onReply?.({</td></tr>
+<tr class="unc"><td class="ln">254</td><td class="code">        status: norm,</td></tr>
+<tr class="nil"><td class="ln">255</td><td class="code">        executionCount: typeof c.execution_count === &#x27;number&#x27; ? c.execution_count : null,</td></tr>
+<tr class="nil"><td class="ln">256</td><td class="code">      });</td></tr>
+<tr class="cov"><td class="ln">257</td><td class="code">      pending.resolve(norm);</td></tr>
+<tr class="cov"><td class="ln">258</td><td class="code">      this.pending.delete(parentId);</td></tr>
+<tr class="nil"><td class="ln">259</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">260</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">261</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">262</td><td class="code">  /** Send execute_request. Throws if no kernel is running.</td></tr>
+<tr class="nil"><td class="ln">263</td><td class="code">   *  Returns a handle whose `done` resolves on execute_reply. */</td></tr>
+<tr class="nil"><td class="ln">264</td><td class="code">  execute(code: string, callbacks: ExecuteCallbacks = {}): ExecuteHandle {</td></tr>
+<tr class="cov"><td class="ln">265</td><td class="code">    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {</td></tr>
+<tr class="unc"><td class="ln">266</td><td class="code">      throw new Error(&#x27;execute: not connected&#x27;);</td></tr>
+<tr class="nil"><td class="ln">267</td><td class="code">    }</td></tr>
+<tr class="cov"><td class="ln">268</td><td class="code">    const msgId = uuid();</td></tr>
+<tr class="cov"><td class="ln">269</td><td class="code">    const msg = {</td></tr>
+<tr class="nil"><td class="ln">270</td><td class="code">      header: this.buildHeader(&#x27;execute_request&#x27;, msgId),</td></tr>
+<tr class="nil"><td class="ln">271</td><td class="code">      parent_header: {},</td></tr>
+<tr class="nil"><td class="ln">272</td><td class="code">      metadata: {},</td></tr>
+<tr class="nil"><td class="ln">273</td><td class="code">      content: {</td></tr>
+<tr class="nil"><td class="ln">274</td><td class="code">        code, silent: false, store_history: true,</td></tr>
+<tr class="nil"><td class="ln">275</td><td class="code">        user_expressions: {}, allow_stdin: false, stop_on_error: true,</td></tr>
+<tr class="nil"><td class="ln">276</td><td class="code">      },</td></tr>
+<tr class="nil"><td class="ln">277</td><td class="code">      buffers: [],</td></tr>
+<tr class="nil"><td class="ln">278</td><td class="code">      channel: &#x27;shell&#x27;,</td></tr>
+<tr class="nil"><td class="ln">279</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">280</td><td class="code">    let resolve!: (s: &#x27;ok&#x27; | &#x27;error&#x27; | &#x27;aborted&#x27;) =&gt; void;</td></tr>
+<tr class="cov"><td class="ln">281</td><td class="code">    const done = new Promise&lt;&#x27;ok&#x27; | &#x27;error&#x27; | &#x27;aborted&#x27;&gt;((r) =&gt; { resolve = r; });</td></tr>
+<tr class="cov"><td class="ln">282</td><td class="code">    this.pending.set(msgId, { resolve, callbacks });</td></tr>
+<tr class="cov"><td class="ln">283</td><td class="code">    this.ws.send(JSON.stringify(msg));</td></tr>
+<tr class="cov"><td class="ln">284</td><td class="code">    return {</td></tr>
+<tr class="nil"><td class="ln">285</td><td class="code">      msgId,</td></tr>
+<tr class="nil"><td class="ln">286</td><td class="code">      done,</td></tr>
+<tr class="unc"><td class="ln">287</td><td class="code">      interrupt: () =&gt; this.interrupt(),</td></tr>
+<tr class="nil"><td class="ln">288</td><td class="code">    };</td></tr>
+<tr class="nil"><td class="ln">289</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">290</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">291</td><td class="code">  /** POST /api/kernels/:id/interrupt — sends SIGINT-equivalent. */</td></tr>
+<tr class="nil"><td class="ln">292</td><td class="code">  async interrupt(): Promise&lt;void&gt; {</td></tr>
+<tr class="unc"><td class="ln">293</td><td class="code">    if (!this.kernel) return;</td></tr>
+<tr class="unc"><td class="ln">294</td><td class="code">    await fetch(`${this.baseUrl}/api/kernels/${this.kernel.id}/interrupt${this.authQuery()}`, {</td></tr>
+<tr class="nil"><td class="ln">295</td><td class="code">      method: &#x27;POST&#x27;,</td></tr>
+<tr class="nil"><td class="ln">296</td><td class="code">      headers: this.authHeaders(),</td></tr>
+<tr class="nil"><td class="ln">297</td><td class="code">    });</td></tr>
+<tr class="nil"><td class="ln">298</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">299</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">300</td><td class="code">  /** DELETE /api/kernels/:id and close the WS. Safe to call any time. */</td></tr>
+<tr class="nil"><td class="ln">301</td><td class="code">  async stopKernel(): Promise&lt;void&gt; {</td></tr>
+<tr class="unc"><td class="ln">302</td><td class="code">    if (this.readyTimer != null) { clearTimeout(this.readyTimer); this.readyTimer = null; }</td></tr>
+<tr class="unc"><td class="ln">303</td><td class="code">    this.markReady = null;</td></tr>
+<tr class="unc"><td class="ln">304</td><td class="code">    this.kernelInfoMsgId = null;</td></tr>
+<tr class="unc"><td class="ln">305</td><td class="code">    if (this.ws) { try { this.ws.close(); } catch { /* ignore */ } this.ws = null; }</td></tr>
+<tr class="unc"><td class="ln">306</td><td class="code">    if (this.kernel) {</td></tr>
+<tr class="unc"><td class="ln">307</td><td class="code">      try {</td></tr>
+<tr class="unc"><td class="ln">308</td><td class="code">        await fetch(`${this.baseUrl}/api/kernels/${this.kernel.id}${this.authQuery()}`, {</td></tr>
+<tr class="nil"><td class="ln">309</td><td class="code">          method: &#x27;DELETE&#x27;,</td></tr>
+<tr class="nil"><td class="ln">310</td><td class="code">          headers: this.authHeaders(),</td></tr>
+<tr class="nil"><td class="ln">311</td><td class="code">        });</td></tr>
+<tr class="nil"><td class="ln">312</td><td class="code">      } catch { /* server unreachable — kernel will time out server-side */ }</td></tr>
+<tr class="unc"><td class="ln">313</td><td class="code">      this.kernel = null;</td></tr>
+<tr class="nil"><td class="ln">314</td><td class="code">    }</td></tr>
+<tr class="nil"><td class="ln">315</td><td class="code">  }</td></tr>
+<tr class="nil"><td class="ln">316</td><td class="code">}</td></tr></table>
+</body></html>

@@ -1,0 +1,77 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>src/lib/clipboard.ts · coverage</title><link rel="stylesheet" href="../style.css"></head><body>
+<header class="fhead">
+  <div class="crumb"><a href="../index.html">◂ overview</a></div>
+  <h1>src/lib/clipboard.ts </h1>
+  <div class="stats">
+    <span class="stat"><b>83%</b> covered</span>
+    <span class="stat">10/12 executable</span>
+    <span class="stat unc-txt">2 uncovered</span>
+    <span class="stat">59 raw lines</span>
+    <span class="stat">0.14% of codebase</span>
+  </div>
+  <span class="bar"><span class="seg cov" style="width:16.949%"></span><span class="seg unc" style="width:3.390%"></span><span class="seg nil" style="width:79.661%"></span></span>
+  <div class="links"><span>imports:</span> <i>none</i></div>
+  <div class="links"><span>imported by:</span> <a href="src__components__SlideEditor_tsx.html">SlideEditor.tsx</a> <a href="src__components__SlideElementRenderer_tsx.html">SlideElementRenderer.tsx</a> <a href="src__lib__printSlideHtml_ts.html">printSlideHtml.ts</a></div>
+</header>
+<table class="src"><tr class="cov"><td class="ln">1</td><td class="code">// Eigendeck clipboard interop — shared marker for round-tripping</td></tr>
+<tr class="cov"><td class="ln">2</td><td class="code">// inline text markup (bold / italic / sub / sup / color spans)</td></tr>
+<tr class="nil"><td class="ln">3</td><td class="code">// through copy-paste back into eigendeck text elements without</td></tr>
+<tr class="cov"><td class="ln">4</td><td class="code">// accepting arbitrary external HTML.</td></tr>
+<tr class="nil"><td class="ln">5</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">6</td><td class="code">// Producers (places that emit eigendeck HTML the user might copy):</td></tr>
+<tr class="unc"><td class="ln">7</td><td class="code">//   - onCopy in SlideElementRenderer&#x27;s contentEditable: prepends</td></tr>
+<tr class="nil"><td class="ln">8</td><td class="code">//     the marker when the user copies a selection inside a text</td></tr>
+<tr class="nil"><td class="ln">9</td><td class="code">//     element being edited.</td></tr>
+<tr class="cov"><td class="ln">10</td><td class="code">//   - HTML export (renderSlideForPrint, etc.): prepends the marker</td></tr>
+<tr class="nil"><td class="ln">11</td><td class="code">//     per text element so a full-element copy from a browser</td></tr>
+<tr class="nil"><td class="ln">12</td><td class="code">//     viewing an exported page also trips the trusted-paste path.</td></tr>
+<tr class="unc"><td class="ln">13</td><td class="code">//</td></tr>
+<tr class="nil"><td class="ln">14</td><td class="code">// Consumers:</td></tr>
+<tr class="nil"><td class="ln">15</td><td class="code">//   - onPaste in SlideElementRenderer: checks for marker in</td></tr>
+<tr class="nil"><td class="ln">16</td><td class="code">//     clipboard&#x27;s text/html; present → trust the HTML (strip</td></tr>
+<tr class="nil"><td class="ln">17</td><td class="code">//     marker); absent → fall back to text/plain.</td></tr>
+<tr class="nil"><td class="ln">18</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">19</td><td class="code">/** Legacy magic-comment marker for eigendeck-origin HTML. Kept for back-compat</td></tr>
+<tr class="nil"><td class="ln">20</td><td class="code"> *  (and it works in-webview, where clipboardData round-trips verbatim), but a</td></tr>
+<tr class="nil"><td class="ln">21</td><td class="code"> *  leading HTML comment does NOT reliably survive the macOS NSPasteboard&#x27;s</td></tr>
+<tr class="nil"><td class="ln">22</td><td class="code"> *  text/html re-serialization — so it can&#x27;t be the only signal. Versioned. */</td></tr>
+<tr class="cov"><td class="ln">23</td><td class="code">export const EIGENDECK_PASTE_MARKER = &#x27;&lt;!--eigendeck-copy:v1--&gt;&#x27;;</td></tr>
+<tr class="nil"><td class="ln">24</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">25</td><td class="code">/** Robust marker: a data ATTRIBUTE on a real wrapper element. Unlike a comment,</td></tr>
+<tr class="nil"><td class="ln">26</td><td class="code"> *  a DOM attribute survives the OS clipboard&#x27;s HTML re-serialization (macOS), so</td></tr>
+<tr class="nil"><td class="ln">27</td><td class="code"> *  an eigendeck→eigendeck paste is still recognized after a native pasteboard</td></tr>
+<tr class="nil"><td class="ln">28</td><td class="code"> *  round-trip. `div` wrapper (valid around block or inline content). */</td></tr>
+<tr class="cov"><td class="ln">29</td><td class="code">const EIGENDECK_ATTR_MARKER = &#x27;data-eigendeck-copy&#x27;;</td></tr>
+<tr class="nil"><td class="ln">30</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">31</td><td class="code">/** Prepend the comment marker only (no wrapper element — no layout impact).</td></tr>
+<tr class="nil"><td class="ln">32</td><td class="code"> *  Used where the marked HTML is RENDERED (HTML export / print), so it must not</td></tr>
+<tr class="nil"><td class="ln">33</td><td class="code"> *  alter structure; the comment is enough there because that HTML isn&#x27;t put on</td></tr>
+<tr class="nil"><td class="ln">34</td><td class="code"> *  the OS clipboard until a user copies it (and the data-attribute form is used</td></tr>
+<tr class="nil"><td class="ln">35</td><td class="code"> *  for the in-app clipboard producers). */</td></tr>
+<tr class="nil"><td class="ln">36</td><td class="code">export function markAsEigendeck(html: string): string {</td></tr>
+<tr class="cov"><td class="ln">37</td><td class="code">  return EIGENDECK_PASTE_MARKER + html;</td></tr>
+<tr class="nil"><td class="ln">38</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">39</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">40</td><td class="code">/** Wrap with BOTH markers for content going onto the CLIPBOARD. The data</td></tr>
+<tr class="nil"><td class="ln">41</td><td class="code"> *  attribute survives the macOS NSPasteboard&#x27;s text/html re-serialization (a</td></tr>
+<tr class="nil"><td class="ln">42</td><td class="code"> *  leading comment does not), so an eigendeck→eigendeck paste is still routed</td></tr>
+<tr class="nil"><td class="ln">43</td><td class="code"> *  through the trusted/element path after a native pasteboard round-trip. */</td></tr>
+<tr class="nil"><td class="ln">44</td><td class="code">export function markAsEigendeckForClipboard(html: string): string {</td></tr>
+<tr class="cov"><td class="ln">45</td><td class="code">  return `${EIGENDECK_PASTE_MARKER}&lt;div ${EIGENDECK_ATTR_MARKER}=&quot;v1&quot;&gt;${html}&lt;/div&gt;`;</td></tr>
+<tr class="nil"><td class="ln">46</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">47</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">48</td><td class="code">/** True iff the HTML carries either marker anywhere. */</td></tr>
+<tr class="nil"><td class="ln">49</td><td class="code">export function hasEigendeckMarker(html: string): boolean {</td></tr>
+<tr class="cov"><td class="ln">50</td><td class="code">  return html.includes(EIGENDECK_ATTR_MARKER) || html.includes(EIGENDECK_PASTE_MARKER);</td></tr>
+<tr class="nil"><td class="ln">51</td><td class="code">}</td></tr>
+<tr class="nil"><td class="ln">52</td><td class="code">&nbsp;</td></tr>
+<tr class="nil"><td class="ln">53</td><td class="code">/** Remove both markers (the comment, and the data attribute — leaving the plain</td></tr>
+<tr class="nil"><td class="ln">54</td><td class="code"> *  wrapper div, which the sanitizer keeps) before inserting trusted HTML. */</td></tr>
+<tr class="nil"><td class="ln">55</td><td class="code">export function stripEigendeckMarker(html: string): string {</td></tr>
+<tr class="cov"><td class="ln">56</td><td class="code">  return html</td></tr>
+<tr class="nil"><td class="ln">57</td><td class="code">    .split(EIGENDECK_PASTE_MARKER).join(&#x27;&#x27;)</td></tr>
+<tr class="nil"><td class="ln">58</td><td class="code">    .replace(new RegExp(`\\s*${EIGENDECK_ATTR_MARKER}=&quot;v1&quot;`, &#x27;gi&#x27;), &#x27;&#x27;);</td></tr>
+<tr class="nil"><td class="ln">59</td><td class="code">}</td></tr></table>
+</body></html>
