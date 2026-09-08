@@ -102,6 +102,13 @@ MANIFEST=(
   "insert-dup-keys-probe.mjs|empty.eigendeck||$EMPTY"   
   "paste-text-probe.mjs|empty.eigendeck||$EMPTY"   # #161 paste plain/styled text → text element (color kept, font-size dropped)
   "paste-file-probe.mjs|empty.eigendeck||$EMPTY"   # #160 paste a copied FILE (uri-list) → insert as an image asset
+  # coverage spike (paste handler): exercise SlideEditor's ~470-line handlePaste
+  # block via synthetic ClipboardEvents — an image FILE (insertPastedAsset), rich
+  # HTML block → HTML→PNG screenshot (insertRichHtmlScreenshot/captureHtmlToPng),
+  # text/uri-list + x-special/gnome-copied-files file-urls (insertPastedFilePaths),
+  # plain text, and a canvas marquee. No-crash sentinel + element-type assertions.
+  # Lifts SlideEditor.tsx ~23→53% lines over a non-paste editor baseline.
+  "editor-paste-probe.mjs|empty.eigendeck||$EMPTY"
   "internal-paste-probe.mjs|ip.eigendeck||import_json $EXFIX/internal-paste-deck.json"   # copy/paste redesign: private-flavor round-trip + stale guard
   "image-link-probe.mjs|imglink.eigendeck||import_json $EXFIX/image-link-deck.json"   # copy/paste redesign: image copy -> paste + cross-slide link
   "caret-double-paste-probe.mjs|caret-paste.eigendeck||import_json $EXFIX/caret-paste-deck.json"   # editing + paste must NOT create a canvas element (double-paste guard)

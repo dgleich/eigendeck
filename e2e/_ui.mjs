@@ -91,6 +91,38 @@ export async function dragElementToX(sid, elementId, targetX) {
   `);
 }
 
+// Dispatch a synthetic `paste` ClipboardEvent with a populated DataTransfer at the
+// REAL SlideEditor handler (window-level 'paste' listener). WebKitGTK honors a
+// hand-built ClipboardEvent + DataTransfer, so this drives handlePaste with no OS
+// clipboard. `opts`: { text, html, uriList, gnome, files:[{b64,name,type}] }. The
+// DataTransfer/File/ClipboardEvent must be built INSIDE the page, so this ships
+// `opts` in and constructs them there. `selector` picks the dispatch target
+// (defaults to <body>; the event bubbles to the window listener either way).
+export async function pasteInto(sid, selector, opts = {}) {
+  const o = {
+    text: opts.text || '', html: opts.html || '',
+    uriList: opts.uriList || '', gnome: opts.gnome || '',
+    files: opts.files || [],
+  };
+  return exec(sid, `
+    const o = ${JSON.stringify(o)};
+    const dt = new DataTransfer();
+    if (o.text) dt.setData('text/plain', o.text);
+    if (o.html) dt.setData('text/html', o.html);
+    if (o.uriList) dt.setData('text/uri-list', o.uriList);
+    if (o.gnome) dt.setData('x-special/gnome-copied-files', o.gnome);
+    for (const f of o.files) {
+      const bin = atob(f.b64); const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      dt.items.add(new File([arr], f.name, { type: f.type }));
+    }
+    const sel = ${JSON.stringify(selector)};
+    const target = sel ? document.querySelector(sel) : document.body;
+    (target || document.body).dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    return true;
+  `);
+}
+
 // The following run in the SECURITY window (switch to secH first).
 // Poll until the window's text contains `substr` (report finished rendering).
 export async function waitForText(sid, substr, tries = 15) {
